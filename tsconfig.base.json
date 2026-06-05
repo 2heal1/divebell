@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@openruntime/core": ["packages/core/src/index.ts"],
+      "@openruntime/bridge": ["packages/bridge/src/index.ts"],
+      "@openruntime/cli": ["packages/cli/src/index.ts"],
+      "@openruntime/modern-plugin": ["packages/modern-plugin/src/index.ts"],
+      "@openruntime/mf-runtime-plugin": ["packages/mf-runtime-plugin/src/index.ts"]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
+

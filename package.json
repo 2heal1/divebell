@@ -1,0 +1,23 @@
+{
+  "name": "openruntime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.1",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=10.18.1 <11"
+  },
+  "scripts": {
+    "build": "tsc -b --pretty false",
+    "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
+    "check": "pnpm run build && pnpm run test",
+    "clean": "node ./scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": []
+  }
+}

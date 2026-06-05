@@ -13,3 +13,29 @@ OpenRuntime 是一套让前端应用向 Agent 开放运行时状态、事件和�
 ## 当前状态
 
 这个项目目前以文档和 Agent skill 为主。实现代码还没有形成稳定入口时，不要从旧 Agent Runtime 文档反推 API，以 `docs/rfc-openruntime.md` 为准。
+
+## 怎么开始
+
+本仓库使用 Node 24 和 pnpm workspace monorepo。开始开发前先切到 Node 24：
+
+```sh
+nvm use
+corepack enable
+pnpm install
+pnpm check
+```
+
+当前基础包：
+
+1. `packages/core`：页面内 Runtime Center 和核心 API 的实现位置。
+2. `packages/bridge`：页面和外部 Agent 通信的 Bridge 实现位置。
+3. `packages/cli`：Agent 读取状态、执行动作和等待结果的命令行入口。
+4. `packages/modern-plugin`：Modern.js plugin 接入位置。
+5. `packages/mf-runtime-plugin`：Module Federation runtimePlugin 接入位置。
+
+根目录命令：
+
+1. `pnpm build`：构建所有基础包。
+2. `pnpm test`：运行所有包的最小测试。
+3. `pnpm check`：一次跑完构建和测试。
+4. `pnpm clean`：清理构建产物。

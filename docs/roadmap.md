@@ -12,16 +12,16 @@ OpenRuntime 要提供一套应用可写入、Agent 可读取和执行的运行�
 
 Checklist：
 
-- [ ] 确定包管理器、构建工具和测试工具。
-- [ ] 建立基础目录，例如 `packages/core`、`packages/bridge`、`packages/cli`、`packages/modern-plugin`、`packages/mf-runtime-plugin`。
-- [ ] 定义 TypeScript 编译、lint、test、build 命令。
-- [ ] 建立最小测试样例，确保本地 CI 命令可运行。
-- [ ] 保留 `docs/rfc-openruntime.md` 作为 API 来源，避免实现时从旧设计反推。
+- [x] 确定包管理器、构建工具和测试工具。
+- [x] 建立基础目录，例如 `packages/core`、`packages/bridge`、`packages/cli`、`packages/modern-plugin`、`packages/mf-runtime-plugin`。
+- [x] 定义 TypeScript 编译、test、build 命令。
+- [x] 建立最小测试样例，确保本地 CI 命令可运行。
+- [x] 保留 `docs/rfc-openruntime.md` 作为 API 来源，避免实现时从旧设计反推。
 
 验收标准：
 
-- [ ] 新 agent 只读 `README`、`AGENTS.md`、`docs/rfc-openruntime.md` 和本 roadmap，就能知道从哪里开始。
-- [ ] 根目录命令可以完成类型检查和测试。
+- [x] 新 agent 只读 `README`、`AGENTS.md`、`docs/rfc-openruntime.md` 和本 roadmap，就能知道从哪里开始。
+- [x] 根目录命令可以完成类型检查和测试。
 
 ## 阶段 1：Core SDK
 

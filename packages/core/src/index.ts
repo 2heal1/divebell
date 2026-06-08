@@ -8,6 +8,14 @@ export {
 } from "./runtime/window.js";
 export type { OpenRuntimeWindowHost } from "./runtime/window.js";
 export type {
+  BridgeConnectOptions,
+  BridgeRuntimeCommandName,
+  BridgeRuntimeQuery,
+  BridgeRuntimeRequest,
+  BridgeRuntimeResponse
+} from "./bridge/types.js";
+export { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "./bridge/types.js";
+export type {
   CreateOpenRuntimeOptions,
   OpenRuntimeCore,
   RuntimeClock,

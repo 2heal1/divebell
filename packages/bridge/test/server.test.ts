@@ -1,0 +1,405 @@
+import assert from "node:assert/strict";
+import { request as httpRequest, type IncomingMessage } from "node:http";
+import { test } from "@rstest/core";
+
+import { createBridgeServer, type BridgeRuntimeInfo } from "../dist/index.js";
+
+test("lists connected runtimes and forwards target reads", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-1",
+    clock: createClock(1000)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+
+  try {
+    assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-1" });
+
+    const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(runtimes.runtimes, [
+      {
+        runtimeId: "runtime-1",
+        url: "http://app.test/",
+        status: "connected",
+        connectedAt: 1001,
+        lastSeenAt: 1001
+      }
+    ]);
+
+    const targetsPromise = readJson(`${address.url}/runtimes/runtime-1/targets?source=modern`);
+    const request = await stream.next<{ requestId: string; method: string; query: unknown }>("request");
+    assert.deepEqual(request, {
+      requestId: "request-1",
+      method: "getTargets",
+      query: {
+        source: "modern"
+      }
+    });
+
+    const targets = [
+      {
+        id: "route:/home",
+        type: "modern.route",
+        source: "modern",
+        statuses: ["loading", "ready"],
+        registeredAt: 100,
+        updatedAt: 100
+      }
+    ];
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-1`, {
+      success: true,
+      result: targets
+    });
+
+    assert.deepEqual(await targetsPromise, targets);
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
+test("keeps the last snapshot after a runtime disconnects", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-1",
+    clock: createClock(2000)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+
+  try {
+    await stream.next("connected");
+    const snapshotPromise = readJson(`${address.url}/runtimes/runtime-1/snapshot`);
+    const request = await stream.next<{ requestId: string }>("request");
+    const snapshot = {
+      targets: {},
+      latestEventId: 0,
+      capturedAt: 2005
+    };
+    await postJson(`${address.url}/runtimes/runtime-1/responses/${request.requestId}`, {
+      success: true,
+      result: snapshot
+    });
+    assert.deepEqual(await snapshotPromise, snapshot);
+
+    stream.close();
+    await waitForDisconnect();
+
+    assert.deepEqual(await readJson(`${address.url}/runtimes/runtime-1/snapshot`), snapshot);
+    const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.equal(runtimes.runtimes[0]?.status, "disconnected");
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
+test("creates a new runtime id when the same page reconnects", async () => {
+  const ids = ["runtime-old", "runtime-new"];
+  const server = createBridgeServer({
+    idGenerator: () => ids.shift() ?? "runtime-extra",
+    clock: createClock(2500)
+  });
+  const address = await server.listen({ port: 0 });
+  const firstStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+
+  try {
+    assert.deepEqual(await firstStream.next("connected"), { runtimeId: "runtime-old" });
+    firstStream.close();
+    await waitForDisconnect();
+
+    const secondStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+    try {
+      assert.deepEqual(await secondStream.next("connected"), { runtimeId: "runtime-new" });
+      const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+      assert.deepEqual(runtimes.runtimes.map((runtime) => runtime.runtimeId), [
+        "runtime-new",
+        "runtime-old"
+      ]);
+      assert.equal(runtimes.runtimes[0]?.status, "connected");
+      assert.equal(runtimes.runtimes[1]?.status, "disconnected");
+    } finally {
+      secondStream.close();
+    }
+  } finally {
+    firstStream.close();
+    await server.close();
+  }
+});
+
+test("forwards input options, action runs, and wait requests", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-1",
+    clock: createClock(3000)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+
+  try {
+    await stream.next("connected");
+
+    const optionsPromise = readJson(`${address.url}/runtimes/runtime-1/actions/demo.select/options?input=region&payload=${encodeURIComponent(JSON.stringify({ country: "cn" }))}&timeout=20`);
+    const optionsRequest = await stream.next("request");
+    assert.deepEqual(optionsRequest, {
+      requestId: "request-1",
+      method: "getInputOptions",
+      actionName: "demo.select",
+      inputName: "region",
+      payload: {
+        country: "cn"
+      },
+      options: {
+        timeout: 20
+      }
+    });
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-1`, {
+      success: true,
+      result: [
+        {
+          value: "hangzhou"
+        }
+      ]
+    });
+    assert.deepEqual(await optionsPromise, [
+      {
+        value: "hangzhou"
+      }
+    ]);
+
+    const runPromise = postReadJson(`${address.url}/runtimes/runtime-1/actions/demo.select/run`, {
+      payload: {
+        region: "hangzhou"
+      }
+    });
+    const runRequest = await stream.next("request");
+    assert.deepEqual(runRequest, {
+      requestId: "request-2",
+      method: "runAction",
+      actionName: "demo.select",
+      payload: {
+        region: "hangzhou"
+      }
+    });
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-2`, {
+      success: true,
+      result: {
+        success: true,
+        actionName: "demo.select",
+        result: {
+          accepted: true
+        }
+      }
+    });
+    assert.deepEqual(await runPromise, {
+      success: true,
+      actionName: "demo.select",
+      result: {
+        accepted: true
+      }
+    });
+
+    const waitPromise = postReadJson(`${address.url}/runtimes/runtime-1/wait-for`, {
+      targetId: "route:/home",
+      status: "ready",
+      timeout: 30
+    });
+    const waitRequest = await stream.next("request");
+    assert.deepEqual(waitRequest, {
+      requestId: "request-3",
+      method: "waitFor",
+      targetId: "route:/home",
+      status: "ready",
+      options: {
+        timeout: 30
+      }
+    });
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-3`, {
+      success: true,
+      result: {
+        success: true,
+        condition: {
+          id: "route:/home",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 3005
+        }
+      }
+    });
+    assert.deepEqual(await waitPromise, {
+      success: true,
+      condition: {
+        id: "route:/home",
+        status: "ready"
+      },
+      snapshot: {
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 3005
+      }
+    });
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
+test("rejects execution requests for disconnected runtimes", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-1",
+    clock: createClock(4000)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+
+  try {
+    await stream.next("connected");
+    stream.close();
+    await waitForDisconnect();
+
+    const response = await fetch(`${address.url}/runtimes/runtime-1/wait-for`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        targetId: "route:/home",
+        status: "ready"
+      })
+    });
+    const body = await response.json() as { error?: { code?: string } };
+    assert.equal(response.status, 409);
+    assert.equal(body.error?.code, "runtime_disconnected");
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
+class TestRuntimeStream {
+  readonly #request: ReturnType<typeof httpRequest>;
+  readonly #waiters = new Map<string, Array<(data: unknown) => void>>();
+  readonly #events = new Map<string, unknown[]>();
+
+  constructor(request: ReturnType<typeof httpRequest>, response: IncomingMessage) {
+    this.#request = request;
+    let buffer = "";
+    response.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString("utf8");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary >= 0) {
+        const raw = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        this.#push(parseServerSentEvent(raw));
+        boundary = buffer.indexOf("\n\n");
+      }
+    });
+  }
+
+  next<T = unknown>(event: string): Promise<T> {
+    const queued = this.#events.get(event);
+    if (queued !== undefined && queued.length > 0) {
+      return Promise.resolve(queued.shift() as T);
+    }
+
+    return new Promise((resolve) => {
+      const waiters = this.#waiters.get(event);
+      if (waiters === undefined) {
+        this.#waiters.set(event, [resolve as (data: unknown) => void]);
+        return;
+      }
+      waiters.push(resolve as (data: unknown) => void);
+    });
+  }
+
+  close(): void {
+    this.#request.destroy();
+  }
+
+  #push(event: { event: string; data: unknown }): void {
+    const waiters = this.#waiters.get(event.event);
+    const waiter = waiters?.shift();
+    if (waiter !== undefined) {
+      waiter(event.data);
+      return;
+    }
+
+    const queued = this.#events.get(event.event);
+    if (queued === undefined) {
+      this.#events.set(event.event, [event.data]);
+      return;
+    }
+    queued.push(event.data);
+  }
+}
+
+function openRuntimeStream(url: string): Promise<TestRuntimeStream> {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(url, { method: "GET" }, (response) => {
+      resolve(new TestRuntimeStream(request, response));
+    });
+    request.on("error", reject);
+    request.end();
+  });
+}
+
+function parseServerSentEvent(raw: string): { event: string; data: unknown } {
+  let event = "message";
+  const data: string[] = [];
+  for (const line of raw.split("\n")) {
+    if (line.startsWith("event: ")) event = line.slice("event: ".length);
+    if (line.startsWith("data: ")) data.push(line.slice("data: ".length));
+  }
+
+  return {
+    event,
+    data: JSON.parse(data.join("\n"))
+  };
+}
+
+async function readJson<T = unknown>(url: string): Promise<T> {
+  const response = await fetch(url);
+  const text = await response.text();
+  assert.equal(response.ok, true, text);
+  return JSON.parse(text) as T;
+}
+
+async function postJson(url: string, body: unknown): Promise<void> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  assert.equal(response.ok, true, text);
+}
+
+async function postReadJson<T = unknown>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  const text = await response.text();
+  assert.equal(response.ok, true, text);
+  return JSON.parse(text) as T;
+}
+
+function createClock(start: number): { now(): number } {
+  let current = start;
+  return {
+    now: () => {
+      current += 1;
+      return current;
+    }
+  };
+}
+
+async function waitForDisconnect(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 10));
+}

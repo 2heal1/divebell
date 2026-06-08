@@ -1,0 +1,17 @@
+{
+  "name": "@openruntime/demo-bridge-readonly",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rsbuild build",
+    "preview": "rsbuild preview"
+  },
+  "dependencies": {
+    "@openruntime/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@rsbuild/core": "2.0.11"
+  }
+}

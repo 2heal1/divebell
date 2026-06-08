@@ -52,19 +52,19 @@ Checklist：
 
 Checklist：
 
-- [ ] 实现页面侧 `connectBridge({ port, autoReconnect })`。
-- [ ] 实现 Bridge runtime 连接管理：`runtimeId`、`url`、连接状态、最后 snapshot/events 保留。
-- [ ] 实现 HTTP API：`/runtimes`、`/targets`、`/snapshot`、`/events`、`/actions`、`/actions/:name/options`、`/actions/:name/run`、`/wait-for`。
-- [ ] 实现 CLI：`bridge start`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
-- [ ] 实现 runtime selector：`--url`、`--runtime`，无参数时默认选择最新活跃 runtime。
-- [ ] `wait-for` 命令成功或失败后释放进程。
-- [ ] `input-options` 命令等待异步 provider 完成，默认超时 5s。
+- [x] 实现页面侧 `connectBridge({ port, autoReconnect })`。
+- [x] 实现 Bridge runtime 连接管理：`runtimeId`、`url`、连接状态、最后 snapshot/events 保留。
+- [x] 实现 HTTP API：`/runtimes`、`/targets`、`/snapshot`、`/events`、`/actions`、`/actions/:name/options`、`/actions/:name/run`、`/wait-for`。
+- [x] 实现 CLI：`bridge start`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
+- [x] 实现 runtime selector：`--url`、`--runtime`，无参数时默认选择最新活跃 runtime。
+- [x] `wait-for` 命令成功或失败后释放进程。
+- [x] `input-options` 命令等待异步 provider 完成，默认超时 5s。
 
 验收标准：
 
-- [ ] 打开测试页面后，CLI 能读取 targets、snapshot、actions。
-- [ ] CLI 能执行 action，并用 `wait-for` 验证后续状态。
-- [ ] 页面刷新后生成新的 `runtimeId`，旧连接能被 Bridge 标记为 disconnected。
+- [x] 打开测试页面后，CLI 能读取 targets、snapshot、actions。
+- [x] CLI 能执行 action，并用 `wait-for` 验证后续状态。
+- [x] 页面刷新后生成新的 `runtimeId`，旧连接能被 Bridge 标记为 disconnected。
 
 ## 阶段 3：Modern.js Plugin
 

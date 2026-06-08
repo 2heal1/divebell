@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
+    "open-runtime": "./dist/index.js",
     "openruntime": "./dist/index.js"
   },
   "main": "./dist/index.js",
@@ -22,6 +23,7 @@
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
+    "@openruntime/bridge": "workspace:^",
     "@openruntime/core": "workspace:^"
   },
   "devDependencies": {

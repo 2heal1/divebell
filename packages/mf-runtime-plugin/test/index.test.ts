@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "@rstest/core";
 
 import { mfRuntimePluginPackageInfo } from "../dist/index.js";
 

@@ -29,22 +29,22 @@ Checklist：
 
 Checklist：
 
-- [ ] 实现 Target Registry：`registerTarget`、`unregisterTarget`、`getTargets`。
-- [ ] 实现 Snapshot：`updateSnapshot`、`getSnapshot`。
-- [ ] 实现 Event Log：自动记录 `snapshot.updated`、`snapshot.update.rejected`。
-- [ ] 实现 Action Registry：`registerAction`、`unregisterAction`、`getActions`。
-- [ ] 实现 `runAction`，自动记录 `action.started`、`action.success`、`action.error`。
-- [ ] 实现 `getInputOptions`，支持异步 provider 和超时。
-- [ ] 实现 `waitFor`，只等待 target 到达指定状态，不默认返回 events。
-- [ ] 实现 Window API：`window.__OPEN_RUNTIME__`。
-- [ ] 校验规则：Core 不内置固定 type/status，状态必须来自 `registerTarget.statuses`。
-- [ ] 校验规则：未注册 target 的 `updateSnapshot` 应拒绝，不自动创建 inferred target。
+- [x] 实现 Target Registry：`registerTarget`、`unregisterTarget`、`getTargets`。
+- [x] 实现 Snapshot：`updateSnapshot`、`getSnapshot`。
+- [x] 实现 Event Log：自动记录 `snapshot.updated`、`snapshot.update.rejected`。
+- [x] 实现 Action Registry：`registerAction`、`unregisterAction`、`getActions`。
+- [x] 实现 `runAction`，自动记录 `action.started`、`action.success`、`action.error`。
+- [x] 实现 `getInputOptions`，支持异步 provider 和超时。
+- [x] 实现 `waitFor`，只等待 target 到达指定状态，不默认返回 events。
+- [x] 实现 Window API：`window.__OPEN_RUNTIME__`。
+- [x] 校验规则：Core 不内置固定 type/status，状态必须来自 `registerTarget.statuses`。
+- [x] 校验规则：未注册 target 的 `updateSnapshot` 应拒绝，不自动创建 inferred target。
 
 验收标准：
 
-- [ ] 单元测试覆盖 target 注册、状态更新、事件记录、action 执行和等待成功/失败。
-- [ ] `runAction` 不自动更新 Snapshot，只由 handler 或框架接入调用 `updateSnapshot`。
-- [ ] `dependsOn` 只出现在 Snapshot 当前状态中，Event 只通过 payload 记录变化。
+- [x] 单元测试覆盖 target 注册、状态更新、事件记录、action 执行和等待成功/失败。
+- [x] `runAction` 不自动更新 Snapshot，只由 handler 或框架接入调用 `updateSnapshot`。
+- [x] `dependsOn` 只出现在 Snapshot 当前状态中，Event 只通过 payload 记录变化。
 
 ## 阶段 2：Bridge 和 CLI
 

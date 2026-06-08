@@ -14,12 +14,17 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "pnpm run build && node --test test/*.test.mjs"
+    "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
     "@openruntime/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@rstest/core": "0.10.3"
   }
 }

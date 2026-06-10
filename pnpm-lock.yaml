@@ -28,6 +28,37 @@ importers:
         specifier: 2.0.11
         version: 2.0.11
 
+  demos/modern-basic:
+    dependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
+      '@openruntime/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@openruntime/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
+      react:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+      react-dom:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+    devDependencies:
+      '@modern-js/app-tools':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/solutions/app-tools
+        version: link:../../../../fork_repo/modern.js/packages/solutions/app-tools
+      '@types/react':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/bridge:
     dependencies:
       '@openruntime/core':
@@ -73,6 +104,9 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
       '@rstest/core':
         specifier: 0.10.3
         version: 0.10.3

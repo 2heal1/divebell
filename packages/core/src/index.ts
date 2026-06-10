@@ -57,6 +57,7 @@ export type {
 } from "./target/types.js";
 export type {
   RuntimeCondition,
+  RuntimeDataCondition,
   RuntimeWaitOptions,
   RuntimeWaitResult
 } from "./wait/types.js";

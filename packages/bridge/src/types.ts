@@ -3,6 +3,7 @@ export type BridgeRuntimeStatus = "connected" | "disconnected";
 export interface BridgeRuntimeInfo {
   runtimeId: string;
   url: string;
+  pageInstanceId?: string;
   status: BridgeRuntimeStatus;
   connectedAt: number;
   lastSeenAt: number;

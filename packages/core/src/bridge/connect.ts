@@ -13,21 +13,27 @@ export function connectBridge(
   runtime: OpenRuntimeCore,
   options: BridgeConnectOptions = {}
 ): void {
+  if (getGlobalBridgeConnection() !== undefined) {
+    return;
+  }
+
   const port = options.port ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT;
   const autoReconnect = options.autoReconnect ?? true;
   const pageUrl = getPageUrl();
+  const pageInstanceId = getPageInstanceId(options.pageInstanceId);
 
   let runtimeId: string | undefined;
   let stream: EventSource | undefined;
   let stopped = false;
   let reconnectAttempt = 0;
+  let connection: GlobalBridgeConnection | undefined;
 
   const open = () => {
     if (typeof EventSource === "undefined") {
       throw new Error("EventSource is required to connect OpenRuntime Bridge.");
     }
 
-    stream = new EventSource(createBridgeConnectUrl(port, pageUrl));
+    stream = new EventSource(createBridgeConnectUrl(port, pageUrl, pageInstanceId));
     stream.addEventListener("connected", (event) => {
       runtimeId = parseConnectedRuntimeId(event);
       reconnectAttempt = 0;
@@ -49,10 +55,20 @@ export function connectBridge(
   const stop = () => {
     stopped = true;
     stream?.close();
+    if (connection !== undefined) {
+      clearGlobalBridgeConnection(connection);
+    }
   };
 
+  connection = { close: stop };
+  setGlobalBridgeConnection(connection);
   globalThis.addEventListener?.("beforeunload", stop, { once: true });
-  open();
+  try {
+    open();
+  } catch (error) {
+    clearGlobalBridgeConnection(connection);
+    throw error;
+  }
 }
 
 async function handleRequest(
@@ -89,9 +105,10 @@ async function handleRequest(
   });
 }
 
-function createBridgeConnectUrl(port: number, pageUrl: string): string {
+function createBridgeConnectUrl(port: number, pageUrl: string, pageInstanceId: string): string {
   const url = new URL(`http://localhost:${port}/connect`);
   url.searchParams.set("url", pageUrl);
+  url.searchParams.set("pageInstanceId", pageInstanceId);
   return url.toString();
 }
 
@@ -101,6 +118,50 @@ function createBridgeResponseUrl(port: number, runtimeId: string, requestId: str
 
 function getPageUrl(): string {
   return globalThis.location?.href ?? "unknown";
+}
+
+interface GlobalBridgeConnection {
+  close(): void;
+}
+
+interface OpenRuntimeBridgeGlobal {
+  __OPEN_RUNTIME_BRIDGE_CONNECTION__?: GlobalBridgeConnection;
+}
+
+function getBridgeGlobal(): OpenRuntimeBridgeGlobal {
+  return globalThis as OpenRuntimeBridgeGlobal;
+}
+
+function getGlobalBridgeConnection(): GlobalBridgeConnection | undefined {
+  return getBridgeGlobal().__OPEN_RUNTIME_BRIDGE_CONNECTION__;
+}
+
+function setGlobalBridgeConnection(connection: GlobalBridgeConnection): void {
+  getBridgeGlobal().__OPEN_RUNTIME_BRIDGE_CONNECTION__ = connection;
+}
+
+function clearGlobalBridgeConnection(connection: GlobalBridgeConnection): void {
+  const bridgeGlobal = getBridgeGlobal();
+  if (bridgeGlobal.__OPEN_RUNTIME_BRIDGE_CONNECTION__ === connection) {
+    delete bridgeGlobal.__OPEN_RUNTIME_BRIDGE_CONNECTION__;
+  }
+}
+
+function getPageInstanceId(configuredId: string | undefined): string {
+  if (configuredId !== undefined && configuredId.length > 0) {
+    return configuredId;
+  }
+
+  return createPageInstanceId();
+}
+
+function createPageInstanceId(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid !== undefined) {
+    return `page-${uuid}`;
+  }
+
+  return `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function parseConnectedRuntimeId(event: MessageEvent): string | undefined {
@@ -146,6 +207,9 @@ function parseRequest(event: MessageEvent): BridgeRuntimeRequest | undefined {
   }
   if (typeof request.status === "string") {
     bridgeRequest.status = request.status;
+  }
+  if (Array.isArray(request.where)) {
+    bridgeRequest.where = request.where;
   }
   if (isRecord(request.options)) {
     bridgeRequest.options = request.options;

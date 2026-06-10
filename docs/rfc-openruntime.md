@@ -80,10 +80,10 @@ const events = await openRuntime.getEvents({
 Agent 或开发者也可以通过 CLI 访问页面 Runtime：
 
 ```bash
-open-runtime wait-for --url http://localhost:8080/route-a route:/route-a ready \
-  --timeout 10000
+open-runtime wait-for --url http://localhost:8080/ modern:route ready \
+  --where pathname=/orders --timeout 10000
 
-open-runtime run-action --url http://localhost:8080/route-a selectRegion \
+open-runtime run-action --url http://localhost:8080/ selectRegion \
   --payload '{"province":"zhejiang","city":"hangzhou"}'
 ```
 
@@ -701,10 +701,11 @@ type RuntimeWaitResult = {
 实现规则：
 
 - 调用时先检查当前 Snapshot。如果 `snapshot.targets[id]?.status === status`，立即返回成功。
+- 如果传了 data 条件，例如 `where: [{ path: 'pathname', equals: '/orders' }]`，必须同时满足 target status 和 data 条件才算成功。
 - 如果 target 当前不在 Snapshot，但已经存在于 Target Registry，继续等待。
 - 如果 target 在 Snapshot 和 Target Registry 里都不存在，直接返回失败，避免 target id 写错后一直等到超时。
 - Runtime Center 维护等待任务列表，每个任务记录 `id`、`status`、`timeout` 和 resolve。
-- 每次 `updateSnapshot` 后，只检查等待这个 target 的任务。状态匹配时返回成功。
+- 每次 `updateSnapshot` 后，只检查等待这个 target 的任务。状态和 data 条件都匹配时返回成功。
 - 超时不 throw，返回 `success: false`，并带当前 Snapshot 和失败原因。
 - 如果 target 被 `unregisterTarget` 注销，相关等待任务直接返回失败。
 
@@ -762,7 +763,7 @@ type ConnectedRuntime = {
 第一版 CLI：
 
 ```bash
-open-runtime bridge start --port 17321
+open-runtime bridge start [--port <port>]
 open-runtime bridge status
 open-runtime runtimes
 open-runtime targets [runtime selector] [query options]
@@ -771,8 +772,10 @@ open-runtime events [runtime selector] [query options]
 open-runtime actions [runtime selector] [query options]
 open-runtime input-options [runtime selector] --action <action-name> --input <input-name>
 open-runtime run-action [runtime selector] <action-name>
-open-runtime wait-for [runtime selector] <target-id> <status>
+open-runtime wait-for [runtime selector] <target-id> <status> [--where <path=value>] [--timeout <ms>]
 ```
+
+Bridge 默认端口是 `17321`。不传 `--port` 时，`bridge start` 会监听 `17321`；不传 `--bridge` 时，CLI 默认连接 `http://localhost:17321`。
 
 runtime selector 用于选择 Bridge 里已经连接的页面 Runtime 实例：
 
@@ -800,7 +803,7 @@ CLI 和 API 对应关系：
 | `open-runtime actions` | `--name`、`--source`、`--risk`、`--enabled`、`--query` | `getActions(query)` |
 | `open-runtime input-options` | `--action`、`--input`、`--payload`、`--timeout` | `getInputOptions(actionName, inputName, currentPayload)` |
 | `open-runtime run-action` | `<action-name>`、`--payload` | `runAction(actionName, payload)` |
-| `open-runtime wait-for` | `<target-id>`、`<status>`、`--timeout` | `waitFor({ id, status }, { timeout })` |
+| `open-runtime wait-for` | `<target-id>`、`<status>`、`--where`、`--timeout` | `waitFor({ id, status, where }, { timeout })` |
 
 ## 生态能力接入
 
@@ -816,9 +819,13 @@ Modern.js 通过 OpenRuntime Modern.js plugin 自动写入自己能确定的信�
 - loader start / success / redirect / error；
 - SSR 初始状态；
 - hydration 状态；
-- route component mounted / error。
+- route component error。
 
-OpenRuntime Modern.js plugin 应该在真实 navigation、loader 和组件挂载开始前，提前注册 Modern.js 已经知道的 target。例如在路由表生成并完成 `modifyRoutes` 后，可以注册 route target、loader target 和 route component target；后续运行时再通过 `updateSnapshot` 更新当前状态。
+OpenRuntime Modern.js plugin 第一版使用单一聚合 `modern:route` target 表达路由状态。路由表生成后，plugin 在 `modern:route` 的 target data 中写入 route manifest；运行时在 snapshot data 中写入当前 pathname、navigation、matches、真实 loader 状态和错误。
+
+第一版不注册独立 loader target 或 route component target。真实执行过的 loader 作为当前 match 的 `loader` 字段出现；Modern.js 内部为了触发 lazy import 补的 loader 不算真实 data loader。route component 正常挂载不写入 snapshot，只有加载失败时才写入 `routeComponent: error`，避免让 Agent 误以为业务组件已经全部 ready。
+
+`modern:ssr` 和 `modern:hydration` 也不是 CSR 页面默认 target。只有页面存在 SSR 数据或 Modern.js 触发 hydration 事件时，plugin 才注册和更新对应 target。
 
 Modern.js plugin 负责提供框架层 ready，但不负责猜业务是否成功。它依赖 Modern.js 暴露的生命周期和运行时 hook；如果缺少必要 hook，应优先在 Modern.js 中补齐，而不是在 OpenRuntime 里用 DOM 或全局状态猜测。
 

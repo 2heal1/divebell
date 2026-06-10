@@ -30,7 +30,8 @@ export async function executeBridgeRuntimeRequest(
     case "waitFor":
       return runtime.waitFor({
         id: requireString(request.targetId, "targetId"),
-        status: requireString(request.status, "status")
+        status: requireString(request.status, "status"),
+        ...(request.where === undefined ? {} : { where: request.where })
       }, request.options);
   }
 }

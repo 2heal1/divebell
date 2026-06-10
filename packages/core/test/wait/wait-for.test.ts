@@ -17,6 +17,49 @@ test("waits for target status changes", async () => {
   assert.equal(result.target?.status, "ready");
 });
 
+test("waits for target status and data conditions", async () => {
+  const runtime = createOpenRuntime({ clock: createClock() });
+
+  runtime.registerTarget({
+    id: "modern:route",
+    type: "modern.route",
+    source: "modern-js",
+    statuses: ["loading", "ready", "error"]
+  });
+
+  const wait = runtime.waitFor({
+    id: "modern:route",
+    status: "ready",
+    where: [
+      {
+        path: "matches.pathname",
+        equals: "/orders"
+      }
+    ]
+  }, { timeout: 100 });
+
+  runtime.updateSnapshot({
+    id: "modern:route",
+    status: "ready",
+    data: {
+      pathname: "/settings",
+      matches: [{ pathname: "/settings" }]
+    }
+  });
+  runtime.updateSnapshot({
+    id: "modern:route",
+    status: "ready",
+    data: {
+      pathname: "/orders",
+      matches: [{ pathname: "/" }, { pathname: "/orders" }]
+    }
+  });
+
+  const result = await wait;
+  assert.equal(result.success, true);
+  assert.equal((result.target?.data as { pathname?: string } | undefined)?.pathname, "/orders");
+});
+
 test("returns wait failures for unknown, unregistered and timed out targets", async () => {
   const runtime = createOpenRuntime({ clock: createClock() });
 
@@ -45,4 +88,3 @@ test("returns wait failures for unknown, unregistered and timed out targets", as
     { success: false, reason: "Timed out waiting for target status." }
   );
 });
-

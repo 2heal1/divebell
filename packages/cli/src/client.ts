@@ -1,3 +1,4 @@
+import type { RuntimeDataCondition } from "@openruntime/core";
 import type { BridgeRuntimeInfo } from "@openruntime/bridge";
 
 export type Fetcher = typeof fetch;
@@ -88,19 +89,24 @@ export async function waitForRuntime<T>(
   runtime: BridgeRuntimeInfo,
   targetId: string,
   status: string,
-  timeout: number | undefined
+  timeout: number | undefined,
+  where: RuntimeDataCondition[] | undefined
 ): Promise<RuntimeResourceResult<T>> {
   const url = `${bridgeUrl}/runtimes/${encodeURIComponent(runtime.runtimeId)}/wait-for`;
   const body: {
     targetId: string;
     status: string;
     timeout?: number;
+    where?: RuntimeDataCondition[];
   } = {
     targetId,
     status
   };
   if (timeout !== undefined) {
     body.timeout = timeout;
+  }
+  if (where !== undefined && where.length > 0) {
+    body.where = where;
   }
 
   const result = await requestJson<T>(fetcher, url, {

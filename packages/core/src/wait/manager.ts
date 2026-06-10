@@ -4,6 +4,7 @@ import type {
   RuntimeWaitOptions,
   RuntimeWaitResult
 } from "./types.js";
+import { matchesRuntimeCondition } from "./condition.js";
 
 export class WaitManager {
   readonly #waits = new Map<number, PendingWait>();
@@ -37,7 +38,7 @@ export class WaitManager {
       if (wait.condition.id === targetId) {
         const snapshot = getSnapshot();
         const target = snapshot.targets[wait.condition.id];
-        if (target?.status === wait.condition.status) {
+        if (matchesRuntimeCondition(target, wait.condition)) {
           this.#clear(wait);
           wait.resolve(createSuccessResult(wait.condition, snapshot, target));
         }

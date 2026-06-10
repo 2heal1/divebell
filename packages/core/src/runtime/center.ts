@@ -16,6 +16,7 @@ import { SnapshotStore } from "../snapshot/store.js";
 import type { GetSnapshotQuery, RuntimeSnapshot, UpdateSnapshotInput } from "../snapshot/types.js";
 import { TargetRegistry } from "../target/registry.js";
 import type { GetTargetsQuery, RegisterTargetInput, RuntimeTargetDescriptor } from "../target/types.js";
+import { matchesRuntimeCondition } from "../wait/condition.js";
 import { WaitManager } from "../wait/manager.js";
 import type {
   RuntimeCondition,
@@ -37,6 +38,7 @@ export class RuntimeCenter implements OpenRuntimeCore {
   readonly #events: EventLog;
   readonly #actions: ActionRegistry;
   readonly #waits = new WaitManager();
+  #bridgeConnected = false;
 
   constructor(options: CreateOpenRuntimeOptions = {}) {
     const clock = options.clock ?? systemClock;
@@ -47,7 +49,12 @@ export class RuntimeCenter implements OpenRuntimeCore {
   }
 
   connectBridge(options?: BridgeConnectOptions): void {
+    if (this.#bridgeConnected) {
+      return;
+    }
+
     connectBridge(this, options);
+    this.#bridgeConnected = true;
   }
 
   registerTarget(target: RegisterTargetInput): void {
@@ -191,7 +198,7 @@ export class RuntimeCenter implements OpenRuntimeCore {
   waitFor(condition: RuntimeCondition, options?: RuntimeWaitOptions): Promise<RuntimeWaitResult> {
     const snapshot = this.getSnapshot();
     const target = snapshot.targets[condition.id];
-    if (target?.status === condition.status) {
+    if (matchesRuntimeCondition(target, condition)) {
       return Promise.resolve({
         success: true,
         condition,

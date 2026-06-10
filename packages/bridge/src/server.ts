@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT, type BridgeRuntimeCommandName, type BridgeRuntimeRequest, type BridgeRuntimeResponse } from "@openruntime/core";
+import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT, type BridgeRuntimeCommandName, type BridgeRuntimeRequest, type BridgeRuntimeResponse, type RuntimeDataCondition } from "@openruntime/core";
 import { BridgeHttpError, getPathSegments, readJson, writeCorsHeaders, writeError, writeJson } from "./http-utils.js";
 import { getCommandFromResource, parseRuntimeQuery } from "./query.js";
 import { RuntimeConnectionStore, type RuntimeStream } from "./runtime-store.js";
@@ -152,6 +152,7 @@ class NodeBridgeServer implements BridgeServer {
     if (runtimeUrl === null || runtimeUrl.length === 0) {
       throw new BridgeHttpError(400, "missing_runtime_url", "Runtime connection must include a url query.");
     }
+    const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
 
     response.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
@@ -162,7 +163,7 @@ class NodeBridgeServer implements BridgeServer {
     });
 
     const stream = new ServerSentEventStream(response);
-    const runtime = this.#store.connect(runtimeUrl, stream);
+    const runtime = this.#store.connect(runtimeUrl, stream, pageInstanceId);
     stream.send("connected", {
       runtimeId: runtime.runtimeId
     });
@@ -286,6 +287,8 @@ class NodeBridgeServer implements BridgeServer {
       targetId,
       status
     };
+    const where = parseWhereBody(body);
+    if (where !== undefined) requestInput.where = where;
     if (options !== undefined) requestInput.options = options;
 
     const result = await this.#requestConnectedRuntime(runtimeId, "waitFor", requestInput);
@@ -313,6 +316,27 @@ class NodeBridgeServer implements BridgeServer {
     if (method === "getEvents") return this.#store.getCachedEvents(runtimeId);
     return undefined;
   }
+}
+
+function parseWhereBody(body: Record<string, unknown>): RuntimeDataCondition[] | undefined {
+  if (!("where" in body)) {
+    return undefined;
+  }
+
+  if (!Array.isArray(body.where)) {
+    throw new BridgeHttpError(400, "invalid_wait_for_body", "where must be an array.");
+  }
+
+  return body.where.map((item) => {
+    if (!isRecord(item) || typeof item.path !== "string" || item.path.length === 0 || !("equals" in item)) {
+      throw new BridgeHttpError(400, "invalid_wait_for_body", "where entries must include path and equals.");
+    }
+
+    return {
+      path: item.path,
+      equals: item.equals
+    };
+  });
 }
 
 class ServerSentEventStream implements RuntimeStream {
@@ -410,6 +434,10 @@ function getRequestTimeout(timeout: number | undefined): number | undefined {
 function getStringField(body: Record<string, unknown>, name: string): string | undefined {
   const value = body[name];
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function normalizeOptionalQuery(value: string | null): string | undefined {
+  return value === null || value.length === 0 ? undefined : value;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

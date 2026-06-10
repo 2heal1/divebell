@@ -4,6 +4,12 @@ import type { RuntimeStatus } from "../target/types.js";
 export interface RuntimeCondition {
   id: string;
   status: RuntimeStatus;
+  where?: RuntimeDataCondition[];
+}
+
+export interface RuntimeDataCondition {
+  path: string;
+  equals: unknown;
 }
 
 export interface RuntimeWaitOptions {
@@ -17,4 +23,3 @@ export interface RuntimeWaitResult {
   target?: RuntimeSnapshotTarget;
   reason?: string;
 }
-

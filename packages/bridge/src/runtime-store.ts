@@ -5,6 +5,7 @@ import type {
   BridgeRuntimeResponse
 } from "@openruntime/core";
 import type { GetEventsResult, RuntimeSnapshot } from "@openruntime/core";
+import { BridgeHttpError } from "./http-utils.js";
 import type { BridgeRuntimeInfo } from "./types.js";
 
 export interface RuntimeStream {
@@ -43,11 +44,12 @@ export class RuntimeConnectionStore {
     this.#idGenerator = options.idGenerator ?? (() => `runtime-${this.#clock.now().toString(36)}-${this.#runtimes.size + 1}`);
   }
 
-  connect(url: string, stream: RuntimeStream): BridgeRuntimeInfo {
+  connect(url: string, stream: RuntimeStream, pageInstanceId?: string): BridgeRuntimeInfo {
     const now = this.#clock.now();
     const info: BridgeRuntimeInfo = {
       runtimeId: this.#idGenerator(),
       url,
+      ...(pageInstanceId === undefined ? {} : { pageInstanceId }),
       status: "connected",
       connectedAt: now,
       lastSeenAt: now
@@ -76,7 +78,7 @@ export class RuntimeConnectionStore {
 
     for (const [requestId, pending] of runtime.pending) {
       clearTimeout(pending.timer);
-      pending.reject(new Error(`Runtime "${runtimeId}" disconnected before responding to request "${requestId}".`));
+      pending.reject(createRuntimeDisconnectedError(`Runtime "${runtimeId}" disconnected before responding to request "${requestId}".`));
     }
     runtime.pending.clear();
   }
@@ -91,16 +93,13 @@ export class RuntimeConnectionStore {
         disconnectedAt: this.#clock.now(),
         lastSeenAt: this.#clock.now()
       };
-      for (const pending of runtime.pending.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error(`Runtime "${runtime.info.runtimeId}" disconnected.`));
-      }
-      runtime.pending.clear();
+      this.#rejectPending(runtime, createRuntimeDisconnectedError(`Runtime "${runtime.info.runtimeId}" disconnected.`));
     }
   }
 
   list(): BridgeRuntimeInfo[] {
     return Array.from(this.#runtimes.values())
+      .filter((runtime) => runtime.info.status === "connected")
       .map((runtime) => ({ ...runtime.info }))
       .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
   }
@@ -186,4 +185,16 @@ export class RuntimeConnectionStore {
 
     return true;
   }
+
+  #rejectPending(runtime: RuntimeRecord, error: Error): void {
+    for (const pending of runtime.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    runtime.pending.clear();
+  }
+}
+
+function createRuntimeDisconnectedError(message: string): BridgeHttpError {
+  return new BridgeHttpError(409, "runtime_disconnected", message);
 }

@@ -21,6 +21,8 @@ export function connectBridge(
   const autoReconnect = options.autoReconnect ?? true;
   const pageUrl = getPageUrl();
   const pageInstanceId = getPageInstanceId(options.pageInstanceId);
+  const configuredRuntimeId = normalizeOptional(options.runtimeId);
+  const configuredRenderId = normalizeOptional(options.renderId);
 
   let runtimeId: string | undefined;
   let stream: EventSource | undefined;
@@ -33,7 +35,13 @@ export function connectBridge(
       throw new Error("EventSource is required to connect OpenRuntime Bridge.");
     }
 
-    stream = new EventSource(createBridgeConnectUrl(port, pageUrl, pageInstanceId));
+    stream = new EventSource(createBridgeConnectUrl({
+      port,
+      pageUrl,
+      pageInstanceId,
+      ...(configuredRuntimeId === undefined ? {} : { runtimeId: configuredRuntimeId }),
+      ...(configuredRenderId === undefined ? {} : { renderId: configuredRenderId })
+    }));
     stream.addEventListener("connected", (event) => {
       runtimeId = parseConnectedRuntimeId(event);
       reconnectAttempt = 0;
@@ -105,10 +113,23 @@ async function handleRequest(
   });
 }
 
-function createBridgeConnectUrl(port: number, pageUrl: string, pageInstanceId: string): string {
+function createBridgeConnectUrl(options: {
+  port: number;
+  pageUrl: string;
+  pageInstanceId: string;
+  runtimeId?: string;
+  renderId?: string;
+}): string {
+  const { port, pageUrl, pageInstanceId, runtimeId, renderId } = options;
   const url = new URL(`http://localhost:${port}/connect`);
   url.searchParams.set("url", pageUrl);
   url.searchParams.set("pageInstanceId", pageInstanceId);
+  if (runtimeId !== undefined) {
+    url.searchParams.set("runtimeId", runtimeId);
+  }
+  if (renderId !== undefined) {
+    url.searchParams.set("renderId", renderId);
+  }
   return url.toString();
 }
 
@@ -162,6 +183,10 @@ function createPageInstanceId(): string {
   }
 
   return `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function normalizeOptional(value: string | undefined): string | undefined {
+  return value === undefined || value.length === 0 ? undefined : value;
 }
 
 function parseConnectedRuntimeId(event: MessageEvent): string | undefined {

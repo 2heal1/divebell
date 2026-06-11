@@ -9,7 +9,7 @@ export const modernTargetTypes = {
 } as const;
 
 const appStatuses = ["initializing", "rendering", "ready", "error"] as const;
-const ssrStatuses = ["unknown", "server-rendered", "fallback", "error"] as const;
+const ssrStatuses = ["unknown", "rendering", "server-rendered", "fallback", "invalidated", "error"] as const;
 const hydrationStatuses = ["running", "success", "fallback", "error"] as const;
 const routeStatuses = ["idle", "loading", "ready", "error"] as const;
 
@@ -31,7 +31,7 @@ export interface RouteTargetInfo {
 export interface RouteManifestEntry {
   routeId: string;
   hasLoader: boolean;
-  hasComponent: boolean;
+  hasRouteComponent: boolean;
   hasLazyModule: boolean;
   path?: string;
   pathname?: string;
@@ -128,7 +128,7 @@ export function getRouteManifestEntry(info: RouteTargetInfo): RouteManifestEntry
   const data: RouteManifestEntry = {
     routeId: info.routeId,
     hasLoader: hasRouteLoader(info.route),
-    hasComponent: hasRouteComponent(info.route),
+    hasRouteComponent: hasRouteComponent(info.route),
     hasLazyModule: info.route.lazy !== undefined
   };
 

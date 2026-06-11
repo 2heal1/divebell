@@ -3,7 +3,8 @@ import { getOpenRuntimeFromWindow } from "@openruntime/core";
 import {
   markOpenRuntimeReady,
   markOpenRuntimeReadyError,
-  registerOpenRuntimeReady
+  registerOpenRuntimeReady,
+  unregisterOpenRuntimeReady
 } from "@openruntime/modern-plugin";
 
 type ReadyStatus = "pending" | "ready" | "error";
@@ -34,7 +35,10 @@ export default function HomePage() {
       setReadyStatus("ready");
     }, 300);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      unregisterOpenRuntimeReady(runtime, "modern-demo");
+    };
   }, []);
 
   const markError = () => {

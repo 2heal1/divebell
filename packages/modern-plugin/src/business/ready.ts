@@ -63,6 +63,10 @@ export function markOpenRuntimeReadyError(
   });
 }
 
+export function unregisterOpenRuntimeReady(runtime: OpenRuntimeCore, id?: string): void {
+  runtime.unregisterTarget(getBusinessReadyTargetId(id));
+}
+
 function getBusinessReadyTargetId(id = "app"): string {
   return `business:ready:${id}`;
 }

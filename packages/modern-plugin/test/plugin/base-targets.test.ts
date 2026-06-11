@@ -2,8 +2,27 @@ import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 import { createOpenRuntime } from "@openruntime/core";
 
-import { openRuntimeModernPlugin } from "../../dist/index.js";
+import { openRuntimeModernPlugin, type ModernRenderContext } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
+
+test("registers fixed app and route targets during plugin setup", () => {
+  const runtime = createOpenRuntime();
+  createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+
+  const appTarget = runtime.getTargets({ id: "modern:app" })[0];
+  assert.ok(appTarget);
+  const routeTarget = runtime.getTargets({ id: "modern:route" })[0];
+  assert.ok(routeTarget);
+  assert.deepEqual(routeTarget.data, {
+    routes: []
+  });
+
+  const snapshot = runtime.getSnapshot();
+  assert.equal(snapshot.targets["modern:app"]?.status, "initializing");
+  assert.equal(snapshot.targets["modern:route"], undefined);
+  assert.equal(snapshot.targets["modern:ssr"], undefined);
+  assert.equal(snapshot.targets["modern:hydration"], undefined);
+});
 
 test("registers Modern.js app, SSR, and aggregate route targets", () => {
   const runtime = createOpenRuntime();
@@ -47,7 +66,7 @@ test("registers Modern.js app, SSR, and aggregate route targets", () => {
       {
         routeId: "/",
         hasLoader: true,
-        hasComponent: true,
+        hasRouteComponent: true,
         hasLazyModule: false,
         path: "/",
         pathname: "/",
@@ -56,7 +75,7 @@ test("registers Modern.js app, SSR, and aggregate route targets", () => {
       {
         routeId: "/settings",
         hasLoader: false,
-        hasComponent: true,
+        hasRouteComponent: true,
         hasLazyModule: false,
         path: "settings",
         pathname: "/settings",
@@ -92,6 +111,77 @@ test("does not register an SSR target for client-rendered pages", () => {
   assert.equal(runtime.getSnapshot().targets["modern:hydration"], undefined);
 });
 
+test("does not connect the bridge while running without a browser host", () => {
+  const runtime = createOpenRuntime();
+  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({
+    runtime,
+    bridge: {
+      port: 17321
+    }
+  }));
+
+  assert.doesNotThrow(() => {
+    handlers.onBeforeRender?.({
+      routes: [
+        {
+          id: "root",
+          path: "/",
+          Component: true
+        }
+      ]
+    });
+  });
+});
+
+test("injects the same render context through stream SSR", () => {
+  const { handlers } = createModernApiHarness(openRuntimeModernPlugin());
+  const context: ModernRenderContext = {
+    routes: [
+      {
+        id: "root",
+        path: "/",
+        Component: true
+      }
+    ],
+    ssrContext: {
+      request: {
+        pathname: "/",
+        host: "localhost:19083",
+        url: "http://localhost:19083/"
+      },
+      htmlModifiers: []
+    }
+  };
+
+  handlers.onBeforeRender?.(context);
+  const extender = handlers.extendStreamSSR?.();
+  assert.ok(extender);
+  extender.init?.({
+    rootElement: {
+      props: {
+        children: {
+          props: {
+            value: context
+          }
+        }
+      }
+    },
+    forceStream2String: false
+  });
+
+  const streamScript = extender.getStyleTags?.() ?? "";
+  assert.match(streamScript, /id="__OPEN_RUNTIME_CONTEXT__"/);
+  const renderContext = readRenderContextFromScript(streamScript);
+  assert.match(renderContext.runtimeId, /^runtime-/);
+  assert.match(renderContext.renderId, /^render-/);
+  assert.equal(renderContext.source, "modern.js");
+
+  const stringHtml = context.ssrContext?.htmlModifiers?.[0]?.("<html><head></head><body></body></html>");
+  assert.ok(stringHtml);
+  assert.match(stringHtml, new RegExp(renderContext.runtimeId));
+  assert.match(stringHtml, new RegExp(renderContext.renderId));
+});
+
 test("does not treat Modern.js lazy import loader as a data loader", () => {
   const runtime = createOpenRuntime();
   const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
@@ -113,7 +203,7 @@ test("does not treat Modern.js lazy import loader as a data loader", () => {
       {
         routeId: "/",
         hasLoader: false,
-        hasComponent: true,
+        hasRouteComponent: true,
         hasLazyModule: false,
         path: "/",
         pathname: "/",
@@ -122,3 +212,27 @@ test("does not treat Modern.js lazy import loader as a data loader", () => {
     ]
   });
 });
+
+function readRenderContextFromScript(script: string): {
+  runtimeId: string;
+  renderId: string;
+  source: string;
+} {
+  const match = script.match(/<script[^>]*>(.*)<\/script>/);
+  const payload = match?.[1];
+  assert.ok(payload);
+  const value = JSON.parse(payload) as Partial<{
+    runtimeId: string;
+    renderId: string;
+    source: string;
+  }>;
+  const { runtimeId, renderId, source } = value;
+  if (typeof runtimeId !== "string" || typeof renderId !== "string" || typeof source !== "string") {
+    throw new Error(`Invalid render context script: ${script}`);
+  }
+  return {
+    runtimeId,
+    renderId,
+    source
+  };
+}

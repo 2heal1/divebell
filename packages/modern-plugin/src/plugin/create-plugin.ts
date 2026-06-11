@@ -4,8 +4,10 @@ import {
   handleRouteComponent,
   handleRouteLoader,
   handleRouterCreated,
-  handleRouterStateChange
+  handleRouterStateChange,
+  isServerRenderContext
 } from "../modern/handlers.js";
+import { createOpenRuntimeStreamSsrExtender } from "../modern/stream-ssr.js";
 import { ModernPluginRuntimeState } from "./runtime-state.js";
 import type {
   ModernRuntimePlugin,
@@ -20,9 +22,13 @@ export function openRuntimeModernPlugin(
     name: "@openruntime/modern-plugin",
     setup(api: ModernRuntimePluginApi) {
       const state = new ModernPluginRuntimeState(options);
+      state.getRuntime();
 
       api.onBeforeRender((context) => {
-        handleBeforeRender(state, context);
+        handleBeforeRender(
+          isServerRenderContext(context) ? new ModernPluginRuntimeState(options) : state,
+          context
+        );
       });
       api.onHydration?.((event) => {
         handleHydration(state, event);
@@ -39,6 +45,7 @@ export function openRuntimeModernPlugin(
       api.onRouteComponent?.((event) => {
         handleRouteComponent(state, event);
       });
+      api.extendStreamSSR?.(() => createOpenRuntimeStreamSsrExtender());
     }
   };
 }

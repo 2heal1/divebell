@@ -71,6 +71,14 @@ pnpm exec openruntime events --limit 20
 
 应该能看到 loader error 和 route error。
 
+访问 `Component Error` 页面后，再执行：
+
+```bash
+pnpm --filter @openruntime/demo-modern-basic verify:route-component-error
+```
+
+应该能看到 `modern:route` 是 `error`，当前 pathname 是 `/component-error`，当前 match 里只有失败时才出现 `routeComponent: error`。
+
 ## wait-for 路由变化
 
 先让浏览器停在 Home 页面，然后在终端执行：
@@ -113,6 +121,7 @@ pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ 
 - `snapshot` 里能看到 `business:ready:modern-demo`。
 - `Orders` 页面会在 `modern:route` 的 matches 里体现 loader success。
 - `Broken` 页面会在 `modern:route` 上体现错误状态。
+- `Component Error` 页面会在 `modern:route` 的当前 match 里体现 `routeComponent: error`。
 
 ## 构建检查
 

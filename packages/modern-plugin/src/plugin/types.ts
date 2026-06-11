@@ -6,7 +6,8 @@ import type {
   ModernRouteComponentEvent,
   ModernRouteLoaderEvent,
   ModernRouterCreatedEvent,
-  ModernRouterStateChangeEvent
+  ModernRouterStateChangeEvent,
+  ModernStreamSsrExtender
 } from "../modern/events.js";
 
 export interface OpenRuntimeModernPluginOptions {
@@ -27,4 +28,5 @@ export interface ModernRuntimePluginApi {
   onRouterStateChange?: (handler: (event: ModernRouterStateChangeEvent) => void) => void;
   onRouteLoader?: (handler: (event: ModernRouteLoaderEvent) => void) => void;
   onRouteComponent?: (handler: (event: ModernRouteComponentEvent) => void) => void;
+  extendStreamSSR?: (handler: () => ModernStreamSsrExtender) => void;
 }

@@ -7,7 +7,8 @@
     "dev": "modern dev",
     "build": "modern build",
     "serve": "modern serve",
-    "verify": "node ./scripts/verify-openruntime.mjs"
+    "verify": "node ./scripts/verify-openruntime.mjs",
+    "verify:route-component-error": "node ./scripts/verify-route-component-error.mjs"
   },
   "dependencies": {
     "@modern-js/runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime",

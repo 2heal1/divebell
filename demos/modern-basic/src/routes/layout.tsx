@@ -6,7 +6,8 @@ import "./styles.css";
 const navItems = [
   { to: "/", label: "Home" },
   { to: "/orders", label: "Orders" },
-  { to: "/broken", label: "Broken" }
+  { to: "/broken", label: "Broken" },
+  { to: "/component-error", label: "Component Error" }
 ];
 
 export default function Layout() {

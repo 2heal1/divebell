@@ -183,6 +183,197 @@ test("keeps same-url page instances separate", async () => {
   }
 });
 
+test("links server-rendered runtime state with the later browser connection", async () => {
+  const server = createBridgeServer({
+    clock: createClock(2900)
+  });
+  const address = await server.listen({ port: 0 });
+
+  try {
+    const serverSnapshot = {
+      targets: {
+        "modern:ssr": {
+          id: "modern:ssr",
+          type: "modern.ssr",
+          status: "server-rendered",
+          updatedAt: 2901,
+          source: "modern.js",
+          data: {
+            environment: "server",
+            renderId: "render-1"
+          }
+        }
+      },
+      latestEventId: 1,
+      capturedAt: 2902
+    };
+    await postReadJson(`${address.url}/server-runtimes`, {
+      runtimeId: "runtime-ssr",
+      renderId: "render-1",
+      url: "http://app.test/",
+      source: "modern.js",
+      targets: [
+        {
+          id: "modern:ssr",
+          type: "modern.ssr",
+          source: "modern.js",
+          statuses: ["rendering", "server-rendered", "fallback", "error"],
+          registeredAt: 2900,
+          updatedAt: 2900
+        }
+      ],
+      snapshot: serverSnapshot,
+      events: {
+        events: [
+          {
+            id: 1,
+            type: "snapshot.updated",
+            source: "modern.js",
+            timestamp: 2902,
+            targetId: "modern:ssr",
+            status: "server-rendered"
+          }
+        ],
+        latestEventId: 1,
+        truncated: false
+      },
+      actions: []
+    });
+
+    assert.deepEqual(await readJson(`${address.url}/runtimes/runtime-ssr/snapshot`), serverSnapshot);
+    assert.deepEqual(await postReadJson(`${address.url}/runtimes/runtime-ssr/wait-for`, {
+      targetId: "modern:ssr",
+      status: "server-rendered",
+      where: [
+        {
+          path: "environment",
+          equals: "server"
+        }
+      ]
+    }), {
+      success: true,
+      condition: {
+        id: "modern:ssr",
+        status: "server-rendered",
+        where: [
+          {
+            path: "environment",
+            equals: "server"
+          }
+        ]
+      },
+      snapshot: serverSnapshot,
+      target: serverSnapshot.targets["modern:ssr"]
+    });
+
+    const serverOnlyRuntimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(serverOnlyRuntimes.runtimes, [
+      {
+        runtimeId: "runtime-ssr",
+        renderId: "render-1",
+        source: "modern.js",
+        url: "http://app.test/",
+        status: "server",
+        connectedAt: 2901,
+        lastSeenAt: 2901
+      }
+    ]);
+
+    const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&runtimeId=runtime-ssr&renderId=render-1`);
+    try {
+      assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-ssr" });
+
+      const snapshotPromise = readJson(`${address.url}/runtimes/runtime-ssr/snapshot`);
+      const request = await stream.next<{ requestId: string; method: string }>("request");
+      assert.equal(request.method, "getSnapshot");
+      await postJson(`${address.url}/runtimes/runtime-ssr/responses/${request.requestId}`, {
+        success: true,
+        result: {
+          targets: {
+            "modern:hydration": {
+              id: "modern:hydration",
+              type: "modern.hydration",
+              status: "success",
+              updatedAt: 2910,
+              source: "modern.js"
+            }
+          },
+          latestEventId: 3,
+          capturedAt: 2911
+        }
+      });
+
+      assert.deepEqual(await snapshotPromise, {
+        targets: {
+          "modern:hydration": {
+            id: "modern:hydration",
+            type: "modern.hydration",
+            status: "success",
+            updatedAt: 2910,
+            source: "modern.js"
+          },
+          "modern:ssr": serverSnapshot.targets["modern:ssr"]
+        },
+        latestEventId: 3,
+        capturedAt: 2911
+      });
+
+      const eventsPromise = readJson(`${address.url}/runtimes/runtime-ssr/events?source=modern.js`);
+      const eventsRequest = await stream.next<{ requestId: string; method: string; query: unknown }>("request");
+      assert.deepEqual(eventsRequest, {
+        requestId: "request-2",
+        method: "getEvents",
+        query: {
+          source: "modern.js"
+        }
+      });
+      await postJson(`${address.url}/runtimes/runtime-ssr/responses/${eventsRequest.requestId}`, {
+        success: true,
+        result: {
+          events: [
+            {
+              id: 2,
+              type: "snapshot.updated",
+              source: "modern.js",
+              timestamp: 2912,
+              targetId: "modern:hydration",
+              status: "success"
+            }
+          ],
+          latestEventId: 2,
+          truncated: false
+        }
+      });
+      assert.deepEqual(await eventsPromise, {
+        events: [
+          {
+            id: 1,
+            type: "snapshot.updated",
+            source: "modern.js",
+            timestamp: 2902,
+            targetId: "modern:ssr",
+            status: "server-rendered"
+          },
+          {
+            id: 2,
+            type: "snapshot.updated",
+            source: "modern.js",
+            timestamp: 2912,
+            targetId: "modern:hydration",
+            status: "success"
+          }
+        ],
+        latestEventId: 2,
+        truncated: false
+      });
+    } finally {
+      stream.close();
+    }
+  } finally {
+    await server.close();
+  }
+});
+
 test("forwards input options, action runs, and wait requests", async () => {
   const server = createBridgeServer({
     idGenerator: () => "runtime-1",
@@ -310,6 +501,112 @@ test("forwards input options, action runs, and wait requests", async () => {
     });
   } finally {
     stream.close();
+    await server.close();
+  }
+});
+
+test("forwards wait requests to connected runtimes even when a cached target exists", async () => {
+  const server = createBridgeServer({
+    clock: createClock(3500)
+  });
+  const address = await server.listen({ port: 0 });
+
+  try {
+    await postJson(`${address.url}/server-runtimes`, {
+      runtimeId: "runtime-ssr",
+      renderId: "render-1",
+      source: "modern.js",
+      url: "http://app.test/",
+      targets: [
+        {
+          id: "modern:route",
+          type: "modern.route",
+          source: "modern.js",
+          statuses: ["idle", "loading", "ready", "error"],
+          registeredAt: 3501,
+          updatedAt: 3501,
+          data: {
+            routes: []
+          }
+        }
+      ],
+      snapshot: {
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 3502
+      },
+      events: {
+        events: [],
+        latestEventId: 0,
+        truncated: false
+      },
+      actions: []
+    });
+
+    const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&runtimeId=runtime-ssr&renderId=render-1`);
+    try {
+      await stream.next("connected");
+
+      const waitPromise = postReadJson(`${address.url}/runtimes/runtime-ssr/wait-for`, {
+        targetId: "modern:route",
+        status: "ready",
+        timeout: 1000,
+        where: [
+          {
+            path: "pathname",
+            equals: "/details"
+          }
+        ]
+      });
+      const waitRequest = await stream.next("request");
+      assert.deepEqual(waitRequest, {
+        requestId: "request-1",
+        method: "waitFor",
+        targetId: "modern:route",
+        status: "ready",
+        where: [
+          {
+            path: "pathname",
+            equals: "/details"
+          }
+        ],
+        options: {
+          timeout: 1000
+        }
+      });
+
+      const result = {
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {
+            "modern:route": {
+              id: "modern:route",
+              type: "modern.route",
+              status: "ready",
+              updatedAt: 3510,
+              source: "modern.js",
+              data: {
+                pathname: "/details"
+              }
+            }
+          },
+          latestEventId: 1,
+          capturedAt: 3511
+        }
+      };
+      await postJson(`${address.url}/runtimes/runtime-ssr/responses/request-1`, {
+        success: true,
+        result
+      });
+      assert.deepEqual(await waitPromise, result);
+    } finally {
+      stream.close();
+    }
+  } finally {
     await server.close();
   }
 });

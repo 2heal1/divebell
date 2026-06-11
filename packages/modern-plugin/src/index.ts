@@ -17,12 +17,14 @@ export type {
   ModernRouterCreatedEvent,
   ModernRouterLocation,
   ModernRouterState,
-  ModernRouterStateChangeEvent
+  ModernRouterStateChangeEvent,
+  ModernStreamSsrExtender
 } from "./modern/events.js";
 export {
   markOpenRuntimeReady,
   markOpenRuntimeReadyError,
-  registerOpenRuntimeReady
+  registerOpenRuntimeReady,
+  unregisterOpenRuntimeReady
 } from "./business/ready.js";
 export type { RegisterOpenRuntimeReadyOptions } from "./business/ready.js";
 

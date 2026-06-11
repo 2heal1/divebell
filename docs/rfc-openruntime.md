@@ -739,24 +739,27 @@ GET  /runtimes/:runtimeId/actions/:name/options
 POST /runtimes/:runtimeId/actions/:name/run
 POST /runtimes/:runtimeId/wait-for
 GET  /runtimes/:runtimeId/events/stream
+POST /server-runtimes
 ```
 
-Bridge 接受页面 Runtime 连接后自动生成 `runtimeId`。`runtimeId` 表示这一次连接实例，不由页面自定义，也不跨刷新复用。
+Bridge 接受页面 Runtime 连接后默认自动生成 `runtimeId`。在 SSR 场景里，server runtime 可以先创建 `runtimeId` / `renderId` 并写入 HTML；浏览器 Runtime 连接 Bridge 时带上这两个值，Bridge 将浏览器连接挂到同一个 runtime 上。
 
 ```ts
 type ConnectedRuntime = {
   runtimeId: string;
   url: string;
+  renderId?: string;
+  source?: string;
   appName?: string;
   runtimeVersion: string;
-  status: 'connected' | 'disconnected';
+  status: 'server' | 'connected' | 'disconnected';
   connectedAt: number;
   lastSeenAt: number;
   disconnectedAt?: number;
 };
 ```
 
-同一个 URL 可能有多个 Runtime 连接，例如同一个页面开了多个 tab、页面刷新时新旧连接短暂共存、或者 Agent 和人同时打开了同一个 URL。因此 Bridge 必须用 `runtimeId` 区分连接实例。
+同一个 URL 可能有多个 Runtime 连接，例如同一个页面开了多个 tab、页面刷新时新旧连接短暂共存、或者 Agent 和人同时打开了同一个 URL。因此 Bridge 必须用 `runtimeId` 区分连接实例。SSR 关联只复用当前 HTML 中携带的 `runtimeId`，页面刷新会得到新的 server render 和新的 runtime。
 
 ### CLI 命令
 
@@ -823,7 +826,11 @@ Modern.js 通过 OpenRuntime Modern.js plugin 自动写入自己能确定的信�
 
 OpenRuntime Modern.js plugin 第一版使用单一聚合 `modern:route` target 表达路由状态。路由表生成后，plugin 在 `modern:route` 的 target data 中写入 route manifest；运行时在 snapshot data 中写入当前 pathname、navigation、matches、真实 loader 状态和错误。
 
-第一版不注册独立 loader target 或 route component target。真实执行过的 loader 作为当前 match 的 `loader` 字段出现；Modern.js 内部为了触发 lazy import 补的 loader 不算真实 data loader。route component 正常挂载不写入 snapshot，只有加载失败时才写入 `routeComponent: error`，避免让 Agent 误以为业务组件已经全部 ready。
+第一版不注册独立 loader target 或 route component target。route manifest 可以用 `hasLoader` 和 `hasRouteComponent` 表达路由是否声明了 data loader / 路由模块组件；这些清单字段不进入 snapshot 的当前 matches。真实执行过的 loader 作为当前 match 的 `loader` 字段出现；Modern.js 内部为了触发 lazy import 补的 loader 不算真实 data loader。route component 指 Modern.js 路由模块里的 page / layout 组件，不代表页面里的业务组件；正常挂载不写入 snapshot，只有加载失败时才写入 `routeComponent: error`，避免让 Agent 误以为业务组件已经全部 ready。
+
+SSR 初始路由里的 loader / route 错误仍由 `modern:route` 保存完整错误；同时 `modern:ssr` 标为 `error` 并保存轻量失败原因，`modern:app` 标为 `error` 并指向 `modern:route`；这种情况下不注册或更新 `modern:hydration`。
+
+React hydration mismatch 这类可恢复 hydration 错误应写成 `modern:hydration` 的 `error`，不能被后续 success 覆盖。此时 `modern:ssr` 标为 `invalidated`，只说明 SSR 产物没有被浏览器成功复用；`modern:app` 标为 `error`，只指向失败来源。
 
 `modern:ssr` 和 `modern:hydration` 也不是 CSR 页面默认 target。只有页面存在 SSR 数据或 Modern.js 触发 hydration 事件时，plugin 才注册和更新对应 target。
 

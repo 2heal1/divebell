@@ -12,13 +12,14 @@ export interface ModernRouteObject {
 }
 
 export interface ModernHydrationEvent {
-  type: "start" | "success" | "fallback" | "error";
+  type: "start" | "success" | "fallback" | "error" | "recoverable-error";
   context?: unknown;
   renderLevel?: unknown;
   renderMode?: string;
   reason?: string;
   root?: unknown;
   error?: unknown;
+  errorInfo?: unknown;
 }
 
 export interface ModernRouterCreatedEvent {
@@ -108,11 +109,25 @@ export interface ModernRouteMatch {
 }
 
 export interface ModernRenderContext {
+  isBrowser?: boolean;
   routes?: ModernRouteObject[];
   router?: unknown;
   ssrContext?: {
     request?: {
       pathname?: string;
+      host?: string;
+      url?: string;
     };
+    htmlModifiers?: Array<(html: string) => string>;
   };
+}
+
+export interface ModernStreamSsrExtender {
+  init?: (params: {
+    rootElement: unknown;
+    forceStream2String: boolean;
+  }) => void;
+  modifyRootElement?: (rootElement: unknown) => unknown;
+  getStyleTags?: () => string;
+  processStream?: (stream: unknown) => unknown;
 }

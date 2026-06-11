@@ -18,8 +18,14 @@ import {
   modernTargetIds,
   updateTargetStatus
 } from "../runtime/targets.js";
+import {
+  injectOpenRuntimeRenderContext,
+  readOpenRuntimeRenderContext
+} from "../runtime/render-context.js";
+import { attachOpenRuntimeStreamSsrState } from "./stream-ssr.js";
 
 export function handleBeforeRender(state: ModernPluginRuntimeState, context: ModernRenderContext): void {
+  const serverRenderContext = isServerRenderContext(context) ? state.startServerRender() : undefined;
   const runtime = state.getRuntime();
   const routes = getRoutesFromContext(context);
 
@@ -32,19 +38,44 @@ export function handleBeforeRender(state: ModernPluginRuntimeState, context: Mod
       routeCount: routes.length
     }
   });
-  updateSsrSnapshot(state, context);
+  if (serverRenderContext !== undefined) {
+    updateServerSsrSnapshot(state, context, "rendering");
+    state.syncServerBridge(getRequestUrl(context));
+    let completed = false;
+    const complete = () => {
+      if (completed) {
+        return;
+      }
+      completed = true;
+      updateServerSsrSnapshot(state, context, "server-rendered");
+      state.syncServerBridge(getRequestUrl(context));
+    };
+    attachOpenRuntimeStreamSsrState(context, serverRenderContext, complete);
+    context.ssrContext?.htmlModifiers?.push((html) => {
+      complete();
+      return injectOpenRuntimeRenderContext(html, serverRenderContext);
+    });
+    return;
+  }
+
+  updateBrowserSsrSnapshot(state, context);
 }
 
 export function handleHydration(state: ModernPluginRuntimeState, event: ModernHydrationEvent): void {
+  if (state.isHydrationSuppressed()) {
+    return;
+  }
+
   const runtime = state.getRuntime();
   state.ensureHydrationTarget();
   const status = getHydrationStatus(event.type);
-  const data = {
-    type: event.type,
-    renderLevel: event.renderLevel,
-    renderMode: event.renderMode,
-    reason: event.reason
-  };
+  if (status === "success" && state.hasHydrationFailed()) {
+    return;
+  }
+  if (status === "error") {
+    state.markHydrationFailed();
+  }
+  const data = getHydrationData(event);
 
   updateTargetStatus(runtime, state.source, modernTargetIds.hydration, status, {
     data,
@@ -52,33 +83,109 @@ export function handleHydration(state: ModernPluginRuntimeState, event: ModernHy
   });
 
   if (event.type === "fallback" && state.hasSsrTarget()) {
-    updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "fallback", {
-      data
-    });
+    updateSsrFallbackFromHydration(state, data);
+  } else if (shouldMarkSsrFallback(event)) {
+    updateSsrFallbackFromHydration(state, data);
   }
-  if (event.type === "error") {
-    if (state.hasSsrTarget()) {
-      updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "error", {
-        data,
-        ...(event.error === undefined ? {} : { error: toRuntimeError(event.error, "modern_hydration_error") })
-      });
-    }
+  if (status === "error") {
+    state.ensureSsrTarget();
+    updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "invalidated", {
+      data: getSsrInvalidationData(data)
+    });
     updateTargetStatus(runtime, state.source, modernTargetIds.app, "error", {
-      data,
-      ...(event.error === undefined ? {} : { error: toRuntimeError(event.error, "modern_hydration_error") })
+      data: getAppFailureData(data, modernTargetIds.hydration)
     });
   }
 }
 
-export function handleRouterCreated(state: ModernPluginRuntimeState, event: ModernRouterCreatedEvent): void {
+type HydrationData = {
+  type: ModernHydrationEvent["type"];
+  renderLevel?: unknown;
+  renderMode?: string;
+  reason?: string;
+};
+
+function getHydrationData(event: ModernHydrationEvent): HydrationData {
+  return {
+    type: event.type,
+    ...(event.renderLevel === undefined ? {} : { renderLevel: event.renderLevel }),
+    ...(event.renderMode === undefined ? {} : { renderMode: event.renderMode }),
+    ...(event.reason === undefined ? {} : { reason: event.reason })
+  };
+}
+
+function updateSsrFallbackFromHydration(
+  state: ModernPluginRuntimeState,
+  data: HydrationData
+): void {
   const runtime = state.getRuntime();
-  updateTargetStatus(runtime, state.source, modernTargetIds.app, "ready", {
-    data: {
-      basename: event.basename,
-      routeCount: event.routes.length
-    }
+  state.ensureSsrTarget();
+  updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "fallback", {
+    data: getBrowserSsrHydrationData(data)
   });
+}
+
+function syncAppFromRoute(
+  state: ModernPluginRuntimeState,
+  readyData: Record<string, unknown>,
+  options: {
+    invalidateSsr?: boolean;
+  } = {}
+): void {
+  const runtime = state.getRuntime();
+  const routeStatus = state.getCurrentRouteStatus();
+  if (routeStatus === "error") {
+    updateTargetStatus(runtime, state.source, modernTargetIds.app, "error", {
+      data: getRouteFailureData(state)
+    });
+
+    if (options.invalidateSsr === true && shouldInvalidateSsrFromRoute(state)) {
+      state.suppressHydrationTarget();
+      state.ensureSsrTarget();
+      updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "error", {
+        data: getSsrErrorFromRoute(state)
+      });
+    }
+    return;
+  }
+
+  if (routeStatus === "loading") {
+    updateTargetStatus(runtime, state.source, modernTargetIds.app, "rendering", {
+      data: readyData
+    });
+    return;
+  }
+
+  if (!state.hasHydrationFailed()) {
+    updateTargetStatus(runtime, state.source, modernTargetIds.app, "ready", {
+      data: readyData
+    });
+  }
+}
+
+function getRouteFailureData(state: ModernPluginRuntimeState): Record<string, unknown> {
+  const errorRouteIds = state.getCurrentRouteErrorIds();
+  return {
+    failedTargetId: modernTargetIds.route,
+    failedStatus: "error",
+    reason: state.getCurrentRouteFailureReason(),
+    ...(state.getCurrentRoutePathname() === undefined ? {} : { pathname: state.getCurrentRoutePathname() }),
+    ...(errorRouteIds.length === 0 ? {} : { errorRouteIds })
+  };
+}
+
+function shouldInvalidateSsrFromRoute(state: ModernPluginRuntimeState): boolean {
+  return state.hasSsrTarget() || readOpenRuntimeRenderContext() !== undefined;
+}
+
+export function handleRouterCreated(state: ModernPluginRuntimeState, event: ModernRouterCreatedEvent): void {
   state.updateRouteFromRouterState(event.routes, event.router.state);
+  syncAppFromRoute(state, {
+    basename: event.basename,
+    routeCount: event.routes.length
+  }, {
+    invalidateSsr: true
+  });
 }
 
 export function handleRouterStateChange(
@@ -86,6 +193,9 @@ export function handleRouterStateChange(
   event: ModernRouterStateChangeEvent
 ): void {
   state.updateRouteFromRouterState(event.routes, event.state);
+  syncAppFromRoute(state, {
+    routeCount: event.routes.length
+  });
 }
 
 export function handleRouteLoader(state: ModernPluginRuntimeState, event: ModernRouteLoaderEvent): void {
@@ -96,6 +206,7 @@ export function handleRouteLoader(state: ModernPluginRuntimeState, event: Modern
         modernRouteId: event.routeId
       }
     });
+    syncAppFromRoute(state, getRouteReadyData(state));
     return;
   }
 
@@ -107,6 +218,7 @@ export function handleRouteLoader(state: ModernPluginRuntimeState, event: Modern
         result: toJsonSafeValue(event.result)
       }
     });
+    syncAppFromRoute(state, getRouteReadyData(state));
     return;
   }
 
@@ -118,6 +230,7 @@ export function handleRouteLoader(state: ModernPluginRuntimeState, event: Modern
         redirect: getPlainResponseData(event.response)
       }
     });
+    syncAppFromRoute(state, getRouteReadyData(state));
     return;
   }
 
@@ -126,6 +239,7 @@ export function handleRouteLoader(state: ModernPluginRuntimeState, event: Modern
     status: "error",
     error
   });
+  syncAppFromRoute(state, getRouteReadyData(state));
 }
 
 export function handleRouteComponent(state: ModernPluginRuntimeState, event: ModernRouteComponentEvent): void {
@@ -144,6 +258,7 @@ export function handleRouteComponent(state: ModernPluginRuntimeState, event: Mod
       status: "error",
       error
     });
+    syncAppFromRoute(state, getRouteReadyData(state));
     return;
   }
 
@@ -155,6 +270,7 @@ export function handleRouteComponent(state: ModernPluginRuntimeState, event: Mod
         hasRouteModule: event.routeModule !== undefined
       }
     });
+    syncAppFromRoute(state, getRouteReadyData(state));
     return;
   }
 
@@ -164,9 +280,20 @@ export function handleRouteComponent(state: ModernPluginRuntimeState, event: Mod
       modernRouteId: event.routeId
     }
   });
+  syncAppFromRoute(state, getRouteReadyData(state));
 }
 
-function updateSsrSnapshot(state: ModernPluginRuntimeState, context: ModernRenderContext): void {
+function getRouteReadyData(state: ModernPluginRuntimeState): Record<string, unknown> {
+  return {
+    routeCount: state.getRouteCount()
+  };
+}
+
+function updateBrowserSsrSnapshot(state: ModernPluginRuntimeState, context: ModernRenderContext): void {
+  if (readOpenRuntimeRenderContext() !== undefined) {
+    return;
+  }
+
   const runtime = state.getRuntime();
   const ssrData = getSsrData(state.getHost());
   if (ssrData === undefined) {
@@ -176,9 +303,82 @@ function updateSsrSnapshot(state: ModernPluginRuntimeState, context: ModernRende
   state.ensureSsrTarget();
   updateTargetStatus(runtime, state.source, modernTargetIds.ssr, "server-rendered", {
     data: {
+      environment: "browser",
       hasSsrData: true,
       ssrData: toJsonSafeValue(ssrData),
       requestPathname: context.ssrContext?.request?.pathname
+    }
+  });
+}
+
+function shouldMarkSsrFallback(event: ModernHydrationEvent): boolean {
+  return event.renderLevel !== undefined && event.renderLevel !== 2;
+}
+
+function getBrowserSsrHydrationData(data: HydrationData): Record<string, unknown> {
+  const renderContext = readOpenRuntimeRenderContext();
+  return {
+    environment: "browser",
+    ...(renderContext === undefined ? {} : {
+      runtimeId: renderContext.runtimeId,
+      renderId: renderContext.renderId
+    }),
+    ...data
+  };
+}
+
+function getSsrInvalidationData(data: HydrationData): Record<string, unknown> {
+  return {
+    ...getBrowserSsrHydrationData(data),
+    invalidatedBy: modernTargetIds.hydration,
+    hydrationStatus: "error"
+  };
+}
+
+function getSsrErrorFromRoute(state: ModernPluginRuntimeState): Record<string, unknown> {
+  const renderContext = readOpenRuntimeRenderContext();
+  const errorRouteIds = state.getCurrentRouteErrorIds();
+  return {
+    environment: "browser",
+    ...(renderContext === undefined ? {} : {
+      runtimeId: renderContext.runtimeId,
+      renderId: renderContext.renderId
+    }),
+    phase: "server-render",
+    reason: state.getCurrentRouteFailureReason(),
+    failedTargetId: modernTargetIds.route,
+    failedStatus: "error",
+    ...(state.getCurrentRoutePathname() === undefined ? {} : { pathname: state.getCurrentRoutePathname() }),
+    ...(errorRouteIds.length === 0 ? {} : { errorRouteIds })
+  };
+}
+
+function getAppFailureData(data: HydrationData, failedTargetId: string): Record<string, unknown> {
+  return {
+    failedTargetId,
+    failedStatus: "error",
+    hydrationEventType: data.type,
+    ...(data.reason === undefined ? {} : { reason: data.reason })
+  };
+}
+
+function updateServerSsrSnapshot(
+  state: ModernPluginRuntimeState,
+  context: ModernRenderContext,
+  status: "rendering" | "server-rendered"
+): void {
+  const runtime = state.getRuntime();
+  const renderContext = state.getServerRenderContext();
+  state.ensureSsrTarget();
+  updateTargetStatus(runtime, state.source, modernTargetIds.ssr, status, {
+    data: {
+      environment: "server",
+      ...(renderContext === undefined ? {} : {
+        runtimeId: renderContext.runtimeId,
+        renderId: renderContext.renderId
+      }),
+      requestPathname: context.ssrContext?.request?.pathname,
+      requestUrl: getRequestUrl(context)
     }
   });
 }
@@ -187,8 +387,24 @@ function getRoutesFromContext(context: ModernRenderContext): ModernRouteObject[]
   return Array.isArray(context.routes) ? context.routes : [];
 }
 
+export function isServerRenderContext(context: ModernRenderContext): boolean {
+  return context.ssrContext !== undefined && context.isBrowser !== true && typeof window === "undefined";
+}
+
+function getRequestUrl(context: ModernRenderContext): string {
+  const request = context.ssrContext?.request;
+  if (request?.url !== undefined && request.url.length > 0) {
+    return request.url;
+  }
+
+  const host = request?.host ?? "server";
+  const pathname = request?.pathname ?? "/";
+  return `http://${host}${pathname}`;
+}
+
 function getHydrationStatus(type: ModernHydrationEvent["type"]): "running" | "success" | "fallback" | "error" {
   if (type === "start") return "running";
+  if (type === "recoverable-error") return "error";
   return type;
 }
 

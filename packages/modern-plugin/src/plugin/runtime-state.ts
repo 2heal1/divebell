@@ -4,6 +4,10 @@ import type {
   RuntimeError,
   RuntimeStatus
 } from "@openruntime/core";
+import {
+  createOpenRuntime,
+  syncServerRuntimeBridge
+} from "@openruntime/core";
 import type {
   ModernRouteMatch,
   ModernRouteObject,
@@ -22,6 +26,10 @@ import {
   type RouteTargetInfo
 } from "../runtime/targets.js";
 import { resolveOpenRuntime } from "../runtime/resolve-runtime.js";
+import {
+  createOpenRuntimeRenderContext,
+  type OpenRuntimeRenderContext
+} from "../runtime/render-context.js";
 import type { OpenRuntimeModernPluginOptions } from "./types.js";
 
 export interface RouteRuntimeData {
@@ -31,7 +39,7 @@ export interface RouteRuntimeData {
   errorRouteIds: string[];
 }
 
-export interface RouteRuntimeMatch extends RouteManifestEntry {
+export interface RouteRuntimeMatch extends Omit<RouteManifestEntry, "hasLoader" | "hasRouteComponent"> {
   loader?: RuntimeRouteLoaderStatus;
   routeComponent?: "error";
   error?: RuntimeError;
@@ -61,9 +69,13 @@ export class ModernPluginRuntimeState {
   readonly #componentStates = new Map<string, RouteComponentState>();
   readonly #routeErrors = new Map<string, RuntimeError>();
   #runtime?: OpenRuntimeCore;
+  #serverRenderContext?: OpenRuntimeRenderContext;
+  #serverSyncQueue: Promise<void> = Promise.resolve();
   #currentMatches: RouteRuntimeMatch[] = [];
   #pathname: string | undefined;
   #navigation: string | undefined;
+  #hydrationFailed = false;
+  #hydrationSuppressed = false;
 
   constructor(options: OpenRuntimeModernPluginOptions) {
     this.#options = options;
@@ -71,13 +83,45 @@ export class ModernPluginRuntimeState {
   }
 
   getRuntime(): OpenRuntimeCore {
-    this.#runtime ??= resolveOpenRuntime(this.#options);
+    this.#runtime ??= resolveOpenRuntime({
+      ...this.#options,
+      beforeConnect: (runtime) => this.#ensureBaseTargets(runtime)
+    });
     this.#ensureBaseTargets(this.#runtime);
     return this.#runtime;
   }
 
   getHost(): OpenRuntimeWindowHost | undefined {
     return this.#options.host;
+  }
+
+  startServerRender(): OpenRuntimeRenderContext {
+    this.#runtime = createOpenRuntime();
+    this.#serverRenderContext = createOpenRuntimeRenderContext(this.source);
+    return this.#serverRenderContext;
+  }
+
+  getServerRenderContext(): OpenRuntimeRenderContext | undefined {
+    return this.#serverRenderContext;
+  }
+
+  syncServerBridge(url: string): void {
+    if (this.#serverRenderContext === undefined || this.#options.bridge === undefined || this.#options.bridge === false) {
+      return;
+    }
+
+    const bridge = this.#options.bridge;
+    const runtime = this.getRuntime();
+    const renderContext = this.#serverRenderContext;
+    this.#serverSyncQueue = this.#serverSyncQueue.then(() => syncServerRuntimeBridge(runtime, {
+      runtimeId: renderContext.runtimeId,
+      renderId: renderContext.renderId,
+      url,
+      source: this.source,
+      ...(bridge.port === undefined ? {} : { port: bridge.port })
+    }).then(() => undefined)).catch(() => {
+      // Server rendering should not fail just because the optional local Bridge is unavailable.
+    });
   }
 
   registerRoutes(routes: ModernRouteObject[]): RouteTargetInfo[] {
@@ -98,6 +142,10 @@ export class ModernPluginRuntimeState {
   }
 
   ensureHydrationTarget(): void {
+    if (this.#hydrationSuppressed) {
+      return;
+    }
+
     registerHydrationTarget(this.getRuntime(), this.source);
   }
 
@@ -105,6 +153,23 @@ export class ModernPluginRuntimeState {
     const runtime = this.getRuntime();
     registerSsrTarget(runtime, this.source);
     updateInitialSnapshot(runtime, this.source, modernTargetIds.ssr, "unknown");
+  }
+
+  hasHydrationFailed(): boolean {
+    return this.#hydrationFailed;
+  }
+
+  markHydrationFailed(): void {
+    this.#hydrationFailed = true;
+  }
+
+  suppressHydrationTarget(): void {
+    this.#hydrationSuppressed = true;
+    this.getRuntime().unregisterTarget(modernTargetIds.hydration);
+  }
+
+  isHydrationSuppressed(): boolean {
+    return this.#hydrationSuppressed;
   }
 
   hasSsrTarget(): boolean {
@@ -125,6 +190,33 @@ export class ModernPluginRuntimeState {
       (routerState?.matches ?? []).map((match) => this.#createRouteMatch(match))
     );
     this.syncRouteSnapshot();
+  }
+
+  getCurrentRouteStatus(): RuntimeStatus {
+    return this.#getRouteStatus();
+  }
+
+  getCurrentRoutePathname(): string | undefined {
+    return this.#pathname;
+  }
+
+  getCurrentRouteErrorIds(): string[] {
+    return [...this.#routeErrors.keys()];
+  }
+
+  getRouteCount(): number {
+    return this.#routes.size;
+  }
+
+  getCurrentRouteFailureReason(): "route-loader-error" | "route-component-error" | "route-error" {
+    if (this.#currentMatches.some((match) => match.loader === "error")) {
+      return "route-loader-error";
+    }
+    if (this.#currentMatches.some((match) => match.routeComponent === "error")) {
+      return "route-component-error";
+    }
+
+    return "route-error";
   }
 
   updateLoader(routeId: string, state: RouteLoaderState): void {
@@ -167,6 +259,7 @@ export class ModernPluginRuntimeState {
 
   #ensureBaseTargets(runtime: OpenRuntimeCore): void {
     registerBaseTargets(runtime, this.source);
+    registerRouteTargetInfos(runtime, this.source, [...this.#routes.values()]);
     updateInitialSnapshot(runtime, this.source, modernTargetIds.app, "initializing");
   }
 
@@ -235,7 +328,9 @@ export class ModernPluginRuntimeState {
       }
 
       const routeInfo = this.#routes.get(routeId);
-      const manifest = routeInfo === undefined ? match : getRouteManifestEntry(routeInfo);
+      const manifest = routeInfo === undefined
+        ? createFallbackManifest(match.routeId, match.modernRouteId, match.pathname)
+        : getRouteManifestEntry(routeInfo);
       return this.#attachRouteStepState({
         ...manifest,
         ...(match.pathname === undefined ? {} : { pathname: match.pathname })
@@ -244,13 +339,20 @@ export class ModernPluginRuntimeState {
   }
 
   #attachRouteStepState(match: RouteManifestEntry): RouteRuntimeMatch {
+    const {
+      hasLoader,
+      hasRouteComponent: _hasRouteComponent,
+      ...matchData
+    } = match;
     const loaderState = this.#loaderStates.get(match.routeId);
     const componentState = this.#componentStates.get(match.routeId);
     const routeError = this.#routeErrors.get(match.routeId);
-    const next: RouteRuntimeMatch = { ...match };
+    const next: RouteRuntimeMatch = { ...matchData };
 
     if (loaderState !== undefined) {
       next.loader = loaderState.status;
+    } else if (hasLoader) {
+      next.loader = routeError === undefined ? "success" : "error";
     }
     if (componentState?.status === "error") {
       next.routeComponent = "error";
@@ -314,7 +416,7 @@ function createFallbackManifest(
   return {
     routeId,
     hasLoader: false,
-    hasComponent: false,
+    hasRouteComponent: false,
     hasLazyModule: false,
     ...(pathname === undefined ? {} : { pathname }),
     ...(modernRouteId === undefined ? {} : { modernRouteId })

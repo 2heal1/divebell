@@ -6,7 +6,8 @@ import type {
   ModernRouteComponentEvent,
   ModernRouteLoaderEvent,
   ModernRouterCreatedEvent,
-  ModernRouterStateChangeEvent
+  ModernRouterStateChangeEvent,
+  ModernStreamSsrExtender
 } from "../../dist/index.js";
 
 export interface ModernApiHarness {
@@ -18,6 +19,7 @@ export interface ModernApiHarness {
     onRouterStateChange?: (event: ModernRouterStateChangeEvent) => void;
     onRouteLoader?: (event: ModernRouteLoaderEvent) => void;
     onRouteComponent?: (event: ModernRouteComponentEvent) => void;
+    extendStreamSSR?: () => ModernStreamSsrExtender;
   };
 }
 
@@ -41,6 +43,9 @@ export function createModernApiHarness(plugin: ModernRuntimePlugin): ModernApiHa
     },
     onRouteComponent(handler) {
       handlers.onRouteComponent = handler;
+    },
+    extendStreamSSR(handler) {
+      handlers.extendStreamSSR = handler;
     }
   };
 

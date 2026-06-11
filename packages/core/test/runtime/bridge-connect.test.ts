@@ -85,6 +85,33 @@ test("opens a single bridge connection per browser global", () => {
   }
 });
 
+test("passes runtime and render context when connecting to bridge", () => {
+  const previousEventSource = globalThis.EventSource;
+
+  try {
+    FakeEventSource.instances = [];
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = FakeEventSource as unknown as typeof EventSource;
+
+    createOpenRuntime({ clock: createClock() }).connectBridge({
+      port: 19001,
+      autoReconnect: false,
+      pageInstanceId: "page-test",
+      runtimeId: "runtime-ssr",
+      renderId: "render-ssr"
+    });
+
+    const stream = FakeEventSource.instances[0];
+    assert.ok(stream);
+    assert.equal(
+      stream.url,
+      "http://localhost:19001/connect?url=unknown&pageInstanceId=page-test&runtimeId=runtime-ssr&renderId=render-ssr"
+    );
+  } finally {
+    restoreGlobal("EventSource", previousEventSource);
+    clearBridgeConnection();
+  }
+});
+
 test("does not open duplicate bridge connections for the same runtime", () => {
   const previousEventSource = globalThis.EventSource;
 

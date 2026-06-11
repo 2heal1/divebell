@@ -5,7 +5,8 @@ import { createOpenRuntime } from "@openruntime/core";
 import {
   markOpenRuntimeReady,
   markOpenRuntimeReadyError,
-  registerOpenRuntimeReady
+  registerOpenRuntimeReady,
+  unregisterOpenRuntimeReady
 } from "../../dist/index.js";
 
 test("registers and marks a business ready target", () => {
@@ -36,4 +37,8 @@ test("registers and marks a business ready target", () => {
   markOpenRuntimeReadyError(runtime, "checkout failed", "checkout");
   assert.equal(runtime.getSnapshot().targets[targetId]?.status, "error");
   assert.equal(runtime.getSnapshot().targets[targetId]?.error?.message, "checkout failed");
+
+  unregisterOpenRuntimeReady(runtime, "checkout");
+  assert.equal(runtime.getTargets({ id: targetId }).length, 0);
+  assert.equal(runtime.getSnapshot().targets[targetId], undefined);
 });

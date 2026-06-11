@@ -78,9 +78,11 @@ Checklist：
 - [x] 在 app 启动、navigation、loader、SSR、hydration、route component 错误时调用 `updateSnapshot`。
 - [x] 提供业务 helper：`registerOpenRuntimeReady`、`markOpenRuntimeReady`、`markOpenRuntimeReadyError`，用于业务 ready target。
 - [x] 提供 Modern.js demo，覆盖 route、loader success/error、business ready、声明 action、`run-action` 和 `wait-for`。
-- [ ] 补充 SSR / hydration demo，验证 `modern:ssr` 和 `modern:hydration` 只在真实存在时出现。
-- [ ] 补充 route component 加载失败 demo，验证 snapshot 只在失败时显示 `routeComponent: error`。
+- [x] 补充 SSR / hydration demo，验证 `modern:ssr` 和 `modern:hydration` 只在真实存在时出现。
+- [x] 补充 route component 加载失败 demo，验证 snapshot 只在失败时显示 `routeComponent: error`。
 - [ ] 后续和 MF runtimePlugin 协作时，为 route target 补充框架能确定的 `dependsOn`，例如 route 依赖 remote / expose。
+
+阶段 3 收口说明：`dependsOn` 需要 MF runtimePlugin 提供 remote / expose 等运行时目标后才能可靠建立，延后到阶段 4 和 MF 接入一起完成；阶段 3 不用 DOM、console 或业务手写依赖关系去猜。
 
 验收标准：
 
@@ -89,8 +91,8 @@ Checklist：
 - [x] CSR demo 不会默认出现 `modern:ssr` 或 `modern:hydration`。
 - [x] route 未 ready 或失败时，Agent 能从 Snapshot 看到 loader / route error 线索，而不是只能查 DOM 或 console。
 - [x] 业务 ready 不由 Modern.js plugin 猜测，只由业务 helper 或业务代码声明。
-- [ ] SSR / hydration 场景完成 demo 验证。
-- [ ] route component 加载失败场景完成 demo 验证。
+- [x] SSR / hydration 场景完成 demo 验证。
+- [x] route component 加载失败场景完成 demo 验证。
 
 ## 阶段 4：MF RuntimePlugin
 

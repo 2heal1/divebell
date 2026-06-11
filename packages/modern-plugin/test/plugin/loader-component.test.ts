@@ -62,7 +62,43 @@ test("stores loader status on the current route match", () => {
   const snapshot = runtime.getSnapshot();
   assert.equal(snapshot.targets["modern:route"]?.status, "error");
   assert.equal(snapshot.targets["modern:route"]?.error?.message, "loader failed");
+  assert.equal(snapshot.targets["modern:app"]?.status, "error");
+  assert.deepEqual(snapshot.targets["modern:app"]?.data, {
+    failedTargetId: "modern:route",
+    failedStatus: "error",
+    reason: "route-loader-error",
+    pathname: "/profile",
+    errorRouteIds: ["/profile"]
+  });
   assert.equal(getFirstMatch(runtime).loader, "error");
+});
+
+test("marks matched data loaders as successful when no loader event is emitted", () => {
+  const runtime = createOpenRuntime();
+  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const routes = [
+    {
+      id: "profile",
+      path: "/profile",
+      loader: (_args: unknown) => undefined
+    }
+  ];
+
+  handlers.onRouterStateChange?.({
+    router: {},
+    routes,
+    state: {
+      navigation: { state: "idle" },
+      matches: [{ route: { id: "profile" }, pathname: "/profile" }],
+      location: { pathname: "/profile" }
+    },
+    context: {}
+  });
+
+  const match = getFirstMatch(runtime);
+  assert.equal(match.loader, "success");
+  assert.equal(match.hasLoader, undefined);
+  assert.equal(match.hasRouteComponent, undefined);
 });
 
 test("stores only route component errors on the current route match", () => {
@@ -112,6 +148,14 @@ test("stores only route component errors on the current route match", () => {
   const snapshot = runtime.getSnapshot();
   assert.equal(snapshot.targets["modern:route"]?.status, "error");
   assert.equal(snapshot.targets["modern:route"]?.error?.message, "component failed");
+  assert.equal(snapshot.targets["modern:app"]?.status, "error");
+  assert.deepEqual(snapshot.targets["modern:app"]?.data, {
+    failedTargetId: "modern:route",
+    failedStatus: "error",
+    reason: "route-component-error",
+    pathname: "/dashboard",
+    errorRouteIds: ["/dashboard"]
+  });
   assert.equal(getFirstMatch(runtime).routeComponent, "error");
 });
 
@@ -140,7 +184,7 @@ test("keeps route metadata when loader events arrive after the route table", () 
       {
         routeId: "/profile",
         hasLoader: true,
-        hasComponent: true,
+        hasRouteComponent: true,
         hasLazyModule: false,
         path: "/profile",
         pathname: "/profile",

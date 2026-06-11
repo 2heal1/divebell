@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "types": ["@modern-js/app-tools/types", "node"]
+  },
+  "include": ["src", "modern.config.ts"]
+}

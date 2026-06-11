@@ -1,5 +1,13 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT, type BridgeRuntimeCommandName, type BridgeRuntimeRequest, type BridgeRuntimeResponse } from "@openruntime/core";
+import {
+  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
+  matchesRuntimeCondition,
+  type BridgeRuntimeCommandName,
+  type BridgeRuntimeRequest,
+  type BridgeRuntimeResponse,
+  type BridgeServerRuntimeSyncPayload,
+  type RuntimeDataCondition
+} from "@openruntime/core";
 import { BridgeHttpError, getPathSegments, readJson, writeCorsHeaders, writeError, writeJson } from "./http-utils.js";
 import { getCommandFromResource, parseRuntimeQuery } from "./query.js";
 import { RuntimeConnectionStore, type RuntimeStream } from "./runtime-store.js";
@@ -87,6 +95,11 @@ class NodeBridgeServer implements BridgeServer {
         return;
       }
 
+      if (request.method === "POST" && segments.length === 1 && segments[0] === "server-runtimes") {
+        await this.#handleServerRuntimeSync(request, response);
+        return;
+      }
+
       if (request.method === "GET" && segments.length === 1 && segments[0] === "runtimes") {
         writeJson(response, 200, {
           runtimes: this.#store.list()
@@ -152,6 +165,9 @@ class NodeBridgeServer implements BridgeServer {
     if (runtimeUrl === null || runtimeUrl.length === 0) {
       throw new BridgeHttpError(400, "missing_runtime_url", "Runtime connection must include a url query.");
     }
+    const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
+    const runtimeId = normalizeOptionalQuery(url.searchParams.get("runtimeId"));
+    const renderId = normalizeOptionalQuery(url.searchParams.get("renderId"));
 
     response.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
@@ -162,13 +178,31 @@ class NodeBridgeServer implements BridgeServer {
     });
 
     const stream = new ServerSentEventStream(response);
-    const runtime = this.#store.connect(runtimeUrl, stream);
+    const runtime = this.#store.connect(runtimeUrl, stream, {
+      ...(pageInstanceId === undefined ? {} : { pageInstanceId }),
+      ...(runtimeId === undefined ? {} : { runtimeId }),
+      ...(renderId === undefined ? {} : { renderId })
+    });
     stream.send("connected", {
       runtimeId: runtime.runtimeId
     });
 
     request.on("close", () => {
       this.#store.disconnect(runtime.runtimeId, stream);
+    });
+  }
+
+  async #handleServerRuntimeSync(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const body = await readJson(request);
+    if (!isServerRuntimeSyncPayload(body)) {
+      throw new BridgeHttpError(400, "invalid_server_runtime_sync", "Server runtime sync body is invalid.");
+    }
+
+    const runtime = this.#store.syncServerRuntime(body);
+    writeJson(response, 200, {
+      runtimeId: runtime.runtimeId,
+      ...(runtime.renderId === undefined ? {} : { renderId: runtime.renderId }),
+      accepted: true
     });
   }
 
@@ -209,8 +243,9 @@ class NodeBridgeServer implements BridgeServer {
       throw new BridgeHttpError(404, "runtime_not_found", "Runtime was not found.");
     }
 
+    const query = parseRuntimeQuery(method, url.searchParams);
     if (runtime.status === "disconnected") {
-      const cached = this.#getCachedRuntimeResult(runtimeId, method);
+      const cached = this.#getCachedRuntimeResult(runtimeId, method, query);
       if (cached !== undefined) {
         writeJson(response, 200, cached);
         return;
@@ -218,10 +253,18 @@ class NodeBridgeServer implements BridgeServer {
       throw new BridgeHttpError(409, "runtime_disconnected", "Runtime is disconnected.");
     }
 
-    const query = parseRuntimeQuery(method, url.searchParams);
+    if (runtime.status === "server") {
+      const cached = this.#getCachedRuntimeResult(runtimeId, method, query);
+      if (cached !== undefined) {
+        writeJson(response, 200, cached);
+        return;
+      }
+      throw new BridgeHttpError(409, "runtime_server_only", "Runtime has not connected from a browser yet.");
+    }
+
     const result = await this.#store.request(runtimeId, method, query === undefined ? {} : { query });
     this.#store.cacheResult(runtimeId, method, result);
-    writeJson(response, 200, result);
+    writeJson(response, 200, this.#getCachedRuntimeResult(runtimeId, method, query) ?? result);
   }
 
   async #handleInputOptions(
@@ -286,7 +329,33 @@ class NodeBridgeServer implements BridgeServer {
       targetId,
       status
     };
+    const where = parseWhereBody(body);
+    if (where !== undefined) requestInput.where = where;
     if (options !== undefined) requestInput.options = options;
+
+    const cachedSnapshot = this.#store.getCachedSnapshot(runtimeId);
+    const cachedTarget = cachedSnapshot?.targets[targetId];
+    if (matchesRuntimeCondition(cachedTarget, {
+      id: targetId,
+      status,
+      ...(where === undefined ? {} : { where })
+    })) {
+      writeJson(response, 200, createWaitSuccess(targetId, status, where, cachedSnapshot, cachedTarget));
+      return;
+    }
+
+    const runtime = this.#store.get(runtimeId);
+    if (runtime?.status === "connected") {
+      const result = await this.#requestConnectedRuntime(runtimeId, "waitFor", requestInput);
+      writeJson(response, 200, result);
+      return;
+    }
+
+    if (this.#store.hasCachedTarget(runtimeId, targetId)) {
+      const cachedResult = await this.#waitForCachedTarget(runtimeId, targetId, status, where, options?.timeout);
+      writeJson(response, 200, cachedResult);
+      return;
+    }
 
     const result = await this.#requestConnectedRuntime(runtimeId, "waitFor", requestInput);
     writeJson(response, 200, result);
@@ -304,15 +373,120 @@ class NodeBridgeServer implements BridgeServer {
     if (runtime.status === "disconnected") {
       throw new BridgeHttpError(409, "runtime_disconnected", "Runtime is disconnected.");
     }
+    if (runtime.status === "server") {
+      throw new BridgeHttpError(409, "runtime_server_only", "Runtime has not connected from a browser yet.");
+    }
 
     return this.#store.request(runtimeId, method, requestInput, getRequestTimeout(requestInput.options?.timeout));
   }
 
-  #getCachedRuntimeResult(runtimeId: string, method: BridgeRuntimeCommandName): unknown {
+  #getCachedRuntimeResult(
+    runtimeId: string,
+    method: BridgeRuntimeCommandName,
+    query?: Omit<BridgeRuntimeRequest, "requestId" | "method">["query"]
+  ): unknown {
     if (method === "getSnapshot") return this.#store.getCachedSnapshot(runtimeId);
-    if (method === "getEvents") return this.#store.getCachedEvents(runtimeId);
+    if (method === "getEvents") return this.#store.getCachedEvents(runtimeId, query);
+    if (method === "getTargets") return this.#store.getCachedTargets(runtimeId, query);
+    if (method === "getActions") return this.#store.getCachedActions(runtimeId, query);
     return undefined;
   }
+
+  async #waitForCachedTarget(
+    runtimeId: string,
+    targetId: string,
+    status: string,
+    where: RuntimeDataCondition[] | undefined,
+    timeout = 5000
+  ): Promise<unknown> {
+    const deadline = Date.now() + timeout;
+    let snapshot = this.#store.getCachedSnapshot(runtimeId);
+    let target = snapshot?.targets[targetId];
+
+    while (Date.now() <= deadline) {
+      if (matchesRuntimeCondition(target, {
+        id: targetId,
+        status,
+        ...(where === undefined ? {} : { where })
+      })) {
+        return createWaitSuccess(targetId, status, where, snapshot, target);
+      }
+
+      await sleep(50);
+      snapshot = this.#store.getCachedSnapshot(runtimeId);
+      target = snapshot?.targets[targetId];
+    }
+
+    return {
+      success: false,
+      condition: {
+        id: targetId,
+        status,
+        ...(where === undefined ? {} : { where })
+      },
+      snapshot,
+      reason: target === undefined ? "Target is not registered." : `Timed out waiting for "${targetId}" to reach "${status}".`
+    };
+  }
+}
+
+function createWaitSuccess(
+  targetId: string,
+  status: string,
+  where: RuntimeDataCondition[] | undefined,
+  snapshot: unknown,
+  target: unknown
+): unknown {
+  return {
+    success: true,
+    condition: {
+      id: targetId,
+      status,
+      ...(where === undefined ? {} : { where })
+    },
+    snapshot,
+    target
+  };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isServerRuntimeSyncPayload(value: unknown): value is BridgeServerRuntimeSyncPayload {
+  if (!isRecord(value)) return false;
+  if (typeof value.runtimeId !== "string" || value.runtimeId.length === 0) return false;
+  if (typeof value.url !== "string" || value.url.length === 0) return false;
+  if (value.renderId !== undefined && typeof value.renderId !== "string") return false;
+  if (value.source !== undefined && typeof value.source !== "string") return false;
+  if (value.targets !== undefined && !Array.isArray(value.targets)) return false;
+  if (value.snapshot !== undefined && !isRecord(value.snapshot)) return false;
+  if (value.events !== undefined && !isRecord(value.events)) return false;
+  if (value.actions !== undefined && !Array.isArray(value.actions)) return false;
+  return true;
+}
+
+function parseWhereBody(body: Record<string, unknown>): RuntimeDataCondition[] | undefined {
+  if (!("where" in body)) {
+    return undefined;
+  }
+
+  if (!Array.isArray(body.where)) {
+    throw new BridgeHttpError(400, "invalid_wait_for_body", "where must be an array.");
+  }
+
+  return body.where.map((item) => {
+    if (!isRecord(item) || typeof item.path !== "string" || item.path.length === 0 || !("equals" in item)) {
+      throw new BridgeHttpError(400, "invalid_wait_for_body", "where entries must include path and equals.");
+    }
+
+    return {
+      path: item.path,
+      equals: item.equals
+    };
+  });
 }
 
 class ServerSentEventStream implements RuntimeStream {
@@ -410,6 +584,10 @@ function getRequestTimeout(timeout: number | undefined): number | undefined {
 function getStringField(body: Record<string, unknown>, name: string): string | undefined {
   const value = body[name];
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function normalizeOptionalQuery(value: string | null): string | undefined {
+  return value === null || value.length === 0 ? undefined : value;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

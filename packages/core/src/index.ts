@@ -9,12 +9,16 @@ export {
 export type { OpenRuntimeWindowHost } from "./runtime/window.js";
 export type {
   BridgeConnectOptions,
+  BridgeServerRuntimeSyncPayload,
+  BridgeServerRuntimeSyncResponse,
+  BridgeServerSyncOptions,
   BridgeRuntimeCommandName,
   BridgeRuntimeQuery,
   BridgeRuntimeRequest,
   BridgeRuntimeResponse
 } from "./bridge/types.js";
 export { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "./bridge/types.js";
+export { syncServerRuntimeBridge } from "./bridge/server.js";
 export type {
   CreateOpenRuntimeOptions,
   OpenRuntimeCore,
@@ -57,6 +61,8 @@ export type {
 } from "./target/types.js";
 export type {
   RuntimeCondition,
+  RuntimeDataCondition,
   RuntimeWaitOptions,
   RuntimeWaitResult
 } from "./wait/types.js";
+export { matchesRuntimeCondition } from "./wait/condition.js";

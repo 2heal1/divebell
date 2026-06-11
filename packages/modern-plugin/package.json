@@ -21,7 +21,11 @@
   "dependencies": {
     "@openruntime/core": "workspace:^"
   },
+  "peerDependencies": {
+    "@modern-js/runtime": ">=3.2.2"
+  },
   "devDependencies": {
+    "@modern-js/runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime",
     "@rstest/core": "0.10.3"
   }
 }

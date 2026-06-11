@@ -210,6 +210,8 @@ test("runs execution commands against the selected runtime", async () => {
     "http://app.test/",
     "route:/home",
     "ready",
+    "--where",
+    "matches.pathname=/orders",
     "--timeout",
     "30"
   ], {
@@ -246,7 +248,13 @@ test("runs execution commands against the selected runtime", async () => {
       body: {
         targetId: "route:/home",
         status: "ready",
-        timeout: 30
+        timeout: 30,
+        where: [
+          {
+            path: "matches.pathname",
+            equals: "/orders"
+          }
+        ]
       }
     }
   ]);

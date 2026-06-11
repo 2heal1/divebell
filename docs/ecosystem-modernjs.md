@@ -36,21 +36,29 @@ Modern.js 是一个基于 React 的渐进式 Web 框架。它面向 React 应用
 
 OpenRuntime Modern.js plugin 不应该让业务手写所有 target。框架能确定的信息应该自动写入。
 
-建议优先自动注册：
+第一版优先自动注册：
 
-- app target：应用启动、运行、错误、卸载。
-- route target：路由表里已知的 route、当前 matched route、navigation 目标。
-- loader target：route loader 的 start / success / redirect / error。
-- component target：route component mount / error。
-- SSR target：SSR 是否执行、是否退化为静态壳页、首屏数据是否存在。
-- hydration target：客户端 hydration 是否开始、成功或失败。
+- `modern:app`：应用启动、运行和框架级错误。
+- `modern:route`：单一聚合 route target。target data 保存 route manifest；snapshot data 保存当前 pathname、navigation、matches、loader 状态和错误。
+- `modern:ssr`：SSR 请求在 Node 服务端开始时注册并更新；返回 HTML 时会写入 `runtimeId` / `renderId`，浏览器连接 Bridge 后接到同一个 runtime。
+- `modern:hydration`：只在 Modern.js 触发 hydration 事件时注册，表示客户端 hydration 状态。
+
+第一版不再注册独立的 loader target 或 route component target。原因是 Agent 日常等待的是“当前 route 是否 ready”，而不是历史上每一个 loader / component 是否出现过。loader 和 route component 信息应作为当前 `modern:route` 的细节出现：
+
+- route manifest 可以用 `hasLoader` 和 `hasRouteComponent` 表达路由是否声明了 data loader / 路由模块组件；这些清单字段不进入 snapshot 的当前 matches。
+- 真实执行过的 loader 在当前 match 中显示 `loader: loading | success | redirect | error`。
+- Modern.js 内部为了触发 lazy import 补的 loader 不算真实 data loader。
+- route component 指 Modern.js 路由模块里的 page / layout 组件，不代表页面里的业务组件；正常挂载不写入 snapshot，避免被误解成业务组件都 ready。
+- route component 加载失败时才在当前 match 中显示 `routeComponent: error`。
+- SSR 初始路由里的 loader / route 错误仍由 `modern:route` 保存完整错误；同时 `modern:ssr` 标为 `error` 并保存轻量失败原因，`modern:app` 标为 `error` 并指向 `modern:route`；这种情况下不注册或更新 `modern:hydration`。
+- React hydration mismatch 这类可恢复 hydration 错误应写成 `modern:hydration` 的 `error`，不能被后续 success 覆盖。此时 `modern:ssr` 标为 `invalidated`，只说明 SSR 产物没有被浏览器成功复用；`modern:app` 标为 `error`，只指向失败来源。
 
 建议优先自动更新：
 
-- route 当前状态；
-- loader 当前状态；
-- redirect 是否发生；
-- route component 是否挂载；
+- app 当前状态；
+- route 当前 pathname、navigation 和 matches；
+- 真实 loader 的 start / success / redirect / error；
+- route component 加载错误；
 - SSR / CSR fallback 状态；
 - hydration 状态；
 - 框架级错误。

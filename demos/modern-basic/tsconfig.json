@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@openruntime/core": ["../../packages/core/src/index.ts"],
+      "@openruntime/modern-plugin": ["../../packages/modern-plugin/src/index.ts"]
+    },
+    "types": ["@modern-js/app-tools/types", "node"]
+  },
+  "include": ["src", "modern.config.ts"]
+}

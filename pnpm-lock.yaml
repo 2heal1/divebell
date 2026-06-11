@@ -28,6 +28,105 @@ importers:
         specifier: 2.0.11
         version: 2.0.11
 
+  demos/modern-basic:
+    dependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
+      '@openruntime/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@openruntime/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
+      react:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+      react-dom:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+    devDependencies:
+      '@modern-js/app-tools':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/solutions/app-tools
+        version: link:../../../../fork_repo/modern.js/packages/solutions/app-tools
+      '@types/react':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  demos/modern-ssr:
+    dependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
+      '@modern-js/server-runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime
+        version: link:../../../../fork_repo/modern.js/packages/server/server-runtime
+      '@openruntime/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@openruntime/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
+      react:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+      react-dom:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+    devDependencies:
+      '@modern-js/app-tools':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/solutions/app-tools
+        version: link:../../../../fork_repo/modern.js/packages/solutions/app-tools
+      '@types/react':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  demos/modern-ssr-stream:
+    dependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
+      '@modern-js/server-runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime
+        version: link:../../../../fork_repo/modern.js/packages/server/server-runtime
+      '@openruntime/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@openruntime/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
+      react:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
+      react-dom:
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom
+    devDependencies:
+      '@modern-js/app-tools':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/solutions/app-tools
+        version: link:../../../../fork_repo/modern.js/packages/solutions/app-tools
+      '@types/react':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react
+      '@types/react-dom':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+        version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/bridge:
     dependencies:
       '@openruntime/core':
@@ -73,6 +172,9 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
+      '@modern-js/runtime':
+        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
+        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
       '@rstest/core':
         specifier: 0.10.3
         version: 0.10.3
@@ -118,25 +220,21 @@ packages:
     resolution: {integrity: sha512-H6ACzeM1KBxYDEF8YAim3501Jb1aCsSG79Gjm1M4pwJ5OJPK2ydiJEa438ugXmh0962eKYMHI2yZY0sQq8txaw==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@rspack/binding-linux-arm64-musl@2.0.6':
     resolution: {integrity: sha512-QTFmBg0n+L397Wi8CIjbd5pe/hxpHnqCDaG1A7e2NWX8Fj9zulAoKLiKflQa1ELEhAY4Foq88aX75+Ilt2tHcw==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@rspack/binding-linux-x64-gnu@2.0.6':
     resolution: {integrity: sha512-rerCAz022zf0ewxI+7n3SrqLEaxCL+MXRxKjK5FLUGFa8UkIrivq+VUP/1OB6JLh2Bucebc7Y9WoWHvtk22mLA==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@rspack/binding-linux-x64-musl@2.0.6':
     resolution: {integrity: sha512-96IgOFXQjX6Wbxd+DCYJFy2r/VMu1OoHifW4Cr3kGTYDKoQOIMLwb0ieu/ILp2dGWFMZo5S8odiByAmNICAOIA==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@rspack/binding-wasm32-wasi@2.0.6':
     resolution: {integrity: sha512-0aWiF+qmdb0csp1x+MaR2o1pscoquLaEbLTVdKjmoTRs6sguMemtB1ObnVTahAUL73P66WePuNpFAJ81zNdqzQ==}

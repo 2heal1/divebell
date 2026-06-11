@@ -9,7 +9,7 @@
     "pnpm": ">=10.18.1 <11"
   },
   "scripts": {
-    "build": "tsc -b --pretty false",
+    "build": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 --if-present run build",
     "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
     "check": "pnpm run build && pnpm run test",
     "clean": "node ./scripts/clean.mjs"

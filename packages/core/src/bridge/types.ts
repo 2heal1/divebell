@@ -1,14 +1,25 @@
-import type { GetActionsQuery } from "../action/types.js";
-import type { GetEventsQuery } from "../event/types.js";
-import type { GetSnapshotQuery } from "../snapshot/types.js";
-import type { GetTargetsQuery } from "../target/types.js";
-import type { RuntimeWaitOptions } from "../wait/types.js";
+import type { GetActionsQuery, RuntimeActionDescriptor } from "../action/types.js";
+import type { GetEventsQuery, GetEventsResult } from "../event/types.js";
+import type { GetSnapshotQuery, RuntimeSnapshot } from "../snapshot/types.js";
+import type { GetTargetsQuery, RuntimeTargetDescriptor } from "../target/types.js";
+import type { RuntimeDataCondition, RuntimeWaitOptions } from "../wait/types.js";
 
 export const OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
 
 export interface BridgeConnectOptions {
   port?: number;
   autoReconnect?: boolean;
+  pageInstanceId?: string;
+  runtimeId?: string;
+  renderId?: string;
+}
+
+export interface BridgeServerSyncOptions {
+  port?: number;
+  runtimeId: string;
+  renderId?: string;
+  url: string;
+  source?: string;
 }
 
 export type BridgeRuntimeCommandName =
@@ -35,6 +46,7 @@ export interface BridgeRuntimeRequest {
   payload?: Record<string, unknown>;
   targetId?: string;
   status?: string;
+  where?: RuntimeDataCondition[];
   options?: RuntimeWaitOptions;
 }
 
@@ -46,4 +58,21 @@ export interface BridgeRuntimeResponse {
     code?: string;
     stack?: string;
   };
+}
+
+export interface BridgeServerRuntimeSyncPayload {
+  runtimeId: string;
+  renderId?: string;
+  url: string;
+  source?: string;
+  targets?: RuntimeTargetDescriptor[];
+  snapshot?: RuntimeSnapshot;
+  events?: GetEventsResult;
+  actions?: RuntimeActionDescriptor[];
+}
+
+export interface BridgeServerRuntimeSyncResponse {
+  runtimeId: string;
+  renderId?: string;
+  accepted: true;
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { once } from "node:events";
 import { createBridgeServer, type BridgeServer } from "@openruntime/bridge";
-import { createPackageInfo, OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
+import { createPackageInfo, OPEN_RUNTIME_BRIDGE_DEFAULT_PORT, type RuntimeDataCondition } from "@openruntime/core";
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
 import {
   fetchInputOptions,
@@ -116,7 +116,8 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
         runtime,
         targetId,
         status,
-        getNumberOption(args, "timeout")
+        getNumberOption(args, "timeout"),
+        parseWhereOptions(args)
       );
       writeJson(stdout, result);
       return 0;
@@ -176,6 +177,28 @@ function parsePayloadOption(args: ParsedCliArgs): Record<string, unknown> | unde
   }
 
   return parsed as Record<string, unknown>;
+}
+
+function parseWhereOptions(args: ParsedCliArgs): RuntimeDataCondition[] | undefined {
+  const values = getOptionValues(args, "where");
+  if (values.length === 0) return undefined;
+
+  return values.map((value) => {
+    const equalsIndex = value.indexOf("=");
+    if (equalsIndex <= 0) {
+      throw new Error("--where must use the form path=value.");
+    }
+
+    const path = value.slice(0, equalsIndex).trim();
+    if (path.length === 0) {
+      throw new Error("--where path must not be empty.");
+    }
+
+    return {
+      path,
+      equals: value.slice(equalsIndex + 1)
+    };
+  });
 }
 
 async function runBridgeCommand(
@@ -264,7 +287,7 @@ function createHelpText(): string {
     "  open-runtime targets|snapshot|events|actions [--bridge <url>] [--url <url> | --runtime <id>]",
     "  open-runtime input-options [--bridge <url>] [--url <url> | --runtime <id>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
     "  open-runtime run-action [--bridge <url>] [--url <url> | --runtime <id>] <action-name> [--payload <json>]",
-    "  open-runtime wait-for [--bridge <url>] [--url <url> | --runtime <id>] <target-id> <status> [--timeout <ms>]"
+    "  open-runtime wait-for [--bridge <url>] [--url <url> | --runtime <id>] <target-id> <status> [--where <path=value>] [--timeout <ms>]"
   ].join("\n");
 }
 

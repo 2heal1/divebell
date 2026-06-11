@@ -22,13 +22,19 @@ test("connects to bridge and responds to runtime read requests", async () => {
 
     const runtime = createOpenRuntime({ clock: createClock() });
     registerRoute(runtime);
-    runtime.updateSnapshot({ id: "route:/home", status: "ready" });
+    runtime.updateSnapshot({
+      id: "route:/home",
+      status: "ready",
+      data: {
+        matches: [{ pathname: "/home" }]
+      }
+    });
 
-    runtime.connectBridge({ port: 19001, autoReconnect: false });
+    runtime.connectBridge({ port: 19001, autoReconnect: false, pageInstanceId: "page-test" });
 
     const stream = FakeEventSource.instances[0];
     assert.ok(stream);
-    assert.equal(stream.url, "http://localhost:19001/connect?url=unknown");
+    assert.equal(stream.url, "http://localhost:19001/connect?url=unknown&pageInstanceId=page-test");
 
     stream.emit("connected", { runtimeId: "runtime-1" });
     stream.emit("request", {
@@ -53,6 +59,74 @@ test("connects to bridge and responds to runtime read requests", async () => {
   } finally {
     restoreGlobal("EventSource", previousEventSource);
     globalThis.fetch = previousFetch;
+    clearBridgeConnection();
+  }
+});
+
+test("opens a single bridge connection per browser global", () => {
+  const previousEventSource = globalThis.EventSource;
+
+  try {
+    FakeEventSource.instances = [];
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = FakeEventSource as unknown as typeof EventSource;
+
+    createOpenRuntime({ clock: createClock() }).connectBridge({ port: 19001, autoReconnect: false });
+    createOpenRuntime({ clock: createClock() }).connectBridge({ port: 19001, autoReconnect: false });
+
+    const firstUrl = FakeEventSource.instances[0]?.url;
+    assert.equal(FakeEventSource.instances.length, 1);
+    assert.equal(typeof firstUrl, "string");
+
+    const firstPageInstanceId = new URL(firstUrl as string).searchParams.get("pageInstanceId");
+    assert.match(firstPageInstanceId ?? "", /^page-/);
+  } finally {
+    restoreGlobal("EventSource", previousEventSource);
+    clearBridgeConnection();
+  }
+});
+
+test("passes runtime and render context when connecting to bridge", () => {
+  const previousEventSource = globalThis.EventSource;
+
+  try {
+    FakeEventSource.instances = [];
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = FakeEventSource as unknown as typeof EventSource;
+
+    createOpenRuntime({ clock: createClock() }).connectBridge({
+      port: 19001,
+      autoReconnect: false,
+      pageInstanceId: "page-test",
+      runtimeId: "runtime-ssr",
+      renderId: "render-ssr"
+    });
+
+    const stream = FakeEventSource.instances[0];
+    assert.ok(stream);
+    assert.equal(
+      stream.url,
+      "http://localhost:19001/connect?url=unknown&pageInstanceId=page-test&runtimeId=runtime-ssr&renderId=render-ssr"
+    );
+  } finally {
+    restoreGlobal("EventSource", previousEventSource);
+    clearBridgeConnection();
+  }
+});
+
+test("does not open duplicate bridge connections for the same runtime", () => {
+  const previousEventSource = globalThis.EventSource;
+
+  try {
+    FakeEventSource.instances = [];
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = FakeEventSource as unknown as typeof EventSource;
+
+    const runtime = createOpenRuntime({ clock: createClock() });
+    runtime.connectBridge({ port: 19001, autoReconnect: false });
+    runtime.connectBridge({ port: 19001, autoReconnect: false });
+
+    assert.equal(FakeEventSource.instances.length, 1);
+  } finally {
+    restoreGlobal("EventSource", previousEventSource);
+    clearBridgeConnection();
   }
 });
 
@@ -74,7 +148,13 @@ test("responds to runtime action and wait requests from bridge", async () => {
 
     const runtime = createOpenRuntime({ clock: createClock() });
     registerRoute(runtime);
-    runtime.updateSnapshot({ id: "route:/home", status: "ready" });
+    runtime.updateSnapshot({
+      id: "route:/home",
+      status: "ready",
+      data: {
+        matches: [{ pathname: "/home" }]
+      }
+    });
     runtime.registerAction({
       name: "route.pick",
       source: "test",
@@ -89,7 +169,7 @@ test("responds to runtime action and wait requests from bridge", async () => {
       })
     });
 
-    runtime.connectBridge({ port: 19001, autoReconnect: false });
+    runtime.connectBridge({ port: 19001, autoReconnect: false, pageInstanceId: "page-test" });
 
     const stream = FakeEventSource.instances[0];
     assert.ok(stream);
@@ -135,6 +215,12 @@ test("responds to runtime action and wait requests from bridge", async () => {
       method: "waitFor",
       targetId: "route:/home",
       status: "ready",
+      where: [
+        {
+          path: "matches.pathname",
+          equals: "/home"
+        }
+      ],
       options: {
         timeout: 100
       }
@@ -151,6 +237,7 @@ test("responds to runtime action and wait requests from bridge", async () => {
   } finally {
     restoreGlobal("EventSource", previousEventSource);
     globalThis.fetch = previousFetch;
+    clearBridgeConnection();
   }
 });
 
@@ -192,6 +279,10 @@ function restoreGlobal(name: "EventSource", value: typeof EventSource | undefine
     return;
   }
   (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = value;
+}
+
+function clearBridgeConnection(): void {
+  delete (globalThis as { __OPEN_RUNTIME_BRIDGE_CONNECTION__?: unknown }).__OPEN_RUNTIME_BRIDGE_CONNECTION__;
 }
 
 async function waitForMicrotasks(): Promise<void> {

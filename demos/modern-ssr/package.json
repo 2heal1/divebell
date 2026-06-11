@@ -1,0 +1,26 @@
+{
+  "name": "@openruntime/demo-modern-ssr",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "modern dev",
+    "build": "modern build",
+    "serve": "modern serve",
+    "verify": "node ./scripts/verify-openruntime.mjs"
+  },
+  "dependencies": {
+    "@modern-js/runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime",
+    "@modern-js/server-runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime",
+    "@openruntime/core": "workspace:^",
+    "@openruntime/modern-plugin": "workspace:^",
+    "react": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react",
+    "react-dom": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom"
+  },
+  "devDependencies": {
+    "@modern-js/app-tools": "link:/Users/bytedance/fork_repo/modern.js/packages/solutions/app-tools",
+    "@types/react": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react@19.2.14/node_modules/@types/react",
+    "@types/react-dom": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.14/node_modules/@types/react-dom",
+    "typescript": "5.9.3"
+  }
+}

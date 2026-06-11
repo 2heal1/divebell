@@ -1,10 +1,21 @@
 import type {
   BridgeRuntimeCommandName,
+  BridgeServerRuntimeSyncPayload,
   BridgeRuntimeQuery,
   BridgeRuntimeRequest,
   BridgeRuntimeResponse
 } from "@openruntime/core";
-import type { GetEventsResult, RuntimeSnapshot } from "@openruntime/core";
+import type {
+  GetActionsQuery,
+  GetEventsQuery,
+  GetEventsResult,
+  GetTargetsQuery,
+  RuntimeEvent,
+  RuntimeActionDescriptor,
+  RuntimeSnapshot,
+  RuntimeTargetDescriptor
+} from "@openruntime/core";
+import { BridgeHttpError } from "./http-utils.js";
 import type { BridgeRuntimeInfo } from "./types.js";
 
 export interface RuntimeStream {
@@ -24,6 +35,13 @@ interface RuntimeRecord {
   pending: Map<string, PendingRequest>;
   lastSnapshot?: RuntimeSnapshot;
   lastEvents?: GetEventsResult;
+  lastTargets?: RuntimeTargetDescriptor[];
+  lastActions?: RuntimeActionDescriptor[];
+  serverSnapshot?: RuntimeSnapshot;
+  serverEvents?: GetEventsResult;
+  runtimeEvents?: GetEventsResult;
+  serverTargets?: RuntimeTargetDescriptor[];
+  serverActions?: RuntimeActionDescriptor[];
 }
 
 export class RuntimeConnectionStore {
@@ -43,11 +61,36 @@ export class RuntimeConnectionStore {
     this.#idGenerator = options.idGenerator ?? (() => `runtime-${this.#clock.now().toString(36)}-${this.#runtimes.size + 1}`);
   }
 
-  connect(url: string, stream: RuntimeStream): BridgeRuntimeInfo {
+  connect(
+    url: string,
+    stream: RuntimeStream,
+    options: {
+      pageInstanceId?: string;
+      runtimeId?: string;
+      renderId?: string;
+    } = {}
+  ): BridgeRuntimeInfo {
     const now = this.#clock.now();
+    const existing = options.runtimeId === undefined ? undefined : this.#runtimes.get(options.runtimeId);
+    if (existing !== undefined) {
+      const { disconnectedAt: _disconnectedAt, ...activeInfo } = existing.info;
+      existing.info = {
+        ...activeInfo,
+        url,
+        ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
+        ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
+        status: "connected",
+        lastSeenAt: now
+      };
+      existing.stream = stream;
+      return { ...existing.info };
+    }
+
     const info: BridgeRuntimeInfo = {
-      runtimeId: this.#idGenerator(),
+      runtimeId: options.runtimeId ?? this.#idGenerator(),
       url,
+      ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
+      ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
       status: "connected",
       connectedAt: now,
       lastSeenAt: now
@@ -60,6 +103,49 @@ export class RuntimeConnectionStore {
     });
 
     return { ...info };
+  }
+
+  syncServerRuntime(input: BridgeServerRuntimeSyncPayload): BridgeRuntimeInfo {
+    const now = this.#clock.now();
+    const existing = this.#runtimes.get(input.runtimeId);
+    const existingInfo = existing?.info;
+    const { disconnectedAt: _disconnectedAt, ...activeInfo } = existingInfo ?? {
+      runtimeId: input.runtimeId,
+      connectedAt: now
+    };
+    const info: BridgeRuntimeInfo = {
+      ...activeInfo,
+      url: input.url,
+      ...(input.renderId === undefined ? {} : { renderId: input.renderId }),
+      ...(input.source === undefined ? {} : { source: input.source }),
+      status: existing?.stream === undefined ? "server" : "connected",
+      lastSeenAt: now
+    };
+
+    const record: RuntimeRecord = existing ?? {
+      info,
+      pending: new Map()
+    };
+    record.info = info;
+    if (input.targets !== undefined) {
+      record.serverTargets = input.targets;
+      record.lastTargets = input.targets;
+    }
+    if (input.snapshot !== undefined) {
+      record.serverSnapshot = input.snapshot;
+      record.lastSnapshot = mergeSnapshots(input.snapshot, record.lastSnapshot) ?? input.snapshot;
+    }
+    if (input.events !== undefined) {
+      record.serverEvents = input.events;
+      record.lastEvents = mergeEvents(record.serverEvents, record.runtimeEvents) ?? input.events;
+    }
+    if (input.actions !== undefined) {
+      record.serverActions = input.actions;
+      record.lastActions = input.actions;
+    }
+    this.#runtimes.set(input.runtimeId, record);
+
+    return { ...record.info };
   }
 
   disconnect(runtimeId: string, stream: RuntimeStream): void {
@@ -76,7 +162,7 @@ export class RuntimeConnectionStore {
 
     for (const [requestId, pending] of runtime.pending) {
       clearTimeout(pending.timer);
-      pending.reject(new Error(`Runtime "${runtimeId}" disconnected before responding to request "${requestId}".`));
+      pending.reject(createRuntimeDisconnectedError(`Runtime "${runtimeId}" disconnected before responding to request "${requestId}".`));
     }
     runtime.pending.clear();
   }
@@ -91,16 +177,13 @@ export class RuntimeConnectionStore {
         disconnectedAt: this.#clock.now(),
         lastSeenAt: this.#clock.now()
       };
-      for (const pending of runtime.pending.values()) {
-        clearTimeout(pending.timer);
-        pending.reject(new Error(`Runtime "${runtime.info.runtimeId}" disconnected.`));
-      }
-      runtime.pending.clear();
+      this.#rejectPending(runtime, createRuntimeDisconnectedError(`Runtime "${runtime.info.runtimeId}" disconnected.`));
     }
   }
 
   list(): BridgeRuntimeInfo[] {
     return Array.from(this.#runtimes.values())
+      .filter((runtime) => runtime.info.status !== "disconnected")
       .map((runtime) => ({ ...runtime.info }))
       .sort((left, right) => right.lastSeenAt - left.lastSeenAt);
   }
@@ -114,8 +197,28 @@ export class RuntimeConnectionStore {
     return this.#runtimes.get(runtimeId)?.lastSnapshot;
   }
 
-  getCachedEvents(runtimeId: string): GetEventsResult | undefined {
-    return this.#runtimes.get(runtimeId)?.lastEvents;
+  getCachedEvents(runtimeId: string, query?: BridgeRuntimeQuery): GetEventsResult | undefined {
+    const events = this.#runtimes.get(runtimeId)?.lastEvents;
+    if (events === undefined) return undefined;
+    return filterEvents(events, query as GetEventsQuery | undefined);
+  }
+
+  getCachedTargets(runtimeId: string, query?: BridgeRuntimeQuery): RuntimeTargetDescriptor[] | undefined {
+    const targets = this.#runtimes.get(runtimeId)?.lastTargets;
+    if (targets === undefined) return undefined;
+    return filterTargets(targets, query as GetTargetsQuery | undefined);
+  }
+
+  getCachedActions(runtimeId: string, query?: BridgeRuntimeQuery): RuntimeActionDescriptor[] | undefined {
+    const actions = this.#runtimes.get(runtimeId)?.lastActions;
+    if (actions === undefined) return undefined;
+    return filterActions(actions, query as GetActionsQuery | undefined);
+  }
+
+  hasCachedTarget(runtimeId: string, targetId: string): boolean {
+    const runtime = this.#runtimes.get(runtimeId);
+    return runtime?.lastSnapshot?.targets[targetId] !== undefined
+      || runtime?.lastTargets?.some((target) => target.id === targetId) === true;
   }
 
   cacheResult(runtimeId: string, method: BridgeRuntimeCommandName, result: unknown): void {
@@ -123,9 +226,15 @@ export class RuntimeConnectionStore {
     if (runtime === undefined) return;
 
     if (method === "getSnapshot") {
-      runtime.lastSnapshot = result as RuntimeSnapshot;
+      const snapshot = result as RuntimeSnapshot;
+      runtime.lastSnapshot = mergeSnapshots(runtime.serverSnapshot, snapshot) ?? snapshot;
     } else if (method === "getEvents") {
-      runtime.lastEvents = result as GetEventsResult;
+      runtime.runtimeEvents = result as GetEventsResult;
+      runtime.lastEvents = mergeEvents(runtime.serverEvents, runtime.runtimeEvents) ?? runtime.runtimeEvents;
+    } else if (method === "getTargets") {
+      runtime.lastTargets = mergeTargets(runtime.serverTargets, result as RuntimeTargetDescriptor[]);
+    } else if (method === "getActions") {
+      runtime.lastActions = mergeActions(runtime.serverActions, result as RuntimeActionDescriptor[]);
     }
   }
 
@@ -186,4 +295,188 @@ export class RuntimeConnectionStore {
 
     return true;
   }
+
+  #rejectPending(runtime: RuntimeRecord, error: Error): void {
+    for (const pending of runtime.pending.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    runtime.pending.clear();
+  }
+}
+
+function createRuntimeDisconnectedError(message: string): BridgeHttpError {
+  return new BridgeHttpError(409, "runtime_disconnected", message);
+}
+
+function mergeSnapshots(
+  serverSnapshot: RuntimeSnapshot | undefined,
+  runtimeSnapshot: RuntimeSnapshot | undefined
+): RuntimeSnapshot | undefined {
+  if (serverSnapshot === undefined) {
+    return runtimeSnapshot;
+  }
+  if (runtimeSnapshot === undefined) {
+    return serverSnapshot;
+  }
+
+  return {
+    targets: {
+      ...serverSnapshot.targets,
+      ...runtimeSnapshot.targets
+    },
+    latestEventId: Math.max(serverSnapshot.latestEventId, runtimeSnapshot.latestEventId),
+    capturedAt: Math.max(serverSnapshot.capturedAt, runtimeSnapshot.capturedAt)
+  };
+}
+
+function mergeTargets(
+  serverTargets: RuntimeTargetDescriptor[] | undefined,
+  runtimeTargets: RuntimeTargetDescriptor[]
+): RuntimeTargetDescriptor[] {
+  if (serverTargets === undefined || serverTargets.length === 0) {
+    return runtimeTargets;
+  }
+
+  const merged = new Map(serverTargets.map((target) => [target.id, target]));
+  for (const target of runtimeTargets) {
+    merged.set(target.id, target);
+  }
+
+  return [...merged.values()];
+}
+
+function mergeActions(
+  serverActions: RuntimeActionDescriptor[] | undefined,
+  runtimeActions: RuntimeActionDescriptor[]
+): RuntimeActionDescriptor[] {
+  if (serverActions === undefined || serverActions.length === 0) {
+    return runtimeActions;
+  }
+
+  const merged = new Map(serverActions.map((action) => [action.name, action]));
+  for (const action of runtimeActions) {
+    merged.set(action.name, action);
+  }
+
+  return [...merged.values()];
+}
+
+function mergeEvents(
+  serverEvents: GetEventsResult | undefined,
+  runtimeEvents: GetEventsResult | undefined
+): GetEventsResult | undefined {
+  if (serverEvents === undefined) {
+    return runtimeEvents;
+  }
+  if (runtimeEvents === undefined) {
+    return serverEvents;
+  }
+
+  return {
+    events: mergeEventList(serverEvents.events, runtimeEvents.events),
+    latestEventId: Math.max(serverEvents.latestEventId, runtimeEvents.latestEventId),
+    truncated: serverEvents.truncated || runtimeEvents.truncated
+  };
+}
+
+function mergeEventList(serverEvents: RuntimeEvent[], runtimeEvents: RuntimeEvent[]): RuntimeEvent[] {
+  const merged = new Map<string, RuntimeEvent>();
+  for (const event of [...serverEvents, ...runtimeEvents]) {
+    merged.set(getEventKey(event), event);
+  }
+
+  return [...merged.values()].sort((left, right) => {
+    if (left.timestamp !== right.timestamp) return left.timestamp - right.timestamp;
+    return left.id - right.id;
+  });
+}
+
+function getEventKey(event: RuntimeEvent): string {
+  return [
+    event.source,
+    event.id,
+    event.timestamp,
+    event.type,
+    event.targetId ?? "",
+    event.actionName ?? "",
+    event.status ?? ""
+  ].join(":");
+}
+
+function filterTargets(
+  targets: RuntimeTargetDescriptor[],
+  query: GetTargetsQuery | undefined
+): RuntimeTargetDescriptor[] {
+  if (query === undefined) return targets;
+
+  return targets.filter((target) => {
+    if (!matchesQueryValue(target.id, query.id)) return false;
+    if (!matchesQueryValue(target.type, query.type)) return false;
+    if (!matchesQueryValue(target.source, query.source)) return false;
+    if (query.query !== undefined && !target.id.includes(query.query) && !target.type.includes(query.query)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function filterActions(
+  actions: RuntimeActionDescriptor[],
+  query: GetActionsQuery | undefined
+): RuntimeActionDescriptor[] {
+  if (query === undefined) return actions;
+
+  return actions.filter((action) => {
+    if (!matchesQueryValue(action.source, query.source)) return false;
+    if (query.query !== undefined && !action.name.includes(query.query) && !action.description?.includes(query.query)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function filterEvents(
+  result: GetEventsResult,
+  query: GetEventsQuery | undefined
+): GetEventsResult {
+  if (query === undefined) return result;
+
+  const filtered = result.events.filter((event) => matchesEvent(event, query));
+  const limit = normalizeLimit(query.limit);
+  const truncated = result.truncated || filtered.length > limit;
+  const events = truncated ? filtered.slice(filtered.length - limit) : filtered;
+  return {
+    events,
+    latestEventId: result.latestEventId,
+    truncated
+  };
+}
+
+function matchesEvent(event: RuntimeEvent, query: GetEventsQuery): boolean {
+  if (query.since !== undefined && event.id <= query.since) {
+    return false;
+  }
+
+  return (
+    matchesQueryValue(event.targetId, query.targetId) &&
+    matchesQueryValue(event.actionName, query.actionName) &&
+    matchesQueryValue(event.type, query.type) &&
+    matchesQueryValue(event.source, query.source) &&
+    matchesQueryValue(event.status, query.status)
+  );
+}
+
+function normalizeLimit(limit: number | undefined): number {
+  if (limit === undefined || !Number.isFinite(limit) || limit < 1) {
+    return 100;
+  }
+
+  return Math.floor(limit);
+}
+
+function matchesQueryValue(value: string | undefined, expected: string | string[] | undefined): boolean {
+  if (expected === undefined) return true;
+  if (value === undefined) return false;
+  return Array.isArray(expected) ? expected.includes(value) : value === expected;
 }

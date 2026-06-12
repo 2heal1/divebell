@@ -42,7 +42,7 @@ jobs:
 
       - name: Publish preview packages
         run: >
-          pnpm dlx pkg-pr-new publish
+          pnpm exec pkg-pr-new publish
           --pnpm
           --packageManager=pnpm
           --comment=update

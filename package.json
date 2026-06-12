@@ -22,6 +22,7 @@
     "@changesets/cli": "2.31.0",
     "@openruntime/cli": "workspace:^",
     "@types/node": "24.13.1",
+    "pkg-pr-new": "0.0.75",
     "typescript": "5.9.3"
   },
   "pnpm": {

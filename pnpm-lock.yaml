@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: 24.13.1
         version: 24.13.1
+      pkg-pr-new:
+        specifier: 0.0.75
+        version: 0.0.75
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -592,6 +595,10 @@ packages:
     resolution: {integrity: sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g==}
     engines: {node: '>=6'}
 
+  pkg-pr-new@0.0.75:
+    resolution: {integrity: sha512-u9mdErTewKSMsr+ceCt8VcNuNP0ro5AXiPXhUVApuEyqr2Zlvt+DdCFBcm+yGWN8mhOdZJ27meIDbnoZgfzpOw==}
+    hasBin: true
+
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
@@ -1157,6 +1164,8 @@ snapshots:
   picomatch@2.3.2: {}
 
   pify@4.0.1: {}
+
+  pkg-pr-new@0.0.75: {}
 
   prettier@2.8.8: {}
 

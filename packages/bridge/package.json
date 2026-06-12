@@ -1,7 +1,6 @@
 {
   "name": "@openruntime/bridge",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +13,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -b --pretty false",
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"

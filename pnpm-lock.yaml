@@ -172,9 +172,6 @@ importers:
         specifier: workspace:^
         version: link:../core
     devDependencies:
-      '@modern-js/runtime':
-        specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
-        version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
       '@rstest/core':
         specifier: 0.10.3
         version: 0.10.3

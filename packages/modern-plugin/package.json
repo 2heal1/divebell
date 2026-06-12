@@ -1,7 +1,6 @@
 {
   "name": "@openruntime/modern-plugin",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +13,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -b --pretty false",
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
@@ -25,7 +27,6 @@
     "@modern-js/runtime": ">=3.2.2"
   },
   "devDependencies": {
-    "@modern-js/runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime",
     "@rstest/core": "0.10.3"
   }
 }

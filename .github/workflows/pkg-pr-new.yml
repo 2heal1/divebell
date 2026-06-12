@@ -51,4 +51,3 @@ jobs:
           packages/bridge
           packages/cli
           packages/modern-plugin
-          packages/mf-runtime-plugin

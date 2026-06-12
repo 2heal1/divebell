@@ -32,7 +32,8 @@
   },
   "dependencies": {
     "@openruntime/bridge": "workspace:^",
-    "@openruntime/core": "workspace:^"
+    "@openruntime/core": "workspace:^",
+    "@vercel/next-browser": "0.7.1"
   },
   "devDependencies": {
     "@rstest/core": "0.10.3"

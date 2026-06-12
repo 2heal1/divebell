@@ -1,5 +1,4 @@
 import type { BridgeConnectOptions, OpenRuntimeCore, OpenRuntimeWindowHost } from "@openruntime/core";
-import type { RuntimePlugin } from "@modern-js/runtime";
 import type {
   ModernHydrationEvent,
   ModernRenderContext,
@@ -17,7 +16,8 @@ export interface OpenRuntimeModernPluginOptions {
   host?: OpenRuntimeWindowHost;
 }
 
-export interface ModernRuntimePlugin extends Omit<RuntimePlugin, "setup"> {
+export interface ModernRuntimePlugin {
+  name: string;
   setup(api: ModernRuntimePluginApi): void;
 }
 

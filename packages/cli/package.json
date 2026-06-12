@@ -1,8 +1,13 @@
 {
   "name": "@openruntime/cli",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2heal1/openruntime.git",
+    "directory": "packages/cli"
+  },
+  "author": "2heal1",
   "bin": {
     "open-runtime": "./dist/index.js",
     "openruntime": "./dist/index.js"
@@ -18,6 +23,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -b --pretty false",
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"

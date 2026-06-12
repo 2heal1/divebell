@@ -2,6 +2,12 @@
   "name": "@openruntime/modern-plugin",
   "version": "0.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2heal1/openruntime.git",
+    "directory": "packages/modern-plugin"
+  },
+  "author": "2heal1",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

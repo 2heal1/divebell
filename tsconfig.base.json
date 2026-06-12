@@ -9,8 +9,7 @@
       "@openruntime/core": ["packages/core/src/index.ts"],
       "@openruntime/bridge": ["packages/bridge/src/index.ts"],
       "@openruntime/cli": ["packages/cli/src/index.ts"],
-      "@openruntime/modern-plugin": ["packages/modern-plugin/src/index.ts"],
-      "@openruntime/mf-runtime-plugin": ["packages/mf-runtime-plugin/src/index.ts"]
+      "@openruntime/modern-plugin": ["packages/modern-plugin/src/index.ts"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -24,4 +23,3 @@
     "forceConsistentCasingInFileNames": true
   }
 }
-

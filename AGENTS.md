@@ -27,7 +27,7 @@ OpenRuntime 要让前端应用把运行时状态、事件、可等待目标和�
 
 OpenRuntime 的 Modern.js 接入后续应以 Modern.js plugin 的形式完成，不要写成独立外置 adapter。这个 plugin 负责注册和更新 Modern.js 能直接知道的 target，例如 app、route、loader、route component、SSR、hydration 和 navigation。
 
-OpenRuntime 的 Module Federation 接入后续应以 MF runtimePlugin 的形式完成，并优先复用 MF observability 能力。这个 runtimePlugin 负责注册和更新 MF 能直接知道的 target，例如 consumer、remote、manifest、remoteEntry、expose、shared 和 runtime error。
+OpenRuntime 的 Module Federation 接入后续应在 MF 仓库的 observability plugin 中完成，并优先复用 MF observability 能力。这个接入负责注册和更新 MF 能直接知道的 target，例如 consumer、remote、manifest、remoteEntry、expose、shared 和 runtime error。
 
 这些 plugin 需要依赖 Modern.js / MF 暴露的 hook。如果现有 hook 不够，不要在 OpenRuntime 里绕开框架做脆弱探测，应优先在 Modern.js 或 MF 里补 hook。
 
@@ -50,5 +50,5 @@ OpenRuntime 的 Module Federation 接入后续应以 MF runtimePlugin 的形式�
 - 不要从旧文档里的 `items + relations`、`from/to`、`RuntimeRelationEvent`、`waitForEvent`、`action expect` 反推第一版 API。
 - 不要只基于 DOM、console 或 network 定义成功标准；OpenRuntime 的重点是结构化 target、snapshot、event 和 action。
 - 写 Modern.js 接入方案时，按 Modern.js plugin 思路设计，优先使用或补齐框架 hook。
-- 写 MF 接入方案时，按 MF runtimePlugin 思路设计，优先使用已安装的 MF skill，尤其是 observability、remote、shared 和 runtime error 相关能力。
+- 写 MF 接入方案时，优先在 MF observability plugin 中接入 OpenRuntime，使用已安装的 MF skill，尤其是 observability、remote、shared 和 runtime error 相关能力。
 - 如果实现需要新的生命周期或运行时信号，先判断应该补在 Modern.js / MF hook 里，还是补在 OpenRuntime SDK API 里。

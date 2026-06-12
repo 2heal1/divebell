@@ -4,8 +4,6 @@
     { "path": "./packages/core" },
     { "path": "./packages/bridge" },
     { "path": "./packages/cli" },
-    { "path": "./packages/modern-plugin" },
-    { "path": "./packages/mf-runtime-plugin" }
+    { "path": "./packages/modern-plugin" }
   ]
 }
-

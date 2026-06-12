@@ -31,7 +31,8 @@ pnpm check
 2. `packages/bridge`：页面和外部 Agent 通信的 Bridge 实现位置。
 3. `packages/cli`：Agent 读取状态、执行动作和等待结果的命令行入口。
 4. `packages/modern-plugin`：Modern.js plugin 接入位置。
-5. `packages/mf-runtime-plugin`：Module Federation runtimePlugin 接入位置。
+
+Module Federation 接入目前在 MF 仓库的 observability plugin 中推进，不再在本仓库维护独立接入包。
 
 根目录命令：
 

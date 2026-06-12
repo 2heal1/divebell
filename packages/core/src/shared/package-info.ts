@@ -4,8 +4,7 @@ export type OpenRuntimePackageName =
   | "@openruntime/core"
   | "@openruntime/bridge"
   | "@openruntime/cli"
-  | "@openruntime/modern-plugin"
-  | "@openruntime/mf-runtime-plugin";
+  | "@openruntime/modern-plugin";
 
 export interface OpenRuntimePackageInfo {
   name: OpenRuntimePackageName;

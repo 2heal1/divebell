@@ -7,8 +7,7 @@
       "@openruntime/core",
       "@openruntime/bridge",
       "@openruntime/cli",
-      "@openruntime/modern-plugin",
-      "@openruntime/mf-runtime-plugin"
+      "@openruntime/modern-plugin"
     ]
   ],
   "linked": [],

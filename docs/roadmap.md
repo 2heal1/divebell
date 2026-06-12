@@ -4,7 +4,7 @@
 
 OpenRuntime 要提供一套应用可写入、Agent 可读取和执行的运行时能力，让 AI coding 可以稳定完成页面验证、问题定位和修复闭环。
 
-第一版以本地开发和 demo 验证为主，先跑通 SDK、Bridge、CLI、Modern.js plugin、MF runtimePlugin 和 Agent 使用方式的闭环。
+第一版以本地开发和 demo 验证为主，先跑通 SDK、Bridge、CLI、Modern.js plugin、MF observability 接入和 Agent 使用方式的闭环。
 
 ## 阶段 0：项目基础
 
@@ -13,7 +13,7 @@ OpenRuntime 要提供一套应用可写入、Agent 可读取和执行的运行�
 Checklist：
 
 - [x] 确定包管理器、构建工具和测试工具。
-- [x] 建立基础目录，例如 `packages/core`、`packages/bridge`、`packages/cli`、`packages/modern-plugin`、`packages/mf-runtime-plugin`。
+- [x] 建立基础目录，例如 `packages/core`、`packages/bridge`、`packages/cli`、`packages/modern-plugin`。
 - [x] 定义 TypeScript 编译、test、build 命令。
 - [x] 建立最小测试样例，确保本地 CI 命令可运行。
 - [x] 保留 `docs/rfc-openruntime.md` 作为 API 来源，避免实现时从旧设计反推。
@@ -94,15 +94,15 @@ Checklist：
 - [x] SSR / hydration 场景完成 demo 验证。
 - [x] route component 加载失败场景完成 demo 验证。
 
-## 阶段 4：MF RuntimePlugin
+## 阶段 4：MF Observability 接入
 
-目标：通过 MF runtimePlugin 自动写入模块加载状态。
+目标：在 MF 仓库的 observability plugin 中接入 OpenRuntime，自动写入模块加载状态。
 
 Checklist：
 
 - [ ] 复用已安装 MF skill 和 MF observability 能力，确认可读取的 runtime 信号。
-- [ ] 梳理 MF runtimePlugin 可用 hook：instance、remotes、manifest、remoteEntry、expose、shared、runtime error。
-- [ ] 标记缺失 hook；缺失时优先在 MF runtimePlugin 或 MF runtime 中补 hook。
+- [ ] 梳理 MF observability 可用信号：consumer、remote、manifest、remoteEntry、expose、shared、runtime error。
+- [ ] 标记缺失 hook；缺失时优先在 MF observability plugin 或 MF runtime 中补 hook。
 - [ ] 注册 consumer、remote、manifest、remoteEntry、expose、shared target。
 - [ ] 在加载开始、成功、失败时更新 Snapshot 和 Event。
 - [ ] 和 Modern.js plugin 协作补充 route 到 remote / expose 的 `dependsOn`。

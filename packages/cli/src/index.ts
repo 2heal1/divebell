@@ -11,9 +11,12 @@ import {
   type BrowserRunner
 } from "./browser.js";
 import {
+  createFileBridgeStateStore,
   createDetachedBridgeStarter,
   ensureBridge,
+  stopManagedBridge,
   waitForSelectedRuntime,
+  type BridgeProcessController,
   type BridgeStarter
 } from "./bridge-process.js";
 import {
@@ -44,6 +47,8 @@ export interface CliRunOptions {
   fetcher?: Fetcher;
   browserRunner?: BrowserRunner;
   bridgeStarter?: BridgeStarter;
+  bridgeProcessController?: BridgeProcessController;
+  bridgeStateDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
 }
 
@@ -61,12 +66,20 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       return 0;
     }
 
-    if (args.command[0] === "bridge") {
-      return await runBridgeCommand(args, stdout, fetcher, options.waitUntilClosed);
+    if (args.command[0] === "__bridge-server") {
+      return await runBridgeServerCommand(args, stdout, options.waitUntilClosed);
+    }
+
+    if (args.command[0] === "start") {
+      return await runStartCommand(args, stdout, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+    }
+
+    if (args.command[0] === "stop") {
+      return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), options.bridgeProcessController);
     }
 
     if (isBrowserCommand(args.command[0])) {
-      return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter);
+      return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
     }
 
     if (args.command[0] === "runtimes") {
@@ -129,7 +142,7 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
       const bridgeUrl = createBridgeUrl(args);
-      const runtime = await selectRuntimeForWait(args, fetcher, bridgeUrl, browserRunner, bridgeStarter);
+      const runtime = await selectRuntimeForWait(args, fetcher, bridgeUrl, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const result = await waitForRuntime(
         fetcher,
         bridgeUrl,
@@ -227,7 +240,8 @@ async function runBrowserCliCommand(
   stderr: { write(chunk: string): void },
   fetcher: Fetcher,
   browserRunner: BrowserRunner,
-  bridgeStarter: BridgeStarter
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
@@ -237,6 +251,7 @@ async function runBrowserCliCommand(
         fetcher,
         bridgeUrl: createBridgeUrl(args),
         starter: bridgeStarter,
+        stateStore: bridgeStateStore,
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
@@ -263,7 +278,8 @@ async function selectRuntimeForWait(
   fetcher: Fetcher,
   bridgeUrl: string,
   browserRunner: BrowserRunner,
-  bridgeStarter: BridgeStarter
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>
 ) {
   const selector = createRuntimeSelector(args);
   try {
@@ -279,6 +295,7 @@ async function selectRuntimeForWait(
       fetcher,
       bridgeUrl,
       starter: bridgeStarter,
+      stateStore: bridgeStateStore,
       ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
     });
     await runBrowserOrThrow(browserRunner, ["open", url]);
@@ -289,6 +306,47 @@ async function selectRuntimeForWait(
       ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout"))
     });
   }
+}
+
+async function runStartCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  fetcher: Fetcher,
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>
+): Promise<number> {
+  const result = await ensureBridge({
+    fetcher,
+    bridgeUrl: createBridgeUrl(args),
+    starter: bridgeStarter,
+    stateStore: bridgeStateStore,
+    ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+  });
+  writeJson(stdout, result);
+  return 0;
+}
+
+async function runStopCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  bridgeProcessController: BridgeProcessController | undefined
+): Promise<number> {
+  const closeResult = await browserRunner.run(["close"]);
+  const bridgeResult = await stopManagedBridge({
+    bridgeUrl: createBridgeUrl(args),
+    stateStore: bridgeStateStore,
+    ...createOptionalObjectProperty("processController", bridgeProcessController)
+  });
+  writeJson(stdout, {
+    browser: {
+      command: "close",
+      exitCode: closeResult.exitCode
+    },
+    bridge: bridgeResult
+  });
+  return 0;
 }
 
 function createBridgeUrl(args: ParsedCliArgs): string {
@@ -303,6 +361,10 @@ function createBridgeUrl(args: ParsedCliArgs): string {
   }
 
   return normalizeBridgeUrl(undefined);
+}
+
+function createBridgeStateStore(args: ParsedCliArgs, stateDirectory: string | undefined): ReturnType<typeof createFileBridgeStateStore> {
+  return createFileBridgeStateStore(createBridgeUrl(args), stateDirectory);
 }
 
 function createOpenBrowserArgs(args: ParsedCliArgs, url: string): string[] {
@@ -443,6 +505,13 @@ function createOptionalNumberProperty<Name extends string>(
   return value === undefined ? {} : { [name]: value } as Record<Name, number>;
 }
 
+function createOptionalObjectProperty<Name extends string, Value extends object>(
+  name: Name,
+  value: Value | undefined
+): Record<Name, Value> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, Value>;
+}
+
 function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "close" {
   return command === "open" ||
     command === "goto" ||
@@ -456,39 +525,22 @@ function isBrowserCommand(command: string | undefined): command is "open" | "got
     command === "close";
 }
 
-async function runBridgeCommand(
+async function runBridgeServerCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
-  fetcher: Fetcher,
   waitUntilClosed: ((server: BridgeServer) => Promise<void>) | undefined
 ): Promise<number> {
-  const subcommand = args.command[1];
-
-  if (subcommand === "start") {
-    const server = createBridgeServer();
-    const address = await server.listen({
-      port: getNumberOption(args, "port") ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT
-    });
-    stdout.write(`OpenRuntime Bridge listening on ${address.url}\n`);
-    if (waitUntilClosed !== undefined) {
-      await waitUntilClosed(server);
-    } else {
-      await waitForProcessExit(server);
-    }
-    return 0;
+  const server = createBridgeServer();
+  const address = await server.listen({
+    port: getNumberOption(args, "port") ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT
+  });
+  stdout.write(`OpenRuntime Bridge listening on ${address.url}\n`);
+  if (waitUntilClosed !== undefined) {
+    await waitUntilClosed(server);
+  } else {
+    await waitForProcessExit(server);
   }
-
-  if (subcommand === "status") {
-    const bridgeUrl = normalizeBridgeUrl(getOptionValue(args, "bridge"));
-    const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    writeJson(stdout, {
-      bridgeUrl,
-      runtimes
-    });
-    return 0;
-  }
-
-  throw new Error(`Unknown bridge command "${subcommand ?? ""}".`);
+  return 0;
 }
 
 function createQuery(args: ParsedCliArgs, command: string): URLSearchParams {
@@ -536,6 +588,8 @@ function writeJson(stdout: { write(chunk: string): void }, value: unknown): void
 function createHelpText(): string {
   return [
     "Usage:",
+    "  open-runtime start [--port <port>]",
+    "  open-runtime stop [--port <port>]",
     "  open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]",
     "  open-runtime goto <url>",
     "  open-runtime page-snapshot",
@@ -546,8 +600,6 @@ function createHelpText(): string {
     "  open-runtime get-window <path>",
     "  open-runtime screenshot [name] [--full-page]",
     "  open-runtime close",
-    "  open-runtime bridge start [--port <port>]",
-    "  open-runtime bridge status [--bridge <url>]",
     "  open-runtime runtimes [--bridge <url>]",
     "  open-runtime targets|snapshot|events|actions [--bridge <url>] [--url <url> | --runtime <id>]",
     "  open-runtime input-options [--bridge <url>] [--url <url> | --runtime <id>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",

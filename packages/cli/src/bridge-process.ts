@@ -1,3 +1,6 @@
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
@@ -9,16 +12,58 @@ export interface BridgeStartOptions {
   port: number;
 }
 
+export interface BridgeStartResult {
+  pid?: number;
+}
+
 export interface BridgeStarter {
-  start(options: BridgeStartOptions): Promise<void>;
+  start(options: BridgeStartOptions): Promise<BridgeStartResult | void>;
+}
+
+export interface ManagedBridgeState {
+  bridgeUrl: string;
+  pid: number;
+  port: number;
+  startedAt: number;
+}
+
+export interface BridgeStateStore {
+  read(): Promise<ManagedBridgeState | undefined>;
+  write(state: ManagedBridgeState): Promise<void>;
+  remove(): Promise<void>;
+}
+
+export interface BridgeProcessController {
+  isRunning(pid: number): boolean;
+  stop(pid: number): void;
 }
 
 export interface EnsureBridgeOptions {
   fetcher: Fetcher;
   bridgeUrl: string;
   starter: BridgeStarter;
+  stateStore?: BridgeStateStore;
   port?: number;
   timeout?: number;
+}
+
+export interface EnsureBridgeResult {
+  bridgeUrl: string;
+  pid?: number;
+  status: "running" | "started";
+}
+
+export interface StopBridgeOptions {
+  bridgeUrl: string;
+  stateStore: BridgeStateStore;
+  processController?: BridgeProcessController;
+}
+
+export interface StopBridgeResult {
+  bridgeUrl: string;
+  pid?: number;
+  stopped: boolean;
+  reason?: string;
 }
 
 export interface WaitForRuntimeSelectionOptions {
@@ -33,8 +78,7 @@ export function createDetachedBridgeStarter(entryModuleUrl: string): BridgeStart
     start: async ({ port }) => {
       const child = spawn(process.execPath, [
         fileURLToPath(entryModuleUrl),
-        "bridge",
-        "start",
+        "__bridge-server",
         "--port",
         String(port)
       ], {
@@ -42,14 +86,43 @@ export function createDetachedBridgeStarter(entryModuleUrl: string): BridgeStart
         stdio: "ignore"
       });
       child.unref();
+      return child.pid === undefined ? {} : { pid: child.pid };
     }
   };
 }
 
-export async function ensureBridge(options: EnsureBridgeOptions): Promise<void> {
+export function createFileBridgeStateStore(
+  bridgeUrl: string,
+  stateDirectory = join(homedir(), ".openruntime")
+): BridgeStateStore {
+  const stateFile = join(stateDirectory, `${createStateFileName(bridgeUrl)}.json`);
+  return {
+    read: async () => {
+      try {
+        const parsed: unknown = JSON.parse(await readFile(stateFile, "utf8"));
+        if (!isManagedBridgeState(parsed)) return undefined;
+        return parsed;
+      } catch {
+        return undefined;
+      }
+    },
+    write: async (state) => {
+      await mkdir(stateDirectory, { recursive: true });
+      await writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+    },
+    remove: async () => {
+      await rm(stateFile, { force: true });
+    }
+  };
+}
+
+export async function ensureBridge(options: EnsureBridgeOptions): Promise<EnsureBridgeResult> {
   const firstProbe = await probeBridge(options.fetcher, options.bridgeUrl);
   if (firstProbe === "available") {
-    return;
+    return {
+      bridgeUrl: options.bridgeUrl,
+      status: "running"
+    };
   }
   if (firstProbe === "wrong-service") {
     throw new Error(`A non-OpenRuntime service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
@@ -57,15 +130,27 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<void> 
 
   const port = options.port ?? getBridgePort(options.bridgeUrl);
   if (port === undefined || !canAutoStartBridge(options.bridgeUrl)) {
-    throw new Error(`OpenRuntime Bridge is not reachable at ${options.bridgeUrl}. Start it with "open-runtime bridge start" or use a local --bridge URL.`);
+    throw new Error(`OpenRuntime Bridge is not reachable at ${options.bridgeUrl}. Start it with "open-runtime start" or use a local --bridge URL.`);
   }
 
-  await options.starter.start({ port });
+  const startResult = await options.starter.start({ port });
   const deadline = Date.now() + (options.timeout ?? 5000);
   while (Date.now() <= deadline) {
     const probe = await probeBridge(options.fetcher, options.bridgeUrl);
     if (probe === "available") {
-      return;
+      if (startResult?.pid !== undefined && options.stateStore !== undefined) {
+        await options.stateStore.write({
+          bridgeUrl: options.bridgeUrl,
+          pid: startResult.pid,
+          port,
+          startedAt: Date.now()
+        });
+      }
+      return {
+        bridgeUrl: options.bridgeUrl,
+        status: "started",
+        ...createOptionalNumberProperty("pid", startResult?.pid)
+      };
     }
     if (probe === "wrong-service") {
       throw new Error(`A non-OpenRuntime service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
@@ -74,6 +159,44 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<void> 
   }
 
   throw new Error(`OpenRuntime Bridge did not become available at ${options.bridgeUrl}.`);
+}
+
+export async function stopManagedBridge(options: StopBridgeOptions): Promise<StopBridgeResult> {
+  const processController = options.processController ?? defaultBridgeProcessController;
+  const state = await options.stateStore.read();
+  if (state === undefined) {
+    return {
+      bridgeUrl: options.bridgeUrl,
+      stopped: false,
+      reason: "No OpenRuntime Bridge process started by this CLI was found."
+    };
+  }
+
+  if (normalizeUrl(state.bridgeUrl) !== normalizeUrl(options.bridgeUrl)) {
+    return {
+      bridgeUrl: options.bridgeUrl,
+      stopped: false,
+      reason: `Tracked Bridge is ${state.bridgeUrl}, not ${options.bridgeUrl}.`
+    };
+  }
+
+  if (!processController.isRunning(state.pid)) {
+    await options.stateStore.remove();
+    return {
+      bridgeUrl: options.bridgeUrl,
+      pid: state.pid,
+      stopped: false,
+      reason: "Tracked OpenRuntime Bridge process is no longer running."
+    };
+  }
+
+  processController.stop(state.pid);
+  await options.stateStore.remove();
+  return {
+    bridgeUrl: options.bridgeUrl,
+    pid: state.pid,
+    stopped: true
+  };
 }
 
 export async function waitForSelectedRuntime(
@@ -146,6 +269,48 @@ function canAutoStartBridge(bridgeUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+function createStateFileName(bridgeUrl: string): string {
+  return `bridge-${bridgeUrl.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+}
+
+function isManagedBridgeState(value: unknown): value is ManagedBridgeState {
+  if (value === null || typeof value !== "object") return false;
+  const state = value as Partial<ManagedBridgeState>;
+  return typeof state.bridgeUrl === "string" &&
+    typeof state.pid === "number" &&
+    typeof state.port === "number" &&
+    typeof state.startedAt === "number";
+}
+
+const defaultBridgeProcessController: BridgeProcessController = {
+  isRunning: (pid) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  stop: (pid) => {
+    process.kill(pid, "SIGTERM");
+  }
+};
+
+function normalizeUrl(value: string): string {
+  try {
+    return new URL(value).toString();
+  } catch {
+    return value;
+  }
+}
+
+function createOptionalNumberProperty<Name extends string>(
+  name: Name,
+  value: number | undefined
+): Record<Name, number> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, number>;
 }
 
 function sleep(milliseconds: number): Promise<void> {

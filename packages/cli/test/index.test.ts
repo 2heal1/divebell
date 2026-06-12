@@ -328,6 +328,116 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
 });
 
+test("starts the bridge in the background and returns after it is reachable", async () => {
+  const output = createOutput();
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  let bridgeStarted = false;
+
+  try {
+    const exitCode = await runCli(["start", "--port", "18081"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      bridgeStateDirectory: stateDirectory,
+      fetcher: async (url) => {
+        assert.equal(String(url), "http://localhost:18081/runtimes");
+        if (!bridgeStarted) {
+          throw new TypeError("fetch failed");
+        }
+        return jsonResponse({ runtimes: [] });
+      },
+      bridgeStarter: {
+        start: async ({ port }) => {
+          assert.equal(port, 18081);
+          bridgeStarted = true;
+          return { pid: 12345 };
+        }
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(JSON.parse(output.text()), {
+      bridgeUrl: "http://localhost:18081",
+      pid: 12345,
+      status: "started"
+    });
+  } finally {
+    rmSync(stateDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("stops by closing the browser session before stopping the bridge", async () => {
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const order: string[] = [];
+  let bridgeStarted = false;
+
+  try {
+    assert.equal(await runCli(["start", "--port", "18082"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      bridgeStateDirectory: stateDirectory,
+      fetcher: async () => {
+        if (!bridgeStarted) {
+          throw new TypeError("fetch failed");
+        }
+        return jsonResponse({ runtimes: [] });
+      },
+      bridgeStarter: {
+        start: async () => {
+          bridgeStarted = true;
+          return { pid: 23456 };
+        }
+      }
+    }), 0);
+
+    const output = createOutput();
+    const exitCode = await runCli(["stop", "--port", "18082"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      bridgeStateDirectory: stateDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        order.push(args.join(" "));
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: ""
+        };
+      }),
+      bridgeProcessController: {
+        isRunning: (pid) => {
+          assert.equal(pid, 23456);
+          return true;
+        },
+        stop: (pid) => {
+          assert.equal(pid, 23456);
+          order.push("bridge stop");
+        }
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(order, ["close", "bridge stop"]);
+    assert.deepEqual(JSON.parse(output.text()), {
+      browser: {
+        command: "close",
+        exitCode: 0
+      },
+      bridge: {
+        bridgeUrl: "http://localhost:18082",
+        pid: 23456,
+        stopped: true
+      }
+    });
+  } finally {
+    rmSync(stateDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
 test("reads a window value through browser eval", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

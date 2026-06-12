@@ -18,6 +18,8 @@ OpenRuntime 不把 `@vercel/next-browser` 的内部会话协议暴露给 Core，
 新增顶层浏览器命令：
 
 ```txt
+open-runtime start [--port <port>]
+open-runtime stop [--port <port>]
 open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]
 open-runtime goto <url>
 open-runtime page-snapshot
@@ -30,10 +32,18 @@ open-runtime screenshot [name]
 open-runtime close
 ```
 
+`open-runtime` 同时提供 `opr` 缩写，日常可以写成：
+
+```txt
+opr start
+opr open http://localhost:8080/route-a
+opr wait-for --url http://localhost:8080/route-a modern:route ready --where pathname=/route-a
+opr stop
+```
+
 保留现有 Runtime 命令：
 
 ```txt
-open-runtime bridge start
 open-runtime runtimes
 open-runtime targets
 open-runtime snapshot
@@ -47,6 +57,10 @@ open-runtime wait-for
 `snapshot` 继续表示 OpenRuntime 的结构化状态；浏览器页面快照命名为 `page-snapshot`，避免和 Runtime Snapshot 混淆。
 
 ## 行为规则
+
+`open-runtime start` 会在后台启动 Bridge，确认可用后命令立即结束。再次执行时，如果 Bridge 已经可用，直接返回当前运行状态。
+
+`open-runtime stop` 会先调用浏览器层 `close` 关闭浏览器会话，再关闭 CLI 自己启动的 Bridge。它只关闭 OpenRuntime CLI 记录过的进程，不会按端口强杀其他服务。
 
 `open-runtime open <url>` 默认检查 Bridge 是否可用；不可用则自动在后台启动 Bridge。
 

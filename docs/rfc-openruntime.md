@@ -766,8 +766,9 @@ type ConnectedRuntime = {
 第一版 CLI：
 
 ```bash
-open-runtime bridge start [--port <port>]
-open-runtime bridge status
+open-runtime start [--port <port>]
+open-runtime stop [--port <port>]
+open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]
 open-runtime runtimes
 open-runtime targets [runtime selector] [query options]
 open-runtime snapshot [runtime selector] [query options]
@@ -778,7 +779,7 @@ open-runtime run-action [runtime selector] <action-name>
 open-runtime wait-for [runtime selector] <target-id> <status> [--where <path=value>] [--timeout <ms>]
 ```
 
-Bridge 默认端口是 `17321`。不传 `--port` 时，`bridge start` 会监听 `17321`；不传 `--bridge` 时，CLI 默认连接 `http://localhost:17321`。
+Bridge 默认端口是 `17321`。不传 `--port` 时，`start` 会监听 `17321`；不传 `--bridge` 时，CLI 默认连接 `http://localhost:17321`。
 
 runtime selector 用于选择 Bridge 里已经连接的页面 Runtime 实例：
 

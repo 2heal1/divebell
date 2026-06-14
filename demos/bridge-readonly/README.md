@@ -15,7 +15,7 @@ pnpm build
 开第一个终端，启动 Bridge：
 
 ```bash
-pnpm exec openruntime bridge start --port 17321
+pnpm exec openruntime start --port 17321
 ```
 
 开第二个终端，启动 demo 页面：

@@ -55,7 +55,7 @@ Checklist：
 - [x] 实现页面侧 `connectBridge({ port, autoReconnect })`。
 - [x] 实现 Bridge runtime 连接管理：`runtimeId`、`url`、连接状态、最后 snapshot/events 保留。
 - [x] 实现 HTTP API：`/runtimes`、`/targets`、`/snapshot`、`/events`、`/actions`、`/actions/:name/options`、`/actions/:name/run`、`/wait-for`。
-- [x] 实现 CLI：`bridge start`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
+- [x] 实现 CLI：`start`、`open`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
 - [x] 实现 runtime selector：`--url`、`--runtime`，无参数时默认选择最新活跃 runtime。
 - [x] `wait-for` 命令成功或失败后释放进程。
 - [x] `input-options` 命令等待异步 provider 完成，默认超时 5s。
@@ -121,16 +121,16 @@ Checklist：
 
 Checklist：
 
-- [ ] 编写 OpenRuntime skill。
-- [ ] 明确 Agent 使用顺序：打开页面、读取 targets/snapshot/actions、执行 action、waitFor、失败后读取 events。
-- [ ] 明确 fallback：没有 OpenRuntime 时再使用 DOM、console、network 和截图。
-- [ ] 提供常见任务示例：等待路由 ready、执行业务 action、排查 remote 加载失败、排查 loader redirect。
-- [ ] 把 MF 相关任务和现有 MF skill 串起来。
+- [x] 编写 OpenRuntime skill。
+- [x] 明确 Agent 使用顺序：打开页面、读取 targets/snapshot/actions、执行 action、waitFor、失败后读取 events。
+- [x] 明确 fallback：没有 OpenRuntime 时再使用 DOM、console、network 和截图。
+- [x] 提供常见任务示例：等待路由 ready、执行业务 action、排查 remote 加载失败、排查 loader redirect。
+- [x] 把 MF 相关任务和现有 MF skill 串起来。
 
 验收标准：
 
-- [ ] Agent 能在不知道页面 DOM 细节的情况下，通过 CLI 完成一个声明 action 和 waitFor 验证。
-- [ ] 失败报告里包含 snapshot 和 events 证据。
+- [x] Agent 能在不知道页面 DOM 细节的情况下，通过 CLI 完成一个声明 action 和 waitFor 验证。
+- [x] 失败报告里包含 snapshot 和 events 证据。
 
 ## 阶段 6：Demo 和评估
 

@@ -100,18 +100,20 @@ Checklist：
 
 Checklist：
 
-- [ ] 复用已安装 MF skill 和 MF observability 能力，确认可读取的 runtime 信号。
-- [ ] 梳理 MF observability 可用信号：consumer、remote、manifest、remoteEntry、expose、shared、runtime error。
-- [ ] 标记缺失 hook；缺失时优先在 MF observability plugin 或 MF runtime 中补 hook。
-- [ ] 注册 consumer、remote、manifest、remoteEntry、expose、shared target。
-- [ ] 在加载开始、成功、失败时更新 Snapshot 和 Event。
-- [ ] 和 Modern.js plugin 协作补充 route 到 remote / expose 的 `dependsOn`。
+- [x] 复用已安装 MF skill 和 MF observability 能力，确认可读取的 runtime 信号。
+- [x] 梳理 MF observability 可用信号：consumer、remote、manifest、remoteEntry、expose、shared、runtime error。
+- [x] 标记缺失 hook；缺失时优先在 MF observability plugin 或 MF runtime 中补 hook。
+- [x] 注册 remote、remote expose、shared target；manifest 和 remoteEntry 作为 remote / expose 的 phase 展示。
+- [x] 在加载开始、成功、失败时更新 Snapshot 和 Event。
 
 验收标准：
 
-- [ ] MF demo 中 remote、manifest、remoteEntry、expose、shared 的状态可被 Agent 读取。
-- [ ] remote 或 shared 失败时，route / business 的 blocker 能指向对应 MF target。
-- [ ] 不重复实现 MF 加载追踪，优先复用 MF observability。
+- [x] MF demo 中 remote、manifest / remoteEntry phase、expose、shared 的状态可被 Agent 读取。
+- [x] 不重复实现 MF 加载追踪，优先复用 MF observability。
+
+后续任务：
+
+- [ ] 和 Modern.js plugin 协作补充 route / business 到 remote / expose 的 `dependsOn`。
 
 ## 阶段 5：Agent Skill 和使用示例
 

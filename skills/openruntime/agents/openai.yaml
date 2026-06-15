@@ -1,4 +1,0 @@
-interface:
-  display_name: "OpenRuntime"
-  short_description: "Verify OpenRuntime apps with CLI evidence"
-  default_prompt: "Use $openruntime to verify this page with targets, actions, wait-for, snapshot, and events."

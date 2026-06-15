@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
 import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
-import type { BrowserRunner } from "../dist/browser.js";
+import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 
 test("exposes the cli package marker", () => {
@@ -16,6 +17,70 @@ test("exposes the cli package marker", () => {
     phase: "phase-0",
     role: "agent command line"
   });
+});
+
+test("prints explicit runtime resource help", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["--help"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.match(output.text(), /open-runtime snapshot .*--id <id>/);
+  assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>/);
+  assert.match(output.text(), /open-runtime actions .*--name <name>/);
+});
+
+test("configures next-browser with a persistent OpenRuntime profile", () => {
+  const env = createNextBrowserEnvironment({
+    NODE_OPTIONS: "--enable-source-maps",
+    OPENRUNTIME_BROWSER_PROFILE_DIR: "/tmp/custom-openruntime-profile"
+  });
+
+  assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, "/tmp/custom-openruntime-profile");
+  assert.match(env.NODE_OPTIONS ?? "", /--enable-source-maps/);
+  assert.match(env.NODE_OPTIONS ?? "", /--import file:\/\//);
+});
+
+test("uses the default OpenRuntime browser profile directory", () => {
+  const env = createNextBrowserEnvironment({});
+
+  assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+});
+
+test("keeps the persistent profile when next-browser closes its temporary profile", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-profile-"));
+  const profileDirectory = join(tempDir, "profile");
+  const temporaryProfileDirectory = join(tempDir, "next-browser-profile-test");
+  const preloadUrl = pathToFileURL(join(process.cwd(), "dist", "next-browser-profile-preload.js")).href;
+  const script = [
+    "const fs = require('node:fs');",
+    "const path = require('node:path');",
+    `const tempProfile = ${JSON.stringify(temporaryProfileDirectory)};`,
+    "fs.mkdirSync(tempProfile, { recursive: true });",
+    "fs.writeFileSync(path.join(tempProfile, 'login-state'), 'kept');",
+    "fs.rmSync(tempProfile, { recursive: true, force: true });"
+  ].join("");
+
+  try {
+    const result = spawnSync(process.execPath, ["--import", preloadUrl, "-e", script], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR: profileDirectory
+      }
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(existsSync(join(profileDirectory, "login-state")), true);
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
 });
 
 test("prints runtimes from the configured bridge", async () => {

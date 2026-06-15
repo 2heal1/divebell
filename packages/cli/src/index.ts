@@ -601,10 +601,18 @@ function createHelpText(): string {
     "  open-runtime screenshot [name] [--full-page]",
     "  open-runtime close",
     "  open-runtime runtimes [--bridge <url>]",
-    "  open-runtime targets|snapshot|events|actions [--bridge <url>] [--url <url> | --runtime <id>]",
+    "  open-runtime targets [--bridge <url>] [--url <url> | --runtime <id>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    "  open-runtime snapshot [--bridge <url>] [--url <url> | --runtime <id>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    "  open-runtime events [--bridge <url>] [--url <url> | --runtime <id>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]",
+    "  open-runtime actions [--bridge <url>] [--url <url> | --runtime <id>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
     "  open-runtime input-options [--bridge <url>] [--url <url> | --runtime <id>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
     "  open-runtime run-action [--bridge <url>] [--url <url> | --runtime <id>] <action-name> [--payload <json>]",
-    "  open-runtime wait-for [--bridge <url>] [--url <url> | --runtime <id>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open]"
+    "  open-runtime wait-for [--bridge <url>] [--url <url> | --runtime <id>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open]",
+    "",
+    "Examples:",
+    "  open-runtime snapshot --url http://localhost:4412 --id modern:route",
+    "  open-runtime events --url http://localhost:4412 --target-id modern:route --limit 50",
+    "  open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000"
   ].join("\n");
 }
 

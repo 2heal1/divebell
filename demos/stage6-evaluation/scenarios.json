@@ -1,0 +1,714 @@
+{
+  "modern": {
+    "sourceDemos": [
+      {
+        "path": "demos/modern-basic",
+        "verifyScript": "demos/modern-basic/scripts/verify-openruntime.mjs",
+        "features": [
+          "route",
+          "loader",
+          "business-ready",
+          "declared-action"
+        ]
+      },
+      {
+        "path": "demos/modern-ssr",
+        "verifyScript": "demos/modern-ssr/scripts/verify-openruntime.mjs",
+        "features": [
+          "ssr",
+          "hydration"
+        ]
+      },
+      {
+        "path": "demos/modern-ssr-stream",
+        "verifyScript": "demos/modern-ssr-stream/scripts/verify-openruntime.mjs",
+        "features": [
+          "route",
+          "loader",
+          "ssr",
+          "hydration"
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "modern-route-loader-ssr-hydration-ready",
+        "description": "Route, loader, SSR, hydration, and business ready are visible without reading DOM internals.",
+        "baseline": {
+          "durationSeconds": 420,
+          "manualInterventions": 3,
+          "accuracy": 0.6,
+          "evidenceCompleteness": 0.45,
+          "evidence": [
+            "dom",
+            "console",
+            "network"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 125,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.95,
+          "expectedFocusedTarget": "modern:route",
+          "expectedStatus": "ready",
+          "targetDefinitions": [
+            {
+              "id": "modern:app",
+              "type": "modern.app",
+              "source": "modern",
+              "label": "Modern app",
+              "statuses": [
+                "booting",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "id": "modern:route",
+              "type": "modern.route",
+              "source": "modern",
+              "label": "Modern route",
+              "statuses": [
+                "loading",
+                "ready",
+                "redirect",
+                "error"
+              ],
+              "data": {
+                "routes": [
+                  {
+                    "routeId": "/",
+                    "pathname": "/",
+                    "hasLoader": true,
+                    "hasRouteComponent": true
+                  },
+                  {
+                    "routeId": "/orders",
+                    "pathname": "/orders",
+                    "hasLoader": true,
+                    "hasRouteComponent": true
+                  }
+                ]
+              }
+            },
+            {
+              "id": "modern:ssr",
+              "type": "modern.ssr",
+              "source": "modern",
+              "label": "Modern SSR",
+              "statuses": [
+                "server-rendered",
+                "skipped",
+                "error"
+              ]
+            },
+            {
+              "id": "modern:hydration",
+              "type": "modern.hydration",
+              "source": "modern",
+              "label": "Modern hydration",
+              "statuses": [
+                "pending",
+                "success",
+                "error"
+              ]
+            },
+            {
+              "id": "business:ready:modern-demo",
+              "type": "business.ready",
+              "source": "business",
+              "label": "Modern demo business ready",
+              "statuses": [
+                "pending",
+                "ready",
+                "blocked",
+                "error"
+              ]
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "modern:app",
+              "status": "ready",
+              "data": {
+                "entry": "browser"
+              }
+            },
+            {
+              "id": "modern:ssr",
+              "status": "server-rendered",
+              "data": {
+                "environment": "server",
+                "renderMode": "string"
+              }
+            },
+            {
+              "id": "modern:hydration",
+              "status": "success",
+              "data": {
+                "renderMode": "string"
+              }
+            },
+            {
+              "id": "modern:route",
+              "status": "ready",
+              "data": {
+                "pathname": "/orders",
+                "navigation": "idle",
+                "matches": [
+                  {
+                    "routeId": "/",
+                    "pathname": "/",
+                    "loader": "success"
+                  },
+                  {
+                    "routeId": "/orders",
+                    "pathname": "/orders",
+                    "loader": "success"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "business:ready:modern-demo",
+              "status": "ready",
+              "data": {
+                "area": "orders"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "modern-route-component-error",
+        "description": "Route component loading failure is reported by the route target.",
+        "baseline": {
+          "durationSeconds": 510,
+          "manualInterventions": 4,
+          "accuracy": 0.52,
+          "evidenceCompleteness": 0.4,
+          "evidence": [
+            "dom",
+            "console",
+            "network"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 90,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.96,
+          "expectedFocusedTarget": "modern:route",
+          "expectedStatus": "error",
+          "targetDefinitions": [
+            {
+              "id": "modern:app",
+              "type": "modern.app",
+              "source": "modern",
+              "label": "Modern app",
+              "statuses": [
+                "booting",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "id": "modern:route",
+              "type": "modern.route",
+              "source": "modern",
+              "label": "Modern route",
+              "statuses": [
+                "loading",
+                "ready",
+                "redirect",
+                "error"
+              ],
+              "data": {
+                "routes": [
+                  {
+                    "routeId": "/component-error",
+                    "pathname": "/component-error",
+                    "hasLoader": false,
+                    "hasRouteComponent": true
+                  }
+                ]
+              }
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "modern:app",
+              "status": "ready",
+              "data": {
+                "entry": "browser"
+              }
+            },
+            {
+              "id": "modern:route",
+              "status": "error",
+              "data": {
+                "pathname": "/component-error",
+                "navigation": "idle",
+                "matches": [
+                  {
+                    "routeId": "/component-error",
+                    "pathname": "/component-error",
+                    "routeComponent": "error"
+                  }
+                ]
+              },
+              "error": {
+                "message": "Route component failed to load.",
+                "code": "route_component_error"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "mf": {
+    "sourceCases": [
+      "modern.js/tests/integration/agent-runtime-mf/cases/redirect-loader",
+      "modern.js/tests/integration/agent-runtime-mf/cases/async-chunk-runtime",
+      "modern.js/tests/integration/agent-runtime-mf/cases/react-multi-version"
+    ],
+    "scenarios": [
+      {
+        "id": "mf-remote-success",
+        "covers": [
+          "remote-success"
+        ],
+        "description": "Remote manifest, remoteEntry, expose, and shared dependency load successfully.",
+        "baseline": {
+          "durationSeconds": 360,
+          "manualInterventions": 2,
+          "accuracy": 0.68,
+          "evidenceCompleteness": 0.5,
+          "evidence": [
+            "network",
+            "console"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 75,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.98,
+          "expectedFocusedTarget": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+          "expectedStatus": "ready",
+          "targetDefinitions": [
+            {
+              "id": "mf:consumer:redirectLoaderConsumer",
+              "type": "mf.consumer",
+              "source": "mf-observability",
+              "label": "redirectLoaderConsumer",
+              "statuses": [
+                "initializing",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "type": "mf.remote",
+              "source": "mf-observability",
+              "label": "redirectLoaderProvider",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ],
+              "data": {
+                "entry": "http://localhost:4351/mf-manifest.json"
+              }
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+              "type": "mf.expose",
+              "source": "mf-observability",
+              "label": "RemotePanel",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ],
+              "data": {
+                "remote": "redirectLoaderProvider",
+                "expose": "RemotePanel"
+              }
+            },
+            {
+              "id": "mf:shared:react:19.2.6:default",
+              "type": "mf.shared",
+              "source": "mf-observability",
+              "label": "react",
+              "statuses": [
+                "pending",
+                "loaded",
+                "conflict",
+                "error",
+                "recovered"
+              ],
+              "data": {
+                "singleton": true,
+                "requiredVersion": "^19.2.6"
+              }
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "mf:consumer:redirectLoaderConsumer",
+              "status": "ready"
+            },
+            {
+              "id": "mf:shared:react:19.2.6:default",
+              "status": "loaded",
+              "data": {
+                "provider": "redirectLoaderConsumer"
+              }
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "status": "ready",
+              "data": {
+                "manifest": "loaded",
+                "remoteEntry": "loaded"
+              }
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+              "status": "ready",
+              "dependsOn": [
+                "mf:remote:redirectLoaderProvider",
+                "mf:shared:react:19.2.6:default"
+              ],
+              "data": {
+                "moduleName": "RemotePanel"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "mf-remote-runtime-error",
+        "covers": [
+          "remote-error"
+        ],
+        "description": "Remote expose fails after the remote starts loading.",
+        "baseline": {
+          "durationSeconds": 540,
+          "manualInterventions": 4,
+          "accuracy": 0.5,
+          "evidenceCompleteness": 0.38,
+          "evidence": [
+            "network",
+            "console"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 85,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.97,
+          "expectedFocusedTarget": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+          "expectedStatus": "error",
+          "targetDefinitions": [
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "type": "mf.remote",
+              "source": "mf-observability",
+              "label": "redirectLoaderProvider",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+              "type": "mf.expose",
+              "source": "mf-observability",
+              "label": "RemotePanel",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "status": "ready",
+              "data": {
+                "manifest": "loaded",
+                "remoteEntry": "loaded"
+              }
+            },
+            {
+              "id": "mf:remote:redirectLoaderProvider:expose:RemotePanel",
+              "status": "error",
+              "dependsOn": [
+                "mf:remote:redirectLoaderProvider"
+              ],
+              "data": {
+                "moduleName": "RemotePanel"
+              },
+              "error": {
+                "message": "Expose module execution failed.",
+                "code": "RUNTIME-008"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "mf-shared-conflict",
+        "covers": [
+          "shared-conflict"
+        ],
+        "description": "React singleton version conflict blocks the expose.",
+        "baseline": {
+          "durationSeconds": 620,
+          "manualInterventions": 5,
+          "accuracy": 0.46,
+          "evidenceCompleteness": 0.35,
+          "evidence": [
+            "console",
+            "bundle-inspection"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 95,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.98,
+          "expectedFocusedTarget": "mf:shared:react:18.3.1:default",
+          "expectedStatus": "conflict",
+          "targetDefinitions": [
+            {
+              "id": "mf:remote:reactMultiVersionProvider",
+              "type": "mf.remote",
+              "source": "mf-observability",
+              "label": "reactMultiVersionProvider",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            },
+            {
+              "id": "mf:shared:react:18.3.1:default",
+              "type": "mf.shared",
+              "source": "mf-observability",
+              "label": "react",
+              "statuses": [
+                "pending",
+                "loaded",
+                "conflict",
+                "error",
+                "recovered"
+              ],
+              "data": {
+                "singleton": true,
+                "requiredVersion": "^19.2.6"
+              }
+            },
+            {
+              "id": "mf:remote:reactMultiVersionProvider:expose:RemotePanel",
+              "type": "mf.expose",
+              "source": "mf-observability",
+              "label": "RemotePanel",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "mf:remote:reactMultiVersionProvider",
+              "status": "ready",
+              "data": {
+                "manifest": "loaded",
+                "remoteEntry": "loaded"
+              }
+            },
+            {
+              "id": "mf:shared:react:18.3.1:default",
+              "status": "conflict",
+              "data": {
+                "consumerRequiredVersion": "^19.2.6",
+                "providerVersion": "18.3.1"
+              },
+              "error": {
+                "message": "React singleton version does not satisfy the consumer.",
+                "code": "shared_version_conflict"
+              }
+            },
+            {
+              "id": "mf:remote:reactMultiVersionProvider:expose:RemotePanel",
+              "status": "error",
+              "dependsOn": [
+                "mf:remote:reactMultiVersionProvider",
+                "mf:shared:react:18.3.1:default"
+              ],
+              "error": {
+                "message": "Expose blocked by shared dependency conflict.",
+                "code": "shared_dependency_blocked"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "mf-manifest-failure",
+        "covers": [
+          "manifest-failure"
+        ],
+        "description": "Remote manifest request fails before remoteEntry is known.",
+        "baseline": {
+          "durationSeconds": 580,
+          "manualInterventions": 4,
+          "accuracy": 0.55,
+          "evidenceCompleteness": 0.42,
+          "evidence": [
+            "network",
+            "console"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 70,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.96,
+          "expectedFocusedTarget": "mf:remote:redirectLoaderProvider",
+          "expectedStatus": "error",
+          "targetDefinitions": [
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "type": "mf.remote",
+              "source": "mf-observability",
+              "label": "redirectLoaderProvider",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "mf:remote:redirectLoaderProvider",
+              "status": "error",
+              "data": {
+                "manifest": "error",
+                "entry": "http://localhost:4351/mf-manifest.json"
+              },
+              "error": {
+                "message": "Manifest request returned 404.",
+                "code": "manifest_load_failed"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "mf-remote-entry-failure",
+        "covers": [
+          "remote-entry-failure"
+        ],
+        "description": "Manifest is available, but remoteEntry fails to load.",
+        "baseline": {
+          "durationSeconds": 590,
+          "manualInterventions": 4,
+          "accuracy": 0.53,
+          "evidenceCompleteness": 0.4,
+          "evidence": [
+            "network",
+            "console"
+          ],
+          "locatesTarget": false
+        },
+        "runtime": {
+          "durationSeconds": 80,
+          "manualInterventions": 0,
+          "accuracy": 1,
+          "evidenceCompleteness": 0.97,
+          "expectedFocusedTarget": "mf:remote:asyncChunkRuntimeProvider",
+          "expectedStatus": "error",
+          "targetDefinitions": [
+            {
+              "id": "mf:remote:asyncChunkRuntimeProvider",
+              "type": "mf.remote",
+              "source": "mf-observability",
+              "label": "asyncChunkRuntimeProvider",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ],
+              "data": {
+                "entry": "http://localhost:4331/remote/mf-manifest.json"
+              }
+            },
+            {
+              "id": "mf:remote:asyncChunkRuntimeProvider:expose:RemotePanel",
+              "type": "mf.expose",
+              "source": "mf-observability",
+              "label": "RemotePanel",
+              "statuses": [
+                "pending",
+                "loading",
+                "ready",
+                "error"
+              ]
+            }
+          ],
+          "snapshotUpdates": [
+            {
+              "id": "mf:remote:asyncChunkRuntimeProvider",
+              "status": "error",
+              "data": {
+                "manifest": "loaded",
+                "remoteEntry": "error"
+              },
+              "error": {
+                "message": "remoteEntry script failed to execute.",
+                "code": "RUNTIME-001"
+              }
+            },
+            {
+              "id": "mf:remote:asyncChunkRuntimeProvider:expose:RemotePanel",
+              "status": "error",
+              "dependsOn": [
+                "mf:remote:asyncChunkRuntimeProvider"
+              ],
+              "error": {
+                "message": "Expose blocked because remoteEntry failed.",
+                "code": "remote_entry_blocked"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

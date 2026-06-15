@@ -64,6 +64,10 @@ open-runtime wait-for
 
 `open-runtime open <url>` 默认检查 Bridge 是否可用；不可用则自动在后台启动 Bridge。
 
+浏览器登录态、Cookie 和本地存储默认保存在 `~/.openruntime/browser-profile`。再次执行 `open-runtime open <url>` 或关闭后重新打开时，会继续使用这份 OpenRuntime 自己的 profile。
+
+CLI 不默认复用系统 Chrome 的默认 profile，避免和用户正在使用的 Chrome 互相锁定或污染日常浏览数据。如需指定独立 profile 目录，可以设置 `OPENRUNTIME_BROWSER_PROFILE_DIR=/path/to/profile` 后再启动 CLI。切换 profile 目录前需要先执行 `open-runtime close`。
+
 如果默认端口被别的服务占用，命令会失败，并提示使用 `--bridge` 或 `--port` 换一个 Bridge 地址。
 
 `--no-bridge` 只打开浏览器，不准备 Runtime 通道。这个模式适合只想截图、点击或读取页面变量的场景。

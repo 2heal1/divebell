@@ -11,7 +11,9 @@
   "scripts": {
     "build": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 --if-present run build",
     "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
-    "check": "pnpm run version:check && pnpm run build && pnpm run test",
+    "check": "pnpm run version:check && pnpm run build && pnpm run test && pnpm run evaluate:stage6:run",
+    "evaluate:stage6": "pnpm run build && pnpm run evaluate:stage6:run",
+    "evaluate:stage6:run": "node ./scripts/evaluate-stage6.mjs",
     "changeset": "changeset",
     "version:packages": "changeset version",
     "publish:packages": "changeset publish",

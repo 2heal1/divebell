@@ -138,17 +138,19 @@ Checklist：
 
 Checklist：
 
-- [ ] 准备基础 Modern.js demo：route、loader、SSR、hydration、business ready。
-- [ ] 准备 MF demo：remote success/error、shared 冲突、manifest/remoteEntry 失败。
-- [ ] 从 `/Users/bytedance/fork_repo/modern.js/tests/integration/agent-runtime-mf` 迁移或重建必要 case。
-- [ ] 设计 baseline：不用 OpenRuntime，只用 DOM/console/network。
-- [ ] 设计 runtime round：使用 OpenRuntime API/CLI/skill。
-- [ ] 统计耗时、人工介入次数、失败定位准确率、证据完整度。
+- [x] 准备基础 Modern.js demo：route、loader、SSR、hydration、business ready。
+- [x] 准备 MF demo：remote success/error、shared 冲突、manifest/remoteEntry 失败。
+- [x] 从 `/Users/bytedance/fork_repo/modern.js/tests/integration/agent-runtime-mf` 迁移或重建必要 case。
+- [x] 设计 baseline：不用 OpenRuntime，只用 DOM/console/network。
+- [x] 设计 runtime round：使用 OpenRuntime API/CLI/skill。
+- [x] 统计耗时、人工介入次数、失败定位准确率、证据完整度。
+
+阶段 6 收口说明：Modern.js 场景复用 `demos/modern-basic`、`demos/modern-ssr` 和 `demos/modern-ssr-stream` 的真实 demo 和验证脚本；MF 场景在 `demos/stage6-evaluation` 中按旧 `agent-runtime-mf` case 重建评估夹具，避免在 OpenRuntime 仓库重复实现 MF 加载追踪。评估入口见 `docs/evaluation-stage6.md` 和 `pnpm run evaluate:stage6`。
 
 验收标准：
 
-- [ ] 至少一个 Modern.js 场景和一个 MF 场景完成 baseline/runtime 对比。
-- [ ] Agent 输出能说明“当前卡在哪个 target”，而不是只说页面异常。
+- [x] 至少一个 Modern.js 场景和一个 MF 场景完成 baseline/runtime 对比。
+- [x] Agent 输出能说明“当前卡在哪个 target”，而不是只说页面异常。
 
 ## 阶段 7：发布前整理
 

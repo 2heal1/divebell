@@ -73,6 +73,12 @@ export type ModernRouteComponentEvent =
       error?: unknown;
     }
   | {
+      type: "render-error";
+      routeId: string;
+      error?: unknown;
+      componentStack?: string;
+    }
+  | {
       type: "mount";
       routeId: string;
     };

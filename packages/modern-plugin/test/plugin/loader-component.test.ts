@@ -159,6 +159,52 @@ test("stores only route component errors on the current route match", () => {
   assert.equal(getFirstMatch(runtime).routeComponent, "error");
 });
 
+test("stores route component render errors on the current route match", () => {
+  const runtime = createOpenRuntime();
+  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const routes = [
+    {
+      id: "dashboard",
+      path: "/dashboard",
+      Component: true
+    }
+  ];
+
+  handlers.onRouterStateChange?.({
+    router: {},
+    routes,
+    state: {
+      navigation: { state: "idle" },
+      matches: [{ route: { id: "dashboard" }, pathname: "/dashboard" }],
+      location: { pathname: "/dashboard" }
+    },
+    context: {}
+  });
+  handlers.onRouteComponent?.({
+    type: "render-error",
+    routeId: "dashboard",
+    error: new Error("render failed"),
+    componentStack: "\n    at Dashboard"
+  });
+
+  const snapshot = runtime.getSnapshot();
+  assert.equal(snapshot.targets["modern:route"]?.status, "error");
+  assert.equal(snapshot.targets["modern:route"]?.error?.message, "render failed");
+  assert.equal(snapshot.targets["modern:route"]?.error?.code, "modern_route_render_error");
+  assert.deepEqual(snapshot.targets["modern:route"]?.error?.data, {
+    componentStack: "\n    at Dashboard"
+  });
+  assert.equal(snapshot.targets["modern:app"]?.status, "error");
+  assert.deepEqual(snapshot.targets["modern:app"]?.data, {
+    failedTargetId: "modern:route",
+    failedStatus: "error",
+    reason: "route-component-error",
+    pathname: "/dashboard",
+    errorRouteIds: ["/dashboard"]
+  });
+  assert.equal(getFirstMatch(runtime).routeComponent, "error");
+});
+
 test("keeps route metadata when loader events arrive after the route table", () => {
   const runtime = createOpenRuntime();
   const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));

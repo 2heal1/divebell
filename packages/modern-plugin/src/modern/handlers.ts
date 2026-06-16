@@ -245,6 +245,23 @@ export function handleRouteLoader(state: ModernPluginRuntimeState, event: Modern
 export function handleRouteComponent(state: ModernPluginRuntimeState, event: ModernRouteComponentEvent): void {
   const runtime = state.getRuntime();
 
+  if (event.type === "render-error") {
+    const error = toRuntimeError(event.error, "modern_route_render_error");
+    if (event.componentStack !== undefined) {
+      error.data = {
+        ...(typeof error.data === "object" && error.data !== null ? error.data : {}),
+        componentStack: event.componentStack
+      };
+    }
+
+    state.updateComponent(event.routeId, {
+      status: "error",
+      error
+    });
+    syncAppFromRoute(state, getRouteReadyData(state));
+    return;
+  }
+
   if (event.type === "module-load-error") {
     const error = toRuntimeError(event.error, "modern_route_module_error");
     if (event.routeId === undefined) {

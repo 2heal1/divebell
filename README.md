@@ -9,7 +9,8 @@ OpenRuntime 是一套让前端应用向 Agent 开放运行时状态、事件和�
 3. `AGENTS.md`：给 Agent 的项目工作说明。
 4. `skills/openruntime/SKILL.md`：Agent 使用 OpenRuntime 验证页面的工作流。
 5. `docs/ecosystem-modernjs.md`：Modern.js 接入相关背景。
-6. `.codex/skills/mf/SKILL.md`：Module Federation 相关问题和观测能力。
+6. `docs/internal-cli-extensions.md`：内部业务扩展 CLI 命令的结构和 API。
+7. `.codex/skills/mf/SKILL.md`：Module Federation 相关问题和观测能力。
 
 ## 当前状态
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,6 +31,8 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime snapshot .*--id <id>/);
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
+  assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
+  assert.match(output.text(), /open-runtime vmok get-instance <name>/);
 });
 
 test("configures next-browser with a persistent OpenRuntime profile", () => {
@@ -174,6 +176,144 @@ test("selects the latest matching runtime for read commands", async () => {
       targets: {},
       latestEventId: 0,
       capturedAt: 10
+    }
+  });
+});
+
+test("prints VMOK module info from the module info target", async () => {
+  const calls: string[] = [];
+  const output = createOutput();
+  const exitCode = await runCli([
+    "vmok",
+    "get-module-info",
+    "--bridge",
+    "http://bridge.test",
+    "--url",
+    "http://app.test/"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-1",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/snapshot?id=vmok%3Amodule-info");
+      return jsonResponse({
+        targets: {
+          "vmok:module-info": {
+            id: "vmok:module-info",
+            type: "vmok.module-info",
+            status: "ready",
+            source: "vmok",
+            updatedAt: 10,
+            data: {
+              modules: [
+                {
+                  name: "risk-dashboard",
+                  version: "1.0.0"
+                }
+              ]
+            }
+          }
+        },
+        latestEventId: 1,
+        capturedAt: 20
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-1/snapshot?id=vmok%3Amodule-info"
+  ]);
+  assert.deepEqual(JSON.parse(output.text()), {
+    runtime: {
+      runtimeId: "runtime-1",
+      url: "http://app.test/",
+      status: "connected",
+      connectedAt: 1,
+      lastSeenAt: 2
+    },
+    result: {
+      targetId: "vmok:module-info",
+      status: "ready",
+      updatedAt: 10,
+      moduleInfo: {
+        modules: [
+          {
+            name: "risk-dashboard",
+            version: "1.0.0"
+          }
+        ]
+      },
+      target: {
+        id: "vmok:module-info",
+        type: "vmok.module-info",
+        status: "ready",
+        source: "vmok",
+        updatedAt: 10,
+        data: {
+          modules: [
+            {
+              name: "risk-dashboard",
+              version: "1.0.0"
+            }
+          ]
+        }
+      }
+    }
+  });
+});
+
+test("prints VMOK instance from a browser eval script file", async () => {
+  const output = createOutput();
+  let script = "";
+  const exitCode = await runCli([
+    "vmok",
+    "get-instance",
+    "shell"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      assert.equal(args[0], "eval");
+      assert.equal(args[1], "--file");
+      const scriptPath = args[2];
+      assert.equal(typeof scriptPath, "string");
+      script = readFileSync(scriptPath as string, "utf8");
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          name: "shell",
+          version: "1.0.0"
+        }),
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.match(script, /window\.__VMOK__\.instances\.find\(i=>i\.name==='shell'\)/);
+  assert.deepEqual(JSON.parse(output.text()), {
+    result: {
+      name: "shell",
+      value: {
+        name: "shell",
+        version: "1.0.0"
+      }
     }
   });
 });

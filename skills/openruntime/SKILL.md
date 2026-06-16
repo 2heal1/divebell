@@ -1,66 +1,76 @@
 ---
 name: openruntime
-description: Use automatically when a frontend app or repo exposes OpenRuntime, installs @openruntime packages, uses the openruntime CLI, or needs page/component/business state verification through runtime evidence. This skill is the primary acceptance path: read targets, snapshot, events, actions, and wait-for before UI/DOM/screenshot fallback; if a target reaches the expected status, do not re-judge the same fact through rendered UI. Use declared actions instead of ad hoc DOM clicks; diagnose Modern.js and Module Federation state through OpenRuntime data.
+description: >-
+  帮助 Agent 为前端项目评估、接入或使用 OpenRuntime，设计最小 target/action，
+  读取运行时状态、执行声明动作并等待目标状态，从而更快确认页面、组件、业务、
+  Modern.js 和 Module Federation 的真实状态。Use when a task needs runtime
+  evidence, wants to reduce UI guessing, or mentions OpenRuntime/@openruntime.
 ---
 
 # OpenRuntime
 
-Use OpenRuntime before DOM, console, or network inspection when the page exposes
-runtime state. OpenRuntime gives the agent structured evidence about:
+OpenRuntime 让应用把运行时状态、事件和可执行动作开放给 Agent。
+无论项目是准备接入、正在接入，还是已经接入，都优先考虑用 OpenRuntime
+把关键状态变成可读取、可执行、可等待的信号，减少靠 UI、DOM 文本或截图猜测结果的时间。
 
-- **targets**: what can be referenced or waited for;
-- **snapshot**: the page's current runtime state;
-- **events**: how state changed over time;
-- **actions**: page-declared operations the agent may run;
-- **wait-for**: deterministic verification that a target reached the expected state.
+## 什么时候使用
 
-OpenRuntime is **not** a generic browser automation framework. Do not treat it as
-DOM scripting or arbitrary page control. Prefer declared actions plus `wait-for`
-instead of ad hoc clicking whenever the page exposes the needed action.
+遇到下面情况，先用 OpenRuntime：
 
-Installing this skill should be enough for an OpenRuntime-enabled project. Do
-not require the user's `AGENTS.md`, task prompt, or local README to repeat the
-OpenRuntime-first rule.
+- 需要把页面、组件、业务 ready 变成结构化状态，而不是靠 UI 猜。
+- 需要为项目设计或补充 OpenRuntime target、snapshot、event 或 action。
+- 项目已经安装了 `@openruntime/core`、`@openruntime/bridge`、`@openruntime/cli` 或 `@openruntime/modern-plugin`。
+- 页面已经暴露 OpenRuntime runtime，可以读取 `targets`、`snapshot`、`events` 或 `actions`。
+- 需要确认页面、路由、loader、组件、业务状态、远程模块或共享依赖是否 ready。
+- 需要执行页面声明的安全动作，然后等待结果。
+- 需要排查 Modern.js 或 Module Federation 的运行时状态。
 
-## Command Form
+## 项目接入和命令入口
 
-Prefer the repository-local CLI entrypoint:
+先判断项目当前处于哪一步：还没接入、正在接入，还是已经接入。
+常用包分工如下：
+
+- `@openruntime/core`：页面侧注册 target、更新 snapshot、注册 action。
+- `@openruntime/bridge`：让页面 runtime 和 Agent 侧 CLI 跨进程通信。
+- `@openruntime/cli`：Agent 侧读取状态、执行 action、等待 target。
+- `@openruntime/modern-plugin`：Modern.js 项目自动暴露 route、loader、SSR、hydration 等状态。
+- `@module-federation/observability-plugin`：MF 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
+
+项目还没接入时，先补页面侧最小 target/action，再用 Bridge 和 CLI 验证。
+项目已安装 CLI 后，常用入口是：
 
 ```bash
 pnpm exec openruntime <command>
 ```
 
-Use a runtime selector whenever possible:
-
-```bash
---url <page-url>
-```
-
-If multiple tabs share the same URL, list runtimes first and then pin the exact
-instance:
+如果页面已经打开，先找已连接 runtime：
 
 ```bash
 pnpm exec openruntime runtimes
---runtime <runtime-id>
 ```
 
-## Verification Order
-
-1. Open or connect to the page.
+如果需要打开页面：
 
 ```bash
 pnpm exec openruntime open <url>
 ```
 
-If the page is already open, start from `runtimes` instead of reopening it.
+有多个页面或多个 tab 时，尽量带上 `--url` 或 `--runtime`：
 
-2. Confirm the runtime is connected.
+```bash
+pnpm exec openruntime snapshot --url <url>
+pnpm exec openruntime snapshot --runtime <runtime-id>
+```
+
+## 推荐工作流
+
+1. 发现 runtime。
 
 ```bash
 pnpm exec openruntime runtimes
 ```
 
-3. Read the structured surfaces before interacting with the UI.
+2. 读取页面暴露了什么。
 
 ```bash
 pnpm exec openruntime targets --url <url>
@@ -68,218 +78,209 @@ pnpm exec openruntime snapshot --url <url>
 pnpm exec openruntime actions --url <url>
 ```
 
-Use filters to keep output small:
+输出太多时使用过滤条件：
 
 ```bash
-pnpm exec openruntime targets --url <url> --query modern
+pnpm exec openruntime targets --url <url> --query route
 pnpm exec openruntime snapshot --url <url> --id modern:route
 pnpm exec openruntime events --url <url> --target-id modern:route --limit 30
 ```
 
-4. Prefer declared actions for app behavior.
+3. 用 action 执行页面声明的操作。
 
 ```bash
 pnpm exec openruntime run-action --url <url> <action-name> --payload '<json-object>'
 ```
 
-If the action requires guided inputs, inspect options first:
+如果 action 需要动态输入，先读取候选值：
 
 ```bash
 pnpm exec openruntime input-options --url <url> --action <action-name> --input <input-name> --timeout 5000
 ```
 
-5. Verify the effect with `wait-for`.
+4. 用 `wait-for` 等待最小范围 target 到达目标状态。
 
 ```bash
 pnpm exec openruntime wait-for <target-id> <status> --url <url> --where <path=value> --timeout 10000
 ```
 
-6. On failure, collect evidence before changing code.
+5. 失败时先看结构化状态和事件。
 
 ```bash
 pnpm exec openruntime snapshot --url <url> --id <target-id>
 pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
 ```
 
-The failure report must include the failed command, the selected runtime URL or
-runtime id, the relevant target status/data/error from snapshot, and the related
-events.
+## 最小验证范围
 
-## Core Reading Rules
+验证“是否 ready”时，选最贴近目标的 OpenRuntime 信号：
 
-- `targets` answers **what exists and can be waited for**. It is not the current
-  state view.
-- `snapshot` answers **what the page is now**. Prefer it for current status,
-  blocker hints, and error payloads.
-- `events` answers **how it became this way**. Use it after `wait-for` or action
-  failure, not as the first read surface.
-- `run-action` only executes the declared action and records action events. It
-  does **not** prove success by itself.
-- `wait-for` is the success proof. If success depends on data, include
-  `--where`.
+- 路由是否加载：看 `modern:route`，必要时用 `--where pathname=/target-path`。
+- loader 数据是否可用：看 route target 里的 loader 状态，或等待数据可用后才标记的业务 target。
+- MF remote 模块是否加载：等待具体 expose target，例如 `mf:remote:<remoteName>:expose:<exposeName>`。
+- 业务组件是否 ready：在组件真实 ready 的位置注册业务 target，例如 `business:ready:<scenario-id>`。
 
-## Trust And Instrumentation Rule
+不要用宽泛的 app 级 target 证明深层业务组件已经 ready。
+如果可以在更小范围注册 target，就在真实状态变化点注册和更新它。
 
-Use OpenRuntime as the acceptance source for page, component, and business
-state. If a relevant target reaches the expected status, treat the scenario as
-passed. Do not also inspect UI screenshots, DOM text, or rendered output just to
-confirm the same fact.
+页面侧常用 API：
 
-When a scenario needs a business-specific success signal, prefer adding a small
-OpenRuntime target/action at that test point. Mark the target when the business
-state is actually ready, then verify it with `wait-for`. A missing target/action
-is an instrumentation gap; record it and only then fall back to browser evidence.
+```ts
+runtime.registerTarget({
+  id: "business:ready:orders",
+  type: "business.ready",
+  statuses: ["pending", "ready", "error"],
+  source: "business",
+});
 
-## Fallback Rule
+runtime.updateSnapshot({
+  id: "business:ready:orders",
+  status: "ready",
+  data: { count: orders.length },
+});
 
-Use browser, DOM, console, network, screenshot, or source-code evidence only
-after at least one of these is true:
-
-- No OpenRuntime runtime is connected for the page.
-- The needed target or action is not registered.
-- The page is intentionally not integrated with OpenRuntime.
-- OpenRuntime reaches a status, but the available target does not cover the
-  business result that must be accepted.
-
-Do not replace an available `run-action` + `wait-for` flow with ad hoc clicking
-unless the page did not declare the action.
-
-## Common Tasks
-
-### Modern.js: Verify Route / Loader / SSR / Hydration
-
-Modern.js integration should expose framework-owned state through targets such as
-`modern:route`, and conditionally `modern:ssr` or `modern:hydration` when those
-states exist. Start with route evidence before guessing from rendered markup.
-
-```bash
-pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders --timeout 30000
+runtime.registerAction({
+  name: "orders.refresh",
+  source: "business",
+  risk: "safe",
+  handler: async () => {
+    await refreshOrders();
+  },
+});
 ```
 
-If it fails:
+Modern.js 项目可以优先使用 `@openruntime/modern-plugin` 的业务 ready helper：
 
-```bash
-pnpm exec openruntime snapshot --url http://localhost:19081/ --id modern:route
-pnpm exec openruntime events --url http://localhost:19081/ --target-id modern:route --limit 50
+```ts
+import {
+  markOpenRuntimeReady,
+  markOpenRuntimeReadyError,
+  registerOpenRuntimeReady,
+  unregisterOpenRuntimeReady,
+} from "@openruntime/modern-plugin";
 ```
 
-Read `modern:route.data.matches` for the current route chain, loader status, and
-route component error when one exists. If SSR or hydration are involved, also
-inspect:
+## 什么时候看 UI
+
+OpenRuntime 主要回答状态、事件、动作和运行时诊断问题。
+如果一个 target 已经准确表达了页面、组件或业务 ready，不要再看整页 UI 重复确认同一个事实。
+
+下面这些场景应该看 UI、截图或 DOM 几何信息：
+
+- CSS、布局、间距、遮挡、层级、颜色、动画等视觉问题。
+- 截图、canvas 像素、实际渲染效果。
+- 页面没有接入 OpenRuntime，或者当前要判断的事实还没有对应 target/action。
+
+如果缺少 target/action，且当前任务允许改代码，优先补最小 OpenRuntime 信号；
+如果不能改代码，再退回 UI/DOM/截图证据。
+
+## 常见任务
+
+### 基础页面和业务验证
+
+先看页面暴露的 target 和 action：
 
 ```bash
-pnpm exec openruntime snapshot --url http://localhost:19081/ --query modern
+pnpm exec openruntime targets --url <url>
+pnpm exec openruntime actions --url <url>
 ```
 
-Use `modern:ssr` and `modern:hydration` only when they are present; they are not
-guaranteed on every page.
-
-### Run A Declared Business Action
+执行业务动作后等待业务 target：
 
 ```bash
-pnpm exec openruntime actions --url http://localhost:19081/
-pnpm exec openruntime run-action --url http://localhost:19081/ demo.click-orders
-pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders --timeout 30000
+pnpm exec openruntime run-action --url <url> orders.refresh
+pnpm exec openruntime wait-for business:ready:orders ready --url <url> --timeout 10000
 ```
 
-Remember: `run-action` only executes the declared action. The success proof is
-the later `wait-for` or snapshot state.
+如果失败，再看 snapshot 和 events：
 
-### Module Federation: Use OpenRuntime First, Then Read MF Observability Details
+```bash
+pnpm exec openruntime snapshot --url <url> --id business:ready:orders
+pnpm exec openruntime events --url <url> --target-id business:ready:orders --limit 50
+```
 
-When MF observability is integrated with OpenRuntime, the host app does not need
-to expose separate custom globals for the first-pass diagnosis. Use OpenRuntime
-targets and actions to locate the failing layer first, then read the detailed MF
-report.
+### Modern.js route / loader / SSR / hydration
 
-Key target patterns:
+等待路由：
 
-- `mf:remote:<remoteName>` for one remote as a whole.
-- `mf:remote:<remoteName>:expose:<exposeName>` for one exposed module request.
-- `mf:shared:<sharedName>:<version>:<shareScope>` for one observed shared entry.
+```bash
+pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 30000
+```
 
-Key rules:
+读取当前 route 状态：
 
-- A **remote** target reaching `ready` does **not** prove a specific expose is
-  ready.
-- An **expose** target is the correct wait point for a specific remote module.
-- A **shared** target reaching `recovered` means a handled fallback path, not
-  proof that the intended provider/version loaded.
+```bash
+pnpm exec openruntime snapshot --url <url> --id modern:route
+```
 
-Remote overview:
+`modern:route.data.matches` 里会包含当前路由链、loader 状态、route component 状态和错误信息。
+如果页面存在 SSR 或 hydration 状态，再读取 Modern.js 相关 target：
+
+```bash
+pnpm exec openruntime snapshot --url <url> --query modern
+```
+
+### MF remote / expose / shared 诊断
+
+MF 场景优先让消费者项目接入 `@module-federation/observability-plugin`。
+这个插件记录 remote、expose、shared、preload 等加载链路，并能生成 report。
+OpenRuntime 的 MF target 和 report action 应基于这个观测数据，而不是自己重新猜 MF 加载过程。
+
+浏览器运行时常见接入方式：
+
+```bash
+pnpm add @module-federation/observability-plugin
+```
+
+```ts
+import { createInstance } from "@module-federation/runtime";
+import { ObservabilityPlugin } from "@module-federation/observability-plugin";
+
+createInstance({
+  name: "runtime_host",
+  remotes: [
+    {
+      name: "remote1",
+      entry: "https://example.com/mf-manifest.json",
+    },
+  ],
+  plugins: [
+    ObservabilityPlugin({
+      level: "verbose",
+      browser: {
+        enabled: true,
+        scope: "runtime_host",
+      },
+    }),
+  ],
+});
+```
+
+先看 MF target：
 
 ```bash
 pnpm exec openruntime targets --url <url> --type mf.remote
-pnpm exec openruntime snapshot --url <url> --query runtime_remote2
-pnpm exec openruntime wait-for mf:remote:runtime_remote2 ready --url <url> --timeout 10000
-```
-
-Specific exposed module:
-
-```bash
-pnpm exec openruntime wait-for mf:remote:runtime_remote2:expose:ButtonOldAnt ready --url <url> --timeout 10000
-```
-
-If the target is `error`, `recovered`, or missing the expected phase details,
-read the MF observability report through OpenRuntime safe actions:
-
-```bash
-pnpm exec openruntime run-action --url <url> mf:list-reports --payload '{"remote":"runtime_remote2"}'
-pnpm exec openruntime run-action --url <url> mf:get-report --payload '{"traceId":"<trace-id>"}'
-```
-
-When reading a report, use this order:
-
-1. `diagnosis`
-2. `summary`
-3. phase details such as `summary.phases` or `summary.shared`
-4. raw timeline events only when the summary is insufficient
-
-### Debug A Shared Dependency
-
-```bash
+pnpm exec openruntime targets --url <url> --type mf.remote.expose
 pnpm exec openruntime targets --url <url> --type mf.shared
+```
+
+等待具体 remote expose，而不是只等 remote 总览：
+
+```bash
+pnpm exec openruntime wait-for mf:remote:<remoteName>:expose:<exposeName> ready --url <url> --timeout 10000
+```
+
+排查 shared：
+
+```bash
+pnpm exec openruntime snapshot --url <url> --query <sharedName>
 pnpm exec openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> loaded --url <url> --timeout 10000
 pnpm exec openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> error --url <url> --timeout 10000
 ```
 
-Use `recovered` as a handled fallback signal, not as proof that the intended
-provider loaded.
-
-If the shared target errors, inspect the latest matching report and read the
-shared-specific fields in `summary.shared` or the report diagnosis before
-falling back to browser logs.
-
-### Debug Loader Redirect Or Loader Failure
-
-Wait for the final pathname that should be visible after redirect:
+如果 MF observability 注册了报告 action，可以通过 OpenRuntime 读取详细诊断：
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/login --timeout 10000
+pnpm exec openruntime run-action --url <url> mf:list-reports --payload '{"remote":"<remoteName>"}'
+pnpm exec openruntime run-action --url <url> mf:get-report --payload '{"traceId":"<trace-id>"}'
 ```
-
-If the page stops on another route or errors, collect route evidence:
-
-```bash
-pnpm exec openruntime snapshot --url <url> --id modern:route
-pnpm exec openruntime events --url <url> --target-id modern:route --limit 50
-```
-
-Report the current `pathname`, `navigation`, `matches`, loader status, and
-`errorRouteIds` from `modern:route`.
-
-## Evidence Report Shape
-
-When verification fails, respond with:
-
-- What was attempted.
-- Which runtime was selected.
-- Which target/action was expected.
-- Current snapshot status, data, blocker hints, and error for the relevant target.
-- The last relevant events.
-- For MF issues, the matching report `diagnosis` and the smallest useful summary
-  excerpt.
-- Whether fallback browser evidence was needed.
-
-Keep raw dumps short. Include exact target ids, action names, statuses, and the
-smallest useful snapshot/events excerpts.

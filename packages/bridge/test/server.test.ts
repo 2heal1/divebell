@@ -183,6 +183,44 @@ test("keeps same-url page instances separate", async () => {
   }
 });
 
+test("tracks a stable session across refreshed runtimes", async () => {
+  const ids = ["runtime-before-refresh", "runtime-after-refresh"];
+  const server = createBridgeServer({
+    idGenerator: () => ids.shift() ?? "runtime-extra",
+    clock: createClock(2850)
+  });
+  const address = await server.listen({ port: 0 });
+  const firstStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-before&sessionId=session-orders`);
+
+  try {
+    assert.deepEqual(await firstStream.next("connected"), { runtimeId: "runtime-before-refresh" });
+    firstStream.close();
+    await waitForDisconnect();
+
+    const secondStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-after&sessionId=session-orders`);
+    try {
+      assert.deepEqual(await secondStream.next("connected"), { runtimeId: "runtime-after-refresh" });
+      const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+      assert.deepEqual(runtimes.runtimes, [
+        {
+          runtimeId: "runtime-after-refresh",
+          url: "http://app.test/orders?openruntimeSessionId=session-orders",
+          sessionId: "session-orders",
+          pageInstanceId: "page-after",
+          status: "connected",
+          connectedAt: 2854,
+          lastSeenAt: 2854
+        }
+      ]);
+    } finally {
+      secondStream.close();
+    }
+  } finally {
+    firstStream.close();
+    await server.close();
+  }
+});
+
 test("links server-rendered runtime state with the later browser connection", async () => {
   const server = createBridgeServer({
     clock: createClock(2900)

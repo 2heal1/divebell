@@ -67,6 +67,7 @@ export class RuntimeConnectionStore {
     options: {
       pageInstanceId?: string;
       runtimeId?: string;
+      sessionId?: string;
       renderId?: string;
     } = {}
   ): BridgeRuntimeInfo {
@@ -77,6 +78,7 @@ export class RuntimeConnectionStore {
       existing.info = {
         ...activeInfo,
         url,
+        ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
         ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
         ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
         status: "connected",
@@ -89,6 +91,7 @@ export class RuntimeConnectionStore {
     const info: BridgeRuntimeInfo = {
       runtimeId: options.runtimeId ?? this.#idGenerator(),
       url,
+      ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
       ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
       ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
       status: "connected",
@@ -116,6 +119,7 @@ export class RuntimeConnectionStore {
     const info: BridgeRuntimeInfo = {
       ...activeInfo,
       url: input.url,
+      ...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
       ...(input.renderId === undefined ? {} : { renderId: input.renderId }),
       ...(input.source === undefined ? {} : { source: input.source }),
       status: existing?.stream === undefined ? "server" : "connected",

@@ -5,6 +5,7 @@ export type Fetcher = typeof fetch;
 
 export interface RuntimeSelector {
   runtimeId?: string;
+  sessionId?: string;
   url?: string;
 }
 
@@ -134,17 +135,26 @@ export function selectRuntime(
     return runtime;
   }
 
-  const candidates = selector.url === undefined
-    ? runtimes.filter((runtime) => runtime.status === "connected")
-    : runtimes.filter((runtime) => runtime.status === "connected" && runtime.url === selector.url);
+  const candidates = runtimes.filter((runtime) =>
+    runtime.status === "connected" &&
+    (selector.sessionId === undefined || runtime.sessionId === selector.sessionId) &&
+    (selector.url === undefined || runtime.url === selector.url)
+  );
 
   if (candidates.length === 0) {
-    throw new Error(selector.url === undefined
-      ? "No connected runtime was found."
-      : `No connected runtime matched URL "${selector.url}".`);
+    throw new Error(createNoRuntimeMessage(selector));
   }
 
   return candidates.sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] as BridgeRuntimeInfo;
+}
+
+function createNoRuntimeMessage(selector: RuntimeSelector): string {
+  const conditions = [
+    selector.sessionId === undefined ? undefined : `session "${selector.sessionId}"`,
+    selector.url === undefined ? undefined : `URL "${selector.url}"`
+  ].filter((condition): condition is string => condition !== undefined);
+  if (conditions.length === 0) return "No connected runtime was found.";
+  return `No connected runtime matched ${conditions.join(" and ")}.`;
 }
 
 export function normalizeBridgeUrl(input: string | undefined): string {

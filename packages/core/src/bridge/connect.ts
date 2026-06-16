@@ -2,6 +2,7 @@ import type { OpenRuntimeCore, RuntimeError } from "../runtime/types.js";
 import { executeBridgeRuntimeRequest } from "./command.js";
 import {
   OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
+  OPEN_RUNTIME_SESSION_QUERY_PARAM,
   type BridgeConnectOptions,
   type BridgeRuntimeRequest,
   type BridgeRuntimeResponse
@@ -22,6 +23,7 @@ export function connectBridge(
   const pageUrl = getPageUrl();
   const pageInstanceId = getPageInstanceId(options.pageInstanceId);
   const configuredRuntimeId = normalizeOptional(options.runtimeId);
+  const configuredSessionId = getSessionId(options.sessionId, pageUrl);
   const configuredRenderId = normalizeOptional(options.renderId);
 
   let runtimeId: string | undefined;
@@ -40,6 +42,7 @@ export function connectBridge(
       pageUrl,
       pageInstanceId,
       ...(configuredRuntimeId === undefined ? {} : { runtimeId: configuredRuntimeId }),
+      ...(configuredSessionId === undefined ? {} : { sessionId: configuredSessionId }),
       ...(configuredRenderId === undefined ? {} : { renderId: configuredRenderId })
     }));
     stream.addEventListener("connected", (event) => {
@@ -118,14 +121,18 @@ function createBridgeConnectUrl(options: {
   pageUrl: string;
   pageInstanceId: string;
   runtimeId?: string;
+  sessionId?: string;
   renderId?: string;
 }): string {
-  const { port, pageUrl, pageInstanceId, runtimeId, renderId } = options;
+  const { port, pageUrl, pageInstanceId, runtimeId, sessionId, renderId } = options;
   const url = new URL(`http://localhost:${port}/connect`);
   url.searchParams.set("url", pageUrl);
   url.searchParams.set("pageInstanceId", pageInstanceId);
   if (runtimeId !== undefined) {
     url.searchParams.set("runtimeId", runtimeId);
+  }
+  if (sessionId !== undefined) {
+    url.searchParams.set("sessionId", sessionId);
   }
   if (renderId !== undefined) {
     url.searchParams.set("renderId", renderId);
@@ -139,6 +146,17 @@ function createBridgeResponseUrl(port: number, runtimeId: string, requestId: str
 
 function getPageUrl(): string {
   return globalThis.location?.href ?? "unknown";
+}
+
+function getSessionId(configuredSessionId: string | undefined, pageUrl: string): string | undefined {
+  const normalized = normalizeOptional(configuredSessionId);
+  if (normalized !== undefined) return normalized;
+
+  try {
+    return normalizeOptional(new URL(pageUrl).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM) ?? undefined);
+  } catch {
+    return undefined;
+  }
 }
 
 interface GlobalBridgeConnection {

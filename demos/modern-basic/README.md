@@ -4,7 +4,7 @@
 
 ## 准备
 
-这个 demo 依赖本机的 Modern.js 仓库：`/Users/bytedance/fork_repo/modern.js`。需要先确保那边已经包含 OpenRuntime 所需的 hook，并且依赖已安装。
+这个 demo 依赖本机的 Modern.js 仓库：`/Users/bytedance/work/modern.js`。需要先确保那边已经包含 OpenRuntime 所需的 hook，并且依赖已安装。
 
 在仓库根目录先安装依赖并构建：
 

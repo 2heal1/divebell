@@ -3,6 +3,7 @@ export type BridgeRuntimeStatus = "server" | "connected" | "disconnected";
 export interface BridgeRuntimeInfo {
   runtimeId: string;
   url: string;
+  sessionId?: string;
   renderId?: string;
   source?: string;
   pageInstanceId?: string;

@@ -5,18 +5,21 @@ import type { GetTargetsQuery, RuntimeTargetDescriptor } from "../target/types.j
 import type { RuntimeDataCondition, RuntimeWaitOptions } from "../wait/types.js";
 
 export const OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
+export const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
 
 export interface BridgeConnectOptions {
   port?: number;
   autoReconnect?: boolean;
   pageInstanceId?: string;
   runtimeId?: string;
+  sessionId?: string;
   renderId?: string;
 }
 
 export interface BridgeServerSyncOptions {
   port?: number;
   runtimeId: string;
+  sessionId?: string;
   renderId?: string;
   url: string;
   source?: string;
@@ -62,6 +65,7 @@ export interface BridgeRuntimeResponse {
 
 export interface BridgeServerRuntimeSyncPayload {
   runtimeId: string;
+  sessionId?: string;
   renderId?: string;
   url: string;
   source?: string;

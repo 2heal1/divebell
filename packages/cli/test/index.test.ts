@@ -180,6 +180,63 @@ test("selects the latest matching runtime for read commands", async () => {
   });
 });
 
+test("selects the latest matching runtime by session", async () => {
+  const calls: string[] = [];
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--session", "session-orders"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-other",
+              url: "http://app.test/orders",
+              sessionId: "session-other",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 20
+            },
+            {
+              runtimeId: "runtime-before-refresh",
+              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              sessionId: "session-orders",
+              status: "disconnected",
+              connectedAt: 1,
+              lastSeenAt: 2,
+              disconnectedAt: 3
+            },
+            {
+              runtimeId: "runtime-after-refresh",
+              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              sessionId: "session-orders",
+              status: "connected",
+              connectedAt: 4,
+              lastSeenAt: 5
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-after-refresh/snapshot");
+      return jsonResponse({
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-after-refresh/snapshot"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+});
+
 test("prints VMOK module info from the module info target", async () => {
   const calls: string[] = [];
   const output = createOutput();
@@ -416,6 +473,7 @@ test("runs execution commands against the selected runtime", async () => {
     "http://app.test/",
     "route:/home",
     "ready",
+    "--strict",
     "--where",
     "matches.pathname=/orders",
     "--timeout",
@@ -466,6 +524,87 @@ test("runs execution commands against the selected runtime", async () => {
   ]);
 });
 
+test("wait-for follows the latest matching runtime unless strict mode is set", async () => {
+  const calls: Array<{ url: string; method?: string; body?: unknown }> = [];
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "--runtime",
+    "runtime-before-refresh",
+    "--url",
+    "http://app.test/orders",
+    "modern:route",
+    "ready",
+    "--timeout",
+    "300"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url, init) => {
+      const call: {
+        url: string;
+        method?: string;
+        body?: unknown;
+      } = {
+        url: String(url)
+      };
+      if (init?.method !== undefined) {
+        call.method = init.method;
+      }
+      if (init?.body !== undefined) {
+        call.body = JSON.parse(String(init.body));
+      }
+      calls.push(call);
+
+      if (String(url) === "http://bridge.test/runtimes") {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-before-refresh",
+              url: "http://app.test/orders",
+              status: "disconnected",
+              connectedAt: 1,
+              lastSeenAt: 2,
+              disconnectedAt: 3
+            },
+            {
+              runtimeId: "runtime-after-refresh",
+              url: "http://app.test/orders",
+              status: "connected",
+              connectedAt: 4,
+              lastSeenAt: 5
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-after-refresh/wait-for");
+      assert.equal(init?.method, "POST");
+      return jsonResponse({
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        }
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls.map((call) => call.url), [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-after-refresh/wait-for"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+});
+
 test("opens a browser page and auto-starts the bridge when needed", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
@@ -501,6 +640,35 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
   assert.equal(output.text(), "opened\n");
   assert.equal(output.errorText(), "");
   assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
+});
+
+test("opens a browser page with a stable OpenRuntime session", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli(["open", "http://app.test/orders?region=cn#details", "--session", "session-orders"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async () => jsonResponse({ runtimes: [] }),
+    bridgeStarter: {
+      start: async () => ({ pid: 12345 })
+    },
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.text(), "opened\n");
+  assert.deepEqual(browserCalls, [[
+    "open",
+    "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details"
+  ]]);
 });
 
 test("opens a browser page without touching the bridge when no-bridge is set", async () => {
@@ -718,7 +886,9 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
     "--url",
     "http://app.test/route-a",
     "modern:route",
-    "ready"
+    "ready",
+    "--timeout",
+    "1"
   ], {
     stdout: output.stdout,
     stderr: output.stderr,
@@ -825,7 +995,8 @@ test("opens a page before wait-for when open is set", async () => {
 
   assert.equal(exitCode, 0);
   assert.deepEqual(browserCalls, [["open", "http://app.test/route-a"]]);
-  assert.deepEqual(calls, [
+  assert.equal(calls.length, 4);
+  assert.deepEqual(calls.slice(0, 3), [
     {
       url: "http://bridge.test/runtimes"
     },
@@ -834,24 +1005,101 @@ test("opens a page before wait-for when open is set", async () => {
     },
     {
       url: "http://bridge.test/runtimes"
-    },
-    {
-      url: "http://bridge.test/runtimes/runtime-1/wait-for",
-      method: "POST",
-      body: {
-        targetId: "modern:route",
-        status: "ready",
-        timeout: 500,
-        where: [
-          {
-            path: "pathname",
-            equals: "/route-a"
-          }
-        ]
-      }
     }
   ]);
+  assert.equal(calls[3]?.url, "http://bridge.test/runtimes/runtime-1/wait-for");
+  assert.equal(calls[3]?.method, "POST");
+  const waitBody = calls[3]?.body as { timeout?: unknown };
+  if (typeof waitBody.timeout !== "number") {
+    assert.fail("wait-for timeout should be a number.");
+  }
+  assert.ok(waitBody.timeout >= 1);
+  assert.ok(waitBody.timeout <= 500);
+  assert.deepEqual(calls[3]?.body, {
+    targetId: "modern:route",
+    status: "ready",
+    timeout: waitBody.timeout,
+    where: [
+      {
+        path: "pathname",
+        equals: "/route-a"
+      }
+    ]
+  });
   assert.equal(JSON.parse(output.text()).result.success, true);
+});
+
+test("opens and follows a session before wait-for when open is set", async () => {
+  const browserCalls: string[][] = [];
+  let opened = false;
+
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "--url",
+    "http://app.test/route-a",
+    "--session",
+    "session-route-a",
+    "modern:route",
+    "ready",
+    "--open",
+    "--timeout",
+    "500"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url, init) => {
+      if (String(url) === "http://bridge.test/runtimes") {
+        return jsonResponse({
+          runtimes: opened
+            ? [
+                {
+                  runtimeId: "runtime-session",
+                  url: "http://app.test/route-a?openruntimeSessionId=session-route-a",
+                  sessionId: "session-route-a",
+                  status: "connected",
+                  connectedAt: 1,
+                  lastSeenAt: 2
+                }
+              ]
+            : []
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-session/wait-for");
+      assert.equal(init?.method, "POST");
+      return jsonResponse({
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        }
+      });
+    },
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      opened = true;
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "open",
+    "http://app.test/route-a?openruntimeSessionId=session-route-a"
+  ]]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-session");
 });
 
 test("rejects invalid payload json", async () => {

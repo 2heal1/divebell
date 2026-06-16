@@ -167,6 +167,7 @@ class NodeBridgeServer implements BridgeServer {
     }
     const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
     const runtimeId = normalizeOptionalQuery(url.searchParams.get("runtimeId"));
+    const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId"));
     const renderId = normalizeOptionalQuery(url.searchParams.get("renderId"));
 
     response.writeHead(200, {
@@ -181,6 +182,7 @@ class NodeBridgeServer implements BridgeServer {
     const runtime = this.#store.connect(runtimeUrl, stream, {
       ...(pageInstanceId === undefined ? {} : { pageInstanceId }),
       ...(runtimeId === undefined ? {} : { runtimeId }),
+      ...(sessionId === undefined ? {} : { sessionId }),
       ...(renderId === undefined ? {} : { renderId })
     });
     stream.send("connected", {
@@ -459,6 +461,7 @@ function isServerRuntimeSyncPayload(value: unknown): value is BridgeServerRuntim
   if (!isRecord(value)) return false;
   if (typeof value.runtimeId !== "string" || value.runtimeId.length === 0) return false;
   if (typeof value.url !== "string" || value.url.length === 0) return false;
+  if (value.sessionId !== undefined && typeof value.sessionId !== "string") return false;
   if (value.renderId !== undefined && typeof value.renderId !== "string") return false;
   if (value.source !== undefined && typeof value.source !== "string") return false;
   if (value.targets !== undefined && !Array.isArray(value.targets)) return false;

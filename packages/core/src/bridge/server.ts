@@ -17,6 +17,7 @@ export async function syncServerRuntimeBridge(
     },
     body: JSON.stringify({
       runtimeId: options.runtimeId,
+      ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
       ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
       url: options.url,
       ...(options.source === undefined ? {} : { source: options.source }),

@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { once } from "node:events";
 import { createBridgeServer, type BridgeServer } from "@openruntime/bridge";
-import { createPackageInfo, OPEN_RUNTIME_BRIDGE_DEFAULT_PORT, type RuntimeDataCondition } from "@openruntime/core";
+import {
+  createPackageInfo,
+  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
+  OPEN_RUNTIME_SESSION_QUERY_PARAM,
+  type RuntimeDataCondition
+} from "@openruntime/core";
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
 import {
   createGetWindowScript,
@@ -27,7 +32,9 @@ import {
   runRuntimeAction,
   selectRuntime,
   waitForRuntime,
-  type Fetcher
+  type Fetcher,
+  type RuntimeResourceResult,
+  type RuntimeSelector
 } from "./client.js";
 import { isEntryPoint } from "./entry.js";
 import { runVmokCommand } from "./extensions/vmok/index.js";
@@ -143,14 +150,15 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
       const bridgeUrl = createBridgeUrl(args);
-      const runtime = await selectRuntimeForWait(args, fetcher, bridgeUrl, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
-      const result = await waitForRuntime(
+      const result = await waitForRuntimeCommand(
+        args,
         fetcher,
         bridgeUrl,
-        runtime,
+        browserRunner,
+        bridgeStarter,
+        createBridgeStateStore(args, options.bridgeStateDirectory),
         targetId,
         status,
-        getNumberOption(args, "timeout"),
         parseWhereOptions(args)
       );
       writeJson(stdout, result);
@@ -175,18 +183,14 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
   }
 }
 
-function createRuntimeSelector(args: ParsedCliArgs): {
-  runtimeId?: string;
-  url?: string;
-} {
-  const selector: {
-    runtimeId?: string;
-    url?: string;
-  } = {};
+function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
+  const selector: RuntimeSelector = {};
   const runtimeId = getOptionValue(args, "runtime");
+  const sessionId = getOptionValue(args, "session");
   const url = getOptionValue(args, "url");
-  if (runtimeId !== undefined) selector.runtimeId = runtimeId;
-  if (url !== undefined) selector.url = url;
+  if (runtimeId !== undefined && options.ignoreRuntimeId !== true) selector.runtimeId = runtimeId;
+  if (sessionId !== undefined) selector.sessionId = sessionId;
+  if (url !== undefined) selector.url = withOpenRuntimeSession(url, sessionId);
   return selector;
 }
 
@@ -285,6 +289,33 @@ async function runBrowserCliCommand(
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
 }
 
+async function waitForRuntimeCommand(
+  args: ParsedCliArgs,
+  fetcher: Fetcher,
+  bridgeUrl: string,
+  browserRunner: BrowserRunner,
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  targetId: string,
+  status: string,
+  where: RuntimeDataCondition[] | undefined
+): Promise<RuntimeResourceResult<unknown>> {
+  if (hasOption(args, "strict")) {
+    const runtime = await selectRuntimeForWait(args, fetcher, bridgeUrl, browserRunner, bridgeStarter, bridgeStateStore);
+    return await waitForRuntime(
+      fetcher,
+      bridgeUrl,
+      runtime,
+      targetId,
+      status,
+      getNumberOption(args, "timeout"),
+      where
+    );
+  }
+
+  return await waitForLatestRuntime(args, fetcher, bridgeUrl, browserRunner, bridgeStarter, bridgeStateStore, targetId, status, where);
+}
+
 async function selectRuntimeForWait(
   args: ParsedCliArgs,
   fetcher: Fetcher,
@@ -310,7 +341,7 @@ async function selectRuntimeForWait(
       stateStore: bridgeStateStore,
       ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
     });
-    await runBrowserOrThrow(browserRunner, ["open", url]);
+    await runBrowserOrThrow(browserRunner, ["open", withOpenRuntimeSession(url, selector.sessionId)]);
     return await waitForSelectedRuntime({
       fetcher,
       bridgeUrl,
@@ -318,6 +349,72 @@ async function selectRuntimeForWait(
       ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout"))
     });
   }
+}
+
+async function waitForLatestRuntime(
+  args: ParsedCliArgs,
+  fetcher: Fetcher,
+  bridgeUrl: string,
+  browserRunner: BrowserRunner,
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  targetId: string,
+  status: string,
+  where: RuntimeDataCondition[] | undefined
+): Promise<RuntimeResourceResult<unknown>> {
+  const selector = createRuntimeSelector(args, { ignoreRuntimeId: true });
+  const timeout = getNumberOption(args, "timeout") ?? 5000;
+  const deadline = Date.now() + timeout;
+  let lastError: unknown;
+  let lastResult: RuntimeResourceResult<unknown> | undefined;
+  let didOpen = false;
+
+  while (Date.now() <= deadline) {
+    const remainingTimeout = Math.max(1, deadline - Date.now());
+    try {
+      const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
+      const runtime = selectRuntime(runtimes, selector);
+      const result = await waitForRuntime(
+        fetcher,
+        bridgeUrl,
+        runtime,
+        targetId,
+        status,
+        remainingTimeout,
+        where
+      );
+      if (!isRetryableWaitResult(result.result)) {
+        return result;
+      }
+      lastResult = result;
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableWaitError(error)) {
+        throw error;
+      }
+
+      if (hasOption(args, "open") && !didOpen) {
+        didOpen = true;
+        const url = requireOption(args, "url");
+        await ensureBridge({
+          fetcher,
+          bridgeUrl,
+          starter: bridgeStarter,
+          stateStore: bridgeStateStore,
+          ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+        });
+        await runBrowserOrThrow(browserRunner, ["open", withOpenRuntimeSession(url, selector.sessionId)]);
+      }
+    }
+
+    await sleep(100);
+  }
+
+  if (lastResult !== undefined) {
+    return lastResult;
+  }
+
+  throw addOpenHint(lastError ?? new Error("No connected runtime was found before timeout."), selector);
 }
 
 async function runStartCommand(
@@ -380,7 +477,7 @@ function createBridgeStateStore(args: ParsedCliArgs, stateDirectory: string | un
 }
 
 function createOpenBrowserArgs(args: ParsedCliArgs, url: string): string[] {
-  const browserArgs = ["open", url];
+  const browserArgs = ["open", withOpenRuntimeSession(url, getOptionValue(args, "session"))];
   const cookies = getOptionValue(args, "cookies");
   if (cookies !== undefined) {
     browserArgs.push("--cookies", cookies);
@@ -391,7 +488,7 @@ function createOpenBrowserArgs(args: ParsedCliArgs, url: string): string[] {
 function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
   const command = args.command[0];
   if (command === "goto") {
-    return ["goto", requireCommandArgument(args, 1, "URL")];
+    return ["goto", withOpenRuntimeSession(requireCommandArgument(args, 1, "URL"), getOptionValue(args, "session"))];
   }
   if (command === "page-snapshot") {
     return ["snapshot"];
@@ -421,6 +518,18 @@ function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
     return browserArgs;
   }
   return ["close"];
+}
+
+function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {
+  if (sessionId === undefined || sessionId.length === 0) return input;
+
+  try {
+    const url = new URL(input);
+    url.searchParams.set(OPEN_RUNTIME_SESSION_QUERY_PARAM, sessionId);
+    return url.toString();
+  } catch {
+    return input;
+  }
 }
 
 async function runBrowserAndPipe(
@@ -503,8 +612,25 @@ function hasOption(args: ParsedCliArgs, name: string): boolean {
   return args.options.has(name);
 }
 
-function addOpenHint(error: unknown, selector: { url?: string }): Error {
-  if (error instanceof Error && selector.url !== undefined && error.message.startsWith("No connected runtime matched URL")) {
+function isRetryableWaitResult(result: unknown): boolean {
+  if (result === null || typeof result !== "object") return false;
+  const value = result as {
+    success?: unknown;
+    reason?: unknown;
+  };
+  return value.success === false && value.reason === "Target is not registered.";
+}
+
+function isRetryableWaitError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.startsWith("No connected runtime") ||
+    /^Runtime ".*" was not found\.$/.test(message) ||
+    /^Runtime ".*" is disconnected\.$/.test(message) ||
+    message === "Runtime is disconnected.";
+}
+
+function addOpenHint(error: unknown, selector: { sessionId?: string; url?: string }): Error {
+  if (error instanceof Error && selector.url !== undefined && error.message.startsWith("No connected runtime matched")) {
     return new Error(`${error.message}\nUse --open to open the page before waiting.`);
   }
   return error instanceof Error ? error : new Error(String(error));
@@ -602,8 +728,8 @@ function createHelpText(): string {
     "Usage:",
     "  open-runtime start [--port <port>]",
     "  open-runtime stop [--port <port>]",
-    "  open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]",
-    "  open-runtime goto <url>",
+    "  open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]",
+    "  open-runtime goto <url> [--session <id>]",
     "  open-runtime page-snapshot",
     "  open-runtime click <ref|selector|text>",
     "  open-runtime fill <ref|selector> <value>",
@@ -613,14 +739,14 @@ function createHelpText(): string {
     "  open-runtime screenshot [name] [--full-page]",
     "  open-runtime close",
     "  open-runtime runtimes [--bridge <url>]",
-    "  open-runtime targets [--bridge <url>] [--url <url> | --runtime <id>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    "  open-runtime snapshot [--bridge <url>] [--url <url> | --runtime <id>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    "  open-runtime events [--bridge <url>] [--url <url> | --runtime <id>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]",
-    "  open-runtime actions [--bridge <url>] [--url <url> | --runtime <id>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
-    "  open-runtime input-options [--bridge <url>] [--url <url> | --runtime <id>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
-    "  open-runtime run-action [--bridge <url>] [--url <url> | --runtime <id>] <action-name> [--payload <json>]",
-    "  open-runtime wait-for [--bridge <url>] [--url <url> | --runtime <id>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open]",
-    "  open-runtime vmok get-module-info [--bridge <url>] [--url <url> | --runtime <id>] [--target <target-id>]",
+    "  open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    "  open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    "  open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]",
+    "  open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
+    "  open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
+    "  open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
+    "  open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]",
+    "  open-runtime vmok get-module-info [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target <target-id>]",
     "  open-runtime vmok get-instance <name>",
     "",
     "Examples:",

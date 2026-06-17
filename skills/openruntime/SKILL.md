@@ -1,38 +1,43 @@
 ---
 name: openruntime
 description: >-
-  帮助项目通过 OpenRuntime CLI 操作浏览器、读取运行时状态、执行声明动作并
-  等待目标状态，从而确认页面、组件、业务、Modern.js 和 Module Federation 的
-  真实状态。Use when a task explicitly asks to use, evaluate, integrate, or
-  troubleshoot OpenRuntime/@openruntime, or needs browser operation combined
-  with OpenRuntime runtime evidence.
+  帮助已接入或准备接入 OpenRuntime 的项目把页面、组件、业务动作、
+  Modern.js 和 Module Federation 状态暴露成 target/action/snapshot，
+  并用 CLI 读取、执行、等待和诊断。Use when a task explicitly asks to
+  use, evaluate, integrate, or troubleshoot OpenRuntime/@openruntime, or
+  needs runtime evidence for frontend behavior.
 ---
 
 # OpenRuntime
 
-OpenRuntime 帮助项目把浏览器操作和页面内部状态开放给 Agent。它可以通过 CLI
-打开页面、跳转、点击、填写、读取 DOM/window、截图和关闭页面，也可以读取
-`targets`、`snapshot`、`events` 和 `actions`，执行页面声明的 action，
-等待 target 到达目标状态。
+OpenRuntime 帮助项目把页面内部状态、业务动作和浏览器操作开放给 Agent。
+它的核心价值是让 Agent 不再靠 UI、DOM 或异步时机猜结果，而是读取应用主动暴露的
+可信运行时事实。状态验证、状态获取和业务动作结果都应以这些信号为准，同时配套
+CLI 可以完成打开、操作、读取、等待和诊断等纯 CLI 自动化流程。
+
+OpenRuntime 可以通过 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
+执行页面声明的 action，等待 target 到达目标状态。它也能打开页面、跳转、点击、
+填写、读取 DOM/window、截图和关闭页面。
 
 本 skill 只在已经选择 OpenRuntime 路径后约束浏览器操作。没有使用 OpenRuntime、
 也不需要 OpenRuntime 证据的任务，不要因为本 skill 改变 Agent 原本的工具选择。
 
-核心原则：用 OpenRuntime CLI 串起“浏览器动作”和“内部状态”。先用浏览器命令
-打开和操作页面，再用 runtime 命令读取状态、等待变化、查看事件。不要只点击页面
-就下结论，也不要在 OpenRuntime 已给出明确状态后再切到外部浏览器重复验证。
+核心原则：源码可改时，优先在业务代码真实 ready/error 点注册 target、更新
+snapshot，并为业务动作注册 action。Agent 先用 runtime 状态做结论，再按需要
+使用 DOM、点击、跳转或截图。不要只点击页面就下结论，也不要在 OpenRuntime
+已给出明确状态后再切到外部浏览器重复验证同一个事实。
 
 ## 什么时候使用
 
 遇到下面情况，使用 OpenRuntime：
 
 - 用户明确要求 OpenRuntime 或项目已经接入/准备接入 OpenRuntime。
-- 需要同时操作浏览器并读取页面内部状态。
+- 需要把业务状态、业务动作和页面内部状态暴露给 Agent。
 - 需要把页面、组件、业务 ready 变成结构化状态，而不是靠 UI 猜。
-- 需要通过 CLI 打开页面、跳转、点击、填写、读取 DOM/window、截图并继续验证内部状态。
 - 需要为项目设计或补充 OpenRuntime target、snapshot、event 或 action。
 - 需要确认页面、路由、loader、组件、业务状态、远程模块或共享依赖是否 ready。
 - 需要执行页面声明的安全动作，然后等待结果。
+- 需要通过 CLI 打开页面、跳转、点击、填写、读取 DOM/window、截图并结合内部状态验证。
 - 需要排查 Modern.js 或 Module Federation 的运行时状态。
 
 如果任务只是普通浏览器自动化，且没有要求 OpenRuntime、项目也没有 OpenRuntime
@@ -49,7 +54,7 @@ OpenRuntime 帮助项目把浏览器操作和页面内部状态开放给 Agent�
 - `@openruntime/modern-plugin`：Modern.js 项目自动暴露 route、loader、SSR、hydration 等状态。
 - `@module-federation/observability-plugin`：MF 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
 
-项目还没接入时，先补页面侧最小 target/action，再用 Bridge 和 CLI 验证。
+项目还没接入时，先补页面侧最小 target/action/snapshot，再用 Bridge 和 CLI 验证。
 项目已安装 CLI 后，常用入口是：
 
 ```bash
@@ -134,55 +139,83 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime vmok get-module-info --url http://localhost:4412` - 从默认 target 读取 VMOK module info。
 - `open-runtime vmok get-instance shell` - 按名称读取一个 VMOK 浏览器实例。
 
-## 浏览器操作与状态验证流程
+## 状态验证流程
 
-把浏览器动作和 OpenRuntime 状态验证放在同一条链路里：
+把业务状态、声明动作和浏览器操作放在同一条链路里。
 
-1. 打开页面并准备 Bridge。
+1. 先判断源码是否可改。源码可改时，在最小业务范围补 target/action/snapshot。
+
+```ts
+runtime.registerTarget({
+  id: "business:orders:risk-panel",
+  type: "business.ready",
+  statuses: ["pending", "ready", "error"],
+  source: "business",
+});
+
+runtime.registerAction({
+  name: "orders.refresh",
+  source: "business",
+  risk: "safe",
+  handler: async () => {
+    await refreshOrders();
+  },
+});
+
+runtime.updateSnapshot({
+  id: "business:orders:risk-panel",
+  status: "ready",
+  data: {
+    orderId: selectedOrder.id,
+    riskScore: riskScore.value,
+    remotePanelReady: true,
+  },
+});
+```
+
+2. 打开页面并准备 Bridge。打开页面通常只需要一次；代码重建或页面刷新后，优先让
+`wait-for` 按 `--url` 或 session 跟随最新 runtime。
 
 ```bash
 pnpm exec openruntime open <url>
 ```
 
-2. 找到 runtime，确认页面已经连接。
+3. 找到 runtime，读取页面声明了哪些能力和状态。
 
 ```bash
 pnpm exec openruntime runtimes
-pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 10000
-```
-
-3. 读取页面暴露的内部状态。
-
-```bash
+pnpm exec openruntime actions --url <url>
 pnpm exec openruntime targets --url <url>
 pnpm exec openruntime snapshot --url <url>
-pnpm exec openruntime actions --url <url>
 ```
 
-4. 查询节点、全局对象或可操作元素。
+4. 优先执行页面声明的 action，再等待最小 target。
+
+```bash
+pnpm exec openruntime run-action --url <url> orders.refresh --payload '{"scope":"current"}'
+pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
+```
+
+5. 失败时先查看 snapshot 和事件，定位是 route、loader、业务、MF、Garfish
+还是其他运行时状态。
+
+```bash
+pnpm exec openruntime snapshot --url <url> --id business:orders:risk-panel
+pnpm exec openruntime events --url <url> --target-id business:orders:risk-panel --limit 50
+```
+
+6. 正常使用 DOM、window、点击、跳转和截图能力，但不要在源码可改时把 DOM 查询当作
+业务状态验收的第一选择。它们适合不能改源码、项目还没接入 OpenRuntime、临时探索
+页面结构、确认 DOM 事实、验证 CSS/布局/截图，或 target/action 尚未补齐时确认现象。
 
 ```bash
 pnpm exec openruntime page-snapshot
-pnpm exec openruntime wait-eval 'Boolean(document.querySelector("[data-testid=remote-order-panel]"))' --timeout 10000
-pnpm exec openruntime eval '({ pathname: location.pathname, title: document.title })'
-pnpm exec openruntime get-window gf_data_v1
-```
-
-5. 执行浏览器动作或页面声明的 action。
-
-```bash
 pnpm exec openruntime click '刷新订单'
 pnpm exec openruntime fill '[name=keyword]' 'risk'
 pnpm exec openruntime goto <url>
-pnpm exec openruntime run-action --url <url> <action-name> --payload '<json-object>'
-```
-
-6. 操作后继续等内部状态，而不是只看页面是否变化。
-
-```bash
-pnpm exec openruntime wait-for <target-id> <status> --url <url> --where <path=value> --timeout 10000
-pnpm exec openruntime snapshot --url <url> --id <target-id>
-pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
+pnpm exec openruntime wait-eval 'Boolean(document.querySelector("[data-testid=remote-order-panel]"))' --timeout 10000
+pnpm exec openruntime eval '({ pathname: location.pathname, title: document.title })'
+pnpm exec openruntime get-window gf_data_v1
 ```
 
 7. 需要视觉留证时，用 OpenRuntime CLI 截图。
@@ -198,7 +231,9 @@ pnpm exec openruntime screenshot openruntime-check --full-page
 - 路由是否加载：看 `modern:route`，必要时用 `--where pathname=/target-path`。
 - loader 数据是否可用：看 route target 里的 loader 状态，或等待数据可用后才标记的业务 target。
 - MF remote 模块是否加载：等待具体 expose target，例如 `mf:remote:<remoteName>:expose:<exposeName>`。
-- 业务组件是否 ready：优先看已有 target；没有时可以临时在组件真实 ready 的位置注册业务 target，例如 `business:ready:<scenario-id>`。
+- Garfish/subapp 是否挂载：在 mount 成功或失败处更新业务 target，或读取子应用已有 target。
+- 业务组件是否 ready：优先看已有 target；没有时在组件真实 ready/error 的位置注册业务 target，例如 `business:ready:<scenario-id>`。
+- 业务动作是否完成：优先注册 action，并让 action 后续的状态变化落到最小 target 上。
 
 不要用宽泛的 app 级 target 证明深层业务组件已经 ready。
 如果可以在更小范围临时注册 target/action，就在真实状态变化点注册和更新它。
@@ -236,10 +271,11 @@ runtime.registerAction({
 
 临时 target/action 的典型使用方式：
 
-1. 先用 `openruntime snapshot/actions/events` 或 `click/eval/wait-eval` 确认现象。
-2. 如果 DOM 判断不稳定，或需要观察异步内部状态，就在最小代码位置临时加 target/action。
+1. 先用 `openruntime actions/targets/snapshot/events` 看已有能力是否足够。
+2. 如果源码可改且现有信号不能覆盖目标，就在最小代码位置临时加 target/action。
 3. 用 `run-action` 触发动作，用 `wait-for` 等待临时 target。
-4. 修复完成后删除仅用于调试的 OpenRuntime API。
+4. 需要探索页面、确认 DOM/window 事实或无法改源码时，正常使用 `eval`、`wait-eval`、`click`、`goto`。
+5. 修复完成后删除仅用于调试的 OpenRuntime API；对后续 Agent/运维有价值的保留。
 
 例如临时验证一个远程订单组件：
 
@@ -255,8 +291,10 @@ runtime.updateSnapshot({
   id: "debug:orders:remote-panel",
   status: "ready",
   data: {
-    hasRemotePanel: Boolean(document.querySelector("[data-testid=remote-order-panel]")),
-    hasRiskWidget: Boolean(document.querySelector("[data-testid=risk-score-widget]")),
+    orderId: selectedOrder.id,
+    riskScore: riskScore.value,
+    remotePanelReady: true,
+    riskWidgetReady: true,
   },
 });
 ```

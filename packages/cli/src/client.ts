@@ -135,10 +135,11 @@ export function selectRuntime(
     return runtime;
   }
 
+  const selectorUrl = selector.url === undefined ? undefined : normalizeRuntimeUrlForMatch(selector.url);
   const candidates = runtimes.filter((runtime) =>
     runtime.status === "connected" &&
     (selector.sessionId === undefined || runtime.sessionId === selector.sessionId) &&
-    (selector.url === undefined || runtime.url === selector.url)
+    (selectorUrl === undefined || normalizeRuntimeUrlForMatch(runtime.url) === selectorUrl)
   );
 
   if (candidates.length === 0) {
@@ -146,6 +147,14 @@ export function selectRuntime(
   }
 
   return candidates.sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] as BridgeRuntimeInfo;
+}
+
+function normalizeRuntimeUrlForMatch(input: string): string {
+  try {
+    return new URL(input).toString();
+  } catch {
+    return input.endsWith("/") ? input.slice(0, -1) : input;
+  }
 }
 
 function createNoRuntimeMessage(selector: RuntimeSelector): string {

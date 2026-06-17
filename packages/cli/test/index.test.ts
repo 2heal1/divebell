@@ -199,6 +199,39 @@ test("selects the latest matching runtime for read commands", async () => {
   });
 });
 
+test("matches runtime url when root path trailing slash differs", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://app.test"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-root",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-root/snapshot");
+      return jsonResponse({
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-root");
+});
+
 test("selects the latest matching runtime by session", async () => {
   const calls: string[] = [];
   const output = createOutput();

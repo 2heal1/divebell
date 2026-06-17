@@ -38,6 +38,7 @@ import {
 } from "./client.js";
 import { isEntryPoint } from "./entry.js";
 import { runVmokCommand } from "./extensions/vmok/index.js";
+import { createHelpText } from "./help.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 
@@ -721,41 +722,6 @@ async function waitForProcessExit(server: BridgeServer): Promise<void> {
 
 function writeJson(stdout: { write(chunk: string): void }, value: unknown): void {
   stdout.write(`${JSON.stringify(value, null, 2)}\n`);
-}
-
-function createHelpText(): string {
-  return [
-    "Usage:",
-    "  open-runtime start [--port <port>]",
-    "  open-runtime stop [--port <port>]",
-    "  open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]",
-    "  open-runtime goto <url> [--session <id>]",
-    "  open-runtime page-snapshot",
-    "  open-runtime click <ref|selector|text>",
-    "  open-runtime fill <ref|selector> <value>",
-    "  open-runtime eval <script>",
-    "  open-runtime wait-eval <script> [--timeout <ms>]",
-    "  open-runtime get-window <path>",
-    "  open-runtime screenshot [name] [--full-page]",
-    "  open-runtime close",
-    "  open-runtime runtimes [--bridge <url>]",
-    "  open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    "  open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    "  open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]",
-    "  open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
-    "  open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
-    "  open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
-    "  open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]",
-    "  open-runtime vmok get-module-info [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target <target-id>]",
-    "  open-runtime vmok get-instance <name>",
-    "",
-    "Examples:",
-    "  open-runtime snapshot --url http://localhost:4412 --id modern:route",
-    "  open-runtime events --url http://localhost:4412 --target-id modern:route --limit 50",
-    "  open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000",
-    "  open-runtime vmok get-module-info --url http://localhost:4412",
-    "  open-runtime vmok get-instance shell"
-  ].join("\n");
 }
 
 function sleep(milliseconds: number): Promise<void> {

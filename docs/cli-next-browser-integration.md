@@ -15,22 +15,8 @@ OpenRuntime 不把 `@vercel/next-browser` 的内部会话协议暴露给 Core，
 
 ## CLI 命令
 
-新增顶层浏览器命令：
-
-```txt
-open-runtime start [--port <port>]
-open-runtime stop [--port <port>]
-open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]
-open-runtime goto <url>
-open-runtime page-snapshot
-open-runtime click <ref|selector|text>
-open-runtime fill <ref|selector> <value>
-open-runtime eval <script>
-open-runtime wait-eval <script> [--timeout <ms>]
-open-runtime get-window <path>
-open-runtime screenshot [name]
-open-runtime close
-```
+当前完整命令清单由 `pnpm run docs:cli` 从 CLI 源码生成，见
+`docs/cli-reference.md`。本文件只说明浏览器集成行为和使用边界。
 
 `open-runtime` 同时提供 `opr` 缩写，日常可以写成：
 
@@ -39,19 +25,6 @@ opr start
 opr open http://localhost:8080/route-a
 opr wait-for --url http://localhost:8080/route-a modern:route ready --where pathname=/route-a
 opr stop
-```
-
-保留现有 Runtime 命令：
-
-```txt
-open-runtime runtimes
-open-runtime targets
-open-runtime snapshot
-open-runtime events
-open-runtime actions
-open-runtime input-options
-open-runtime run-action
-open-runtime wait-for
 ```
 
 `snapshot` 继续表示 OpenRuntime 的结构化状态；浏览器页面快照命名为 `page-snapshot`，避免和 Runtime Snapshot 混淆。

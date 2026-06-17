@@ -9,6 +9,7 @@ import { test } from "@rstest/core";
 import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
+import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "open-runtime");
@@ -33,6 +34,24 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
+});
+
+test("generates CLI reference markdown from the help table", () => {
+  const markdown = createCliReferenceMarkdown();
+
+  assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime get-window <path>/);
+  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
+  assert.match(markdown, /open-runtime vmok get-module-info/);
+});
+
+test("generates the skill CLI command section from the help table", () => {
+  const markdown = createCliSkillSectionMarkdown();
+
+  assert.match(markdown, /^## CLI 命令/m);
+  assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime get-window <path>/);
+  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
 });
 
 test("configures next-browser with a persistent OpenRuntime profile", () => {

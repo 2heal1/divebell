@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
   OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
+  OPEN_RUNTIME_SESSION_QUERY_PARAM,
   matchesRuntimeCondition,
   type BridgeRuntimeCommandName,
   type BridgeRuntimeRequest,
@@ -167,7 +168,7 @@ class NodeBridgeServer implements BridgeServer {
     }
     const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
     const runtimeId = normalizeOptionalQuery(url.searchParams.get("runtimeId"));
-    const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId"));
+    const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId")) ?? getOpenRuntimeSessionIdFromUrl(runtimeUrl);
     const renderId = normalizeOptionalQuery(url.searchParams.get("renderId"));
 
     response.writeHead(200, {
@@ -591,6 +592,15 @@ function getStringField(body: Record<string, unknown>, name: string): string | u
 
 function normalizeOptionalQuery(value: string | null): string | undefined {
   return value === null || value.length === 0 ? undefined : value;
+}
+
+function getOpenRuntimeSessionIdFromUrl(input: string): string | undefined {
+  try {
+    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
+  } catch {
+    return undefined;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

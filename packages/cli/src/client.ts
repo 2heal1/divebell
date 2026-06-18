@@ -1,4 +1,4 @@
-import type { RuntimeDataCondition } from "@openruntime/core";
+import { OPEN_RUNTIME_SESSION_QUERY_PARAM, type RuntimeDataCondition } from "@openruntime/core";
 import type { BridgeRuntimeInfo } from "@openruntime/bridge";
 
 export type Fetcher = typeof fetch;
@@ -135,10 +135,11 @@ export function selectRuntime(
     return runtime;
   }
 
+  const selectorSessionId = selector.sessionId ?? getOpenRuntimeSessionIdFromUrl(selector.url);
   const selectorUrl = selector.url === undefined ? undefined : normalizeRuntimeUrlForMatch(selector.url);
   const candidates = runtimes.filter((runtime) =>
     runtime.status === "connected" &&
-    (selector.sessionId === undefined || runtime.sessionId === selector.sessionId) &&
+    (selectorSessionId === undefined || runtimeMatchesSession(runtime, selectorSessionId)) &&
     (selectorUrl === undefined || normalizeRuntimeUrlForMatch(runtime.url) === selectorUrl)
   );
 
@@ -151,9 +152,25 @@ export function selectRuntime(
 
 function normalizeRuntimeUrlForMatch(input: string): string {
   try {
-    return new URL(input).toString();
+    const url = new URL(input);
+    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return url.toString();
   } catch {
     return input.endsWith("/") ? input.slice(0, -1) : input;
+  }
+}
+
+function runtimeMatchesSession(runtime: BridgeRuntimeInfo, sessionId: string): boolean {
+  return runtime.sessionId === sessionId || getOpenRuntimeSessionIdFromUrl(runtime.url) === sessionId;
+}
+
+function getOpenRuntimeSessionIdFromUrl(input: string | undefined): string | undefined {
+  if (input === undefined) return undefined;
+  try {
+    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
+  } catch {
+    return undefined;
   }
 }
 

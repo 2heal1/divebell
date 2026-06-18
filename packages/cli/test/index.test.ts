@@ -232,6 +232,39 @@ test("matches runtime url when root path trailing slash differs", async () => {
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-root");
 });
 
+test("matches runtime url when the runtime only adds the OpenRuntime session query", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://app.test"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-session-url",
+              url: "http://app.test/?openruntimeSessionId=session-orders",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-session-url/snapshot");
+      return jsonResponse({
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-session-url");
+});
+
 test("selects the latest matching runtime by session", async () => {
   const calls: string[] = [];
   const output = createOutput();
@@ -287,6 +320,46 @@ test("selects the latest matching runtime by session", async () => {
     "http://bridge.test/runtimes/runtime-after-refresh/snapshot"
   ]);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+});
+
+test("selects runtime by session from the runtime url when sessionId is not exposed", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--session", "session-orders"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-other",
+              url: "http://app.test/orders?openruntimeSessionId=session-other",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 20
+            },
+            {
+              runtimeId: "runtime-orders",
+              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 30
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-orders/snapshot");
+      return jsonResponse({
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-orders");
 });
 
 test("prints VMOK module info from the module info target", async () => {

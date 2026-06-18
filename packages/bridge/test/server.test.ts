@@ -221,6 +221,34 @@ test("tracks a stable session across refreshed runtimes", async () => {
   }
 });
 
+test("derives session id from the runtime url when connect omits sessionId", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-session-url",
+    clock: createClock(2860)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-orders`);
+
+  try {
+    assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-session-url" });
+    const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(runtimes.runtimes, [
+      {
+        runtimeId: "runtime-session-url",
+        url: "http://app.test/orders?openruntimeSessionId=session-orders",
+        sessionId: "session-orders",
+        pageInstanceId: "page-orders",
+        status: "connected",
+        connectedAt: 2861,
+        lastSeenAt: 2861
+      }
+    ]);
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
 test("links server-rendered runtime state with the later browser connection", async () => {
   const server = createBridgeServer({
     clock: createClock(2900)

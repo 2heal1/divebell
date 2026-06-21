@@ -98,7 +98,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 ### Bridge 和浏览器
 
-- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge。
+- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]` - 打开页面，默认会先准备 Bridge。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
@@ -137,7 +137,33 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 ## 如何使用
 
-先试用 pnpm exec openruntime start 启动 Bridge，确认没有报错。Bridge 启动后，使用 pnpm exec openruntime open <url> 打开页面，通过 pnpm exec openruntime snapshot --url <url> 确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
+先区分 OpenRuntime CLI 托管的进程和项目自己的应用进程：
+
+- `pnpm exec openruntime start --port <port>` 启动或复用 Bridge。这个命令会返回，Bridge 会作为 CLI 托管进程常驻；后续用 `pnpm exec openruntime stop --port <port>` 停止。
+- `pnpm exec openruntime open/goto/click/fill/eval/wait-eval/snapshot/targets/events/actions/wait-for` 都是一次性 CLI 操作，可以在普通 shell 里执行。
+- `pnpm dev`、`pnpm start`、`pnpm start:app`、`pnpm start:app:bridge` 这类项目应用服务不是 OpenRuntime CLI 托管的常驻进程。不要把它们用普通 shell 后台 `&` 丢进一次性命令后就继续验证；shell 结束后服务可能退出。应用 dev server 必须由当前 agent 的长运行命令会话、平台服务管理器，或项目明确提供的 daemon/serve 脚本保持存活。
+
+推荐启动顺序：
+
+```bash
+pnpm exec openruntime start --port 17321
+```
+
+然后在一个会保持运行的会话里启动应用，例如：
+
+```bash
+OPENRUNTIME_BRIDGE_PORT=17321 pnpm start:app:bridge ops-console
+```
+
+应用可访问后，再打开页面并确认 runtime：
+
+```bash
+pnpm exec openruntime open http://localhost:4412 --bridge http://localhost:17321
+pnpm exec openruntime runtimes --bridge http://localhost:17321
+pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://localhost:4412
+```
+
+确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
 
 再根据实际的问题场景，选择性地用 CLI 读取 runtime 状态、等待状态变化、执行 action 和浏览器操作。一般来说，排查问题时先读状态、看事件，再操作页面；验证问题是否解决了时，先操作页面，再读状态验证结果。
 

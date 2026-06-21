@@ -14,7 +14,7 @@
 
 ### Bridge 和浏览器
 
-- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge。
+- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]` - 打开页面，默认会先准备 Bridge。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。

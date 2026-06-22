@@ -287,6 +287,10 @@ async function runBrowserCliCommand(
     return 0;
   }
 
+  if (command === "network") {
+    return await runNetworkCommand(args, stdout, stderr, browserRunner);
+  }
+
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
 }
 
@@ -549,6 +553,48 @@ async function runBrowserAndPipe(
   return result.exitCode;
 }
 
+async function runNetworkCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  stderr: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  const result = await browserRunner.run(["network"]);
+  const urlQuery = getOptionValue(args, "url");
+  const output = result.exitCode === 0 && urlQuery !== undefined
+    ? filterNetworkOutputByUrl(result.stdout, urlQuery)
+    : normalizeNetworkOutput(result.stdout);
+  if (output.length > 0) {
+    stdout.write(output.endsWith("\n") ? output : `${output}\n`);
+  }
+  if (result.stderr.length > 0) {
+    stderr.write(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
+  }
+  return result.exitCode;
+}
+
+function filterNetworkOutputByUrl(output: string, query: string): string {
+  const normalized = normalizeNetworkOutput(output);
+  if (normalized.trim() === "(no requests)") return normalized;
+
+  const lines = normalized.split(/\r?\n/);
+  const filtered = lines.filter((line) => {
+    if (line.length === 0 || line.startsWith("#")) return true;
+    return getNetworkLineUrl(line)?.includes(query) ?? false;
+  });
+  return filtered.join("\n");
+}
+
+function normalizeNetworkOutput(output: string): string {
+  return output.split(/\r?\n/).filter((line) => !line.includes("network <idx>")).join("\n");
+}
+
+function getNetworkLineUrl(line: string): string | undefined {
+  const parts = line.trim().split(/\s+/);
+  if (parts.length < 6) return undefined;
+  return parts[5];
+}
+
 async function runBrowserOrThrow(browserRunner: BrowserRunner, browserArgs: string[]): Promise<void> {
   const result = await browserRunner.run(browserArgs);
   if (result.exitCode !== 0) {
@@ -651,7 +697,7 @@ function createOptionalObjectProperty<Name extends string, Value extends object>
   return value === undefined ? {} : { [name]: value } as Record<Name, Value>;
 }
 
-function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "close" {
+function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "close" {
   return command === "open" ||
     command === "goto" ||
     command === "page-snapshot" ||
@@ -661,6 +707,7 @@ function isBrowserCommand(command: string | undefined): command is "open" | "got
     command === "wait-eval" ||
     command === "get-window" ||
     command === "screenshot" ||
+    command === "network" ||
     command === "close";
 }
 

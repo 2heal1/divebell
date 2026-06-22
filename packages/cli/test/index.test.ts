@@ -32,6 +32,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime snapshot .*--id <id>/);
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
+  assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
 });
@@ -41,6 +42,7 @@ test("generates CLI reference markdown from the help table", () => {
 
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
+  assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
   assert.match(markdown, /open-runtime vmok get-module-info/);
 });
@@ -51,6 +53,7 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
+  assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
 });
 
@@ -1000,6 +1003,43 @@ test("waits for a browser eval condition", async () => {
     value: true
   });
   assert.equal(attempts, 2);
+});
+
+test("filters browser network requests by url", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli(["network", "--url", "/api/orders"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: [
+          "# Network requests since last navigation",
+          "# Columns: idx status method type ms url [next-action=...]",
+          "# Use `network <idx>` for headers and body.",
+          "",
+          "0 200 GET fetch 12ms http://app.test/api/orders",
+          "1 200 GET script 3ms http://app.test/assets/app.js",
+          "2 FAIL GET xhr - http://app.test/api/orders/failed"
+        ].join("\n"),
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.text(), [
+    "# Network requests since last navigation",
+    "# Columns: idx status method type ms url [next-action=...]",
+    "",
+    "0 200 GET fetch 12ms http://app.test/api/orders",
+    "2 FAIL GET xhr - http://app.test/api/orders/failed",
+    ""
+  ].join("\n"));
+  assert.deepEqual(browserCalls, [["network"]]);
 });
 
 test("suggests open when wait-for cannot find a matching runtime", async () => {

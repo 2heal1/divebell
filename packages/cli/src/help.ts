@@ -67,6 +67,11 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "open-runtime network [--url <query>]",
+    description: "查看当前页面的网络请求列表，并可按 URL 文本过滤。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "open-runtime close",
     description: "关闭浏览器会话。"
   },

@@ -37,6 +37,18 @@ pnpm check
 
 Module Federation 接入目前在 MF 仓库的 observability plugin 中推进，不再在本仓库维护独立接入包。
 
+CLI 浏览器能力包括打开页面、跳转、点击、填写、读取页面变量、截图和查看网络请求。查看当前页面请求列表可以运行：
+
+```sh
+pnpm exec openruntime network
+```
+
+按 URL 文本过滤请求可以加 `--url`：
+
+```sh
+pnpm exec openruntime network --url /api/orders
+```
+
 根目录命令：
 
 1. `pnpm build`：构建所有基础包。

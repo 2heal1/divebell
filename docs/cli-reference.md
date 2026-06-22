@@ -25,6 +25,7 @@
 - `open-runtime wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到结果为 true。
 - `open-runtime get-window <path>` - 读取 window/globalThis 上的点分路径，例如 gf_data_v1。
 - `open-runtime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
+- `open-runtime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
 - `open-runtime close` - 关闭浏览器会话。
 
 ### Runtime

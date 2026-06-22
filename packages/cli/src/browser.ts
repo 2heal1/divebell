@@ -17,18 +17,32 @@ export interface BrowserRunner {
 }
 
 const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
+const OPENRUNTIME_BROWSER_HEADLESS_ENV = "OPENRUNTIME_BROWSER_HEADLESS";
 const NEXT_BROWSER_PROFILE_ENV = "OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR";
+const NEXT_BROWSER_HEADLESS_ENV = "NEXT_BROWSER_HEADLESS";
 
 export interface NextBrowserRunnerOptions {
   profileDirectory?: string;
+  headless?: boolean;
+  restartForHeadless?: boolean;
 }
 
 export function createNextBrowserRunner(options: NextBrowserRunnerOptions = {}): BrowserRunner {
+  let restartedForHeadless = false;
   return {
     run: async (args) => {
+      const browserCliPath = resolveNextBrowserCliPath();
+      const env = createNextBrowserEnvironment(process.env, options.profileDirectory, options.headless);
+      if (options.headless === true && options.restartForHeadless === true && restartedForHeadless === false && args[0] !== "close") {
+        restartedForHeadless = true;
+        await execFileAsync(process.execPath, [browserCliPath, "close"], {
+          env,
+          maxBuffer: 1024 * 1024 * 10
+        }).catch(() => undefined);
+      }
       try {
-        const result = await execFileAsync(process.execPath, [resolveNextBrowserCliPath(), ...args], {
-          env: createNextBrowserEnvironment(process.env, options.profileDirectory),
+        const result = await execFileAsync(process.execPath, [browserCliPath, ...args], {
+          env,
           maxBuffer: 1024 * 1024 * 10
         });
         return {
@@ -54,16 +68,27 @@ export function createDefaultBrowserProfileDirectory(): string {
   return join(homedir(), ".openruntime", "browser-profile");
 }
 
-export function createNextBrowserEnvironment(baseEnv: NodeJS.ProcessEnv, profileDirectory?: string): NodeJS.ProcessEnv {
+export function createNextBrowserEnvironment(
+  baseEnv: NodeJS.ProcessEnv,
+  profileDirectory?: string,
+  headless?: boolean
+): NodeJS.ProcessEnv {
   const resolvedProfileDirectory = resolve(
     profileDirectory ?? baseEnv[OPENRUNTIME_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
   );
+  const useHeadless = resolveHeadlessMode(baseEnv, headless);
 
-  return {
+  const env: NodeJS.ProcessEnv = {
     ...baseEnv,
     [NEXT_BROWSER_PROFILE_ENV]: resolvedProfileDirectory,
     NODE_OPTIONS: appendNodeImportOption(baseEnv.NODE_OPTIONS, resolveNextBrowserProfilePreloadUrl())
   };
+  if (useHeadless) {
+    env[NEXT_BROWSER_HEADLESS_ENV] = "1";
+  } else {
+    delete env[NEXT_BROWSER_HEADLESS_ENV];
+  }
+  return env;
 }
 
 export function createGetWindowScript(path: string): string {
@@ -115,6 +140,24 @@ function appendNodeImportOption(nodeOptions: string | undefined, importUrl: stri
     return importOption;
   }
   return `${nodeOptions} ${importOption}`;
+}
+
+function resolveHeadlessMode(baseEnv: NodeJS.ProcessEnv, override: boolean | undefined): boolean {
+  if (override !== undefined) return override;
+
+  const openRuntimeValue = parseBooleanEnvValue(baseEnv[OPENRUNTIME_BROWSER_HEADLESS_ENV]);
+  if (openRuntimeValue !== undefined) return openRuntimeValue;
+
+  const nextBrowserValue = parseBooleanEnvValue(baseEnv[NEXT_BROWSER_HEADLESS_ENV]);
+  return nextBrowserValue ?? false;
+}
+
+function parseBooleanEnvValue(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["", "0", "false", "no", "off"].includes(normalized)) return false;
+  return true;
 }
 
 function isExecError(error: unknown): error is Error & {

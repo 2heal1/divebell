@@ -22,7 +22,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]",
+    usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--headless]",
     description: "打开页面，默认会先准备 Bridge。"
   },
   {
@@ -124,6 +124,11 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Extensions",
     usage: "open-runtime vmok get-instance <name>",
     description: "从页面读取某个 VMOK runtime instance。"
+  },
+  {
+    category: "Extensions",
+    usage: "open-runtime tweet read tibo [--hours <n>] [--limit <n>] [--timeout <ms>]",
+    description: "静默打开 Tibo 的 X 页面，读取最近推文并进入详情页提取内容。"
   }
 ];
 
@@ -147,6 +152,10 @@ export const cliExampleReferences: CliExampleReference[] = [
   {
     command: "open-runtime vmok get-instance shell",
     description: "按名称读取一个 VMOK 浏览器实例。"
+  },
+  {
+    command: "open-runtime tweet read tibo",
+    description: "读取 Tibo 最近 3 小时内最多 3 条推文详情。"
   }
 ];
 

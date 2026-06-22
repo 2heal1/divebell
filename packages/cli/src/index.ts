@@ -37,6 +37,7 @@ import {
   type RuntimeSelector
 } from "./client.js";
 import { isEntryPoint } from "./entry.js";
+import { runTweetCommand } from "./extensions/tweet/index.js";
 import { runVmokCommand } from "./extensions/vmok/index.js";
 import { createHelpText } from "./help.js";
 
@@ -65,9 +66,17 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
-  const browserRunner = options.browserRunner ?? createNextBrowserRunner();
   const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(import.meta.url);
   const args = parseCliArgs(argv);
+  const browserHeadless = shouldUseHeadlessBrowser(args);
+  const browserRunner = options.browserRunner ?? createNextBrowserRunner(
+    browserHeadless === undefined
+      ? {}
+      : {
+          headless: browserHeadless,
+          restartForHeadless: browserHeadless
+        }
+  );
 
   try {
     if (args.command.length === 0) {
@@ -185,11 +194,28 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       });
     }
 
+    if (args.command[0] === "tweet") {
+      return await runTweetCommand({
+        args,
+        stdout,
+        browserRunner,
+        fetcher,
+        bridgeUrl: createBridgeUrl(args),
+        runtimeSelector: createRuntimeSelector(args)
+      });
+    }
+
     throw new Error(`Unknown command "${args.command.join(" ")}".`);
   } catch (error) {
     stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     return 1;
   }
+}
+
+function shouldUseHeadlessBrowser(args: ParsedCliArgs): boolean | undefined {
+  if (hasOption(args, "headless")) return true;
+  if (args.command[0] === "tweet") return true;
+  return undefined;
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {

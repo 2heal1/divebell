@@ -100,7 +100,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
-- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]` - 打开页面，默认会先准备 Bridge。
+- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--headless]` - 打开页面，默认会先准备 Bridge。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `open-runtime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `open-runtime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。
@@ -127,6 +127,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime vmok get-module-info [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target <target-id>]` - 从 OpenRuntime snapshot target 读取 VMOK module info。
 - `open-runtime vmok get-instance <name>` - 从页面读取某个 VMOK runtime instance。
+- `open-runtime tweet read tibo [--hours <n>] [--limit <n>] [--timeout <ms>]` - 静默打开 Tibo 的 X 页面，读取最近推文并进入详情页提取内容。
 
 ### 示例
 
@@ -135,6 +136,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime vmok get-module-info --url http://localhost:4412` - 从默认 target 读取 VMOK module info。
 - `open-runtime vmok get-instance shell` - 按名称读取一个 VMOK 浏览器实例。
+- `open-runtime tweet read tibo` - 读取 Tibo 最近 3 小时内最多 3 条推文详情。
 
 ## 如何使用
 

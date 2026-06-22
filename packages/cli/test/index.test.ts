@@ -35,6 +35,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
+  assert.match(output.text(), /open-runtime tweet read tibo .*--hours <n>/);
 });
 
 test("generates CLI reference markdown from the help table", () => {
@@ -45,6 +46,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
   assert.match(markdown, /open-runtime vmok get-module-info/);
+  assert.match(markdown, /open-runtime tweet read tibo/);
 });
 
 test("generates the skill CLI command section from the help table", () => {
@@ -55,6 +57,7 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
+  assert.match(markdown, /open-runtime tweet read tibo/);
 });
 
 test("configures next-browser with a persistent OpenRuntime profile", () => {
@@ -72,6 +75,19 @@ test("uses the default OpenRuntime browser profile directory", () => {
   const env = createNextBrowserEnvironment({});
 
   assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+});
+
+test("configures next-browser headless mode", () => {
+  const env = createNextBrowserEnvironment({
+    OPENRUNTIME_BROWSER_HEADLESS: "1"
+  });
+
+  assert.equal(env.NEXT_BROWSER_HEADLESS, "1");
+
+  const visibleEnv = createNextBrowserEnvironment({
+    NEXT_BROWSER_HEADLESS: "1"
+  }, undefined, false);
+  assert.equal(visibleEnv.NEXT_BROWSER_HEADLESS, undefined);
 });
 
 test("keeps the persistent profile when next-browser closes its temporary profile", () => {
@@ -501,6 +517,158 @@ test("prints VMOK instance from a browser eval script file", async () => {
       }
     }
   });
+});
+
+test("reads Tibo tweets through the tweet extension", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const scripts: string[] = [];
+  const exitCode = await runCli([
+    "tweet",
+    "read",
+    "tibo",
+    "--hours",
+    "3",
+    "--limit",
+    "1",
+    "--timeout",
+    "1000"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+
+      if (args[0] === "open") {
+        return {
+          exitCode: 0,
+          stdout: "opened\n",
+          stderr: ""
+        };
+      }
+
+      if (args[0] === "goto") {
+        return {
+          exitCode: 0,
+          stdout: "navigated\n",
+          stderr: ""
+        };
+      }
+
+      assert.equal(args[0], "eval");
+      assert.equal(args[1], "--file");
+      const scriptPath = args[2];
+      assert.equal(typeof scriptPath, "string");
+      const script = readFileSync(scriptPath as string, "utf8");
+      scripts.push(script);
+
+      if (script.includes("profileUrl")) {
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            profile: {
+              alias: "tibo",
+              handle: "thsottiaux",
+              url: "https://x.com/thsottiaux"
+            },
+            window: {
+              hours: 3,
+              limit: 1,
+              since: "2026-06-22T05:00:00.000Z",
+              capturedAt: "2026-06-22T08:00:00.000Z"
+            },
+            tweets: [
+              {
+                url: "https://x.com/thsottiaux/status/123",
+                statusId: "123",
+                datetime: "2026-06-22T07:30:00.000Z",
+                text: "timeline text",
+                author: "Tibo"
+              }
+            ],
+            warnings: []
+          }),
+          stderr: ""
+        };
+      }
+
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          url: "https://x.com/thsottiaux/status/123",
+          statusId: "123",
+          datetime: "2026-06-22T07:30:00.000Z",
+          text: "detail text",
+          author: "Tibo",
+          rawText: "Tibo detail text 1 repost 2 likes"
+        }),
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls.map((args) => args.slice(0, 2)), [
+    ["open", "https://x.com/thsottiaux"],
+    ["eval", "--file"],
+    ["goto", "https://x.com/thsottiaux/status/123"],
+    ["eval", "--file"]
+  ]);
+  assert.match(scripts[0] ?? "", /article\[data-testid='tweet'\]/);
+  assert.match(scripts[0] ?? "", /showing the latest rendered tweets instead/);
+  assert.match(scripts[1] ?? "", /Tweet detail was not found/);
+  assert.deepEqual(JSON.parse(output.text()), {
+    profile: {
+      alias: "tibo",
+      handle: "thsottiaux",
+      url: "https://x.com/thsottiaux"
+    },
+    window: {
+      hours: 3,
+      limit: 1,
+      since: "2026-06-22T05:00:00.000Z",
+      capturedAt: "2026-06-22T08:00:00.000Z"
+    },
+    tweets: [
+      {
+        url: "https://x.com/thsottiaux/status/123",
+        statusId: "123",
+        datetime: "2026-06-22T07:30:00.000Z",
+        text: "timeline text",
+        author: "Tibo",
+        detail: {
+          url: "https://x.com/thsottiaux/status/123",
+          statusId: "123",
+          datetime: "2026-06-22T07:30:00.000Z",
+          text: "detail text",
+          author: "Tibo",
+          rawText: "Tibo detail text 1 repost 2 likes"
+        }
+      }
+    ],
+    warnings: []
+  });
+});
+
+test("keeps headless as an OpenRuntime-only browser option", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const exitCode = await runCli(["open", "http://app.test/", "--no-bridge", "--headless"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.text(), "opened\n");
+  assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
 });
 
 test("runs execution commands against the selected runtime", async () => {

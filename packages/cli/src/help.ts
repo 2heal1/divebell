@@ -113,7 +113,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Runtime",
     usage: "open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]",
-    description: "等待 target 到达指定状态。"
+    description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
   },
   {
     category: "Extensions",

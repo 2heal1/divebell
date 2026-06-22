@@ -604,6 +604,12 @@ test("runs execution commands against the selected runtime", async () => {
     "--strict",
     "--where",
     "matches.pathname=/orders",
+    "--where",
+    "data.mounted=true",
+    "--where",
+    "data.matchedCount=1",
+    "--where",
+    "data.optional=null",
     "--timeout",
     "30"
   ], {
@@ -645,6 +651,18 @@ test("runs execution commands against the selected runtime", async () => {
           {
             path: "matches.pathname",
             equals: "/orders"
+          },
+          {
+            path: "data.mounted",
+            equals: true
+          },
+          {
+            path: "data.matchedCount",
+            equals: 1
+          },
+          {
+            path: "data.optional",
+            equals: null
           }
         ]
       }
@@ -731,6 +749,79 @@ test("wait-for follows the latest matching runtime unless strict mode is set", a
     "http://bridge.test/runtimes/runtime-after-refresh/wait-for"
   ]);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+});
+
+test("wait-for returns a failing exit code with structured output when the condition is not met", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
+    "modern:route",
+    "ready",
+    "--timeout",
+    "20"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url) === "http://bridge.test/runtimes") {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-1",
+              url: "http://app.test/orders",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/wait-for");
+      return jsonResponse({
+        success: false,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        },
+        reason: "Timed out waiting for target status."
+      });
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), {
+    runtime: {
+      runtimeId: "runtime-1",
+      url: "http://app.test/orders",
+      status: "connected",
+      connectedAt: 1,
+      lastSeenAt: 2
+    },
+    result: {
+      success: false,
+      condition: {
+        id: "modern:route",
+        status: "ready"
+      },
+      snapshot: {
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      },
+      reason: "Timed out waiting for target status."
+    }
+  });
 });
 
 test("opens a browser page and auto-starts the bridge when needed", async () => {
@@ -1064,6 +1155,16 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
   });
 
   assert.equal(exitCode, 1);
+  assert.deepEqual(JSON.parse(output.text()), {
+    result: {
+      success: false,
+      condition: {
+        id: "modern:route",
+        status: "ready"
+      },
+      reason: "No connected runtime matched URL \"http://app.test/route-a\".\nUse --open to open the page before waiting."
+    }
+  });
   assert.equal(
     output.errorText(),
     "No connected runtime matched URL \"http://app.test/route-a\".\nUse --open to open the page before waiting.\n"

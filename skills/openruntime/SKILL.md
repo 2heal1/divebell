@@ -121,7 +121,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
-- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]` - 等待 target 到达指定状态。
+- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
 ### 扩展命令
 
@@ -166,21 +166,60 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://loca
 
 确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
 
-再根据实际的问题场景，选择性地用 CLI 读取 runtime 状态、等待状态变化、执行 action 和浏览器操作。一般来说，排查问题时先读状态、看事件，再操作页面；验证问题是否解决了时，先操作页面，再读状态验证结果。
+再根据实际的问题场景，选择性地用 CLI 读取 runtime 状态、等待状态变化、执行 action
+和浏览器操作。不要为了使用 OpenRuntime 改变原本排查思路，但要先把问题翻译成一个
+可验证的运行时事实：
 
-获取框架状态时，优先读已有 target。路由、loader、SSR、hydration 看
-`modern:route`、`modern:ssr`、`modern:hydration`；Module Federation 看
-remote、expose、shared 对应的 MF target。已有 Modern.js / MF target 足够证明结果时，
-不要额外补业务 snapshot。
+- 要验证的对象是什么：路由、loader 数据、业务组件、Garfish 子应用、
+  MF remote/expose/shared，还是业务动作结果。
+- 成功和失败分别是什么：例如 `ready`、`mounted`、`success`、`loaded`、`error`。
+- 最可靠的写入点在哪里：组件真实 ready 点、稳定父组件、loader、action handler、
+  error boundary、Garfish/MF 接入层。
+
+明确事实后，先查已有信号：
+
+```bash
+pnpm exec openruntime targets --url <url> --query <keyword>
+pnpm exec openruntime snapshot --url <url> --query <keyword>
+pnpm exec openruntime snapshot --url <url> --id <target-id>
+pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
+pnpm exec openruntime wait-for <target-id> <status> --url <url> --timeout 10000
+```
+
+`wait-for --where` 的 value 会按 JSON 字面量解析：`data.mounted=true` 匹配布尔值，
+`data.matchedCount=1` 匹配数字，`data.optional=null` 匹配 null；
+`pathname=/orders` 仍按字符串匹配。
+
+有对应 target 时，`snapshot` 回答当前状态，`events` 回答变化和错误原因，
+`wait-for` 等待目标状态。没有对应 target 时，不要默认回到 DOM 猜业务结果；
+如果源码可改，先在最小业务范围补 target 和 `updateSnapshot`，再用 CLI 查。
+只有不能改源码、只是临时探索页面结构、验证 DOM/可访问性/视觉事实，或 target/action
+暂时补不齐时，才用页面查询来确认现象。
+
+判断 `wait-for` 时必须看输出里的 `result.success` 和 target 状态。
+`success: false`、timeout、target `error` 都是失败证据，不要因为命令输出了 JSON、
+后续有 snapshot，或页面里还能找到 DOM，就写成 ready。如果 `wait-for` 条件失败，
+但 `snapshot` 另有明确结论，要报告为“wait 条件未满足，snapshot 显示……”，不要写成
+`wait-for` 成功。
+
+路由、loader、SSR、hydration 看 `modern:route`、`modern:ssr`、`modern:hydration`；
+Module Federation 看 remote、expose、shared 对应的 MF target。已有 Modern.js / MF
+target 足够证明结果时，不要额外补业务 snapshot。
 
 排查报错时，优先看 `snapshot` 里的 target `error` 和 `events` 历史，再结合页面日志、
 console 或 network。这样可以先知道错误属于 route、loader、业务、MF、Garfish
-还是其他运行时状态。
+还是其他运行时状态。如果 `snapshot` 或 `events` 已经显示 `modern:route`、SSR、
+hydration、MF target 或业务 target 是 `error`，并且错误已经说明当前页面或功能失败，
+就直接以这个错误为结论。不要继续点击、等待 DOM、截图或查询同一批 UI 元素来重复确认
+同一个失败事实。
 
 执行行为时，不需要把所有操作都改成 action。简单用户路径、按钮点击、表单填写、
-页面跳转和 DOM/window 探索，直接使用浏览器能力：
+页面跳转和 DOM/window 探索，直接使用浏览器能力。执行这些操作前，先确认没有已知的
+路由、SSR、hydration、MF 或业务阻断错误；如果运行时状态已经失败，先报告这个错误，
+不要进入后续 UI 操作：
 
 ```bash
+pnpm exec openruntime page-snapshot --url <url>
 pnpm exec openruntime click '刷新订单'
 pnpm exec openruntime fill '[name=keyword]' 'risk'
 pnpm exec openruntime goto <url>
@@ -196,10 +235,11 @@ pnpm exec openruntime run-action --url <url> orders.refresh --payload '{"scope":
 pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-验证组件是否加载时，优先使用已有 target。没有足够信号时，在最小业务范围补 target
-和 `updateSnapshot`。如果目标组件可能失败到连自己都注册不了，就在必定能加载的上一级
-注册或更新验证 target，例如页面、路由容器、稳定父组件。子组件成功时更新 `ready`；
-父级捕获错误、超时或缺失时更新 `error`。
+补最小信号时，只暴露能证明结论的状态，不要把整页 DOM 或完整业务数据塞进 snapshot。
+例如验证订单风险组件，就注册 `business:orders:risk-panel` 这类最小 target。目标组件
+可能失败到连自己都注册不了时，在必定能加载的上一级注册或更新验证 target，例如页面、
+路由容器、稳定父组件。父级先写 `pending`，子组件成功时写 `ready`，父级捕获错误、
+超时或缺失时写 `error`。
 
 ```ts
 runtime.registerTarget({
@@ -221,7 +261,9 @@ Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结�
 `run-action` 或 events，结果是否正确看 snapshot / `wait-for`。
 如果这些 OpenRuntime API 只是为了本次排查，验证后删除；对后续 Agent 或运维有价值再保留。
 
-添加后，可以用 CLI 先执行 wait-for ，然后在 open 页面，从最小复现范围开始验证。
+添加后，可以用 CLI 先执行 `wait-for`，然后从最小复现范围开始验证。查不到 target
+时，Agent 应先判断是否能补 target；能补就补，不能补、不能改源码或只是临时探索时，
+再使用 DOM/page 查询。
 
 Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见
 `references/modernjs.md`。Module Federation remote、expose、shared 和

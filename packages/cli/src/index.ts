@@ -151,19 +151,27 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
       const bridgeUrl = createBridgeUrl(args);
-      const result = await waitForRuntimeCommand(
-        args,
-        fetcher,
-        bridgeUrl,
-        browserRunner,
-        bridgeStarter,
-        createBridgeStateStore(args, options.bridgeStateDirectory),
-        targetId,
-        status,
-        parseWhereOptions(args)
-      );
-      writeJson(stdout, result);
-      return 0;
+      const where = parseWhereOptions(args);
+      try {
+        const result = await waitForRuntimeCommand(
+          args,
+          fetcher,
+          bridgeUrl,
+          browserRunner,
+          bridgeStarter,
+          createBridgeStateStore(args, options.bridgeStateDirectory),
+          targetId,
+          status,
+          where
+        );
+        writeJson(stdout, result);
+        return isFailedWaitResult(result.result) ? 1 : 0;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        writeJson(stdout, createWaitForFailure(targetId, status, where, reason));
+        stderr.write(`${reason}\n`);
+        return 1;
+      }
     }
 
     if (args.command[0] === "vmok") {
@@ -246,9 +254,53 @@ function parseWhereOptions(args: ParsedCliArgs): RuntimeDataCondition[] | undefi
 
     return {
       path,
-      equals: value.slice(equalsIndex + 1)
+      equals: parseWhereValue(value.slice(equalsIndex + 1))
     };
   });
+}
+
+function parseWhereValue(rawValue: string): unknown {
+  const value = rawValue.trim();
+  if (value.length === 0) return "";
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function createWaitForFailure(
+  targetId: string,
+  status: string,
+  where: RuntimeDataCondition[] | undefined,
+  reason: string
+): {
+  result: {
+    success: false;
+    condition: {
+      id: string;
+      status: string;
+      where?: RuntimeDataCondition[];
+    };
+    reason: string;
+  };
+} {
+  const condition: { id: string; status: string; where?: RuntimeDataCondition[] } = {
+    id: targetId,
+    status
+  };
+  if (where !== undefined) {
+    condition.where = where;
+  }
+
+  return {
+    result: {
+      success: false,
+      condition,
+      reason
+    }
+  };
 }
 
 async function runBrowserCliCommand(
@@ -666,6 +718,11 @@ function isRetryableWaitResult(result: unknown): boolean {
     reason?: unknown;
   };
   return value.success === false && value.reason === "Target is not registered.";
+}
+
+function isFailedWaitResult(result: unknown): boolean {
+  if (result === null || typeof result !== "object") return false;
+  return (result as { success?: unknown }).success === false;
 }
 
 function isRetryableWaitError(error: unknown): boolean {

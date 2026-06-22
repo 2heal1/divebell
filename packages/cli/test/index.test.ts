@@ -920,6 +920,84 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
 });
 
+test("clicks interactive text with an exact page-side lookup", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli(["click", "Refresh order"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "{\"clicked\":true}\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.text(), "clicked\n");
+  assert.equal(output.errorText(), "");
+  assert.equal(browserCalls.length, 1);
+  assert.equal(browserCalls[0]?.[0], "eval");
+  assert.match(browserCalls[0]?.[1] ?? "", /Refresh order/);
+  assert.match(browserCalls[0]?.[1] ?? "", /querySelectorAll/);
+});
+
+test("delegates click refs and explicit selectors to next-browser", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  for (const target of ["e7", "[data-testid=refresh-order]", "text=Refresh order"]) {
+    const exitCode = await runCli(["click", target], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "clicked\n",
+          stderr: ""
+        };
+      })
+    });
+    assert.equal(exitCode, 0);
+  }
+
+  assert.equal(output.text(), "clicked\nclicked\nclicked\n");
+  assert.deepEqual(browserCalls, [
+    ["click", "e7"],
+    ["click", "[data-testid=refresh-order]"],
+    ["click", "text=Refresh order"]
+  ]);
+});
+
+test("reports interactive text click errors without broad text fallback", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli(["click", "Refresh order"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 1,
+        stdout: "",
+        stderr: "Multiple interactive elements matched text \"Refresh order\""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.text(), "");
+  assert.match(output.errorText(), /Multiple interactive elements matched text "Refresh order"/);
+  assert.equal(browserCalls.length, 1);
+  assert.equal(browserCalls[0]?.[0], "eval");
+});
+
 test("starts the bridge in the background and returns after it is reachable", async () => {
   const output = createOutput();
   const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));

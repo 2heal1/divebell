@@ -166,9 +166,8 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://loca
 
 确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
 
-再根据实际的问题场景，选择性地用 CLI 读取 runtime 状态、等待状态变化、执行 action
-和浏览器操作。不要为了使用 OpenRuntime 改变原本排查思路，但要先把问题翻译成一个
-可验证的运行时事实：
+接下来仍按原本排查思路判断问题，OpenRuntime 用来更快拿到可信事实、执行已声明动作、
+等待状态和查看失败原因。先把问题翻译成一个可验证的运行时事实：
 
 - 要验证的对象是什么：路由、loader 数据、业务组件、Garfish 子应用、
   MF remote/expose/shared，还是业务动作结果。
@@ -176,15 +175,26 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://loca
 - 最可靠的写入点在哪里：组件真实 ready 点、稳定父组件、loader、action handler、
   error boundary、Garfish/MF 接入层。
 
+验证终止规则：`wait-for`、`snapshot` 或 `events` 已经证明同一个事实成功或失败时，
+直接以这个结论为准，停止验证。不要继续用 DOM、截图、点击、重开页面或再次等待同一批
+元素来重复确认。如果结论是视觉、样式、布局、动画、截图、文案、可访问性或真实点击路径，
+再使用对应的页面能力确认。
+
 明确事实后，先查已有信号：
 
 ```bash
 pnpm exec openruntime targets --url <url> --query <keyword>
+pnpm exec openruntime snapshot --url <url>
 pnpm exec openruntime snapshot --url <url> --query <keyword>
 pnpm exec openruntime snapshot --url <url> --id <target-id>
+pnpm exec openruntime events --url <url> --limit 100
 pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
 pnpm exec openruntime wait-for <target-id> <status> --url <url> --timeout 10000
 ```
+
+第一次排查可以看完整 `snapshot` 或最近 `events`，用于发现当前有哪些 target 和错误。
+一旦确定目标，后续查询就按 `--id`、`--target-id`、`--type`、`--source`、`--status`
+或 `--query` 收窄范围，避免每一步都读取完整状态。
 
 `wait-for --where` 的 value 会按 JSON 字面量解析：`data.mounted=true` 匹配布尔值，
 `data.matchedCount=1` 匹配数字，`data.optional=null` 匹配 null；
@@ -193,18 +203,21 @@ pnpm exec openruntime wait-for <target-id> <status> --url <url> --timeout 10000
 有对应 target 时，`snapshot` 回答当前状态，`events` 回答变化和错误原因，
 `wait-for` 等待目标状态。没有对应 target 时，不要默认回到 DOM 猜业务结果；
 如果源码可改，先在最小业务范围补 target 和 `updateSnapshot`，再用 CLI 查。
-只有不能改源码、只是临时探索页面结构、验证 DOM/可访问性/视觉事实，或 target/action
-暂时补不齐时，才用页面查询来确认现象。
+页面查询适合找按钮、执行真实用户路径、确认 DOM/可访问性/视觉事实、临时探索页面结构，
+或在 target/action 暂时补不齐时确认现象。
 
 判断 `wait-for` 时必须看输出里的 `result.success` 和 target 状态。
 `success: false`、timeout、target `error` 都是失败证据，不要因为命令输出了 JSON、
 后续有 snapshot，或页面里还能找到 DOM，就写成 ready。如果 `wait-for` 条件失败，
 但 `snapshot` 另有明确结论，要报告为“wait 条件未满足，snapshot 显示……”，不要写成
-`wait-for` 成功。
+`wait-for` 成功。不要用 `|| true` 吞掉 `wait-for` 失败；失败后先读返回的 reason、
+当前 snapshot 和相关 events，再决定是否继续。
 
 路由、loader、SSR、hydration 看 `modern:route`、`modern:ssr`、`modern:hydration`；
 Module Federation 看 remote、expose、shared 对应的 MF target。已有 Modern.js / MF
-target 足够证明结果时，不要额外补业务 snapshot。
+target 足够证明结果时，不要额外补业务 snapshot。`modern:route ready` 只说明路由
+到达目标状态，不等于业务组件、远程模块、接口数据或业务动作结果已经 ready；这些结果
+必须看对应的业务 target、loader 状态、MF expose/shared target 或 action 结果 target。
 
 排查报错时，优先看 `snapshot` 里的 target `error` 和 `events` 历史，再结合页面日志、
 console 或 network。这样可以先知道错误属于 route、loader、业务、MF、Garfish
@@ -227,6 +240,14 @@ pnpm exec openruntime wait-eval 'Boolean(document.querySelector("[data-testid=re
 pnpm exec openruntime eval '({ pathname: location.pathname, title: document.title })'
 ```
 
+如果已经通过 `page-snapshot` 拿到 `[ref=eN]`，点击时优先用 ref，例如
+`pnpm exec openruntime click e7`。裸文本点击会优先匹配可交互元素的精确文本；
+文本不唯一、目标难区分或已经有 ref 时，不要重复走一轮文本点击。
+
+代码修改、页面状态污染或需要重新走初始化流程时，可以刷新或重开页面。刷新后如果 URL
+带有 `openruntimeSessionId=<session-id>`，新的 runtime 会继续归属同一个 session。
+不要为了同一个已证明的事实反复执行 `open -> wait -> eval -> snapshot -> events`。
+
 需要参数、多步骤、跨系统状态、无稳定 UI 入口，或需要反复复现并等待明确结果的动作，
 再用页面声明的 action：
 
@@ -234,6 +255,9 @@ pnpm exec openruntime eval '({ pathname: location.pathname, title: document.titl
 pnpm exec openruntime run-action --url <url> orders.refresh --payload '{"scope":"current"}'
 pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
+
+复杂 action 只说明“动作被执行”还不够，动作结果必须落到最小 target 的 snapshot 上，
+再用 `wait-for` 等待这个 target。
 
 补最小信号时，只暴露能证明结论的状态，不要把整页 DOM 或完整业务数据塞进 snapshot。
 例如验证订单风险组件，就注册 `business:orders:risk-panel` 这类最小 target。目标组件
@@ -264,6 +288,13 @@ Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结�
 添加后，可以用 CLI 先执行 `wait-for`，然后从最小复现范围开始验证。查不到 target
 时，Agent 应先判断是否能补 target；能补就补，不能补、不能改源码或只是临时探索时，
 再使用 DOM/page 查询。
+
+常见反例要避免：
+
+- 只等 `modern:route ready`，就把业务组件或业务结果当成 ready。
+- 每一步都读取完整 `snapshot` 和完整 `events`。
+- `wait-for` 失败后用 `|| true` 跳过，再用 DOM 找到元素就当成功。
+- OpenRuntime 已经给出明确 error 后，继续等不存在的按钮、截图或重复查询同一批元素。
 
 Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见
 `references/modernjs.md`。Module Federation remote、expose、shared 和

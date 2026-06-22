@@ -10,6 +10,7 @@ import {
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
 import {
   createGetWindowScript,
+  createInteractiveTextClickScript,
   createNextBrowserRunner,
   createWaitEvalScript,
   parseBrowserJsonOutput,
@@ -332,6 +333,10 @@ async function runBrowserCliCommand(
     return await runBrowserAndPipe(browserRunner, ["eval", createGetWindowScript(path)], stdout, stderr);
   }
 
+  if (command === "click") {
+    return await runClickCommand(args, stdout, stderr, browserRunner);
+  }
+
   if (command === "wait-eval") {
     const script = requireCommandArgument(args, 1, "eval script");
     const result = await waitForBrowserEval(browserRunner, script, getNumberOption(args, "timeout"));
@@ -344,6 +349,32 @@ async function runBrowserCliCommand(
   }
 
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
+}
+
+async function runClickCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  stderr: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  const target = requireCommandArgument(args, 1, "ref, selector, or text");
+  if (!shouldPreferInteractiveTextClick(target)) {
+    return await runBrowserAndPipe(browserRunner, ["click", target], stdout, stderr);
+  }
+
+  const result = await browserRunner.run(["eval", createInteractiveTextClickScript(target)]);
+  if (result.exitCode === 0) {
+    stdout.write("clicked\n");
+    return 0;
+  }
+
+  if (result.stdout.length > 0) {
+    stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
+  }
+  if (result.stderr.length > 0) {
+    stderr.write(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
+  }
+  return result.exitCode;
 }
 
 async function waitForRuntimeCommand(
@@ -575,6 +606,13 @@ function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
     return browserArgs;
   }
   return ["close"];
+}
+
+function shouldPreferInteractiveTextClick(target: string): boolean {
+  const trimmed = target.trim();
+  if (trimmed.length === 0) return false;
+  if (/^e\d+$/.test(trimmed)) return false;
+  return !/^(css=|text=|role=|#|\[|\.|\w+\s*>)/.test(trimmed);
 }
 
 function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {

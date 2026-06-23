@@ -9,6 +9,7 @@ import {
 } from "@openruntime/core";
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
 import {
+  createConsoleLogScript,
   createGetWindowScript,
   createInteractiveTextClickScript,
   createNextBrowserRunner,
@@ -353,6 +354,10 @@ async function runBrowserCliCommand(
 
   if (command === "network") {
     return await runNetworkCommand(args, stdout, stderr, browserRunner);
+  }
+
+  if (command === "console") {
+    return await runConsoleCommand(args, stdout, stderr, browserRunner);
   }
 
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
@@ -733,6 +738,129 @@ async function runNetworkCommand(
   return result.exitCode;
 }
 
+type BrowserConsoleLevel = "log" | "info" | "warn" | "error";
+
+interface BrowserConsoleEntry {
+  level: BrowserConsoleLevel;
+  args: string;
+  timestamp?: number;
+}
+
+async function runConsoleCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  stderr: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  const result = await browserRunner.run(["eval", createConsoleLogScript()]);
+  if (result.exitCode !== 0) {
+    if (result.stdout.length > 0) {
+      stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
+    }
+    if (result.stderr.length > 0) {
+      stderr.write(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
+    }
+    return result.exitCode;
+  }
+
+  const entries = filterConsoleEntries(
+    parseConsoleEntries(parseBrowserJsonOutput(result.stdout)),
+    {
+      ...createOptionalObjectProperty("levels", parseConsoleLevels(args)),
+      ...createOptionalStringProperty("query", getOptionValue(args, "query")),
+      ...createOptionalNumberProperty("limit", getNumberOption(args, "limit"))
+    }
+  );
+  writeJson(stdout, {
+    entries,
+    summary: summarizeConsoleEntries(entries)
+  });
+  return 0;
+}
+
+function parseConsoleEntries(value: unknown): BrowserConsoleEntry[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((entry): BrowserConsoleEntry[] => {
+    if (entry === null || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const level = normalizeConsoleLevel(item.level);
+    if (level === undefined) return [];
+    return [{
+      level,
+      args: typeof item.args === "string" ? item.args : String(item.args ?? ""),
+      ...createOptionalNumberProperty("timestamp", typeof item.timestamp === "number" ? item.timestamp : undefined)
+    }];
+  });
+}
+
+function parseConsoleLevels(args: ParsedCliArgs): Set<BrowserConsoleLevel> | undefined {
+  const values = getOptionValues(args, "level");
+  if (values.length === 0) return undefined;
+
+  const levels = new Set<BrowserConsoleLevel>();
+  for (const value of values) {
+    for (const rawLevel of value.split(",")) {
+      const level = normalizeConsoleLevel(rawLevel.trim());
+      if (level === undefined) {
+        throw new Error(`Unsupported console level "${rawLevel}". Use log, info, warn, or error.`);
+      }
+      levels.add(level);
+    }
+  }
+  return levels;
+}
+
+function normalizeConsoleLevel(value: unknown): BrowserConsoleLevel | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.toLowerCase();
+  if (normalized === "warning") return "warn";
+  if (normalized === "log" || normalized === "info" || normalized === "warn" || normalized === "error") {
+    return normalized;
+  }
+  return undefined;
+}
+
+function filterConsoleEntries(
+  entries: BrowserConsoleEntry[],
+  options: {
+    levels?: Set<BrowserConsoleLevel>;
+    query?: string;
+    limit?: number;
+  }
+): BrowserConsoleEntry[] {
+  const normalizedQuery = options.query?.toLowerCase();
+  const filtered = entries.filter((entry) =>
+    (options.levels === undefined || options.levels.has(entry.level)) &&
+    (normalizedQuery === undefined ||
+      entry.level.includes(normalizedQuery) ||
+      entry.args.toLowerCase().includes(normalizedQuery))
+  );
+
+  if (options.limit === undefined || options.limit < 0) return filtered;
+  return filtered.slice(-options.limit);
+}
+
+function summarizeConsoleEntries(entries: BrowserConsoleEntry[]): {
+  total: number;
+  log: number;
+  info: number;
+  warn: number;
+  error: number;
+} {
+  const summary = {
+    total: entries.length,
+    log: 0,
+    info: 0,
+    warn: 0,
+    error: 0
+  };
+  for (const entry of entries) {
+    summary[entry.level] += 1;
+  }
+  return summary;
+}
+
 function filterNetworkOutputByUrl(output: string, query: string): string {
   const normalized = normalizeNetworkOutput(output);
   if (normalized.trim() === "(no requests)") return normalized;
@@ -855,6 +983,13 @@ function createOptionalNumberProperty<Name extends string>(
   return value === undefined ? {} : { [name]: value } as Record<Name, number>;
 }
 
+function createOptionalStringProperty<Name extends string>(
+  name: Name,
+  value: string | undefined
+): Record<Name, string> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, string>;
+}
+
 function createOptionalObjectProperty<Name extends string, Value extends object>(
   name: Name,
   value: Value | undefined
@@ -862,7 +997,7 @@ function createOptionalObjectProperty<Name extends string, Value extends object>
   return value === undefined ? {} : { [name]: value } as Record<Name, Value>;
 }
 
-function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "close" {
+function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "console" | "close" {
   return command === "open" ||
     command === "goto" ||
     command === "page-snapshot" ||
@@ -873,6 +1008,7 @@ function isBrowserCommand(command: string | undefined): command is "open" | "got
     command === "get-window" ||
     command === "screenshot" ||
     command === "network" ||
+    command === "console" ||
     command === "close";
 }
 

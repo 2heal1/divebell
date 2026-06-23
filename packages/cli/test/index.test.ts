@@ -34,6 +34,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime open <url> .*--ui/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
+  assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /open-runtime wait-for .*--next/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
@@ -79,6 +80,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
+  assert.match(markdown, /open-runtime console \[--level <level>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
   assert.match(markdown, /open-runtime vmok get-module-info/);
 });
@@ -90,6 +92,7 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
+  assert.match(markdown, /open-runtime console \[--level <level>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
 });
 
@@ -1628,6 +1631,56 @@ test("filters browser network requests by url", async () => {
     ""
   ].join("\n"));
   assert.deepEqual(browserCalls, [["network"]]);
+});
+
+test("filters browser console entries by level query and limit", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli(["console", "--level", "error", "--query", "react", "--limit", "1"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify([
+          { level: "warn", args: "React warning", timestamp: 1 },
+          { level: "error", args: "plain error", timestamp: 2 },
+          { level: "error", args: "ReactCurrentDispatcher failed", timestamp: 3 },
+          { level: "error", args: "React hydration failed", timestamp: 4 }
+        ]),
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(JSON.parse(output.text()), {
+    entries: [
+      {
+        level: "error",
+        args: "React hydration failed",
+        timestamp: 4
+      }
+    ],
+    summary: {
+      total: 1,
+      log: 0,
+      info: 0,
+      warn: 0,
+      error: 1
+    }
+  });
+  assert.deepEqual(browserCalls, [[
+    "eval",
+    [
+      "(() => {",
+      "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
+      "  return Array.isArray(logs) ? logs : [];",
+      "})()"
+    ].join("\n")
+  ]]);
 });
 
 test("suggests open when wait-for cannot find a matching runtime", async () => {

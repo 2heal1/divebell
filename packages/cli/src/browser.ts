@@ -102,6 +102,15 @@ export function createWaitEvalScript(script: string): string {
   return `Boolean((${script}))`;
 }
 
+export function createConsoleLogScript(): string {
+  return [
+    "(() => {",
+    "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
+    "  return Array.isArray(logs) ? logs : [];",
+    "})()"
+  ].join("\n");
+}
+
 export function createInteractiveTextClickScript(text: string): string {
   return [
     "((targetText) => {",

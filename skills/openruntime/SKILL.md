@@ -17,7 +17,7 @@ CLI 可以完成打开、操作、读取、等待和诊断等纯 CLI 自动化�
 
 OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 执行页面声明的 action，等待 target 到达目标状态。它也能打开页面、跳转、点击、
-填写、读取 DOM/window、截图和关闭页面。
+填写、读取浏览器 console、DOM/window、截图和关闭页面。
 
 本 skill 只在已经选择 OpenRuntime 路径后约束浏览器操作。没有使用 OpenRuntime、
 也不需要 OpenRuntime 证据的任务，不要因为本 skill 改变 Agent 原本的工具选择。
@@ -32,7 +32,7 @@ OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 - 需要为项目设计或补充 OpenRuntime target、snapshot、event 或 action。
 - 需要确认页面、路由、loader、组件、业务状态、远程模块或共享依赖是否 ready。
 - 需要执行页面声明的安全动作，然后等待结果。
-- 需要通过 CLI 打开页面、跳转、点击、填写、读取 DOM/window、截图并结合内部状态验证。
+- 需要通过 CLI 打开页面、跳转、点击、填写、读取 console、DOM/window、截图并结合内部状态验证。
 - 需要排查 Modern.js 或 Module Federation 的运行时状态。
 - 需要验证某个改动是否生效，或某个问题是否解决了，并通过 log 或者全局变量来验证的时候。
 
@@ -113,6 +113,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime get-window <path>` - 读取 window/globalThis 上的点分路径，例如 gf_data_v1。
 - `open-runtime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
 - `open-runtime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
+- `open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]` - 读取当前页面浏览器 console 日志，支持按级别、关键词和数量过滤。
 - `open-runtime close` - 关闭浏览器会话。
 
 ### Runtime 状态
@@ -136,6 +137,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
 - `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
+- `open-runtime console --level error --limit 50` - 查看最近浏览器 console 错误。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
 - `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。
@@ -166,14 +168,18 @@ OPENRUNTIME_BRIDGE_PORT=17321 pnpm start:app:bridge ops-console
 ```bash
 pnpm exec openruntime open http://localhost:4412 --bridge http://localhost:17321
 pnpm exec openruntime runtimes --bridge http://localhost:17321
+pnpm exec openruntime console --level error --limit 50
 pnpm exec openruntime snapshot --bridge http://localhost:17321
 ```
 
-`open` 默认使用静默浏览器，不打开可见 UI。只有需要人工观察、布局、截图或视觉问题时，
-才显式使用 `pnpm exec openruntime open <url> --ui`。如果已有浏览器进程在运行，先
-`pnpm exec openruntime close`，再用 `--ui` 重新打开。
+`open` 默认使用静默浏览器，不打开可见 UI。打开页面后，优先用 `console` 确认浏览器
+是否还有 error，再结合 `snapshot` / `events` 判断运行时状态。普通功能验证里，如果
+`console --level error` 没有错误、目标 `snapshot` 或最小业务结果也已经通过，就停止
+验证，不要为了“再确认一下”继续截图、重开页面或重复点击。只有需要人工观察、布局、
+截图或视觉问题时，才显式使用 `pnpm exec openruntime open <url> --ui`。如果已有浏览器
+进程在运行，先 `pnpm exec openruntime close`，再用 `--ui` 重新打开。
 
-确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
+确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取浏览器错误和当前页面状态。
 
 接下来仍按原本排查思路判断问题，OpenRuntime 用来更快拿到可信事实、执行已声明动作、
 等待状态和查看失败原因。先把问题翻译成一个可验证的运行时事实：
@@ -195,15 +201,18 @@ loader 或业务 target，远程模块看 MF target，业务结果看业务 targ
 `updateSnapshot` 写入 `pending`、`ready` 或 `error`，让后续 `wait-for` 直接等待这个
 最小 target。
 
-验证终止规则：`wait-for`、`snapshot` 或 `events` 已经证明同一个事实成功或失败时，
-直接以这个结论为准，停止验证。已通过阶段不要继续用 DOM、截图、点击、重开页面或再次
-等待同一批元素来重复确认。如果结论是视觉、样式、布局、动画、截图、文案、可访问性或
-真实点击路径，再使用对应的页面能力确认。
+验证终止规则：`console`、`wait-for`、`snapshot` 或 `events` 已经证明同一个事实成功
+或失败时，直接以这个结论为准，停止验证。已通过阶段不要继续用 DOM、截图、点击、重开
+页面或再次等待同一批元素来重复确认。普通非视觉任务里，`console --level error` 没有
+错误，且目标运行时状态或最小业务结果已经通过，就不要再截图分析。如果结论是视觉、样式、
+布局、动画、截图、文案、可访问性或真实点击路径，再使用对应的页面能力确认。
 
 明确事实后，先查已有信号：
 
 ```bash
 pnpm exec openruntime targets --query <keyword>
+pnpm exec openruntime console --level error --limit 50
+pnpm exec openruntime console --query <keyword> --limit 50
 pnpm exec openruntime snapshot
 pnpm exec openruntime snapshot --query <keyword>
 pnpm exec openruntime snapshot --id <target-id>
@@ -219,9 +228,11 @@ pnpm exec openruntime wait-for <target-id> <status> --next --timeout 10000
 或 `--query` 收窄范围，避免每一步都读取完整状态。
 
 如果怀疑某个库、remote、shared、资源或运行时来源有问题，先用
-`snapshot --query <keyword>` 看当前状态；再用 `events --query <keyword>` 看相关变化。
-例如 `snapshot --query react`、`events --query react --limit 50`。找到具体 target 后，
-后续优先用 `events --target-id <target-id> --limit 50`。
+`console --query <keyword>` 看浏览器是否仍有相关错误，再用 `snapshot --query <keyword>`
+看当前运行时状态，最后用 `events --query <keyword>` 看相关变化。例如
+`console --query react --level error --limit 50`、`snapshot --query react`、
+`events --query react --limit 50`。找到具体 target 后，后续优先用
+`events --target-id <target-id> --limit 50`。
 
 `wait-for --where` 的 value 会按 JSON 字面量解析：`data.mounted=true` 匹配布尔值，
 `data.matchedCount=1` 匹配数字，`data.optional=null` 匹配 null；
@@ -247,10 +258,11 @@ target 足够证明结果时，不要额外补业务 snapshot。`modern:route re
 到达目标状态，不等于业务组件、远程模块、接口数据或业务动作结果已经 ready；这些结果
 必须看对应的业务 target、loader 状态、MF expose/shared target 或 action 结果 target。
 
-排查报错时，优先看 `snapshot` 里的 target `error` 和 `events` 历史，再结合页面日志、
-console 或 network。这样可以先知道错误属于 route、loader、业务、MF、Garfish
-还是其他运行时状态。如果 `snapshot` 或 `events` 已经显示 `modern:route`、SSR、
-hydration、MF target 或业务 target 是 `error`，并且错误已经说明当前页面或功能失败，
+排查报错时，先看 `console --level error`，确认浏览器层是否仍有报错；再看 `snapshot`
+里的 target `error` 和 `events` 历史，判断错误属于 route、loader、业务、MF、Garfish
+还是其他运行时状态。如果 `console` 已经没有相关错误，且 `snapshot` 或最小业务结果已经
+通过，普通功能验证就可以结束。如果 `snapshot` 或 `events` 已经显示 `modern:route`、
+SSR、hydration、MF target 或业务 target 是 `error`，并且错误已经说明当前页面或功能失败，
 就直接以这个错误为结论。不要继续点击、等待 DOM、截图或查询同一批 UI 元素来重复确认
 同一个失败事实。
 

@@ -72,6 +72,11 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]",
+    description: "读取当前页面浏览器 console 日志，支持按级别、关键词和数量过滤。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "open-runtime close",
     description: "关闭浏览器会话。"
   },
@@ -139,6 +144,10 @@ export const cliExampleReferences: CliExampleReference[] = [
   {
     command: "open-runtime events --query react --limit 50",
     description: "按关键词查看相关事件。"
+  },
+  {
+    command: "open-runtime console --level error --limit 50",
+    description: "查看最近浏览器 console 错误。"
   },
   {
     command: "open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000",

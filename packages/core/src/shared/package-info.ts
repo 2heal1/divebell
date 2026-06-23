@@ -1,10 +1,6 @@
 export const OPEN_RUNTIME_PHASE = "phase-0" as const;
 
-export type OpenRuntimePackageName =
-  | "@openruntime/core"
-  | "@openruntime/bridge"
-  | "@openruntime/cli"
-  | "@openruntime/modern-plugin";
+export type OpenRuntimePackageName = string;
 
 export interface OpenRuntimePackageInfo {
   name: OpenRuntimePackageName;

@@ -8,6 +8,7 @@ import {
   createPackageInfo,
   OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
   OPEN_RUNTIME_SESSION_QUERY_PARAM,
+  type OpenRuntimePackageInfo,
   type RuntimeDataCondition
 } from "@openruntime/core";
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
@@ -43,8 +44,13 @@ import {
   type RuntimeSelector
 } from "./client.js";
 import { isEntryPoint } from "./entry.js";
-import { runVmokCommand } from "./extensions/vmok/index.js";
-import { createHelpText } from "./help.js";
+import {
+  cliCommandReferences,
+  cliExampleReferences,
+  createHelpText,
+  type CliCommandReference,
+  type CliExampleReference
+} from "./help.js";
 import {
   exportAuthProfile,
   exportChromeAuthProfile,
@@ -57,6 +63,31 @@ import {
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
+
+type BrowserCommandName = "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "console" | "close";
+type RuntimeResourceCommandName = "targets" | "snapshot" | "events" | "actions";
+
+const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
+  "open",
+  "goto",
+  "page-snapshot",
+  "click",
+  "fill",
+  "eval",
+  "wait-eval",
+  "get-window",
+  "screenshot",
+  "network",
+  "console",
+  "close"
+];
+
+const RUNTIME_RESOURCE_COMMAND_NAMES: readonly RuntimeResourceCommandName[] = [
+  "targets",
+  "snapshot",
+  "events",
+  "actions"
+];
 
 export function getCliCommandName(): "open-runtime" {
   return "open-runtime";
@@ -78,7 +109,86 @@ export interface CliRunOptions {
   exportChromeAuthProfile?: typeof exportChromeAuthProfile;
 }
 
+export interface CliExtensionRunOptions {
+  args: ParsedCliArgs;
+  stdout: {
+    write(chunk: string): void;
+  };
+  stderr: {
+    write(chunk: string): void;
+  };
+  browserRunner: BrowserRunner;
+  fetcher: Fetcher;
+  bridgeUrl: string;
+  runtimeSelector: RuntimeSelector;
+}
+
+export interface OpenRuntimeCliExtension {
+  name: string;
+  commandReferences?: readonly CliCommandReference[];
+  exampleReferences?: readonly CliExampleReference[];
+  run(options: CliExtensionRunOptions): Promise<number>;
+}
+
+export interface CreateOpenRuntimeCliOptions {
+  packageInfo?: OpenRuntimePackageInfo;
+  extensions?: readonly OpenRuntimeCliExtension[];
+}
+
+export interface OpenRuntimeCli {
+  packageInfo: OpenRuntimePackageInfo;
+  extensions: readonly OpenRuntimeCliExtension[];
+  run(argv?: string[], options?: CliRunOptions): Promise<number>;
+  createHelpText(): string;
+  getCommandReferences(): CliCommandReference[];
+  getExampleReferences(): CliExampleReference[];
+}
+
+interface OpenRuntimeCliConfig {
+  commandReferences: readonly CliCommandReference[];
+  exampleReferences: readonly CliExampleReference[];
+  extensionRegistry: Map<string, OpenRuntimeCliExtension>;
+}
+
+export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}): OpenRuntimeCli {
+  const extensions = options.extensions ?? [];
+  const extensionRegistry = createExtensionRegistry(extensions);
+  const commandReferences = [
+    ...cliCommandReferences,
+    ...extensions.flatMap((extension) => extension.commandReferences ?? [])
+  ];
+  const exampleReferences = [
+    ...cliExampleReferences,
+    ...extensions.flatMap((extension) => extension.exampleReferences ?? [])
+  ];
+  const config: OpenRuntimeCliConfig = {
+    commandReferences,
+    exampleReferences,
+    extensionRegistry
+  };
+  const packageInfo = options.packageInfo ?? cliPackageInfo;
+
+  return {
+    packageInfo,
+    extensions: [...extensions],
+    run: async (argv = process.argv.slice(2), runOptions: CliRunOptions = {}) =>
+      await runCliWithConfig(config, argv, runOptions),
+    createHelpText: () => createHelpText({
+      commandReferences,
+      exampleReferences
+    }),
+    getCommandReferences: () => [...commandReferences],
+    getExampleReferences: () => [...exampleReferences]
+  };
+}
+
+export const defaultOpenRuntimeCli = createOpenRuntimeCli();
+
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
+  return await defaultOpenRuntimeCli.run(argv, options);
+}
+
+async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
@@ -88,7 +198,10 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
 
   try {
     if (args.command.length === 0 || hasOption(args, "help")) {
-      stdout.write(`${createHelpText()}\n`);
+      stdout.write(`${createHelpText({
+        commandReferences: config.commandReferences,
+        exampleReferences: config.exampleReferences
+      })}\n`);
       return 0;
     }
 
@@ -199,10 +312,17 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       }
     }
 
-    if (args.command[0] === "vmok") {
-      return await runVmokCommand({
+    const command = args.command[0];
+    if (command === undefined) {
+      throw new Error("Missing command.");
+    }
+
+    const extension = config.extensionRegistry.get(command);
+    if (extension !== undefined) {
+      return await extension.run({
         args,
         stdout,
+        stderr,
         browserRunner,
         fetcher,
         bridgeUrl: createBridgeUrl(args),
@@ -215,6 +335,40 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
     stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     return 1;
   }
+}
+
+function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[]): Map<string, OpenRuntimeCliExtension> {
+  const registry = new Map<string, OpenRuntimeCliExtension>();
+  const builtInCommandNames = createBuiltInCommandNameSet();
+
+  for (const extension of extensions) {
+    if (extension.name.length === 0) {
+      throw new Error("CLI extension name must not be empty.");
+    }
+    if (builtInCommandNames.has(extension.name)) {
+      throw new Error(`CLI extension "${extension.name}" conflicts with a built-in command.`);
+    }
+    if (registry.has(extension.name)) {
+      throw new Error(`CLI extension "${extension.name}" is registered more than once.`);
+    }
+    registry.set(extension.name, extension);
+  }
+
+  return registry;
+}
+
+function createBuiltInCommandNameSet(): Set<string> {
+  return new Set([
+    "__bridge-server",
+    "start",
+    "stop",
+    "runtimes",
+    "input-options",
+    "run-action",
+    "wait-for",
+    ...BROWSER_COMMAND_NAMES,
+    ...RUNTIME_RESOURCE_COMMAND_NAMES
+  ]);
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -1112,19 +1266,8 @@ function createOptionalObjectProperty<Name extends string, Value extends object>
   return value === undefined ? {} : { [name]: value } as Record<Name, Value>;
 }
 
-function isBrowserCommand(command: string | undefined): command is "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "console" | "close" {
-  return command === "open" ||
-    command === "goto" ||
-    command === "page-snapshot" ||
-    command === "click" ||
-    command === "fill" ||
-    command === "eval" ||
-    command === "wait-eval" ||
-    command === "get-window" ||
-    command === "screenshot" ||
-    command === "network" ||
-    command === "console" ||
-    command === "close";
+function isBrowserCommand(command: string | undefined): command is BrowserCommandName {
+  return BROWSER_COMMAND_NAMES.includes(command as BrowserCommandName);
 }
 
 async function runBridgeServerCommand(
@@ -1166,8 +1309,8 @@ function getQueryOptionNames(command: string): string[] {
   return ["name", "source", "risk", "enabled", "query"];
 }
 
-function isRuntimeResourceCommand(command: string | undefined): command is "targets" | "snapshot" | "events" | "actions" {
-  return command === "targets" || command === "snapshot" || command === "events" || command === "actions";
+function isRuntimeResourceCommand(command: string | undefined): command is RuntimeResourceCommandName {
+  return RUNTIME_RESOURCE_COMMAND_NAMES.includes(command as RuntimeResourceCommandName);
 }
 
 async function waitForProcessExit(server: BridgeServer): Promise<void> {
@@ -1202,3 +1345,38 @@ if (isCliEntryPoint()) {
     process.exitCode = exitCode;
   });
 }
+
+export {
+  getNumberOption,
+  getOptionValue,
+  getOptionValues,
+  parseCliArgs
+} from "./args.js";
+export type { ParsedCliArgs } from "./args.js";
+export {
+  createDefaultBrowserProfileDirectory,
+  createNextBrowserEnvironment,
+  createNextBrowserRunner,
+  parseBrowserJsonOutput
+} from "./browser.js";
+export type { BrowserRunner, BrowserRunResult } from "./browser.js";
+export {
+  fetchInputOptions,
+  fetchRuntimeResource,
+  fetchRuntimes,
+  normalizeBridgeUrl,
+  requestJson,
+  runRuntimeAction,
+  selectRuntime,
+  waitForRuntime
+} from "./client.js";
+export type { Fetcher, RuntimeResourceResult, RuntimeSelector } from "./client.js";
+export { isEntryPoint } from "./entry.js";
+export {
+  cliCommandReferences,
+  cliExampleReferences,
+  createCliReferenceMarkdown,
+  createCliSkillSectionMarkdown,
+  createHelpText
+} from "./help.js";
+export type { CliCommandReference, CliExampleReference } from "./help.js";

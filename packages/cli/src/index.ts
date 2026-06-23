@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { once } from "node:events";
-import { createBridgeServer, type BridgeServer } from "@openruntime/bridge";
+import { createBridgeServer, type BridgeRuntimeInfo, type BridgeServer } from "@openruntime/bridge";
 import {
   createPackageInfo,
   OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
@@ -388,6 +388,10 @@ async function waitForRuntimeCommand(
   status: string,
   where: RuntimeDataCondition[] | undefined
 ): Promise<RuntimeResourceResult<unknown>> {
+  if (hasOption(args, "next") && hasOption(args, "strict")) {
+    throw new Error("--next cannot be used with --strict.");
+  }
+
   if (hasOption(args, "strict")) {
     const runtime = await selectRuntimeForWait(args, fetcher, bridgeUrl, browserRunner, bridgeStarter, bridgeStateStore);
     return await waitForRuntime(
@@ -453,6 +457,9 @@ async function waitForLatestRuntime(
   const selector = createRuntimeSelector(args, { ignoreRuntimeId: true });
   const timeout = getNumberOption(args, "timeout") ?? 5000;
   const deadline = Date.now() + timeout;
+  const ignoredRuntimeIds = hasOption(args, "next")
+    ? await collectConnectedRuntimeIds(fetcher, bridgeUrl, selector)
+    : new Set<string>();
   let lastError: unknown;
   let lastResult: RuntimeResourceResult<unknown> | undefined;
   let didOpen = false;
@@ -461,7 +468,12 @@ async function waitForLatestRuntime(
     const remainingTimeout = Math.max(1, deadline - Date.now());
     try {
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-      const runtime = selectRuntime(runtimes, selector);
+      const runtime = selectRuntime(
+        ignoredRuntimeIds.size === 0
+          ? runtimes
+          : runtimes.filter((item) => !ignoredRuntimeIds.has(item.runtimeId)),
+        selector
+      );
       const result = await waitForRuntime(
         fetcher,
         bridgeUrl,
@@ -502,7 +514,57 @@ async function waitForLatestRuntime(
     return lastResult;
   }
 
+  if (hasOption(args, "next")) {
+    throw addOpenHint(new Error("No new connected runtime was found before timeout."), selector);
+  }
+
   throw addOpenHint(lastError ?? new Error("No connected runtime was found before timeout."), selector);
+}
+
+async function collectConnectedRuntimeIds(
+  fetcher: Fetcher,
+  bridgeUrl: string,
+  selector: RuntimeSelector
+): Promise<Set<string>> {
+  const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
+  const matchingConnectedRuntimes = filterConnectedRuntimes(runtimes, selector);
+  return new Set(matchingConnectedRuntimes.map((runtime) => runtime.runtimeId));
+}
+
+function filterConnectedRuntimes(runtimes: BridgeRuntimeInfo[], selector: RuntimeSelector): BridgeRuntimeInfo[] {
+  if (selector.runtimeId !== undefined) {
+    return runtimes.filter((runtime) => runtime.runtimeId === selector.runtimeId && runtime.status === "connected");
+  }
+
+  const sessionId = selector.sessionId ?? (
+    selector.url === undefined ? undefined : getOpenRuntimeSessionId(selector.url)
+  );
+  const normalizedUrl = selector.url === undefined ? undefined : normalizeUrlWithoutOpenRuntimeSession(selector.url);
+
+  return runtimes.filter((runtime) =>
+    runtime.status === "connected" &&
+    (sessionId === undefined || runtime.sessionId === sessionId || getOpenRuntimeSessionId(runtime.url) === sessionId) &&
+    (normalizedUrl === undefined || normalizeUrlWithoutOpenRuntimeSession(runtime.url) === normalizedUrl)
+  );
+}
+
+function normalizeUrlWithoutOpenRuntimeSession(input: string): string {
+  try {
+    const url = new URL(input);
+    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return url.toString();
+  } catch {
+    return input.endsWith("/") ? input.slice(0, -1) : input;
+  }
+}
+
+function getOpenRuntimeSessionId(input: string): string | undefined {
+  try {
+    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
+  } catch {
+    return undefined;
+  }
 }
 
 async function runStartCommand(

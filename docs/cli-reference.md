@@ -37,7 +37,7 @@
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
-- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
+- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
 ### 扩展
 
@@ -46,8 +46,9 @@
 
 ## Examples
 
-- `open-runtime snapshot --url http://localhost:4412 --id modern:route` - 从所选 runtime 读取一个 route target。
-- `open-runtime events --url http://localhost:4412 --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
-- `open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
-- `open-runtime vmok get-module-info --url http://localhost:4412` - 从默认 target 读取 VMOK module info。
+- `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
+- `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
+- `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
+- `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
+- `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。
 - `open-runtime vmok get-instance shell` - 按名称读取一个 VMOK 浏览器实例。

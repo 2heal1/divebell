@@ -63,28 +63,31 @@ pnpm exec openruntime <command>
 pnpm exec openruntime runtimes
 ```
 
-开发调试时通常不用手动维护 session。`wait-for` 默认会跟随最新 connected
-runtime；刷新、热更新或重新连接后，会继续找最新可用页面，直到等待成功或超时：
+开发调试时通常不用手动维护 session，也不用给每条命令都传 `--url`。
+默认先使用最新 connected runtime。普通验证直接等目标状态：
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 10000
+pnpm exec openruntime wait-for modern:route ready --where pathname=/orders --timeout 10000
 ```
 
-runtime 选择有三种模式：
+runtime 选择有四种模式：
 
-- 默认跟随模式：`wait-for` 不加 `--strict` 时，会按 `--url`、`--session`
-  或当前最新 connected runtime 持续选择最新页面。适合刷新、热更新和代码修改后的验证。
+- 默认跟随模式：`wait-for` 不加 selector 和 `--strict` 时，会持续选择最新 connected runtime。
+  当前没有 runtime、当前 runtime 还没注册 target、刷新或热更新后换了 runtime，都会继续等到成功或超时。
+- 下一次连接模式：页面即将刷新、重开或重新连接时，用 `--next`，只等待命令开始后新连进来的 runtime。
 - 精确绑定模式：加 `--strict --runtime <runtime-id>` 时，只绑定这个 runtime。
   适合必须锁定某个 tab、某次页面生命周期或排查断连行为。
 - 会话模式：`--session <session-id>` 适合区分多个同 URL tab，或需要把一次调试明确标记出来。
   如果页面 URL 已带 `openruntimeSessionId=<session-id>`，刷新后的新 runtime 会继续属于这个 session。
+  CLI 只有显式传 `--session` 时才会把 `openruntimeSessionId` 写进 URL；普通场景不要主动制造 session。
 
-多数情况下先用默认跟随模式或 `--url`。同 URL 多 tab、必须精确区分页面时，再用
-`--session` 或 `--strict --runtime`：
+多数情况下先用默认跟随模式。已知页面会产生新 runtime 时用 `--next`。
+同 URL 多 tab、必须精确区分页面时，再用 `--session` 或 `--strict --runtime`：
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 10000
-pnpm exec openruntime snapshot --url <url>
+pnpm exec openruntime wait-for modern:route ready --where pathname=/orders --timeout 10000
+pnpm exec openruntime wait-for modern:route ready --next --where pathname=/orders --timeout 10000
+pnpm exec openruntime snapshot
 pnpm exec openruntime snapshot --session <session-id>
 pnpm exec openruntime snapshot --runtime <runtime-id>
 pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id>
@@ -121,7 +124,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
-- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
+- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
 ### 扩展命令
 
@@ -130,10 +133,11 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 ### 示例
 
-- `open-runtime snapshot --url http://localhost:4412 --id modern:route` - 从所选 runtime 读取一个 route target。
-- `open-runtime events --url http://localhost:4412 --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
-- `open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
-- `open-runtime vmok get-module-info --url http://localhost:4412` - 从默认 target 读取 VMOK module info。
+- `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
+- `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
+- `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
+- `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
+- `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。
 - `open-runtime vmok get-instance shell` - 按名称读取一个 VMOK 浏览器实例。
 
 ## 如何使用
@@ -161,7 +165,7 @@ OPENRUNTIME_BRIDGE_PORT=17321 pnpm start:app:bridge ops-console
 ```bash
 pnpm exec openruntime open http://localhost:4412 --bridge http://localhost:17321
 pnpm exec openruntime runtimes --bridge http://localhost:17321
-pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://localhost:4412
+pnpm exec openruntime snapshot --bridge http://localhost:17321
 ```
 
 确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
@@ -183,13 +187,14 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321 --url http://loca
 明确事实后，先查已有信号：
 
 ```bash
-pnpm exec openruntime targets --url <url> --query <keyword>
-pnpm exec openruntime snapshot --url <url>
-pnpm exec openruntime snapshot --url <url> --query <keyword>
-pnpm exec openruntime snapshot --url <url> --id <target-id>
-pnpm exec openruntime events --url <url> --limit 100
-pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
-pnpm exec openruntime wait-for <target-id> <status> --url <url> --timeout 10000
+pnpm exec openruntime targets --query <keyword>
+pnpm exec openruntime snapshot
+pnpm exec openruntime snapshot --query <keyword>
+pnpm exec openruntime snapshot --id <target-id>
+pnpm exec openruntime events --limit 100
+pnpm exec openruntime events --target-id <target-id> --limit 50
+pnpm exec openruntime wait-for <target-id> <status> --timeout 10000
+pnpm exec openruntime wait-for <target-id> <status> --next --timeout 10000
 ```
 
 第一次排查可以看完整 `snapshot` 或最近 `events`，用于发现当前有哪些 target 和错误。
@@ -244,8 +249,9 @@ pnpm exec openruntime eval '({ pathname: location.pathname, title: document.titl
 `pnpm exec openruntime click e7`。裸文本点击会优先匹配可交互元素的精确文本；
 文本不唯一、目标难区分或已经有 ref 时，不要重复走一轮文本点击。
 
-代码修改、页面状态污染或需要重新走初始化流程时，可以刷新或重开页面。刷新后如果 URL
-带有 `openruntimeSessionId=<session-id>`，新的 runtime 会继续归属同一个 session。
+代码修改、页面状态污染或需要重新走初始化流程时，可以刷新或重开页面。已知会产生新
+runtime 时，先执行 `wait-for <target-id> <status> --next`，再刷新或重开页面。
+刷新后如果 URL 带有 `openruntimeSessionId=<session-id>`，新的 runtime 会继续归属同一个 session。
 不要为了同一个已证明的事实反复执行 `open -> wait -> eval -> snapshot -> events`。
 
 需要参数、多步骤、跨系统状态、无稳定 UI 入口，或需要反复复现并等待明确结果的动作，

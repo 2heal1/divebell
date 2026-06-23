@@ -33,6 +33,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
+  assert.match(output.text(), /open-runtime wait-for .*--next/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
 });
@@ -43,7 +44,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
-  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
+  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
   assert.match(markdown, /open-runtime vmok get-module-info/);
 });
 
@@ -54,7 +55,7 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
-  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>/);
+  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
 });
 
 test("configures next-browser with a persistent OpenRuntime profile", () => {
@@ -749,6 +750,314 @@ test("wait-for follows the latest matching runtime unless strict mode is set", a
     "http://bridge.test/runtimes/runtime-after-refresh/wait-for"
   ]);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+});
+
+test("wait-for waits for a runtime to connect when none is currently connected", async () => {
+  const calls: string[] = [];
+  let runtimesCalls = 0;
+
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "modern:route",
+    "ready",
+    "--timeout",
+    "350"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url, init) => {
+      calls.push(String(url));
+
+      if (String(url) === "http://bridge.test/runtimes") {
+        runtimesCalls += 1;
+        return jsonResponse({
+          runtimes: runtimesCalls < 2
+            ? []
+            : [
+                {
+                  runtimeId: "runtime-new",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 1,
+                  lastSeenAt: 2
+                }
+              ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-new/wait-for");
+      assert.equal(init?.method, "POST");
+      return jsonResponse({
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        }
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-new/wait-for"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-new");
+});
+
+test("wait-for keeps following when the current runtime has not registered the target", async () => {
+  const calls: string[] = [];
+  let runtimesCalls = 0;
+
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "modern:route",
+    "ready",
+    "--timeout",
+    "500"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      calls.push(String(url));
+
+      if (String(url) === "http://bridge.test/runtimes") {
+        runtimesCalls += 1;
+        return jsonResponse({
+          runtimes: runtimesCalls < 2
+            ? [
+                {
+                  runtimeId: "runtime-old",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 1,
+                  lastSeenAt: 2
+                }
+              ]
+            : [
+                {
+                  runtimeId: "runtime-old",
+                  url: "http://app.test/orders",
+                  status: "disconnected",
+                  connectedAt: 1,
+                  lastSeenAt: 2,
+                  disconnectedAt: 3
+                },
+                {
+                  runtimeId: "runtime-new",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 4,
+                  lastSeenAt: 5
+                }
+              ]
+        });
+      }
+
+      if (String(url) === "http://bridge.test/runtimes/runtime-old/wait-for") {
+        return jsonResponse({
+          success: false,
+          condition: {
+            id: "modern:route",
+            status: "ready"
+          },
+          snapshot: {
+            targets: {},
+            latestEventId: 0,
+            capturedAt: 10
+          },
+          reason: "Target is not registered."
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-new/wait-for");
+      return jsonResponse({
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 20
+        }
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-old/wait-for",
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-new/wait-for"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-new");
+});
+
+test("wait-for next ignores runtimes that were connected before the command started", async () => {
+  const calls: string[] = [];
+  let runtimesCalls = 0;
+
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "modern:route",
+    "ready",
+    "--next",
+    "--timeout",
+    "500"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url, init) => {
+      calls.push(String(url));
+
+      if (String(url) === "http://bridge.test/runtimes") {
+        runtimesCalls += 1;
+        return jsonResponse({
+          runtimes: runtimesCalls < 3
+            ? [
+                {
+                  runtimeId: "runtime-existing",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 1,
+                  lastSeenAt: 2
+                }
+              ]
+            : [
+                {
+                  runtimeId: "runtime-existing",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 1,
+                  lastSeenAt: 2
+                },
+                {
+                  runtimeId: "runtime-next",
+                  url: "http://app.test/orders",
+                  status: "connected",
+                  connectedAt: 3,
+                  lastSeenAt: 4
+                }
+              ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-next/wait-for");
+      assert.equal(init?.method, "POST");
+      return jsonResponse({
+        success: true,
+        condition: {
+          id: "modern:route",
+          status: "ready"
+        },
+        snapshot: {
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        }
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-next/wait-for"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-next");
+});
+
+test("wait-for next reports when no new runtime connects before timeout", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "modern:route",
+    "ready",
+    "--next",
+    "--timeout",
+    "20"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      assert.equal(String(url), "http://bridge.test/runtimes");
+      return jsonResponse({
+        runtimes: [
+          {
+            runtimeId: "runtime-existing",
+            url: "http://app.test/orders",
+            status: "connected",
+            connectedAt: 1,
+            lastSeenAt: 2
+          }
+        ]
+      });
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(JSON.parse(output.text()), {
+    result: {
+      success: false,
+      condition: {
+        id: "modern:route",
+        status: "ready"
+      },
+      reason: "No new connected runtime was found before timeout."
+    }
+  });
+  assert.equal(output.errorText(), "No new connected runtime was found before timeout.\n");
+});
+
+test("wait-for rejects next with strict mode", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "wait-for",
+    "--bridge",
+    "http://bridge.test",
+    "modern:route",
+    "ready",
+    "--next",
+    "--strict"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(JSON.parse(output.text()), {
+    result: {
+      success: false,
+      condition: {
+        id: "modern:route",
+        status: "ready"
+      },
+      reason: "--next cannot be used with --strict."
+    }
+  });
+  assert.equal(output.errorText(), "--next cannot be used with --strict.\n");
 });
 
 test("wait-for returns a failing exit code with structured output when the condition is not met", async () => {

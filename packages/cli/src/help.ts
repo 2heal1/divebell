@@ -112,7 +112,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Runtime",
-    usage: "open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict]",
+    usage: "open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]",
     description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
   },
   {
@@ -129,19 +129,23 @@ export const cliCommandReferences: CliCommandReference[] = [
 
 export const cliExampleReferences: CliExampleReference[] = [
   {
-    command: "open-runtime snapshot --url http://localhost:4412 --id modern:route",
-    description: "从所选 runtime 读取一个 route target。"
+    command: "open-runtime snapshot --id modern:route",
+    description: "从最新 connected runtime 读取一个 route target。"
   },
   {
-    command: "open-runtime events --url http://localhost:4412 --target-id modern:route --limit 50",
+    command: "open-runtime events --target-id modern:route --limit 50",
     description: "查看某个 target 的最近事件。"
   },
   {
-    command: "open-runtime wait-for modern:route ready --url http://localhost:4412 --where pathname=/orders --timeout 10000",
+    command: "open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000",
     description: "等待指定 pathname 的 route target ready。"
   },
   {
-    command: "open-runtime vmok get-module-info --url http://localhost:4412",
+    command: "open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000",
+    description: "等待下一次新连接 runtime 的 route target ready。"
+  },
+  {
+    command: "open-runtime vmok get-module-info",
     description: "从默认 target 读取 VMOK module info。"
   },
   {

@@ -103,7 +103,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
-- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]` - 打开页面，默认会先准备 Bridge。
+- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `open-runtime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `open-runtime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。
@@ -120,7 +120,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。
 - `open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
 - `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
-- `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]` - 读取 runtime event 历史。
+- `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
@@ -135,6 +135,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
+- `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
 - `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。
@@ -168,6 +169,10 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 pnpm exec openruntime snapshot --bridge http://localhost:17321
 ```
 
+`open` 默认使用静默浏览器，不打开可见 UI。只有需要人工观察、布局、截图或视觉问题时，
+才显式使用 `pnpm exec openruntime open <url> --ui`。如果已有浏览器进程在运行，先
+`pnpm exec openruntime close`，再用 `--ui` 重新打开。
+
 确认 CLI 和 Bridge 能正常工作，页面能正常连接 runtime，并获取当前页面状态（包含报错、路由等信息）。
 
 接下来仍按原本排查思路判断问题，OpenRuntime 用来更快拿到可信事实、执行已声明动作、
@@ -179,10 +184,21 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321
 - 最可靠的写入点在哪里：组件真实 ready 点、稳定父组件、loader、action handler、
   error boundary、Garfish/MF 接入层。
 
+复杂链路先做分段定位，用 OpenRuntime 把问题收敛到最小失败原因。先判断失败发生在
+页面连接、route、loader、业务组件、MF/Garfish 加载、业务 action 结果中的哪一段，
+再只在失败段内继续查源码、事件或补信号。已通过阶段不要重复验证，也不要在没有缩小
+范围前反复查完整 DOM 或完整 snapshot。
+
+分段时优先使用已有 target：页面和框架状态看 runtime / Modern.js target，数据状态看
+loader 或业务 target，远程模块看 MF target，业务结果看业务 target 或 action 结果 target。
+如果某一段没有信号且源码可改，先在失败链路的稳定上一级补最小 target，再用
+`updateSnapshot` 写入 `pending`、`ready` 或 `error`，让后续 `wait-for` 直接等待这个
+最小 target。
+
 验证终止规则：`wait-for`、`snapshot` 或 `events` 已经证明同一个事实成功或失败时，
-直接以这个结论为准，停止验证。不要继续用 DOM、截图、点击、重开页面或再次等待同一批
-元素来重复确认。如果结论是视觉、样式、布局、动画、截图、文案、可访问性或真实点击路径，
-再使用对应的页面能力确认。
+直接以这个结论为准，停止验证。已通过阶段不要继续用 DOM、截图、点击、重开页面或再次
+等待同一批元素来重复确认。如果结论是视觉、样式、布局、动画、截图、文案、可访问性或
+真实点击路径，再使用对应的页面能力确认。
 
 明确事实后，先查已有信号：
 
@@ -192,6 +208,7 @@ pnpm exec openruntime snapshot
 pnpm exec openruntime snapshot --query <keyword>
 pnpm exec openruntime snapshot --id <target-id>
 pnpm exec openruntime events --limit 100
+pnpm exec openruntime events --query <keyword> --limit 50
 pnpm exec openruntime events --target-id <target-id> --limit 50
 pnpm exec openruntime wait-for <target-id> <status> --timeout 10000
 pnpm exec openruntime wait-for <target-id> <status> --next --timeout 10000
@@ -201,15 +218,21 @@ pnpm exec openruntime wait-for <target-id> <status> --next --timeout 10000
 一旦确定目标，后续查询就按 `--id`、`--target-id`、`--type`、`--source`、`--status`
 或 `--query` 收窄范围，避免每一步都读取完整状态。
 
+如果怀疑某个库、remote、shared、资源或运行时来源有问题，先用
+`snapshot --query <keyword>` 看当前状态；再用 `events --query <keyword>` 看相关变化。
+例如 `snapshot --query react`、`events --query react --limit 50`。找到具体 target 后，
+后续优先用 `events --target-id <target-id> --limit 50`。
+
 `wait-for --where` 的 value 会按 JSON 字面量解析：`data.mounted=true` 匹配布尔值，
 `data.matchedCount=1` 匹配数字，`data.optional=null` 匹配 null；
 `pathname=/orders` 仍按字符串匹配。
 
 有对应 target 时，`snapshot` 回答当前状态，`events` 回答变化和错误原因，
-`wait-for` 等待目标状态。没有对应 target 时，不要默认回到 DOM 猜业务结果；
-如果源码可改，先在最小业务范围补 target 和 `updateSnapshot`，再用 CLI 查。
-页面查询适合找按钮、执行真实用户路径、确认 DOM/可访问性/视觉事实、临时探索页面结构，
-或在 target/action 暂时补不齐时确认现象。
+`wait-for` 等待目标状态；如果现有 target 已经能证明问题，就直接使用这个结论。
+没有对应 target 时，不要默认回到 DOM 猜业务结果；先判断能否补最小 target。
+如果源码可改，优先在失败链路的稳定上一级补 target 和 `updateSnapshot`，再用 CLI 查。
+页面查询是正式能力，适合找按钮、执行真实用户路径、确认 DOM/可访问性/视觉事实、
+临时探索页面结构、无法改源码，或在 target/action 暂时补不齐时确认现象。
 
 判断 `wait-for` 时必须看输出里的 `result.success` 和 target 状态。
 `success: false`、timeout、target `error` 都是失败证据，不要因为命令输出了 JSON、

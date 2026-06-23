@@ -384,13 +384,14 @@ test("links server-rendered runtime state with the later browser connection", as
         capturedAt: 2911
       });
 
-      const eventsPromise = readJson(`${address.url}/runtimes/runtime-ssr/events?source=modern.js`);
+      const eventsPromise = readJson(`${address.url}/runtimes/runtime-ssr/events?source=modern.js&query=hydration`);
       const eventsRequest = await stream.next<{ requestId: string; method: string; query: unknown }>("request");
       assert.deepEqual(eventsRequest, {
         requestId: "request-2",
         method: "getEvents",
         query: {
-          source: "modern.js"
+          source: "modern.js",
+          query: "hydration"
         }
       });
       await postJson(`${address.url}/runtimes/runtime-ssr/responses/${eventsRequest.requestId}`, {
@@ -412,14 +413,6 @@ test("links server-rendered runtime state with the later browser connection", as
       });
       assert.deepEqual(await eventsPromise, {
         events: [
-          {
-            id: 1,
-            type: "snapshot.updated",
-            source: "modern.js",
-            timestamp: 2902,
-            targetId: "modern:ssr",
-            status: "server-rendered"
-          },
           {
             id: 2,
             type: "snapshot.updated",

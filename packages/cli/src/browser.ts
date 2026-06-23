@@ -12,8 +12,12 @@ export interface BrowserRunResult {
   stderr: string;
 }
 
+export interface BrowserRunOptions {
+  ui?: boolean;
+}
+
 export interface BrowserRunner {
-  run(args: string[]): Promise<BrowserRunResult>;
+  run(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
 }
 
 const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
@@ -25,10 +29,10 @@ export interface NextBrowserRunnerOptions {
 
 export function createNextBrowserRunner(options: NextBrowserRunnerOptions = {}): BrowserRunner {
   return {
-    run: async (args) => {
+    run: async (args, runOptions = {}) => {
       try {
         const result = await execFileAsync(process.execPath, [resolveNextBrowserCliPath(), ...args], {
-          env: createNextBrowserEnvironment(process.env, options.profileDirectory),
+          env: createNextBrowserEnvironment(process.env, options.profileDirectory, runOptions),
           maxBuffer: 1024 * 1024 * 10
         });
         return {
@@ -54,14 +58,21 @@ export function createDefaultBrowserProfileDirectory(): string {
   return join(homedir(), ".openruntime", "browser-profile");
 }
 
-export function createNextBrowserEnvironment(baseEnv: NodeJS.ProcessEnv, profileDirectory?: string): NodeJS.ProcessEnv {
+export function createNextBrowserEnvironment(
+  baseEnv: NodeJS.ProcessEnv,
+  profileDirectory?: string,
+  options: BrowserRunOptions = {}
+): NodeJS.ProcessEnv {
   const resolvedProfileDirectory = resolve(
     profileDirectory ?? baseEnv[OPENRUNTIME_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
   );
+  const envWithoutBrowserMode = { ...baseEnv };
+  delete envWithoutBrowserMode.NEXT_BROWSER_HEADLESS;
 
   return {
-    ...baseEnv,
+    ...envWithoutBrowserMode,
     [NEXT_BROWSER_PROFILE_ENV]: resolvedProfileDirectory,
+    ...(options.ui === true ? {} : { NEXT_BROWSER_HEADLESS: "1" }),
     NODE_OPTIONS: appendNodeImportOption(baseEnv.NODE_OPTIONS, resolveNextBrowserProfilePreloadUrl())
   };
 }

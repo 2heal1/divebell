@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
 import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
-import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunner } from "../dist/browser.js";
+import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
 
@@ -30,12 +30,47 @@ test("prints explicit runtime resource help", async () => {
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
   assert.match(output.text(), /open-runtime snapshot .*--id <id>/);
-  assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>/);
+  assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
+  assert.match(output.text(), /open-runtime open <url> .*--ui/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime wait-for .*--next/);
   assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
   assert.match(output.text(), /open-runtime vmok get-instance <name>/);
+});
+
+test("prints help for command help without executing the command", async () => {
+  for (const command of ["start", "open", "events"]) {
+    let touchedSideEffect = false;
+    const output = createOutput();
+    const exitCode = await runCli([command, "--help"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      fetcher: async () => {
+        touchedSideEffect = true;
+        throw new Error("fetcher should not be called");
+      },
+      bridgeStarter: {
+        start: async () => {
+          touchedSideEffect = true;
+          throw new Error("bridge should not be started");
+        }
+      },
+      browserRunner: createBrowserRunner(async () => {
+        touchedSideEffect = true;
+        return {
+          exitCode: 1,
+          stdout: "",
+          stderr: "browser should not be opened"
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.match(output.text(), /Usage:/);
+    assert.equal(touchedSideEffect, false);
+  }
 });
 
 test("generates CLI reference markdown from the help table", () => {
@@ -65,14 +100,61 @@ test("configures next-browser with a persistent OpenRuntime profile", () => {
   });
 
   assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, "/tmp/custom-openruntime-profile");
+  assert.equal(env.NEXT_BROWSER_HEADLESS, "1");
   assert.match(env.NODE_OPTIONS ?? "", /--enable-source-maps/);
   assert.match(env.NODE_OPTIONS ?? "", /--import file:\/\//);
+});
+
+test("allows visible browser mode for next-browser", () => {
+  const env = createNextBrowserEnvironment({
+    NEXT_BROWSER_HEADLESS: "1"
+  }, undefined, { ui: true });
+
+  assert.equal(env.NEXT_BROWSER_HEADLESS, undefined);
 });
 
 test("uses the default OpenRuntime browser profile directory", () => {
   const env = createNextBrowserEnvironment({});
 
   assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+});
+
+test("passes keyword query to events", async () => {
+  const calls: string[] = [];
+  const output = createOutput();
+  const exitCode = await runCli(["events", "--bridge", "http://bridge.test", "--query", "react", "--limit", "50"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-1",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/events?limit=50&query=react");
+      return jsonResponse({
+        events: [],
+        latestEventId: 0,
+        truncated: false
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-1/events?limit=50&query=react"
+  ]);
 });
 
 test("keeps the persistent profile when next-browser closes its temporary profile", () => {
@@ -1202,6 +1284,7 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
 test("opens a browser page without touching the bridge when no-bridge is set", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
 
   const exitCode = await runCli(["open", "http://app.test/", "--no-bridge"], {
     stdout: output.stdout,
@@ -1214,8 +1297,9 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
         throw new Error("bridge should not be started");
       }
     },
-    browserRunner: createBrowserRunner(async (args) => {
+    browserRunner: createBrowserRunner(async (args, options) => {
       browserCalls.push(args);
+      browserOptions.push(options);
       return {
         exitCode: 0,
         stdout: "opened\n",
@@ -1227,6 +1311,32 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assert.equal(exitCode, 0);
   assert.equal(output.text(), "opened\n");
   assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
+  assert.deepEqual(browserOptions, [{ ui: false }]);
+});
+
+test("opens a visible browser page when ui is set and keeps the session query", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+
+  const exitCode = await runCli(["open", "http://app.test/orders", "--session", "session-orders", "--ui", "--no-bridge"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args, options) => {
+      browserCalls.push(args);
+      browserOptions.push(options);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.text(), "opened\n");
+  assert.deepEqual(browserCalls, [["open", "http://app.test/orders?openruntimeSessionId=session-orders"]]);
+  assert.deepEqual(browserOptions, [{ ui: true }]);
 });
 
 test("clicks interactive text with an exact page-side lookup", async () => {
@@ -1822,7 +1932,7 @@ function jsonResponse(body: unknown): Response {
 }
 
 function createBrowserRunner(
-  run: (args: string[]) => Promise<{
+  run: (args: string[], options?: BrowserRunOptions) => Promise<{
     exitCode: number;
     stdout: string;
     stderr: string;

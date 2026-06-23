@@ -1,4 +1,4 @@
-import { matchesValue } from "../shared/query.js";
+import { matchesText, matchesValue } from "../shared/query.js";
 import type { RuntimeClock } from "../runtime/types.js";
 import type { GetEventsQuery, GetEventsResult, RuntimeEvent } from "./types.js";
 
@@ -92,8 +92,34 @@ function matchesEvent(event: RuntimeEvent, query: GetEventsQuery | undefined): b
     matchesValue(event.actionName, query.actionName) &&
     matchesValue(event.type, query.type) &&
     matchesValue(event.source, query.source) &&
-    matchesValue(event.status, query.status)
+    matchesValue(event.status, query.status) &&
+    matchesEventText(event, query.query)
   );
+}
+
+function matchesEventText(event: RuntimeEvent, query: string | undefined): boolean {
+  return matchesText([
+    event.targetId,
+    event.actionName,
+    event.type,
+    event.source,
+    event.status,
+    event.error?.message,
+    event.error?.code,
+    event.error?.stack,
+    stringifySearchValue(event.error?.data),
+    stringifySearchValue(event.payload)
+  ], query);
+}
+
+function stringifySearchValue(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function normalizeLimit(limit: number | undefined): number {

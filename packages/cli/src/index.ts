@@ -14,6 +14,7 @@ import {
   createNextBrowserRunner,
   createWaitEvalScript,
   parseBrowserJsonOutput,
+  type BrowserRunOptions,
   type BrowserRunner
 } from "./browser.js";
 import {
@@ -71,7 +72,7 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
   const args = parseCliArgs(argv);
 
   try {
-    if (args.command.length === 0) {
+    if (args.command.length === 0 || hasOption(args, "help")) {
       stdout.write(`${createHelpText()}\n`);
       return 0;
     }
@@ -325,7 +326,13 @@ async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    return await runBrowserAndPipe(browserRunner, createOpenBrowserArgs(args, url), stdout, stderr);
+    return await runBrowserAndPipe(
+      browserRunner,
+      createOpenBrowserArgs(args, url),
+      stdout,
+      stderr,
+      { ui: hasOption(args, "ui") }
+    );
   }
 
   if (command === "get-window") {
@@ -693,9 +700,10 @@ async function runBrowserAndPipe(
   browserRunner: BrowserRunner,
   browserArgs: string[],
   stdout: { write(chunk: string): void },
-  stderr: { write(chunk: string): void }
+  stderr: { write(chunk: string): void },
+  options?: BrowserRunOptions
 ): Promise<number> {
-  const result = await browserRunner.run(browserArgs);
+  const result = await browserRunner.run(browserArgs, options);
   if (result.stdout.length > 0) {
     stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
   }
@@ -902,7 +910,7 @@ function getQueryOptionNames(command: string): string[] {
     return ["id", "type", "source", "status", "query"];
   }
   if (command === "events") {
-    return ["since", "target-id", "action", "type", "source", "status", "limit"];
+    return ["since", "target-id", "action", "type", "source", "status", "limit", "query"];
   }
   return ["name", "source", "risk", "enabled", "query"];
 }

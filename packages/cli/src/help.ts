@@ -22,8 +22,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]",
-    description: "打开页面，默认会先准备 Bridge。"
+    usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
+    description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
   },
   {
     category: "Bridge and Browser",
@@ -92,7 +92,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Runtime",
-    usage: "open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]",
+    usage: "open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]",
     description: "读取 runtime event 历史。"
   },
   {
@@ -135,6 +135,10 @@ export const cliExampleReferences: CliExampleReference[] = [
   {
     command: "open-runtime events --target-id modern:route --limit 50",
     description: "查看某个 target 的最近事件。"
+  },
+  {
+    command: "open-runtime events --query react --limit 50",
+    description: "按关键词查看相关事件。"
   },
   {
     command: "open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000",

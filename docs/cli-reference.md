@@ -16,7 +16,7 @@
 
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
-- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge]` - 打开页面，默认会先准备 Bridge。
+- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `open-runtime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `open-runtime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。
@@ -33,7 +33,7 @@
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。
 - `open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
 - `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
-- `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>]` - 读取 runtime event 历史。
+- `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
@@ -48,6 +48,7 @@
 
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
+- `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
 - `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。

@@ -233,6 +233,11 @@ pnpm exec openruntime wait-for <target-id> <status> --next --timeout 10000
 `console --query react --level error --limit 50`、`snapshot --query react`、
 `events --query react --limit 50`。找到具体 target 后，后续优先用
 `events --target-id <target-id> --limit 50`。
+Module Federation shared 单例多版本冲突会暴露为
+`mf:shared-conflict:<name>:<scope>`，例如 `mf:shared-conflict:react:default`。
+如果 `snapshot --query react` 或 `snapshot --query shared` 已经看到这个 target，
+就把它作为结构化证据，按 shared 版本、来源和 scope 排查，不要再通过 UI 或 DOM
+重复猜测是否存在多实例问题。
 
 `wait-for --where` 的 value 会按 JSON 字面量解析：`data.mounted=true` 匹配布尔值，
 `data.matchedCount=1` 匹配数字，`data.optional=null` 匹配 null；

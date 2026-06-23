@@ -49,6 +49,20 @@ pnpm exec openruntime network
 pnpm exec openruntime network --url /api/orders
 ```
 
+排查必须复用用户账号的问题时，可以让用户导出 OpenRuntime 浏览器账号状态：
+
+```sh
+pnpm exec openruntime export-profile
+pnpm exec openruntime import-profile <复制到的内容>
+```
+
+如果需要完整浏览器 profile，用 `--full`。这个模式只输出生成的文件路径，不把大文件内容打印到终端：
+
+```sh
+pnpm exec openruntime export-profile --full
+pnpm exec openruntime import-profile --input <导出的文件路径>
+```
+
 根目录命令：
 
 1. `pnpm build`：构建所有基础包。

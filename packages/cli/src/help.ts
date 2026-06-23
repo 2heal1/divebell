@@ -22,6 +22,16 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "open-runtime export-profile [--full] [--output <path>]",
+    description: "导出 OpenRuntime 浏览器账号状态；默认输出可复制内容，--full 生成完整 profile 文件路径。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "open-runtime import-profile <content-or-path> | --input <path>",
+    description: "导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
   },

@@ -42,6 +42,14 @@ import {
 import { isEntryPoint } from "./entry.js";
 import { runVmokCommand } from "./extensions/vmok/index.js";
 import { createHelpText } from "./help.js";
+import {
+  exportAuthProfile,
+  exportFullProfile,
+  getProfileDirectory,
+  importProfile,
+  readProfileInput,
+  readProfileInputFile
+} from "./profile.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 
@@ -88,6 +96,14 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
 
     if (args.command[0] === "stop") {
       return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), options.bridgeProcessController);
+    }
+
+    if (args.command[0] === "export-profile") {
+      return await runExportProfileCommand(args, stdout, browserRunner);
+    }
+
+    if (args.command[0] === "import-profile") {
+      return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -618,6 +634,53 @@ async function runStopCommand(
     bridge: bridgeResult
   });
   return 0;
+}
+
+async function runExportProfileCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  await closeBrowserForProfileCommand(browserRunner);
+  const profileDirectory = getProfileDirectory();
+  const outputPath = getOptionValue(args, "output");
+  const result = hasOption(args, "full")
+    ? await exportFullProfile({
+        profileDirectory,
+        ...(outputPath === undefined ? {} : { outputPath })
+      })
+    : await exportAuthProfile({
+        profileDirectory,
+        ...(outputPath === undefined ? {} : { outputPath })
+      });
+
+  stdout.write(`${result.path ?? result.content}\n`);
+  return 0;
+}
+
+async function runImportProfileCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  await closeBrowserForProfileCommand(browserRunner);
+  const inputPath = getOptionValue(args, "input");
+  const input = inputPath === undefined
+    ? await readProfileInput(args.command[1])
+    : await readProfileInputFile(inputPath);
+  const result = await importProfile({
+    input,
+    profileDirectory: getProfileDirectory()
+  });
+  writeJson(stdout, result);
+  return 0;
+}
+
+async function closeBrowserForProfileCommand(browserRunner: BrowserRunner): Promise<void> {
+  const result = await browserRunner.run(["close"]);
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr.trim() || result.stdout.trim() || "Could not close OpenRuntime browser.");
+  }
 }
 
 function createBridgeUrl(args: ParsedCliArgs): string {

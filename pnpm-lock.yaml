@@ -154,6 +154,9 @@ importers:
       '@vercel/next-browser':
         specifier: 0.7.1
         version: 0.7.1
+      playwright:
+        specifier: 1.60.0
+        version: 1.60.0
     devDependencies:
       '@rstest/core':
         specifier: 0.10.3

@@ -41,6 +41,10 @@ opr stop
 
 CLI 不默认复用系统 Chrome 的默认 profile，避免和用户正在使用的 Chrome 互相锁定或污染日常浏览数据。如需指定独立 profile 目录，可以设置 `OPENRUNTIME_BROWSER_PROFILE_DIR=/path/to/profile` 后再启动 CLI。切换 profile 目录前需要先执行 `open-runtime close`。
 
+`open-runtime export-profile` 会导出一段可复制的账号状态，包含 Cookie、本地存储和 IndexedDB。另一台机器或另一个 Agent 侧执行 `open-runtime import-profile <content>` 后，后续 `open-runtime open <url>` 会默认带上这份账号状态。
+
+`open-runtime export-profile --full` 用于完整 profile 迁移。这个模式会生成 `.oprprofile` 文件并只输出文件路径；导入时使用 `open-runtime import-profile --input <path>`。导入完整 profile 前，CLI 会备份已有 OpenRuntime profile。
+
 如果默认端口被别的服务占用，命令会失败，并提示使用 `--bridge` 或 `--port` 换一个 Bridge 地址。
 
 `--no-bridge` 只打开浏览器，不准备 Runtime 通道。这个模式适合只想截图、点击或读取页面变量的场景。

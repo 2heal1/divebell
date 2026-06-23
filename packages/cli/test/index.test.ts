@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -10,6 +10,7 @@ import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
+import { exportFullProfile, importProfile } from "../dist/profile.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "open-runtime");
@@ -33,6 +34,8 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime open <url> .*--ui/);
+  assert.match(output.text(), /open-runtime export-profile \[--full\] \[--output <path>\]/);
+  assert.match(output.text(), /open-runtime import-profile <content-or-path> \| --input <path>/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /open-runtime wait-for .*--next/);
@@ -78,6 +81,8 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime export-profile \[--full\]/);
+  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
@@ -90,6 +95,8 @@ test("generates the skill CLI command section from the help table", () => {
 
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime export-profile \[--full\]/);
+  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
@@ -186,6 +193,87 @@ test("keeps the persistent profile when next-browser closes its temporary profil
     assert.equal(result.status, 0, result.stderr);
     assert.equal(existsSync(join(profileDirectory, "login-state")), true);
   } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("exports full profile to a file and imports it with a backup", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-full-profile-"));
+  const profileDirectory = join(tempDir, "profile");
+
+  try {
+    mkdirSync(join(profileDirectory, "Default"), {
+      recursive: true
+    });
+    writeFileSync(join(profileDirectory, "Default", "Preferences"), "kept");
+
+    const exported = await exportFullProfile({ profileDirectory });
+    assert.equal(exported.kind, "full");
+    assert.ok(exported.path);
+    assert.equal(existsSync(exported.path), true);
+
+    writeFileSync(join(profileDirectory, "old-file"), "old");
+    const imported = await importProfile({
+      input: readFileSync(exported.path, "utf8"),
+      profileDirectory
+    });
+
+    assert.equal(imported.kind, "full");
+    assert.equal(imported.profileDirectory, profileDirectory);
+    assert.ok(imported.backupDirectory);
+    assert.equal(readFileSync(join(profileDirectory, "Default", "Preferences"), "utf8"), "kept");
+    assert.equal(existsSync(join(profileDirectory, "old-file")), false);
+    assert.equal(existsSync(join(imported.backupDirectory, "old-file")), true);
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("full profile export command prints the generated file path", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-full-command-"));
+  const profileDirectory = join(tempDir, "profile");
+  const previousProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+  const browserCalls: string[][] = [];
+
+  try {
+    mkdirSync(profileDirectory, {
+      recursive: true
+    });
+    writeFileSync(join(profileDirectory, "Preferences"), "kept");
+    process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = profileDirectory;
+
+    const output = createOutput();
+    const exitCode = await runCli(["export-profile", "--full"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: ""
+        };
+      })
+    });
+
+    const outputPath = output.text().trim();
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(browserCalls, [["close"]]);
+    assert.match(outputPath, /openruntime-profile-full-.*\.oprprofile$/);
+    assert.equal(existsSync(outputPath), true);
+  } finally {
+    if (previousProfileDirectory === undefined) {
+      delete process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+    } else {
+      process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = previousProfileDirectory;
+    }
     rmSync(tempDir, {
       recursive: true,
       force: true

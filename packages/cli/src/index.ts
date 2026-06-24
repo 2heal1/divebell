@@ -645,10 +645,6 @@ async function runExportProfileCommand(
 ): Promise<number> {
   const outputPath = getOptionValue(args, "output");
   const domains = getProfileExportDomains(args);
-  const includeStorage = hasOption(args, "include-storage");
-  if (includeStorage && domains.length === 0) {
-    throw new Error("--include-storage requires --domain <domain>.");
-  }
   if (hasOption(args, "full")) {
     throw new Error("--full is not supported by export-profile. Use --domain <domain> to narrow account export.");
   }
@@ -659,8 +655,7 @@ async function runExportProfileCommand(
       ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
       ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile")),
       ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
-      ...(domains.length === 0 ? {} : { domains }),
-      ...(includeStorage ? { includeStorage } : {})
+      ...(domains.length === 0 ? {} : { domains })
     });
     stdout.write(`${result.path ?? result.content}\n`);
     return 0;

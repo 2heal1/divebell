@@ -109,7 +109,7 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
-- `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--include-storage] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 快速导出指定站点 Cookie，--include-storage 会访问该站点并导出本地存储和 IndexedDB。
+- `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
 - `open-runtime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。

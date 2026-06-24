@@ -63,7 +63,7 @@ pnpm exec openruntime export-profile --chrome-profile "Profile 1"
 pnpm exec openruntime export-profile --chrome-profile user@example.com
 ```
 
-如果只需要某个站点的登录 Cookie，可以按域名快速导出，避免扫描全量站点存储：
+如果只需要某个站点的登录状态，可以按域名导出。这个模式会访问对应域名后导出相关 Cookie、localStorage 和 IndexedDB，避免扫描所有站点：
 
 ```sh
 pnpm exec openruntime export-profile --domain github.com --output /tmp/openruntime-github.oprprofile
@@ -71,12 +71,6 @@ pnpm exec openruntime import-profile --input /tmp/openruntime-github.oprprofile
 ```
 
 `--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。读取本机 Chrome profile 前需要先完全退出 Chrome。
-
-如果这个站点还需要 localStorage 或 IndexedDB，可以加 `--include-storage`。这个模式会访问对应域名后再导出，速度会比只导 Cookie 慢：
-
-```sh
-pnpm exec openruntime export-profile --domain github.com --include-storage --output /tmp/openruntime-github.oprprofile
-```
 
 根目录命令：
 

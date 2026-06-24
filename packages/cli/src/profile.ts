@@ -40,7 +40,6 @@ export interface ChromeProfileExportOptions {
   profile?: string;
   timeout?: number;
   domains?: string[];
-  includeStorage?: boolean;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
 }
@@ -98,7 +97,7 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains, options.includeStorage ?? false);
+    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains);
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
@@ -237,8 +236,7 @@ async function captureAuthState(profileDirectory: string): Promise<unknown> {
 async function captureChromeAuthState(
   chromeProfile: ResolvedChromeProfile,
   timeout: number | undefined,
-  domains: string[],
-  includeStorage: boolean
+  domains: string[]
 ): Promise<unknown> {
   const launchOptions = createProfileLaunchOptions() ?? {};
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
@@ -254,21 +252,12 @@ async function captureChromeAuthState(
   });
   try {
     if (domains.length > 0) {
-      return includeStorage
-        ? await captureVisitedDomainAuthState(context, domains, timeout)
-        : await captureDomainCookieAuthState(context, domains);
+      return await captureVisitedDomainAuthState(context, domains, timeout);
     }
     return await context.storageState({ indexedDB: true });
   } finally {
     await context.close();
   }
-}
-
-async function captureDomainCookieAuthState(context: BrowserContext, domains: string[]): Promise<unknown> {
-  return {
-    cookies: await context.cookies(createDomainCookieUrls(domains)),
-    origins: []
-  };
 }
 
 async function captureVisitedDomainAuthState(
@@ -287,13 +276,6 @@ async function captureVisitedDomainAuthState(
     await context.storageState({ indexedDB: true }),
     domains
   );
-}
-
-function createDomainCookieUrls(domains: string[]): string[] {
-  return domains.flatMap((domain) => [
-    `https://${domain}`,
-    `http://${domain}`
-  ]);
 }
 
 async function applyAuthState(profileDirectory: string, storageState: unknown): Promise<void> {

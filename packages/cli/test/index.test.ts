@@ -322,6 +322,8 @@ test("exports local Chrome auth profile by default", async () => {
     "work@example.com",
     "--chrome-user-data-dir",
     "/tmp/chrome-user-data",
+    "--timeout",
+    "120000",
     "--output",
     "/tmp/chrome-auth.oprprofile"
   ], {
@@ -351,7 +353,8 @@ test("exports local Chrome auth profile by default", async () => {
   assert.deepEqual(chromeOptions, {
     outputPath: "/tmp/chrome-auth.oprprofile",
     userDataDirectory: "/tmp/chrome-user-data",
-    profile: "work@example.com"
+    profile: "work@example.com",
+    timeout: 120000
   });
 });
 

@@ -653,7 +653,8 @@ async function runExportProfileCommand(
     const result = await chromeAuthExporter({
       ...(outputPath === undefined ? {} : { outputPath }),
       ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
-      ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile"))
+      ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile")),
+      ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout"))
     });
     stdout.write(`${result.path ?? result.content}\n`);
     return 0;

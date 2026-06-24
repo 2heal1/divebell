@@ -17,7 +17,7 @@ import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
-const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 10_000;
+const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 60_000;
 
 type ProfileKind = "auth" | "full";
 
@@ -58,6 +58,7 @@ export interface ChromeProfileExportOptions {
   outputPath?: string;
   userDataDirectory?: string;
   profile?: string;
+  timeout?: number;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
 }
@@ -109,7 +110,7 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = await captureChromeAuthState(chromeProfile);
+    storageState = await captureChromeAuthState(chromeProfile, options.timeout);
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
@@ -278,12 +279,12 @@ async function captureAuthState(profileDirectory: string): Promise<unknown> {
   }
 }
 
-async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile): Promise<unknown> {
+async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile, timeout: number | undefined): Promise<unknown> {
   const launchOptions = createProfileLaunchOptions() ?? {};
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
     ...launchOptions,
     channel: "chrome",
-    timeout: CHROME_PROFILE_EXPORT_TIMEOUT_MS,
+    timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS,
     args: [
       ...(launchOptions.args ?? []),
       `--profile-directory=${chromeProfile.profileDirectoryName}`,
@@ -442,7 +443,7 @@ function formatChromeProfileReadError(error: unknown): string {
     return "Quit Google Chrome and retry.";
   }
   if (message.includes("Timeout")) {
-    return "Timed out while opening the Chrome profile. Quit Google Chrome and retry.";
+    return "Timed out while opening the Chrome profile. Make sure Google Chrome is fully quit and retry, or pass --timeout <ms>.";
   }
   return "Quit Google Chrome and retry, or pass --chrome-profile <name>.";
 }

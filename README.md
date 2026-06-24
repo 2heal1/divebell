@@ -72,6 +72,12 @@ pnpm exec openruntime import-profile --input /tmp/openruntime-github.oprprofile
 
 `--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。读取本机 Chrome profile 前需要先完全退出 Chrome。
 
+如果这个站点还需要 localStorage 或 IndexedDB，可以加 `--include-storage`。这个模式会访问对应域名后再导出，速度会比只导 Cookie 慢：
+
+```sh
+pnpm exec openruntime export-profile --domain github.com --include-storage --output /tmp/openruntime-github.oprprofile
+```
+
 根目录命令：
 
 1. `pnpm build`：构建所有基础包。

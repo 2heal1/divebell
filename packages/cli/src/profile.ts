@@ -40,6 +40,7 @@ export interface ChromeProfileExportOptions {
   profile?: string;
   timeout?: number;
   domains?: string[];
+  includeStorage?: boolean;
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
 }
@@ -97,7 +98,7 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains);
+    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains, options.includeStorage ?? false);
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
@@ -236,7 +237,8 @@ async function captureAuthState(profileDirectory: string): Promise<unknown> {
 async function captureChromeAuthState(
   chromeProfile: ResolvedChromeProfile,
   timeout: number | undefined,
-  domains: string[]
+  domains: string[],
+  includeStorage: boolean
 ): Promise<unknown> {
   const launchOptions = createProfileLaunchOptions() ?? {};
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
@@ -252,7 +254,9 @@ async function captureChromeAuthState(
   });
   try {
     if (domains.length > 0) {
-      return await captureDomainAuthState(context, domains);
+      return includeStorage
+        ? await captureVisitedDomainAuthState(context, domains, timeout)
+        : await captureDomainCookieAuthState(context, domains);
     }
     return await context.storageState({ indexedDB: true });
   } finally {
@@ -260,11 +264,29 @@ async function captureChromeAuthState(
   }
 }
 
-async function captureDomainAuthState(context: BrowserContext, domains: string[]): Promise<unknown> {
+async function captureDomainCookieAuthState(context: BrowserContext, domains: string[]): Promise<unknown> {
   return {
     cookies: await context.cookies(createDomainCookieUrls(domains)),
     origins: []
   };
+}
+
+async function captureVisitedDomainAuthState(
+  context: BrowserContext,
+  domains: string[],
+  timeout: number | undefined
+): Promise<unknown> {
+  for (const domain of domains) {
+    const page = await context.newPage();
+    await page.goto(`https://${domain}`, {
+      waitUntil: "domcontentloaded",
+      timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
+    });
+  }
+  return filterStorageStateByNormalizedDomains(
+    await context.storageState({ indexedDB: true }),
+    domains
+  );
 }
 
 function createDomainCookieUrls(domains: string[]): string[] {

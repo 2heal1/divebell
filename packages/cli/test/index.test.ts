@@ -34,7 +34,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime open <url> .*--ui/);
-  assert.match(output.text(), /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--chrome-profile <name>/);
+  assert.match(output.text(), /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--include-storage.*--chrome-profile <name>/);
   assert.match(output.text(), /open-runtime import-profile <content-or-path> \| --input <path>/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
@@ -81,7 +81,7 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--include-storage/);
   assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
@@ -95,7 +95,7 @@ test("generates the skill CLI command section from the help table", () => {
 
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--include-storage/);
   assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
@@ -358,6 +358,7 @@ test("exports local Chrome auth profile by default", async () => {
     "/tmp/chrome-user-data",
     "--domain",
     "github.com",
+    "--include-storage",
     "--timeout",
     "120000",
     "--output",
@@ -391,8 +392,30 @@ test("exports local Chrome auth profile by default", async () => {
     userDataDirectory: "/tmp/chrome-user-data",
     profile: "work@example.com",
     timeout: 120000,
-    domains: ["github.com"]
+    domains: ["github.com"],
+    includeStorage: true
   });
+});
+
+test("requires domain when exporting domain storage", async () => {
+  const output = createOutput();
+  let chromeWasRead = false;
+  const exitCode = await runCli(["export-profile", "--include-storage"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exportChromeAuthProfile: async () => {
+      chromeWasRead = true;
+      return {
+        kind: "auth",
+        content: "unexpected"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.text(), "");
+  assert.match(output.errorText(), /--include-storage requires --domain <domain>/);
+  assert.equal(chromeWasRead, false);
 });
 
 test("rejects full profile export", async () => {

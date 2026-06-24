@@ -22,8 +22,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]",
-    description: "导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 只快速导出指定站点 Cookie，--timeout 可放宽读取等待时间，--source openruntime 导出 OpenRuntime 自己的浏览器状态。"
+    usage: "open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--include-storage] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]",
+    description: "导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 快速导出指定站点 Cookie，--include-storage 会访问该站点并导出本地存储和 IndexedDB。"
   },
   {
     category: "Bridge and Browser",

@@ -10,7 +10,8 @@ import {
   type Stats
 } from "node:fs";
 import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { chromium, type BrowserContext } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
@@ -52,6 +53,21 @@ export interface ProfileImportResult {
   backupDirectory?: string;
 }
 
+export interface ChromeProfileExportOptions {
+  outputPath?: string;
+  userDataDirectory?: string;
+  profile?: string;
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+}
+
+export interface ResolvedChromeProfile {
+  userDataDirectory: string;
+  profileDirectoryName: string;
+  profileDirectory: string;
+  label: string;
+}
+
 export function getProfileDirectory(env: NodeJS.ProcessEnv = process.env): string {
   return resolveBrowserProfileDirectory(env);
 }
@@ -65,6 +81,38 @@ export async function exportAuthProfile(options: {
   outputPath?: string;
 }): Promise<ProfileExportResult> {
   const storageState = await captureAuthState(options.profileDirectory);
+  const content = encodeProfileBundle({
+    version: 1,
+    kind: "auth",
+    createdAt: new Date().toISOString(),
+    storageState
+  });
+
+  if (options.outputPath !== undefined) {
+    const path = resolve(options.outputPath);
+    await writeTextFile(path, content);
+    return {
+      kind: "auth",
+      path
+    };
+  }
+
+  return {
+    kind: "auth",
+    content
+  };
+}
+
+export async function exportChromeAuthProfile(options: ChromeProfileExportOptions = {}): Promise<ProfileExportResult> {
+  const chromeProfile = resolveChromeProfile(options);
+  let storageState: unknown;
+  try {
+    storageState = await captureChromeAuthState(chromeProfile);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". Close Google Chrome and retry, or pass --chrome-profile <name>. ${reason}`);
+  }
+
   const content = encodeProfileBundle({
     version: 1,
     kind: "auth",
@@ -151,6 +199,38 @@ export function createDefaultProfileExportPath(profileDirectory: string, kind: P
   return join(dirname(resolve(profileDirectory)), `openruntime-profile-${kind}-${createTimestamp()}.oprprofile`);
 }
 
+export function getDefaultChromeUserDataDirectory(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform
+): string {
+  const home = env.HOME ?? homedir();
+  if (platform === "darwin") {
+    return join(home, "Library", "Application Support", "Google", "Chrome");
+  }
+  if (platform === "win32") {
+    return join(env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "Google", "Chrome", "User Data");
+  }
+  return join(env.XDG_CONFIG_HOME ?? join(home, ".config"), "google-chrome");
+}
+
+export function resolveChromeProfile(options: ChromeProfileExportOptions = {}): ResolvedChromeProfile {
+  const env = options.env ?? process.env;
+  const platform = options.platform ?? process.platform;
+  const defaultUserDataDirectory = getDefaultChromeUserDataDirectory(env, platform);
+  const rawProfile = options.profile;
+
+  if (rawProfile !== undefined && isAbsolute(rawProfile)) {
+    const profileDirectory = resolve(rawProfile);
+    return createResolvedChromeProfile(dirname(profileDirectory), basename(profileDirectory), undefined);
+  }
+
+  const userDataDirectory = resolve(options.userDataDirectory ?? defaultUserDataDirectory);
+  assertChromeUserDataDirectoryExists(userDataDirectory);
+  const localState = readChromeLocalState(userDataDirectory);
+  const profileDirectoryName = selectChromeProfileDirectoryName(localState, rawProfile);
+  return createResolvedChromeProfile(userDataDirectory, profileDirectoryName, localState);
+}
+
 export async function saveAuthState(profileDirectory: string, storageState: unknown): Promise<void> {
   const path = getAuthStatePath(profileDirectory);
   await mkdir(dirname(path), {
@@ -192,6 +272,25 @@ async function captureAuthState(profileDirectory: string): Promise<unknown> {
     const storageState = mergeStorageStates(savedState, await context.storageState({ indexedDB: true }));
     await saveAuthState(resolvedProfileDirectory, storageState);
     return storageState;
+  } finally {
+    await context.close();
+  }
+}
+
+async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile): Promise<unknown> {
+  const launchOptions = createProfileLaunchOptions() ?? {};
+  const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
+    ...launchOptions,
+    channel: "chrome",
+    args: [
+      ...(launchOptions.args ?? []),
+      `--profile-directory=${chromeProfile.profileDirectoryName}`,
+      "--no-first-run",
+      "--no-default-browser-check"
+    ]
+  });
+  try {
+    return await context.storageState({ indexedDB: true });
   } finally {
     await context.close();
   }
@@ -296,6 +395,107 @@ function isStorageState(value: unknown): value is {
 
 function toRecordItems(items: unknown[]): Record<string, unknown>[] {
   return items.filter((item): item is Record<string, unknown> => item !== null && typeof item === "object");
+}
+
+function createResolvedChromeProfile(
+  userDataDirectory: string,
+  profileDirectoryName: string,
+  localState: Record<string, unknown> | undefined
+): ResolvedChromeProfile {
+  const profileDirectory = resolve(userDataDirectory, profileDirectoryName);
+  assertProfilePathInside(userDataDirectory, profileDirectory);
+  if (!existsSync(profileDirectory)) {
+    throw new Error(`Chrome profile was not found at ${profileDirectory}.`);
+  }
+
+  const metadata = getChromeProfileMetadata(localState, profileDirectoryName);
+  const labelParts = [
+    metadata.name,
+    metadata.userName,
+    profileDirectoryName
+  ].filter((value): value is string => value !== undefined && value.length > 0);
+
+  return {
+    userDataDirectory,
+    profileDirectoryName,
+    profileDirectory,
+    label: labelParts.join(" / ")
+  };
+}
+
+function assertChromeUserDataDirectoryExists(userDataDirectory: string): void {
+  if (!existsSync(userDataDirectory)) {
+    throw new Error(`Chrome user data directory was not found at ${userDataDirectory}.`);
+  }
+}
+
+function readChromeLocalState(userDataDirectory: string): Record<string, unknown> {
+  const path = join(userDataDirectory, "Local State");
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") {
+      throw new Error(`Chrome Local State was not found at ${path}.`);
+    }
+    throw new Error(`Chrome Local State could not be read at ${path}.`);
+  }
+}
+
+function selectChromeProfileDirectoryName(localState: Record<string, unknown>, requestedProfile: string | undefined): string {
+  const profiles = getChromeProfileInfoCache(localState);
+  if (requestedProfile !== undefined && requestedProfile.length > 0) {
+    const match = profiles.find((profile) =>
+      profile.directory === requestedProfile ||
+      profile.name === requestedProfile ||
+      profile.userName === requestedProfile
+    );
+    if (match !== undefined) return match.directory;
+    return requestedProfile;
+  }
+
+  const profileState = getRecord(localState.profile);
+  const lastUsed = typeof profileState?.last_used === "string" ? profileState.last_used : undefined;
+  if (lastUsed !== undefined && lastUsed.length > 0) return lastUsed;
+  return "Default";
+}
+
+function getChromeProfileInfoCache(localState: Record<string, unknown>): Array<{
+  directory: string;
+  name?: string;
+  userName?: string;
+}> {
+  const profileState = getRecord(localState.profile);
+  const infoCache = getRecord(profileState?.info_cache);
+  if (infoCache === undefined) return [];
+  return Object.entries(infoCache).map(([directory, value]) => {
+    const metadata = getRecord(value);
+    const name = typeof metadata?.name === "string" ? metadata.name : undefined;
+    const userName = typeof metadata?.user_name === "string" ? metadata.user_name : undefined;
+    return {
+      directory,
+      ...(name === undefined ? {} : { name }),
+      ...(userName === undefined ? {} : { userName })
+    };
+  });
+}
+
+function getChromeProfileMetadata(localState: Record<string, unknown> | undefined, profileDirectoryName: string): {
+  name?: string;
+  userName?: string;
+} {
+  if (localState === undefined) return {};
+  return getChromeProfileInfoCache(localState).find((profile) => profile.directory === profileDirectoryName) ?? {};
+}
+
+function getRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" ? value as Record<string, unknown> : undefined;
+}
+
+function assertProfilePathInside(userDataDirectory: string, profileDirectory: string): void {
+  const relativePath = relative(resolve(userDataDirectory), resolve(profileDirectory));
+  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+    throw new Error(`Chrome profile must be inside ${userDataDirectory}.`);
+  }
 }
 
 async function readSavedAuthState(profileDirectory: string): Promise<unknown | undefined> {

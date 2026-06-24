@@ -10,7 +10,7 @@ import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
-import { exportFullProfile, importProfile } from "../dist/profile.js";
+import { exportFullProfile, importProfile, resolveChromeProfile } from "../dist/profile.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "open-runtime");
@@ -34,7 +34,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime open <url> .*--ui/);
-  assert.match(output.text(), /open-runtime export-profile \[--full\] \[--output <path>\]/);
+  assert.match(output.text(), /open-runtime export-profile .*--source chrome\|openruntime.*--chrome-profile <name>/);
   assert.match(output.text(), /open-runtime import-profile <content-or-path> \| --input <path>/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
@@ -81,7 +81,7 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile \[--full\]/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime/);
   assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
@@ -95,7 +95,7 @@ test("generates the skill CLI command section from the help table", () => {
 
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile \[--full\]/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime/);
   assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
@@ -127,6 +127,50 @@ test("uses the default OpenRuntime browser profile directory", () => {
   const env = createNextBrowserEnvironment({});
 
   assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+});
+
+test("resolves the last used local Chrome profile by default", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-chrome-profile-"));
+  try {
+    mkdirSync(join(tempDir, "Default"), {
+      recursive: true
+    });
+    mkdirSync(join(tempDir, "Profile 1"), {
+      recursive: true
+    });
+    writeFileSync(join(tempDir, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Profile 1",
+        info_cache: {
+          Default: {
+            name: "匿名",
+            user_name: ""
+          },
+          "Profile 1": {
+            name: "work",
+            user_name: "work@example.com"
+          }
+        }
+      }
+    }));
+
+    assert.equal(resolveChromeProfile({
+      userDataDirectory: tempDir,
+      env: {
+        HOME: tempDir
+      },
+      platform: "darwin"
+    }).profileDirectoryName, "Profile 1");
+    assert.equal(resolveChromeProfile({
+      userDataDirectory: tempDir,
+      profile: "work@example.com"
+    }).profileDirectoryName, "Profile 1");
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
 });
 
 test("passes keyword query to events", async () => {
@@ -235,6 +279,70 @@ test("exports full profile to a file and imports it with a backup", async () => 
   }
 });
 
+test("exports local Chrome auth profile by default", async () => {
+  const output = createOutput();
+  let chromeOptions: unknown;
+  let browserWasClosed = false;
+  const exitCode = await runCli([
+    "export-profile",
+    "--chrome-profile",
+    "work@example.com",
+    "--chrome-user-data-dir",
+    "/tmp/chrome-user-data",
+    "--output",
+    "/tmp/chrome-auth.oprprofile"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => {
+      browserWasClosed = true;
+      return {
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      };
+    }),
+    exportChromeAuthProfile: async (options) => {
+      chromeOptions = options;
+      return {
+        kind: "auth",
+        path: "/tmp/chrome-auth.oprprofile"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.equal(output.text(), "/tmp/chrome-auth.oprprofile\n");
+  assert.equal(browserWasClosed, false);
+  assert.deepEqual(chromeOptions, {
+    outputPath: "/tmp/chrome-auth.oprprofile",
+    userDataDirectory: "/tmp/chrome-user-data",
+    profile: "work@example.com"
+  });
+});
+
+test("rejects full export for local Chrome source", async () => {
+  const output = createOutput();
+  let chromeWasRead = false;
+  const exitCode = await runCli(["export-profile", "--full"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exportChromeAuthProfile: async () => {
+      chromeWasRead = true;
+      return {
+        kind: "auth",
+        content: "unexpected"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.text(), "");
+  assert.match(output.errorText(), /--full is only supported with --source openruntime/);
+  assert.equal(chromeWasRead, false);
+});
+
 test("full profile export command prints the generated file path", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-full-command-"));
   const profileDirectory = join(tempDir, "profile");
@@ -249,7 +357,7 @@ test("full profile export command prints the generated file path", async () => {
     process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = profileDirectory;
 
     const output = createOutput();
-    const exitCode = await runCli(["export-profile", "--full"], {
+    const exitCode = await runCli(["export-profile", "--source", "openruntime", "--full"], {
       stdout: output.stdout,
       stderr: output.stderr,
       browserRunner: createBrowserRunner(async (args) => {

@@ -44,6 +44,7 @@ import { runVmokCommand } from "./extensions/vmok/index.js";
 import { createHelpText } from "./help.js";
 import {
   exportAuthProfile,
+  exportChromeAuthProfile,
   exportFullProfile,
   getProfileDirectory,
   importProfile,
@@ -70,6 +71,7 @@ export interface CliRunOptions {
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
+  exportChromeAuthProfile?: typeof exportChromeAuthProfile;
 }
 
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
@@ -99,7 +101,7 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
     }
 
     if (args.command[0] === "export-profile") {
-      return await runExportProfileCommand(args, stdout, browserRunner);
+      return await runExportProfileCommand(args, stdout, browserRunner, options.exportChromeAuthProfile ?? exportChromeAuthProfile);
     }
 
     if (args.command[0] === "import-profile") {
@@ -639,11 +641,26 @@ async function runStopCommand(
 async function runExportProfileCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
-  browserRunner: BrowserRunner
+  browserRunner: BrowserRunner,
+  chromeAuthExporter: typeof exportChromeAuthProfile
 ): Promise<number> {
+  const outputPath = getOptionValue(args, "output");
+  const source = getProfileExportSource(args);
+  if (source === "chrome") {
+    if (hasOption(args, "full")) {
+      throw new Error("--full is only supported with --source openruntime. Use --output <path> to write Chrome auth export to a file.");
+    }
+    const result = await chromeAuthExporter({
+      ...(outputPath === undefined ? {} : { outputPath }),
+      ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
+      ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile"))
+    });
+    stdout.write(`${result.path ?? result.content}\n`);
+    return 0;
+  }
+
   await closeBrowserForProfileCommand(browserRunner);
   const profileDirectory = getProfileDirectory();
-  const outputPath = getOptionValue(args, "output");
   const result = hasOption(args, "full")
     ? await exportFullProfile({
         profileDirectory,
@@ -656,6 +673,14 @@ async function runExportProfileCommand(
 
   stdout.write(`${result.path ?? result.content}\n`);
   return 0;
+}
+
+function getProfileExportSource(args: ParsedCliArgs): "chrome" | "openruntime" {
+  const source = getOptionValue(args, "source") ?? "chrome";
+  if (source !== "chrome" && source !== "openruntime") {
+    throw new Error("--source must be chrome or openruntime.");
+  }
+  return source;
 }
 
 async function runImportProfileCommand(

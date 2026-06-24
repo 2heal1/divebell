@@ -281,6 +281,89 @@ test("full profile export command prints the generated file path", async () => {
   }
 });
 
+test("accepts profile file command aliases", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-profile-alias-"));
+  const profileDirectory = join(tempDir, "profile");
+  const importProfileDirectory = join(tempDir, "imported-profile");
+  const previousProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+  const browserCalls: string[][] = [];
+
+  try {
+    mkdirSync(join(profileDirectory, "Default"), {
+      recursive: true
+    });
+    writeFileSync(join(profileDirectory, "Default", "Preferences"), "kept");
+    process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = profileDirectory;
+
+    const exportOutput = createOutput();
+    const exportExitCode = await runCli(["export-file", "--full"], {
+      stdout: exportOutput.stdout,
+      stderr: exportOutput.stderr,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exportExitCode, 0);
+    assert.equal(exportOutput.errorText(), "");
+    const content = readFileSync(exportOutput.text().trim(), "utf8");
+
+    mkdirSync(importProfileDirectory, {
+      recursive: true
+    });
+    writeFileSync(join(importProfileDirectory, "old-file"), "old");
+    process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = importProfileDirectory;
+
+    const importOutput = createOutput();
+    const importExitCode = await runCli(["import-file", content], {
+      stdout: importOutput.stdout,
+      stderr: importOutput.stderr,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(importExitCode, 0);
+    assert.equal(importOutput.errorText(), "");
+    assert.deepEqual(browserCalls, [["close"], ["close"]]);
+    assert.equal(JSON.parse(importOutput.text()).kind, "full");
+    assert.equal(readFileSync(join(importProfileDirectory, "Default", "Preferences"), "utf8"), "kept");
+    assert.equal(existsSync(join(importProfileDirectory, "old-file")), false);
+  } finally {
+    if (previousProfileDirectory === undefined) {
+      delete process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+    } else {
+      process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = previousProfileDirectory;
+    }
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("unknown command errors do not echo profile content arguments", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["import-profle", "openruntime-profile:v1:auth:secret"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.text(), "");
+  assert.equal(output.errorText(), "Unknown command \"import-profle\".\n");
+});
+
 test("prints runtimes from the configured bridge", async () => {
   const output = createOutput();
   const exitCode = await runCli(["runtimes", "--bridge", "http://bridge.test"], {

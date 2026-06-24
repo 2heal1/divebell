@@ -98,11 +98,11 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), options.bridgeProcessController);
     }
 
-    if (args.command[0] === "export-profile") {
+    if (args.command[0] === "export-profile" || args.command[0] === "export-file") {
       return await runExportProfileCommand(args, stdout, browserRunner);
     }
 
-    if (args.command[0] === "import-profile") {
+    if (args.command[0] === "import-profile" || args.command[0] === "import-file") {
       return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
@@ -204,11 +204,19 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
       });
     }
 
-    throw new Error(`Unknown command "${args.command.join(" ")}".`);
+    throw new Error(createUnknownCommandError(args.command[0]));
   } catch (error) {
     stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     return 1;
   }
+}
+
+function createUnknownCommandError(command: string | undefined): string {
+  if (command === undefined || command.length === 0) {
+    return "Unknown command.";
+  }
+
+  return `Unknown command "${command}".`;
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {

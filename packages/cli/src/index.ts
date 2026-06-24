@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { once } from "node:events";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createBridgeServer, type BridgeRuntimeInfo, type BridgeServer } from "@openruntime/bridge";
 import {
   createPackageInfo,
@@ -48,10 +51,12 @@ import {
   getProfileDirectory,
   importProfile,
   readProfileInput,
-  readProfileInputFile
+  readProfileInputFile,
+  type ProfileExportResult
 } from "./profile.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
+const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
 
 export function getCliCommandName(): "open-runtime" {
   return "open-runtime";
@@ -657,7 +662,7 @@ async function runExportProfileCommand(
       ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
       ...(domains.length === 0 ? {} : { domains })
     });
-    stdout.write(`${result.path ?? result.content}\n`);
+    stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
     return 0;
   }
 
@@ -669,8 +674,24 @@ async function runExportProfileCommand(
     ...(domains.length === 0 ? {} : { domains })
   });
 
-  stdout.write(`${result.path ?? result.content}\n`);
+  stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
   return 0;
+}
+
+async function getPrintableProfileExportResult(result: ProfileExportResult): Promise<string> {
+  if (result.path !== undefined) return result.path;
+  if (result.content === undefined) {
+    throw new Error("Profile export did not return content.");
+  }
+  if (result.content.length <= PROFILE_INLINE_OUTPUT_MAX_CHARS) return result.content;
+
+  const directory = await mkdtemp(join(tmpdir(), "openruntime-profile-export-"));
+  const path = join(directory, "openruntime-profile.oprprofile");
+  await writeFile(path, `${result.content}\n`, {
+    encoding: "utf8",
+    mode: 0o600
+  });
+  return path;
 }
 
 function getProfileExportDomains(args: ParsedCliArgs): string[] {

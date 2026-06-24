@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
@@ -393,6 +393,34 @@ test("exports local Chrome auth profile by default", async () => {
     timeout: 120000,
     domains: ["github.com"]
   });
+});
+
+test("writes oversized profile export content to a temporary file", async () => {
+  const output = createOutput();
+  const content = `openruntime-profile:v1:auth:${"a".repeat(40_000)}`;
+  const exitCode = await runCli(["export-profile"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exportChromeAuthProfile: async () => ({
+      kind: "auth",
+      content
+    })
+  });
+  const path = output.text().trim();
+
+  try {
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.match(path, /openruntime-profile-export-.+\/openruntime-profile\.oprprofile$/);
+    assert.equal(readFileSync(path, "utf8"), `${content}\n`);
+  } finally {
+    if (path.includes("openruntime-profile-export-") && existsSync(path)) {
+      rmSync(dirname(path), {
+        recursive: true,
+        force: true
+      });
+    }
+  }
 });
 
 test("rejects full profile export", async () => {

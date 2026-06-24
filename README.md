@@ -56,6 +56,8 @@ pnpm exec openruntime export-profile
 pnpm exec openruntime import-profile <复制到的内容>
 ```
 
+导出内容较短时会直接打印；内容较长时会自动写入临时文件并打印文件路径，再用 `import-profile --input <path>` 导入。
+
 如果用户有多个 Chrome profile，可以指定 Chrome 的 profile 名称、目录名或邮箱：
 
 ```sh

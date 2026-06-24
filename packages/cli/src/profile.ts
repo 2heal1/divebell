@@ -576,7 +576,7 @@ function formatChromeProfileReadError(error: unknown, usedDomainCopy: boolean): 
     if (usedDomainCopy) {
       return "Timed out while reading the copied Chrome profile or visiting the domain. Pass --timeout <ms>.";
     }
-    return "Timed out while opening the Chrome profile. Make sure Google Chrome is fully quit and retry, or pass --timeout <ms>.";
+    return "Timed out while opening the Chrome profile. Make sure Google Chrome is fully quit and retry, pass --timeout <ms>, or use --domain <domain> if you only need one site.";
   }
   return "Quit Google Chrome and retry, or pass --chrome-profile <name>.";
 }

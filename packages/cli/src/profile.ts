@@ -246,6 +246,7 @@ async function captureChromeAuthState(
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
     ...launchOptions,
     channel: "chrome",
+    ignoreDefaultArgs: ["--use-mock-keychain"],
     timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS,
     args: [
       ...(launchOptions.args ?? []),

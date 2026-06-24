@@ -9,12 +9,14 @@ import {
 import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { chromium, type BrowserContext } from "playwright";
+import { chromium, type BrowserContext, type Route } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
 const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 60_000;
+const DOMAIN_CAPTURE_ROUTE_PATTERN = "**/*";
+const DOMAIN_CAPTURE_HTML = "<!doctype html><html><head><meta charset=\"utf-8\"><title>OpenRuntime Profile Export</title></head><body></body></html>";
 
 interface AuthProfileBundle {
   version: 1;
@@ -283,17 +285,49 @@ async function captureVisitedDomainAuthState(
   domains: string[],
   timeout: number | undefined
 ): Promise<unknown> {
-  for (const domain of domains) {
-    const page = await context.newPage();
-    await page.goto(`https://${domain}`, {
-      waitUntil: "domcontentloaded",
-      timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
-    });
+  const routeHandler = createDomainCaptureRouteHandler(domains);
+  await context.route(DOMAIN_CAPTURE_ROUTE_PATTERN, routeHandler);
+  try {
+    for (const domain of domains) {
+      const page = await context.newPage();
+      try {
+        await page.goto(`https://${domain}/`, {
+          waitUntil: "domcontentloaded",
+          timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
+        });
+        await page.evaluate(async () => {
+          void window.localStorage.length;
+          if (typeof window.indexedDB.databases === "function") {
+            await window.indexedDB.databases().catch(() => []);
+          }
+        });
+      } finally {
+        await page.close().catch(() => undefined);
+      }
+    }
+    return filterStorageStateByNormalizedDomains(
+      await context.storageState({ indexedDB: true }),
+      domains
+    );
+  } finally {
+    await context.unroute(DOMAIN_CAPTURE_ROUTE_PATTERN, routeHandler).catch(() => undefined);
   }
-  return filterStorageStateByNormalizedDomains(
-    await context.storageState({ indexedDB: true }),
-    domains
-  );
+}
+
+function createDomainCaptureRouteHandler(domains: string[]): (route: Route) => Promise<void> {
+  return async (route) => {
+    const host = getOriginHost(route.request().url());
+    if (host !== undefined && domains.some((domain) => domainMatchesHost(host, domain))) {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html; charset=utf-8",
+        body: DOMAIN_CAPTURE_HTML
+      });
+      return;
+    }
+
+    await route.abort("blockedbyclient");
+  };
 }
 
 async function copyChromeProfileForDomainExport(

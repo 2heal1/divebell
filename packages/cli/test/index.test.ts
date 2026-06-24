@@ -10,7 +10,7 @@ import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
-import { exportFullProfile, importProfile, resolveChromeProfile } from "../dist/profile.js";
+import { exportChromeAuthProfile, exportFullProfile, importProfile, resolveChromeProfile } from "../dist/profile.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "open-runtime");
@@ -165,6 +165,39 @@ test("resolves the last used local Chrome profile by default", () => {
       userDataDirectory: tempDir,
       profile: "work@example.com"
     }).profileDirectoryName, "Profile 1");
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("fails fast when the local Chrome profile is already in use", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-chrome-profile-lock-"));
+  try {
+    mkdirSync(join(tempDir, "Profile 1"), {
+      recursive: true
+    });
+    writeFileSync(join(tempDir, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Profile 1",
+        info_cache: {
+          "Profile 1": {
+            name: "work",
+            user_name: "work@example.com"
+          }
+        }
+      }
+    }));
+    writeFileSync(join(tempDir, "SingletonLock"), "");
+
+    await assert.rejects(
+      exportChromeAuthProfile({
+        userDataDirectory: tempDir
+      }),
+      /Chrome profile "work \/ work@example\.com \/ Profile 1" is currently in use\. Quit Google Chrome and retry\./
+    );
   } finally {
     rmSync(tempDir, {
       recursive: true,

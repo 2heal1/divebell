@@ -17,6 +17,7 @@ import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
+const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 10_000;
 
 type ProfileKind = "auth" | "full";
 
@@ -105,12 +106,12 @@ export async function exportAuthProfile(options: {
 
 export async function exportChromeAuthProfile(options: ChromeProfileExportOptions = {}): Promise<ProfileExportResult> {
   const chromeProfile = resolveChromeProfile(options);
+  assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
     storageState = await captureChromeAuthState(chromeProfile);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". Close Google Chrome and retry, or pass --chrome-profile <name>. ${reason}`);
+    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
 
   const content = encodeProfileBundle({
@@ -282,6 +283,7 @@ async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile): Pro
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
     ...launchOptions,
     channel: "chrome",
+    timeout: CHROME_PROFILE_EXPORT_TIMEOUT_MS,
     args: [
       ...(launchOptions.args ?? []),
       `--profile-directory=${chromeProfile.profileDirectoryName}`,
@@ -421,6 +423,28 @@ function createResolvedChromeProfile(
     profileDirectory,
     label: labelParts.join(" / ")
   };
+}
+
+function assertChromeProfileIsNotLocked(chromeProfile: ResolvedChromeProfile): void {
+  const lockPaths = [
+    join(chromeProfile.userDataDirectory, "SingletonLock"),
+    join(chromeProfile.userDataDirectory, "SingletonSocket"),
+    join(chromeProfile.userDataDirectory, "SingletonCookie")
+  ];
+  if (lockPaths.some((path) => lstatSync(path, { throwIfNoEntry: false }) !== undefined)) {
+    throw new Error(`Chrome profile "${chromeProfile.label}" is currently in use. Quit Google Chrome and retry.`);
+  }
+}
+
+function formatChromeProfileReadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("ProcessSingleton") || message.includes("SingletonLock") || message.includes("profile is already in use")) {
+    return "Quit Google Chrome and retry.";
+  }
+  if (message.includes("Timeout")) {
+    return "Timed out while opening the Chrome profile. Quit Google Chrome and retry.";
+  }
+  return "Quit Google Chrome and retry, or pass --chrome-profile <name>.";
 }
 
 function assertChromeUserDataDirectoryExists(userDataDirectory: string): void {

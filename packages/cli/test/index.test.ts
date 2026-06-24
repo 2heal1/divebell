@@ -196,7 +196,7 @@ test("fails fast when the local Chrome profile is already in use", async () => {
       exportChromeAuthProfile({
         userDataDirectory: tempDir
       }),
-      /Chrome profile "work \/ work@example\.com \/ Profile 1" is currently in use\. Quit Google Chrome and retry\./
+      /Could not read Chrome profile "work \/ work@example\.com \/ Profile 1"\. Chrome profile is currently in use\. Quit Google Chrome and retry\./
     );
   } finally {
     rmSync(tempDir, {

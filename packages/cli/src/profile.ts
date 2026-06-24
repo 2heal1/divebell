@@ -6,8 +6,8 @@ import {
   lstatSync,
   readFileSync
 } from "node:fs";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
+import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { chromium, type BrowserContext } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
@@ -94,12 +94,13 @@ export async function exportAuthProfile(options: {
 export async function exportChromeAuthProfile(options: ChromeProfileExportOptions = {}): Promise<ProfileExportResult> {
   const domains = normalizeProfileDomains(options.domains ?? []);
   const chromeProfile = resolveChromeProfile(options);
-  assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains);
+    storageState = domains.length > 0
+      ? await captureCopiedChromeDomainAuthState(chromeProfile, options.timeout, domains)
+      : await captureChromeAuthState(chromeProfile, options.timeout, domains);
   } catch (error) {
-    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
+    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error, domains.length > 0)}`);
   }
 
   const content = encodeProfileBundle({
@@ -238,6 +239,7 @@ async function captureChromeAuthState(
   timeout: number | undefined,
   domains: string[]
 ): Promise<unknown> {
+  assertChromeProfileIsNotLocked(chromeProfile);
   const launchOptions = createProfileLaunchOptions() ?? {};
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
     ...launchOptions,
@@ -260,6 +262,22 @@ async function captureChromeAuthState(
   }
 }
 
+async function captureCopiedChromeDomainAuthState(
+  chromeProfile: ResolvedChromeProfile,
+  timeout: number | undefined,
+  domains: string[]
+): Promise<unknown> {
+  const copiedProfile = await copyChromeProfileForDomainExport(chromeProfile, domains);
+  try {
+    return await captureChromeAuthState(copiedProfile, timeout, domains);
+  } finally {
+    await rm(copiedProfile.userDataDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+}
+
 async function captureVisitedDomainAuthState(
   context: BrowserContext,
   domains: string[],
@@ -276,6 +294,80 @@ async function captureVisitedDomainAuthState(
     await context.storageState({ indexedDB: true }),
     domains
   );
+}
+
+async function copyChromeProfileForDomainExport(
+  chromeProfile: ResolvedChromeProfile,
+  domains: string[]
+): Promise<ResolvedChromeProfile> {
+  const userDataDirectory = await mkdtemp(join(tmpdir(), "openruntime-chrome-profile-"));
+  const profileDirectory = join(userDataDirectory, chromeProfile.profileDirectoryName);
+  await mkdir(profileDirectory, {
+    recursive: true,
+    mode: 0o700
+  });
+
+  await copyChromeProfileEntry(chromeProfile.userDataDirectory, userDataDirectory, "Local State");
+  for (const name of [
+    "Preferences",
+    "Secure Preferences",
+    "Cookies",
+    "Cookies-journal",
+    "Network",
+    "Local Storage"
+  ]) {
+    await copyChromeProfileEntry(chromeProfile.profileDirectory, profileDirectory, name);
+  }
+  await copyChromeIndexedDbForDomains(chromeProfile.profileDirectory, profileDirectory, domains);
+
+  return {
+    userDataDirectory,
+    profileDirectoryName: chromeProfile.profileDirectoryName,
+    profileDirectory,
+    label: `${chromeProfile.label} copy`
+  };
+}
+
+async function copyChromeProfileEntry(sourceDirectory: string, targetDirectory: string, name: string): Promise<void> {
+  const sourcePath = join(sourceDirectory, name);
+  if (!existsSync(sourcePath)) return;
+  await mkdir(targetDirectory, {
+    recursive: true,
+    mode: 0o700
+  });
+  await cp(sourcePath, join(targetDirectory, name), {
+    recursive: true,
+    force: true,
+    filter: shouldCopyChromeProfilePath
+  });
+}
+
+async function copyChromeIndexedDbForDomains(sourceProfileDirectory: string, targetProfileDirectory: string, domains: string[]): Promise<void> {
+  const sourceIndexedDbDirectory = join(sourceProfileDirectory, "IndexedDB");
+  if (!existsSync(sourceIndexedDbDirectory)) return;
+
+  const entries = await readdir(sourceIndexedDbDirectory, {
+    withFileTypes: true
+  });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !chromeIndexedDbDirectoryMatchesDomains(entry.name, domains)) {
+      continue;
+    }
+    await copyChromeProfileEntry(sourceIndexedDbDirectory, join(targetProfileDirectory, "IndexedDB"), entry.name);
+  }
+}
+
+function chromeIndexedDbDirectoryMatchesDomains(name: string, domains: string[]): boolean {
+  const normalizedName = name.toLowerCase();
+  if (!normalizedName.endsWith(".indexeddb.leveldb") && !normalizedName.endsWith(".indexeddb.blob")) {
+    return false;
+  }
+
+  return domains.some((domain) => normalizedName.includes(`_${domain}_`) || normalizedName.includes(`.${domain}_`));
+}
+
+function shouldCopyChromeProfilePath(sourcePath: string): boolean {
+  return basename(sourcePath) !== "LOCK";
 }
 
 async function applyAuthState(profileDirectory: string, storageState: unknown): Promise<void> {
@@ -475,12 +567,15 @@ function assertChromeProfileIsNotLocked(chromeProfile: ResolvedChromeProfile): v
   }
 }
 
-function formatChromeProfileReadError(error: unknown): string {
+function formatChromeProfileReadError(error: unknown, usedDomainCopy: boolean): string {
   const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("ProcessSingleton") || message.includes("SingletonLock") || message.includes("profile is already in use")) {
-    return "Quit Google Chrome and retry.";
+  if (message.includes("currently in use") || message.includes("ProcessSingleton") || message.includes("SingletonLock") || message.includes("profile is already in use")) {
+    return "Chrome profile is currently in use. Quit Google Chrome and retry.";
   }
   if (message.includes("Timeout")) {
+    if (usedDomainCopy) {
+      return "Timed out while reading the copied Chrome profile or visiting the domain. Pass --timeout <ms>.";
+    }
     return "Timed out while opening the Chrome profile. Make sure Google Chrome is fully quit and retry, or pass --timeout <ms>.";
   }
   return "Quit Google Chrome and retry, or pass --chrome-profile <name>.";

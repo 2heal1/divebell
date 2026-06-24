@@ -45,7 +45,6 @@ import { createHelpText } from "./help.js";
 import {
   exportAuthProfile,
   exportChromeAuthProfile,
-  exportFullProfile,
   getProfileDirectory,
   importProfile,
   readProfileInput,
@@ -645,16 +644,18 @@ async function runExportProfileCommand(
   chromeAuthExporter: typeof exportChromeAuthProfile
 ): Promise<number> {
   const outputPath = getOptionValue(args, "output");
+  const domains = getProfileExportDomains(args);
+  if (hasOption(args, "full")) {
+    throw new Error("--full profile export has been removed. Use --domain <domain> to narrow account export instead.");
+  }
   const source = getProfileExportSource(args);
   if (source === "chrome") {
-    if (hasOption(args, "full")) {
-      throw new Error("--full is only supported with --source openruntime. Use --output <path> to write Chrome auth export to a file.");
-    }
     const result = await chromeAuthExporter({
       ...(outputPath === undefined ? {} : { outputPath }),
       ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
       ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile")),
-      ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout"))
+      ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
+      ...(domains.length === 0 ? {} : { domains })
     });
     stdout.write(`${result.path ?? result.content}\n`);
     return 0;
@@ -662,18 +663,22 @@ async function runExportProfileCommand(
 
   await closeBrowserForProfileCommand(browserRunner);
   const profileDirectory = getProfileDirectory();
-  const result = hasOption(args, "full")
-    ? await exportFullProfile({
-        profileDirectory,
-        ...(outputPath === undefined ? {} : { outputPath })
-      })
-    : await exportAuthProfile({
-        profileDirectory,
-        ...(outputPath === undefined ? {} : { outputPath })
-      });
+  const result = await exportAuthProfile({
+    profileDirectory,
+    ...(outputPath === undefined ? {} : { outputPath }),
+    ...(domains.length === 0 ? {} : { domains })
+  });
 
   stdout.write(`${result.path ?? result.content}\n`);
   return 0;
+}
+
+function getProfileExportDomains(args: ParsedCliArgs): string[] {
+  const domains = getOptionValues(args, "domain");
+  if (domains.some((domain) => domain.trim().length === 0 || domain === "true")) {
+    throw new Error("--domain requires a domain value.");
+  }
+  return domains;
 }
 
 function getProfileExportSource(args: ParsedCliArgs): "chrome" | "openruntime" {

@@ -4,22 +4,17 @@ import {
   constants,
   existsSync,
   lstatSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-  type Stats
+  readFileSync
 } from "node:fs";
-import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { chromium, type BrowserContext } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
 const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 60_000;
-
-type ProfileKind = "auth" | "full";
 
 interface AuthProfileBundle {
   version: 1;
@@ -28,30 +23,15 @@ interface AuthProfileBundle {
   storageState: unknown;
 }
 
-interface FullProfileBundle {
-  version: 1;
-  kind: "full";
-  createdAt: string;
-  entries: FullProfileEntry[];
-}
-
-interface FullProfileEntry {
-  path: string;
-  type: "directory" | "file";
-  mode?: number;
-  content?: string;
-}
-
 export interface ProfileExportResult {
-  kind: ProfileKind;
+  kind: "auth";
   path?: string;
   content?: string;
 }
 
 export interface ProfileImportResult {
-  kind: ProfileKind;
+  kind: "auth";
   profileDirectory: string;
-  backupDirectory?: string;
 }
 
 export interface ChromeProfileExportOptions {
@@ -59,6 +39,7 @@ export interface ChromeProfileExportOptions {
   userDataDirectory?: string;
   profile?: string;
   timeout?: number;
+  domains?: string[];
   env?: NodeJS.ProcessEnv;
   platform?: NodeJS.Platform;
 }
@@ -81,8 +62,13 @@ export function getAuthStatePath(profileDirectory: string): string {
 export async function exportAuthProfile(options: {
   profileDirectory: string;
   outputPath?: string;
+  domains?: string[];
 }): Promise<ProfileExportResult> {
-  const storageState = await captureAuthState(options.profileDirectory);
+  const domains = normalizeProfileDomains(options.domains ?? []);
+  const storageState = filterStorageStateByNormalizedDomains(
+    await captureAuthState(options.profileDirectory),
+    domains
+  );
   const content = encodeProfileBundle({
     version: 1,
     kind: "auth",
@@ -106,11 +92,15 @@ export async function exportAuthProfile(options: {
 }
 
 export async function exportChromeAuthProfile(options: ChromeProfileExportOptions = {}): Promise<ProfileExportResult> {
+  const domains = normalizeProfileDomains(options.domains ?? []);
   const chromeProfile = resolveChromeProfile(options);
   assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = await captureChromeAuthState(chromeProfile, options.timeout);
+    storageState = filterStorageStateByNormalizedDomains(
+      await captureChromeAuthState(chromeProfile, options.timeout),
+      domains
+    );
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
@@ -137,26 +127,6 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   };
 }
 
-export async function exportFullProfile(options: {
-  profileDirectory: string;
-  outputPath?: string;
-}): Promise<ProfileExportResult> {
-  const profileDirectory = resolve(options.profileDirectory);
-  await assertProfileDirectoryExists(profileDirectory);
-  const path = resolve(options.outputPath ?? createDefaultProfileExportPath(profileDirectory, "full"));
-  const content = encodeProfileBundle({
-    version: 1,
-    kind: "full",
-    createdAt: new Date().toISOString(),
-    entries: collectProfileEntries(profileDirectory)
-  });
-  await writeTextFile(path, content);
-  return {
-    kind: "full",
-    path
-  };
-}
-
 export async function importProfile(options: {
   input: string;
   profileDirectory: string;
@@ -164,19 +134,10 @@ export async function importProfile(options: {
   const bundle = decodeProfileBundle(options.input);
   const profileDirectory = resolve(options.profileDirectory);
 
-  if (bundle.kind === "auth") {
-    await applyAuthState(profileDirectory, bundle.storageState);
-    return {
-      kind: "auth",
-      profileDirectory
-    };
-  }
-
-  const backupDirectory = await replaceProfileDirectory(profileDirectory, bundle);
+  await applyAuthState(profileDirectory, bundle.storageState);
   return {
-    kind: "full",
-    profileDirectory,
-    ...(backupDirectory === undefined ? {} : { backupDirectory })
+    kind: "auth",
+    profileDirectory
   };
 }
 
@@ -195,10 +156,6 @@ export async function readProfileInput(input: string | undefined): Promise<strin
 
 export async function readProfileInputFile(path: string): Promise<string> {
   return await readFile(resolve(path), "utf8");
-}
-
-export function createDefaultProfileExportPath(profileDirectory: string, kind: ProfileKind): string {
-  return join(dirname(resolve(profileDirectory)), `openruntime-profile-${kind}-${createTimestamp()}.oprprofile`);
 }
 
 export function getDefaultChromeUserDataDirectory(
@@ -350,6 +307,27 @@ function mergeStorageStates(savedState: unknown | undefined, browserState: unkno
   };
 }
 
+export function filterStorageStateByDomains(storageState: unknown, domains: string[]): unknown {
+  return filterStorageStateByNormalizedDomains(storageState, normalizeProfileDomains(domains));
+}
+
+function filterStorageStateByNormalizedDomains(storageState: unknown, normalizedDomains: string[]): unknown {
+  if (!isStorageState(storageState)) return storageState;
+  if (normalizedDomains.length === 0) return storageState;
+
+  return {
+    ...storageState,
+    cookies: storageState.cookies.filter((cookie) => {
+      const cookieDomain = typeof cookie.domain === "string" ? normalizeCookieDomain(cookie.domain) : undefined;
+      return cookieDomain !== undefined && normalizedDomains.some((domain) => domainMatchesCookie(cookieDomain, domain));
+    }),
+    origins: storageState.origins.filter((origin) => {
+      const originHost = typeof origin.origin === "string" ? getOriginHost(origin.origin) : undefined;
+      return originHost !== undefined && normalizedDomains.some((domain) => domainMatchesHost(originHost, domain));
+    })
+  };
+}
+
 function mergeStorageOrigins(savedOrigin: Record<string, unknown>, browserOrigin: Record<string, unknown>): Record<string, unknown> {
   const savedLocalStorage = Array.isArray(savedOrigin.localStorage)
     ? savedOrigin.localStorage
@@ -398,6 +376,44 @@ function isStorageState(value: unknown): value is {
 
 function toRecordItems(items: unknown[]): Record<string, unknown>[] {
   return items.filter((item): item is Record<string, unknown> => item !== null && typeof item === "object");
+}
+
+function normalizeProfileDomains(domains: string[]): string[] {
+  return domains.map(normalizeProfileDomain);
+}
+
+function normalizeProfileDomain(input: string): string {
+  const trimmed = input.trim().toLowerCase();
+  if (trimmed.length === 0 || trimmed === "true") {
+    throw new Error("--domain requires a domain value.");
+  }
+
+  const urlLike = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+  try {
+    return normalizeCookieDomain(new URL(urlLike).hostname);
+  } catch {
+    throw new Error(`Invalid profile domain "${input}".`);
+  }
+}
+
+function normalizeCookieDomain(domain: string): string {
+  return domain.trim().toLowerCase().replace(/^\.+/, "").replace(/\.+$/, "");
+}
+
+function getOriginHost(origin: string): string | undefined {
+  try {
+    return normalizeCookieDomain(new URL(origin).hostname);
+  } catch {
+    return undefined;
+  }
+}
+
+function domainMatchesCookie(cookieDomain: string, requestedDomain: string): boolean {
+  return domainMatchesHost(cookieDomain, requestedDomain) || domainMatchesHost(requestedDomain, cookieDomain);
+}
+
+function domainMatchesHost(host: string, requestedDomain: string): boolean {
+  return host === requestedDomain || host.endsWith(`.${requestedDomain}`);
 }
 
 function createResolvedChromeProfile(
@@ -551,12 +567,12 @@ async function writeTextFile(path: string, content: string): Promise<void> {
   });
 }
 
-function encodeProfileBundle(bundle: AuthProfileBundle | FullProfileBundle): string {
+function encodeProfileBundle(bundle: AuthProfileBundle): string {
   const encoded = gzipSync(JSON.stringify(bundle)).toString("base64url");
   return `${PROFILE_TOKEN_PREFIX}:${bundle.kind}:${encoded}`;
 }
 
-function decodeProfileBundle(input: string): AuthProfileBundle | FullProfileBundle {
+function decodeProfileBundle(input: string): AuthProfileBundle {
   const trimmed = input.trim();
   const prefix = `${PROFILE_TOKEN_PREFIX}:`;
   if (!trimmed.startsWith(prefix)) {
@@ -571,7 +587,7 @@ function decodeProfileBundle(input: string): AuthProfileBundle | FullProfileBund
 
   const kind = payload.slice(0, separatorIndex);
   const encoded = payload.slice(separatorIndex + 1);
-  if (kind !== "auth" && kind !== "full") {
+  if (kind !== "auth") {
     throw new Error(`Unsupported profile kind "${kind}".`);
   }
 
@@ -588,132 +604,11 @@ function decodeProfileBundle(input: string): AuthProfileBundle | FullProfileBund
   return parsed;
 }
 
-function isProfileBundle(value: unknown, kind: ProfileKind): value is AuthProfileBundle | FullProfileBundle {
+function isProfileBundle(value: unknown, kind: "auth"): value is AuthProfileBundle {
   if (value === null || typeof value !== "object") return false;
   const bundle = value as Record<string, unknown>;
   if (bundle.version !== 1 || bundle.kind !== kind || typeof bundle.createdAt !== "string") return false;
-  if (kind === "auth") {
-    return "storageState" in bundle;
-  }
-  return Array.isArray(bundle.entries);
-}
-
-function collectProfileEntries(profileDirectory: string): FullProfileEntry[] {
-  const root = resolve(profileDirectory);
-  const entries: FullProfileEntry[] = [];
-  visitProfilePath(root, root, entries);
-  return entries;
-}
-
-function visitProfilePath(root: string, currentPath: string, entries: FullProfileEntry[]): void {
-  for (const name of readdirSync(currentPath)) {
-    const absolutePath = join(currentPath, name);
-    const stat = lstatSync(absolutePath, {
-      throwIfNoEntry: false
-    });
-    if (stat === undefined || shouldSkipProfileEntry(name, stat)) continue;
-    const relativePath = toArchivePath(relative(root, absolutePath));
-    if (stat.isDirectory()) {
-      entries.push({
-        path: relativePath,
-        type: "directory",
-        mode: stat.mode & 0o777
-      });
-      visitProfilePath(root, absolutePath, entries);
-      continue;
-    }
-    if (stat.isFile()) {
-      entries.push({
-        path: relativePath,
-        type: "file",
-        mode: stat.mode & 0o777,
-        content: readFileSync(absolutePath).toString("base64")
-      });
-    }
-  }
-}
-
-function shouldSkipProfileEntry(name: string, stat: Stats): boolean {
-  if (!stat.isFile() && !stat.isDirectory()) return true;
-  return name === "SingletonLock" ||
-    name === "SingletonSocket" ||
-    name === "SingletonCookie" ||
-    name === "DevToolsActivePort";
-}
-
-async function replaceProfileDirectory(profileDirectory: string, bundle: FullProfileBundle): Promise<string | undefined> {
-  const resolvedProfileDirectory = resolve(profileDirectory);
-  await mkdir(dirname(resolvedProfileDirectory), {
-    recursive: true,
-    mode: 0o700
-  });
-
-  const backupDirectory = existsSync(resolvedProfileDirectory)
-    ? `${resolvedProfileDirectory}.backup-${createTimestamp()}`
-    : undefined;
-  if (backupDirectory !== undefined) {
-    await rename(resolvedProfileDirectory, backupDirectory);
-  }
-
-  try {
-    await restoreProfileEntries(resolvedProfileDirectory, bundle.entries);
-    return backupDirectory;
-  } catch (error) {
-    await rm(resolvedProfileDirectory, {
-      recursive: true,
-      force: true
-    });
-    if (backupDirectory !== undefined) {
-      await rename(backupDirectory, resolvedProfileDirectory);
-    }
-    throw error;
-  }
-}
-
-async function restoreProfileEntries(profileDirectory: string, entries: FullProfileEntry[]): Promise<void> {
-  await mkdir(profileDirectory, {
-    recursive: true,
-    mode: 0o700
-  });
-
-  for (const entry of entries) {
-    const relativePath = validateArchivePath(entry.path);
-    const absolutePath = join(profileDirectory, relativePath);
-    if (entry.type === "directory") {
-      await mkdir(absolutePath, {
-        recursive: true,
-        mode: entry.mode
-      });
-      continue;
-    }
-    if (entry.type !== "file" || typeof entry.content !== "string") {
-      throw new Error(`Invalid profile archive entry "${entry.path}".`);
-    }
-    await mkdir(dirname(absolutePath), {
-      recursive: true,
-      mode: 0o700
-    });
-    await writeFile(absolutePath, Buffer.from(entry.content, "base64"), {
-      mode: entry.mode
-    });
-  }
-}
-
-function validateArchivePath(path: string): string {
-  const normalized = path.replaceAll("\\", "/");
-  const segments = normalized.split("/");
-  if (
-    normalized.length === 0 ||
-    normalized.startsWith("/") ||
-    segments.some((segment) => segment.length === 0 || segment === "." || segment === "..")
-  ) {
-    throw new Error(`Invalid profile archive path "${path}".`);
-  }
-  return segments.join(sep);
-}
-
-function toArchivePath(path: string): string {
-  return path.split(sep).join("/");
+  return "storageState" in bundle;
 }
 
 function createProfileLaunchOptions(): Parameters<typeof chromium.launchPersistentContext>[1] {
@@ -722,10 +617,6 @@ function createProfileLaunchOptions(): Parameters<typeof chromium.launchPersiste
     viewport: null,
     args: process.getuid?.() === 0 ? ["--no-sandbox"] : []
   };
-}
-
-function createTimestamp(): string {
-  return new Date().toISOString().replaceAll(":", "").replaceAll(".", "-");
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

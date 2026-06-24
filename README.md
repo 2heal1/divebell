@@ -63,12 +63,14 @@ pnpm exec openruntime export-profile --chrome-profile "Profile 1"
 pnpm exec openruntime export-profile --chrome-profile user@example.com
 ```
 
-如果需要导出 OpenRuntime 自己的完整浏览器 profile，用 `--source openruntime --full`。这个模式只输出生成的文件路径，不把大文件内容打印到终端：
+如果只需要某个站点的登录状态，可以按域名导出，减少无关站点数据：
 
 ```sh
-pnpm exec openruntime export-profile --source openruntime --full
-pnpm exec openruntime import-profile --input <导出的文件路径>
+pnpm exec openruntime export-profile --domain github.com --output /tmp/openruntime-github.oprprofile
+pnpm exec openruntime import-profile --input /tmp/openruntime-github.oprprofile
 ```
+
+`--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。读取本机 Chrome profile 前需要先完全退出 Chrome。
 
 根目录命令：
 

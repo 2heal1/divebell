@@ -18,7 +18,7 @@ pnpm build
 开第一个终端，启动 Bridge：
 
 ```bash
-pnpm exec openruntime bridge start
+pnpm exec openruntime start
 ```
 
 开第二个终端，启动 stream SSR demo：

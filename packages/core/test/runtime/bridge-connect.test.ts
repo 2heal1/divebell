@@ -97,6 +97,7 @@ test("passes runtime and render context when connecting to bridge", () => {
       autoReconnect: false,
       pageInstanceId: "page-test",
       runtimeId: "runtime-ssr",
+      sessionId: "session-debug",
       renderId: "render-ssr"
     });
 
@@ -104,10 +105,43 @@ test("passes runtime and render context when connecting to bridge", () => {
     assert.ok(stream);
     assert.equal(
       stream.url,
-      "http://localhost:19001/connect?url=unknown&pageInstanceId=page-test&runtimeId=runtime-ssr&renderId=render-ssr"
+      "http://localhost:19001/connect?url=unknown&pageInstanceId=page-test&runtimeId=runtime-ssr&sessionId=session-debug&renderId=render-ssr"
     );
   } finally {
     restoreGlobal("EventSource", previousEventSource);
+    clearBridgeConnection();
+  }
+});
+
+test("reads the session id from the page query when connecting to bridge", () => {
+  const previousEventSource = globalThis.EventSource;
+  const previousLocation = globalThis.location;
+
+  try {
+    FakeEventSource.instances = [];
+    (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = FakeEventSource as unknown as typeof EventSource;
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: {
+        href: "http://app.test/orders?openruntimeSessionId=session-orders"
+      }
+    });
+
+    createOpenRuntime({ clock: createClock() }).connectBridge({
+      port: 19001,
+      autoReconnect: false,
+      pageInstanceId: "page-test"
+    });
+
+    const stream = FakeEventSource.instances[0];
+    assert.ok(stream);
+    assert.equal(
+      stream.url,
+      "http://localhost:19001/connect?url=http%3A%2F%2Fapp.test%2Forders%3FopenruntimeSessionId%3Dsession-orders&pageInstanceId=page-test&sessionId=session-orders"
+    );
+  } finally {
+    restoreGlobal("EventSource", previousEventSource);
+    restoreLocation(previousLocation);
     clearBridgeConnection();
   }
 });
@@ -279,6 +313,17 @@ function restoreGlobal(name: "EventSource", value: typeof EventSource | undefine
     return;
   }
   (globalThis as unknown as { EventSource: typeof EventSource }).EventSource = value;
+}
+
+function restoreLocation(value: Location | undefined): void {
+  if (value === undefined) {
+    delete (globalThis as unknown as { location?: Location }).location;
+    return;
+  }
+  Object.defineProperty(globalThis, "location", {
+    configurable: true,
+    value
+  });
 }
 
 function clearBridgeConnection(): void {

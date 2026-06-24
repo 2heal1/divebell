@@ -37,5 +37,8 @@ jobs:
       - name: Install dependencies
         run: pnpm --filter . --filter "./packages/*" install --frozen-lockfile
 
-      - name: Run checks
-        run: pnpm check
+      - name: Run package checks
+        run: pnpm run version:check && pnpm run build && pnpm run test
+
+      - name: Run Stage 6 evaluation with timing
+        run: pnpm run evaluate:stage6:run

@@ -55,7 +55,7 @@ Checklist：
 - [x] 实现页面侧 `connectBridge({ port, autoReconnect })`。
 - [x] 实现 Bridge runtime 连接管理：`runtimeId`、`url`、连接状态、最后 snapshot/events 保留。
 - [x] 实现 HTTP API：`/runtimes`、`/targets`、`/snapshot`、`/events`、`/actions`、`/actions/:name/options`、`/actions/:name/run`、`/wait-for`。
-- [x] 实现 CLI：`bridge start`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
+- [x] 实现 CLI：`start`、`open`、`runtimes`、`targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for`。
 - [x] 实现 runtime selector：`--url`、`--runtime`，无参数时默认选择最新活跃 runtime。
 - [x] `wait-for` 命令成功或失败后释放进程。
 - [x] `input-options` 命令等待异步 provider 完成，默认超时 5s。
@@ -121,16 +121,16 @@ Checklist：
 
 Checklist：
 
-- [ ] 编写 OpenRuntime skill。
-- [ ] 明确 Agent 使用顺序：打开页面、读取 targets/snapshot/actions、执行 action、waitFor、失败后读取 events。
-- [ ] 明确 fallback：没有 OpenRuntime 时再使用 DOM、console、network 和截图。
-- [ ] 提供常见任务示例：等待路由 ready、执行业务 action、排查 remote 加载失败、排查 loader redirect。
-- [ ] 把 MF 相关任务和现有 MF skill 串起来。
+- [x] 编写 OpenRuntime skill。
+- [x] 明确 Agent 使用顺序：打开页面、读取 targets/snapshot/actions、执行 action、waitFor、失败后读取 events。
+- [x] 明确 fallback：没有 OpenRuntime 时再使用 DOM、console、network 和截图。
+- [x] 提供常见任务示例：等待路由 ready、执行业务 action、排查 remote 加载失败、排查 loader redirect。
+- [x] 把 MF 相关任务和现有 MF skill 串起来。
 
 验收标准：
 
-- [ ] Agent 能在不知道页面 DOM 细节的情况下，通过 CLI 完成一个声明 action 和 waitFor 验证。
-- [ ] 失败报告里包含 snapshot 和 events 证据。
+- [x] Agent 能在不知道页面 DOM 细节的情况下，通过 CLI 完成一个声明 action 和 waitFor 验证。
+- [x] 失败报告里包含 snapshot 和 events 证据。
 
 ## 阶段 6：Demo 和评估
 
@@ -138,17 +138,19 @@ Checklist：
 
 Checklist：
 
-- [ ] 准备基础 Modern.js demo：route、loader、SSR、hydration、business ready。
-- [ ] 准备 MF demo：remote success/error、shared 冲突、manifest/remoteEntry 失败。
-- [ ] 从 `/Users/bytedance/fork_repo/modern.js/tests/integration/agent-runtime-mf` 迁移或重建必要 case。
-- [ ] 设计 baseline：不用 OpenRuntime，只用 DOM/console/network。
-- [ ] 设计 runtime round：使用 OpenRuntime API/CLI/skill。
-- [ ] 统计耗时、人工介入次数、失败定位准确率、证据完整度。
+- [x] 准备基础 Modern.js demo：route、loader、SSR、hydration、business ready。
+- [x] 准备 MF demo：remote success/error、shared 冲突、manifest/remoteEntry 失败。
+- [x] 从 `/Users/bytedance/fork_repo/modern.js/tests/integration/agent-runtime-mf` 迁移或重建必要 case。
+- [x] 设计 baseline：不用 OpenRuntime，只用 DOM/console/network。
+- [x] 设计 runtime round：使用 OpenRuntime API/CLI/skill。
+- [x] 统计耗时、人工介入次数、失败定位准确率、证据完整度。
+
+阶段 6 收口说明：Modern.js 场景复用 `demos/modern-basic`、`demos/modern-ssr` 和 `demos/modern-ssr-stream` 的真实 demo 和验证脚本；MF 场景在 `demos/stage6-evaluation` 中按旧 `agent-runtime-mf` case 重建评估夹具，避免在 OpenRuntime 仓库重复实现 MF 加载追踪。评估入口见 `docs/evaluation-stage6.md` 和 `pnpm run evaluate:stage6`。
 
 验收标准：
 
-- [ ] 至少一个 Modern.js 场景和一个 MF 场景完成 baseline/runtime 对比。
-- [ ] Agent 输出能说明“当前卡在哪个 target”，而不是只说页面异常。
+- [x] 至少一个 Modern.js 场景和一个 MF 场景完成 baseline/runtime 对比。
+- [x] Agent 输出能说明“当前卡在哪个 target”，而不是只说页面异常。
 
 ## 阶段 7：发布前整理
 

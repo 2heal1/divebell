@@ -15,22 +15,8 @@ OpenRuntime 不把 `@vercel/next-browser` 的内部会话协议暴露给 Core，
 
 ## CLI 命令
 
-新增顶层浏览器命令：
-
-```txt
-open-runtime start [--port <port>]
-open-runtime stop [--port <port>]
-open-runtime open <url> [--bridge <url>] [--port <port>] [--no-bridge]
-open-runtime goto <url>
-open-runtime page-snapshot
-open-runtime click <ref|selector|text>
-open-runtime fill <ref|selector> <value>
-open-runtime eval <script>
-open-runtime wait-eval <script> [--timeout <ms>]
-open-runtime get-window <path>
-open-runtime screenshot [name]
-open-runtime close
-```
+当前完整命令清单由 `pnpm run docs:cli` 从 CLI 源码生成，见
+`docs/cli-reference.md`。本文件只说明浏览器集成行为和使用边界。
 
 `open-runtime` 同时提供 `opr` 缩写，日常可以写成：
 
@@ -39,19 +25,6 @@ opr start
 opr open http://localhost:8080/route-a
 opr wait-for --url http://localhost:8080/route-a modern:route ready --where pathname=/route-a
 opr stop
-```
-
-保留现有 Runtime 命令：
-
-```txt
-open-runtime runtimes
-open-runtime targets
-open-runtime snapshot
-open-runtime events
-open-runtime actions
-open-runtime input-options
-open-runtime run-action
-open-runtime wait-for
 ```
 
 `snapshot` 继续表示 OpenRuntime 的结构化状态；浏览器页面快照命名为 `page-snapshot`，避免和 Runtime Snapshot 混淆。
@@ -63,6 +36,10 @@ open-runtime wait-for
 `open-runtime stop` 会先调用浏览器层 `close` 关闭浏览器会话，再关闭 CLI 自己启动的 Bridge。它只关闭 OpenRuntime CLI 记录过的进程，不会按端口强杀其他服务。
 
 `open-runtime open <url>` 默认检查 Bridge 是否可用；不可用则自动在后台启动 Bridge。
+
+浏览器登录态、Cookie 和本地存储默认保存在 `~/.openruntime/browser-profile`。再次执行 `open-runtime open <url>` 或关闭后重新打开时，会继续使用这份 OpenRuntime 自己的 profile。
+
+CLI 不默认复用系统 Chrome 的默认 profile，避免和用户正在使用的 Chrome 互相锁定或污染日常浏览数据。如需指定独立 profile 目录，可以设置 `OPENRUNTIME_BROWSER_PROFILE_DIR=/path/to/profile` 后再启动 CLI。切换 profile 目录前需要先执行 `open-runtime close`。
 
 如果默认端口被别的服务占用，命令会失败，并提示使用 `--bridge` 或 `--port` 换一个 Bridge 地址。
 

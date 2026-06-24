@@ -21,6 +21,7 @@ export interface GetEventsQuery {
   source?: string | string[];
   status?: RuntimeStatus | RuntimeStatus[];
   limit?: number;
+  query?: string;
 }
 
 export interface GetEventsResult {
@@ -28,4 +29,3 @@ export interface GetEventsResult {
   latestEventId: number;
   truncated: boolean;
 }
-

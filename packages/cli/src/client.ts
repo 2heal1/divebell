@@ -1,10 +1,11 @@
-import type { RuntimeDataCondition } from "@openruntime/core";
+import { OPEN_RUNTIME_SESSION_QUERY_PARAM, type RuntimeDataCondition } from "@openruntime/core";
 import type { BridgeRuntimeInfo } from "@openruntime/bridge";
 
 export type Fetcher = typeof fetch;
 
 export interface RuntimeSelector {
   runtimeId?: string;
+  sessionId?: string;
   url?: string;
 }
 
@@ -134,17 +135,52 @@ export function selectRuntime(
     return runtime;
   }
 
-  const candidates = selector.url === undefined
-    ? runtimes.filter((runtime) => runtime.status === "connected")
-    : runtimes.filter((runtime) => runtime.status === "connected" && runtime.url === selector.url);
+  const selectorSessionId = selector.sessionId ?? getOpenRuntimeSessionIdFromUrl(selector.url);
+  const selectorUrl = selector.url === undefined ? undefined : normalizeRuntimeUrlForMatch(selector.url);
+  const candidates = runtimes.filter((runtime) =>
+    runtime.status === "connected" &&
+    (selectorSessionId === undefined || runtimeMatchesSession(runtime, selectorSessionId)) &&
+    (selectorUrl === undefined || normalizeRuntimeUrlForMatch(runtime.url) === selectorUrl)
+  );
 
   if (candidates.length === 0) {
-    throw new Error(selector.url === undefined
-      ? "No connected runtime was found."
-      : `No connected runtime matched URL "${selector.url}".`);
+    throw new Error(createNoRuntimeMessage(selector));
   }
 
   return candidates.sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] as BridgeRuntimeInfo;
+}
+
+function normalizeRuntimeUrlForMatch(input: string): string {
+  try {
+    const url = new URL(input);
+    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return url.toString();
+  } catch {
+    return input.endsWith("/") ? input.slice(0, -1) : input;
+  }
+}
+
+function runtimeMatchesSession(runtime: BridgeRuntimeInfo, sessionId: string): boolean {
+  return runtime.sessionId === sessionId || getOpenRuntimeSessionIdFromUrl(runtime.url) === sessionId;
+}
+
+function getOpenRuntimeSessionIdFromUrl(input: string | undefined): string | undefined {
+  if (input === undefined) return undefined;
+  try {
+    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
+  } catch {
+    return undefined;
+  }
+}
+
+function createNoRuntimeMessage(selector: RuntimeSelector): string {
+  const conditions = [
+    selector.sessionId === undefined ? undefined : `session "${selector.sessionId}"`,
+    selector.url === undefined ? undefined : `URL "${selector.url}"`
+  ].filter((condition): condition is string => condition !== undefined);
+  if (conditions.length === 0) return "No connected runtime was found.";
+  return `No connected runtime matched ${conditions.join(" and ")}.`;
 }
 
 export function normalizeBridgeUrl(input: string | undefined): string {

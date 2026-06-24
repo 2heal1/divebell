@@ -17,7 +17,10 @@ export type {
   BridgeRuntimeRequest,
   BridgeRuntimeResponse
 } from "./bridge/types.js";
-export { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "./bridge/types.js";
+export {
+  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
+  OPEN_RUNTIME_SESSION_QUERY_PARAM
+} from "./bridge/types.js";
 export { syncServerRuntimeBridge } from "./bridge/server.js";
 export type {
   CreateOpenRuntimeOptions,

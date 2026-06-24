@@ -67,6 +67,7 @@ export class RuntimeConnectionStore {
     options: {
       pageInstanceId?: string;
       runtimeId?: string;
+      sessionId?: string;
       renderId?: string;
     } = {}
   ): BridgeRuntimeInfo {
@@ -77,6 +78,7 @@ export class RuntimeConnectionStore {
       existing.info = {
         ...activeInfo,
         url,
+        ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
         ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
         ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
         status: "connected",
@@ -89,6 +91,7 @@ export class RuntimeConnectionStore {
     const info: BridgeRuntimeInfo = {
       runtimeId: options.runtimeId ?? this.#idGenerator(),
       url,
+      ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
       ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
       ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
       status: "connected",
@@ -116,6 +119,7 @@ export class RuntimeConnectionStore {
     const info: BridgeRuntimeInfo = {
       ...activeInfo,
       url: input.url,
+      ...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
       ...(input.renderId === undefined ? {} : { renderId: input.renderId }),
       ...(input.source === undefined ? {} : { source: input.source }),
       status: existing?.stream === undefined ? "server" : "connected",
@@ -463,8 +467,37 @@ function matchesEvent(event: RuntimeEvent, query: GetEventsQuery): boolean {
     matchesQueryValue(event.actionName, query.actionName) &&
     matchesQueryValue(event.type, query.type) &&
     matchesQueryValue(event.source, query.source) &&
-    matchesQueryValue(event.status, query.status)
+    matchesQueryValue(event.status, query.status) &&
+    matchesEventText(event, query.query)
   );
+}
+
+function matchesEventText(event: RuntimeEvent, query: string | undefined): boolean {
+  if (query === undefined || query === "") return true;
+
+  const normalizedQuery = query.toLowerCase();
+  return [
+    event.targetId,
+    event.actionName,
+    event.type,
+    event.source,
+    event.status,
+    event.error?.message,
+    event.error?.code,
+    event.error?.stack,
+    stringifySearchValue(event.error?.data),
+    stringifySearchValue(event.payload)
+  ].some((field) => field?.toLowerCase().includes(normalizedQuery) ?? false);
+}
+
+function stringifySearchValue(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function normalizeLimit(limit: number | undefined): number {

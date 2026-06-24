@@ -56,6 +56,7 @@ function parseEventsQuery(searchParams: URLSearchParams): GetEventsQuery | undef
   setIfDefined(query, "source", getStringValues(searchParams, "source"));
   setIfDefined(query, "status", getStringValues(searchParams, "status") as RuntimeStatus | RuntimeStatus[] | undefined);
   setIfDefined(query, "limit", getNumberValue(searchParams, "limit"));
+  setIfDefined(query, "query", getStringValue(searchParams, "query"));
   return maybeQuery(query);
 }
 

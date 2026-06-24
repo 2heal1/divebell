@@ -17,6 +17,12 @@ test("filters targets, snapshots and events", () => {
   });
   runtime.updateSnapshot({ id: "route:/home", status: "ready" });
   runtime.updateSnapshot({ id: "loader:/home", status: "loading" });
+  runtime.updateSnapshot({
+    id: "loader:/home",
+    status: "error",
+    data: { library: "react" },
+    error: { message: "React shared dependency failed" }
+  });
 
   assert.deepEqual(
     runtime.getTargets({ query: "loader" }).map((target) => target.id),
@@ -27,7 +33,10 @@ test("filters targets, snapshots and events", () => {
   ]);
   assert.deepEqual(
     runtime.getEvents({ since: 1, targetId: "loader:/home" }).events.map((event) => event.id),
-    [2]
+    [2, 3]
+  );
+  assert.deepEqual(
+    runtime.getEvents({ query: "React" }).events.map((event) => event.id),
+    [3]
   );
 });
-

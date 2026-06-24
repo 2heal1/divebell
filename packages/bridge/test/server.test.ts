@@ -183,6 +183,72 @@ test("keeps same-url page instances separate", async () => {
   }
 });
 
+test("tracks a stable session across refreshed runtimes", async () => {
+  const ids = ["runtime-before-refresh", "runtime-after-refresh"];
+  const server = createBridgeServer({
+    idGenerator: () => ids.shift() ?? "runtime-extra",
+    clock: createClock(2850)
+  });
+  const address = await server.listen({ port: 0 });
+  const firstStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-before&sessionId=session-orders`);
+
+  try {
+    assert.deepEqual(await firstStream.next("connected"), { runtimeId: "runtime-before-refresh" });
+    firstStream.close();
+    await waitForDisconnect();
+
+    const secondStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-after&sessionId=session-orders`);
+    try {
+      assert.deepEqual(await secondStream.next("connected"), { runtimeId: "runtime-after-refresh" });
+      const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+      assert.deepEqual(runtimes.runtimes, [
+        {
+          runtimeId: "runtime-after-refresh",
+          url: "http://app.test/orders?openruntimeSessionId=session-orders",
+          sessionId: "session-orders",
+          pageInstanceId: "page-after",
+          status: "connected",
+          connectedAt: 2854,
+          lastSeenAt: 2854
+        }
+      ]);
+    } finally {
+      secondStream.close();
+    }
+  } finally {
+    firstStream.close();
+    await server.close();
+  }
+});
+
+test("derives session id from the runtime url when connect omits sessionId", async () => {
+  const server = createBridgeServer({
+    idGenerator: () => "runtime-session-url",
+    clock: createClock(2860)
+  });
+  const address = await server.listen({ port: 0 });
+  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-orders`);
+
+  try {
+    assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-session-url" });
+    const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(runtimes.runtimes, [
+      {
+        runtimeId: "runtime-session-url",
+        url: "http://app.test/orders?openruntimeSessionId=session-orders",
+        sessionId: "session-orders",
+        pageInstanceId: "page-orders",
+        status: "connected",
+        connectedAt: 2861,
+        lastSeenAt: 2861
+      }
+    ]);
+  } finally {
+    stream.close();
+    await server.close();
+  }
+});
+
 test("links server-rendered runtime state with the later browser connection", async () => {
   const server = createBridgeServer({
     clock: createClock(2900)
@@ -318,13 +384,14 @@ test("links server-rendered runtime state with the later browser connection", as
         capturedAt: 2911
       });
 
-      const eventsPromise = readJson(`${address.url}/runtimes/runtime-ssr/events?source=modern.js`);
+      const eventsPromise = readJson(`${address.url}/runtimes/runtime-ssr/events?source=modern.js&query=hydration`);
       const eventsRequest = await stream.next<{ requestId: string; method: string; query: unknown }>("request");
       assert.deepEqual(eventsRequest, {
         requestId: "request-2",
         method: "getEvents",
         query: {
-          source: "modern.js"
+          source: "modern.js",
+          query: "hydration"
         }
       });
       await postJson(`${address.url}/runtimes/runtime-ssr/responses/${eventsRequest.requestId}`, {
@@ -346,14 +413,6 @@ test("links server-rendered runtime state with the later browser connection", as
       });
       assert.deepEqual(await eventsPromise, {
         events: [
-          {
-            id: 1,
-            type: "snapshot.updated",
-            source: "modern.js",
-            timestamp: 2902,
-            targetId: "modern:ssr",
-            status: "server-rendered"
-          },
           {
             id: 2,
             type: "snapshot.updated",

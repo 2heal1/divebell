@@ -63,7 +63,7 @@ pnpm exec openruntime export-profile --chrome-profile "Profile 1"
 pnpm exec openruntime export-profile --chrome-profile user@example.com
 ```
 
-如果只需要某个站点的登录状态，可以按域名导出，减少无关站点数据：
+如果只需要某个站点的登录 Cookie，可以按域名快速导出，避免扫描全量站点存储：
 
 ```sh
 pnpm exec openruntime export-profile --domain github.com --output /tmp/openruntime-github.oprprofile

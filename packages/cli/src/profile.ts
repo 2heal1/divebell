@@ -97,10 +97,7 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   assertChromeProfileIsNotLocked(chromeProfile);
   let storageState: unknown;
   try {
-    storageState = filterStorageStateByNormalizedDomains(
-      await captureChromeAuthState(chromeProfile, options.timeout),
-      domains
-    );
+    storageState = await captureChromeAuthState(chromeProfile, options.timeout, domains);
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error)}`);
   }
@@ -236,7 +233,11 @@ async function captureAuthState(profileDirectory: string): Promise<unknown> {
   }
 }
 
-async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile, timeout: number | undefined): Promise<unknown> {
+async function captureChromeAuthState(
+  chromeProfile: ResolvedChromeProfile,
+  timeout: number | undefined,
+  domains: string[]
+): Promise<unknown> {
   const launchOptions = createProfileLaunchOptions() ?? {};
   const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
     ...launchOptions,
@@ -250,10 +251,27 @@ async function captureChromeAuthState(chromeProfile: ResolvedChromeProfile, time
     ]
   });
   try {
+    if (domains.length > 0) {
+      return await captureDomainAuthState(context, domains);
+    }
     return await context.storageState({ indexedDB: true });
   } finally {
     await context.close();
   }
+}
+
+async function captureDomainAuthState(context: BrowserContext, domains: string[]): Promise<unknown> {
+  return {
+    cookies: await context.cookies(createDomainCookieUrls(domains)),
+    origins: []
+  };
+}
+
+function createDomainCookieUrls(domains: string[]): string[] {
+  return domains.flatMap((domain) => [
+    `https://${domain}`,
+    `http://${domain}`
+  ]);
 }
 
 async function applyAuthState(profileDirectory: string, storageState: unknown): Promise<void> {

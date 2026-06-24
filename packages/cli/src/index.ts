@@ -646,7 +646,7 @@ async function runExportProfileCommand(
   const outputPath = getOptionValue(args, "output");
   const domains = getProfileExportDomains(args);
   if (hasOption(args, "full")) {
-    throw new Error("--full profile export has been removed. Use --domain <domain> to narrow account export instead.");
+    throw new Error("--full is not supported by export-profile. Use --domain <domain> to narrow account export.");
   }
   const source = getProfileExportSource(args);
   if (source === "chrome") {

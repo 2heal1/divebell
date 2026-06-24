@@ -395,7 +395,7 @@ test("exports local Chrome auth profile by default", async () => {
   });
 });
 
-test("rejects removed full profile export", async () => {
+test("rejects full profile export", async () => {
   const output = createOutput();
   let chromeWasRead = false;
   const exitCode = await runCli(["export-profile", "--full"], {
@@ -412,7 +412,7 @@ test("rejects removed full profile export", async () => {
 
   assert.equal(exitCode, 1);
   assert.equal(output.text(), "");
-  assert.match(output.errorText(), /--full profile export has been removed/);
+  assert.match(output.errorText(), /--full is not supported by export-profile/);
   assert.equal(chromeWasRead, false);
 });
 

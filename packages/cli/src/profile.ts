@@ -9,12 +9,17 @@ import {
 import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { chromium, type BrowserContext } from "playwright";
+import { chromium, type BrowserContext, type Page } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
 const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 60_000;
+const CHROME_CDP_PROBE_TIMEOUT_MS = 250;
+const DEFAULT_CHROME_CDP_ENDPOINTS = [
+  "http://127.0.0.1:9222",
+  "http://localhost:9222"
+];
 
 interface AuthProfileBundle {
   version: 1;
@@ -97,7 +102,7 @@ export async function exportChromeAuthProfile(options: ChromeProfileExportOption
   let storageState: unknown;
   try {
     storageState = domains.length > 0
-      ? await captureCopiedChromeDomainAuthState(chromeProfile, options.timeout, domains)
+      ? await captureChromeDomainAuthState(chromeProfile, options.timeout, domains, options.env ?? process.env)
       : await captureChromeAuthState(chromeProfile, options.timeout, domains);
   } catch (error) {
     throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error, domains.length > 0)}`);
@@ -278,22 +283,117 @@ async function captureCopiedChromeDomainAuthState(
   }
 }
 
+async function captureChromeDomainAuthState(
+  chromeProfile: ResolvedChromeProfile,
+  timeout: number | undefined,
+  domains: string[],
+  env: NodeJS.ProcessEnv
+): Promise<unknown> {
+  const cdpEndpoint = await resolveChromeCdpEndpoint(env);
+  if (cdpEndpoint !== undefined) {
+    try {
+      return await captureChromeDomainAuthStateViaCdp(cdpEndpoint, timeout, domains);
+    } catch {
+      // A discovered CDP endpoint can be stale or incompatible. Keep export reliable
+      // by falling back to the isolated profile copy.
+    }
+  }
+  return await captureCopiedChromeDomainAuthState(chromeProfile, timeout, domains);
+}
+
+async function captureChromeDomainAuthStateViaCdp(
+  endpoint: string,
+  timeout: number | undefined,
+  domains: string[]
+): Promise<unknown> {
+  const browser = await chromium.connectOverCDP(endpoint, {
+    timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
+  });
+  try {
+    const context = browser.contexts()[0];
+    if (context === undefined) {
+      throw new Error("Connected Chrome has no browser context.");
+    }
+    return await captureVisitedDomainAuthState(context, domains, timeout);
+  } finally {
+    await browser.close();
+  }
+}
+
 async function captureVisitedDomainAuthState(
   context: BrowserContext,
   domains: string[],
   timeout: number | undefined
 ): Promise<unknown> {
-  for (const domain of domains) {
-    const page = await context.newPage();
-    await page.goto(`https://${domain}`, {
-      waitUntil: "domcontentloaded",
-      timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
-    });
+  const pages: Page[] = [];
+  try {
+    for (const domain of domains) {
+      const page = await context.newPage();
+      pages.push(page);
+      await page.goto(`https://${domain}`, {
+        waitUntil: "domcontentloaded",
+        timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
+      });
+    }
+    return filterStorageStateByNormalizedDomains(
+      await context.storageState({ indexedDB: true }),
+      domains
+    );
+  } finally {
+    await Promise.all(pages.map(async (page) => {
+      if (!page.isClosed()) {
+        await page.close().catch(() => undefined);
+      }
+    }));
   }
-  return filterStorageStateByNormalizedDomains(
-    await context.storageState({ indexedDB: true }),
-    domains
-  );
+}
+
+async function resolveChromeCdpEndpoint(env: NodeJS.ProcessEnv): Promise<string | undefined> {
+  const configuredEndpoint = env.OPENRUNTIME_CHROME_CDP_ENDPOINT?.trim() || env.OPENRUNTIME_CHROME_CDP_URL?.trim();
+  if (configuredEndpoint !== undefined && configuredEndpoint.length > 0) {
+    if (configuredEndpoint.startsWith("ws://") || configuredEndpoint.startsWith("wss://")) {
+      return configuredEndpoint;
+    }
+    return await isChromeCdpEndpoint(configuredEndpoint) ? configuredEndpoint : undefined;
+  }
+
+  for (const endpoint of DEFAULT_CHROME_CDP_ENDPOINTS) {
+    if (await isChromeCdpEndpoint(endpoint)) {
+      return endpoint;
+    }
+  }
+  return undefined;
+}
+
+async function isChromeCdpEndpoint(endpoint: string): Promise<boolean> {
+  let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHROME_CDP_PROBE_TIMEOUT_MS);
+  try {
+    response = await fetch(createChromeCdpVersionUrl(endpoint), {
+      signal: controller.signal
+    });
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) return false;
+  try {
+    const metadata = await response.json() as Record<string, unknown>;
+    return typeof metadata.Browser === "string" || typeof metadata.webSocketDebuggerUrl === "string";
+  } catch {
+    return false;
+  }
+}
+
+function createChromeCdpVersionUrl(endpoint: string): string {
+  const url = new URL(endpoint);
+  url.pathname = "/json/version";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
 }
 
 async function copyChromeProfileForDomainExport(

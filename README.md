@@ -72,7 +72,7 @@ pnpm exec openruntime export-profile --domain github.com --output /tmp/openrunti
 pnpm exec openruntime import-profile --input /tmp/openruntime-github.oprprofile
 ```
 
-`--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。带 `--domain` 时会先复制一份临时 profile 再读取，通常不需要退出正在使用的 Chrome。不带 `--domain` 的全量账号状态导出仍然需要先完全退出 Chrome。
+`--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。带 `--domain` 时会优先尝试通过本机 Chrome 的调试端口读取；如果当前 Chrome 没有开放调试端口，会复制一份临时 profile 再读取，通常不需要退出正在使用的 Chrome。不带 `--domain` 的全量账号状态导出仍然需要先完全退出 Chrome。
 
 根目录命令：
 

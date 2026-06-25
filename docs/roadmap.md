@@ -80,9 +80,9 @@ Checklist：
 - [x] 提供 Modern.js demo，覆盖 route、loader success/error、business ready、声明 action、`run-action` 和 `wait-for`。
 - [x] 补充 SSR / hydration demo，验证 `modern:ssr` 和 `modern:hydration` 只在真实存在时出现。
 - [x] 补充 route component 加载失败 demo，验证 snapshot 只在失败时显示 `routeComponent: error`。
-- [ ] 后续和 MF runtimePlugin 协作时，为 route target 补充框架能确定的 `dependsOn`，例如 route 依赖 remote / expose。
+- [ ] 后续和 MF observability 接入协作时，为 route target 补充框架能确定的 `dependsOn`，例如 route 依赖 remote / expose。
 
-阶段 3 收口说明：`dependsOn` 需要 MF runtimePlugin 提供 remote / expose 等运行时目标后才能可靠建立，延后到阶段 4 和 MF 接入一起完成；阶段 3 不用 DOM、console 或业务手写依赖关系去猜。
+阶段 3 收口说明：`dependsOn` 需要 MF observability 提供 remote / expose 等运行时目标后才能可靠建立，延后到阶段 4 和 MF 接入一起完成；阶段 3 不用 DOM、console 或业务手写依赖关系去猜。
 
 验收标准：
 
@@ -158,15 +158,18 @@ Checklist：
 
 Checklist：
 
-- [ ] 整理包名、版本和发布策略。
-- [ ] 完成 README、API 文档、CLI 文档和接入文档。
-- [ ] 补齐错误码或失败原因文档。
-- [ ] 补齐端到端测试。
-- [ ] 确认安全边界：不执行未声明动作，不自动猜危险操作。
-- [ ] 确认第一版不做跨 tab、跨 iframe、跨 worker、多 Runtime Center 聚合。
+- [x] 整理包名、版本和发布策略。
+- [x] 完成 README、API 文档、CLI 文档和接入文档。
+- [x] 补齐错误码或失败原因文档。
+- [x] 补齐端到端测试。
+- [x] 确认安全边界：不执行未声明动作，不自动猜危险操作。
+- [x] 确认第一版不做跨 tab、跨 iframe、跨 worker、多 Runtime Center 聚合。
+
+阶段 7 收口说明：第一版版本号定为 `0.1.0`，发布 `@openruntime/core`、`@openruntime/bridge`、`@openruntime/cli` 和 `@openruntime/modern-plugin`。CLI 负责启动和管理 Bridge、打开和操作浏览器，普通用户不用单独安装 Bridge；Bridge 继续作为独立包发布，供 CLI 和高级自定义工具复用。发布包只包含编译产物和类型文件，不内置依赖、不额外压缩。Garfish 主应用通过 `@openruntime/modern-plugin` 暴露子应用生命周期 target；MF 项目通过 `@module-federation/observability-plugin` 接入 OpenRuntime，不在本仓库发布独立 MF 包。发布整理见 `docs/release-stage7.md`，发布前验收入口见 `pnpm run verify:stage7` 和 `pnpm check`。
 
 验收标准：
 
-- [ ] 一个新项目可以按文档安装 SDK、启动 Bridge、连接页面、用 CLI 读取状态。
-- [ ] 一个 Modern.js 项目可以通过 plugin 接入 OpenRuntime。
-- [ ] 一个 MF 项目可以通过 runtimePlugin 接入 OpenRuntime。
+- [x] 一个新项目可以按文档安装 SDK、启动 Bridge、连接页面、用 CLI 读取状态。
+- [x] 一个 Modern.js 项目可以通过 plugin 接入 OpenRuntime。
+- [x] 一个 Garfish 主应用可以通过 modern-plugin 的 Garfish helpers 接入 OpenRuntime。
+- [x] 一个 MF 项目可以通过 MF observability plugin 接入 OpenRuntime。

@@ -65,13 +65,13 @@ OpenRuntime Modern.js plugin 不应该让业务手写所有 target。框架能�
 
 ## 和 Module Federation 的边界
 
-OpenRuntime Modern.js plugin 负责框架层信息。MF remote、manifest、remoteEntry、expose、shared、runtime error 等信息优先由 OpenRuntime MF runtimePlugin 或 MF observability 能力写入。
+OpenRuntime Modern.js plugin 负责框架层信息。MF remote、manifest、remoteEntry、expose、shared、runtime error 等信息由 MF observability 能力写入。
 
-如果 route 依赖某个 remote，`dependsOn` 可以由 OpenRuntime Modern.js plugin 和 OpenRuntime MF runtimePlugin 协同补充；不要要求业务手动维护所有依赖关系。
+如果 route 依赖某个 remote，`dependsOn` 后续可以由 OpenRuntime Modern.js plugin 和 MF observability 提供的 remote / expose target 协同补充；不要要求业务手动维护所有依赖关系。
 
 ## Hook 原则
 
-Modern.js 接入应优先使用 Modern.js plugin 能拿到的生命周期和运行时 hook。MF 接入应优先使用 MF runtimePlugin 能拿到的运行时 hook 和 observability 数据。如果现有 hook 不足，优先回到 Modern.js 或 MF 中补 hook，而不是在 OpenRuntime 里靠 DOM、console 或全局变量猜状态。
+Modern.js 接入应优先使用 Modern.js plugin 能拿到的生命周期和运行时 hook。MF 接入应优先使用 `@module-federation/observability-plugin` 能拿到的运行时 hook 和 observability 数据。如果现有 hook 不足，优先回到 Modern.js 或 MF 中补 hook，而不是在 OpenRuntime 里靠 DOM、console 或全局变量猜状态。
 
 ## 不要做什么
 

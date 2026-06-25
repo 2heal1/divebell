@@ -121,7 +121,7 @@ CLI 内部调用 `@vercel/next-browser`，但只依赖它的公开命令，不�
 
 `@vercel/next-browser` 作为 `@openruntime/cli` 的依赖，由 lockfile 固定版本。后续升级时只需要回归 CLI 浏览器命令。
 
-Core、Bridge、Modern.js plugin 和 MF runtimePlugin 的数据模型不因为这次集成改变。
+Core、Bridge、Modern.js plugin 和 MF observability 接入的数据模型不因为这次集成改变。
 
 ## 验收标准
 

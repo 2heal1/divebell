@@ -192,6 +192,11 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321
 接下来仍按原本排查思路判断问题，OpenRuntime 用来更快拿到可信事实、执行已声明动作、
 等待状态和查看失败原因。先把问题翻译成一个可验证的运行时事实：
 
+源码可改且目标是验证业务状态时，优先在最小业务范围补 target，并用 `updateSnapshot`
+写入真实状态，再用 `snapshot` / `wait-for` 验证。不要先用 DOM、`eval` 或截图猜业务结果。
+只有不能改源码、临时探索页面结构、确认 DOM/可访问性/视觉事实，或 target/action 暂时补不齐时，
+再使用页面查询能力确认现象。
+
 - 要验证的对象是什么：路由、loader 数据、业务组件、Garfish 子应用、
   MF remote/expose/shared，还是业务动作结果。
 - 成功和失败分别是什么：例如 `ready`、`mounted`、`success`、`loaded`、`error`。

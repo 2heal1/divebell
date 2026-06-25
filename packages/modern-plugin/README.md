@@ -177,6 +177,74 @@ When hydration enters `error`, `modern:ssr` becomes `invalidated` and
 `modern:app` becomes `error`. Later hydration success events do not overwrite
 the earlier hydration failure.
 
+## Garfish Targets
+
+The package also exports Garfish helpers for Modern.js / EdenX host
+applications that use Garfish:
+
+- `createOpenRuntimeGarfishReporter`
+- `createOpenRuntimeGarfishPlugin`
+- `createOpenRuntimeGarfishCustomLoader`
+
+Garfish is a singleton in the host page. Register the OpenRuntime Garfish
+plugin in the host application before `Garfish.run()` or before the first
+`Garfish.loadApp()`:
+
+```ts
+import {
+  createOpenRuntimeGarfishCustomLoader,
+  createOpenRuntimeGarfishPlugin,
+  createOpenRuntimeGarfishReporter,
+} from "@openruntime/modern-plugin";
+
+const reporter = createOpenRuntimeGarfishReporter();
+
+export const garfishOptions = {
+  plugins: [createOpenRuntimeGarfishPlugin({ reporter })],
+  customLoader: createOpenRuntimeGarfishCustomLoader({ reporter }),
+};
+```
+
+If the host already has a `customLoader`, pass it through `loader` so
+OpenRuntime can wrap it instead of replacing it.
+
+### `modern:garfish`
+
+Type: `modern.garfish`
+
+Aggregate Garfish sub-application state for the current page.
+
+### `modern:garfish:app:<name>`
+
+Type: `modern.garfish.app`
+
+Per-sub-application state. The target records Garfish lifecycle state and
+whether `provider.render` / `provider.destroy` was called through the
+OpenRuntime custom loader.
+
+Statuses:
+
+- `idle`: no Garfish app has been observed yet.
+- `registered`: the app was registered.
+- `loading`: Garfish started loading the app.
+- `loaded`: Garfish loaded the app instance.
+- `evaluating`: a sub-application script started executing.
+- `evaluated`: a sub-application script executed.
+- `mounting`: Garfish started mounting the app.
+- `rendering`: `provider.render` was called through the OpenRuntime custom
+  loader.
+- `mounted`: Garfish mount completed.
+- `unmounting`: Garfish started unmounting or `provider.destroy` was called.
+- `unmounted`: Garfish unmount completed.
+- `error`: load, script execution, mount, or unmount failed.
+
+Common waits:
+
+```sh
+pnpm exec openruntime wait-for modern:garfish:app:orders mounted
+pnpm exec openruntime events --target-id modern:garfish:app:orders --limit 50
+```
+
 ## Business Ready Target
 
 The package also exports helpers for business-owned readiness:

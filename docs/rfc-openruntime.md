@@ -445,7 +445,7 @@ runtime.unregisterTarget(targetId: string);
 
 调用方必须在注册时声明 `type` 和 `statuses`。OpenRuntime Core 不会为 route、remote、business 等对象补内置状态。
 
-框架接入应该在自己已经知道目标的时候尽早注册。例如 Modern.js plugin 在路由表生成后注册 route target，MF runtimePlugin 在 remotes 配置可用后注册 remote / expose / shared target，Garfish 接入在子应用注册信息可用后注册 sub-app target。
+框架接入应该在自己已经知道目标的时候尽早注册。例如 Modern.js plugin 在路由表生成后注册 route target，MF observability 接入在 remotes 配置可用后注册 remote / expose / shared target，Garfish 接入在子应用注册信息可用后注册 sub-app target。
 
 调用 `registerTarget` 不会让这个 target 出现在 Snapshot 里。只有后续调用 `updateSnapshot` 写入当前状态后，它才会出现在 `snapshot.targets` 中。
 
@@ -489,7 +489,7 @@ type UpdateSnapshotInput = {
 };
 ```
 
-必填字段只有 `id` 和 `status`。`type` 不再有默认值；如果传入 `type`，必须和已注册 target 的 `type` 一致。`source` 默认可以由 Runtime Client 补齐，例如业务侧默认 `business`，Modern.js plugin、MF runtimePlugin 和 Garfish 接入使用自己的 source。
+必填字段只有 `id` 和 `status`。`type` 不再有默认值；如果传入 `type`，必须和已注册 target 的 `type` 一致。`source` 默认可以由 Runtime Client 补齐，例如业务侧默认 `business`，Modern.js plugin、MF observability 接入和 Garfish 接入使用自己的 source。
 
 `updateSnapshot` 必须符合 target 声明的状态范围：
 
@@ -839,7 +839,7 @@ Modern.js plugin 负责提供框架层 ready，但不负责猜业务是否成功
 
 ### Module Federation
 
-MF 通过 OpenRuntime MF runtimePlugin 自动写入模块加载相关信息：
+MF 通过 `@module-federation/observability-plugin` 自动写入模块加载相关信息：
 
 - consumer name / role；
 - instance name；
@@ -851,21 +851,22 @@ MF 通过 OpenRuntime MF runtimePlugin 自动写入模块加载相关信息：
 - build id；
 - runtime error。
 
-OpenRuntime MF runtimePlugin 应该在 MF instance 初始化和 remotes 配置可用后，提前注册 consumer、remote、expose 和 shared target；随后把 manifest、remoteEntry、expose、shared 的加载过程更新到 snapshot 和 events。
+MF observability 接入应该在 MF instance 初始化和 remotes 配置可用后，提前注册 consumer、remote、expose 和 shared target；随后把 manifest、remoteEntry、expose、shared 的加载过程更新到 snapshot 和 events。
 
-MF 自身状态优先复用 MF Observability Plugin。OpenRuntime 不重复实现一套 MF 加载追踪，而是在 MF 侧提供一个 OpenRuntime MF runtimePlugin。如果现有 MF hook 不足以表达 OpenRuntime 需要的状态，应优先补齐 MF runtimePlugin 可使用的 hook。
+MF 自身状态优先复用 MF Observability Plugin。OpenRuntime 不重复实现一套 MF 加载追踪，也不在本仓库发布独立 MF 包。如果现有 MF hook 不足以表达 OpenRuntime 需要的状态，应优先补齐 MF observability 可使用的 hook。
 
 ### Garfish
 
-Garfish adapter 自动写入子应用加载和挂载相关信息：
+Garfish 主应用通过 `@openruntime/modern-plugin` 导出的 Garfish helpers 自动写入子应用加载和挂载相关信息：
 
 - sub-app 注册信息；
 - entry / provider 加载状态；
-- bootstrap / mount / unmount 状态；
+- script eval / provider render / provider destroy 状态；
+- mount / unmount 状态；
 - 子应用 runtime error；
 - 子应用与当前 route 的关系。
 
-Garfish 负责说明子应用是否加载和挂载成功，不判断子应用内部业务是否真正 ready。
+Garfish 接入负责说明子应用是否加载、执行、调用 provider、挂载和卸载成功，不判断子应用内部业务是否真正 ready。
 
 ### 业务代码
 

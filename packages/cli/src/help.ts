@@ -22,6 +22,16 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]",
+    description: "导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "open-runtime import-profile <content-or-path> | --input <path>",
+    description: "导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
   },

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { once } from "node:events";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createBridgeServer, type BridgeRuntimeInfo, type BridgeServer } from "@openruntime/bridge";
 import {
   createPackageInfo,
@@ -42,8 +45,18 @@ import {
 import { isEntryPoint } from "./entry.js";
 import { runVmokCommand } from "./extensions/vmok/index.js";
 import { createHelpText } from "./help.js";
+import {
+  exportAuthProfile,
+  exportChromeAuthProfile,
+  getProfileDirectory,
+  importProfile,
+  readProfileInput,
+  readProfileInputFile,
+  type ProfileExportResult
+} from "./profile.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
+const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
 
 export function getCliCommandName(): "open-runtime" {
   return "open-runtime";
@@ -62,6 +75,7 @@ export interface CliRunOptions {
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
+  exportChromeAuthProfile?: typeof exportChromeAuthProfile;
 }
 
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
@@ -88,6 +102,14 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
 
     if (args.command[0] === "stop") {
       return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), options.bridgeProcessController);
+    }
+
+    if (args.command[0] === "export-profile") {
+      return await runExportProfileCommand(args, stdout, browserRunner, options.exportChromeAuthProfile ?? exportChromeAuthProfile);
+    }
+
+    if (args.command[0] === "import-profile") {
+      return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -618,6 +640,99 @@ async function runStopCommand(
     bridge: bridgeResult
   });
   return 0;
+}
+
+async function runExportProfileCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner,
+  chromeAuthExporter: typeof exportChromeAuthProfile
+): Promise<number> {
+  const outputPath = getOptionValue(args, "output");
+  const domains = getProfileExportDomains(args);
+  if (hasOption(args, "full")) {
+    throw new Error("--full is not supported by export-profile. Use --domain <domain> to narrow account export.");
+  }
+  const source = getProfileExportSource(args);
+  if (source === "chrome") {
+    const result = await chromeAuthExporter({
+      ...(outputPath === undefined ? {} : { outputPath }),
+      ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
+      ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile")),
+      ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
+      ...(domains.length === 0 ? {} : { domains })
+    });
+    stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
+    return 0;
+  }
+
+  await closeBrowserForProfileCommand(browserRunner);
+  const profileDirectory = getProfileDirectory();
+  const result = await exportAuthProfile({
+    profileDirectory,
+    ...(outputPath === undefined ? {} : { outputPath }),
+    ...(domains.length === 0 ? {} : { domains })
+  });
+
+  stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
+  return 0;
+}
+
+async function getPrintableProfileExportResult(result: ProfileExportResult): Promise<string> {
+  if (result.path !== undefined) return result.path;
+  if (result.content === undefined) {
+    throw new Error("Profile export did not return content.");
+  }
+  if (result.content.length <= PROFILE_INLINE_OUTPUT_MAX_CHARS) return result.content;
+
+  const directory = await mkdtemp(join(tmpdir(), "openruntime-profile-export-"));
+  const path = join(directory, "openruntime-profile.oprprofile");
+  await writeFile(path, `${result.content}\n`, {
+    encoding: "utf8",
+    mode: 0o600
+  });
+  return path;
+}
+
+function getProfileExportDomains(args: ParsedCliArgs): string[] {
+  const domains = getOptionValues(args, "domain");
+  if (domains.some((domain) => domain.trim().length === 0 || domain === "true")) {
+    throw new Error("--domain requires a domain value.");
+  }
+  return domains;
+}
+
+function getProfileExportSource(args: ParsedCliArgs): "chrome" | "openruntime" {
+  const source = getOptionValue(args, "source") ?? "chrome";
+  if (source !== "chrome" && source !== "openruntime") {
+    throw new Error("--source must be chrome or openruntime.");
+  }
+  return source;
+}
+
+async function runImportProfileCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  await closeBrowserForProfileCommand(browserRunner);
+  const inputPath = getOptionValue(args, "input");
+  const input = inputPath === undefined
+    ? await readProfileInput(args.command[1])
+    : await readProfileInputFile(inputPath);
+  const result = await importProfile({
+    input,
+    profileDirectory: getProfileDirectory()
+  });
+  writeJson(stdout, result);
+  return 0;
+}
+
+async function closeBrowserForProfileCommand(browserRunner: BrowserRunner): Promise<void> {
+  const result = await browserRunner.run(["close"]);
+  if (result.exitCode !== 0) {
+    throw new Error(result.stderr.trim() || result.stdout.trim() || "Could not close OpenRuntime browser.");
+  }
 }
 
 function createBridgeUrl(args: ParsedCliArgs): string {

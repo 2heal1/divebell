@@ -4,6 +4,10 @@ Use this reference when diagnosing Module Federation remote, expose, shared, pre
 
 MF consumers should use `@module-federation/observability-plugin`. The plugin records remote, expose, shared, preload, and report data that OpenRuntime can expose as targets and actions.
 
+If a project uses Module Federation, Vmok, or a remote/shared/expose based micro-frontend setup, and the task is to diagnose remote, expose, shared, or loading-chain behavior, first check whether the consumer already has the observability plugin wired. Look for `@module-federation/observability-plugin` in package files and for runtime plugin wiring in the MF consumer config.
+
+If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.
+
 ## Browser Runtime Setup
 
 ```bash

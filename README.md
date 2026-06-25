@@ -49,6 +49,31 @@ pnpm exec openruntime network
 pnpm exec openruntime network --url /api/orders
 ```
 
+排查必须复用用户账号的问题时，可以让用户从本机 Chrome 导出账号状态：
+
+```sh
+pnpm exec openruntime export-profile
+pnpm exec openruntime import-profile <复制到的内容>
+```
+
+导出内容较短时会直接打印；内容较长时会自动写入临时文件并打印文件路径，再用 `import-profile --input <path>` 导入。
+
+如果用户有多个 Chrome profile，可以指定 Chrome 的 profile 名称、目录名或邮箱：
+
+```sh
+pnpm exec openruntime export-profile --chrome-profile "Profile 1"
+pnpm exec openruntime export-profile --chrome-profile user@example.com
+```
+
+如果只需要某个站点的登录状态，可以按域名导出。这个模式会访问对应域名后导出相关 Cookie、localStorage 和 IndexedDB，避免扫描所有站点：
+
+```sh
+pnpm exec openruntime export-profile --domain github.com --output /tmp/openruntime-github.oprprofile
+pnpm exec openruntime import-profile --input /tmp/openruntime-github.oprprofile
+```
+
+`--domain` 可以和 `--chrome-profile`、`--chrome-user-data-dir`、`--timeout` 一起使用。带 `--domain` 时会先复制一份临时 profile，再用同域名的本地空页面读取账号状态，通常不需要退出正在使用的 Chrome，也不会真实请求目标站点。不带 `--domain` 的全量账号状态导出仍然需要先完全退出 Chrome。
+
 根目录命令：
 
 1. `pnpm build`：构建所有基础包。

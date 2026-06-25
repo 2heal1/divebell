@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
@@ -10,6 +10,7 @@ import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
+import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "open-runtime");
@@ -33,6 +34,8 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /open-runtime actions .*--name <name>/);
   assert.match(output.text(), /open-runtime open <url> .*--ui/);
+  assert.match(output.text(), /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--chrome-profile <name>/);
+  assert.match(output.text(), /open-runtime import-profile <content-or-path> \| --input <path>/);
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /open-runtime wait-for .*--next/);
@@ -78,6 +81,8 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
+  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
@@ -90,6 +95,8 @@ test("generates the skill CLI command section from the help table", () => {
 
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /open-runtime open <url>/);
+  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
+  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
   assert.match(markdown, /open-runtime get-window <path>/);
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
@@ -120,6 +127,152 @@ test("uses the default OpenRuntime browser profile directory", () => {
   const env = createNextBrowserEnvironment({});
 
   assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+});
+
+test("resolves the last used local Chrome profile by default", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-chrome-profile-"));
+  try {
+    mkdirSync(join(tempDir, "Default"), {
+      recursive: true
+    });
+    mkdirSync(join(tempDir, "Profile 1"), {
+      recursive: true
+    });
+    writeFileSync(join(tempDir, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Profile 1",
+        info_cache: {
+          Default: {
+            name: "匿名",
+            user_name: ""
+          },
+          "Profile 1": {
+            name: "work",
+            user_name: "work@example.com"
+          }
+        }
+      }
+    }));
+
+    assert.equal(resolveChromeProfile({
+      userDataDirectory: tempDir,
+      env: {
+        HOME: tempDir
+      },
+      platform: "darwin"
+    }).profileDirectoryName, "Profile 1");
+    assert.equal(resolveChromeProfile({
+      userDataDirectory: tempDir,
+      profile: "work@example.com"
+    }).profileDirectoryName, "Profile 1");
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("fails fast when the local Chrome profile is already in use", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-chrome-profile-lock-"));
+  try {
+    mkdirSync(join(tempDir, "Profile 1"), {
+      recursive: true
+    });
+    writeFileSync(join(tempDir, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Profile 1",
+        info_cache: {
+          "Profile 1": {
+            name: "work",
+            user_name: "work@example.com"
+          }
+        }
+      }
+    }));
+    writeFileSync(join(tempDir, "SingletonLock"), "");
+
+    await assert.rejects(
+      exportChromeAuthProfile({
+        userDataDirectory: tempDir
+      }),
+      /Could not read Chrome profile "work \/ work@example\.com \/ Profile 1"\. Chrome profile is currently in use\. Quit Google Chrome and retry\./
+    );
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("filters exported auth state by domain", () => {
+  assert.deepEqual(filterStorageStateByDomains({
+    cookies: [
+      {
+        name: "github-session",
+        domain: ".github.com",
+        path: "/"
+      },
+      {
+        name: "api-session",
+        domain: "api.github.com",
+        path: "/"
+      },
+      {
+        name: "npm-session",
+        domain: "npmjs.com",
+        path: "/"
+      }
+    ],
+    origins: [
+      {
+        origin: "https://github.com",
+        localStorage: [
+          {
+            name: "theme",
+            value: "dark"
+          }
+        ]
+      },
+      {
+        origin: "https://gist.github.com",
+        localStorage: []
+      },
+      {
+        origin: "https://npmjs.com",
+        localStorage: []
+      }
+    ]
+  }, ["github.com"]), {
+    cookies: [
+      {
+        name: "github-session",
+        domain: ".github.com",
+        path: "/"
+      },
+      {
+        name: "api-session",
+        domain: "api.github.com",
+        path: "/"
+      }
+    ],
+    origins: [
+      {
+        origin: "https://github.com",
+        localStorage: [
+          {
+            name: "theme",
+            value: "dark"
+          }
+        ]
+      },
+      {
+        origin: "https://gist.github.com",
+        localStorage: []
+      }
+    ]
+  });
 });
 
 test("passes keyword query to events", async () => {
@@ -191,6 +344,104 @@ test("keeps the persistent profile when next-browser closes its temporary profil
       force: true
     });
   }
+});
+
+test("exports local Chrome auth profile by default", async () => {
+  const output = createOutput();
+  let chromeOptions: unknown;
+  let browserWasClosed = false;
+  const exitCode = await runCli([
+    "export-profile",
+    "--chrome-profile",
+    "work@example.com",
+    "--chrome-user-data-dir",
+    "/tmp/chrome-user-data",
+    "--domain",
+    "github.com",
+    "--timeout",
+    "120000",
+    "--output",
+    "/tmp/chrome-auth.oprprofile"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => {
+      browserWasClosed = true;
+      return {
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      };
+    }),
+    exportChromeAuthProfile: async (options) => {
+      chromeOptions = options;
+      return {
+        kind: "auth",
+        path: "/tmp/chrome-auth.oprprofile"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.equal(output.text(), "/tmp/chrome-auth.oprprofile\n");
+  assert.equal(browserWasClosed, false);
+  assert.deepEqual(chromeOptions, {
+    outputPath: "/tmp/chrome-auth.oprprofile",
+    userDataDirectory: "/tmp/chrome-user-data",
+    profile: "work@example.com",
+    timeout: 120000,
+    domains: ["github.com"]
+  });
+});
+
+test("writes oversized profile export content to a temporary file", async () => {
+  const output = createOutput();
+  const content = `openruntime-profile:v1:auth:${"a".repeat(40_000)}`;
+  const exitCode = await runCli(["export-profile"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exportChromeAuthProfile: async () => ({
+      kind: "auth",
+      content
+    })
+  });
+  const path = output.text().trim();
+
+  try {
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.match(path, /openruntime-profile-export-.+\/openruntime-profile\.oprprofile$/);
+    assert.equal(readFileSync(path, "utf8"), `${content}\n`);
+  } finally {
+    if (path.includes("openruntime-profile-export-") && existsSync(path)) {
+      rmSync(dirname(path), {
+        recursive: true,
+        force: true
+      });
+    }
+  }
+});
+
+test("rejects full profile export", async () => {
+  const output = createOutput();
+  let chromeWasRead = false;
+  const exitCode = await runCli(["export-profile", "--full"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    exportChromeAuthProfile: async () => {
+      chromeWasRead = true;
+      return {
+        kind: "auth",
+        content: "unexpected"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.text(), "");
+  assert.match(output.errorText(), /--full is not supported by export-profile/);
+  assert.equal(chromeWasRead, false);
 });
 
 test("prints runtimes from the configured bridge", async () => {

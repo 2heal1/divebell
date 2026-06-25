@@ -20,7 +20,7 @@ export interface BrowserRunner {
   run(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
 }
 
-const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
+export const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
 const NEXT_BROWSER_PROFILE_ENV = "OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR";
 
 export interface NextBrowserRunnerOptions {
@@ -58,14 +58,21 @@ export function createDefaultBrowserProfileDirectory(): string {
   return join(homedir(), ".openruntime", "browser-profile");
 }
 
+export function resolveBrowserProfileDirectory(
+  baseEnv: NodeJS.ProcessEnv = process.env,
+  profileDirectory?: string
+): string {
+  return resolve(
+    profileDirectory ?? baseEnv[OPENRUNTIME_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
+  );
+}
+
 export function createNextBrowserEnvironment(
   baseEnv: NodeJS.ProcessEnv,
   profileDirectory?: string,
   options: BrowserRunOptions = {}
 ): NodeJS.ProcessEnv {
-  const resolvedProfileDirectory = resolve(
-    profileDirectory ?? baseEnv[OPENRUNTIME_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
-  );
+  const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
   const envWithoutBrowserMode = { ...baseEnv };
   delete envWithoutBrowserMode.NEXT_BROWSER_HEADLESS;
 

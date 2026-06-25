@@ -51,6 +51,12 @@ OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 - `@module-federation/observability-plugin`：MF 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
 
 项目还没接入时，先补页面侧最小 target/action/snapshot，再用 Bridge 和 CLI 验证。
+如果项目使用 Module Federation、Vmok 或基于 remote/shared/expose 的微前端能力，并且任务目标是排查
+remote、expose、shared、MF 加载链路或 Vmok 远程模块，先检查是否已经接入
+`@module-federation/observability-plugin`。如果没有 `mf:*` target，且源码可改，优先把
+observability plugin 接到 MF 消费者或对应 runtime plugin 上，再用 `targets`、`snapshot`、
+`events` 和 `wait-for` 读取结构化结果。不能改源码时，明确说明缺少 MF observability，
+再退回 console、network、错误码和 MF 配置排查。
 项目已安装 CLI 后，常用入口是：
 
 ```bash
@@ -103,6 +109,8 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
+- `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
+- `open-runtime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `open-runtime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
@@ -184,6 +192,11 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321
 接下来仍按原本排查思路判断问题，OpenRuntime 用来更快拿到可信事实、执行已声明动作、
 等待状态和查看失败原因。先把问题翻译成一个可验证的运行时事实：
 
+源码可改且目标是验证业务状态时，优先在最小业务范围补 target，并用 `updateSnapshot`
+写入真实状态，再用 `snapshot` / `wait-for` 验证。不要先用 DOM、`eval` 或截图猜业务结果。
+只有不能改源码、临时探索页面结构、确认 DOM/可访问性/视觉事实，或 target/action 暂时补不齐时，
+再使用页面查询能力确认现象。
+
 - 要验证的对象是什么：路由、loader 数据、业务组件、Garfish 子应用、
   MF remote/expose/shared，还是业务动作结果。
 - 成功和失败分别是什么：例如 `ready`、`mounted`、`success`、`loaded`、`error`。
@@ -197,6 +210,10 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321
 
 分段时优先使用已有 target：页面和框架状态看 runtime / Modern.js target，数据状态看
 loader 或业务 target，远程模块看 MF target，业务结果看业务 target 或 action 结果 target。
+如果远程模块问题来自 Module Federation 或 Vmok，但查不到 `mf.remote`、`mf.remote.expose`、
+`mf.shared` 或 `mf.shared.conflict` target，先判断项目是否缺少
+`@module-federation/observability-plugin`。源码可改时，先接入 MF observability，再继续定位；
+不要在缺少 MF target 的情况下直接用 DOM 猜 remote/shared/expose 的加载结果。
 如果某一段没有信号且源码可改，先在失败链路的稳定上一级补最小 target，再用
 `updateSnapshot` 写入 `pending`、`ready` 或 `error`，让后续 `wait-for` 直接等待这个
 最小 target。

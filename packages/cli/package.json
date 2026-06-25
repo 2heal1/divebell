@@ -34,7 +34,8 @@
   "dependencies": {
     "@openruntime/bridge": "workspace:^",
     "@openruntime/core": "workspace:^",
-    "@vercel/next-browser": "0.7.1"
+    "@vercel/next-browser": "0.7.1",
+    "playwright": "1.60.0"
   },
   "devDependencies": {
     "@rstest/core": "0.10.3"

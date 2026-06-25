@@ -39,7 +39,15 @@ opr stop
 
 浏览器登录态、Cookie 和本地存储默认保存在 `~/.openruntime/browser-profile`。再次执行 `open-runtime open <url>` 或关闭后重新打开时，会继续使用这份 OpenRuntime 自己的 profile。
 
-CLI 不默认复用系统 Chrome 的默认 profile，避免和用户正在使用的 Chrome 互相锁定或污染日常浏览数据。如需指定独立 profile 目录，可以设置 `OPENRUNTIME_BROWSER_PROFILE_DIR=/path/to/profile` 后再启动 CLI。切换 profile 目录前需要先执行 `open-runtime close`。
+CLI 打开页面时不直接复用系统 Chrome 的默认 profile，避免和用户正在使用的 Chrome 互相锁定或污染日常浏览数据。如需指定独立 profile 目录，可以设置 `OPENRUNTIME_BROWSER_PROFILE_DIR=/path/to/profile` 后再启动 CLI。切换 profile 目录前需要先执行 `open-runtime close`。
+
+`open-runtime export-profile` 默认从本机 Google Chrome 的最近使用 profile 导出账号状态，包含 Cookie、本地存储和 IndexedDB。导出内容较短时会直接打印；内容较长时会自动写入临时文件并打印文件路径。另一台机器或另一个 Agent 侧执行 `open-runtime import-profile <content>` 或 `open-runtime import-profile --input <path>` 后，后续 `open-runtime open <url>` 会默认带上这份账号状态。
+
+如果 Chrome 里有多个 profile，可以用 `open-runtime export-profile --chrome-profile <name>` 指定目录名、显示名或邮箱。也可以用 `--chrome-user-data-dir <path>` 指定 Chrome 用户数据目录。不带 `--domain` 的全量导出需要 Chrome profile 没有被正在运行的 Chrome 锁住；如果失败，先关闭 Google Chrome 后重试。
+
+可以用 `open-runtime export-profile --domain github.com` 只导出指定站点相关的 Cookie、本地存储和 IndexedDB。这个模式会先复制一份临时 Chrome profile，再用 `https://<domain>/` 的本地空页面读取对应站点状态，避免真实访问目标站点，也避免扫描全量站点存储，通常不需要退出正在使用的 Chrome。这个参数可以重复使用，例如同时导出 `github.com` 和 `githubusercontent.com`。如果需要固定文件路径，可以加 `--output <path>`，再用 `open-runtime import-profile --input <path>` 导入。
+
+`open-runtime export-profile --source openruntime` 会导出 OpenRuntime 自己浏览器里保存的账号状态，也支持配合 `--domain <domain>` 缩小导出范围。
 
 如果默认端口被别的服务占用，命令会失败，并提示使用 `--bridge` 或 `--port` 换一个 Bridge 地址。
 

@@ -12,99 +12,101 @@ Runtime API for AI-powered development.
 
 ---
 
+English | [中文](./README.zh-CN.md)
+
 # OpenRuntime
 
-OpenRuntime 是一套面向 Agent 的前端 **Runtime API**。
+OpenRuntime is a frontend **Runtime API** for Agents.
 
-它定义了一组统一的运行时接口，让应用能够把自己的运行状态、关键事件以及可执行动作，以结构化方式开放给 Agent，而不是让 Agent 只能依赖 DOM、截图、Console 或 Network 去猜测页面当前发生了什么。
+It defines a unified set of runtime interfaces that allow applications to expose their runtime state, key events, and executable actions to Agents in a structured way, instead of forcing Agents to infer what is happening on the page from the DOM, screenshots, Console, or Network alone.
 
-OpenRuntime 定义了五类核心 Runtime API：
+OpenRuntime defines five core Runtime APIs:
 
-- **Target** —— 声明页面里有哪些对象可以被引用、等待或观测
-- **Snapshot** —— 读取页面当前运行状态
-- **Event** —— 读取运行过程中的关键事件
-- **Action** —— 声明页面允许 Agent 调用的业务动作
-- **waitFor** —— 等待指定 Target 到达目标状态
+- **Target** — declares which objects on the page can be referenced, waited for, or observed
+- **Snapshot** — reads the current runtime state of the page
+- **Event** — reads key events produced during runtime
+- **Action** — declares business actions that the page allows Agents to invoke
+- **waitFor** — waits for a specific Target to reach a target state
 
-这些 API 组成了一套统一的 Runtime 协议。
+Together, these APIs form a unified Runtime protocol.
 
-无论页面使用 React、Modern.js、Module Federation、Garfish，还是普通前端项目，都可以通过 OpenRuntime 暴露自己的运行时语义，让不同 Agent 使用同一套 API 完成验证、调试和自动化。
+Whether a page is built with React, Modern.js, Module Federation, Garfish, or a regular frontend stack, it can use OpenRuntime to expose its runtime semantics, allowing different Agents to validate, debug, and automate with the same API set.
 
 ---
 
 ## Why OpenRuntime
 
-今天，大多数 AI Coding Agent 已经能够：
+Today, most AI Coding Agents can already:
 
-- 修改代码
-- 启动项目
-- 打开浏览器
-- 操作页面
+- modify code
+- start projects
+- open browsers
+- interact with pages
 
-但在验证页面是否真正修复时，它们仍然主要依赖：
+However, when verifying whether a page has actually been fixed, they still mainly rely on:
 
 - DOM
-- Screenshot
+- Screenshots
 - Console
 - Network
 - Browser Automation
 
-这些信息只能反映页面表现，却很难回答真正重要的问题：
+These signals reflect how the page appears externally, but they struggle to answer the questions that truly matter:
 
-- 页面现在真正处于什么状态？
-- 哪一步没有完成？
-- 哪个模块阻塞了页面？
-- 哪些动作允许 Agent 执行？
-- Agent 应该等待什么，而不是不断轮询页面？
+- What state is the page really in right now?
+- Which step has not completed?
+- Which module is blocking the page?
+- Which actions is the Agent allowed to execute?
+- What should the Agent wait for instead of continuously polling the page?
 
-因此，大量验证过程仍然建立在"猜测"之上。
+As a result, many validation flows are still built on top of "guessing".
 
-OpenRuntime 希望把这些业务语义直接开放出来，让 Agent 可以依据 Runtime，而不是依据页面外观做判断。
+OpenRuntime aims to expose these business semantics directly, so Agents can make decisions based on Runtime information instead of page appearance.
 
 ---
 
 ## Runtime API + Browser Control
 
-Runtime API 是 OpenRuntime 的核心能力。
+Runtime API is the core capability of OpenRuntime.
 
-除此之外，OpenRuntime 还提供 CLI 与本地 Bridge，让 Agent 可以直接访问这些 Runtime API。
+In addition, OpenRuntime provides a CLI and local Bridge, enabling Agents to access these Runtime APIs directly.
 
-CLI 同时提供浏览器控制能力，包括：
+The CLI also provides browser control capabilities, including:
 
-- 打开页面
-- 页面跳转
-- 点击
-- 输入
-- 截图
-- 查看 Network
-- 查看 Console
-- 导入和导出浏览器 Profile
+- opening pages
+- navigation
+- clicking
+- typing
+- taking screenshots
+- inspecting Network
+- inspecting Console
+- importing and exporting browser profiles
 
-浏览器能力负责进入页面和收集外部信息。
+Browser capabilities are responsible for entering pages and collecting external information.
 
-Runtime API 则负责提供页面内部真实的运行状态。
+Runtime API is responsible for providing the real internal runtime state of the page.
 
-对于 Agent，更推荐优先读取 Runtime API，再结合浏览器能力完成验证，而不是完全依赖浏览器自动化。
+For Agents, it is recommended to read Runtime API first and then combine it with browser capabilities for validation, instead of relying entirely on browser automation.
 
 ---
 
 ## Example
 
-例如，一个已经接入 OpenRuntime 的 Release Notes 页面可以声明：
+For example, a Release Notes page integrated with OpenRuntime can declare:
 
-Target：
+Target:
 
 ```text
 docs:release-notes
 ```
 
-Action：
+Action:
 
 ```text
 release-note.list-latest
 ```
 
-Agent 获取最新 Release Notes 时，可以按固定流程执行：
+When an Agent retrieves the latest Release Notes, it can follow a stable flow:
 
 ```sh
 openruntime start
@@ -122,17 +124,17 @@ openruntime run-action \
   --payload '{"limit":3}'
 ```
 
-这里的 Target 和 Action 都由页面声明。
+Both the Target and Action here are declared by the page.
 
-Agent 不需要分析 DOM，也不需要寻找按钮，只需要调用统一 Runtime API 即可获得结果。
+The Agent does not need to analyze the DOM or look for buttons. It only needs to call the unified Runtime API to get the result.
 
-团队也可以进一步把这些步骤封装成自己的命令：
+Teams can further wrap these steps into their own commands:
 
 ```sh
 open-runtime release-note latest --limit 3
 ```
 
-这样，页面能力就真正成为 Agent 可以稳定调用的 Runtime，而不是一次性的浏览器脚本。
+This turns page capabilities into a stable Runtime that Agents can call, rather than one-off browser scripts.
 
 ---
 

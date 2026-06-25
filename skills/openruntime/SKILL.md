@@ -2,7 +2,7 @@
 name: openruntime
 description: >-
   帮助已接入或准备接入 OpenRuntime 的项目把页面、组件、业务动作、
-  Modern.js 和 Module Federation 状态暴露成 target/action/snapshot，
+  Modern.js、Garfish 和 Module Federation 状态暴露成 target/action/snapshot，
   并用 CLI 读取、执行、等待和诊断。Use when a task explicitly asks to
   use, evaluate, integrate, or troubleshoot OpenRuntime/@openruntime, or
   needs runtime evidence for frontend behavior.
@@ -33,7 +33,7 @@ OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 - 需要确认页面、路由、loader、组件、业务状态、远程模块或共享依赖是否 ready。
 - 需要执行页面声明的安全动作，然后等待结果。
 - 需要通过 CLI 打开页面、跳转、点击、填写、读取 console、DOM/window、截图并结合内部状态验证。
-- 需要排查 Modern.js 或 Module Federation 的运行时状态。
+- 需要排查 Modern.js、Garfish 或 Module Federation 的运行时状态。
 - 需要验证某个改动是否生效，或某个问题是否解决了，并通过 log 或者全局变量来验证的时候。
 
 如果任务只是普通浏览器自动化，且没有要求 OpenRuntime、项目也没有 OpenRuntime
@@ -48,13 +48,14 @@ OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 - `@openruntime/bridge`：让页面 runtime 和 Agent 侧 CLI 跨进程通信。
 - `@openruntime/cli`：Agent 侧读取状态、执行 action、等待 target。
 - `@openruntime/modern-plugin`：Modern.js 项目自动暴露 route、loader、SSR、hydration 等状态。
+- `@openruntime/modern-plugin` 的 Garfish 工具：主应用接入后暴露 Garfish 子应用加载、执行、挂载和错误状态。
 - `@module-federation/observability-plugin`：MF 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
 
 项目还没接入时，先补页面侧最小 target/action/snapshot，再用 Bridge 和 CLI 验证。
 如果项目使用 Module Federation、Vmok 或基于 remote/shared/expose 的微前端能力，并且任务目标是排查
 remote、expose、shared、MF 加载链路或 Vmok 远程模块，先检查是否已经接入
 `@module-federation/observability-plugin`。如果没有 `mf:*` target，且源码可改，优先把
-observability plugin 接到 MF 消费者或对应 runtime plugin 上，再用 `targets`、`snapshot`、
+observability plugin 接到 MF 消费者配置上，再用 `targets`、`snapshot`、
 `events` 和 `wait-for` 读取结构化结果。不能改源码时，明确说明缺少 MF observability，
 再退回 console、network、错误码和 MF 配置排查。
 项目已安装 CLI 后，常用入口是：
@@ -209,7 +210,8 @@ pnpm exec openruntime snapshot --bridge http://localhost:17321
 范围前反复查完整 DOM 或完整 snapshot。
 
 分段时优先使用已有 target：页面和框架状态看 runtime / Modern.js target，数据状态看
-loader 或业务 target，远程模块看 MF target，业务结果看业务 target 或 action 结果 target。
+loader 或业务 target，Garfish 子应用看 `modern:garfish:*` target，远程模块看 MF target，
+业务结果看业务 target 或 action 结果 target。
 如果远程模块问题来自 Module Federation 或 Vmok，但查不到 `mf.remote`、`mf.remote.expose`、
 `mf.shared` 或 `mf.shared.conflict` target，先判断项目是否缺少
 `@module-federation/observability-plugin`。源码可改时，先接入 MF observability，再继续定位；
@@ -275,6 +277,8 @@ Module Federation shared 单例多版本冲突会暴露为
 当前 snapshot 和相关 events，再决定是否继续。
 
 路由、loader、SSR、hydration 看 `modern:route`、`modern:ssr`、`modern:hydration`；
+Garfish 子应用加载、脚本执行、provider render 调用、挂载和卸载看 `modern:garfish`
+或 `modern:garfish:app:<name>`；
 Module Federation 看 remote、expose、shared 对应的 MF target。已有 Modern.js / MF
 target 足够证明结果时，不要额外补业务 snapshot。`modern:route ready` 只说明路由
 到达目标状态，不等于业务组件、远程模块、接口数据或业务动作结果已经 ready；这些结果
@@ -360,6 +364,7 @@ Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结�
 - OpenRuntime 已经给出明确 error 后，继续等不存在的按钮、截图或重复查询同一批元素。
 
 Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见
-`references/modernjs.md`。Module Federation remote、expose、shared 和
+`references/modernjs.md`。Garfish 子应用 runtime 观测和接入方式见
+`references/garfish.md`。Module Federation remote、expose、shared 和
 observability report 用法见 `references/module-federation.md`。只有排查对应
 运行时状态时再读取这些文件。

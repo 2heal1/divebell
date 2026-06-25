@@ -136,11 +136,6 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
 - `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
-### 扩展命令
-
-- `open-runtime vmok get-module-info [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target <target-id>]` - 从 OpenRuntime snapshot target 读取 VMOK module info。
-- `open-runtime vmok get-instance <name>` - 从页面读取某个 VMOK runtime instance。
-
 ### 示例
 
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
@@ -149,8 +144,6 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime console --level error --limit 50` - 查看最近浏览器 console 错误。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。
-- `open-runtime vmok get-module-info` - 从默认 target 读取 VMOK module info。
-- `open-runtime vmok get-instance shell` - 按名称读取一个 VMOK 浏览器实例。
 
 ## 如何使用
 

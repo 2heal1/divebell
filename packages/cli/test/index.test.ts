@@ -6,7 +6,13 @@ import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
-import { cliPackageInfo, getCliCommandName, runCli } from "../dist/index.js";
+import {
+  cliPackageInfo,
+  createOpenRuntimeCli,
+  getCliCommandName,
+  runCli,
+  type OpenRuntimeCliExtension
+} from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
@@ -39,8 +45,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /open-runtime network \[--url <query>\]/);
   assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /open-runtime wait-for .*--next/);
-  assert.match(output.text(), /open-runtime vmok get-module-info .*--target <target-id>/);
-  assert.match(output.text(), /open-runtime vmok get-instance <name>/);
+  assert.doesNotMatch(output.text(), /open-runtime vmok /);
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -87,7 +92,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /open-runtime vmok get-module-info/);
+  assert.doesNotMatch(markdown, /open-runtime vmok /);
 });
 
 test("generates the skill CLI command section from the help table", () => {
@@ -101,6 +106,97 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /open-runtime network \[--url <query>\]/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /open-runtime vmok /);
+});
+
+test("registers an extension command and merges its help entries", async () => {
+  const extension: OpenRuntimeCliExtension = {
+    name: "demo",
+    commandReferences: [
+      {
+        category: "Extensions",
+        usage: "open-runtime demo ping [--url <url>]",
+        description: "Runs a demo extension command."
+      }
+    ],
+    exampleReferences: [
+      {
+        command: "open-runtime demo ping",
+        description: "Runs the demo extension."
+      }
+    ],
+    run: async ({ args, stdout, bridgeUrl, runtimeSelector }) => {
+      stdout.write(`${JSON.stringify({
+        command: args.command,
+        bridgeUrl,
+        runtimeSelector
+      })}\n`);
+      return 0;
+    }
+  };
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+
+  assert.match(cli.createHelpText(), /open-runtime demo ping/);
+  assert.deepEqual(cli.getCommandReferences().at(-1), extension.commandReferences?.[0]);
+  assert.deepEqual(cli.getExampleReferences().at(-1), extension.exampleReferences?.[0]);
+
+  const output = createOutput();
+  const exitCode = await cli.run([
+    "demo",
+    "ping",
+    "--bridge",
+    "http://bridge.test",
+    "--session",
+    "session-1",
+    "--url",
+    "http://app.test/"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), {
+    command: ["demo", "ping"],
+    bridgeUrl: "http://bridge.test",
+    runtimeSelector: {
+      sessionId: "session-1",
+      url: "http://app.test/?openruntimeSessionId=session-1"
+    }
+  });
+});
+
+test("rejects extensions that conflict with built-in commands", () => {
+  assert.throws(
+    () => createOpenRuntimeCli({
+      extensions: [
+        {
+          name: "snapshot",
+          run: async () => 0
+        }
+      ]
+    }),
+    /conflicts with a built-in command/
+  );
+});
+
+test("rejects duplicate extension command names", () => {
+  assert.throws(
+    () => createOpenRuntimeCli({
+      extensions: [
+        {
+          name: "demo",
+          run: async () => 0
+        },
+        {
+          name: "demo",
+          run: async () => 0
+        }
+      ]
+    }),
+    /registered more than once/
+  );
 });
 
 test("configures next-browser with a persistent OpenRuntime profile", () => {
@@ -700,144 +796,6 @@ test("selects runtime by session from the runtime url when sessionId is not expo
 
   assert.equal(exitCode, 0);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-orders");
-});
-
-test("prints VMOK module info from the module info target", async () => {
-  const calls: string[] = [];
-  const output = createOutput();
-  const exitCode = await runCli([
-    "vmok",
-    "get-module-info",
-    "--bridge",
-    "http://bridge.test",
-    "--url",
-    "http://app.test/"
-  ], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    fetcher: async (url) => {
-      calls.push(String(url));
-      if (String(url).endsWith("/runtimes")) {
-        return jsonResponse({
-          runtimes: [
-            {
-              runtimeId: "runtime-1",
-              url: "http://app.test/",
-              status: "connected",
-              connectedAt: 1,
-              lastSeenAt: 2
-            }
-          ]
-        });
-      }
-
-      assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/snapshot?id=vmok%3Amodule-info");
-      return jsonResponse({
-        targets: {
-          "vmok:module-info": {
-            id: "vmok:module-info",
-            type: "vmok.module-info",
-            status: "ready",
-            source: "vmok",
-            updatedAt: 10,
-            data: {
-              modules: [
-                {
-                  name: "risk-dashboard",
-                  version: "1.0.0"
-                }
-              ]
-            }
-          }
-        },
-        latestEventId: 1,
-        capturedAt: 20
-      });
-    }
-  });
-
-  assert.equal(exitCode, 0);
-  assert.deepEqual(calls, [
-    "http://bridge.test/runtimes",
-    "http://bridge.test/runtimes/runtime-1/snapshot?id=vmok%3Amodule-info"
-  ]);
-  assert.deepEqual(JSON.parse(output.text()), {
-    runtime: {
-      runtimeId: "runtime-1",
-      url: "http://app.test/",
-      status: "connected",
-      connectedAt: 1,
-      lastSeenAt: 2
-    },
-    result: {
-      targetId: "vmok:module-info",
-      status: "ready",
-      updatedAt: 10,
-      moduleInfo: {
-        modules: [
-          {
-            name: "risk-dashboard",
-            version: "1.0.0"
-          }
-        ]
-      },
-      target: {
-        id: "vmok:module-info",
-        type: "vmok.module-info",
-        status: "ready",
-        source: "vmok",
-        updatedAt: 10,
-        data: {
-          modules: [
-            {
-              name: "risk-dashboard",
-              version: "1.0.0"
-            }
-          ]
-        }
-      }
-    }
-  });
-});
-
-test("prints VMOK instance from a browser eval script file", async () => {
-  const output = createOutput();
-  let script = "";
-  const exitCode = await runCli([
-    "vmok",
-    "get-instance",
-    "shell"
-  ], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      assert.equal(args[0], "eval");
-      assert.equal(args[1], "--file");
-      const scriptPath = args[2];
-      assert.equal(typeof scriptPath, "string");
-      script = readFileSync(scriptPath as string, "utf8");
-      return {
-        exitCode: 0,
-        stdout: JSON.stringify({
-          name: "shell",
-          version: "1.0.0"
-        }),
-        stderr: ""
-      };
-    })
-  });
-
-  assert.equal(exitCode, 0);
-  assert.match(script, /window\.__VMOK__\.instances\.find\(i=>i\.name==='shell'\)/);
-  assert.deepEqual(JSON.parse(output.text()), {
-    result: {
-      name: "shell",
-      value: {
-        name: "shell",
-        version: "1.0.0"
-      }
-    }
-  });
 });
 
 test("runs execution commands against the selected runtime", async () => {

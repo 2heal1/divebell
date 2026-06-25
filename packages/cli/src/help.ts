@@ -129,16 +129,6 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Runtime",
     usage: "open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]",
     description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
-  },
-  {
-    category: "Extensions",
-    usage: "open-runtime vmok get-module-info [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target <target-id>]",
-    description: "从 OpenRuntime snapshot target 读取 VMOK module info。"
-  },
-  {
-    category: "Extensions",
-    usage: "open-runtime vmok get-instance <name>",
-    description: "从页面读取某个 VMOK runtime instance。"
   }
 ];
 
@@ -166,28 +156,30 @@ export const cliExampleReferences: CliExampleReference[] = [
   {
     command: "open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000",
     description: "等待下一次新连接 runtime 的 route target ready。"
-  },
-  {
-    command: "open-runtime vmok get-module-info",
-    description: "从默认 target 读取 VMOK module info。"
-  },
-  {
-    command: "open-runtime vmok get-instance shell",
-    description: "按名称读取一个 VMOK 浏览器实例。"
   }
 ];
 
-export function createHelpText(): string {
+export interface CliReferenceCollection {
+  commandReferences?: readonly CliCommandReference[];
+  exampleReferences?: readonly CliExampleReference[];
+}
+
+export function createHelpText(references: CliReferenceCollection = {}): string {
+  const commandReferences = references.commandReferences ?? cliCommandReferences;
+  const exampleReferences = references.exampleReferences ?? cliExampleReferences;
+
   return [
     "Usage:",
-    ...cliCommandReferences.map((command) => `  ${command.usage}`),
+    ...commandReferences.map((command) => `  ${command.usage}`),
     "",
     "Examples:",
-    ...cliExampleReferences.map((example) => `  ${example.command}`)
+    ...exampleReferences.map((example) => `  ${example.command}`)
   ].join("\n");
 }
 
-export function createCliReferenceMarkdown(): string {
+export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
+  const commandReferences = references.commandReferences ?? cliCommandReferences;
+  const exampleReferences = references.exampleReferences ?? cliExampleReferences;
   const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
@@ -211,21 +203,25 @@ export function createCliReferenceMarkdown(): string {
   ];
 
   for (const category of categories) {
+    const categoryCommands = commandReferences.filter((item) => item.category === category);
+    if (categoryCommands.length === 0) continue;
     lines.push("", `### ${categoryLabels[category]}`, "");
-    for (const command of cliCommandReferences.filter((item) => item.category === category)) {
+    for (const command of categoryCommands) {
       lines.push(`- \`${command.usage}\` - ${command.description}`);
     }
   }
 
   lines.push("", "## Examples", "");
-  for (const example of cliExampleReferences) {
+  for (const example of exampleReferences) {
     lines.push(`- \`${example.command}\` - ${example.description}`);
   }
 
   return `${lines.join("\n")}\n`;
 }
 
-export function createCliSkillSectionMarkdown(): string {
+export function createCliSkillSectionMarkdown(references: CliReferenceCollection = {}): string {
+  const commandReferences = references.commandReferences ?? cliCommandReferences;
+  const exampleReferences = references.exampleReferences ?? cliExampleReferences;
   const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
@@ -241,14 +237,16 @@ export function createCliSkillSectionMarkdown(): string {
   ];
 
   for (const category of categories) {
+    const categoryCommands = commandReferences.filter((item) => item.category === category);
+    if (categoryCommands.length === 0) continue;
     lines.push("", `### ${categoryLabels[category]}`, "");
-    for (const command of cliCommandReferences.filter((item) => item.category === category)) {
+    for (const command of categoryCommands) {
       lines.push(`- \`${command.usage}\` - ${command.description}`);
     }
   }
 
   lines.push("", "### 示例", "");
-  for (const example of cliExampleReferences) {
+  for (const example of exampleReferences) {
     lines.push(`- \`${example.command}\` - ${example.description}`);
   }
 

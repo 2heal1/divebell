@@ -68,6 +68,20 @@ node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 脚本只输出应安装和使用的包集合。后续按脚本输出执行；只有脚本无法读取项目依赖时，
 才手工检查下面的规则：
 
+只要当前任务需要基于 OpenRuntime 读取结构化运行时事实，并且能找到目标应用的
+`package.json`，就先运行这个脚本；这是接入判断步骤，不是可选建议。执行过程中必须
+先确认并保留这些事实，后续判断只能基于这些事实：
+
+- `resolve-integration`: executed / failed / skipped。
+- 使用的 `package.json` 路径。
+- 脚本输出的 `install` / `use` 摘要。
+- 按输出安装、接入了哪些包；没有安装或没有接入时，写清具体原因。
+
+如果找不到目标应用的 `package.json`、依赖安装失败、用户禁止改源码、版本不满足、
+或任务只允许一次性浏览器取证，可以跳过安装或接入，但必须先记录原因。
+不要在没有说明这些原因的情况下，直接把 `eval`、`network` 或 `console` 结果当成
+OpenRuntime / MF 结构化证据。
+
 - EdenX/Modern 项目先读 `@modern-js/runtime`、`@modern-js/plugin` 或
   `@modern-js/app-tools` 版本。版本 `>=3.4.0`，或版本字符串包含 `preview` 时，默认
   安装并使用 `@openruntime/modern-plugin`。
@@ -149,12 +163,17 @@ pnpm exec openruntime runtimes
   页面没有可用的 OpenRuntime Core runtime。Modern `>=3.4.0` 或 preview 项目先把
   `@openruntime/modern-plugin` 接进 `modern.runtime` 并传 `bridge`；低版本 Modern
   或手写 Core 接入才在源码入口补最小 runtime。
+- `openruntime runtimes` 为空，且页面也没有可连接的 `window.__OPEN_RUNTIME__`：
+  不能继续把 `targets`、`snapshot`、`events` 或 `wait-for` 写成已使用。源码可改时，
+  回到 `resolve-integration` 输出，先接入推荐的 runtime 包；源码不可改或接入失败时，
+  把结构化 runtime 证据标记为 unavailable，并写清阻塞原因。之后才能退回到
+  `eval` / `wait-eval` / `network` / `console` 做普通浏览器取证。
 - `eval` 返回 `{ connected: true }` 但 `runtimes` 为空：优先怀疑 Bridge 端口不一致。
   用当前 `open` / `start` 的 `--port` 或 `--bridge` 值重跑连接脚本，不要先改业务源码。
 - `runtimes` 有值但没有目标 target：说明 Bridge 已连上，但插件或业务 target 没有暴露。
   Modern 项目检查 `@openruntime/modern-plugin` 接入；MF/Vmok 检查
   `@module-federation/observability-plugin` 是否接到消费者配置；业务验收缺 target 时，
-  源码可改且需要反复验证、跨刷新/重启验证、评测或回归时，先补最小业务 target 并
+  源码可改且需要反复验证、跨刷新/重启验证，或这个信号会被继续使用时，先补最小业务 target 并
   用 `wait-for` 验收。不能改源码或一次性简单验收时，才用一次 `eval` / `wait-eval`。
 - 多 tab、刷新或 HMR 导致 runtime 变化时，不要反复重开页面；优先用默认跟随模式，
   或在明确等待下一次连接时使用 `--next`。
@@ -212,15 +231,19 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 ## 最短验收路径
 
 使用 OpenRuntime 不应增加验收步骤。先把任务结果翻译成一个事实，然后只选一条能证明
-该事实的路径。事实已经证明后立即停止，不要为了报告或“再确认一下”继续收集证据。
+该事实的路径。事实已经证明后立即停止，不要为了整理说明或“再确认一下”继续收集证据。
 
 - 业务 target 默认不会凭空存在。源码可改、结果需要反复验证、要跨刷新/重启验证，
-  或当前任务是评测/回归类任务时，先主动在稳定业务位置补最小 target，再用
+  或这个事实会被反复验证时，先主动在稳定业务位置补最小 target，再用
   `wait-for <target-id> ready` 验收。
 - 已有或刚补了能代表业务事实的 target：直接 `wait-for <target-id> ready`。
   成功后结束；不要再查完整 `snapshot`、`events`、`network`、截图或重复 `eval`。
 - 不能改源码、只是临时探索，或一次性简单 UI/文本结果不值得改代码时，用一次
   `wait-eval` 或 `eval` 证明目标 DOM、文本或 window 状态即可结束。这等价于普通 UI 验收通过。
+- 如果任务要求 OpenRuntime 结构化证据，但 runtime 没连上、没有 target、或 MF
+  observability 不可用，先按“安装选择”和“如何连接”处理。只有记录清楚不可用原因后，
+  才能把 `eval` / `wait-eval` 作为 fallback 证据；这些 fallback 证据不能标记为
+  `targets` / `snapshot` / `events` / `wait-for` 证据。
 - 如果任务本身是确认浏览器错误消失，或 `wait-for` / `eval` 失败后需要排错，进入
   失败定位后再按需查一次 `console --level error --limit 50`。
 - `snapshot`、`events`、`targets`、`network`、`page-snapshot`、`screenshot` 不是普通
@@ -235,13 +258,13 @@ pnpm exec openruntime wait-eval 'document.body.textContent.includes("Risk ready"
 pnpm exec openruntime eval '({ pathname: location.pathname, ready: Boolean(document.querySelector("[data-testid=remote-order-panel]")) })'
 ```
 
-报告里只记录已经用于得出结论的命令和结果。不要为了填“证据”“关键命令”这类字段而
+只保留已经用于得出结论的命令和结果。不要为了填“证据”“关键命令”这类字段而
 额外执行 `snapshot`、`events`、`network`、截图或重复页面查询。
 
 ## 补最小信号
 
 业务 target 默认不会存在；源码可改、结果需要反复验证、要跨刷新/重启验证、
-当前任务是评测/回归类任务，或当前失败无法通过已有信号定位时，要主动补最小
+这个信号会被继续使用，或当前失败无法通过已有信号定位时，要主动补最小
 OpenRuntime target。只有不能改源码、只是临时探索，或一次 DOM/window 查询已经足以
 达到普通验收标准时，才直接使用页面查询能力。
 
@@ -279,9 +302,9 @@ target 就直接放弃结构化验收；先判断源码是否可改、这个信�
 - 只等 `modern:route ready`，就把业务组件或业务结果当成 ready。
 - 每一步都读取完整 `snapshot` 和完整 `events`。
 - `wait-for` 失败后用 `|| true` 跳过，再用 DOM 找到元素就当成功。
-- 需要反复验证或评测回归时，因为没有现成业务 target 就一直用 `eval` / console 代替补最小 target。
+- 需要反复验证时，因为没有现成业务 target 就一直用 `eval` / console 代替补最小 target。
 - 一次性简单验收时，为了使用 OpenRuntime 强行补 target，而不是用一次 `eval` 达到普通 UI 验收标准。
-- 为了报告字段额外执行 `network`、`page-snapshot`、`screenshot` 或重复 `eval`。
+- 为了补充材料额外执行 `network`、`page-snapshot`、`screenshot` 或重复 `eval`。
 - OpenRuntime 已经给出明确 error 后，继续等不存在的按钮、截图或重复查询同一批元素。
 
 ## 运行时边界
@@ -298,7 +321,9 @@ target 就直接放弃结构化验收；先判断源码是否可改、这个信�
 如果远程模块问题来自 Module Federation 或 Vmok，但查不到 `mf.remote`、`mf.remote.expose`、
 `mf.shared` 或 `mf.shared.conflict` target，先判断项目是否缺少
 `@module-federation/observability-plugin`。源码可改时，先接入 MF observability，再继续定位；
-不要在缺少 MF target 的情况下直接用 DOM 猜 remote/shared/expose 的加载结果。
+源码不可改或接入失败时，把 MF observability 标记为 unavailable，并说明原因。不要在缺少
+MF target 或 observability report 的情况下直接用 DOM 猜 remote/shared/expose 的加载结果；最多写成
+普通浏览器现象，不能写成 MF 结构化结论。
 
 ## 失败定位
 
@@ -336,7 +361,7 @@ Module Federation shared 单例多版本冲突会暴露为
 判断 `wait-for` 时必须看输出里的 `result.success` 和 target 状态。
 `success: false`、timeout、target `error` 都是失败证据，不要因为命令输出了 JSON、
 后续有 snapshot，或页面里还能找到 DOM，就写成 ready。如果 `wait-for` 条件失败，
-但 `snapshot` 另有明确结论，要报告为“wait 条件未满足，snapshot 显示……”，不要写成
+但 `snapshot` 另有明确结论，要说明为“wait 条件未满足，snapshot 显示……”，不要写成
 `wait-for` 成功。不要用 `|| true` 吞掉 `wait-for` 失败；失败后先读返回的 reason、
 当前 snapshot 和相关 events，再决定是否继续。
 

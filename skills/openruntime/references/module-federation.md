@@ -10,6 +10,14 @@ Prefer the resolver when a project package file is available:
 node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 ```
 
+When the task depends on MF remote, expose, shared, preload, or loading-chain
+evidence, this resolver is a required first check whenever the MF consumer
+package file is available. State whether it was executed, which package file it
+read, and whether its `@module-federation/observability-plugin` recommendation
+was installed and wired. If it cannot be executed or the recommendation cannot
+be applied, state that as the reason MF observability is unavailable before
+using fallback browser evidence.
+
 Do not apply a Module Federation version gate for this recommendation. The
 resolver should return `@module-federation/observability-plugin` for MF/Vmok
 without adding `@openruntime/core`. If the project uses Vmok, Module
@@ -36,6 +44,19 @@ source instead of relying on DOM evidence.
 If a project uses Module Federation, Vmok, or a remote/shared/expose based micro-frontend setup, and the task is to diagnose remote, expose, shared, or loading-chain behavior, first check whether the consumer already has the observability plugin wired. Look for `@module-federation/observability-plugin` in package files and for runtime plugin wiring in the MF consumer config.
 
 If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.
+
+Do not infer shared `pending`, `loaded`, `error`, or provider selection from
+`window.__FEDERATION__` alone. That global proves the MF runtime exists, but it
+is not the observability report. For shared dependency conclusions, use one of:
+
+- an OpenRuntime `mf.shared` / `mf.shared.conflict` target
+- an MF observability report read through OpenRuntime actions or the MF
+  observability reader
+- a clearly labeled fallback based on console, network, runtime error codes, and
+  source/config evidence, with the missing observability reason stated
+
+If none of these are available, stop short of a root-cause claim about shared
+state and treat the missing evidence as the blocker.
 
 ## Browser Runtime Setup
 

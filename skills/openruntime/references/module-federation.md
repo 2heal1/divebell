@@ -10,20 +10,22 @@ Prefer the resolver when a project package file is available:
 node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 ```
 
-When the task depends on MF remote, expose, shared, preload, or loading-chain
-evidence, this resolver is a required first check whenever the MF consumer
-package file is available. State whether it was executed, which package file it
-read, and whether its `@module-federation/observability-plugin` recommendation
-was installed and wired. If it cannot be executed or the recommendation cannot
-be applied, state that as the reason MF observability is unavailable before
-using fallback browser evidence.
+When the task depends on MF or Vmok remote, expose, shared, preload, or
+loading-chain evidence, this resolver is a required first check whenever the
+consumer package file is available. State whether it was executed, which
+package file it read, and whether its `@module-federation/observability-plugin`
+recommendation was installed and wired. If it cannot be executed or the
+recommendation cannot be applied, state that as the reason MF observability is
+unavailable before using fallback browser evidence.
 
 Do not apply a Module Federation version gate for this recommendation. The
 resolver should return `@module-federation/observability-plugin` for MF/Vmok
-without adding `@openruntime/core`. If the project uses Vmok, Module
-Federation, or remote/shared/expose based loading and the task depends on that
-loading chain, treat missing `mf:*` OpenRuntime state as a signal to wire
-observability when source edits are allowed.
+without adding `@openruntime/core`. A dependency name containing `vmok`, such
+as `@edenx/plugin-vmok`, `@vmok/*`, or `@byted-goofy/vmok`, is enough to treat
+the package as Vmok even if it has no direct `@module-federation/*`
+dependency. If the project uses Vmok, Module Federation, or
+remote/shared/expose based loading, treat missing `mf:*` OpenRuntime state as a
+signal to wire observability when source edits are allowed.
 
 After the observability plugin is installed or already wired, prefer connecting
 an existing page runtime before changing more source files:
@@ -41,7 +43,13 @@ Bridge port from `open` / `start` before editing source. If a runtime connects
 but no `mf:*` target appears, wire the observability plugin in the MF consumer
 source instead of relying on DOM evidence.
 
-If a project uses Module Federation, Vmok, or a remote/shared/expose based micro-frontend setup, and the task is to diagnose remote, expose, shared, or loading-chain behavior, first check whether the consumer already has the observability plugin wired. Look for `@module-federation/observability-plugin` in package files and for runtime plugin wiring in the MF consumer config.
+If a project uses Module Federation, Vmok, or a remote/shared/expose based
+micro-frontend setup, first check whether the consumer already has the
+observability plugin wired. Look for `@module-federation/observability-plugin`
+in package files and for runtime plugin wiring in the MF consumer config. For
+Vmok, the package-file signal is any dependency whose package name contains
+`vmok`; do not wait for a separate direct MF dependency before recommending the
+observability plugin.
 
 If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.
 

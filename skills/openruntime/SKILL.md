@@ -55,7 +55,7 @@ OpenRuntime 提供 CLI 读取 `targets`、`snapshot`、`events` 和 `actions`，
 - `@openruntime/cli`：Agent 侧读取状态、执行 action、等待 target。
 - `@openruntime/modern-plugin`：Modern.js `>=3.4.0` 或 preview 项目自动暴露 route、loader、SSR、hydration 等状态；它不转导出 `@openruntime/core` API。
 - `@openruntime/modern-plugin` 的 Garfish 工具：主应用接入后暴露 Garfish 子应用加载、执行、挂载和错误状态。
-- `@module-federation/observability-plugin`：MF 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
+- `@module-federation/observability-plugin`：MF 或 Vmok 消费者项目接入后，OpenRuntime 才能稳定读取 remote、expose、shared 和报告信息。
 
 ### 安装选择
 
@@ -91,10 +91,11 @@ OpenRuntime / MF 结构化证据。
   `@openruntime/modern-plugin`。旧版本缺少必要 hook，可能只能看到基础 target 或
   `modern:app` 停在 `rendering`，不能据此判断 route ready、loader、组件错误或 hydration。
   这种场景改用 `@openruntime/core` 在业务稳定位置补最小 target/action/snapshot。
-- 项目使用 Module Federation、Vmok 或基于 remote/shared/expose 的微前端能力，并且
-  任务目标是排查 remote、expose、shared、MF 加载链路或 Vmok 远程模块时，安装并使用
-  `@module-federation/observability-plugin`；MF observability 不设版本门槛，也不额外要求
-  安装 `@openruntime/core`。
+- 项目 `package.json` 里出现 Module Federation 或 Vmok 相关依赖时，安装并使用
+  `@module-federation/observability-plugin`。Vmok 按 MF 加载链路处理，不要求同时出现
+  直接的 `@module-federation/*` 依赖；常见 Vmok 信号包括 `@edenx/plugin-vmok`、
+  `@vmok/*`、`@byted-goofy/vmok`，以及包名中包含 `vmok` 的依赖。MF observability
+  不设版本门槛，也不额外要求安装 `@openruntime/core`。
 
 ### 如何连接
 
@@ -172,7 +173,8 @@ pnpm exec openruntime runtimes
   用当前 `open` / `start` 的 `--port` 或 `--bridge` 值重跑连接脚本，不要先改业务源码。
 - `runtimes` 有值但没有目标 target：说明 Bridge 已连上，但插件或业务 target 没有暴露。
   Modern 项目检查 `@openruntime/modern-plugin` 接入；MF/Vmok 检查
-  `@module-federation/observability-plugin` 是否接到消费者配置；业务验收缺 target 时，
+  `@module-federation/observability-plugin` 是否接到消费者配置，Vmok 项目按
+  `package.json` 里的 Vmok 相关依赖判断；业务验收缺 target 时，
   源码可改且需要反复验证、跨刷新/重启验证，或这个信号会被继续使用时，先补最小业务 target 并
   用 `wait-for` 验收。不能改源码或一次性简单验收时，才用一次 `eval` / `wait-eval`。
 - 多 tab、刷新或 HMR 导致 runtime 变化时，不要反复重开页面；优先用默认跟随模式，

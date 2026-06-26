@@ -10,6 +10,13 @@ const modernPackages = [
   "@modern-js/app-tools"
 ];
 const mfObservabilityPackage = "@module-federation/observability-plugin";
+const mfDependencySignals = [
+  "@module-federation/enhanced",
+  "@module-federation/"
+];
+const vmokDependencySignals = [
+  "vmok"
+];
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -162,12 +169,7 @@ function resolveModern(dependencies) {
 
 function resolveModuleFederation(dependencies) {
   const dependencyNames = Object.keys(dependencies);
-  const detected = dependencyNames.some((name) =>
-    name === "@module-federation/enhanced" ||
-    name.startsWith("@module-federation/") ||
-    name.startsWith("@vmok/") ||
-    name.includes("vmok")
-  );
+  const detected = dependencyNames.some((name) => isMfDependency(name) || isVmokDependency(name));
   const hasObservability = dependencies[mfObservabilityPackage] !== undefined;
 
   if (!detected) {
@@ -189,6 +191,19 @@ function resolveModuleFederation(dependencies) {
     install: hasObservability ? [] : [mfObservabilityPackage],
     use: [mfObservabilityPackage]
   };
+}
+
+function isMfDependency(name) {
+  return mfDependencySignals.some((signal) =>
+    signal.endsWith("/")
+      ? name.startsWith(signal)
+      : name === signal
+  );
+}
+
+function isVmokDependency(name) {
+  const normalizedName = name.toLowerCase();
+  return vmokDependencySignals.some((signal) => normalizedName.includes(signal));
 }
 
 function parseVersion(input) {

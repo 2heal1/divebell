@@ -240,7 +240,7 @@ export function createCliSkillSectionMarkdown(references: CliReferenceCollection
     "",
     "完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。",
     "",
-    "普通验收优先选择一条最短路径：有 target 用 `wait-for`，无 target 的简单页面结果用 `eval` 或 `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。"
+    "普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `wait-for`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。"
   ];
 
   for (const commandStart of commonCommands) {

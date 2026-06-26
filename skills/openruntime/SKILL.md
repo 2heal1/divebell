@@ -154,7 +154,8 @@ pnpm exec openruntime runtimes
 - `runtimes` 有值但没有目标 target：说明 Bridge 已连上，但插件或业务 target 没有暴露。
   Modern 项目检查 `@openruntime/modern-plugin` 接入；MF/Vmok 检查
   `@module-federation/observability-plugin` 是否接到消费者配置；业务验收缺 target 时，
-  优先用一次 `eval` 做等价验收，只有需要长期复用或定位失败时再补最小 target。
+  源码可改且需要反复验证、跨刷新/重启验证、评测或回归时，先补最小业务 target 并
+  用 `wait-for` 验收。不能改源码或一次性简单验收时，才用一次 `eval` / `wait-eval`。
 - 多 tab、刷新或 HMR 导致 runtime 变化时，不要反复重开页面；优先用默认跟随模式，
   或在明确等待下一次连接时使用 `--next`。
 
@@ -213,12 +214,15 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 使用 OpenRuntime 不应增加验收步骤。先把任务结果翻译成一个事实，然后只选一条能证明
 该事实的路径。事实已经证明后立即停止，不要为了报告或“再确认一下”继续收集证据。
 
-- 有业务 target：直接 `wait-for <target-id> ready`。成功后结束；不要再查完整
-  `snapshot`、`events`、`network`、截图或重复 `eval`。
-- 没有业务 target，且只是普通 UI/文本结果：用一次 `wait-eval` 或 `eval` 证明目标
-  DOM、文本或 window 状态即可结束。这等价于普通 UI 验收通过。
-- 如果任务本身是确认浏览器错误消失，或 `wait-for` / `eval` 失败后需要排错，最多先查
-  一次 `console --level error --limit 50`，再决定是否进入失败定位。
+- 业务 target 默认不会凭空存在。源码可改、结果需要反复验证、要跨刷新/重启验证，
+  或当前任务是评测/回归类任务时，先主动在稳定业务位置补最小 target，再用
+  `wait-for <target-id> ready` 验收。
+- 已有或刚补了能代表业务事实的 target：直接 `wait-for <target-id> ready`。
+  成功后结束；不要再查完整 `snapshot`、`events`、`network`、截图或重复 `eval`。
+- 不能改源码、只是临时探索，或一次性简单 UI/文本结果不值得改代码时，用一次
+  `wait-eval` 或 `eval` 证明目标 DOM、文本或 window 状态即可结束。这等价于普通 UI 验收通过。
+- 如果任务本身是确认浏览器错误消失，或 `wait-for` / `eval` 失败后需要排错，进入
+  失败定位后再按需查一次 `console --level error --limit 50`。
 - `snapshot`、`events`、`targets`、`network`、`page-snapshot`、`screenshot` 不是普通
   功能验收默认步骤。它们只用于发现/定位失败、资源链路问题、真实点击路径、可访问性、
   视觉、布局或截图类任务。
@@ -229,11 +233,56 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 pnpm exec openruntime wait-for business:orders:risk-panel ready --timeout 10000
 pnpm exec openruntime wait-eval 'document.body.textContent.includes("Risk ready")' --timeout 10000
 pnpm exec openruntime eval '({ pathname: location.pathname, ready: Boolean(document.querySelector("[data-testid=remote-order-panel]")) })'
-pnpm exec openruntime console --level error --limit 50
 ```
 
 报告里只记录已经用于得出结论的命令和结果。不要为了填“证据”“关键命令”这类字段而
 额外执行 `snapshot`、`events`、`network`、截图或重复页面查询。
+
+## 补最小信号
+
+业务 target 默认不会存在；源码可改、结果需要反复验证、要跨刷新/重启验证、
+当前任务是评测/回归类任务，或当前失败无法通过已有信号定位时，要主动补最小
+OpenRuntime target。只有不能改源码、只是临时探索，或一次 DOM/window 查询已经足以
+达到普通验收标准时，才直接使用页面查询能力。
+
+补最小信号时，只暴露能证明结论的状态，不要把整页 DOM 或完整业务数据塞进 snapshot。
+例如验证订单风险组件，就注册 `business:orders:risk-panel` 这类最小 target。目标组件
+可能失败到连自己都注册不了时，在必定能加载的上一级注册或更新验证 target，例如页面、
+路由容器、稳定父组件。父级先写 `pending`，子组件成功时写 `ready`，父级捕获错误、
+超时或缺失时写 `error`。
+
+```ts
+runtime.registerTarget({
+  id: "debug:orders:remote-panel",
+  type: "debug.component",
+  statuses: ["pending", "ready", "error"],
+  source: "debug",
+});
+
+runtime.updateSnapshot({
+  id: "debug:orders:remote-panel",
+  status: "ready",
+  data: { remotePanelReady: true },
+});
+```
+
+`updateSnapshot` 用于标记真实状态，例如组件 ready/error、loader 数据可用、
+Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结果。动作是否触发看
+`run-action` 或 events，结果是否正确看 snapshot / `wait-for`。
+如果这些 OpenRuntime API 只是为了本次排查，验证后删除；对后续 Agent 或运维有价值再保留。
+
+添加后，用 CLI 先执行 `wait-for`，然后从最小复现范围开始验证。不要因为当前没有业务
+target 就直接放弃结构化验收；先判断源码是否可改、这个信号是否会被反复使用。
+
+常见反例要避免：
+
+- 只等 `modern:route ready`，就把业务组件或业务结果当成 ready。
+- 每一步都读取完整 `snapshot` 和完整 `events`。
+- `wait-for` 失败后用 `|| true` 跳过，再用 DOM 找到元素就当成功。
+- 需要反复验证或评测回归时，因为没有现成业务 target 就一直用 `eval` / console 代替补最小 target。
+- 一次性简单验收时，为了使用 OpenRuntime 强行补 target，而不是用一次 `eval` 达到普通 UI 验收标准。
+- 为了报告字段额外执行 `network`、`page-snapshot`、`screenshot` 或重复 `eval`。
+- OpenRuntime 已经给出明确 error 后，继续等不存在的按钮、截图或重复查询同一批元素。
 
 ## 运行时边界
 
@@ -242,7 +291,9 @@ pnpm exec openruntime console --level error --limit 50
 - `modern:route ready` 只说明路由 ready，不等于业务组件、远程模块、接口数据或业务动作 ready。
 - Garfish target 只说明子应用加载、脚本执行、provider render、挂载或卸载状态，不等于子应用业务 UI ready。
 - MF target 只说明 remote、expose、shared 或报告状态，不等于消费方业务组件 ready。
-- 业务结果必须看对应业务 target、loader 状态、MF expose/shared target、action 结果 target，或在没有 target 时用一次页面 `eval` / `wait-eval` 验证。
+- 业务结果必须看对应业务 target、loader 状态、MF expose/shared target 或 action 结果 target。
+  没有业务 target 时，先按“补最小信号”判断是否应该主动补；只有不能改源码或一次性
+  简单验收时，才用一次页面 `eval` / `wait-eval` 验证。
 
 如果远程模块问题来自 Module Federation 或 Vmok，但查不到 `mf.remote`、`mf.remote.expose`、
 `mf.shared` 或 `mf.shared.conflict` target，先判断项目是否缺少
@@ -325,51 +376,6 @@ pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --ti
 复杂 action 只说明“动作被执行”还不够，动作结果必须落到最小 target 的 snapshot 上，
 再用 `wait-for` 等待这个 target。
 
-## 补最小信号
-
-普通一次性验收没有业务 target 时，可以直接用一次 `eval` / `wait-eval` 得到等价结论。
-只有需要长期复用、后续 Agent 也要稳定等待，或当前失败无法通过已有信号定位时，才补
-最小 OpenRuntime target。
-
-补最小信号时，只暴露能证明结论的状态，不要把整页 DOM 或完整业务数据塞进 snapshot。
-例如验证订单风险组件，就注册 `business:orders:risk-panel` 这类最小 target。目标组件
-可能失败到连自己都注册不了时，在必定能加载的上一级注册或更新验证 target，例如页面、
-路由容器、稳定父组件。父级先写 `pending`，子组件成功时写 `ready`，父级捕获错误、
-超时或缺失时写 `error`。
-
-```ts
-runtime.registerTarget({
-  id: "debug:orders:remote-panel",
-  type: "debug.component",
-  statuses: ["pending", "ready", "error"],
-  source: "debug",
-});
-
-runtime.updateSnapshot({
-  id: "debug:orders:remote-panel",
-  status: "ready",
-  data: { remotePanelReady: true },
-});
-```
-
-`updateSnapshot` 用于标记真实状态，例如组件 ready/error、loader 数据可用、
-Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结果。动作是否触发看
-`run-action` 或 events，结果是否正确看 snapshot / `wait-for`。
-如果这些 OpenRuntime API 只是为了本次排查，验证后删除；对后续 Agent 或运维有价值再保留。
-
-添加后，可以用 CLI 先执行 `wait-for`，然后从最小复现范围开始验证。查不到 target
-时，不要为了普通验收强行补 target；不能改源码、只是临时探索，或一次 DOM/window
-查询已经足以达到普通验收标准时，直接使用页面查询能力。
-
-常见反例要避免：
-
-- 只等 `modern:route ready`，就把业务组件或业务结果当成 ready。
-- 每一步都读取完整 `snapshot` 和完整 `events`。
-- `wait-for` 失败后用 `|| true` 跳过，再用 DOM 找到元素就当成功。
-- 没有业务 target 时，为了使用 OpenRuntime 强行补 target，而不是用一次 `eval` 达到普通 UI 验收标准。
-- 为了报告字段额外执行 `network`、`page-snapshot`、`screenshot` 或重复 `eval`。
-- OpenRuntime 已经给出明确 error 后，继续等不存在的按钮、截图或重复查询同一批元素。
-
 Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见
 `references/modernjs.md`。Garfish 子应用 runtime 观测和接入方式见
 `references/garfish.md`。Module Federation remote、expose、shared 和
@@ -382,7 +388,7 @@ observability report 用法见 `references/module-federation.md`。只有排查�
 
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
-普通验收优先选择一条最短路径：有 target 用 `wait-for`，无 target 的简单页面结果用 `eval` 或 `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。
+普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `wait-for`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。

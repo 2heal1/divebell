@@ -100,6 +100,7 @@ test("generates the skill CLI command section from the help table", () => {
 
   assert.match(markdown, /^## CLI 命令/m);
   assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
+  assert.match(markdown, /先补最小业务 target/);
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime eval <script>/);
   assert.match(markdown, /open-runtime wait-eval <script>/);

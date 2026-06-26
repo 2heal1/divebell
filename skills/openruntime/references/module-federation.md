@@ -4,6 +4,35 @@ Use this reference when diagnosing Module Federation remote, expose, shared, pre
 
 MF consumers should use `@module-federation/observability-plugin`. The plugin records remote, expose, shared, preload, and report data that OpenRuntime can expose as targets and actions.
 
+Prefer the resolver when a project package file is available:
+
+```bash
+node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
+```
+
+Do not apply a Module Federation version gate for this recommendation. The
+resolver should return `@module-federation/observability-plugin` for MF/Vmok
+without adding `@openruntime/core`. If the project uses Vmok, Module
+Federation, or remote/shared/expose based loading and the task depends on that
+loading chain, treat missing `mf:*` OpenRuntime state as a signal to wire
+observability when source edits are allowed.
+
+After the observability plugin is installed or already wired, prefer connecting
+an existing page runtime before changing more source files:
+
+```bash
+pnpm exec openruntime eval '(() => { const runtime = window.__OPEN_RUNTIME__; if (!runtime || typeof runtime.connectBridge !== "function") return { connected: false, reason: "missing window.__OPEN_RUNTIME__" }; runtime.connectBridge({ port: 17321 }); return { connected: true }; })()'
+pnpm exec openruntime runtimes
+```
+
+Do not create an empty runtime from this eval path. If `window.__OPEN_RUNTIME__`
+is missing or has no `connectBridge`, the page does not have a usable
+OpenRuntime Core runtime; wire the page runtime source first. If the eval
+returns `{ connected: true }` but `runtimes` stays empty, retry with the actual
+Bridge port from `open` / `start` before editing source. If a runtime connects
+but no `mf:*` target appears, wire the observability plugin in the MF consumer
+source instead of relying on DOM evidence.
+
 If a project uses Module Federation, Vmok, or a remote/shared/expose based micro-frontend setup, and the task is to diagnose remote, expose, shared, or loading-chain behavior, first check whether the consumer already has the observability plugin wired. Look for `@module-federation/observability-plugin` in package files and for runtime plugin wiring in the MF consumer config.
 
 If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.

@@ -99,13 +99,18 @@ test("generates the skill CLI command section from the help table", () => {
   const markdown = createCliSkillSectionMarkdown();
 
   assert.match(markdown, /^## CLI 命令/m);
+  assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
   assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
-  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
-  assert.match(markdown, /open-runtime get-window <path>/);
-  assert.match(markdown, /open-runtime network \[--url <query>\]/);
+  assert.match(markdown, /open-runtime eval <script>/);
+  assert.match(markdown, /open-runtime wait-eval <script>/);
   assert.match(markdown, /open-runtime console \[--level <level>\]/);
   assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /open-runtime export-profile /);
+  assert.doesNotMatch(markdown, /open-runtime import-profile /);
+  assert.doesNotMatch(markdown, /open-runtime get-window <path>/);
+  assert.doesNotMatch(markdown, /open-runtime network \[--url <query>\]/);
+  assert.doesNotMatch(markdown, /open-runtime screenshot /);
+  assert.doesNotMatch(markdown, /open-runtime page-snapshot/);
   assert.doesNotMatch(markdown, /open-runtime vmok /);
 });
 

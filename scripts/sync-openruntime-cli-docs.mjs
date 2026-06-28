@@ -20,7 +20,7 @@ const cliSkillSection = createCliSkillSectionMarkdown();
 const cliReferencePath = join(repoRoot, "docs/cli-reference.md");
 const skillPath = join(repoRoot, "skills/openruntime/SKILL.md");
 const skillContent = await readExisting(skillPath);
-const updatedSkillContent = replaceMarkdownSection(skillContent, "## CLI 命令", cliSkillSection);
+const updatedSkillContent = replaceMarkdownSection(skillContent, "### 常用 CLI", cliSkillSection);
 
 let hasMismatch = false;
 if (checkOnly) {

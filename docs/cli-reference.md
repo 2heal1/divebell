@@ -28,7 +28,7 @@
 - `open-runtime get-window <path>` - 读取 window/globalThis 上的点分路径，例如 gf_data_v1。
 - `open-runtime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
 - `open-runtime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
-- `open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]` - 读取当前页面浏览器 console 日志，支持按级别、关键词和数量过滤。
+- `open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]` - 兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。
 - `open-runtime close` - 关闭浏览器会话。
 
 ### Runtime
@@ -48,7 +48,7 @@
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
 - `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
-- `open-runtime console --level error --limit 50` - 查看最近浏览器 console 错误。
+- `open-runtime snapshot --query runtime-error` - 查询页面主动写入 snapshot 的错误状态。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000` - 用业务 target 做保守验收；缺少业务 target 时不会把 route/MF ready 当作业务成功。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。

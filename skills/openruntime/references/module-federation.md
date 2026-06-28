@@ -53,6 +53,13 @@ observability plugin.
 
 If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.
 
+When using `openruntime verify` on `mf:*` or Vmok-related targets, treat a ready
+result as runtime-layer evidence only. It proves the remote, expose, shared
+dependency, or report target state; it does not prove the consuming business UI
+rendered. If no business target exists, `verify` may run one lightweight
+visibility check, but that check is browser evidence and should not be labeled
+as MF structured evidence.
+
 Do not infer shared `pending`, `loaded`, `error`, or provider selection from
 `window.__FEDERATION__` alone. That global proves the MF runtime exists, but it
 is not the observability report. For shared dependency conclusions, use one of:

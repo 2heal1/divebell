@@ -237,9 +237,17 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 
 - 业务 target 默认不会凭空存在。源码可改、结果需要反复验证、要跨刷新/重启验证，
   或这个事实会被反复验证时，先主动在稳定业务位置补最小 target，再用
-  `wait-for <target-id> ready` 验收。
-- 已有或刚补了能代表业务事实的 target：直接 `wait-for <target-id> ready`。
-  成功后结束；不要再查完整 `snapshot`、`events`、`network`、截图或重复 `eval`。
+  `verify <target-id> ready` 验收。
+- 已有或刚补了能代表业务事实的 target：直接 `verify <target-id> ready`。
+  `verify` 只有在业务 target 成功时才表示业务验收通过；成功后结束，不要再查完整
+  `snapshot`、`events`、`network`、截图或重复 `eval`。
+- `wait-for` 没有废弃。它用于等待一个明确 target 状态，例如等待 route、MF expose、
+  shared、Garfish 子应用或业务 target 到达某个状态；但它只证明“这个 target 到了这个状态”，
+  不负责判断这个 target 能否代表最终业务成功。
+- 只有 Modern、MF、Vmok 或 Garfish target 时，`verify` 最多说明路由、加载链路、
+  共享依赖或子应用状态；不要把它写成业务组件、业务数据或业务动作成功。
+- 缺少业务 target 时，`verify` 只做一次轻量页面可见性检查来拦截明显白屏。白屏、
+  检查不可用或检查不确定时，都不能把底层 ready 写成业务成功。
 - 不能改源码、只是临时探索，或一次性简单 UI/文本结果不值得改代码时，用一次
   `wait-eval` 或 `eval` 证明目标 DOM、文本或 window 状态即可结束。这等价于普通 UI 验收通过。
 - 如果任务要求 OpenRuntime 结构化证据，但 runtime 没连上、没有 target、或 MF
@@ -255,7 +263,7 @@ pnpm exec openruntime runtimes --bridge http://localhost:17321
 常用最短验收命令：
 
 ```bash
-pnpm exec openruntime wait-for business:orders:risk-panel ready --timeout 10000
+pnpm exec openruntime verify business:orders:risk-panel ready --timeout 10000
 pnpm exec openruntime wait-eval 'document.body.textContent.includes("Risk ready")' --timeout 10000
 pnpm exec openruntime eval '({ pathname: location.pathname, ready: Boolean(document.querySelector("[data-testid=remote-order-panel]")) })'
 ```
@@ -296,12 +304,13 @@ Garfish 子应用 mounted/error、MF 加载结果和复杂 action 的执行结�
 `run-action` 或 events，结果是否正确看 snapshot / `wait-for`。
 如果这些 OpenRuntime API 只是为了本次排查，验证后删除；对后续 Agent 或运维有价值再保留。
 
-添加后，用 CLI 先执行 `wait-for`，然后从最小复现范围开始验证。不要因为当前没有业务
+添加后，用 CLI 先执行 `verify`，然后从最小复现范围开始验证。不要因为当前没有业务
 target 就直接放弃结构化验收；先判断源码是否可改、这个信号是否会被反复使用。
 
 常见反例要避免：
 
 - 只等 `modern:route ready`，就把业务组件或业务结果当成 ready。
+- `verify modern:route ready` 返回底层状态后，把它写成业务通过。
 - 每一步都读取完整 `snapshot` 和完整 `events`。
 - `wait-for` 失败后用 `|| true` 跳过，再用 DOM 找到元素就当成功。
 - 需要反复验证时，因为没有现成业务 target 就一直用 `eval` / console 代替补最小 target。
@@ -367,6 +376,12 @@ Module Federation shared 单例多版本冲突会暴露为
 `wait-for` 成功。不要用 `|| true` 吞掉 `wait-for` 失败；失败后先读返回的 reason、
 当前 snapshot 和相关 events，再决定是否继续。
 
+判断 `verify` 时必须同时看 `result.success` 和 `result.evidence`。只有
+`success: true` 且 `evidence.level: "business"` 才能写成业务验收通过。
+`evidence.level: "runtime"` 只能写成底层状态通过；`evidence.level: "insufficient"`
+只能写成证据不足。`visibility.status: "blank"` 表示页面可见性检查发现白屏，不能继续
+把 route、MF、Vmok 或 Garfish ready 当成业务成功。
+
 如果 `snapshot` 或 `events` 已经显示 `modern:route`、SSR、hydration、MF target、
 Garfish target 或业务 target 是 `error`，并且错误已经说明当前页面或功能失败，就直接
 以这个错误为结论。不要继续点击、等待 DOM、截图或查询同一批 UI 元素来重复确认。
@@ -397,11 +412,11 @@ runtime 时，先执行 `wait-for <target-id> <status> --next`，再刷新或重
 
 ```bash
 pnpm exec openruntime run-action --url <url> orders.refresh --payload '{"scope":"current"}'
-pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
+pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
 复杂 action 只说明“动作被执行”还不够，动作结果必须落到最小 target 的 snapshot 上，
-再用 `wait-for` 等待这个 target。
+再用 `verify` 验收这个 target。
 
 Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见
 `references/modernjs.md`。Garfish 子应用 runtime 观测和接入方式见
@@ -415,10 +430,11 @@ observability report 用法见 `references/module-federation.md`。只有排查�
 
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
-普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `wait-for`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。
+普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `verify`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events`、`targets` 和 `console` 主要用于定位失败原因。
 - `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。
+- `open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 保守验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据，并在缺少业务 target 时做一次轻量白屏检查。
 - `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 - `open-runtime wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到结果为 true。
 - `open-runtime eval <script>` - 在页面内执行脚本，也支持 --file <path> 读取脚本文件。

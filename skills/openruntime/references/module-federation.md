@@ -27,13 +27,14 @@ dependency. If the project uses Vmok, Module Federation, or
 remote/shared/expose based loading, treat missing `mf:*` OpenRuntime state as a
 signal to wire observability when source edits are allowed.
 
-After the observability plugin is installed or already wired, connect the page
-runtime through source or framework plugin configuration. Do not use browser
-`eval` to temporarily connect an existing runtime. If `runtimes` stays empty,
-wire the page runtime source first and pass the actual Bridge port from `open`
-/ `start`. If a runtime connects but no `mf:*` target appears, wire the
-observability plugin in the MF consumer source instead of relying on DOM
-evidence.
+After the observability plugin is installed or already wired, use
+`workflow.mjs connected` to check whether the page runtime is connected. Do not
+use browser `eval` for a temporary Bridge connection; edit the page runtime source or
+Modern runtime configuration instead, then rerun the connected check. If source
+edits are not allowed, mark runtime evidence unavailable and use browser
+fallback evidence explicitly. If a runtime connects but no `mf:*` target
+appears, wire the observability plugin in the MF consumer source instead of
+relying on DOM evidence.
 
 If a project uses Module Federation, Vmok, or a remote/shared/expose based
 micro-frontend setup, first check whether the consumer already has the

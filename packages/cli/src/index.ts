@@ -55,6 +55,11 @@ import {
   type CliExampleReference
 } from "./help.js";
 import {
+  createFileOperationLogStore,
+  normalizeOpenRuntimeUrlForMatch,
+  type CliOperationLogStore
+} from "./operation-log.js";
+import {
   exportAuthProfile,
   exportChromeAuthProfile,
   getProfileDirectory,
@@ -108,6 +113,7 @@ export interface CliRunOptions {
   bridgeStarter?: BridgeStarter;
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;
+  operationLogDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   exportChromeAuthProfile?: typeof exportChromeAuthProfile;
 }
@@ -197,6 +203,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
   const fetcher = options.fetcher ?? fetch;
   const browserRunner = options.browserRunner ?? createNextBrowserRunner();
   const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(import.meta.url);
+  const operationLogStore = createFileOperationLogStore(process.cwd(), options.operationLogDirectory);
   const args = parseCliArgs(argv);
 
   try {
@@ -217,7 +224,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (args.command[0] === "stop") {
-      return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), options.bridgeProcessController);
+      return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore, options.bridgeProcessController);
     }
 
     if (args.command[0] === "export-profile") {
@@ -229,7 +236,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (isBrowserCommand(args.command[0])) {
-      return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+      return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore);
     }
 
     if (args.command[0] === "runtimes") {
@@ -924,11 +931,13 @@ async function runBrowserCliCommand(
   fetcher: Fetcher,
   browserRunner: BrowserRunner,
   bridgeStarter: BridgeStarter,
-  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  operationLogStore: CliOperationLogStore
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
+    await operationLogStore.remove();
     if (!hasOption(args, "no-bridge")) {
       await ensureBridge({
         fetcher,
@@ -938,13 +947,32 @@ async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    return await runBrowserAndPipe(
+    const exitCode = await runBrowserAndPipe(
       browserRunner,
       createOpenBrowserArgs(args, url),
       stdout,
       stderr,
       { ui: hasOption(args, "ui") }
     );
+    if (exitCode === 0) {
+      const sessionId = getOptionValue(args, "session");
+      await operationLogStore.write({
+        command: "open",
+        url,
+        normalizedUrl: normalizeOpenRuntimeUrlForMatch(withOpenRuntimeSession(url, sessionId)),
+        bridgeUrl: hasOption(args, "no-bridge") ? null : createBridgeUrl(args),
+        sessionId: sessionId ?? null,
+        openedAt: Date.now(),
+        exitCode
+      });
+    }
+    return exitCode;
+  }
+
+  if (command === "close") {
+    const exitCode = await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
+    await operationLogStore.remove();
+    return exitCode;
   }
 
   if (command === "get-window") {
@@ -1172,13 +1200,7 @@ function filterConnectedRuntimes(runtimes: BridgeRuntimeInfo[], selector: Runtim
 }
 
 function normalizeUrlWithoutOpenRuntimeSession(input: string): string {
-  try {
-    const url = new URL(input);
-    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
-    return url.toString();
-  } catch {
-    return input.endsWith("/") ? input.slice(0, -1) : input;
-  }
+  return normalizeOpenRuntimeUrlForMatch(input);
 }
 
 function getOpenRuntimeSessionId(input: string): string | undefined {
@@ -1213,9 +1235,11 @@ async function runStopCommand(
   stdout: { write(chunk: string): void },
   browserRunner: BrowserRunner,
   bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  operationLogStore: CliOperationLogStore,
   bridgeProcessController: BridgeProcessController | undefined
 ): Promise<number> {
   const closeResult = await browserRunner.run(["close"]);
+  await operationLogStore.remove();
   const bridgeResult = await stopManagedBridge({
     bridgeUrl: createBridgeUrl(args),
     stateStore: bridgeStateStore,

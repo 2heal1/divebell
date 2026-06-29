@@ -56,7 +56,7 @@ node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 
 ## Bridge 和连接
 
-源码可改时，必须在源码或框架插件配置里连接 Bridge，不要用浏览器 eval 临时连接。
+源码可改时，必须在源码或框架插件配置里连接 Bridge；源码不可改时，明确标记 runtime evidence unavailable。
 
 Core 直接接入示例：
 
@@ -203,7 +203,7 @@ pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --time
 1. 确认页面已启动且 URL 可访问。
 2. 确认 Bridge 端口一致。
 3. 源码可改时，在源码或插件配置里连接 Bridge。
-4. 不要用浏览器 eval 临时连接作为默认方案。
+4. 源码不可改时，明确说明 runtime evidence unavailable，再使用普通浏览器 fallback。
 
 ### target 找不到
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -677,6 +677,39 @@ test("matches runtime url when root path trailing slash differs", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-root");
+});
+
+test("matches localhost and IPv4 loopback runtime URLs for read commands", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://localhost:3000/orders"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-loopback",
+              url: "http://127.0.0.1:3000/orders",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-loopback/snapshot");
+      return jsonResponse({
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 10
+      });
+    }
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-loopback");
 });
 
 test("matches runtime url when the runtime only adds the OpenRuntime session query", async () => {
@@ -1526,6 +1559,86 @@ test("verify passes only when a business target reaches the expected status", as
   assert.deepEqual(browserCalls, []);
 });
 
+test("verify matches localhost and IPv4 loopback runtime URLs", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "verify",
+    "--bridge",
+    "http://bridge.test",
+    "--url",
+    "http://localhost:3000/orders",
+    "business:orders:risk-panel",
+    "ready",
+    "--timeout",
+    "20"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async (url) => {
+      if (String(url) === "http://bridge.test/runtimes") {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-loopback",
+              url: "http://127.0.0.1:3000/orders",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      }
+
+      if (String(url) === "http://bridge.test/runtimes/runtime-loopback/wait-for") {
+        return jsonResponse({
+          success: true,
+          condition: {
+            id: "business:orders:risk-panel",
+            status: "ready"
+          },
+          target: {
+            id: "business:orders:risk-panel",
+            type: "business.component",
+            status: "ready",
+            source: "orders",
+            updatedAt: 10
+          },
+          snapshot: {
+            targets: {
+              "business:orders:risk-panel": {
+                id: "business:orders:risk-panel",
+                type: "business.component",
+                status: "ready",
+                source: "orders",
+                updatedAt: 10
+              }
+            },
+            latestEventId: 1,
+            capturedAt: 10
+          }
+        });
+      }
+
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-loopback/targets");
+      return jsonResponse([
+        {
+          id: "business:orders:risk-panel",
+          type: "business.component",
+          source: "orders",
+          statuses: ["pending", "ready", "error"],
+          registeredAt: 1,
+          updatedAt: 10
+        }
+      ]);
+    }
+  });
+
+  const parsed = JSON.parse(output.text());
+  assert.equal(exitCode, 0);
+  assert.equal(parsed.runtime.runtimeId, "runtime-loopback");
+  assert.equal(parsed.result.evidence.businessVerified, true);
+});
+
 test("verify does not treat a ready Modern route as business success when the page is blank", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
@@ -1936,6 +2049,75 @@ test("opens a visible browser page when ui is set and keeps the session query", 
   assert.deepEqual(browserOptions, [{ ui: true }]);
 });
 
+test("records the latest open operation by working directory and removes it on close", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const browserCalls: string[][] = [];
+
+  try {
+    for (const url of ["http://127.0.0.1:3000/orders", "http://localhost:3000/users"]) {
+      const output = createOutput();
+      const exitCode = await runCli([
+        "open",
+        url,
+        "--bridge",
+        "http://bridge.test",
+        "--session",
+        "session-orders"
+      ], {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory,
+        fetcher: async () => jsonResponse({ runtimes: [] }),
+        browserRunner: createBrowserRunner(async (args) => {
+          browserCalls.push(args);
+          return {
+            exitCode: 0,
+            stdout: "opened\n",
+            stderr: ""
+          };
+        })
+      });
+
+      assert.equal(exitCode, 0);
+    }
+
+    const files = readdirSync(operationLogDirectory);
+    assert.equal(files.length, 1);
+    const operation = JSON.parse(readFileSync(join(operationLogDirectory, files[0] as string), "utf8"));
+    assert.equal(operation.command, "open");
+    assert.equal(operation.cwd, process.cwd());
+    assert.equal(operation.url, "http://localhost:3000/users");
+    assert.equal(operation.normalizedUrl, "http://localhost:3000/users");
+    assert.equal(operation.bridgeUrl, "http://bridge.test");
+    assert.equal(operation.sessionId, "session-orders");
+    assert.equal(operation.exitCode, 0);
+    assert.deepEqual(browserCalls, [
+      ["open", "http://127.0.0.1:3000/orders?openruntimeSessionId=session-orders"],
+      ["open", "http://localhost:3000/users?openruntimeSessionId=session-orders"]
+    ]);
+
+    const closeOutput = createOutput();
+    const closeExitCode = await runCli(["close"], {
+      stdout: closeOutput.stdout,
+      stderr: closeOutput.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => ({
+        exitCode: 0,
+        stdout: "closed\n",
+        stderr: ""
+      }))
+    });
+
+    assert.equal(closeExitCode, 0);
+    assert.equal(readdirSync(operationLogDirectory).length, 0);
+  } finally {
+    rmSync(operationLogDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
 test("clicks interactive text with an exact page-side lookup", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
@@ -2056,6 +2238,7 @@ test("starts the bridge in the background and returns after it is reachable", as
 
 test("stops by closing the browser session before stopping the bridge", async () => {
   const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
   const order: string[] = [];
   let bridgeStarted = false;
 
@@ -2078,11 +2261,26 @@ test("stops by closing the browser session before stopping the bridge", async ()
       }
     }), 0);
 
+    assert.equal(await runCli(["open", "http://app.test/orders", "--port", "18082"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
+      fetcher: async () => jsonResponse({ runtimes: [] }),
+      browserRunner: createBrowserRunner(async () => ({
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      }))
+    }), 0);
+    assert.equal(readdirSync(operationLogDirectory).length, 1);
+
     const output = createOutput();
     const exitCode = await runCli(["stop", "--port", "18082"], {
       stdout: output.stdout,
       stderr: output.stderr,
       bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
       browserRunner: createBrowserRunner(async (args) => {
         order.push(args.join(" "));
         return {
@@ -2105,6 +2303,7 @@ test("stops by closing the browser session before stopping the bridge", async ()
 
     assert.equal(exitCode, 0);
     assert.deepEqual(order, ["close", "bridge stop"]);
+    assert.equal(readdirSync(operationLogDirectory).length, 0);
     assert.deepEqual(JSON.parse(output.text()), {
       browser: {
         command: "close",
@@ -2118,6 +2317,10 @@ test("stops by closing the browser session before stopping the bridge", async ()
     });
   } finally {
     rmSync(stateDirectory, {
+      recursive: true,
+      force: true
+    });
+    rmSync(operationLogDirectory, {
       recursive: true,
       force: true
     });

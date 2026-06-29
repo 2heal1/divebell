@@ -59,12 +59,16 @@ runtime on `window` and call `connectBridge`, otherwise the CLI will not see a
 connected runtime:
 
 When `@openruntime/modern-plugin` is already wired but the `bridge` option is
-missing, update the Modern runtime config to pass `bridge`; do not use browser
-`eval` as a temporary connection path. If `runtimes` stays empty, wire the
-Modern plugin with the actual Bridge port from `open` / `start` for supported
-versions, or wire the Core entrypoint for older versions. If a runtime connects
-but Modern targets are missing, check the Modern plugin wiring instead of adding
-an empty Core runtime:
+missing, edit the runtime configuration in source. Do not use browser `eval`
+to call `connectBridge`; it creates a one-off state that the next reload loses
+and it does not prove the app is correctly integrated.
+
+If `workflow.mjs connected` reports no connected runtime, use its `nextAction`
+snippet. For supported Modern versions, wire the Modern plugin with `bridge`.
+For older versions, wire the Core entrypoint. If source edits are not allowed,
+mark runtime evidence unavailable and use browser fallback evidence explicitly.
+If a runtime connects but Modern targets are missing, check the Modern plugin
+wiring instead of adding an empty Core runtime:
 
 ```ts
 import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";

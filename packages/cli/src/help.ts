@@ -13,7 +13,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
     usage: "open-runtime start [--port <port>]",
-    description: "启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。"
+    description: "显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。"
   },
   {
     category: "Bridge and Browser",
@@ -93,7 +93,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Runtime",
     usage: "open-runtime runtimes [--bridge <url>]",
-    description: "列出连接到 Bridge 的 runtime。"
+    description: "列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。"
   },
   {
     category: "Runtime",

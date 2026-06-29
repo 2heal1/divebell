@@ -587,6 +587,125 @@ test("prints runtimes from the configured bridge", async () => {
   });
 });
 
+test("auto-starts a local bridge before listing runtimes", async () => {
+  const output = createOutput();
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const calls: string[] = [];
+  let bridgeStarted = false;
+
+  try {
+    const exitCode = await runCli(["runtimes", "--port", "18083"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      bridgeStateDirectory: stateDirectory,
+      fetcher: async (url) => {
+        calls.push(String(url));
+        assert.equal(String(url), "http://localhost:18083/runtimes");
+        if (!bridgeStarted) {
+          throw new TypeError("fetch failed");
+        }
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-1",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            }
+          ]
+        });
+      },
+      bridgeStarter: {
+        start: async ({ port }) => {
+          assert.equal(port, 18083);
+          bridgeStarted = true;
+          return { pid: 34567 };
+        }
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.equal(bridgeStarted, true);
+    assert.deepEqual(calls, [
+      "http://localhost:18083/runtimes",
+      "http://localhost:18083/runtimes",
+      "http://localhost:18083/runtimes"
+    ]);
+    assert.equal(JSON.parse(output.text()).runtimes[0].runtimeId, "runtime-1");
+  } finally {
+    rmSync(stateDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("auto-starts a local bridge before reading runtime resources", async () => {
+  const output = createOutput();
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const calls: string[] = [];
+  let bridgeStarted = false;
+
+  try {
+    const exitCode = await runCli(["snapshot", "--port", "18084", "--url", "http://app.test/"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      bridgeStateDirectory: stateDirectory,
+      fetcher: async (url) => {
+        calls.push(String(url));
+        if (String(url) === "http://localhost:18084/runtimes") {
+          if (!bridgeStarted) {
+            throw new TypeError("fetch failed");
+          }
+          return jsonResponse({
+            runtimes: [
+              {
+                runtimeId: "runtime-1",
+                url: "http://app.test/",
+                status: "connected",
+                connectedAt: 1,
+                lastSeenAt: 2
+              }
+            ]
+          });
+        }
+
+        assert.equal(String(url), "http://localhost:18084/runtimes/runtime-1/snapshot");
+        return jsonResponse({
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 10
+        });
+      },
+      bridgeStarter: {
+        start: async ({ port }) => {
+          assert.equal(port, 18084);
+          bridgeStarted = true;
+          return { pid: 34568 };
+        }
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.equal(bridgeStarted, true);
+    assert.deepEqual(calls, [
+      "http://localhost:18084/runtimes",
+      "http://localhost:18084/runtimes",
+      "http://localhost:18084/runtimes",
+      "http://localhost:18084/runtimes/runtime-1/snapshot"
+    ]);
+    assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-1");
+  } finally {
+    rmSync(stateDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
 test("selects the latest matching runtime for read commands", async () => {
   const calls: string[] = [];
   const output = createOutput();

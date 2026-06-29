@@ -14,7 +14,7 @@
 
 ### Bridge 和浏览器
 
-- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
+- `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
 - `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
 - `open-runtime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
@@ -33,7 +33,7 @@
 
 ### Runtime
 
-- `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。
+- `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。
 - `open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
 - `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
 - `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。

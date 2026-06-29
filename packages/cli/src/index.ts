@@ -26,6 +26,7 @@ import {
   type BrowserRunner
 } from "./browser.js";
 import {
+  canAutoStartBridge,
   createFileBridgeStateStore,
   createDetachedBridgeStarter,
   ensureBridge,
@@ -240,7 +241,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (args.command[0] === "runtimes") {
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
       writeJson(stdout, {
         bridgeUrl,
@@ -250,7 +251,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (isRuntimeResourceCommand(args.command[0])) {
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
       const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
       const result = await fetchRuntimeResource(fetcher, bridgeUrl, runtime, args.command[0], createQuery(args, args.command[0]));
@@ -262,7 +263,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       const actionName = requireOption(args, "action");
       const inputName = requireOption(args, "input");
       const payload = parsePayloadOption(args);
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
       const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
       const result = await fetchInputOptions(
@@ -281,7 +282,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "run-action") {
       const actionName = requireCommandArgument(args, 1, "action name");
       const payload = parsePayloadOption(args);
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
       const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
       const result = await runRuntimeAction(
@@ -298,7 +299,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "verify") {
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const where = parseWhereOptions(args);
       try {
         const result = await runVerifyCommand(
@@ -325,7 +326,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "wait-for") {
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
-      const bridgeUrl = createBridgeUrl(args);
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
       const where = parseWhereOptions(args);
       try {
         const result = await waitForRuntimeCommand(
@@ -418,6 +419,27 @@ function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?:
   if (sessionId !== undefined) selector.sessionId = sessionId;
   if (url !== undefined) selector.url = withOpenRuntimeSession(url, sessionId);
   return selector;
+}
+
+async function ensureLocalBridgeForRuntimeCommand(
+  args: ParsedCliArgs,
+  fetcher: Fetcher,
+  bridgeStarter: BridgeStarter,
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>
+): Promise<string> {
+  const bridgeUrl = createBridgeUrl(args);
+  if (!canAutoStartBridge(bridgeUrl)) {
+    return bridgeUrl;
+  }
+
+  await ensureBridge({
+    fetcher,
+    bridgeUrl,
+    starter: bridgeStarter,
+    stateStore: bridgeStateStore,
+    ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+  });
+  return bridgeUrl;
 }
 
 function requireOption(args: ParsedCliArgs, name: string): string {

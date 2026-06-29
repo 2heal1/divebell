@@ -93,11 +93,9 @@ async function runConnected(args) {
     return EXIT_PASS;
   }
 
-  const nextAction = bridgeResult.ok === false
-    ? createStartBridgeNextAction(bridge)
-    : matchingOpenOperation === undefined
-      ? createOpenPageNextAction(bridge, url)
-      : createConnectBridgeNextAction(integration, bridge, url);
+  const nextAction = bridgeResult.ok === false || matchingOpenOperation === undefined
+    ? createOpenPageNextAction(bridge, url, { bridgeReachable: bridgeResult.ok !== false })
+    : createConnectBridgeNextAction(integration, bridge, url);
   const exhausted = evidence.attempts.connected >= MAX_ATTEMPTS;
   evidence.connected = {
     ok: false,
@@ -322,24 +320,16 @@ function pickRuntime(runtimes, url) {
   return runtimes.find((runtime) => normalizeUrlForCompare(runtime.url) === normalizedUrl) ?? runtimes[0];
 }
 
-function createStartBridgeNextAction(bridge) {
-  const port = bridgePort(bridge);
-  return {
-    type: "start_bridge",
-    summary: "Bridge is not reachable. Start OpenRuntime Bridge, then rerun the connected check.",
-    commands: [
-      `pnpm exec openruntime start --port ${port}`
-    ]
-  };
-}
-
-function createOpenPageNextAction(bridge, url) {
+function createOpenPageNextAction(bridge, url, options = {}) {
   const command = url === undefined
     ? null
     : `pnpm exec openruntime open ${quoteShellArg(url)} --bridge ${quoteShellArg(bridge)}`;
+  const summary = options.bridgeReachable === false
+    ? "Bridge is not reachable. Open the target page with the OpenRuntime CLI so it can auto-start Bridge, then rerun this connected check."
+    : "No openruntime open operation was recorded for this working directory. Open the target page with the CLI, then rerun this connected check.";
   return {
     type: "open_page",
-    summary: "No openruntime open operation was recorded for this working directory. Open the target page with the CLI, then rerun this connected check.",
+    summary,
     ...(command === null ? {} : { commands: [command] }),
     bridge,
     url: url ?? null
@@ -678,8 +668,8 @@ function readOpenOperationLog(cwd) {
 function getMatchingOpenOperation(operation, url) {
   if (operation === undefined) return undefined;
   if (url === undefined) return operation;
-  return normalizeUrlForCompare(operation.url) === normalizeUrlForCompare(url) ||
-    normalizeUrlForCompare(operation.normalizedUrl) === normalizeUrlForCompare(url)
+  return urlsMatchForOpenOperation(operation.url, url) ||
+    urlsMatchForOpenOperation(operation.normalizedUrl, url)
     ? operation
     : undefined;
 }
@@ -737,6 +727,24 @@ function normalizeUrlForCompare(value) {
     return `${url.origin}${pathName}`;
   } catch {
     return String(value).replace(/\/+$/, "");
+  }
+}
+
+function urlsMatchForOpenOperation(operationUrl, requestedUrl) {
+  const normalizedOperationUrl = normalizeUrlForCompare(operationUrl);
+  const normalizedRequestedUrl = normalizeUrlForCompare(requestedUrl);
+  if (normalizedOperationUrl === normalizedRequestedUrl) return true;
+
+  try {
+    const operation = new URL(normalizedOperationUrl);
+    const requested = new URL(normalizedRequestedUrl);
+    if (operation.origin !== requested.origin) return false;
+
+    const operationPath = operation.pathname.replace(/\/+$/, "") || "/";
+    const requestedPath = requested.pathname.replace(/\/+$/, "") || "/";
+    return operationPath === "/" || requestedPath === "/";
+  } catch {
+    return false;
   }
 }
 

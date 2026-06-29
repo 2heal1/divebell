@@ -117,6 +117,22 @@ targets / actions
 
 OBSERVE 只负责定位，不负责最终业务验收。
 
+#### OBSERVE 收敛规则
+
+低阶浏览器能力只允许在目标未知时使用一轮。只要同时满足下面三点，
+必须结束 OBSERVE，进入 PATCH：
+
+- 已有业务失败证据。
+- 已有 MF/shared/runtime-error/route/loader 等运行时证据指向问题层级。
+- 已能定位到候选源码文件、配置文件或依赖选择。
+
+满足收敛条件后，不得继续使用 `page-snapshot`、`eval`、`wait-eval`、
+`console`、`network`、截图、完整 `snapshot` 或完整 `events` 重复确认同一事实。
+
+修复后如果 `workflow verify` 未通过，只能回到目标化证据：
+Business target snapshot、相关 MF/shared target、相关 target events 或新的
+`workflow verify` 结果。不要重新展开低阶浏览器取证。
+
 ### PATCH_OBSERVABILITY
 
 如果缺少能证明业务结果的 target，且源码可改，先补最小业务信号。
@@ -182,11 +198,12 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 
 ## 3. 停止条件 / fallback 边界
 
-满足下面条件时进入 DONE，并停止验证同一事实：
+满足下面条件时停止重复取证或验证同一事实：
 
 - `workflow verify` 通过。
 - 业务 target 已经 `ready`，且 snapshot 能证明业务结果。
 - 同一个事实已经由 snapshot、events 或 wait-for 明确证明成功或失败。
+- OBSERVE 收敛条件已经满足，必须停止继续取证并进入 PATCH。
 
 进入 DONE 后不要继续读取完整 snapshot、完整 events、network、截图或重复 eval。
 额外浏览器证据不会提高业务验证等级，只会增加噪音。

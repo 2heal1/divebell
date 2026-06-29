@@ -39,7 +39,8 @@ START
   -> OPEN_PAGE
   -> CONNECTED
   -> OBSERVE
-  -> PATCH_OBSERVABILITY?  # 缺少业务证据且源码可改时
+  -> DISCOVERY_PROBE（可选）       # 初始没有足够 target 时，每轮最多一次低阶取证
+  -> PATCH_OBSERVABILITY（可选）  # 缺少业务证据且源码可改时
   -> PATCH
   -> CONNECTED
   -> FINAL_VERIFY
@@ -115,19 +116,48 @@ targets / actions
   -> fallback browser evidence
 ```
 
-OBSERVE 只负责定位，不负责最终业务验收。
+OBSERVE 只负责定位，不负责最终业务验收。OBSERVE 如果已经得到足够线索，
+直接进入 PATCH；如果已有 target/snapshot/events/actions 不足，再进入
+DISCOVERY_PROBE。
 
-#### OBSERVE 收敛规则
+### DISCOVERY_PROBE（可选）
 
-低阶浏览器能力只允许在目标未知时使用一轮。只要同时满足下面三点，
-必须结束 OBSERVE，进入 PATCH：
+低阶浏览器能力包括 `console`、`network`、`page-snapshot`、`eval`、
+`wait-eval`。只有目标未知、已有 target/snapshot/events/actions 不足时，
+才允许使用一次低阶 Discovery Probe。
+
+每次使用低阶 Discovery Probe 后，必须立即记录并补 target：
+
+```bash
+node <openruntime-skill-dir>/scripts/workflow.mjs record-probe \
+  --type <console|network|page-snapshot|eval|wait-eval> \
+  --summary "<probe-result>" \
+  --out openruntime-evidence.json
+```
+
+`record-probe` 返回 `mustAddTarget=true` 后，禁止继续使用 `console`、
+`network`、`page-snapshot`、`eval` 或 `wait-eval`。必须先把这次 Probe
+得到的线索转成 `business:*` 或 `debug:*` target，并执行：
+
+```bash
+node <openruntime-skill-dir>/scripts/workflow.mjs target-added \
+  --target <business-or-debug-target-id> \
+  --kind <business|debug> \
+  --out openruntime-evidence.json
+```
+
+`target-added` 之后，只能用 `snapshot`、`events`、`wait-for` 或
+`workflow verify` 继续排查。只有这些结构化证据仍然不足时，才允许下一次
+低阶 Discovery Probe；下一次 Probe 后同样必须再次补 target。
+
+只要同时满足下面三点，必须结束 DISCOVERY_PROBE，进入 PATCH：
 
 - 已有业务失败证据。
 - 已有 MF/shared/runtime-error/route/loader 等运行时证据指向问题层级。
 - 已能定位到候选源码文件、配置文件或依赖选择。
 
-满足收敛条件后，不得继续使用 `page-snapshot`、`eval`、`wait-eval`、
-`console`、`network`、截图、完整 `snapshot` 或完整 `events` 重复确认同一事实。
+满足上面条件后，不得继续使用 `page-snapshot`、`eval`、`wait-eval`、
+`console`、`network` 或截图重复确认同一事实。
 
 修复后如果 `workflow verify` 未通过，只能回到目标化证据：
 Business target snapshot、相关 MF/shared target、相关 target events 或新的
@@ -156,6 +186,9 @@ runtime.updateSnapshot({
 
 浏览器错误也应写成最小 debug target，例如 `debug:<area>:runtime-error`，
 然后用 `snapshot --query runtime-error` 或 `snapshot --id <target-id>` 查询。
+
+如果本轮是由 `record-probe` 触发的补信号，补完 target 后必须运行
+`target-added` 解除 `mustAddTarget`。未解除前不得继续低阶 Discovery Probe。
 
 补完信号后必须回到 `OPEN_PAGE -> CONNECTED -> OBSERVE`，不能直接宣称完成。
 一次性排查补的 OpenRuntime 辅助代码，验证后可以删除；对后续 Agent 或运维有价值时再保留。
@@ -196,27 +229,37 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 如果 `verify` 返回 `exit 2`，按 `nextAction` 补业务 target / snapshot 或修业务失败，
 然后回到 `CONNECTED`。不要改用 DOM、console、截图或 `page-snapshot` 宣称业务验收成功。
 
+如果 `verify` 返回 `exit 0` 且输出 `doneLock=true` / `terminal=true`，
+必须立即进入 DONE。DONE 后只允许写结果和清理进程，禁止任何额外取证。
+
 ## 3. 停止条件 / fallback 边界
 
 满足下面条件时停止重复取证或验证同一事实：
 
-- `workflow verify` 通过。
+- `workflow verify` 通过，并写入 `doneLock=true`。
 - 业务 target 已经 `ready`，且 snapshot 能证明业务结果。
 - 同一个事实已经由 snapshot、events 或 wait-for 明确证明成功或失败。
-- OBSERVE 收敛条件已经满足，必须停止继续取证并进入 PATCH。
+- DISCOVERY_PROBE 的停止条件已经满足，必须停止继续低阶取证并进入 PATCH。
 
-进入 DONE 后不要继续读取完整 snapshot、完整 events、network、截图或重复 eval。
-额外浏览器证据不会提高业务验证等级，只会增加噪音。
+进入 DONE 后不要继续读取 snapshot、events、wait-for、network、console、
+page-snapshot、截图或 eval。额外证据不会提高业务验证等级，只会增加噪音；
+`doneLock=true` 后继续取证属于 violation。
+
+fallback 只在 OpenRuntime 不能形成结构化证据时使用。源码可改且 OpenRuntime
+可用时，不允许把低阶取证叫 fallback，必须走 `DISCOVERY_PROBE ->
+record-probe -> PATCH_OBSERVABILITY -> target-added`。
 
 只有下面情况才允许 fallback browser evidence：
 
 - 源码不可改。
 - 用户禁止改代码。
-- 依赖接入失败。
-- 当前轮只需要一次性定位 UI 入口、DOM 结构、视觉问题或底层浏览器错误。
+- OpenRuntime 依赖接入失败或 runtime 无法 connected。
+- 目标应用进程无法保持运行。
+- 当前任务只需要一次性 UI 入口、DOM 结构或视觉问题检查，且用户没有要求沉淀 runtime evidence。
 
 fallback 每轮最多使用一种低阶浏览器能力：`page-snapshot`、`eval`、`wait-eval`、
-`console` 或 `network`。fallback 不能写成 OpenRuntime 业务验收。
+`console` 或 `network`。fallback 不能写成 OpenRuntime 业务验收，也不能替代
+`workflow verify`。
 
 进入 BLOCKED 的情况：
 

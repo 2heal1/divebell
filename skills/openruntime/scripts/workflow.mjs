@@ -12,6 +12,13 @@ const DEFAULT_BRIDGE = "http://localhost:17321";
 const EXIT_PASS = 0;
 const EXIT_FAIL = 1;
 const EXIT_ACTION_REQUIRED = 2;
+const LOW_LEVEL_PROBE_TYPES = new Set([
+  "console",
+  "network",
+  "page-snapshot",
+  "eval",
+  "wait-eval"
+]);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const resolveIntegrationScript = path.join(scriptDir, "resolve-integration.mjs");
@@ -36,6 +43,14 @@ async function main() {
   }
   if (command === "verify") {
     process.exitCode = await runVerify(args);
+    return;
+  }
+  if (command === "record-probe") {
+    process.exitCode = await runRecordProbe(args);
+    return;
+  }
+  if (command === "target-added") {
+    process.exitCode = await runTargetAdded(args);
     return;
   }
   usage();
@@ -78,16 +93,26 @@ async function runConnected(args) {
       connectedCount: connectedRuntimes.length
     };
     evidence.open = createOpenEvidence(matchingOpenOperation, url);
-    evidence.status = evidence.finalVerify.businessVerified === true ? "pass" : "action_required";
-    evidence.nextAction = evidence.finalVerify.businessVerified === true
-      ? null
-      : createRunVerifyNextAction();
+    if (evidence.doneLock === true || evidence.finalVerify.businessVerified === true) {
+      evidence.status = "pass";
+      evidence.doneLock = true;
+      evidence.allowedNextActions = ["write_result", "cleanup"];
+      evidence.nextAction = null;
+    } else if (evidence.discoveryProbe.mustAddTarget === true) {
+      evidence.status = "action_required";
+      evidence.nextAction = createAddTargetAfterProbeNextAction(getLastProbeRecord(evidence));
+    } else {
+      evidence.status = "action_required";
+      evidence.nextAction = createRunVerifyNextAction();
+    }
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
       connected: evidence.connected,
       open: evidence.open,
       integration: evidence.integration,
+      doneLock: evidence.doneLock,
+      allowedNextActions: evidence.allowedNextActions,
       nextAction: evidence.nextAction
     });
     return EXIT_PASS;
@@ -136,6 +161,22 @@ async function runVerify(args) {
   const url = optionalString(args.url);
   const outPath = optionalString(args.out);
   const evidence = readEvidence(outPath);
+
+  if (evidence.doneLock === true && evidence.finalVerify.businessVerified === true) {
+    evidence.status = "pass";
+    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.nextAction = null;
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "pass",
+      doneLock: true,
+      terminal: true,
+      finalVerify: evidence.finalVerify,
+      allowedNextActions: evidence.allowedNextActions
+    });
+    return EXIT_PASS;
+  }
+
   evidence.attempts.verify += 1;
 
   const verifyResult = runOpenRuntimeVerify({
@@ -169,11 +210,17 @@ async function runVerify(args) {
 
   if (passed) {
     evidence.status = "pass";
+    evidence.doneLock = true;
+    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.discoveryProbe.mustAddTarget = false;
     evidence.nextAction = null;
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
-      finalVerify: evidence.finalVerify
+      doneLock: true,
+      terminal: true,
+      finalVerify: evidence.finalVerify,
+      allowedNextActions: evidence.allowedNextActions
     });
     return EXIT_PASS;
   }
@@ -196,6 +243,119 @@ async function runVerify(args) {
     nextAction: evidence.nextAction
   });
   return exhausted ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
+}
+
+async function runRecordProbe(args) {
+  const type = requireOption(args, "type");
+  const outPath = optionalString(args.out);
+  const evidence = readEvidence(outPath);
+
+  if (!LOW_LEVEL_PROBE_TYPES.has(type)) {
+    throw new Error(`Invalid --type "${type}". Expected one of: ${[...LOW_LEVEL_PROBE_TYPES].join(", ")}.`);
+  }
+
+  if (evidence.doneLock === true) {
+    const violation = addViolation(evidence, `Discovery probe "${type}" was attempted after doneLock=true.`);
+    evidence.status = "fail";
+    evidence.nextAction = {
+      type: "blocked",
+      summary: "Final verify already passed. Only writing results and cleanup are allowed.",
+      violation
+    };
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "fail",
+      doneLock: true,
+      violation,
+      nextAction: evidence.nextAction
+    });
+    return EXIT_FAIL;
+  }
+
+  if (evidence.discoveryProbe.mustAddTarget === true) {
+    const violation = addViolation(evidence, "A previous discovery probe has not been converted into a business/debug target.");
+    evidence.status = "fail";
+    evidence.nextAction = createAddTargetAfterProbeNextAction(getLastProbeRecord(evidence));
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "fail",
+      violation,
+      discoveryProbe: evidence.discoveryProbe,
+      nextAction: evidence.nextAction
+    });
+    return EXIT_FAIL;
+  }
+
+  const record = {
+    type,
+    summary: optionalString(args.summary) ?? null,
+    url: optionalString(args.url) ?? null,
+    recordedAt: new Date().toISOString()
+  };
+  evidence.discoveryProbe.usedCount += 1;
+  evidence.discoveryProbe.lastType = type;
+  evidence.discoveryProbe.mustAddTarget = true;
+  evidence.discoveryProbe.records.push(record);
+  evidence.status = "action_required";
+  evidence.nextAction = createAddTargetAfterProbeNextAction(record);
+  writeEvidence(outPath, evidence);
+  writeJson({
+    status: "action_required",
+    discoveryProbe: evidence.discoveryProbe,
+    nextAction: evidence.nextAction
+  });
+  return EXIT_ACTION_REQUIRED;
+}
+
+async function runTargetAdded(args) {
+  const targetId = requireOption(args, "target");
+  const outPath = optionalString(args.out);
+  const evidence = readEvidence(outPath);
+  const kind = optionalString(args.kind) ?? inferTargetKind(targetId);
+
+  if (kind !== "business" && kind !== "debug") {
+    throw new Error(`Invalid target kind "${kind}". Use --kind business or --kind debug.`);
+  }
+
+  if (evidence.doneLock === true) {
+    const violation = addViolation(evidence, `Target "${targetId}" was recorded after doneLock=true.`);
+    evidence.status = "fail";
+    evidence.nextAction = {
+      type: "blocked",
+      summary: "Final verify already passed. Only writing results and cleanup are allowed.",
+      violation
+    };
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "fail",
+      doneLock: true,
+      violation,
+      nextAction: evidence.nextAction
+    });
+    return EXIT_FAIL;
+  }
+
+  evidence.discoveryProbe.mustAddTarget = false;
+  evidence.targetGate = {
+    required: false,
+    satisfied: true,
+    targetId,
+    kind,
+    recordedAt: new Date().toISOString()
+  };
+  evidence.status = evidence.doneLock === true ? "pass" : "action_required";
+  evidence.nextAction = evidence.doneLock === true
+    ? null
+    : createUseStructuredEvidenceNextAction(targetId, kind);
+  writeEvidence(outPath, evidence);
+  writeJson({
+    status: "pass",
+    targetGate: evidence.targetGate,
+    discoveryProbe: evidence.discoveryProbe,
+    doneLock: evidence.doneLock,
+    nextAction: evidence.nextAction
+  });
+  return EXIT_PASS;
 }
 
 function runOpenRuntimeVerify(options) {
@@ -424,6 +584,82 @@ function createRunVerifyNextAction() {
   };
 }
 
+function createAddTargetAfterProbeNextAction(record) {
+  return {
+    type: "add_observability_target",
+    summary: "A low-level discovery probe was used. Convert the probe result into a business/debug target before any further low-level probing.",
+    probe: record ?? null,
+    commands: [
+      "node <openruntime-skill-dir>/scripts/workflow.mjs target-added --target <business-or-debug-target-id> --kind <business|debug> --out openruntime-evidence.json"
+    ],
+    snippets: [
+      {
+        pathHint: "stable business component, loader, or error boundary",
+        language: "ts",
+        code: `runtime.registerTarget({
+  id: "business:<area>:<capability>",
+  type: "business.<capability>",
+  statuses: ["ready", "error"],
+  source: "<app-or-package>",
+});
+
+runtime.updateSnapshot({
+  id: "business:<area>:<capability>",
+  status: "ready",
+  data: {
+    // Keep only the fields needed to prove the business result.
+  },
+});`
+      },
+      {
+        pathHint: "stable error boundary or runtime error handler",
+        language: "ts",
+        code: `runtime.registerTarget({
+  id: "debug:<area>:runtime-error",
+  type: "debug.runtime-error",
+  statuses: ["ready", "error"],
+  source: "<app-or-package>",
+});
+
+runtime.updateSnapshot({
+  id: "debug:<area>:runtime-error",
+  status: "error",
+  data: {
+    message: error.message,
+    stack: error.stack,
+  },
+});`
+      }
+    ]
+  };
+}
+
+function createUseStructuredEvidenceNextAction(targetId, kind) {
+  if (kind === "business") {
+    return {
+      type: "use_structured_business_evidence",
+      summary: "Target was added. Continue with snapshot/events/wait-for/verify only; do not run another low-level probe unless structured evidence is still insufficient.",
+      target: targetId,
+      allowedCommands: [
+        "pnpm exec openruntime snapshot --id <target-id> --url <app-url>",
+        "pnpm exec openruntime events --target-id <target-id> --url <app-url> --limit 50",
+        "pnpm exec openruntime wait-for <target-id> ready --url <app-url>",
+        "node <openruntime-skill-dir>/scripts/workflow.mjs verify --target <target-id> --status ready --bridge http://localhost:17321 --url <app-url> --out openruntime-evidence.json"
+      ]
+    };
+  }
+
+  return {
+    type: "use_structured_debug_evidence",
+    summary: "Debug target was added. Continue with snapshot/events only, patch the issue, then add or use a business target for final verify.",
+    target: targetId,
+    allowedCommands: [
+      "pnpm exec openruntime snapshot --id <target-id> --url <app-url>",
+      "pnpm exec openruntime events --target-id <target-id> --url <app-url> --limit 50"
+    ]
+  };
+}
+
 function createVerifyNextAction(finalVerify) {
   if (finalVerify.evidenceLevel !== "business") {
     return {
@@ -481,6 +717,9 @@ function createEmptyEvidence() {
   return {
     schemaVersion: 1,
     status: "action_required",
+    doneLock: false,
+    allowedNextActions: [],
+    violations: [],
     attempts: {
       connected: 0,
       verify: 0
@@ -521,6 +760,19 @@ function createEmptyEvidence() {
       message: null,
       nextStep: null
     },
+    discoveryProbe: {
+      usedCount: 0,
+      lastType: null,
+      mustAddTarget: false,
+      records: []
+    },
+    targetGate: {
+      required: false,
+      satisfied: false,
+      targetId: null,
+      kind: null,
+      recordedAt: null
+    },
     nextAction: null
   };
 }
@@ -529,6 +781,10 @@ function mergeEvidence(base, parsed) {
   return {
     ...base,
     ...parsed,
+    allowedNextActions: Array.isArray(parsed.allowedNextActions)
+      ? parsed.allowedNextActions
+      : base.allowedNextActions,
+    violations: Array.isArray(parsed.violations) ? parsed.violations : base.violations,
     attempts: {
       ...base.attempts,
       ...parsed.attempts
@@ -548,8 +804,38 @@ function mergeEvidence(base, parsed) {
     finalVerify: {
       ...base.finalVerify,
       ...parsed.finalVerify
+    },
+    discoveryProbe: {
+      ...base.discoveryProbe,
+      ...parsed.discoveryProbe,
+      records: Array.isArray(parsed.discoveryProbe?.records)
+        ? parsed.discoveryProbe.records
+        : base.discoveryProbe.records
+    },
+    targetGate: {
+      ...base.targetGate,
+      ...parsed.targetGate
     }
   };
+}
+
+function addViolation(evidence, summary) {
+  const violation = {
+    summary,
+    recordedAt: new Date().toISOString()
+  };
+  evidence.violations.push(violation);
+  return violation;
+}
+
+function getLastProbeRecord(evidence) {
+  return evidence.discoveryProbe.records[evidence.discoveryProbe.records.length - 1] ?? null;
+}
+
+function inferTargetKind(targetId) {
+  if (targetId.startsWith("business:")) return "business";
+  if (targetId.startsWith("debug:") || targetId.includes("runtime-error")) return "debug";
+  return "unknown";
 }
 
 function parseArgs(argv) {
@@ -760,5 +1046,7 @@ function usage() {
   process.stderr.write(`Usage:
   workflow.mjs connected --package-json <path> --bridge <url> --url <app-url> --out <file>
   workflow.mjs verify --target <id> --status <status> --bridge <url> --url <app-url> --out <file>
+  workflow.mjs record-probe --type <console|network|page-snapshot|eval|wait-eval> --summary <text> --out <file>
+  workflow.mjs target-added --target <id> --kind <business|debug> --out <file>
 `);
 }

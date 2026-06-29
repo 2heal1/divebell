@@ -1814,4 +1814,4 @@ export {
   createCliSkillSectionMarkdown,
   createHelpText
 } from "./help.js";
-export type { CliCommandReference, CliExampleReference } from "./help.js";
+export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";

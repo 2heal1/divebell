@@ -1,187 +1,405 @@
 ---
 name: openruntime
 description: >-
-  帮助已接入或准备接入 OpenRuntime 的项目把页面、组件、业务动作、
-  Modern.js、Garfish 和 Module Federation 状态暴露成 target/action/snapshot，
-  并用 CLI 读取、执行、等待和诊断。Use when a task explicitly asks to
-  use, evaluate, integrate, or troubleshoot OpenRuntime/@openruntime, or
-  needs runtime evidence for frontend behavior.
+  帮助 Agent 使用 OpenRuntime 观察前端运行时状态、读取 target/snapshot/events、
+  执行页面声明的 action、等待结构化状态，并在修复代码后使用 verify
+  做最终业务验收。OpenRuntime 优先用于替代 DOM 猜测、截图判断、
+  console/network 轮询和低阶浏览器取证。
 ---
 
-# OpenRuntime
+# OpenRuntime Skill
 
-## OpenRuntime 是什么
+## 1. 激活条件
 
-OpenRuntime 让前端应用把页面内部状态、业务动作和浏览器操作开放给 Agent。
-它的核心价值是让 Agent 读取应用主动暴露的运行时事实，而不是只靠 UI、DOM、console、截图或异步时机猜结果。
+出现下面任一情况时使用这个 skill：
 
-OpenRuntime 主要解决三件事：让页面连上 Agent、让运行时状态可读取、让业务结果可验收。
-它不是普通浏览器自动化的替代品。页面没有结构化信号时，可以用 `page-snapshot`、`eval`、`wait-eval` 或必要时的 console 做普通浏览器取证，但这些不能写成 OpenRuntime 结构化证据。
+- 项目已经使用 OpenRuntime。
+- 用户要求使用、接入、评测或排查 OpenRuntime。
+- 需要观察页面、组件、路由、remote、shared、Garfish/Vmok 子应用或业务运行时状态。
+- 浏览器自动化需要结构化运行时证据，而不是只靠 DOM、console、network、截图或视觉判断。
+- 任务需要等待应用 ready、组件 ready、remote ready 或业务结果 ready。
+- 任务需要执行应用显式暴露的业务 action。
+- 用户希望用运行时证据辅助定位问题。
+- 用户希望在修复代码后用运行时验收代替普通 UI 检查。
 
-## 适用场景
+只要这个 skill 被激活，就不能静默跳过 OpenRuntime。OpenRuntime 不能使用时，必须说明原因、已尝试的内容、是否退回普通浏览器自动化，以及最终结果属于 OpenRuntime 证据、普通浏览器证据还是未验证结果。
 
-使用 OpenRuntime：
+## 2. 核心原则
 
-- 用户明确要求使用 OpenRuntime，或项目已经/准备接入 OpenRuntime。
-- 需要把页面、组件、业务状态或业务动作暴露给 Agent。
-- 需要确认 route、loader、组件、业务结果、remote、shared、Garfish 子应用或 action 结果是否 ready。
-- 需要排查 Modern.js、Garfish、Module Federation、Vmok 或其他前端运行时问题，并希望使用结构化状态定位。
-- 需要反复验证同一个前端事实，或者希望 Agent 后续能稳定复用这个信号。
+OpenRuntime 不是让 Agent 多跑一套浏览器检查。正确路径是：
 
-## 安装 OpenRuntime
+```text
+用高阶 OpenRuntime API 定位问题
+        ↓
+根据运行时证据修改代码
+        ↓
+修复后使用 verify 做最终验收
+        ↓
+verify 成功后停止验证同一事实
+```
 
-执行解析脚本，根据返回内容安装和接入：
+工具语义：
+
+- `targets` / `actions`：看页面暴露了哪些运行时能力。
+- `snapshot`：读取当前业务状态、错误事实或 debug 信息。
+- `events`：追溯状态变化、action 历史和错误发生过程。
+- `run-action`：触发页面声明的业务动作，用于复现或推进流程。
+- `wait-for`：等待某个 target 到达中间状态。
+- `verify`：已经定位并修改代码后，用于最终验收。
+- `page-snapshot` / `eval` / `wait-eval` / console / network：低阶浏览器能力，只在高阶 OpenRuntime 信号不足时少量使用。
+
+`verify` 不是定位工具，不要在还不知道问题在哪里时反复运行。只要存在可用的 target、snapshot、events、action 或 wait-for，就优先使用高阶 OpenRuntime API。
+
+## 3. 决策树
+
+```text
+任务开始
+  │
+  ▼
+项目已经使用 OpenRuntime？
+  │
+  ├─ 是 ─► 使用已有 runtime API
+  │
+  └─ 否 ─► 用户明确要求 OpenRuntime，或任务需要运行时证据？
+          │
+          ├─ 是 ─► 运行 resolve-integration，按结果安装/接入
+          │
+          └─ 否 ─► 按普通方式继续
+
+使用或接入 OpenRuntime 后
+  │
+  ▼
+runtime 是否 connected？
+  │
+  ├─ 否 ─► 源码可改时修连接；不可改时标记 runtime 证据不可用
+  │
+  └─ 是 ─► 进入定位阶段
+
+定位阶段
+  │
+  ▼
+优先使用 targets/actions → snapshot → events → run-action → wait-for
+  │
+  ▼
+证据足够定位问题？
+  │
+  ├─ 是 ─► 修改代码
+  │
+  └─ 否
+      │
+      ├─ 源码可改 ─► 补最小 target / snapshot / action，再继续定位
+      └─ 源码不可改 ─► 少量使用 page-snapshot / eval / wait-eval / console / network
+
+修改代码后
+  │
+  ▼
+重新启动或刷新页面，并确认 runtime connected
+  │
+  ▼
+必要时用 snapshot / wait-for 确认目标状态可观察
+  │
+  ▼
+执行 verify 做最终验收
+  │
+  ▼
+verify 成功？
+  │
+  ├─ 是 ─► 完成并停止；不要重复跑低阶浏览器验证
+  └─ 否 ─► 回到定位阶段，用最小必要证据继续排查
+```
+
+## 4. 工作流
+
+当 OpenRuntime 可用时，按阶段执行。不要把所有命令当成固定流水线。
+
+### Phase 1：接入和连接确认
+
+先找目标应用 `package.json`，运行：
 
 ```bash
 node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 ```
 
-脚本返回 JSON：`install` 是需要安装的包，`use` 是需要在项目里接入或启用的包。`install` 为空表示不需要新增安装，`use` 为空表示脚本没有检测到需要接入的 OpenRuntime 包。按返回结果执行；没有安装或接入时写清原因。
+如果 skill 被注入到 `.agents/skills/openruntime`，使用对应路径：
 
-核心包：
-
-- `@openruntime/core`：页面侧创建 runtime、注册 target、更新 snapshot、注册 action。
-- `@openruntime/bridge`：让页面 runtime 和 Agent 侧 CLI 跨进程通信。
-- `@openruntime/cli`：Agent 侧打开页面、读取状态、执行 action、等待 target。
-
-框架和运行时包只在对应场景使用：
-
-- Modern.js `>=3.4.0` 或 preview 项目使用 `@openruntime/modern-plugin` 暴露 route、loader、SSR、hydration 等状态；详细接入见 `references/modernjs.md`。
-- Module Federation 或 Vmok 消费者项目使用 `@module-federation/observability-plugin` 暴露 remote、expose、shared、报告信息；只要依赖名包含 `vmok` 就按 Vmok/MF 加载链路处理；详细接入见 `references/module-federation.md`。
-- Garfish 状态由 Modern 插件的 Garfish 工具暴露；详细接入见 `references/garfish.md`。
-- 使用 Modern/MF/Vmok/Garfish 时，根据 `resolve-integration.mjs` 输出选择对应 reference 阅读，不要把所有 reference 全部加载到上下文。
-
-安装或接入失败时，先说明失败原因。不要在没有说明原因的情况下，把 `eval`、`network` 或 console 结果当成 OpenRuntime / MF 结构化证据。
-
-## OpenRuntime 功能
-
-先理解这些概念：
-
-- Bridge：Agent 侧和页面侧 runtime 的通信通道；没有 Bridge，CLI 看不到页面里的 OpenRuntime 状态。
-- runtime：页面里运行的 OpenRuntime 实例；它负责注册 target、更新 snapshot、记录 events 和执行 actions。
-- target：一个可被引用、查询和等待的状态目标，例如 route、组件、remote、shared 或业务结果。
-- snapshot：target 当前状态和关键数据；排查或验收时优先读 snapshot，而不是反复查 DOM 或 console。
-- events：target 状态变化和 action 执行历史；用于追溯状态为什么变成现在这样。
-- action：页面显式声明给 Agent 执行的动作；执行后仍要通过 snapshot / verify 确认结果。
-- CLI：Agent 使用的命令入口，用来打开页面、读取状态、执行 action、等待和验收。
-
-### 连接 Bridge
-
-`open-runtime open` 会启动或复用本机 Bridge 并打开页面，但不会替业务页面创建 target。安装包后，页面 runtime 必须从源码或框架插件配置里连接 Bridge；不要用浏览器 `eval` 临时连接 runtime。
-
-Modern 插件连接：
-
-```ts
-import { defineRuntimeConfig } from "@modern-js/runtime";
-import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
-
-export default defineRuntimeConfig({
-  plugins: [
-    openRuntimeModernPlugin({
-      bridge: { port: 17321 },
-    }),
-  ],
-});
+```bash
+node .agents/skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
 ```
 
-Core 连接：
+根据返回 JSON 处理：
 
-```ts
-import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+- `install`：需要安装的包。非空时只安装这些缺失包。
+- `use`：需要在项目中接入或启用的 OpenRuntime 能力。按返回内容阅读对应 reference。
 
-const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+只读当前任务需要的 reference，不要一次性加载所有 reference。
 
-runtime.connectBridge({
-  port: 17321,
-});
+启动页面后确认 runtime connected：
+
+```bash
+pnpm exec openruntime runtimes --bridge http://localhost:17321
 ```
 
-只安装 `@openruntime/core` 不会自动连接 Bridge；页面侧必须调用 `connectBridge`。如果 `openruntime runtimes` 为空，说明页面 runtime 没有连接 Bridge；源码可改时回到安装脚本输出，在源码或框架插件配置里完成连接。源码不可改、用户禁止接入、依赖安装失败或接入失败时，把结构化 runtime 证据标记为 unavailable，再退回普通浏览器取证。
+判断连接成功时解析 `runtimes` JSON：
 
-判断连接成功时必须解析 `runtimes` JSON。只要存在 `status: "connected"` 的 runtime，就算页面 runtime 已连接；标识字段是 `runtimeId`，不是 `id`。拿到 connected runtime 后记录 `runtimeId`、`url` 和 `status`，停止连接轮询，不要把后续 `targets`、`snapshot` 或 `actions` 探索耗时计入连接耗时。
+- 成功条件：至少一个 runtime 的 `status` 是 `"connected"`。
+- runtime 标识字段是 `runtimeId`，不是 `id`。
+- `runtimes` 为空时，不能把 `targets`、`snapshot`、`events` 或 `verify` 写成已使用。
 
-### 添加 target 和 snapshot
+### Phase 2：定位阶段
 
-用 `registerTarget` 声明可等待的状态，用 `updateSnapshot` 写入真实状态。业务 target 默认不会凭空存在；源码可改、需要反复验证、要跨刷新/重启验证，或当前失败无法通过已有信号定位时，主动补最小 target。
+目标是用高阶 OpenRuntime API 快速理解当前页面事实，而不是直接使用浏览器底层取证。
+
+定位优先级：
+
+```text
+targets / actions
+      ↓
+snapshot
+      ↓
+events
+      ↓
+run-action
+      ↓
+wait-for
+      ↓
+page-snapshot / eval / wait-eval / console / network
+```
+
+优先查询和业务关键词相关的 target / action：
+
+```bash
+pnpm exec openruntime targets --url <url> --query <business-keyword>
+pnpm exec openruntime actions --url <url>
+```
+
+如果已经知道 target id，不要重复读取完整 targets。读取状态时优先收窄：
+
+```bash
+pnpm exec openruntime snapshot --url <url> --id <target-id>
+pnpm exec openruntime snapshot --url <url> --query <business-keyword>
+```
+
+完整 `snapshot` 或完整 `events` 只允许在 target 未知时读取一次。
+
+如果页面声明了 action，优先用 action 复现或推进流程：
+
+```bash
+pnpm exec openruntime run-action --url <url> <action-name> --payload '<json>'
+```
+
+执行 action 后读取 snapshot、events、wait-for 或最终 verify 观察结果。
+
+### Phase 3：补观测点
+
+如果现有 OpenRuntime 信号不足，且源码可改，优先补最小观测点，而不是长期依赖 eval、console、network 或 page-snapshot。
+
+OpenRuntime 观测代码没有业务副作用：连接 Bridge、注册 target、更新 snapshot、记录 event 只暴露事实，不改变接口、路由、业务状态或渲染分支。
+
+补充顺序：
+
+- 最小业务 target：只表示一个业务能力或结果。
+- 最小 snapshot：只写能证明结论的必要字段。
+- 最小 action：只暴露确定性业务动作。
+- debug target：承接 console/network/runtime error 等错误事实。
+
+一次性排查用的 OpenRuntime 辅助代码，验证后可以删除；对后续 Agent 或运维有价值时再保留。
+
+### Phase 4：修改代码
+
+根据定位阶段得到的 snapshot、events、action 结果修改代码。不要因为接入了 OpenRuntime 就改变真实业务逻辑；OpenRuntime 只用于暴露事实和执行声明动作。
+
+### Phase 5：最终验收阶段
+
+只有在下面情况之一成立时，才执行 `verify`：
+
+- 已经修改代码，需要最终验收。
+- 用户任务本身就是验收。
+- 已经有明确业务 target 和期望 status。
+
+最终验收命令：
+
+```bash
+pnpm exec openruntime verify <business-target-id> ready --url <url> --timeout 10000
+```
+
+如果 `verify` 成功，立即停止验证同一事实。不要继续运行 eval、wait-eval、console、network、page-snapshot、完整 snapshot 或截图来重复证明。
+
+如果 `verify` 失败，回到定位阶段，而不是继续堆叠浏览器底层证据。
+
+## 5. Evidence Budget
+
+在 OpenRuntime connected 且已有 target / snapshot / action 时，每一轮定位最多使用：
+
+- 1 次 `targets` 或 `actions`。
+- 1 次 `snapshot --id` 或 `snapshot --query`。
+- 1 次 `events --target-id` 或 `events --query`。
+- 1 次 `run-action`，仅当需要推进流程。
+- 1 次 `wait-for`，仅当需要等待中间状态。
+
+不要在同一轮里同时使用完整 snapshot、完整 events、page-snapshot、eval、console 和 network。
+
+低阶浏览器预算：
+
+- 需要找按钮：只用 `page-snapshot`。
+- 需要执行页面表达式：只用 `eval` 或 `wait-eval`。
+- 需要查报错：只看 console 或 network，不要两个都扫。
+
+如果使用 console 或 network 找到错误，并且源码可改，下一步必须把错误写入 debug target / snapshot，再用 `snapshot --query` 或 `snapshot --id` 查询。
+
+`verify` 预算：修复前不要反复 verify；修复后必须 verify；verify 成功后停止验证同一事实；verify 失败后回到定位阶段。
+
+## 6. Required Checklists
+
+每个 OpenRuntime 任务都必须在最终回答中包含对应 checklist。未涉及代码修改时使用 Diagnosis Checklist；涉及代码修改时使用 Diagnosis Checklist 和 Final Verification Checklist。
+
+### Diagnosis Checklist
+
+```markdown
+OpenRuntime diagnosis checklist:
+- [ ] resolved integration requirements or explained why not applicable
+- [ ] confirmed runtime connected or explained why unavailable
+- [ ] inspected existing targets/actions before low-level browser evidence
+- [ ] used narrowed snapshot if target is known
+- [ ] used events only when history was needed
+- [ ] used run-action only when a declared action was needed
+- [ ] avoided eval / wait-eval / console / network / page-snapshot unless high-level APIs were insufficient
+- [ ] if console/network was used and source was editable, converted the useful error into snapshot evidence
+```
+
+### Final Verification Checklist
+
+```markdown
+OpenRuntime final verification checklist:
+- [ ] business target exists, or missing business target is explicitly stated
+- [ ] verify executed after the fix
+- [ ] verify result.success recorded
+- [ ] verify result.evidence.level recorded
+- [ ] stopped after successful verify
+- [ ] did not collect extra low-level browser evidence after successful verify
+```
+
+如果没有执行 `verify`，最终回答必须写：
+
+```text
+OpenRuntime verify not executed: <reason>
+```
+
+## 7. Completion Rules
+
+定位完成必须满足下面至少一项：
+
+- 结构化证据已经指出问题位置。
+- 缺少结构化证据，但已说明缺口，并完成最小 fallback。
+- 源码可改时，已经补最小 target / snapshot / action 并继续定位。
+
+最终验收完成必须满足：
+
+- 修改代码后执行 `verify`。
+- 有业务 target 时，`result.evidence.level` 必须是 `business`，才能声明业务成功。
+- 只有 Modern/MF/Vmok/Garfish target 时，只能声明底层加载链路状态，不能声明业务成功。
+- 没有相关 target 时，声明证据不足，并说明下一步。
+
+缺少业务 target 时，不要把 route ready、MF ready、Garfish mounted、页面截图或 console 没报错写成业务成功。
+
+## 8. 保护规则
+
+- 优先复用已有 target / snapshot / event / action，不要重复注册同义能力。
+- 新 target 只表达一个稳定业务能力。
+- action 保持最小、确定、可重复。
+- wait-for 等待中间状态，verify 做最终验收。
+- 源码可改且缺业务结果或错误事实时，必须补最小 target / snapshot，不要长期用低阶浏览器能力代替。
+- 不要在 `verify` 成功后继续运行低阶浏览器验收。
+- 不要把 OpenRuntime 观测代码写成改变接口、路由、业务状态或渲染分支的代码。
+- 短生命周期后台 shell 不等于失败；应用启动后用端口、页面打开和 runtime connected 判断是否可继续。
+
+## 9. 失败策略
+
+OpenRuntime 不能使用时：
+
+1. 说明为什么不能使用。
+2. 说明尝试过哪些步骤。
+3. 只有在合适时才退回普通浏览器自动化。
+4. 明确区分推断结果和已验证运行时证据。
+
+不要在 `runtimes` 为空时，把 `targets`、`snapshot`、`events` 或 `verify` 写成已使用。
+
+## 10. OpenRuntime 概念速览
+
+OpenRuntime 让页面主动向 Agent 暴露运行时事实和可执行动作。它不是普通 DOM 自动化、截图分析或 console 抓取的替代包装，而是让 Agent 直接读取业务和框架主动声明的事实。
+
+核心对象：
+
+- Bridge：CLI 和页面 runtime 的连接通道。
+- Runtime：页面里的 OpenRuntime 实例。
+- Target：页面声明的可观察对象，例如业务组件、route、remote、shared、子应用。
+- Snapshot：target 当前事实。
+- Event：状态变化和 action 历史。
+- Action：页面声明的可执行动作。
+- wait-for：等待 target 进入某个状态。
+- verify：最终验收一个 target 是否达到目标状态。
+
+详细 API、例子和排障见 `references/core.md`。
+
+## 11. 安装 OpenRuntime
+
+只要任务需要 OpenRuntime 结构化运行时事实，并且能找到目标应用 `package.json`，先执行：
+
+```bash
+node skills/openruntime/scripts/resolve-integration.mjs <path-to-package.json>
+```
+
+脚本返回：
+
+- `install`：需要安装的依赖包列表。
+- `use`：需要接入的能力列表。
+
+按返回内容安装依赖并阅读对应 reference：
+
+- `@openruntime/core`：页面侧 runtime、target、snapshot、action 基础能力。
+- `@openruntime/bridge`：Bridge 连接能力，通常由 CLI 或插件间接使用。
+- `@openruntime/cli`：Agent 使用的命令行入口。
+- `@openruntime/modern-plugin`：Modern.js route、loader、SSR、hydration、Garfish 等框架信号。
+- `@module-federation/observability-plugin`：MF/Vmok remote、expose、shared、report 等加载链路信号。
+
+安装和接入细节见 `references/core.md`、`references/modernjs.md`、`references/module-federation.md`、`references/garfish.md`。
+
+## 12. 功能速览
+
+常用 API 模式：
 
 ```ts
 runtime.registerTarget({
   id: "business:orders:risk-panel",
   type: "business.component",
+  label: "Orders risk panel",
   statuses: ["pending", "ready", "error"],
-  source: "orders",
 });
 
 runtime.updateSnapshot({
   id: "business:orders:risk-panel",
   status: "ready",
-  data: { riskPanelReady: true },
+  data: { orderId, visible: true },
+});
+
+runtime.registerAction({
+  name: "orders.refreshRiskPanel",
+  description: "Refresh the order risk panel",
+  handler: async () => refreshRiskPanel(),
 });
 ```
 
-只暴露能证明结论的状态，不要把整页 DOM 或完整业务数据塞进 snapshot。目标组件可能失败到连自己都注册不了时，在稳定父级、页面或路由容器里注册 target：父级先写 `pending`，子组件成功时写 `ready`，父级捕获错误、超时或缺失时写 `error`。
-
-如果要确认浏览器错误是否消失，源码可改时不要反复查 console；在稳定位置捕获错误并写入 debug target，例如 `debug:<area>:runtime-error`，再用 `snapshot --query <keyword>` 或 `snapshot --id <target-id>` 查询。源码不可改时，一次 console 读取只能作为普通 fallback 证据。
-
-### 添加 action
-
-用 action 表达需要参数、多步骤、跨系统状态、没有稳定 UI 入口，或需要反复复现并等待明确结果的动作。简单点击、输入、跳转和临时 DOM/window 探索不需要强行改成 action。
+常用 CLI 模式：
 
 ```bash
-pnpm exec openruntime run-action --url <url> orders.refresh --payload '{"scope":"current"}'
-pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
+pnpm exec openruntime targets --url <url> --query <keyword>
+pnpm exec openruntime snapshot --url <url> --id <target-id>
+pnpm exec openruntime events --url <url> --target-id <target-id> --limit 50
+pnpm exec openruntime run-action --url <url> <action-name> --payload '<json>'
+pnpm exec openruntime wait-for <target-id> ready --url <url> --timeout 10000
+pnpm exec openruntime verify <target-id> ready --url <url> --timeout 10000
 ```
 
-`run-action` 只说明动作被执行；动作结果必须落到 target 的 snapshot 上，再用 `verify` 验收。
-
-### 读取状态
-
-用收窄查询读取状态，避免每一步都拉完整 snapshot 或 events：
-
-```bash
-pnpm exec openruntime targets --query <keyword>
-pnpm exec openruntime snapshot --query <keyword>
-pnpm exec openruntime snapshot --id <target-id>
-pnpm exec openruntime events --query <keyword> --limit 50
-pnpm exec openruntime events --target-id <target-id> --limit 50
-```
-
-完整 `snapshot` 或最近 `events` 只在目标未知时读取一次。一旦确定 target，后续按 `--id`、`--target-id`、`--type`、`--source`、`--status` 或 `--query` 收窄范围。
-
-### wait-for 和 verify
-
-`wait-for` 用于等待一个明确 target 到达指定状态。它只证明“这个 target 到了这个状态”，不负责判断这个 target 是否代表最终业务成功。
-
-```bash
-pnpm exec openruntime wait-for modern:route ready --where pathname=/orders --timeout 10000
-```
-
-判断 `wait-for` 时看 `result.success` 和 target 状态。`success: false`、timeout、target `error` 都是失败证据；不要用 `|| true` 吞掉失败。
-
-`verify` 用于保守验收。已有或刚补了能代表业务事实的 target 时，必须直接执行 `verify <target-id> ready`；最终结果写出实际命令、`result.success` 和 `result.evidence.level`。
-
-```bash
-pnpm exec openruntime verify business:orders:risk-panel ready --timeout 10000
-```
-
-只有 `success: true` 且 `evidence.level: "business"` 才能写成业务验收通过。Modern、MF、Vmok 或 Garfish target 的 `verify` 最多说明路由、加载链路、共享依赖或子应用状态；不要写成业务组件、业务数据或业务动作成功。缺少业务 target 时，`verify` 只做一次轻量页面可见性检查来拦截明显白屏；白屏、检查不可用或检查不确定时，都不能把底层 ready 写成业务成功。
-
-### 浏览器能力
-
-`open` 默认使用静默浏览器。只有需要人工观察、布局、截图、动画、视觉问题或真实点击路径时，才使用 `--ui`。
-
-```bash
-pnpm exec openruntime open <url> --bridge http://localhost:17321
-pnpm exec openruntime page-snapshot --url <url>
-pnpm exec openruntime click <ref|selector|text>
-pnpm exec openruntime fill <ref|selector> <value>
-pnpm exec openruntime eval '({ pathname: location.pathname, title: document.title })'
-pnpm exec openruntime wait-eval 'Boolean(document.querySelector("[data-testid=remote-order-panel]"))' --timeout 10000
-```
-
-`page-snapshot` 用于获取可操作元素引用；如果已经拿到 `[ref=eN]`，点击时优先用 ref。`eval` / `wait-eval` 用于未接入 OpenRuntime API、源码不可改或一次性普通页面验收；它们不能替代应该执行的 `verify`，也不能写成 OpenRuntime 业务验收。
-
-### 常用 CLI
+## 13. 常用 CLI
 
 <!-- This section is generated by scripts/sync-openruntime-cli-docs.mjs. Do not edit by hand. -->
 
@@ -199,65 +417,39 @@ pnpm exec openruntime wait-eval 'Boolean(document.querySelector("[data-testid=re
 - `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
 - `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。
 
-## 使用 OpenRuntime
+## 14. Reference Reading Rules
 
-先确认目标项目源码是否可更改。
+按任务需要阅读 reference。不要一次性加载所有 reference。
 
-- 源码可更改：必须接入 OpenRuntime，并让页面 runtime 连接 Bridge。连接后用 `runtimes` 确认存在 `status: "connected"` 的 runtime，再继续排查或验证。
-- 源码不可更改：只使用 OpenRuntime CLI 做浏览器操作和普通页面取证，例如 `open`、`page-snapshot`、`eval`、`wait-eval`、`network`、必要时 console。
+- OpenRuntime 概念、安装、Core API、CLI 用法、排障和例子：读取 `references/core.md`。
+- Modern.js route、loader、SSR、hydration：读取 `references/modernjs.md`。
+- Module Federation remote、expose、shared、运行时错误：读取 `references/module-federation.md`。
+- Vmok：按 Vmok/MF 加载链路处理，读取 `references/module-federation.md`。
+- Garfish 子应用状态：读取 `references/garfish.md`。
+- 完整 CLI：读取 `docs/cli-reference.md`。
 
-排查源码可改的问题时，按这个流程走：
+## 15. Final Response Requirements
 
-1. 运行 `resolve-integration.mjs`，按返回的 `install` 和 `use` 安装、接入；根据返回内容读取 Modern、MF/Vmok 或 Garfish reference。
-2. 启动 Bridge，例如 `pnpm exec openruntime start --port 17321`。
-3. 启动应用，并确保源码或框架插件配置连接同一个 Bridge。
-4. 打开问题页面并确认 runtime：
+OpenRuntime 任务最终回答必须明确区分：
 
-```bash
-pnpm exec openruntime open <url> --bridge http://localhost:17321
-pnpm exec openruntime runtimes --bridge http://localhost:17321
-```
+- 定位证据。
+- 修改内容。
+- 最终验收。
 
-5. 先读当前结构化状态：
+如果修改了代码，必须说明是否执行了 verify。
 
-```bash
-pnpm exec openruntime snapshot --url <url>
-pnpm exec openruntime snapshot --url <url> --query <keyword>
-```
+如果 verify 成功，说明：
 
-如果 snapshot 已经有异常信息，先根据异常定位到需要验证的位置，再参考「添加 target 和 snapshot」补最小 target / snapshot，继续排查。
+- target id。
+- expected status。
+- `result.success`。
+- `result.evidence.level`。
 
-如果 snapshot 没有需要的内容，先用浏览器能力看页面和资源链路：
+如果 verify 未执行，说明：
 
-```bash
-pnpm exec openruntime page-snapshot --url <url>
-pnpm exec openruntime network --url <keyword>
-pnpm exec openruntime console --query <keyword> --limit 50
-```
+- 为什么没有执行。
+- 是否缺少业务 target。
+- 是否只是底层加载链路证据。
+- 是否退回普通浏览器证据。
 
-`page-snapshot` 用来看 DOM 结构和可操作元素，`network` / console 只用于定位问题区间。定位到具体问题区间后，回到源码里参考「添加 target 和 snapshot」补最小 target / snapshot，再继续排查。不要长期用 DOM、network 或 console 代替结构化信号。
-
-最终验收只用 `verify`：
-
-```bash
-pnpm exec openruntime verify <business-target-id> ready --url <url> --timeout 10000
-```
-
-`verify` 成功后就结束排查，不要重复启动或重复验证同一个事实。成功后仅用 OpenRuntime 的截图能力输出改动后的页面状态即可，不需要再调用 agent 的 UI 分析来证明成功：
-
-```bash
-pnpm exec openruntime screenshot <name> --full-page
-```
-
-如果为了排查临时接入了 OpenRuntime 辅助代码，确认修复后可以移除这些辅助代码，只保留主要业务修复。对后续 Agent 或运维有价值的 target / snapshot / action 才保留。
-
-使用时避免这些反例：
-
-- 源码可改却不连接 Bridge，只用 CLI 做普通浏览器排查。
-- `runtimes` 为空时继续把 `targets`、`snapshot`、`events` 或 `verify` 写成已使用。
-- 只等 `modern:route ready`，就把业务组件或业务结果写成 ready。
-- `verify modern:route ready` 返回底层状态后，把它写成业务通过。
-- 需要反复验证时，因为没有现成业务 target 就一直用 `eval` / console 代替补最小 target。
-- `verify` 成功后继续重复截图、重复 UI 分析或重复检查同一事实。
-
-Modern.js 的 route、loader、SSR、hydration 和业务 ready helper 用法见 `references/modernjs.md`。Garfish 子应用 runtime 观测和接入方式见 `references/garfish.md`。Module Federation remote、expose、shared 和 observability report 用法见 `references/module-federation.md`。只有排查对应运行时状态时再读取这些文件。
+最终回答仍然必须包含 Required Checklists 中对应的 checklist。

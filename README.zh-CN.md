@@ -114,7 +114,7 @@ openruntime start
 openruntime open \
   https://example.com/openruntime/release-notes
 
-openruntime verify \
+openruntime wait-for \
   docs:release-notes ready \
   --url https://example.com/openruntime/release-notes
 
@@ -127,8 +127,6 @@ openruntime run-action \
 这里的 Target 和 Action 都由页面声明。
 
 Agent 不需要分析 DOM，也不需要寻找按钮，只需要调用统一 Runtime API 即可获得结果。
-`verify` 会保持保守：只有声明出来的业务 Target 才能作为最终验收，不会把框架或加载状态 Target 直接当成业务成功。
-只想等待某个 Target 状态时用 `wait-for`；要做最终验收时用 `verify`。
 
 团队也可以进一步把这些步骤封装成自己的命令：
 

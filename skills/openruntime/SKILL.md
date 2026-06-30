@@ -42,7 +42,7 @@ START
   -> PATCH
   -> CONNECTED
   -> FINAL_VERIFY
-  -> DONE | BLOCKED
+  -> DONE | OBSERVE | BLOCKED
 ```
 
 每个脚本状态最多 3 轮：
@@ -100,27 +100,41 @@ node <openruntime-skill-dir>/scripts/workflow.mjs observe \
   --out openruntime-evidence.json
 ```
 
-如果 `observe.nextAction.type=snapshot_observe`，只读已有插件 snapshot，不要默认读
-`targets`、`actions` 或 `events`：
+如果 `observe.nextAction.type=snapshot_observe`，先把插件 snapshot 当作一次快速探测，
+不要把它当成必须完成的定位主路径。首次只跑一次全量 snapshot，不带 `--id`、`--query`、
+`--type`、`--status`，也不要并发跑多条 snapshot 变体：
 
 ```bash
 pnpm exec openruntime snapshot --url <app-url>
 ```
 
-如果 snapshot 已经指向 MF shared、remote/expose、Modern route、loader 或 runtime
-error 的问题层级，直接查源码、配置、依赖或 dist 产物并进入 PATCH。不要在定位阶段
-为了形式补 `business:*` target。
+不要在首次 snapshot 同一时间追加这些命令：
+
+```bash
+pnpm exec openruntime snapshot --url <app-url> --id <target-id>
+pnpm exec openruntime snapshot --url <app-url> --query <keyword>
+```
+
+看完全量 snapshot 后再决定：
+
+- 如果它已经指向 MF shared、remote/expose、Modern route、loader 或 runtime error
+  的问题层级，直接查源码、配置、依赖或 dist 产物。
+- 如果它没有提供有用线索，立即切到 OpenRuntime 浏览器能力定位，例如 `console`、
+  `network`、`page-snapshot`、`eval` 或 `wait-eval`；不要为了使用 snapshot 继续反复查询。
+- 只有需要细化一个已经出现的 snapshot 线索时，才补充一次带 `--id` 或 `--query` 的
+  定向 snapshot。
 
 推荐路径：
 
 ```text
-snapshot 发现 shared/route/remote 异常
-  -> 查配置/依赖/dist
+全量 snapshot 快速探测
+  -> 有线索：查配置/依赖/dist/源码
+  -> 无线索：console/network/page-snapshot/eval 定位
+  -> 定位到问题
+  -> PATCH 阶段补或复用最小 business target
   -> 修复
-  -> snapshot 确认异常解除
-  -> 补或复用最小 business target
   -> workflow verify
-  -> DONE
+  -> DONE 或回到 OBSERVE 继续修复
 ```
 
 如果 `observe.nextAction.type=browser_diagnose`，说明当前没有可用 MF/Modern/Vmok
@@ -132,15 +146,15 @@ snapshot 发现 shared/route/remote 异常
 ```text
 没有 MF/Modern/Vmok snapshot
   -> 正常 console/page-snapshot/network 定位
-  -> 修复
-  -> 补或复用最小 business target
-  -> workflow verify
+  -> 定位到问题
+  -> PATCH 阶段补或复用最小 business target
+  -> 修复并 workflow verify
 ```
 
 ### 补验收信号
 
-`business:*` target 是最终验收必需项。诊断阶段不强制补；进入最终验收前必须补或复用
-一个最小 business target：
+`business:*` target 是最终验收必需项。OBSERVE 诊断阶段不强制补；定位到问题并进入
+PATCH 阶段后，必须补或复用一个最小 business target：
 
 - 对业务问题，target 表示业务结果，例如订单详情、风险组件、列表加载、表单提交是否成功。
 - 对 MF/shared/route 这类底层问题，target 表示页面或业务入口已经恢复到用户可用状态。
@@ -170,25 +184,40 @@ runtime.updateSnapshot({
 然后用 `snapshot --query runtime-error` 或 `snapshot --id <target-id>` 查询；debug target
 只能帮助定位，不能替代最终 business target。
 
-补完 target 后，必须用 `openruntime snapshot` 读取刚补的 snapshot，确认 target 已注册且状态/data
-符合预期：
+补 target、snapshot 或 action 前，先看项目里已有的 OpenRuntime 初始化、连接、注册 target
+和更新 snapshot 写法；缺少示例时读取 `references/core.md`。不要通过阅读
+`node_modules/@openruntime/core/dist/**` 实现文件来确认基础 API。只有公开类型、说明文档
+和实际编译/运行错误互相矛盾时，才进一步查看包内部实现。
+
+补完 target 后，只针对刚补的 target 读取一次 snapshot，确认 target 已注册且状态/data
+符合预期；不要把这一步扩展成新的大范围取证：
 
 ```bash
 pnpm exec openruntime snapshot --url <app-url> --id <target-id>
 ```
 
-补完信号后必须回到 `OPEN_PAGE -> CONNECTED -> OBSERVE`，
-不能直接宣称完成。
+补完信号后继续修复，并进入 `CONNECTED -> FINAL_VERIFY`。不能只因为 target 已注册就宣称完成。
 一次性排查补的 OpenRuntime 辅助代码，验证后可以删除；对后续 Agent 或运维有价值时再保留。
 
 ### PATCH
 
-根据 snapshot observe 或 browser diagnose 得到的证据修改业务代码。
-修改后必须重新打开或刷新页面，并回到 `CONNECTED`。
+根据 OBSERVE 得到的证据修改业务代码。进入 PATCH 后必须补或复用最小 `business:*`
+target，用它表示“问题已经对用户可见地修复”。修改后必须重新打开或刷新页面，并回到
+`CONNECTED -> FINAL_VERIFY`。
+
+如果修改了构建配置、或依赖解析，必须重启目标应用后再观测和验收，防止
+旧 dev server / HMR / 构建缓存继续使用旧配置。包括但不限于：
+
+- `*.config.*`、`rsbuild` / `rspack` / `vite` 配置。
+- `alias`、`shared`、remote/expose、chunk split、dev server 配置。
+- `package.json`、lockfile、workspace 依赖、插件接入配置。
+
+单独执行 `build`、`openruntime open`、浏览器刷新或 `connected` 不能替代应用重启。
+重启后再执行 `open -> CONNECTED -> FINAL_VERIFY`。
 
 原因：
 
-- dev server 可能需要重启。
+- 构建配置变更不重启会产生无效观测。
 - 页面可能需要刷新。
 - runtime 连接可能已失效。
 - 新增 target / snapshot 需要重新注册。
@@ -223,6 +252,10 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 `openruntime-evidence.json` 来写结果，以及清理进程；严禁再调用 `snapshot`、`console`、
 `page-snapshot`、`network`、`eval`、`wait-eval`、`wait-for`、`events`、`runtimes`、
 截图、浏览器 UI 分析或再次 `verify` 来重复确认。
+
+如果 `workflow verify` 没通过，按脚本的 `nextAction` 修复；信息不足时回到 OBSERVE，
+先用现有 target/snapshot 状态判断，再必要时使用 OpenRuntime 浏览器能力补充定位。
+不要因为一次 verify 失败就进入大范围重复取证。
 
 ## 3. 停止条件 / fallback 边界
 
@@ -262,6 +295,7 @@ OpenRuntime evidence 不可用：
 
 只在需要对应细节时读取：
 
+- `@openruntime/core` 页面侧 target、snapshot、action 用法：`references/core.md`
 - Modern.js / EdenX 接入、route、loader、业务 ready helper：`references/modernjs.md`
 - Module Federation / Vmok remote、expose、shared、observability：`references/module-federation.md`
 - Garfish 子应用生命周期和 custom loader：`references/garfish.md`
@@ -272,7 +306,7 @@ OpenRuntime evidence 不可用：
 
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
-定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。
+定位时先用一次不带 `--id` / `--query` 的全量 `snapshot` 快速探测；如果没有有效线索，立即改用 OpenRuntime 浏览器能力，例如 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval`。进入 PATCH 后必须补或复用最小 `business:*` target，并使用 `verify` 最终验收；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。
 - `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。

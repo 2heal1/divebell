@@ -257,7 +257,7 @@ export function createCliSkillSectionMarkdown(
     "",
     "完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。",
     "",
-    "定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。"
+    "定位时先用一次不带 `--id` / `--query` 的全量 `snapshot` 快速探测；如果没有有效线索，立即改用 OpenRuntime 浏览器能力，例如 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval`。进入 PATCH 后必须补或复用最小 `business:*` target，并使用 `verify` 最终验收；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。"
   ];
 
   for (const commandStart of commonCommands) {

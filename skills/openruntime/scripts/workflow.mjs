@@ -524,17 +524,19 @@ function createObserveNextAction() {
 
 function createSnapshotObserveNextAction(pluginSnapshot, url) {
   const commands = [
-    "pnpm exec openruntime snapshot --query shared --url <app-url>",
-    "pnpm exec openruntime snapshot --query remote --url <app-url>",
-    "pnpm exec openruntime snapshot --query route --url <app-url>",
-    "pnpm exec openruntime snapshot --query runtime-error --url <app-url>"
+    "pnpm exec openruntime snapshot --url <app-url>"
   ];
   return {
     type: "snapshot_observe",
-    summary: "Plugin snapshot evidence is available. Use snapshot only to inspect MF/shared/remote/route/runtime-error state before reading source, config, or dist output.",
+    summary: "Plugin snapshot evidence is available. First run one full snapshot without --id/--query. If it is not useful, switch to OpenRuntime browser diagnosis such as console/network/page-snapshot/eval.",
     plugins: pluginSnapshot.plugins,
     url: url ?? null,
-    commands
+    commands,
+    rules: [
+      "Do not run multiple snapshot variants in parallel on first observe.",
+      "Use --id or --query only after the full snapshot reveals a concrete target or keyword worth narrowing.",
+      "Do not add a business target during observe; add or reuse it when entering patch/final verification."
+    ]
   };
 }
 

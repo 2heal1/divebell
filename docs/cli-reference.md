@@ -14,7 +14,7 @@
 
 ### Bridge 和浏览器
 
-- `open-runtime start [--port <port>]` - 启动或复用 CLI 管理的 Bridge；命令返回后 Bridge 会作为 CLI 托管进程常驻。
+- `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
 - `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
 - `open-runtime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
@@ -28,18 +28,19 @@
 - `open-runtime get-window <path>` - 读取 window/globalThis 上的点分路径，例如 gf_data_v1。
 - `open-runtime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
 - `open-runtime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
-- `open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]` - 读取当前页面浏览器 console 日志，支持按级别、关键词和数量过滤。
+- `open-runtime console [--level <level>] [--query <keyword>] [--limit <n>]` - 兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。
 - `open-runtime close` - 关闭浏览器会话。
 
 ### Runtime
 
-- `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime。
+- `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。
 - `open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
 - `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
 - `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。
 - `open-runtime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `open-runtime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `open-runtime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
+- `open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
 - `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
 ## Examples
@@ -47,6 +48,7 @@
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
 - `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
-- `open-runtime console --level error --limit 50` - 查看最近浏览器 console 错误。
+- `open-runtime snapshot --query runtime-error` - 查询页面主动写入 snapshot 的错误状态。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
+- `open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000` - 用业务 target 做最终验收；通过后只写结果和清理，严禁重复取证。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。

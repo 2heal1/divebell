@@ -27,21 +27,14 @@ dependency. If the project uses Vmok, Module Federation, or
 remote/shared/expose based loading, treat missing `mf:*` OpenRuntime state as a
 signal to wire observability when source edits are allowed.
 
-After the observability plugin is installed or already wired, prefer connecting
-an existing page runtime before changing more source files:
-
-```bash
-pnpm exec openruntime eval '(() => { const runtime = window.__OPEN_RUNTIME__; if (!runtime || typeof runtime.connectBridge !== "function") return { connected: false, reason: "missing window.__OPEN_RUNTIME__" }; runtime.connectBridge({ port: 17321 }); return { connected: true }; })()'
-pnpm exec openruntime runtimes
-```
-
-Do not create an empty runtime from this eval path. If `window.__OPEN_RUNTIME__`
-is missing or has no `connectBridge`, the page does not have a usable
-OpenRuntime Core runtime; wire the page runtime source first. If the eval
-returns `{ connected: true }` but `runtimes` stays empty, retry with the actual
-Bridge port from `open` / `start` before editing source. If a runtime connects
-but no `mf:*` target appears, wire the observability plugin in the MF consumer
-source instead of relying on DOM evidence.
+After the observability plugin is installed or already wired, use
+`workflow.mjs connected` to check whether the page runtime is connected. Do not
+use browser `eval` for a temporary Bridge connection; edit the page runtime source or
+Modern runtime configuration instead, then rerun the connected check. If source
+edits are not allowed, mark runtime evidence unavailable and use browser
+fallback evidence explicitly. If a runtime connects but no `mf:*` target
+appears, wire the observability plugin in the MF consumer source instead of
+relying on DOM evidence.
 
 If a project uses Module Federation, Vmok, or a remote/shared/expose based
 micro-frontend setup, first check whether the consumer already has the
@@ -51,7 +44,18 @@ Vmok, the package-file signal is any dependency whose package name contains
 `vmok`; do not wait for a separate direct MF dependency before recommending the
 observability plugin.
 
-If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed, add and wire the observability plugin before relying on OpenRuntime for MF state. If source edits are not allowed, state that MF observability is missing and fall back to console, network, runtime error codes, and MF config evidence.
+If `targets` or `snapshot` has no `mf:*` targets and source edits are allowed,
+add and wire the observability plugin before relying on OpenRuntime for MF
+state. If source edits are not allowed, state that MF observability is missing
+and only then use console, network, runtime error codes, and MF config evidence
+as ordinary browser fallback evidence.
+
+When using `openruntime verify` on `mf:*` or Vmok-related targets, treat a ready
+result as runtime-layer evidence only. It proves the remote, expose, shared
+dependency, or report target state; it does not prove the consuming business UI
+rendered. If no business target exists, `verify` may run one lightweight
+visibility check, but that check is browser evidence and should not be labeled
+as MF structured evidence.
 
 Do not infer shared `pending`, `loaded`, `error`, or provider selection from
 `window.__FEDERATION__` alone. That global proves the MF runtime exists, but it
@@ -60,8 +64,9 @@ is not the observability report. For shared dependency conclusions, use one of:
 - an OpenRuntime `mf.shared` / `mf.shared.conflict` target
 - an MF observability report read through OpenRuntime actions or the MF
   observability reader
-- a clearly labeled fallback based on console, network, runtime error codes, and
-  source/config evidence, with the missing observability reason stated
+- a clearly labeled ordinary-browser fallback based on console, network,
+  runtime error codes, and source/config evidence, with the missing
+  observability reason stated
 
 If none of these are available, stop short of a root-cause claim about shared
 state and treat the missing evidence as the blocker.

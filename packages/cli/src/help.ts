@@ -128,7 +128,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Runtime",
     usage: "open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]",
-    description: "保守验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据，并在缺少业务 target 时做一次轻量白屏检查。"
+    description: "业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。"
   },
   {
     category: "Runtime",
@@ -160,7 +160,7 @@ export const cliExampleReferences: CliExampleReference[] = [
   },
   {
     command: "open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000",
-    description: "用业务 target 做保守验收；缺少业务 target 时不会把 route/MF ready 当作业务成功。"
+    description: "用业务 target 做最终验收；通过后停止重复取证。"
   },
   {
     command: "open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000",
@@ -257,7 +257,7 @@ export function createCliSkillSectionMarkdown(
     "",
     "完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。",
     "",
-    "普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `verify`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events` 和 `targets` 主要用于定位失败原因；浏览器错误等调试事实应优先写入 snapshot 后用 `snapshot --query` 查询。"
+    "定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后立即停止重复取证。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。"
   ];
 
   for (const commandStart of commonCommands) {

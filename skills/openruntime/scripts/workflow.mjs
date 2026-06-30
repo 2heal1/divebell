@@ -12,13 +12,6 @@ const DEFAULT_BRIDGE = "http://localhost:17321";
 const EXIT_PASS = 0;
 const EXIT_FAIL = 1;
 const EXIT_ACTION_REQUIRED = 2;
-const LOW_LEVEL_PROBE_TYPES = new Set([
-  "console",
-  "network",
-  "page-snapshot",
-  "eval",
-  "wait-eval"
-]);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const resolveIntegrationScript = path.join(scriptDir, "resolve-integration.mjs");
@@ -41,16 +34,12 @@ async function main() {
     process.exitCode = await runConnected(args);
     return;
   }
+  if (command === "observe") {
+    process.exitCode = await runObserve(args);
+    return;
+  }
   if (command === "verify") {
     process.exitCode = await runVerify(args);
-    return;
-  }
-  if (command === "record-probe") {
-    process.exitCode = await runRecordProbe(args);
-    return;
-  }
-  if (command === "target-added") {
-    process.exitCode = await runTargetAdded(args);
     return;
   }
   usage();
@@ -98,12 +87,9 @@ async function runConnected(args) {
       evidence.doneLock = true;
       evidence.allowedNextActions = ["write_result", "cleanup"];
       evidence.nextAction = null;
-    } else if (evidence.discoveryProbe.mustAddTarget === true) {
-      evidence.status = "action_required";
-      evidence.nextAction = createAddTargetAfterProbeNextAction(getLastProbeRecord(evidence));
     } else {
       evidence.status = "action_required";
-      evidence.nextAction = createRunVerifyNextAction();
+      evidence.nextAction = createObserveNextAction();
     }
     writeEvidence(outPath, evidence);
     writeJson({
@@ -152,6 +138,65 @@ async function runConnected(args) {
     nextAction: evidence.nextAction
   });
   return exhausted ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
+}
+
+async function runObserve(args) {
+  const outPath = optionalString(args.out);
+  const url = optionalString(args.url);
+  const evidence = readEvidence(outPath);
+
+  if (evidence.doneLock === true) {
+    evidence.status = "pass";
+    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.nextAction = null;
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "pass",
+      doneLock: true,
+      terminal: true,
+      allowedNextActions: evidence.allowedNextActions
+    });
+    return EXIT_PASS;
+  }
+
+  if (evidence.connected.ok !== true) {
+    evidence.status = "action_required";
+    evidence.nextAction = {
+      type: "run_connected",
+      summary: "No connected runtime evidence was found. Run workflow connected before observe."
+    };
+    writeEvidence(outPath, evidence);
+    writeJson({
+      status: "action_required",
+      observe: evidence.observe,
+      nextAction: evidence.nextAction
+    });
+    return EXIT_ACTION_REQUIRED;
+  }
+
+  const pluginSnapshot = resolvePluginSnapshotAvailability(evidence.integration);
+  const nextAction = pluginSnapshot.available
+    ? createSnapshotObserveNextAction(pluginSnapshot, url)
+    : createBrowserDiagnoseNextAction(pluginSnapshot, url);
+
+  evidence.observe = {
+    executed: true,
+    mode: pluginSnapshot.available ? "snapshot_observe" : "browser_diagnose",
+    snapshotAvailable: pluginSnapshot.available,
+    plugins: pluginSnapshot.plugins,
+    missingInstall: pluginSnapshot.missingInstall,
+    url: url ?? null,
+    recordedAt: new Date().toISOString()
+  };
+  evidence.status = "action_required";
+  evidence.nextAction = nextAction;
+  writeEvidence(outPath, evidence);
+  writeJson({
+    status: "pass",
+    observe: evidence.observe,
+    nextAction
+  });
+  return EXIT_PASS;
 }
 
 async function runVerify(args) {
@@ -212,7 +257,6 @@ async function runVerify(args) {
     evidence.status = "pass";
     evidence.doneLock = true;
     evidence.allowedNextActions = ["write_result", "cleanup"];
-    evidence.discoveryProbe.mustAddTarget = false;
     evidence.nextAction = null;
     writeEvidence(outPath, evidence);
     writeJson({
@@ -243,119 +287,6 @@ async function runVerify(args) {
     nextAction: evidence.nextAction
   });
   return exhausted ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
-}
-
-async function runRecordProbe(args) {
-  const type = requireOption(args, "type");
-  const outPath = optionalString(args.out);
-  const evidence = readEvidence(outPath);
-
-  if (!LOW_LEVEL_PROBE_TYPES.has(type)) {
-    throw new Error(`Invalid --type "${type}". Expected one of: ${[...LOW_LEVEL_PROBE_TYPES].join(", ")}.`);
-  }
-
-  if (evidence.doneLock === true) {
-    const violation = addViolation(evidence, `Discovery probe "${type}" was attempted after doneLock=true.`);
-    evidence.status = "fail";
-    evidence.nextAction = {
-      type: "blocked",
-      summary: "Final verify already passed. Only writing results and cleanup are allowed.",
-      violation
-    };
-    writeEvidence(outPath, evidence);
-    writeJson({
-      status: "fail",
-      doneLock: true,
-      violation,
-      nextAction: evidence.nextAction
-    });
-    return EXIT_FAIL;
-  }
-
-  if (evidence.discoveryProbe.mustAddTarget === true) {
-    const violation = addViolation(evidence, "A previous discovery probe has not been converted into a business/debug target.");
-    evidence.status = "fail";
-    evidence.nextAction = createAddTargetAfterProbeNextAction(getLastProbeRecord(evidence));
-    writeEvidence(outPath, evidence);
-    writeJson({
-      status: "fail",
-      violation,
-      discoveryProbe: evidence.discoveryProbe,
-      nextAction: evidence.nextAction
-    });
-    return EXIT_FAIL;
-  }
-
-  const record = {
-    type,
-    summary: optionalString(args.summary) ?? null,
-    url: optionalString(args.url) ?? null,
-    recordedAt: new Date().toISOString()
-  };
-  evidence.discoveryProbe.usedCount += 1;
-  evidence.discoveryProbe.lastType = type;
-  evidence.discoveryProbe.mustAddTarget = true;
-  evidence.discoveryProbe.records.push(record);
-  evidence.status = "action_required";
-  evidence.nextAction = createAddTargetAfterProbeNextAction(record);
-  writeEvidence(outPath, evidence);
-  writeJson({
-    status: "action_required",
-    discoveryProbe: evidence.discoveryProbe,
-    nextAction: evidence.nextAction
-  });
-  return EXIT_ACTION_REQUIRED;
-}
-
-async function runTargetAdded(args) {
-  const targetId = requireOption(args, "target");
-  const outPath = optionalString(args.out);
-  const evidence = readEvidence(outPath);
-  const kind = optionalString(args.kind) ?? inferTargetKind(targetId);
-
-  if (kind !== "business" && kind !== "debug") {
-    throw new Error(`Invalid target kind "${kind}". Use --kind business or --kind debug.`);
-  }
-
-  if (evidence.doneLock === true) {
-    const violation = addViolation(evidence, `Target "${targetId}" was recorded after doneLock=true.`);
-    evidence.status = "fail";
-    evidence.nextAction = {
-      type: "blocked",
-      summary: "Final verify already passed. Only writing results and cleanup are allowed.",
-      violation
-    };
-    writeEvidence(outPath, evidence);
-    writeJson({
-      status: "fail",
-      doneLock: true,
-      violation,
-      nextAction: evidence.nextAction
-    });
-    return EXIT_FAIL;
-  }
-
-  evidence.discoveryProbe.mustAddTarget = false;
-  evidence.targetGate = {
-    required: false,
-    satisfied: true,
-    targetId,
-    kind,
-    recordedAt: new Date().toISOString()
-  };
-  evidence.status = evidence.doneLock === true ? "pass" : "action_required";
-  evidence.nextAction = evidence.doneLock === true
-    ? null
-    : createUseStructuredEvidenceNextAction(targetId, kind);
-  writeEvidence(outPath, evidence);
-  writeJson({
-    status: "pass",
-    targetGate: evidence.targetGate,
-    discoveryProbe: evidence.discoveryProbe,
-    doneLock: evidence.doneLock,
-    nextAction: evidence.nextAction
-  });
-  return EXIT_PASS;
 }
 
 function runOpenRuntimeVerify(options) {
@@ -580,83 +511,39 @@ runtime.connectBridge({
 function createRunVerifyNextAction() {
   return {
     type: "run_final_verify",
-    summary: "Runtime is connected. After fixing the task, run workflow verify with a business target."
+    summary: "Run workflow verify only when the final check must prove a business fact or code execution with a business target."
   };
 }
 
-function createAddTargetAfterProbeNextAction(record) {
+function createObserveNextAction() {
   return {
-    type: "add_observability_target",
-    summary: "A low-level discovery probe was used. Convert the probe result into a business/debug target before any further low-level probing.",
-    probe: record ?? null,
-    commands: [
-      "node <openruntime-skill-dir>/scripts/workflow.mjs target-added --target <business-or-debug-target-id> --kind <business|debug> --out openruntime-evidence.json"
-    ],
-    snippets: [
-      {
-        pathHint: "stable business component, loader, or error boundary",
-        language: "ts",
-        code: `runtime.registerTarget({
-  id: "business:<area>:<capability>",
-  type: "business.<capability>",
-  statuses: ["ready", "error"],
-  source: "<app-or-package>",
-});
-
-runtime.updateSnapshot({
-  id: "business:<area>:<capability>",
-  status: "ready",
-  data: {
-    // Keep only the fields needed to prove the business result.
-  },
-});`
-      },
-      {
-        pathHint: "stable error boundary or runtime error handler",
-        language: "ts",
-        code: `runtime.registerTarget({
-  id: "debug:<area>:runtime-error",
-  type: "debug.runtime-error",
-  statuses: ["ready", "error"],
-  source: "<app-or-package>",
-});
-
-runtime.updateSnapshot({
-  id: "debug:<area>:runtime-error",
-  status: "error",
-  data: {
-    message: error.message,
-    stack: error.stack,
-  },
-});`
-      }
-    ]
+    type: "run_observe",
+    summary: "Runtime is connected. Run workflow observe to choose plugin snapshot evidence or normal browser diagnosis."
   };
 }
 
-function createUseStructuredEvidenceNextAction(targetId, kind) {
-  if (kind === "business") {
-    return {
-      type: "use_structured_business_evidence",
-      summary: "Target was added. Continue with snapshot/events/wait-for/verify only; do not run another low-level probe unless structured evidence is still insufficient.",
-      target: targetId,
-      allowedCommands: [
-        "pnpm exec openruntime snapshot --id <target-id> --url <app-url>",
-        "pnpm exec openruntime events --target-id <target-id> --url <app-url> --limit 50",
-        "pnpm exec openruntime wait-for <target-id> ready --url <app-url>",
-        "node <openruntime-skill-dir>/scripts/workflow.mjs verify --target <target-id> --status ready --bridge http://localhost:17321 --url <app-url> --out openruntime-evidence.json"
-      ]
-    };
-  }
-
+function createSnapshotObserveNextAction(pluginSnapshot, url) {
+  const commands = [
+    "pnpm exec openruntime snapshot --query shared --url <app-url>",
+    "pnpm exec openruntime snapshot --query remote --url <app-url>",
+    "pnpm exec openruntime snapshot --query route --url <app-url>",
+    "pnpm exec openruntime snapshot --query runtime-error --url <app-url>"
+  ];
   return {
-    type: "use_structured_debug_evidence",
-    summary: "Debug target was added. Continue with snapshot/events only, patch the issue, then add or use a business target for final verify.",
-    target: targetId,
-    allowedCommands: [
-      "pnpm exec openruntime snapshot --id <target-id> --url <app-url>",
-      "pnpm exec openruntime events --target-id <target-id> --url <app-url> --limit 50"
-    ]
+    type: "snapshot_observe",
+    summary: "Plugin snapshot evidence is available. Use snapshot only to inspect MF/shared/remote/route/runtime-error state before reading source, config, or dist output.",
+    plugins: pluginSnapshot.plugins,
+    url: url ?? null,
+    commands
+  };
+}
+
+function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
+  return {
+    type: "browser_diagnose",
+    summary: "No installed MF/Vmok/Modern snapshot plugin was found. Diagnose normally with console/page-snapshot/network. Add a business target only when business facts or JS execution must be verified.",
+    missingInstall: pluginSnapshot.missingInstall,
+    url: url ?? null
   };
 }
 
@@ -695,6 +582,34 @@ runtime.updateSnapshot({
     target: finalVerify.targetId ?? null,
     message: finalVerify.message ?? null,
     nextStep: finalVerify.nextStep ?? null
+  };
+}
+
+function resolvePluginSnapshotAvailability(integration) {
+  const use = new Set(Array.isArray(integration?.use) ? integration.use : []);
+  const install = new Set(Array.isArray(integration?.install) ? integration.install : []);
+  const plugins = [];
+  const missingInstall = [];
+
+  if (use.has("@module-federation/observability-plugin")) {
+    if (install.has("@module-federation/observability-plugin")) {
+      missingInstall.push("@module-federation/observability-plugin");
+    } else {
+      plugins.push("module-federation");
+    }
+  }
+  if (use.has("@openruntime/modern-plugin")) {
+    if (install.has("@openruntime/modern-plugin")) {
+      missingInstall.push("@openruntime/modern-plugin");
+    } else {
+      plugins.push("modern");
+    }
+  }
+
+  return {
+    available: plugins.length > 0,
+    plugins,
+    missingInstall
   };
 }
 
@@ -747,6 +662,15 @@ function createEmptyEvidence() {
       openedAt: null,
       reason: "No open operation log was found."
     },
+    observe: {
+      executed: false,
+      mode: null,
+      snapshotAvailable: false,
+      plugins: [],
+      missingInstall: [],
+      url: null,
+      recordedAt: null
+    },
     finalVerify: {
       executed: false,
       targetId: null,
@@ -759,19 +683,6 @@ function createEmptyEvidence() {
       targetClass: null,
       message: null,
       nextStep: null
-    },
-    discoveryProbe: {
-      usedCount: 0,
-      lastType: null,
-      mustAddTarget: false,
-      records: []
-    },
-    targetGate: {
-      required: false,
-      satisfied: false,
-      targetId: null,
-      kind: null,
-      recordedAt: null
     },
     nextAction: null
   };
@@ -801,20 +712,17 @@ function mergeEvidence(base, parsed) {
       ...base.open,
       ...parsed.open
     },
+    observe: {
+      ...base.observe,
+      ...parsed.observe,
+      plugins: Array.isArray(parsed.observe?.plugins) ? parsed.observe.plugins : base.observe.plugins,
+      missingInstall: Array.isArray(parsed.observe?.missingInstall)
+        ? parsed.observe.missingInstall
+        : base.observe.missingInstall
+    },
     finalVerify: {
       ...base.finalVerify,
       ...parsed.finalVerify
-    },
-    discoveryProbe: {
-      ...base.discoveryProbe,
-      ...parsed.discoveryProbe,
-      records: Array.isArray(parsed.discoveryProbe?.records)
-        ? parsed.discoveryProbe.records
-        : base.discoveryProbe.records
-    },
-    targetGate: {
-      ...base.targetGate,
-      ...parsed.targetGate
     }
   };
 }
@@ -826,16 +734,6 @@ function addViolation(evidence, summary) {
   };
   evidence.violations.push(violation);
   return violation;
-}
-
-function getLastProbeRecord(evidence) {
-  return evidence.discoveryProbe.records[evidence.discoveryProbe.records.length - 1] ?? null;
-}
-
-function inferTargetKind(targetId) {
-  if (targetId.startsWith("business:")) return "business";
-  if (targetId.startsWith("debug:") || targetId.includes("runtime-error")) return "debug";
-  return "unknown";
 }
 
 function parseArgs(argv) {
@@ -1045,8 +943,7 @@ function quoteShellArg(value) {
 function usage() {
   process.stderr.write(`Usage:
   workflow.mjs connected --package-json <path> --bridge <url> --url <app-url> --out <file>
+  workflow.mjs observe --url <app-url> --out <file>
   workflow.mjs verify --target <id> --status <status> --bridge <url> --url <app-url> --out <file>
-  workflow.mjs record-probe --type <console|network|page-snapshot|eval|wait-eval> --summary <text> --out <file>
-  workflow.mjs target-added --target <id> --kind <business|debug> --out <file>
 `);
 }

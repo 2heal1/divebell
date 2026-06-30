@@ -104,7 +104,9 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(skillMarkdown, /^## 13. 常用 CLI/m);
   assert.doesNotMatch(skillMarkdown, /^### 常用 CLI/m);
   assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
-  assert.match(markdown, /先补最小业务 target/);
+  assert.match(markdown, /定位优先读取已有插件 `snapshot`/);
+  assert.match(markdown, /最终验收必须补或复用最小 `business:\*` target/);
+  assert.match(markdown, /通过后立即停止重复取证/);
   assert.match(markdown, /open-runtime open <url>/);
   assert.match(markdown, /open-runtime verify .*<target-id> <status>/);
   assert.match(markdown, /open-runtime eval <script>/);

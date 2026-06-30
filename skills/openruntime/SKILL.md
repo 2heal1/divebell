@@ -39,12 +39,10 @@ START
   -> OPEN_PAGE
   -> CONNECTED
   -> OBSERVE
-  -> DISCOVERY_PROBE（可选）       # 初始没有足够 target 时，每轮最多一次低阶取证
-  -> PATCH_OBSERVABILITY（可选）  # 缺少业务证据且源码可改时
   -> PATCH
   -> CONNECTED
   -> FINAL_VERIFY
-  -> DONE | FALLBACK | BLOCKED
+  -> DONE | BLOCKED
 ```
 
 每个脚本状态最多 3 轮：
@@ -93,79 +91,63 @@ node <openruntime-skill-dir>/scripts/workflow.mjs connected \
 
 ### OBSERVE
 
-连接通过后，先复用已有高阶信号：
+连接通过后，运行 `observe` 脚本来获取当前阶段应该使用的 OpenRuntime 工具；
+只按脚本返回的 `nextAction` 继续：
 
 ```bash
-pnpm exec openruntime targets --url <app-url> --query <keyword>
-pnpm exec openruntime actions --url <app-url>
-pnpm exec openruntime snapshot --url <app-url> --query <keyword>
-pnpm exec openruntime events --url <app-url> --target-id <target-id> --limit 50
+node <openruntime-skill-dir>/scripts/workflow.mjs observe \
+  --url <app-url> \
+  --out openruntime-evidence.json
 ```
 
-完整 `snapshot` 或完整 `events` 只在目标未知时读取一次。一旦知道 target id，
-后续必须用 `--id`、`--target-id`、`--query`、`--type` 或 `--status` 收窄。
+如果 `observe.nextAction.type=snapshot_observe`，只读已有插件 snapshot，不要默认读
+`targets`、`actions` 或 `events`：
 
-优先级：
+```bash
+pnpm exec openruntime snapshot --url <app-url>
+```
+
+如果 snapshot 已经指向 MF shared、remote/expose、Modern route、loader 或 runtime
+error 的问题层级，直接查源码、配置、依赖或 dist 产物并进入 PATCH。不要在定位阶段
+为了形式补 `business:*` target。
+
+推荐路径：
 
 ```text
-targets / actions
-  -> snapshot
-  -> events
-  -> run-action
-  -> wait-for
-  -> fallback browser evidence
+snapshot 发现 shared/route/remote 异常
+  -> 查配置/依赖/dist
+  -> 修复
+  -> snapshot 确认异常解除
+  -> 补或复用最小 business target
+  -> workflow verify
+  -> DONE
 ```
 
-OBSERVE 只负责定位，不负责最终业务验收。OBSERVE 如果已经得到足够线索，
-直接进入 PATCH；如果已有 target/snapshot/events/actions 不足，再进入
-DISCOVERY_PROBE。
+如果 `observe.nextAction.type=browser_diagnose`，说明当前没有可用 MF/Modern/Vmok
+插件 snapshot。此时正常使用 `console`、`page-snapshot`、`network`、`eval` 或
+`wait-eval` 定位，不强制补 target。
 
-### DISCOVERY_PROBE（可选）
+没有插件 snapshot 时的推荐路径：
 
-低阶浏览器能力包括 `console`、`network`、`page-snapshot`、`eval`、
-`wait-eval`。只有目标未知、已有 target/snapshot/events/actions 不足时，
-才允许使用一次低阶 Discovery Probe。
-
-每次使用低阶 Discovery Probe 后，必须立即记录并补 target：
-
-```bash
-node <openruntime-skill-dir>/scripts/workflow.mjs record-probe \
-  --type <console|network|page-snapshot|eval|wait-eval> \
-  --summary "<probe-result>" \
-  --out openruntime-evidence.json
+```text
+没有 MF/Modern/Vmok snapshot
+  -> 正常 console/page-snapshot/network 定位
+  -> 修复
+  -> 补或复用最小 business target
+  -> workflow verify
 ```
 
-`record-probe` 返回 `mustAddTarget=true` 后，禁止继续使用 `console`、
-`network`、`page-snapshot`、`eval` 或 `wait-eval`。必须先把这次 Probe
-得到的线索转成 `business:*` 或 `debug:*` target，并执行：
+### 补验收信号
 
-```bash
-node <openruntime-skill-dir>/scripts/workflow.mjs target-added \
-  --target <business-or-debug-target-id> \
-  --kind <business|debug> \
-  --out openruntime-evidence.json
-```
+`business:*` target 是最终验收必需项。诊断阶段不强制补；进入最终验收前必须补或复用
+一个最小 business target：
 
-`target-added` 之后，只能用 `snapshot`、`events`、`wait-for` 或
-`workflow verify` 继续排查。只有这些结构化证据仍然不足时，才允许下一次
-低阶 Discovery Probe；下一次 Probe 后同样必须再次补 target。
+- 对业务问题，target 表示业务结果，例如订单详情、风险组件、列表加载、表单提交是否成功。
+- 对 MF/shared/route 这类底层问题，target 表示页面或业务入口已经恢复到用户可用状态。
+- 对代码加载/执行问题，target 表示相关业务 JS 或 remote expose 已经完成关键执行。
 
-只要同时满足下面三点，必须结束 DISCOVERY_PROBE，进入 PATCH：
-
-- 已有业务失败证据。
-- 已有 MF/shared/runtime-error/route/loader 等运行时证据指向问题层级。
-- 已能定位到候选源码文件、配置文件或依赖选择。
-
-满足上面条件后，不得继续使用 `page-snapshot`、`eval`、`wait-eval`、
-`console`、`network` 或截图重复确认同一事实。
-
-修复后如果 `workflow verify` 未通过，只能回到目标化证据：
-Business target snapshot、相关 MF/shared target、相关 target events 或新的
-`workflow verify` 结果。不要重新展开低阶浏览器取证。
-
-### PATCH_OBSERVABILITY
-
-如果缺少能证明业务结果的 target，且源码可改，先补最小业务信号。
+如果页面 import 阶段可能崩溃，不要把失败 target 放在会崩的组件里。错误信号放在稳定
+route、loader、error boundary 或宿主入口；业务 ready 信号放在真正渲染成功的位置。
 
 ```ts
 runtime.registerTarget({
@@ -184,18 +166,24 @@ runtime.updateSnapshot({
 });
 ```
 
-浏览器错误也应写成最小 debug target，例如 `debug:<area>:runtime-error`，
-然后用 `snapshot --query runtime-error` 或 `snapshot --id <target-id>` 查询。
+如果只是为了定位错误，可以补最小 debug target，例如 `debug:<area>:runtime-error`，
+然后用 `snapshot --query runtime-error` 或 `snapshot --id <target-id>` 查询；debug target
+只能帮助定位，不能替代最终 business target。
 
-如果本轮是由 `record-probe` 触发的补信号，补完 target 后必须运行
-`target-added` 解除 `mustAddTarget`。未解除前不得继续低阶 Discovery Probe。
+补完 target 后，必须用 `openruntime snapshot` 读取刚补的 snapshot，确认 target 已注册且状态/data
+符合预期：
 
-补完信号后必须回到 `OPEN_PAGE -> CONNECTED -> OBSERVE`，不能直接宣称完成。
+```bash
+pnpm exec openruntime snapshot --url <app-url> --id <target-id>
+```
+
+补完信号后必须回到 `OPEN_PAGE -> CONNECTED -> OBSERVE`，
+不能直接宣称完成。
 一次性排查补的 OpenRuntime 辅助代码，验证后可以删除；对后续 Agent 或运维有价值时再保留。
 
 ### PATCH
 
-根据 OBSERVE 或 PATCH_OBSERVABILITY 得到的证据修改业务代码。
+根据 snapshot observe 或 browser diagnose 得到的证据修改业务代码。
 修改后必须重新打开或刷新页面，并回到 `CONNECTED`。
 
 原因：
@@ -203,12 +191,13 @@ runtime.updateSnapshot({
 - dev server 可能需要重启。
 - 页面可能需要刷新。
 - runtime 连接可能已失效。
-- 新增 target / snapshot / action 需要重新注册。
+- 新增 target / snapshot 需要重新注册。
 - 旧页面状态不能代表新代码状态。
 
 ### FINAL_VERIFY
 
-修改代码后，必须用业务 target 执行最终验收：
+最终统一用 business target 执行 `workflow verify`。插件 snapshot、console、
+page-snapshot、network、eval 和截图都只能用于定位或辅助确认，不能作为 DONE 条件。
 
 ```bash
 node <openruntime-skill-dir>/scripts/workflow.mjs verify \
@@ -225,11 +214,11 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 - `evidenceLevel=business`
 - `businessVerified=true`
 
-`modern:*`、`mf:*`、`vmok:*`、`garfish:*` 只证明底层加载状态，不能单独证明业务成功。
-如果 `verify` 返回 `exit 2`，按 `nextAction` 补业务 target / snapshot 或修业务失败，
-然后回到 `CONNECTED`。不要改用 DOM、console、截图或 `page-snapshot` 宣称业务验收成功。
+`modern:*`、`mf:*`、`vmok:*`、`garfish:*` 可以证明底层加载状态或错误解除，但不能单独证明任务完成。
+即使任务目标是 MF/shared/route 修复，也必须补或复用一个最小 `business:*` target，
+证明页面或业务入口已经恢复。
 
-如果 `verify` 返回 `exit 0` 且输出 `doneLock=true` / `terminal=true`，
+`verify` 返回 `exit 0` 且输出 `doneLock=true` / `terminal=true` 后，
 必须立即进入 DONE。DONE 后只允许写结果和清理进程，禁止任何额外取证。
 
 ## 3. 停止条件 / fallback 边界
@@ -238,39 +227,32 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 
 - `workflow verify` 通过，并写入 `doneLock=true`。
 - 业务 target 已经 `ready`，且 snapshot 能证明业务结果。
-- 同一个事实已经由 snapshot、events 或 wait-for 明确证明成功或失败。
-- DISCOVERY_PROBE 的停止条件已经满足，必须停止继续低阶取证并进入 PATCH。
+- MF/shared/route/runtime-error 问题已经由插件 snapshot 明确证明成功或失败，并且最终
+  business verify 已通过。
+- 同一个事实已经由 snapshot 或 business verify 明确证明。
 
 进入 DONE 后不要继续读取 snapshot、events、wait-for、network、console、
 page-snapshot、截图或 eval。额外证据不会提高业务验证等级，只会增加噪音；
 `doneLock=true` 后继续取证属于 violation。
 
-fallback 只在 OpenRuntime 不能形成结构化证据时使用。源码可改且 OpenRuntime
-可用时，不允许把低阶取证叫 fallback，必须走 `DISCOVERY_PROBE ->
-record-probe -> PATCH_OBSERVABILITY -> target-added`。
-
-只有下面情况才允许 fallback browser evidence：
+普通浏览器诊断是正常路径，不是 fallback。只有下面情况才进入 BLOCKED 或报告
+OpenRuntime evidence 不可用：
 
 - 源码不可改。
 - 用户禁止改代码。
 - OpenRuntime 依赖接入失败或 runtime 无法 connected。
 - 目标应用进程无法保持运行。
-- 当前任务只需要一次性 UI 入口、DOM 结构或视觉问题检查，且用户没有要求沉淀 runtime evidence。
-
-fallback 每轮最多使用一种低阶浏览器能力：`page-snapshot`、`eval`、`wait-eval`、
-`console` 或 `network`。fallback 不能写成 OpenRuntime 业务验收，也不能替代
-`workflow verify`。
+- business target 无法补、无法复用。
 
 进入 BLOCKED 的情况：
 
 - workflow 脚本 `exit 1`。
 - 同一状态超过 3 轮仍未通过。
 - 源码不可改且没有足够 runtime evidence。
-- 没有 business target，且无法补 target。
+- 没有 business target 且无法补 target。
 - 目标应用进程无法保持运行。
 
-报告 blocked 时写清楚当前状态、尝试次数、最后原因、已经尝试的 next action、
-是否使用了 fallback。
+报告 blocked 时写清楚当前状态、尝试次数、最后原因和已经尝试的 next action。
 
 ## 4. Reference
 
@@ -286,11 +268,11 @@ fallback 每轮最多使用一种低阶浏览器能力：`page-snapshot`、`eval
 
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
-普通验收优先选择一条最短路径：能改源码且需要反复验证时先补最小业务 target，再用 `verify`；不能改源码或一次性简单页面结果用 `eval` / `wait-eval`。`snapshot`、`events` 和 `targets` 主要用于定位失败原因；浏览器错误等调试事实应优先写入 snapshot 后用 `snapshot --query` 查询。
+定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后立即停止重复取证。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。
 - `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。
-- `open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 保守验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据，并在缺少业务 target 时做一次轻量白屏检查。
+- `open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
 - `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 - `open-runtime wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到结果为 true。
 - `open-runtime eval <script>` - 在页面内执行脚本，也支持 --file <path> 读取脚本文件。

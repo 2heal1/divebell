@@ -50,25 +50,29 @@ route readiness or failure.
 For older non-preview Modern/EdenX versions, use `@openruntime/core` directly
 at a stable business point instead: register the smallest target that proves
 the task, update it to `pending`, `ready`, or `error`, connect the Bridge, then
-verify through `runtimes`, `targets`, `snapshot`, and `verify`. Use `wait-for`
-only when you need to wait for a concrete target state before the final
-business verification.
+verify through `runtimes`, `targets`, `snapshot`, and `wait-for`.
 
 Installing `@openruntime/core` is not enough by itself. The page must install a
 runtime on `window` and call `connectBridge`, otherwise the CLI will not see a
 connected runtime:
 
 When `@openruntime/modern-plugin` is already wired but the `bridge` option is
-missing, edit the runtime configuration in source. Do not use browser `eval`
-to call `connectBridge`; it creates a one-off state that the next reload loses
-and it does not prove the app is correctly integrated.
+missing, a browser-side connection can be used as a temporary fallback before
+editing source code:
 
-If `workflow.mjs connected` reports no connected runtime, use its `nextAction`
-snippet. For supported Modern versions, wire the Modern plugin with `bridge`.
-For older versions, wire the Core entrypoint. If source edits are not allowed,
-mark runtime evidence unavailable and use browser fallback evidence explicitly.
-If a runtime connects but Modern targets are missing, check the Modern plugin
-wiring instead of adding an empty Core runtime:
+```bash
+pnpm exec openruntime eval '(() => { const runtime = window.__OPEN_RUNTIME__; if (!runtime || typeof runtime.connectBridge !== "function") return { connected: false, reason: "missing window.__OPEN_RUNTIME__" }; runtime.connectBridge({ port: 17321 }); return { connected: true }; })()'
+pnpm exec openruntime runtimes
+```
+
+Do not create an empty runtime from this eval path. If `window.__OPEN_RUNTIME__`
+is missing or has no `connectBridge`, the page does not have a usable
+OpenRuntime Core runtime; wire the Modern plugin with `bridge` for supported
+versions, or wire the Core entrypoint for older versions. If the eval returns
+`{ connected: true }` but `runtimes` stays empty, retry with the actual Bridge
+port from `open` / `start` before editing source. If a runtime connects but
+Modern targets are missing, check the Modern plugin wiring instead of adding an
+empty Core runtime:
 
 ```ts
 import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";

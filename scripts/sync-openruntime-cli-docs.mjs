@@ -15,13 +15,12 @@ if (!noBuild) {
 const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/help.js")).href;
 const { createCliReferenceMarkdown, createCliSkillSectionMarkdown } = await import(helpModuleUrl);
 const cliReferenceContent = createCliReferenceMarkdown();
-const skillCliHeading = "## 13. 常用 CLI";
-const cliSkillSection = createCliSkillSectionMarkdown(undefined, { heading: skillCliHeading });
+const cliSkillSection = createCliSkillSectionMarkdown();
 
 const cliReferencePath = join(repoRoot, "docs/cli-reference.md");
 const skillPath = join(repoRoot, "skills/openruntime/SKILL.md");
 const skillContent = await readExisting(skillPath);
-const updatedSkillContent = replaceMarkdownSection(skillContent, skillCliHeading, cliSkillSection);
+const updatedSkillContent = replaceMarkdownSection(skillContent, "## CLI 命令", cliSkillSection);
 
 let hasMismatch = false;
 if (checkOnly) {

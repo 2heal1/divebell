@@ -130,7 +130,7 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<Ensure
 
   const port = options.port ?? getBridgePort(options.bridgeUrl);
   if (port === undefined || !canAutoStartBridge(options.bridgeUrl)) {
-    throw new Error(`OpenRuntime Bridge is not reachable at ${options.bridgeUrl}. Use a local --bridge URL for automatic startup, or start the remote Bridge yourself.`);
+    throw new Error(`OpenRuntime Bridge is not reachable at ${options.bridgeUrl}. Start it with "open-runtime start" or use a local --bridge URL.`);
   }
 
   const startResult = await options.starter.start({ port });
@@ -258,7 +258,7 @@ async function probeBridge(fetcher: Fetcher, bridgeUrl: string): Promise<"availa
   }
 }
 
-export function canAutoStartBridge(bridgeUrl: string): boolean {
+function canAutoStartBridge(bridgeUrl: string): boolean {
   try {
     const url = new URL(bridgeUrl);
     return url.protocol === "http:" && (

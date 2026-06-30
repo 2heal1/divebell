@@ -160,7 +160,7 @@ export const cliExampleReferences: CliExampleReference[] = [
   },
   {
     command: "open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000",
-    description: "用业务 target 做最终验收；通过后停止重复取证。"
+    description: "用业务 target 做最终验收；通过后只写结果和清理，严禁重复取证。"
   },
   {
     command: "open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000",
@@ -257,7 +257,7 @@ export function createCliSkillSectionMarkdown(
     "",
     "完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。",
     "",
-    "定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后立即停止重复取证。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。"
+    "定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。"
   ];
 
   for (const commandStart of commonCommands) {

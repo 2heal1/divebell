@@ -219,21 +219,25 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 证明页面或业务入口已经恢复。
 
 `verify` 返回 `exit 0` 且输出 `doneLock=true` / `terminal=true` 后，
-必须立即进入 DONE。DONE 后只允许写结果和清理进程，禁止任何额外取证。
+必须立即进入 DONE。DONE 后必须百分百相信 `verify`，只允许读取已有 verify 输出 /
+`openruntime-evidence.json` 来写结果，以及清理进程；严禁再调用 `snapshot`、`console`、
+`page-snapshot`、`network`、`eval`、`wait-eval`、`wait-for`、`events`、`runtimes`、
+截图、浏览器 UI 分析或再次 `verify` 来重复确认。
 
 ## 3. 停止条件 / fallback 边界
 
 满足下面条件时停止重复取证或验证同一事实：
 
 - `workflow verify` 通过，并写入 `doneLock=true`。
-- 业务 target 已经 `ready`，且 snapshot 能证明业务结果。
+- `workflow verify` 已经证明业务 target 为 `ready`。
 - MF/shared/route/runtime-error 问题已经由插件 snapshot 明确证明成功或失败，并且最终
   business verify 已通过。
 - 同一个事实已经由 snapshot 或 business verify 明确证明。
 
 进入 DONE 后不要继续读取 snapshot、events、wait-for、network、console、
-page-snapshot、截图或 eval。额外证据不会提高业务验证等级，只会增加噪音；
-`doneLock=true` 后继续取证属于 violation。
+page-snapshot、截图、eval、wait-eval、runtimes，也不要再次 verify。额外证据不会提高
+业务验证等级，只会增加噪音；`doneLock=true` 后继续取证属于 violation。如果已经
+误跑了额外命令，最终结果仍以第一次通过的 `verify` 为准，并在结果里标记 violation。
 
 普通浏览器诊断是正常路径，不是 fallback。只有下面情况才进入 BLOCKED 或报告
 OpenRuntime evidence 不可用：
@@ -268,7 +272,7 @@ OpenRuntime evidence 不可用：
 
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
-定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后立即停止重复取证。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。
+定位优先读取已有插件 `snapshot`，尤其是 MF/shared、remote、Modern route 和 runtime-error。最终验收必须补或复用最小 `business:*` target，并使用 `verify`；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。没有 MF/Modern/Vmok 插件 snapshot 时，正常使用 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval` 定位。
 - `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。

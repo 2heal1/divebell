@@ -50,5 +50,5 @@
 - `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
 - `open-runtime snapshot --query runtime-error` - 查询页面主动写入 snapshot 的错误状态。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
-- `open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000` - 用业务 target 做最终验收；通过后停止重复取证。
+- `open-runtime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000` - 用业务 target 做最终验收；通过后只写结果和清理，严禁重复取证。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。

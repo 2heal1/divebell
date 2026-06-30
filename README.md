@@ -114,7 +114,7 @@ openruntime start
 openruntime open \
   https://example.com/openruntime/release-notes
 
-openruntime wait-for \
+openruntime verify \
   docs:release-notes ready \
   --url https://example.com/openruntime/release-notes
 
@@ -127,6 +127,8 @@ openruntime run-action \
 Both the Target and Action here are declared by the page.
 
 The Agent does not need to analyze the DOM or look for buttons. It only needs to call the unified Runtime API to get the result.
+`verify` is intentionally conservative: it only treats a declared business Target as final validation, and does not turn framework or loading-state Targets into business success.
+Use `wait-for` when the goal is only to wait for a specific Target state; use `verify` when the goal is final validation.
 
 Teams can further wrap these steps into their own commands:
 

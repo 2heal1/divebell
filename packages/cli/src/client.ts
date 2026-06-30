@@ -1,5 +1,6 @@
 import { OPEN_RUNTIME_SESSION_QUERY_PARAM, type RuntimeDataCondition } from "@openruntime/core";
 import type { BridgeRuntimeInfo } from "@openruntime/bridge";
+import { normalizeOpenRuntimeUrlForMatch } from "./operation-log.js";
 
 export type Fetcher = typeof fetch;
 
@@ -136,11 +137,11 @@ export function selectRuntime(
   }
 
   const selectorSessionId = selector.sessionId ?? getOpenRuntimeSessionIdFromUrl(selector.url);
-  const selectorUrl = selector.url === undefined ? undefined : normalizeRuntimeUrlForMatch(selector.url);
+  const selectorUrl = selector.url === undefined ? undefined : normalizeOpenRuntimeUrlForMatch(selector.url);
   const candidates = runtimes.filter((runtime) =>
     runtime.status === "connected" &&
     (selectorSessionId === undefined || runtimeMatchesSession(runtime, selectorSessionId)) &&
-    (selectorUrl === undefined || normalizeRuntimeUrlForMatch(runtime.url) === selectorUrl)
+    (selectorUrl === undefined || normalizeOpenRuntimeUrlForMatch(runtime.url) === selectorUrl)
   );
 
   if (candidates.length === 0) {
@@ -148,16 +149,6 @@ export function selectRuntime(
   }
 
   return candidates.sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] as BridgeRuntimeInfo;
-}
-
-function normalizeRuntimeUrlForMatch(input: string): string {
-  try {
-    const url = new URL(input);
-    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
-    return url.toString();
-  } catch {
-    return input.endsWith("/") ? input.slice(0, -1) : input;
-  }
 }
 
 function runtimeMatchesSession(runtime: BridgeRuntimeInfo, sessionId: string): boolean {

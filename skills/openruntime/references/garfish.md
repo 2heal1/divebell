@@ -4,6 +4,13 @@ Use this reference when diagnosing Garfish sub-application loading, script execu
 
 Garfish is a singleton in the host page. The host application should register the OpenRuntime Garfish plugin before `Garfish.run()` or before the first `Garfish.loadApp()`. A sub-application cannot reliably register the host page's global Garfish plugin.
 
+If the app also uses Vmok, treat Vmok as a Module Federation loading path for
+observability. When the target app's `package.json` has a dependency whose
+package name contains `vmok`, run `resolve-integration` and wire
+`@module-federation/observability-plugin` when source edits are allowed. The
+Garfish plugin explains host/sub-application lifecycle; MF observability is
+still needed for Vmok remote, expose, shared, and report evidence.
+
 ## Setup
 
 Use the Garfish helpers from `@openruntime/modern-plugin`.
@@ -78,7 +85,6 @@ Start from the app target:
 ```bash
 pnpm exec openruntime snapshot --query <appName>
 pnpm exec openruntime events --target-id modern:garfish:app:<appName> --limit 50
-pnpm exec openruntime console --query <appName> --limit 50
 ```
 
 If `modern:garfish:app:<appName>` is `error`, use the target error and recent events as the primary evidence. Do not keep clicking or waiting for UI elements that depend on the failed sub-application.

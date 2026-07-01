@@ -19,12 +19,18 @@ import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../di
 import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
 
 test("exposes the cli package marker", () => {
-  assert.equal(getCliCommandName(), "open-runtime");
+  assert.equal(getCliCommandName(), "openruntime");
   assert.deepEqual(cliPackageInfo, {
     name: "@openruntime/cli",
     phase: "phase-0",
     role: "agent command line"
   });
+});
+
+test("exposes only canonical cli binaries", () => {
+  const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
+
+  assert.deepEqual(Object.keys(packageJson.bin), ["openruntime", "opr"]);
 });
 
 test("prints explicit runtime resource help", async () => {
@@ -36,17 +42,18 @@ test("prints explicit runtime resource help", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
-  assert.match(output.text(), /open-runtime snapshot .*--id <id>/);
-  assert.match(output.text(), /open-runtime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
-  assert.match(output.text(), /open-runtime actions .*--name <name>/);
-  assert.match(output.text(), /open-runtime open <url> .*--ui/);
-  assert.match(output.text(), /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--chrome-profile <name>/);
-  assert.match(output.text(), /open-runtime import-profile <content-or-path> \| --input <path>/);
-  assert.match(output.text(), /open-runtime network \[--url <query>\]/);
-  assert.match(output.text(), /open-runtime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
-  assert.match(output.text(), /open-runtime verify .*<target-id> <status>/);
-  assert.match(output.text(), /open-runtime wait-for .*--next/);
-  assert.doesNotMatch(output.text(), /open-runtime vmok /);
+  assert.match(output.text(), /openruntime snapshot .*--id <id>/);
+  assert.match(output.text(), /openruntime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
+  assert.match(output.text(), /openruntime actions .*--name <name>/);
+  assert.match(output.text(), /openruntime open <url> .*--ui/);
+  assert.match(output.text(), /openruntime export-profile .*--source chrome\|openruntime.*--domain <domain>.*--chrome-profile <name>/);
+  assert.match(output.text(), /openruntime import-profile <content-or-path> \| --input <path>/);
+  assert.match(output.text(), /openruntime network \[--url <query>\]/);
+  assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
+  assert.match(output.text(), /openruntime verify .*<target-id> <status>/);
+  assert.match(output.text(), /openruntime wait-for .*--next/);
+  assert.doesNotMatch(output.text(), /openruntime vmok /);
+  assert.doesNotMatch(output.text(), /open[-]runtime/);
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -86,14 +93,15 @@ test("prints help for command help without executing the command", async () => {
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
-  assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
-  assert.match(markdown, /open-runtime import-profile <content-or-path>/);
-  assert.match(markdown, /open-runtime get-window <path>/);
-  assert.match(markdown, /open-runtime network \[--url <query>\]/);
-  assert.match(markdown, /open-runtime verify .*<target-id> <status>/);
-  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
-  assert.doesNotMatch(markdown, /open-runtime vmok /);
+  assert.match(markdown, /openruntime open <url>/);
+  assert.match(markdown, /openruntime export-profile .*--source chrome\|openruntime.*--domain <domain>/);
+  assert.match(markdown, /openruntime import-profile <content-or-path>/);
+  assert.match(markdown, /openruntime get-window <path>/);
+  assert.match(markdown, /openruntime network \[--url <query>\]/);
+  assert.match(markdown, /openruntime verify .*<target-id> <status>/);
+  assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /openruntime vmok /);
+  assert.doesNotMatch(markdown, /open[-]runtime/);
 });
 
 test("generates the skill CLI command section from the help table", () => {
@@ -108,19 +116,20 @@ test("generates the skill CLI command section from the help table", () => {
   assert.match(markdown, /进入 PATCH 后必须补或复用最小 `business:\*` target/);
   assert.match(markdown, /通过后百分百相信 verify/);
   assert.match(markdown, /严禁再调用 `snapshot`、`console`、`page-snapshot`/);
-  assert.match(markdown, /open-runtime open <url>/);
-  assert.match(markdown, /open-runtime verify .*<target-id> <status>/);
-  assert.match(markdown, /open-runtime eval <script>/);
-  assert.match(markdown, /open-runtime wait-eval <script>/);
-  assert.match(markdown, /open-runtime wait-for .*<target-id> <status>.*--next/);
-  assert.doesNotMatch(markdown, /open-runtime export-profile /);
-  assert.doesNotMatch(markdown, /open-runtime import-profile /);
-  assert.doesNotMatch(markdown, /open-runtime get-window <path>/);
-  assert.doesNotMatch(markdown, /open-runtime network \[--url <query>\]/);
-  assert.doesNotMatch(markdown, /open-runtime screenshot /);
-  assert.doesNotMatch(markdown, /open-runtime console \[--level <level>\]/);
-  assert.doesNotMatch(markdown, /open-runtime page-snapshot/);
-  assert.doesNotMatch(markdown, /open-runtime vmok /);
+  assert.match(markdown, /openruntime open <url>/);
+  assert.match(markdown, /openruntime verify .*<target-id> <status>/);
+  assert.match(markdown, /openruntime eval <script>/);
+  assert.match(markdown, /openruntime wait-eval <script>/);
+  assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /openruntime export-profile /);
+  assert.doesNotMatch(markdown, /openruntime import-profile /);
+  assert.doesNotMatch(markdown, /openruntime get-window <path>/);
+  assert.doesNotMatch(markdown, /openruntime network \[--url <query>\]/);
+  assert.doesNotMatch(markdown, /openruntime screenshot /);
+  assert.doesNotMatch(markdown, /openruntime console \[--level <level>\]/);
+  assert.doesNotMatch(markdown, /openruntime page-snapshot/);
+  assert.doesNotMatch(markdown, /openruntime vmok /);
+  assert.doesNotMatch(markdown, /open[-]runtime/);
 });
 
 test("registers an extension command and merges its help entries", async () => {
@@ -129,13 +138,13 @@ test("registers an extension command and merges its help entries", async () => {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "open-runtime demo ping [--url <url>]",
+        usage: "openruntime demo ping [--url <url>]",
         description: "Runs a demo extension command."
       }
     ],
     exampleReferences: [
       {
-        command: "open-runtime demo ping",
+        command: "openruntime demo ping",
         description: "Runs the demo extension."
       }
     ],
@@ -150,7 +159,7 @@ test("registers an extension command and merges its help entries", async () => {
   };
   const cli = createOpenRuntimeCli({ extensions: [extension] });
 
-  assert.match(cli.createHelpText(), /open-runtime demo ping/);
+  assert.match(cli.createHelpText(), /openruntime demo ping/);
   assert.deepEqual(cli.getCommandReferences().at(-1), extension.commandReferences?.[0]);
   assert.deepEqual(cli.getExampleReferences().at(-1), extension.exampleReferences?.[0]);
 
@@ -2858,7 +2867,7 @@ test("recognizes a bin symlink as the cli entrypoint", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-"));
   try {
     const entry = join(process.cwd(), "dist", "index.js");
-    const bin = join(tempDir, "open-runtime");
+    const bin = join(tempDir, "openruntime");
     symlinkSync(entry, bin);
 
     assert.equal(isEntryPoint(bin, pathToFileURL(entry).href), true);

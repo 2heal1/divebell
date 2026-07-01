@@ -133,7 +133,7 @@ Use `wait-for` when the goal is only to wait for a specific Target state; use `v
 Teams can further wrap these steps into their own commands:
 
 ```sh
-open-runtime release-note latest --limit 3
+openruntime release-note latest --limit 3
 ```
 
 This turns page capabilities into a stable Runtime that Agents can call, rather than one-off browser scripts.

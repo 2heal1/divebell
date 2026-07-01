@@ -185,9 +185,10 @@ runtime.updateSnapshot({
 只能帮助定位，不能替代最终 business target。
 
 补 target、snapshot 或 action 前，先看项目里已有的 OpenRuntime 初始化、连接、注册 target
-和更新 snapshot 写法；缺少示例时读取 `references/core.md`。不要通过阅读
-`node_modules/@openruntime/core/dist/**` 实现文件来确认基础 API。只有公开类型、说明文档
-和实际编译/运行错误互相矛盾时，才进一步查看包内部实现。
+和更新 snapshot 写法；缺少示例时读取 `references/core.md`。禁止预防性读取
+`node_modules/@openruntime/**` 下的安装包文件；`.d.ts` 也算内部文件。先按本
+skill、reference 和项目相邻写法 patch，再用 typecheck/build 裁决。只有出现真实错误，
+且本 skill、reference 和项目示例都无法解释时，才允许破例查看安装包内部文件。
 
 补完 target 后，只针对刚补的 target 读取一次 snapshot，确认 target 已注册且状态/data
 符合预期；不要把这一步扩展成新的大范围取证：
@@ -307,13 +308,13 @@ OpenRuntime evidence 不可用：
 完整 CLI 清单见 `docs/cli-reference.md`。这里仅保留 OpenRuntime skill 最常用入口。
 
 定位时先用一次不带 `--id` / `--query` 的全量 `snapshot` 快速探测；如果没有有效线索，立即改用 OpenRuntime 浏览器能力，例如 `console`、`page-snapshot`、`network`、`eval` 或 `wait-eval`。进入 PATCH 后必须补或复用最小 `business:*` target，并使用 `verify` 最终验收；通过后百分百相信 verify，只允许写结果和清理，严禁再调用 `snapshot`、`console`、`page-snapshot`、`network`、`eval`、`wait-eval`、截图或再次 `verify`。
-- `open-runtime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
-- `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
-- `open-runtime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。
-- `open-runtime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
-- `open-runtime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
-- `open-runtime wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到结果为 true。
-- `open-runtime eval <script>` - 在页面内执行脚本，也支持 --file <path> 读取脚本文件。
-- `open-runtime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
-- `open-runtime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
-- `open-runtime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。
+- `openruntime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
+- `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
+- `openruntime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。
+- `openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
+- `openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
+- `openruntime wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到结果为 true。
+- `openruntime eval <script>` - 在页面内执行脚本，也支持 --file <path> 读取脚本文件。
+- `openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 runtime 注册的 target 定义。
+- `openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取当前 runtime snapshot 状态。
+- `openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 runtime event 历史。

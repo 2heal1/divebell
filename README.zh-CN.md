@@ -133,7 +133,7 @@ Agent 不需要分析 DOM，也不需要寻找按钮，只需要调用统一 Run
 团队也可以进一步把这些步骤封装成自己的命令：
 
 ```sh
-open-runtime release-note latest --limit 3
+openruntime release-note latest --limit 3
 ```
 
 这样，页面能力就真正成为 Agent 可以稳定调用的 Runtime，而不是一次性的浏览器脚本。

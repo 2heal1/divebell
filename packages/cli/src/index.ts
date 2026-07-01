@@ -98,8 +98,8 @@ const RUNTIME_RESOURCE_COMMAND_NAMES: readonly RuntimeResourceCommandName[] = [
   "actions"
 ];
 
-export function getCliCommandName(): "open-runtime" {
-  return "open-runtime";
+export function getCliCommandName(): "openruntime" {
+  return "openruntime";
 }
 
 export interface CliRunOptions {

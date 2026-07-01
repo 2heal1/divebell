@@ -32,6 +32,26 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "open-runtime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+    description: "按固定时长打开页面并生成 .orrec 录制包；当前原型会记录浏览器快照、DOM 摘要、操作入口和 OpenRuntime runtime 轨迹，音视频采集先写入 manifest 预留字段。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "open-runtime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+    description: "启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下，并注入点击和输入监听；用户操作完成后应继续执行 record stop。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "open-runtime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
+    description: "结束人工操作录制，采集点击、输入、键盘事件和收尾状态，默认关闭浏览器并生成 generated-script.mjs 脚本草稿。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "open-runtime record generate-script --input <path> [--out <path>]",
+    description: "从已有 .orrec 录制包重新生成 JS 脚本草稿。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
   },
@@ -144,6 +164,14 @@ export const cliExampleReferences: CliExampleReference[] = [
   {
     command: "open-runtime events --query react --limit 50",
     description: "按关键词查看相关事件。"
+  },
+  {
+    command: "open-runtime record start --mic",
+    description: "打开可见浏览器并开始一次人工操作录制，默认保存到当前目录 recordings 下。"
+  },
+  {
+    command: "open-runtime record stop --out ./demo.orrec",
+    description: "结束录制，关闭浏览器，并生成可继续修改的 JS 脚本草稿。"
   },
   {
     command: "open-runtime console --level error --limit 50",

@@ -112,6 +112,10 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
 - `open-runtime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
 - `open-runtime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
+- `open-runtime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]` - 按固定时长打开页面并生成 .orrec 录制包；当前原型会记录浏览器快照、DOM 摘要、操作入口和 OpenRuntime runtime 轨迹，音视频采集先写入 manifest 预留字段。
+- `open-runtime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]` - 启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下，并注入点击和输入监听；用户操作完成后应继续执行 record stop。
+- `open-runtime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]` - 结束人工操作录制，采集点击、输入、键盘事件和收尾状态，默认关闭浏览器并生成 generated-script.mjs 脚本草稿。
+- `open-runtime record generate-script --input <path> [--out <path>]` - 从已有 .orrec 录制包重新生成 JS 脚本草稿。
 - `open-runtime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `open-runtime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `open-runtime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
@@ -141,6 +145,8 @@ pnpm exec openruntime wait-for modern:route ready --strict --runtime <runtime-id
 - `open-runtime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。
 - `open-runtime events --target-id modern:route --limit 50` - 查看某个 target 的最近事件。
 - `open-runtime events --query react --limit 50` - 按关键词查看相关事件。
+- `open-runtime record start --mic` - 打开可见浏览器并开始一次人工操作录制，默认保存到当前目录 recordings 下。
+- `open-runtime record stop --out ./demo.orrec` - 结束录制，关闭浏览器，并生成可继续修改的 JS 脚本草稿。
 - `open-runtime console --level error --limit 50` - 查看最近浏览器 console 错误。
 - `open-runtime wait-for modern:route ready --where pathname=/orders --timeout 10000` - 等待指定 pathname 的 route target ready。
 - `open-runtime wait-for modern:route ready --next --where pathname=/orders --timeout 10000` - 等待下一次新连接 runtime 的 route target ready。

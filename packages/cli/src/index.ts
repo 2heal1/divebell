@@ -60,6 +60,7 @@ import {
   readProfileInputFile,
   type ProfileExportResult
 } from "./profile.js";
+import { runRecordCommand } from "./record.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
@@ -225,6 +226,18 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
+    if (args.command[0] === "record") {
+      return await runRecordCommand({
+        args,
+        stdout,
+        fetcher,
+        browserRunner,
+        bridgeUrl: createBridgeUrl(args),
+        bridgeStarter,
+        bridgeStateStore: createBridgeStateStore(args, options.bridgeStateDirectory)
+      });
+    }
+
     if (isBrowserCommand(args.command[0])) {
       return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
     }
@@ -362,6 +375,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "__bridge-server",
     "start",
     "stop",
+    "record",
     "runtimes",
     "input-options",
     "run-action",

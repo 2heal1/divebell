@@ -4,11 +4,40 @@ import fs from "node:fs";
 import path from "node:path";
 
 const MODERN_PLUGIN_MIN_VERSION = "3.4.0";
+const SOURCE_FILE_EXTENSIONS = new Set([
+  ".cjs",
+  ".cts",
+  ".html",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".mts",
+  ".ts",
+  ".tsx"
+]);
+const SOURCE_SCAN_EXCLUDED_DIRECTORIES = new Set([
+  ".cache",
+  ".eden-mono",
+  ".git",
+  ".next",
+  ".openruntime",
+  ".output",
+  ".turbo",
+  ".vmok",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules"
+]);
+const SOURCE_SCAN_MAX_BYTES = 512 * 1024;
+const SOURCE_SCAN_MAX_FILES = 2000;
 const modernPackages = [
   "@modern-js/runtime",
   "@modern-js/plugin",
   "@modern-js/app-tools"
 ];
+const openRuntimeCorePackage = "@openruntime/core";
+const openRuntimeModernPluginPackage = "@openruntime/modern-plugin";
 const mfObservabilityPackage = "@module-federation/observability-plugin";
 const mfDependencySignals = [
   "@module-federation/enhanced",
@@ -30,7 +59,11 @@ function main() {
   const resolvedPackageJsonPath = path.resolve(packageJsonPath);
   const packageJson = readPackageJson(resolvedPackageJsonPath);
   const dependencies = collectDependencies(packageJson);
-  const result = resolveIntegration({ dependencies });
+  const result = resolveIntegration({
+    dependencies,
+    packageJsonPath: resolvedPackageJsonPath,
+    projectRoot: path.dirname(resolvedPackageJsonPath)
+  });
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
@@ -87,22 +120,37 @@ function collectDependencies(packageJson) {
   };
 }
 
-function resolveIntegration({ dependencies }) {
+function resolveIntegration({ dependencies, packageJsonPath, projectRoot }) {
   const modern = resolveModern(dependencies);
   const moduleFederation = resolveModuleFederation(dependencies);
-  const install = dedupe([
-    ...modern.install,
-    ...moduleFederation.install
+  const requiredPackages = dedupe([
+    ...modern.requiredPackages,
+    ...moduleFederation.requiredPackages
   ]);
-  const use = dedupe([
-    ...modern.use,
-    ...moduleFederation.use
+  const requiredUsage = dedupe([
+    ...modern.usage,
+    ...moduleFederation.usage
   ]);
+  const installed = requiredPackages.filter((name) => dependencies[name] !== undefined);
+  const missing = requiredPackages.filter((name) => dependencies[name] === undefined);
+  const detectedUsage = detectUsage(projectRoot, requiredUsage);
 
   return {
-    install,
-    use,
-    required: install.length > 0 || use.length > 0
+    dependency: {
+      checkedFrom: [packageJsonPath],
+      required: requiredPackages,
+      installed,
+      missing
+    },
+    usage: {
+      checkedFrom: [projectRoot],
+      required: requiredUsage,
+      detected: detectedUsage,
+      missing: requiredUsage.filter((item) => !detectedUsage.includes(item))
+    },
+    install: missing,
+    use: requiredPackages,
+    required: requiredPackages.length > 0 || requiredUsage.length > 0
   };
 }
 
@@ -124,9 +172,6 @@ function resolveModern(dependencies) {
   const hasSupportedVersion = versionEntries.some((entry) =>
     entry.isPreview || compareVersions(entry.parsed, parseVersion(MODERN_PLUGIN_MIN_VERSION)) >= 0
   );
-  const hasModernPlugin = dependencies["@openruntime/modern-plugin"] !== undefined;
-  const hasCore = dependencies["@openruntime/core"] !== undefined;
-
   if (!detected) {
     return {
       detected: false,
@@ -136,8 +181,8 @@ function resolveModern(dependencies) {
         satisfied: false
       },
       versions,
-      install: [],
-      use: []
+      requiredPackages: [],
+      usage: []
     };
   }
 
@@ -150,8 +195,8 @@ function resolveModern(dependencies) {
         satisfied: true
       },
       versions,
-      install: hasModernPlugin ? [] : ["@openruntime/modern-plugin"],
-      use: ["@openruntime/modern-plugin"]
+      requiredPackages: [openRuntimeModernPluginPackage],
+      usage: ["modern_plugin"]
     };
   }
 
@@ -163,15 +208,14 @@ function resolveModern(dependencies) {
       satisfied: false
     },
     versions,
-    install: hasCore ? [] : ["@openruntime/core"],
-    use: ["@openruntime/core"]
+    requiredPackages: [openRuntimeCorePackage],
+    usage: ["core_runtime"]
   };
 }
 
 function resolveModuleFederation(dependencies) {
   const dependencyNames = Object.keys(dependencies);
   const detected = dependencyNames.some((name) => isMfDependency(name) || isVmokDependency(name));
-  const hasObservability = dependencies[mfObservabilityPackage] !== undefined;
 
   if (!detected) {
     return {
@@ -179,8 +223,8 @@ function resolveModuleFederation(dependencies) {
       versionGate: {
         required: false
       },
-      install: [],
-      use: []
+      requiredPackages: [],
+      usage: []
     };
   }
 
@@ -189,9 +233,85 @@ function resolveModuleFederation(dependencies) {
     versionGate: {
       required: false
     },
-    install: hasObservability ? [] : [mfObservabilityPackage],
-    use: [mfObservabilityPackage]
+    requiredPackages: [mfObservabilityPackage],
+    usage: ["mf_observability"]
   };
+}
+
+function detectUsage(projectRoot, requiredUsage) {
+  if (requiredUsage.length === 0) return [];
+  const content = readProjectSourceContent(projectRoot);
+  const detected = [];
+  if (requiredUsage.includes("core_runtime") && detectsCoreRuntimeUsage(content)) {
+    detected.push("core_runtime");
+  }
+  if (requiredUsage.includes("modern_plugin") && detectsModernPluginUsage(content)) {
+    detected.push("modern_plugin");
+  }
+  if (requiredUsage.includes("mf_observability") && detectsMfObservabilityUsage(content)) {
+    detected.push("mf_observability");
+  }
+  return detected;
+}
+
+function readProjectSourceContent(projectRoot) {
+  const chunks = [];
+  let scannedFiles = 0;
+
+  function walk(directory) {
+    if (scannedFiles >= SOURCE_SCAN_MAX_FILES) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (scannedFiles >= SOURCE_SCAN_MAX_FILES) return;
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!SOURCE_SCAN_EXCLUDED_DIRECTORIES.has(entry.name)) {
+          walk(entryPath);
+        }
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!SOURCE_FILE_EXTENSIONS.has(path.extname(entry.name))) continue;
+
+      try {
+        const stat = fs.statSync(entryPath);
+        if (stat.size > SOURCE_SCAN_MAX_BYTES) continue;
+        chunks.push(fs.readFileSync(entryPath, "utf8"));
+        scannedFiles += 1;
+      } catch {
+        // Ignore unreadable generated or transient files.
+      }
+    }
+  }
+
+  walk(projectRoot);
+  return chunks.join("\n");
+}
+
+function detectsCoreRuntimeUsage(content) {
+  return (
+    content.includes(openRuntimeCorePackage) &&
+    /(?:createOpenRuntime|installOpenRuntimeOnWindow|connectBridge)\s*\(/.test(content)
+  ) || (
+    /connectBridge\s*\(/.test(content) &&
+    /openruntime/i.test(content)
+  );
+}
+
+function detectsModernPluginUsage(content) {
+  return content.includes(openRuntimeModernPluginPackage) ||
+    /openRuntimeModernPlugin\s*\(/.test(content);
+}
+
+function detectsMfObservabilityUsage(content) {
+  return content.includes(mfObservabilityPackage) ||
+    /ObservabilityPlugin\s*\(/.test(content);
 }
 
 function isMfDependency(name) {

@@ -199,6 +199,147 @@ test("blocks required actions across symlinked working directories", async () =>
   }
 });
 
+test("resolve-integration separates formal dependencies from temporary node_modules links", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-integration-"));
+  const project = join(root, "app");
+  const tempPlugin = join(root, "work", "openruntime-cli", "node_modules", "@module-federation", "observability-plugin");
+  const moduleFederationNodeModules = join(project, "node_modules", "@module-federation");
+  mkdirSync(project, { recursive: true });
+  mkdirSync(tempPlugin, { recursive: true });
+  mkdirSync(moduleFederationNodeModules, { recursive: true });
+  symlinkSync(tempPlugin, join(moduleFederationNodeModules, "observability-plugin"), "dir");
+  const packageJsonPath = writeIntegrationPackageJson(project, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.install.sort(), result.dependency.missing.sort());
+    assert.deepEqual(result.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration reports installed dependencies separately from missing usage", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-usage-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.dependency.installed.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.usage.detected, []);
+    assert.deepEqual(result.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration detects source usage separately from installed dependencies", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-detected-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "openruntime.ts"), `
+import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+
+const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+runtime.connectBridge({ port: 17321 });
+`, "utf8");
+  writeFileSync(join(root, "vmok.config.ts"), `
+import { ObservabilityPlugin } from "@module-federation/observability-plugin";
+
+export default {
+  plugins: [ObservabilityPlugin()],
+};
+`, "utf8");
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.usage.detected.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow connected asks to install missing dependencies before usage changes", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-install-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.nextAction.dependency.missing.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.output.nextAction.requiredCommands, [
+      "pnpm add @openruntime/core @module-federation/observability-plugin"
+    ]);
+
+    const observe = runWorkflowObserve(root, stateDirectory);
+    assert.equal(observe.exitCode, 2);
+    assert.equal(observe.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(observe.output.nextAction.type, "install_missing_dependencies");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow connected asks to apply usage after dependencies are installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-usage-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_USAGE_REQUIRED");
+    assert.equal(result.output.nextAction.type, "apply_required_usage");
+    assert.deepEqual(result.output.nextAction.dependency.missing, []);
+    assert.deepEqual(result.output.nextAction.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.output.nextAction.requiredCommands, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
@@ -2987,6 +3128,100 @@ test("recognizes a bin symlink as the cli entrypoint", () => {
     });
   }
 });
+
+function writeIntegrationPackageJson(projectRoot: string, dependencies: Record<string, string>): string {
+  mkdirSync(projectRoot, { recursive: true });
+  const packageJsonPath = join(projectRoot, "package.json");
+  writeFileSync(packageJsonPath, `${JSON.stringify({
+    name: "integration-fixture",
+    private: true,
+    dependencies
+  }, null, 2)}\n`, "utf8");
+  return packageJsonPath;
+}
+
+function runResolveIntegration(packageJsonPath: string): any {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "resolve-integration.mjs"),
+    packageJsonPath
+  ], {
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function runWorkflowConnected(
+  cwd: string,
+  packageJsonPath: string,
+  stateDirectory: string
+): { exitCode: number | null; output: any; stderr: string } {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "workflow.mjs"),
+    "connected",
+    "--package-json",
+    packageJsonPath,
+    "--bridge",
+    "http://127.0.0.1:9",
+    "--url",
+    "http://localhost:3000/",
+    "--out",
+    join(cwd, "openruntime-evidence.json"),
+    "--state-dir",
+    stateDirectory,
+    "--source-editable",
+    "true"
+  ], {
+    cwd,
+    encoding: "utf8"
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr
+  };
+}
+
+function runWorkflowObserve(
+  cwd: string,
+  stateDirectory: string
+): { exitCode: number | null; output: any; stderr: string } {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "workflow.mjs"),
+    "observe",
+    "--url",
+    "http://localhost:3000/",
+    "--out",
+    join(cwd, "openruntime-evidence.json"),
+    "--state-dir",
+    stateDirectory
+  ], {
+    cwd,
+    encoding: "utf8"
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr
+  };
+}
+
+function repoScriptPath(...segments: string[]): string {
+  const candidates = [
+    process.cwd(),
+    join(process.cwd(), "..", "..")
+  ];
+  for (const candidate of candidates) {
+    const filePath = join(candidate, ...segments);
+    if (existsSync(filePath)) return filePath;
+  }
+  throw new Error(`Could not find repo file: ${segments.join("/")}`);
+}
 
 function createOutput(): {
   stdout: { write(chunk: string): void };

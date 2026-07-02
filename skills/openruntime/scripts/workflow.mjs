@@ -13,6 +13,8 @@ const EXIT_PASS = 0;
 const EXIT_FAIL = 1;
 const EXIT_ACTION_REQUIRED = 2;
 const REQUIRED_INTEGRATION_ALLOWED_ACTIONS = [
+  "install_missing_dependencies",
+  "apply_required_usage",
   "apply_required_integration",
   "rerun_connected",
   "report_blocked"
@@ -44,6 +46,8 @@ const DEFAULT_REQUIRED_ACTION_DIR = path.join(homedir(), ".openruntime", "requir
 const REQUIRED_ACTION_KIND = "openruntime.requiredAction";
 const REQUIRED_ACTION_SCHEMA_VERSION = 1;
 const REQUIRED_ACTION_BLOCK_CODES = new Set([
+  "OPENRUNTIME_DEPENDENCY_REQUIRED",
+  "OPENRUNTIME_USAGE_REQUIRED",
   "OPENRUNTIME_INTEGRATION_REQUIRED",
   "OPENRUNTIME_INTEGRATION_REQUIRED_BLOCKED"
 ]);
@@ -97,6 +101,8 @@ async function runConnected(args) {
     packageJson: path.resolve(packageJsonPath),
     install: integration.install,
     use: integration.use,
+    dependency: integration.dependency,
+    usage: integration.usage,
     required: integration.required
   };
 
@@ -179,7 +185,7 @@ async function runConnected(args) {
         status: blocked ? "blocked" : "pending",
         code: blocked
           ? "OPENRUNTIME_INTEGRATION_REQUIRED_BLOCKED"
-          : "OPENRUNTIME_INTEGRATION_REQUIRED",
+          : nextAction.code ?? "OPENRUNTIME_INTEGRATION_REQUIRED",
         attempts: evidence.attempts.connected,
         maxAttempts: MAX_ATTEMPTS,
         reason: evidence.connected.reason,
@@ -463,12 +469,64 @@ function resolveIntegration(packageJsonPath) {
     throw new Error(result.stderr.trim() || result.stdout.trim() || "resolve-integration failed.");
   }
   const parsed = JSON.parse(result.stdout);
-  const install = Array.isArray(parsed.install) ? parsed.install : [];
-  const use = Array.isArray(parsed.use) ? parsed.use : [];
+  const dependency = normalizeDependencyStatus(parsed.dependency, parsed);
+  const usage = normalizeUsageStatus(parsed.usage);
+  const install = dependency.missing;
+  const use = dependency.required;
   return {
     install,
     use,
-    required: parsed.required === true || install.length > 0 || use.length > 0
+    dependency,
+    usage,
+    required: parsed.required === true ||
+      dependency.required.length > 0 ||
+      usage.required.length > 0
+  };
+}
+
+function normalizeDependencyStatus(value, fallback = {}) {
+  const required = Array.isArray(value?.required)
+    ? value.required.filter((item) => typeof item === "string")
+    : Array.isArray(fallback.use)
+      ? fallback.use.filter((item) => typeof item === "string")
+      : [];
+  const missing = Array.isArray(value?.missing)
+    ? value.missing.filter((item) => typeof item === "string")
+    : Array.isArray(fallback.install)
+      ? fallback.install.filter((item) => typeof item === "string")
+      : [];
+  const installed = Array.isArray(value?.installed)
+    ? value.installed.filter((item) => typeof item === "string")
+    : required.filter((item) => !missing.includes(item));
+  const checkedFrom = Array.isArray(value?.checkedFrom)
+    ? value.checkedFrom.filter((item) => typeof item === "string")
+    : [];
+  return {
+    checkedFrom,
+    required,
+    installed,
+    missing
+  };
+}
+
+function normalizeUsageStatus(value) {
+  const required = Array.isArray(value?.required)
+    ? value.required.filter((item) => typeof item === "string")
+    : [];
+  const detected = Array.isArray(value?.detected)
+    ? value.detected.filter((item) => typeof item === "string")
+    : [];
+  const missing = Array.isArray(value?.missing)
+    ? value.missing.filter((item) => typeof item === "string")
+    : required.filter((item) => !detected.includes(item));
+  const checkedFrom = Array.isArray(value?.checkedFrom)
+    ? value.checkedFrom.filter((item) => typeof item === "string")
+    : [];
+  return {
+    checkedFrom,
+    required,
+    detected,
+    missing
   };
 }
 
@@ -568,6 +626,8 @@ function writeRequiredIntegrationState({
     integration: {
       install: integration.install,
       use: integration.use,
+      dependency: integration.dependency,
+      usage: integration.usage,
       required: true
     },
     requiredAction,
@@ -744,6 +804,54 @@ function createConnectedFailureNextAction({ bridgeResult, matchingOpenOperation,
 function createApplyRequiredIntegrationNextAction({ integration, bridge, url, openAction }) {
   const connectAction = createConnectBridgeNextAction(integration, bridge, url);
   const preconditions = openAction === null ? [] : [createOpenPagePrecondition(openAction)];
+  const dependencyMissing = getMissingDependencies(integration);
+  if (dependencyMissing.length > 0) {
+    return {
+      type: "install_missing_dependencies",
+      code: "OPENRUNTIME_DEPENDENCY_REQUIRED",
+      required: true,
+      canFallback: false,
+      fallbackAllowed: false,
+      commands: createInstallCommands(dependencyMissing),
+      requiredCommands: createInstallCommands(dependencyMissing),
+      dependency: integration.dependency,
+      usage: integration.usage,
+      integration: createIntegrationPayload(integration),
+      preconditions,
+      afterInstall: {
+        type: "rerun_connected"
+      },
+      rerun: {
+        type: "rerun_connected"
+      }
+    };
+  }
+
+  const usageMissing = getMissingUsage(integration);
+  if (usageMissing.length > 0) {
+    return {
+      type: "apply_required_usage",
+      code: "OPENRUNTIME_USAGE_REQUIRED",
+      required: true,
+      canFallback: false,
+      fallbackAllowed: false,
+      commands: connectAction.commands ?? [],
+      requiredCommands: connectAction.requiredCommands ?? [],
+      dependency: integration.dependency,
+      usage: integration.usage,
+      integration: createIntegrationPayload(integration),
+      bridge,
+      url: url ?? null,
+      reference: connectAction.reference ?? null,
+      snippets: connectAction.snippets ?? [],
+      additionalActions: connectAction.additionalActions ?? [],
+      preconditions,
+      rerun: {
+        type: "rerun_connected"
+      }
+    };
+  }
+
   return {
     type: "apply_required_integration",
     code: "OPENRUNTIME_INTEGRATION_REQUIRED",
@@ -752,11 +860,9 @@ function createApplyRequiredIntegrationNextAction({ integration, bridge, url, op
     fallbackAllowed: false,
     commands: connectAction.commands ?? [],
     requiredCommands: connectAction.requiredCommands ?? [],
-    integration: {
-      install: integration.install,
-      use: integration.use,
-      required: true
-    },
+    dependency: integration.dependency,
+    usage: integration.usage,
+    integration: createIntegrationPayload(integration),
     bridge,
     url: url ?? null,
     reference: connectAction.reference ?? null,
@@ -780,12 +886,10 @@ function createOpenPagePrecondition(openAction) {
 
 function createConnectBridgeNextAction(integration, bridge, url) {
   const port = bridgePort(bridge);
-  const install = integration.install.length > 0
-    ? [`pnpm add ${integration.install.join(" ")}`]
-    : [];
-  const use = new Set(integration.use);
+  const install = createInstallCommands(getMissingDependencies(integration));
+  const requiredPackages = new Set(getRequiredDependencyPackages(integration));
   const additionalActions = [];
-  if (use.has("@module-federation/observability-plugin")) {
+  if (requiredPackages.has("@module-federation/observability-plugin")) {
     additionalActions.push({
       type: "wire_mf_observability",
       required: true,
@@ -795,7 +899,7 @@ function createConnectBridgeNextAction(integration, bridge, url) {
     });
   }
 
-  if (use.has("@openruntime/modern-plugin")) {
+  if (requiredPackages.has("@openruntime/modern-plugin")) {
     return {
       type: "connect_modern_plugin",
       required: true,
@@ -867,10 +971,49 @@ runtime.connectBridge({
   };
 }
 
+function createIntegrationPayload(integration) {
+  return {
+    install: integration.install,
+    use: integration.use,
+    dependency: integration.dependency,
+    usage: integration.usage,
+    required: true
+  };
+}
+
+function createInstallCommands(packages) {
+  return packages.length > 0
+    ? [`pnpm add ${packages.join(" ")}`]
+    : [];
+}
+
+function getMissingDependencies(integration) {
+  return Array.isArray(integration?.dependency?.missing)
+    ? integration.dependency.missing
+    : Array.isArray(integration?.install)
+      ? integration.install
+      : [];
+}
+
+function getRequiredDependencyPackages(integration) {
+  return Array.isArray(integration?.dependency?.required)
+    ? integration.dependency.required
+    : Array.isArray(integration?.use)
+      ? integration.use
+      : [];
+}
+
+function getMissingUsage(integration) {
+  return Array.isArray(integration?.usage?.missing)
+    ? integration.usage.missing
+    : [];
+}
+
 function isIntegrationRequired(integration) {
   return integration?.required === true ||
-    integration?.install?.length > 0 ||
-    integration?.use?.length > 0;
+    getMissingDependencies(integration).length > 0 ||
+    getRequiredDependencyPackages(integration).length > 0 ||
+    (Array.isArray(integration?.usage?.required) && integration.usage.required.length > 0);
 }
 
 function createRunVerifyNextAction() {
@@ -953,20 +1096,20 @@ runtime.updateSnapshot({
 }
 
 function resolvePluginSnapshotAvailability(integration) {
-  const use = new Set(Array.isArray(integration?.use) ? integration.use : []);
-  const install = new Set(Array.isArray(integration?.install) ? integration.install : []);
+  const requiredPackages = new Set(getRequiredDependencyPackages(integration));
+  const missingDependencies = new Set(getMissingDependencies(integration));
   const plugins = [];
   const missingInstall = [];
 
-  if (use.has("@module-federation/observability-plugin")) {
-    if (install.has("@module-federation/observability-plugin")) {
+  if (requiredPackages.has("@module-federation/observability-plugin")) {
+    if (missingDependencies.has("@module-federation/observability-plugin")) {
       missingInstall.push("@module-federation/observability-plugin");
     } else {
       plugins.push("module-federation");
     }
   }
-  if (use.has("@openruntime/modern-plugin")) {
-    if (install.has("@openruntime/modern-plugin")) {
+  if (requiredPackages.has("@openruntime/modern-plugin")) {
+    if (missingDependencies.has("@openruntime/modern-plugin")) {
       missingInstall.push("@openruntime/modern-plugin");
     } else {
       plugins.push("modern");
@@ -1011,6 +1154,18 @@ function createEmptyEvidence() {
       packageJson: null,
       install: [],
       use: [],
+      dependency: {
+        checkedFrom: [],
+        required: [],
+        installed: [],
+        missing: []
+      },
+      usage: {
+        checkedFrom: [],
+        required: [],
+        detected: [],
+        missing: []
+      },
       required: false
     },
     connected: {
@@ -1074,9 +1229,13 @@ function mergeEvidence(base, parsed) {
       ...parsed.integration,
       install: Array.isArray(parsed.integration?.install) ? parsed.integration.install : base.integration.install,
       use: Array.isArray(parsed.integration?.use) ? parsed.integration.use : base.integration.use,
+      dependency: normalizeDependencyStatus(parsed.integration?.dependency, parsed.integration ?? {}),
+      usage: normalizeUsageStatus(parsed.integration?.usage),
       required: parsed.integration?.required === true ||
         (Array.isArray(parsed.integration?.install) && parsed.integration.install.length > 0) ||
-        (Array.isArray(parsed.integration?.use) && parsed.integration.use.length > 0)
+        (Array.isArray(parsed.integration?.use) && parsed.integration.use.length > 0) ||
+        (Array.isArray(parsed.integration?.dependency?.required) && parsed.integration.dependency.required.length > 0) ||
+        (Array.isArray(parsed.integration?.usage?.required) && parsed.integration.usage.required.length > 0)
     },
     connected: {
       ...base.connected,

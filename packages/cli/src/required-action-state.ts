@@ -24,6 +24,18 @@ export interface RequiredActionState {
   integration: {
     install: string[];
     use: string[];
+    dependency?: {
+      checkedFrom: string[];
+      required: string[];
+      installed: string[];
+      missing: string[];
+    };
+    usage?: {
+      checkedFrom: string[];
+      required: string[];
+      detected: string[];
+      missing: string[];
+    };
     required: true;
   };
   requiredAction: Record<string, unknown>;
@@ -119,7 +131,29 @@ function isIntegration(value: unknown): value is RequiredActionState["integratio
     value.install.every((item) => typeof item === "string") &&
     Array.isArray(value.use) &&
     value.use.every((item) => typeof item === "string") &&
+    (value.dependency === undefined || isDependencyStatus(value.dependency)) &&
+    (value.usage === undefined || isUsageStatus(value.usage)) &&
     value.required === true;
+}
+
+function isDependencyStatus(value: unknown): value is NonNullable<RequiredActionState["integration"]["dependency"]> {
+  if (!isRecord(value)) return false;
+  return isStringArray(value.checkedFrom) &&
+    isStringArray(value.required) &&
+    isStringArray(value.installed) &&
+    isStringArray(value.missing);
+}
+
+function isUsageStatus(value: unknown): value is NonNullable<RequiredActionState["integration"]["usage"]> {
+  if (!isRecord(value)) return false;
+  return isStringArray(value.checkedFrom) &&
+    isStringArray(value.required) &&
+    isStringArray(value.detected) &&
+    isStringArray(value.missing);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

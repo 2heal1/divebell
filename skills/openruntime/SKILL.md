@@ -86,16 +86,25 @@ node <openruntime-skill-dir>/scripts/workflow.mjs connected \
 `<openruntime-skill-dir>` 是当前 skill 目录。仓库内开发通常是 `skills/openruntime`；
 被注入到其他环境时，使用注入后的实际目录。
 
-`connected` 会自动执行 `resolve-integration`，把 `install` / `use` 写进
-`openruntime-evidence.json`。如果当前工作目录没有 `open` 记录，它会要求先运行
-`openruntime open`。如果已经 open 过但没有 connected runtime，它会按项目类型返回
-必须加入的 Modern plugin、MF/Vmok observability 或 Core runtime 连接代码。
+`connected` 会自动执行 `resolve-integration`，把依赖、接入和运行时连接拆开写进
+`openruntime-evidence.json`：
 
-源码可改时，必须按 `nextAction.snippets` 修改入口或 runtime 配置。
-`install` / `use` 不是建议清单；它们表示当前项目必须安装和接入的依赖。
-如果 `connected` 返回 `requiredAction.code=OPENRUNTIME_INTEGRATION_REQUIRED`，
-必须先执行 `requiredAction.requiredAction.requiredCommands`、接入 snippets、重启应用并重跑
-`connected`。此时 `snapshot`、`targets`、`events`、`runtimes`、`console`、
+- `integration.dependency.required/installed/missing` 表示应该安装、已正式安装和缺少的包。
+  已安装只看业务项目的 `package.json` 依赖声明，不把临时目录、CLI 自身依赖或
+  `node_modules` 软链当成正式安装。
+- `integration.usage.required/detected/missing` 表示应该接入、源码中已检测到接入和缺少的接入。
+- `connected.ok/runtimeCount/connectedCount` 表示页面里 runtime 是否真的连上 Bridge。
+
+如果当前工作目录没有 `open` 记录，它会要求先运行 `openruntime open`。如果已经 open
+过但没有 connected runtime，它会按项目类型返回必须安装的依赖、必须接入的 Modern plugin、
+MF/Vmok observability 或 Core runtime 连接代码。
+
+源码可改时，必须按 `nextAction` 执行。`nextAction.type=install_missing_dependencies`
+时先执行 `requiredCommands`；`nextAction.type=apply_required_usage` 时按
+`nextAction.snippets` 修改入口或 runtime 配置。
+如果 `connected` 返回 `requiredAction.status=pending`，必须先完成
+`requiredAction.requiredAction` 指定的动作、重启应用并重跑 `connected`。此时
+`snapshot`、`targets`、`events`、`runtimes`、`console`、
 `network`、`page-snapshot`、`eval`、`wait-eval`、`wait-for`、`verify` 等 CLI
 命令会因为状态文件存在而失败。如果源码或依赖不可改，用
 `--source-editable false` 运行 `connected`，然后按 `report_blocked` 报告。

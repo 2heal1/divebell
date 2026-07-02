@@ -17,6 +17,7 @@ import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, typ
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
 import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
+import { createFileRequiredActionStateStore } from "../dist/required-action-state.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "openruntime");
@@ -88,6 +89,51 @@ test("prints help for command help without executing the command", async () => {
     assert.match(output.text(), /Usage:/);
     assert.equal(touchedSideEffect, false);
   }
+});
+
+test("blocks diagnostic commands while a required action is pending", async () => {
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-required-action-"));
+  const store = createFileRequiredActionStateStore(process.cwd(), stateDirectory);
+  await store.write({
+    source: "workflow.connected",
+    status: "pending",
+    code: "OPENRUNTIME_INTEGRATION_REQUIRED",
+    sourceEditable: true,
+    canFallback: false,
+    allowedNextActions: ["apply_required_integration", "rerun_connected", "report_blocked"],
+    forbiddenCommands: ["snapshot", "console"],
+    integration: {
+      install: ["@openruntime/core", "@module-federation/observability-plugin"],
+      use: ["@openruntime/core", "@module-federation/observability-plugin"],
+      required: true
+    },
+    requiredAction: {
+      type: "apply_required_integration",
+      code: "OPENRUNTIME_INTEGRATION_REQUIRED"
+    },
+    createdAt: "2026-07-02T00:00:00.000Z",
+    updatedAt: "2026-07-02T00:00:00.000Z"
+  });
+
+  let touchedSideEffect = false;
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    requiredActionStateDirectory: stateDirectory,
+    fetcher: async () => {
+      touchedSideEffect = true;
+      throw new Error("fetcher should not be called");
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(touchedSideEffect, false);
+  const result = JSON.parse(output.text());
+  assert.equal(result.code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
+  assert.equal(result.command, "snapshot");
+  assert.equal(result.nextAction.type, "apply_required_integration");
+  assert.match(output.errorText(), /OPENRUNTIME_REQUIRED_ACTION_PENDING/);
 });
 
 test("generates CLI reference markdown from the help table", () => {

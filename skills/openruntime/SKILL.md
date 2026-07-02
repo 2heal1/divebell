@@ -55,6 +55,10 @@ exit 1 -> 停止并报告 BLOCKED
 
 不要在 workflow 命令后追加 `|| true`。
 
+`connected` 返回的 `requiredAction` 是硬状态，不是建议。默认状态文件在
+`~/.openruntime/required-actions/<cwd-hash>.json`。后续 workflow 和 CLI 命令会读取
+这个文件；只要里面还有 `status=pending|blocked`，诊断和取证命令必须失败。
+
 ### OPEN_PAGE
 
 先启动目标应用，再用 OpenRuntime CLI 打开目标页面：
@@ -75,7 +79,8 @@ node <openruntime-skill-dir>/scripts/workflow.mjs connected \
   --package-json <path-to-package.json> \
   --bridge http://localhost:17321 \
   --url <app-url> \
-  --out openruntime-evidence.json
+  --out openruntime-evidence.json \
+  --source-editable true
 ```
 
 `<openruntime-skill-dir>` 是当前 skill 目录。仓库内开发通常是 `skills/openruntime`；
@@ -84,9 +89,16 @@ node <openruntime-skill-dir>/scripts/workflow.mjs connected \
 `connected` 会自动执行 `resolve-integration`，把 `install` / `use` 写进
 `openruntime-evidence.json`。如果当前工作目录没有 `open` 记录，它会要求先运行
 `openruntime open`。如果已经 open 过但没有 connected runtime，它会按项目类型返回
-应加入的 Modern plugin、MF/Vmok observability 或 Core runtime 连接代码。
+必须加入的 Modern plugin、MF/Vmok observability 或 Core runtime 连接代码。
 
 源码可改时，必须按 `nextAction.snippets` 修改入口或 runtime 配置。
+`install` / `use` 不是建议清单；它们表示当前项目必须安装和接入的依赖。
+如果 `connected` 返回 `requiredAction.code=OPENRUNTIME_INTEGRATION_REQUIRED`，
+必须先执行 `requiredAction.requiredAction.requiredCommands`、接入 snippets、重启应用并重跑
+`connected`。此时 `snapshot`、`targets`、`events`、`runtimes`、`console`、
+`network`、`page-snapshot`、`eval`、`wait-eval`、`wait-for`、`verify` 等 CLI
+命令会因为状态文件存在而失败。如果源码或依赖不可改，用
+`--source-editable false` 运行 `connected`，然后按 `report_blocked` 报告。
 不要用浏览器 `eval` 做临时 Bridge 连接。
 
 ### OBSERVE
@@ -99,6 +111,9 @@ node <openruntime-skill-dir>/scripts/workflow.mjs observe \
   --url <app-url> \
   --out openruntime-evidence.json
 ```
+
+如果 requiredAction 状态文件仍然存在，`observe` 会直接失败并返回同一个
+`requiredAction`，不会返回 `browser_diagnose`。
 
 如果 `observe.nextAction.type=snapshot_observe`，先把插件 snapshot 当作一次快速探测，
 不要把它当成必须完成的定位主路径。首次只跑一次全量 snapshot，不带 `--id`、`--query`、
@@ -249,7 +264,8 @@ node <openruntime-skill-dir>/scripts/workflow.mjs verify \
 证明页面或业务入口已经恢复。
 
 `verify` 返回 `exit 0` 且输出 `doneLock=true` / `terminal=true` 后，
-必须立即进入 DONE。DONE 后必须百分百相信 `verify`，只允许读取已有 verify 输出 /
+必须立即进入 DONE。最终正常结果只允许在 `doneLock=true` 且
+`businessVerified=true` 后写。DONE 后必须百分百相信 `verify`，只允许读取已有 verify 输出 /
 `openruntime-evidence.json` 来写结果，以及清理进程；严禁再调用 `snapshot`、`console`、
 `page-snapshot`、`network`、`eval`、`wait-eval`、`wait-for`、`events`、`runtimes`、
 截图、浏览器 UI 分析或再次 `verify` 来重复确认。

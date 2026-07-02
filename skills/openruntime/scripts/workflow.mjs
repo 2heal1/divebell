@@ -12,6 +12,41 @@ const DEFAULT_BRIDGE = "http://localhost:17321";
 const EXIT_PASS = 0;
 const EXIT_FAIL = 1;
 const EXIT_ACTION_REQUIRED = 2;
+const REQUIRED_INTEGRATION_ALLOWED_ACTIONS = [
+  "apply_required_integration",
+  "rerun_connected",
+  "report_blocked"
+];
+const DONE_ALLOWED_ACTIONS = ["write_result", "cleanup"];
+const REPORT_BLOCKED_ALLOWED_ACTIONS = ["report_blocked"];
+const FORBIDDEN_REQUIRED_ACTION_COMMANDS = [
+  "actions",
+  "click",
+  "console",
+  "eval",
+  "events",
+  "fill",
+  "get-window",
+  "goto",
+  "input-options",
+  "network",
+  "page-snapshot",
+  "run-action",
+  "runtimes",
+  "screenshot",
+  "snapshot",
+  "targets",
+  "verify",
+  "wait-eval",
+  "wait-for"
+];
+const DEFAULT_REQUIRED_ACTION_DIR = path.join(homedir(), ".openruntime", "required-actions");
+const REQUIRED_ACTION_KIND = "openruntime.requiredAction";
+const REQUIRED_ACTION_SCHEMA_VERSION = 1;
+const REQUIRED_ACTION_BLOCK_CODES = new Set([
+  "OPENRUNTIME_INTEGRATION_REQUIRED",
+  "OPENRUNTIME_INTEGRATION_REQUIRED_BLOCKED"
+]);
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const resolveIntegrationScript = path.join(scriptDir, "resolve-integration.mjs");
@@ -51,6 +86,8 @@ async function runConnected(args) {
   const bridge = String(args.bridge ?? DEFAULT_BRIDGE);
   const url = optionalString(args.url);
   const outPath = optionalString(args.out);
+  const sourceEditable = parseBooleanOption(args["source-editable"], true);
+  const stateDirectory = optionalString(args["state-dir"]);
   const evidence = readEvidence(outPath);
   evidence.attempts.connected += 1;
 
@@ -59,7 +96,8 @@ async function runConnected(args) {
     executed: true,
     packageJson: path.resolve(packageJsonPath),
     install: integration.install,
-    use: integration.use
+    use: integration.use,
+    required: integration.required
   };
 
   const bridgeResult = await readBridgeRuntimes(bridge);
@@ -85,18 +123,23 @@ async function runConnected(args) {
     if (evidence.doneLock === true || evidence.finalVerify.businessVerified === true) {
       evidence.status = "pass";
       evidence.doneLock = true;
-      evidence.allowedNextActions = ["write_result", "cleanup"];
+      evidence.allowedNextActions = DONE_ALLOWED_ACTIONS;
+      evidence.requiredAction = null;
       evidence.nextAction = null;
     } else {
       evidence.status = "action_required";
+      evidence.allowedNextActions = ["observe"];
+      evidence.requiredAction = null;
       evidence.nextAction = createObserveNextAction();
     }
+    removeRequiredActionState(stateDirectory);
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
       connected: evidence.connected,
       open: evidence.open,
       integration: evidence.integration,
+      requiredAction: evidence.requiredAction,
       doneLock: evidence.doneLock,
       allowedNextActions: evidence.allowedNextActions,
       nextAction: evidence.nextAction
@@ -104,10 +147,17 @@ async function runConnected(args) {
     return EXIT_PASS;
   }
 
-  const nextAction = bridgeResult.ok === false || matchingOpenOperation === undefined
-    ? createOpenPageNextAction(bridge, url, { bridgeReachable: bridgeResult.ok !== false })
-    : createConnectBridgeNextAction(integration, bridge, url);
+  const nextAction = createConnectedFailureNextAction({
+    bridgeResult,
+    matchingOpenOperation,
+    integration,
+    bridge,
+    url,
+    sourceEditable
+  });
+  const integrationRequired = isIntegrationRequired(integration);
   const exhausted = evidence.attempts.connected >= MAX_ATTEMPTS;
+  const blocked = exhausted || (integrationRequired && sourceEditable !== true);
   evidence.connected = {
     ok: false,
     bridge: bridgeResult.bridgeUrl ?? bridge,
@@ -119,13 +169,34 @@ async function runConnected(args) {
       : "No runtime with status \"connected\" was found."
   };
   evidence.open = createOpenEvidence(matchingOpenOperation, url);
-  evidence.status = exhausted ? "fail" : "action_required";
-  evidence.nextAction = exhausted
-    ? {
-        type: "blocked",
-        summary: `OpenRuntime runtime was not connected after ${MAX_ATTEMPTS} attempts.`,
+  evidence.status = blocked ? "fail" : "action_required";
+  evidence.requiredAction = integrationRequired
+    ? writeRequiredIntegrationState({
+        integration,
+        bridge,
+        url,
+        sourceEditable,
+        status: blocked ? "blocked" : "pending",
+        code: blocked
+          ? "OPENRUNTIME_INTEGRATION_REQUIRED_BLOCKED"
+          : "OPENRUNTIME_INTEGRATION_REQUIRED",
+        attempts: evidence.attempts.connected,
+        maxAttempts: MAX_ATTEMPTS,
+        reason: evidence.connected.reason,
+        nextAction,
+        stateDirectory
+      })
+    : null;
+  if (!integrationRequired) {
+    removeRequiredActionState(stateDirectory);
+  }
+  evidence.allowedNextActions = evidence.requiredAction?.allowedNextActions ??
+    (blocked ? REPORT_BLOCKED_ALLOWED_ACTIONS : ["open_page", "rerun_connected", "report_blocked"]);
+  evidence.nextAction = blocked
+    ? createReportBlockedNextAction({
+        code: evidence.requiredAction?.code ?? "OPENRUNTIME_CONNECTED_BLOCKED",
         previousAction: nextAction
-      }
+      })
     : nextAction;
   writeEvidence(outPath, evidence);
   writeJson({
@@ -133,42 +204,61 @@ async function runConnected(args) {
     connected: evidence.connected,
     open: evidence.open,
     integration: evidence.integration,
+    requiredAction: evidence.requiredAction,
     attempts: evidence.attempts.connected,
     maxAttempts: MAX_ATTEMPTS,
+    allowedNextActions: evidence.allowedNextActions,
     nextAction: evidence.nextAction
   });
-  return exhausted ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
+  return blocked ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
 }
 
 async function runObserve(args) {
   const outPath = optionalString(args.out);
   const url = optionalString(args.url);
+  const stateDirectory = optionalString(args["state-dir"]);
   const evidence = readEvidence(outPath);
 
   if (evidence.doneLock === true) {
     evidence.status = "pass";
-    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.allowedNextActions = DONE_ALLOWED_ACTIONS;
+    evidence.requiredAction = null;
     evidence.nextAction = null;
+    removeRequiredActionState(stateDirectory);
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
       doneLock: true,
       terminal: true,
+      requiredAction: evidence.requiredAction,
       allowedNextActions: evidence.allowedNextActions
     });
     return EXIT_PASS;
   }
 
+  const requiredAction = readRequiredActionState(stateDirectory) ?? evidence.requiredAction;
+  if (isBlockingRequiredAction(requiredAction)) {
+    return writeRequiredActionFailure({
+      evidence,
+      requiredAction,
+      outPath,
+      payload: { observe: evidence.observe }
+    });
+  }
+
   if (evidence.connected.ok !== true) {
     evidence.status = "action_required";
+    evidence.allowedNextActions = ["rerun_connected", "report_blocked"];
     evidence.nextAction = {
-      type: "run_connected",
-      summary: "No connected runtime evidence was found. Run workflow connected before observe."
+      type: "rerun_connected",
+      code: "OPENRUNTIME_CONNECTED_REQUIRED",
+      required: true
     };
     writeEvidence(outPath, evidence);
     writeJson({
       status: "action_required",
       observe: evidence.observe,
+      allowedNextActions: evidence.allowedNextActions,
       nextAction: evidence.nextAction
     });
     return EXIT_ACTION_REQUIRED;
@@ -189,11 +279,15 @@ async function runObserve(args) {
     recordedAt: new Date().toISOString()
   };
   evidence.status = "action_required";
+  evidence.allowedNextActions = [nextAction.type];
+  evidence.requiredAction = null;
   evidence.nextAction = nextAction;
   writeEvidence(outPath, evidence);
   writeJson({
     status: "pass",
     observe: evidence.observe,
+    requiredAction: evidence.requiredAction,
+    allowedNextActions: evidence.allowedNextActions,
     nextAction
   });
   return EXIT_PASS;
@@ -205,21 +299,35 @@ async function runVerify(args) {
   const bridge = String(args.bridge ?? DEFAULT_BRIDGE);
   const url = optionalString(args.url);
   const outPath = optionalString(args.out);
+  const stateDirectory = optionalString(args["state-dir"]);
   const evidence = readEvidence(outPath);
 
   if (evidence.doneLock === true && evidence.finalVerify.businessVerified === true) {
     evidence.status = "pass";
-    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.allowedNextActions = DONE_ALLOWED_ACTIONS;
+    evidence.requiredAction = null;
     evidence.nextAction = null;
+    removeRequiredActionState(stateDirectory);
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
       doneLock: true,
       terminal: true,
       finalVerify: evidence.finalVerify,
+      requiredAction: evidence.requiredAction,
       allowedNextActions: evidence.allowedNextActions
     });
     return EXIT_PASS;
+  }
+
+  const requiredAction = readRequiredActionState(stateDirectory) ?? evidence.requiredAction;
+  if (isBlockingRequiredAction(requiredAction)) {
+    return writeRequiredActionFailure({
+      evidence,
+      requiredAction,
+      outPath,
+      payload: { finalVerify: evidence.finalVerify }
+    });
   }
 
   evidence.attempts.verify += 1;
@@ -256,14 +364,17 @@ async function runVerify(args) {
   if (passed) {
     evidence.status = "pass";
     evidence.doneLock = true;
-    evidence.allowedNextActions = ["write_result", "cleanup"];
+    evidence.allowedNextActions = DONE_ALLOWED_ACTIONS;
+    evidence.requiredAction = null;
     evidence.nextAction = null;
+    removeRequiredActionState(stateDirectory);
     writeEvidence(outPath, evidence);
     writeJson({
       status: "pass",
       doneLock: true,
       terminal: true,
       finalVerify: evidence.finalVerify,
+      requiredAction: evidence.requiredAction,
       allowedNextActions: evidence.allowedNextActions
     });
     return EXIT_PASS;
@@ -271,12 +382,14 @@ async function runVerify(args) {
 
   const exhausted = evidence.attempts.verify >= MAX_ATTEMPTS;
   evidence.status = exhausted ? "fail" : "action_required";
+  evidence.allowedNextActions = exhausted
+    ? REPORT_BLOCKED_ALLOWED_ACTIONS
+    : ["run_final_verify", "report_blocked"];
   evidence.nextAction = exhausted
-    ? {
-        type: "blocked",
-        summary: `Business verification did not pass after ${MAX_ATTEMPTS} attempts.`,
+    ? createReportBlockedNextAction({
+        code: "OPENRUNTIME_FINAL_VERIFY_BLOCKED",
         previousAction: createVerifyNextAction(evidence.finalVerify)
-      }
+      })
     : createVerifyNextAction(evidence.finalVerify);
   writeEvidence(outPath, evidence);
   writeJson({
@@ -284,6 +397,7 @@ async function runVerify(args) {
     finalVerify: evidence.finalVerify,
     attempts: evidence.attempts.verify,
     maxAttempts: MAX_ATTEMPTS,
+    allowedNextActions: evidence.allowedNextActions,
     nextAction: evidence.nextAction
   });
   return exhausted ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
@@ -349,9 +463,12 @@ function resolveIntegration(packageJsonPath) {
     throw new Error(result.stderr.trim() || result.stdout.trim() || "resolve-integration failed.");
   }
   const parsed = JSON.parse(result.stdout);
+  const install = Array.isArray(parsed.install) ? parsed.install : [];
+  const use = Array.isArray(parsed.use) ? parsed.use : [];
   return {
-    install: Array.isArray(parsed.install) ? parsed.install : [],
-    use: Array.isArray(parsed.use) ? parsed.use : []
+    install,
+    use,
+    required: parsed.required === true || install.length > 0 || use.length > 0
   };
 }
 
@@ -411,6 +528,144 @@ function pickRuntime(runtimes, url) {
   return runtimes.find((runtime) => normalizeUrlForCompare(runtime.url) === normalizedUrl) ?? runtimes[0];
 }
 
+function writeRequiredIntegrationState({
+  integration,
+  bridge,
+  url,
+  sourceEditable,
+  status,
+  code,
+  attempts,
+  maxAttempts,
+  reason,
+  nextAction,
+  stateDirectory
+}) {
+  const stateFile = getRequiredActionStateFile(stateDirectory);
+  const existing = readRequiredActionState(stateDirectory);
+  const allowedNextActions = status === "pending" && sourceEditable === true
+    ? REQUIRED_INTEGRATION_ALLOWED_ACTIONS
+    : REPORT_BLOCKED_ALLOWED_ACTIONS;
+  const requiredAction = sourceEditable === true && status === "pending"
+    ? nextAction
+    : createReportBlockedNextAction({
+        code,
+        previousAction: nextAction
+      });
+  const state = {
+    schemaVersion: REQUIRED_ACTION_SCHEMA_VERSION,
+    kind: REQUIRED_ACTION_KIND,
+    key: createRequiredActionStateKey(process.cwd()),
+    cwd: path.resolve(process.cwd()),
+    source: "workflow.connected",
+    status,
+    code,
+    sourceEditable,
+    canFallback: false,
+    allowedNextActions,
+    forbiddenCommands: FORBIDDEN_REQUIRED_ACTION_COMMANDS,
+    integration: {
+      install: integration.install,
+      use: integration.use,
+      required: true
+    },
+    requiredAction,
+    connected: {
+      bridge,
+      url: url ?? null,
+      attempts,
+      maxAttempts,
+      reason
+    },
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    stateFile
+  };
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return state;
+}
+
+function readRequiredActionState(stateDirectory) {
+  const stateFile = getRequiredActionStateFile(stateDirectory);
+  try {
+    const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    if (!isRequiredActionState(parsed)) return undefined;
+    return {
+      ...parsed,
+      stateFile
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function removeRequiredActionState(stateDirectory) {
+  try {
+    fs.rmSync(getRequiredActionStateFile(stateDirectory), { force: true });
+  } catch {
+    // Best effort cleanup only.
+  }
+}
+
+function getRequiredActionStateFile(stateDirectory) {
+  const directory = stateDirectory ?? DEFAULT_REQUIRED_ACTION_DIR;
+  return path.join(directory, `${createRequiredActionStateKey(process.cwd())}.json`);
+}
+
+function createRequiredActionStateKey(cwd) {
+  return `required-action-${createHash("sha256").update(path.resolve(cwd)).digest("hex").slice(0, 16)}`;
+}
+
+function isRequiredActionState(value) {
+  if (value === null || typeof value !== "object") return false;
+  const state = value;
+  return state.schemaVersion === REQUIRED_ACTION_SCHEMA_VERSION &&
+    state.kind === REQUIRED_ACTION_KIND &&
+    typeof state.key === "string" &&
+    typeof state.cwd === "string" &&
+    (state.status === "pending" || state.status === "blocked") &&
+    typeof state.code === "string" &&
+    REQUIRED_ACTION_BLOCK_CODES.has(state.code) &&
+    state.canFallback === false &&
+    Array.isArray(state.allowedNextActions) &&
+    Array.isArray(state.forbiddenCommands) &&
+    state.requiredAction !== null &&
+    typeof state.requiredAction === "object";
+}
+
+function isBlockingRequiredAction(value) {
+  return isRequiredActionState(value);
+}
+
+function writeRequiredActionFailure({ evidence, requiredAction, outPath, payload = {} }) {
+  const terminal = requiredAction.status === "blocked";
+  evidence.status = terminal ? "fail" : "action_required";
+  evidence.requiredAction = requiredAction;
+  evidence.allowedNextActions = requiredAction.allowedNextActions;
+  evidence.nextAction = requiredAction.requiredAction;
+  writeEvidence(outPath, evidence);
+  writeJson({
+    status: evidence.status,
+    ...payload,
+    requiredAction,
+    allowedNextActions: evidence.allowedNextActions,
+    nextAction: evidence.nextAction
+  });
+  return terminal ? EXIT_FAIL : EXIT_ACTION_REQUIRED;
+}
+
+function createReportBlockedNextAction({ code, previousAction }) {
+  return {
+    type: "report_blocked",
+    code,
+    required: true,
+    canFallback: false,
+    fallbackAllowed: false,
+    previousAction: previousAction ?? null
+  };
+}
+
 function createOpenPageNextAction(bridge, url, options = {}) {
   const command = url === undefined
     ? null
@@ -427,6 +682,60 @@ function createOpenPageNextAction(bridge, url, options = {}) {
   };
 }
 
+function createConnectedFailureNextAction({ bridgeResult, matchingOpenOperation, integration, bridge, url }) {
+  const openAction = createOpenPageNextAction(bridge, url, { bridgeReachable: bridgeResult.ok !== false });
+  const integrationRequired = isIntegrationRequired(integration);
+
+  if (integrationRequired) {
+    return createApplyRequiredIntegrationNextAction({
+      integration,
+      bridge,
+      url,
+      openAction: bridgeResult.ok === false || matchingOpenOperation === undefined ? openAction : null
+    });
+  }
+
+  if (matchingOpenOperation === undefined) return openAction;
+  return createConnectBridgeNextAction(integration, bridge, url);
+}
+
+function createApplyRequiredIntegrationNextAction({ integration, bridge, url, openAction }) {
+  const connectAction = createConnectBridgeNextAction(integration, bridge, url);
+  const preconditions = openAction === null ? [] : [createOpenPagePrecondition(openAction)];
+  return {
+    type: "apply_required_integration",
+    code: "OPENRUNTIME_INTEGRATION_REQUIRED",
+    required: true,
+    canFallback: false,
+    fallbackAllowed: false,
+    commands: connectAction.commands ?? [],
+    requiredCommands: connectAction.requiredCommands ?? [],
+    integration: {
+      install: integration.install,
+      use: integration.use,
+      required: true
+    },
+    bridge,
+    url: url ?? null,
+    reference: connectAction.reference ?? null,
+    snippets: connectAction.snippets ?? [],
+    additionalActions: connectAction.additionalActions ?? [],
+    preconditions,
+    rerun: {
+      type: "rerun_connected"
+    }
+  };
+}
+
+function createOpenPagePrecondition(openAction) {
+  return {
+    type: openAction.type,
+    commands: openAction.commands ?? [],
+    bridge: openAction.bridge,
+    url: openAction.url
+  };
+}
+
 function createConnectBridgeNextAction(integration, bridge, url) {
   const port = bridgePort(bridge);
   const install = integration.install.length > 0
@@ -437,16 +746,21 @@ function createConnectBridgeNextAction(integration, bridge, url) {
   if (use.has("@module-federation/observability-plugin")) {
     additionalActions.push({
       type: "wire_mf_observability",
-      reference: "skills/openruntime/references/module-federation.md",
-      summary: "Wire @module-federation/observability-plugin in the MF/Vmok consumer if mf:* targets are required."
+      required: true,
+      canFallback: false,
+      fallbackAllowed: false,
+      reference: "skills/openruntime/references/module-federation.md"
     });
   }
 
   if (use.has("@openruntime/modern-plugin")) {
     return {
       type: "connect_modern_plugin",
-      summary: "No connected runtime was found. Wire the Modern plugin with a Bridge port in source, restart the app, then rerun this connected check.",
+      required: true,
+      canFallback: false,
+      fallbackAllowed: false,
       commands: install,
+      requiredCommands: install,
       reference: "skills/openruntime/references/modernjs.md",
       bridge,
       url: url ?? null,
@@ -474,8 +788,11 @@ export default defineRuntimeConfig({
 
   return {
     type: "connect_core_runtime",
-    summary: "No connected runtime was found. Install a Core runtime at the app entry, connect Bridge in source, restart the app, then rerun this connected check.",
+    required: true,
+    canFallback: false,
+    fallbackAllowed: false,
     commands: install,
+    requiredCommands: install,
     reference: "skills/openruntime/references/modernjs.md",
     bridge,
     url: url ?? null,
@@ -506,6 +823,12 @@ runtime.connectBridge({
     ],
     additionalActions
   };
+}
+
+function isIntegrationRequired(integration) {
+  return integration?.required === true ||
+    integration?.install?.length > 0 ||
+    integration?.use?.length > 0;
 }
 
 function createRunVerifyNextAction() {
@@ -645,7 +968,8 @@ function createEmptyEvidence() {
       executed: false,
       packageJson: null,
       install: [],
-      use: []
+      use: [],
+      required: false
     },
     connected: {
       ok: false,
@@ -686,6 +1010,7 @@ function createEmptyEvidence() {
       message: null,
       nextStep: null
     },
+    requiredAction: null,
     nextAction: null
   };
 }
@@ -704,7 +1029,12 @@ function mergeEvidence(base, parsed) {
     },
     integration: {
       ...base.integration,
-      ...parsed.integration
+      ...parsed.integration,
+      install: Array.isArray(parsed.integration?.install) ? parsed.integration.install : base.integration.install,
+      use: Array.isArray(parsed.integration?.use) ? parsed.integration.use : base.integration.use,
+      required: parsed.integration?.required === true ||
+        (Array.isArray(parsed.integration?.install) && parsed.integration.install.length > 0) ||
+        (Array.isArray(parsed.integration?.use) && parsed.integration.use.length > 0)
     },
     connected: {
       ...base.connected,
@@ -725,7 +1055,8 @@ function mergeEvidence(base, parsed) {
     finalVerify: {
       ...base.finalVerify,
       ...parsed.finalVerify
-    }
+    },
+    requiredAction: isRequiredActionState(parsed.requiredAction) ? parsed.requiredAction : base.requiredAction
   };
 }
 
@@ -773,6 +1104,16 @@ function requireOption(args, name) {
 
 function optionalString(value) {
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function parseBooleanOption(value, defaultValue) {
+  if (value === undefined) return defaultValue;
+  if (value === true) return true;
+  if (value === false) return false;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
+  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
+  return defaultValue;
 }
 
 function writeJson(value) {
@@ -944,7 +1285,7 @@ function quoteShellArg(value) {
 
 function usage() {
   process.stderr.write(`Usage:
-  workflow.mjs connected --package-json <path> --bridge <url> --url <app-url> --out <file>
+  workflow.mjs connected --package-json <path> --bridge <url> --url <app-url> --out <file> [--source-editable true|false]
   workflow.mjs observe --url <app-url> --out <file>
   workflow.mjs verify --target <id> --status <status> --bridge <url> --url <app-url> --out <file>
 `);

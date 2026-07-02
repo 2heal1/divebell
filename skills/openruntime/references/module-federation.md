@@ -14,18 +14,18 @@ When the task depends on MF or Vmok remote, expose, shared, preload, or
 loading-chain evidence, this resolver is a required first check whenever the
 consumer package file is available. State whether it was executed, which
 package file it read, and whether its `@module-federation/observability-plugin`
-recommendation was installed and wired. If it cannot be executed or the
-recommendation cannot be applied, state that as the reason MF observability is
+required action was installed and wired. If it cannot be executed or the
+required action cannot be applied, state that as the reason MF observability is
 unavailable before using fallback browser evidence.
 
-Do not apply a Module Federation version gate for this recommendation. The
+Do not apply a Module Federation version gate for this required action. The
 resolver should return `@module-federation/observability-plugin` for MF/Vmok
 without adding `@openruntime/core`. A dependency name containing `vmok`, such
 as `@edenx/plugin-vmok`, `@vmok/*`, or `@byted-goofy/vmok`, is enough to treat
 the package as Vmok even if it has no direct `@module-federation/*`
 dependency. If the project uses Vmok, Module Federation, or
 remote/shared/expose based loading, treat missing `mf:*` OpenRuntime state as a
-signal to wire observability when source edits are allowed.
+required signal to wire observability when source edits are allowed.
 
 After the observability plugin is installed or already wired, use
 `workflow.mjs connected` to check whether the page runtime is connected. Do not

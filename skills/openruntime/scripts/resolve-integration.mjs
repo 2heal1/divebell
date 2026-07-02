@@ -101,7 +101,8 @@ function resolveIntegration({ dependencies }) {
 
   return {
     install,
-    use
+    use,
+    required: install.length > 0 || use.length > 0
   };
 }
 

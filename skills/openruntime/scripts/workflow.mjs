@@ -485,27 +485,51 @@ function resolveIntegration(packageJsonPath) {
 }
 
 function normalizeDependencyStatus(value, fallback = {}) {
-  const required = Array.isArray(value?.required)
-    ? value.required.filter((item) => typeof item === "string")
-    : Array.isArray(fallback.use)
-      ? fallback.use.filter((item) => typeof item === "string")
-      : [];
   const missing = Array.isArray(value?.missing)
     ? value.missing.filter((item) => typeof item === "string")
     : Array.isArray(fallback.install)
       ? fallback.install.filter((item) => typeof item === "string")
       : [];
+  const invalid = Array.isArray(value?.invalid)
+    ? value.invalid.filter((item) =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof item.name === "string" &&
+        typeof item.reason === "string"
+      )
+    : [];
+  const install = Array.isArray(value?.install)
+    ? value.install.filter((item) => typeof item === "string")
+    : dedupe([
+        ...missing,
+        ...invalid.map((item) => item.name)
+      ]);
+  const required = Array.isArray(value?.required)
+    ? value.required.filter((item) => typeof item === "string")
+    : Array.isArray(fallback.use)
+      ? fallback.use.filter((item) => typeof item === "string")
+      : [];
+  const declared = Array.isArray(value?.declared)
+    ? value.declared.filter((item) => typeof item === "string")
+    : required.filter((item) => !missing.includes(item));
   const installed = Array.isArray(value?.installed)
     ? value.installed.filter((item) => typeof item === "string")
-    : required.filter((item) => !missing.includes(item));
+    : declared.filter((item) => !install.includes(item));
+  const installSpecs = Array.isArray(value?.installSpecs)
+    ? value.installSpecs.filter((item) => typeof item === "string")
+    : install;
   const checkedFrom = Array.isArray(value?.checkedFrom)
     ? value.checkedFrom.filter((item) => typeof item === "string")
     : [];
   return {
     checkedFrom,
     required,
+    declared,
     installed,
-    missing
+    missing,
+    invalid,
+    install,
+    installSpecs
   };
 }
 
@@ -806,14 +830,15 @@ function createApplyRequiredIntegrationNextAction({ integration, bridge, url, op
   const preconditions = openAction === null ? [] : [createOpenPagePrecondition(openAction)];
   const dependencyMissing = getMissingDependencies(integration);
   if (dependencyMissing.length > 0) {
+    const dependencyInstallSpecs = getDependencyInstallSpecs(integration);
     return {
       type: "install_missing_dependencies",
       code: "OPENRUNTIME_DEPENDENCY_REQUIRED",
       required: true,
       canFallback: false,
       fallbackAllowed: false,
-      commands: createInstallCommands(dependencyMissing),
-      requiredCommands: createInstallCommands(dependencyMissing),
+      commands: createInstallCommands(dependencyInstallSpecs),
+      requiredCommands: createInstallCommands(dependencyInstallSpecs),
       dependency: integration.dependency,
       usage: integration.usage,
       integration: createIntegrationPayload(integration),
@@ -886,7 +911,7 @@ function createOpenPagePrecondition(openAction) {
 
 function createConnectBridgeNextAction(integration, bridge, url) {
   const port = bridgePort(bridge);
-  const install = createInstallCommands(getMissingDependencies(integration));
+  const install = createInstallCommands(getDependencyInstallSpecs(integration));
   const requiredPackages = new Set(getRequiredDependencyPackages(integration));
   const additionalActions = [];
   if (requiredPackages.has("@module-federation/observability-plugin")) {
@@ -988,11 +1013,21 @@ function createInstallCommands(packages) {
 }
 
 function getMissingDependencies(integration) {
-  return Array.isArray(integration?.dependency?.missing)
-    ? integration.dependency.missing
-    : Array.isArray(integration?.install)
-      ? integration.install
-      : [];
+  return Array.isArray(integration?.dependency?.install)
+    ? integration.dependency.install
+    : Array.isArray(integration?.dependency?.missing)
+      ? integration.dependency.missing
+      : Array.isArray(integration?.install)
+        ? integration.install
+        : [];
+}
+
+function getDependencyInstallSpecs(integration) {
+  const install = getMissingDependencies(integration);
+  return Array.isArray(integration?.dependency?.installSpecs) &&
+    integration.dependency.installSpecs.length === install.length
+    ? integration.dependency.installSpecs
+    : install;
 }
 
 function getRequiredDependencyPackages(integration) {

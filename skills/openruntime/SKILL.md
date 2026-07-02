@@ -90,8 +90,9 @@ node <openruntime-skill-dir>/scripts/workflow.mjs connected \
 `openruntime-evidence.json`：
 
 - `integration.dependency.required/installed/missing` 表示应该安装、已正式安装和缺少的包。
-  已安装只看业务项目的 `package.json` 依赖声明，不把临时目录、CLI 自身依赖或
-  `node_modules` 软链当成正式安装。
+  已安装必须同时满足业务项目 `package.json` 有依赖声明，且业务项目 `node_modules`
+  里的包入口文件可解析；临时目录、CLI 自身依赖或未声明的 `node_modules` 软链不算正式安装。
+  `integration.dependency.invalid/install/installSpecs` 表示声明存在但包不可用时需要重新安装的包和安装规格。
 - `integration.usage.required/detected/missing` 表示应该接入、源码中已检测到接入和缺少的接入。
 - `connected.ok/runtimeCount/connectedCount` 表示页面里 runtime 是否真的连上 Bridge。
 

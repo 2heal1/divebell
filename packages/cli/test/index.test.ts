@@ -235,6 +235,8 @@ test("resolve-integration reports installed dependencies separately from missing
     "@openruntime/core": "0.1.0",
     "@module-federation/observability-plugin": "0.1.0"
   });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
 
   try {
     const result = runResolveIntegration(packageJsonPath);
@@ -259,6 +261,8 @@ test("resolve-integration detects source usage separately from installed depende
     "@openruntime/core": "0.1.0",
     "@module-federation/observability-plugin": "0.1.0"
   });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "src", "openruntime.ts"), `
 import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
@@ -280,6 +284,33 @@ export default {
     assert.deepEqual(result.dependency.missing, []);
     assert.deepEqual(result.usage.detected.sort(), ["core_runtime", "mf_observability"].sort());
     assert.deepEqual(result.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration treats declared packages with missing entries as install required", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-invalid-package-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "^0.0.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core", { createEntry: false });
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runResolveIntegration(packageJsonPath, {
+      OPENRUNTIME_CORE_PACKAGE: "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    });
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.dependency.invalid.map((item: any) => item.name), ["@openruntime/core"]);
+    assert.deepEqual(result.install, ["@openruntime/core"]);
+    assert.deepEqual(result.dependency.installSpecs, [
+      "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    ]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -316,6 +347,35 @@ test("workflow connected asks to install missing dependencies before usage chang
   }
 });
 
+test("workflow connected asks to reinstall declared dependencies with invalid package entries", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-invalid-install-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "^0.0.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core", { createEntry: false });
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory, {
+      OPENRUNTIME_CORE_PACKAGE: "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    });
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.nextAction.dependency.invalid.map((item: any) => item.name), ["@openruntime/core"]);
+    assert.deepEqual(result.output.nextAction.requiredCommands, [
+      "pnpm add https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow connected asks to apply usage after dependencies are installed", () => {
   const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-usage-"));
   const stateDirectory = join(root, "state");
@@ -325,6 +385,8 @@ test("workflow connected asks to apply usage after dependencies are installed", 
     "@openruntime/core": "0.1.0",
     "@module-federation/observability-plugin": "0.1.0"
   });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
 
   try {
     const result = runWorkflowConnected(root, packageJsonPath, stateDirectory);
@@ -3140,12 +3202,40 @@ function writeIntegrationPackageJson(projectRoot: string, dependencies: Record<s
   return packageJsonPath;
 }
 
-function runResolveIntegration(packageJsonPath: string): any {
+function writeInstalledPackage(
+  projectRoot: string,
+  name: string,
+  options: { createEntry?: boolean } = {}
+): void {
+  const packageRoot = join(projectRoot, "node_modules", ...name.split("/"));
+  const entryPath = join(packageRoot, "dist", "index.js");
+  mkdirSync(join(packageRoot, "dist"), { recursive: true });
+  writeFileSync(join(packageRoot, "package.json"), `${JSON.stringify({
+    name,
+    version: "0.1.0",
+    type: "module",
+    main: "./dist/index.js",
+    exports: {
+      ".": {
+        default: "./dist/index.js"
+      }
+    }
+  }, null, 2)}\n`, "utf8");
+  if (options.createEntry !== false) {
+    writeFileSync(entryPath, "export {};\n", "utf8");
+  }
+}
+
+function runResolveIntegration(packageJsonPath: string, env: Record<string, string> = {}): any {
   const result = spawnSync(process.execPath, [
     repoScriptPath("skills", "openruntime", "scripts", "resolve-integration.mjs"),
     packageJsonPath
   ], {
-    encoding: "utf8"
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
   });
 
   assert.equal(result.status, 0, result.stderr);
@@ -3155,7 +3245,8 @@ function runResolveIntegration(packageJsonPath: string): any {
 function runWorkflowConnected(
   cwd: string,
   packageJsonPath: string,
-  stateDirectory: string
+  stateDirectory: string,
+  env: Record<string, string> = {}
 ): { exitCode: number | null; output: any; stderr: string } {
   const result = spawnSync(process.execPath, [
     repoScriptPath("skills", "openruntime", "scripts", "workflow.mjs"),
@@ -3174,7 +3265,11 @@ function runWorkflowConnected(
     "true"
   ], {
     cwd,
-    encoding: "utf8"
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
   });
 
   assert.notEqual(result.stdout.trim(), "", result.stderr);

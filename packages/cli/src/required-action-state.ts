@@ -27,8 +27,17 @@ export interface RequiredActionState {
     dependency?: {
       checkedFrom: string[];
       required: string[];
+      declared?: string[];
       installed: string[];
       missing: string[];
+      invalid?: Array<{
+        name: string;
+        reason: string;
+        checkedFrom?: string;
+        entry?: string | null;
+      }>;
+      install?: string[];
+      installSpecs?: string[];
     };
     usage?: {
       checkedFrom: string[];
@@ -140,8 +149,22 @@ function isDependencyStatus(value: unknown): value is NonNullable<RequiredAction
   if (!isRecord(value)) return false;
   return isStringArray(value.checkedFrom) &&
     isStringArray(value.required) &&
+    (value.declared === undefined || isStringArray(value.declared)) &&
     isStringArray(value.installed) &&
-    isStringArray(value.missing);
+    isStringArray(value.missing) &&
+    (value.invalid === undefined || isInvalidDependencyArray(value.invalid)) &&
+    (value.install === undefined || isStringArray(value.install)) &&
+    (value.installSpecs === undefined || isStringArray(value.installSpecs));
+}
+
+function isInvalidDependencyArray(value: unknown): value is NonNullable<RequiredActionState["integration"]["dependency"]>["invalid"] {
+  return Array.isArray(value) && value.every((item) =>
+    isRecord(item) &&
+    typeof item.name === "string" &&
+    typeof item.reason === "string" &&
+    (item.checkedFrom === undefined || typeof item.checkedFrom === "string") &&
+    (item.entry === undefined || item.entry === null || typeof item.entry === "string")
+  );
 }
 
 function isUsageStatus(value: unknown): value is NonNullable<RequiredActionState["integration"]["usage"]> {

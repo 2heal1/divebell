@@ -39,6 +39,11 @@ const modernPackages = [
 const openRuntimeCorePackage = "@openruntime/core";
 const openRuntimeModernPluginPackage = "@openruntime/modern-plugin";
 const mfObservabilityPackage = "@module-federation/observability-plugin";
+const packageInstallSpecEnvironment = {
+  [openRuntimeCorePackage]: "OPENRUNTIME_CORE_PACKAGE",
+  [openRuntimeModernPluginPackage]: "OPENRUNTIME_MODERN_PLUGIN_PACKAGE",
+  [mfObservabilityPackage]: "OPENRUNTIME_MF_OBSERVABILITY_PACKAGE"
+};
 const mfDependencySignals = [
   "@module-federation/enhanced",
   "@module-federation/"
@@ -131,27 +136,151 @@ function resolveIntegration({ dependencies, packageJsonPath, projectRoot }) {
     ...modern.usage,
     ...moduleFederation.usage
   ]);
-  const installed = requiredPackages.filter((name) => dependencies[name] !== undefined);
-  const missing = requiredPackages.filter((name) => dependencies[name] === undefined);
+  const dependencyStatus = resolveDependencyStatus({
+    dependencies,
+    packageJsonPath,
+    projectRoot,
+    requiredPackages
+  });
   const detectedUsage = detectUsage(projectRoot, requiredUsage);
 
   return {
-    dependency: {
-      checkedFrom: [packageJsonPath],
-      required: requiredPackages,
-      installed,
-      missing
-    },
+    dependency: dependencyStatus,
     usage: {
       checkedFrom: [projectRoot],
       required: requiredUsage,
       detected: detectedUsage,
       missing: requiredUsage.filter((item) => !detectedUsage.includes(item))
     },
-    install: missing,
+    install: dependencyStatus.install,
     use: requiredPackages,
     required: requiredPackages.length > 0 || requiredUsage.length > 0
   };
+}
+
+function resolveDependencyStatus({ dependencies, packageJsonPath, projectRoot, requiredPackages }) {
+  const checkedFrom = [packageJsonPath];
+  const declared = [];
+  const installed = [];
+  const missing = [];
+  const invalid = [];
+
+  for (const name of requiredPackages) {
+    if (dependencies[name] === undefined) {
+      missing.push(name);
+      continue;
+    }
+
+    declared.push(name);
+    const installation = inspectPackageInstallation(projectRoot, name);
+    checkedFrom.push(installation.checkedFrom);
+    if (installation.ok) {
+      installed.push(name);
+    } else {
+      invalid.push({
+        name,
+        reason: installation.reason,
+        checkedFrom: installation.checkedFrom,
+        entry: installation.entry ?? null
+      });
+    }
+  }
+
+  const install = dedupe([
+    ...missing,
+    ...invalid.map((item) => item.name)
+  ]);
+  return {
+    checkedFrom: dedupe(checkedFrom),
+    required: requiredPackages,
+    declared,
+    installed,
+    missing,
+    invalid,
+    install,
+    installSpecs: install.map((name) => resolveInstallSpec(name))
+  };
+}
+
+function inspectPackageInstallation(projectRoot, name) {
+  const packageRoot = path.join(projectRoot, "node_modules", ...name.split("/"));
+  const packageJsonPath = path.join(packageRoot, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_json_not_found"
+    };
+  }
+
+  let packageJson;
+  try {
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  } catch {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_json_invalid"
+    };
+  }
+
+  const entry = resolvePackageEntry(packageJson);
+  if (entry === null) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_entry_not_declared"
+    };
+  }
+
+  const entryPath = path.join(packageRoot, entry);
+  if (!fs.existsSync(entryPath)) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_entry_not_found",
+      entry
+    };
+  }
+
+  return {
+    ok: true,
+    checkedFrom: packageJsonPath,
+    entry
+  };
+}
+
+function resolvePackageEntry(packageJson) {
+  const exported = packageJson.exports?.["."] ?? packageJson.exports;
+  const exportEntry = typeof exported === "string"
+    ? exported
+    : firstString([
+        exported?.browser,
+        exported?.import,
+        exported?.default,
+        exported?.require
+      ]);
+  const entry = firstString([
+    exportEntry,
+    packageJson.module,
+    packageJson.main
+  ]);
+  return entry === null ? null : entry.replace(/^\.\//, "");
+}
+
+function firstString(values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") return value;
+  }
+  return null;
+}
+
+function resolveInstallSpec(name) {
+  const envName = packageInstallSpecEnvironment[name];
+  const envValue = envName === undefined ? undefined : process.env[envName];
+  return typeof envValue === "string" && envValue.trim() !== ""
+    ? envValue.trim()
+    : name;
 }
 
 function resolveModern(dependencies) {

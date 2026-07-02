@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -43,23 +44,16 @@ export function createFileRequiredActionStateStore(
   cwd = process.cwd(),
   stateDirectory = createDefaultRequiredActionStateDirectory()
 ): RequiredActionStateStore {
-  const normalizedCwd = resolve(cwd);
+  const normalizedCwd = normalizeRequiredActionCwd(cwd);
   const key = createRequiredActionStateKey(normalizedCwd);
   const stateFile = join(stateDirectory, `${key}.json`);
 
   return {
     stateFile,
     read: async () => {
-      try {
-        const parsed: unknown = JSON.parse(await readFile(stateFile, "utf8"));
-        if (!isRequiredActionState(parsed)) return undefined;
-        return {
-          ...parsed,
-          stateFile
-        };
-      } catch {
-        return undefined;
-      }
+      const direct = await readRequiredActionStateFile(stateFile);
+      if (direct !== undefined) return direct;
+      return await findRequiredActionStateForCwd(normalizedCwd, stateDirectory);
     },
     write: async (state) => {
       await mkdir(stateDirectory, { recursive: true });
@@ -83,7 +77,20 @@ export function createDefaultRequiredActionStateDirectory(): string {
 }
 
 export function createRequiredActionStateKey(cwd: string): string {
-  return `required-action-${createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 16)}`;
+  return `required-action-${createHash("sha256").update(normalizeRequiredActionCwd(cwd)).digest("hex").slice(0, 16)}`;
+}
+
+export function normalizeRequiredActionCwd(cwd: string): string {
+  const resolved = resolve(cwd);
+  try {
+    return realpathSync.native(resolved);
+  } catch {
+    try {
+      return realpathSync(resolved);
+    } catch {
+      return resolved;
+    }
+  }
 }
 
 export function isRequiredActionState(value: unknown): value is RequiredActionState {
@@ -117,4 +124,37 @@ function isIntegration(value: unknown): value is RequiredActionState["integratio
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function readRequiredActionStateFile(stateFile: string): Promise<RequiredActionState | undefined> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(stateFile, "utf8"));
+    if (!isRequiredActionState(parsed)) return undefined;
+    return {
+      ...parsed,
+      stateFile
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+async function findRequiredActionStateForCwd(
+  normalizedCwd: string,
+  stateDirectory: string
+): Promise<RequiredActionState | undefined> {
+  let entries: string[];
+  try {
+    entries = await readdir(stateDirectory);
+  } catch {
+    return undefined;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("required-action-") || !entry.endsWith(".json")) continue;
+    const stateFile = join(stateDirectory, entry);
+    const state = await readRequiredActionStateFile(stateFile);
+    if (state === undefined) continue;
+    if (normalizeRequiredActionCwd(state.cwd) === normalizedCwd) return state;
+  }
+  return undefined;
 }

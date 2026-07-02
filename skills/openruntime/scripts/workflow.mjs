@@ -543,6 +543,7 @@ function writeRequiredIntegrationState({
 }) {
   const stateFile = getRequiredActionStateFile(stateDirectory);
   const existing = readRequiredActionState(stateDirectory);
+  const cwd = getRequiredActionCwd();
   const allowedNextActions = status === "pending" && sourceEditable === true
     ? REQUIRED_INTEGRATION_ALLOWED_ACTIONS
     : REPORT_BLOCKED_ALLOWED_ACTIONS;
@@ -555,8 +556,8 @@ function writeRequiredIntegrationState({
   const state = {
     schemaVersion: REQUIRED_ACTION_SCHEMA_VERSION,
     kind: REQUIRED_ACTION_KIND,
-    key: createRequiredActionStateKey(process.cwd()),
-    cwd: path.resolve(process.cwd()),
+    key: createRequiredActionStateKey(cwd),
+    cwd,
     source: "workflow.connected",
     status,
     code,
@@ -588,16 +589,9 @@ function writeRequiredIntegrationState({
 
 function readRequiredActionState(stateDirectory) {
   const stateFile = getRequiredActionStateFile(stateDirectory);
-  try {
-    const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
-    if (!isRequiredActionState(parsed)) return undefined;
-    return {
-      ...parsed,
-      stateFile
-    };
-  } catch {
-    return undefined;
-  }
+  const direct = readRequiredActionStateFile(stateFile);
+  if (direct !== undefined) return direct;
+  return findRequiredActionStateForCwd(stateDirectory, getRequiredActionCwd());
 }
 
 function removeRequiredActionState(stateDirectory) {
@@ -610,11 +604,59 @@ function removeRequiredActionState(stateDirectory) {
 
 function getRequiredActionStateFile(stateDirectory) {
   const directory = stateDirectory ?? DEFAULT_REQUIRED_ACTION_DIR;
-  return path.join(directory, `${createRequiredActionStateKey(process.cwd())}.json`);
+  return path.join(directory, `${createRequiredActionStateKey(getRequiredActionCwd())}.json`);
 }
 
 function createRequiredActionStateKey(cwd) {
-  return `required-action-${createHash("sha256").update(path.resolve(cwd)).digest("hex").slice(0, 16)}`;
+  return `required-action-${createHash("sha256").update(normalizeRequiredActionCwd(cwd)).digest("hex").slice(0, 16)}`;
+}
+
+function getRequiredActionCwd() {
+  return normalizeRequiredActionCwd(process.cwd());
+}
+
+function normalizeRequiredActionCwd(cwd) {
+  const resolved = path.resolve(cwd);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch {
+    try {
+      return fs.realpathSync(resolved);
+    } catch {
+      return resolved;
+    }
+  }
+}
+
+function readRequiredActionStateFile(stateFile) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    if (!isRequiredActionState(parsed)) return undefined;
+    return {
+      ...parsed,
+      stateFile
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function findRequiredActionStateForCwd(stateDirectory, cwd) {
+  const directory = stateDirectory ?? DEFAULT_REQUIRED_ACTION_DIR;
+  let entries;
+  try {
+    entries = fs.readdirSync(directory);
+  } catch {
+    return undefined;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("required-action-") || !entry.endsWith(".json")) continue;
+    const stateFile = path.join(directory, entry);
+    const state = readRequiredActionStateFile(stateFile);
+    if (state === undefined) continue;
+    if (normalizeRequiredActionCwd(state.cwd) === cwd) return state;
+  }
+  return undefined;
 }
 
 function isRequiredActionState(value) {

@@ -136,6 +136,69 @@ test("blocks diagnostic commands while a required action is pending", async () =
   assert.match(output.errorText(), /OPENRUNTIME_REQUIRED_ACTION_PENDING/);
 });
 
+test("blocks required actions across symlinked working directories", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-required-action-cwd-"));
+  const stateDirectory = join(root, "state");
+  const realCwd = join(root, "real");
+  const linkedCwd = join(root, "linked");
+  mkdirSync(realCwd);
+  symlinkSync(realCwd, linkedCwd, "dir");
+
+  try {
+    const store = createFileRequiredActionStateStore(realCwd, stateDirectory);
+    await store.write({
+      source: "workflow.connected",
+      status: "pending",
+      code: "OPENRUNTIME_INTEGRATION_REQUIRED",
+      sourceEditable: true,
+      canFallback: false,
+      allowedNextActions: ["apply_required_integration", "rerun_connected", "report_blocked"],
+      forbiddenCommands: ["console"],
+      integration: {
+        install: ["@openruntime/core", "@module-federation/observability-plugin"],
+        use: ["@openruntime/core", "@module-federation/observability-plugin"],
+        required: true
+      },
+      requiredAction: {
+        type: "apply_required_integration",
+        code: "OPENRUNTIME_INTEGRATION_REQUIRED"
+      },
+      createdAt: "2026-07-02T00:00:00.000Z",
+      updatedAt: "2026-07-02T00:00:00.000Z"
+    });
+
+    const linkedStore = createFileRequiredActionStateStore(linkedCwd, stateDirectory);
+    const linkedState = await linkedStore.read();
+    assert.equal(linkedState?.code, "OPENRUNTIME_INTEGRATION_REQUIRED");
+
+    const previousCwd = process.cwd();
+    process.chdir(linkedCwd);
+    try {
+      let touchedSideEffect = false;
+      const output = createOutput();
+      const exitCode = await runCli(["console", "--limit", "10"], {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        requiredActionStateDirectory: stateDirectory,
+        browserRunner: createBrowserRunner(async () => {
+          touchedSideEffect = true;
+          throw new Error("browser should not be queried");
+        })
+      });
+
+      assert.equal(exitCode, 1);
+      assert.equal(touchedSideEffect, false);
+      const result = JSON.parse(output.text());
+      assert.equal(result.code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
+      assert.equal(result.command, "console");
+    } finally {
+      process.chdir(previousCwd);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 

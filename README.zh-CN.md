@@ -144,7 +144,7 @@ openruntime release-note latest --limit 3
 
 OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己的工作流命令，而不需要修改 OpenRuntime 源码。
 
-扩展导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI Extension Development](docs/cli-extensions.md)。
+扩展导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 扩展开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Extension Development](docs/cli-extensions.md)。
 
 外部扩展默认从这里读取：
 

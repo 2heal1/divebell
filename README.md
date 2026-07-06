@@ -144,7 +144,7 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 OpenRuntime CLI can be extended with local extension files. This is useful when a team wants to add private workflow commands without changing the OpenRuntime source code.
 
-See [CLI Extension Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example.
+See [CLI Extension Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 扩展开发](docs/cli-extensions.zh-CN.md).
 
 External extensions are loaded from:
 

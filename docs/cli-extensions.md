@@ -1,5 +1,7 @@
 # OpenRuntime CLI Extension Development
 
+Chinese version: [CLI 扩展开发](cli-extensions.zh-CN.md)
+
 OpenRuntime CLI extensions add project, team, or local workflow commands without changing the OpenRuntime CLI command dispatcher.
 
 Use an extension when the workflow is a command the agent should call repeatedly, such as "open a site, collect release data, and print structured JSON". If the page itself can expose a stable Target or Action, prefer adding OpenRuntime Targets and Actions in the application and calling `snapshot`, `runAction`, or `waitFor` from the extension.

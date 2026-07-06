@@ -9,7 +9,6 @@
   },
   "author": "2heal1",
   "bin": {
-    "open-runtime": "./dist/index.js",
     "openruntime": "./dist/index.js",
     "opr": "./dist/index.js"
   },

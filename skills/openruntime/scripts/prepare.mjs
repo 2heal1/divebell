@@ -1,13 +1,47 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const EXIT_PASS = 0;
 const EXIT_FAIL = 1;
 const EXIT_ACTION_REQUIRED = 2;
+const REQUIRED_ACTION_KIND = "openruntime.requiredAction";
+const REQUIRED_ACTION_SCHEMA_VERSION = 1;
+const DEFAULT_REQUIRED_ACTION_DIR = path.join(homedir(), ".openruntime", "required-actions");
+const REQUIRED_INTEGRATION_ALLOWED_ACTIONS = [
+  "install_missing_dependencies",
+  "apply_required_usage",
+  "apply_required_integration",
+  "rerun_prepare",
+  "rerun_connected",
+  "report_blocked"
+];
+const FORBIDDEN_REQUIRED_ACTION_COMMANDS = [
+  "actions",
+  "click",
+  "console",
+  "eval",
+  "events",
+  "fill",
+  "get-window",
+  "goto",
+  "input-options",
+  "network",
+  "page-snapshot",
+  "run-action",
+  "runtimes",
+  "screenshot",
+  "snapshot",
+  "targets",
+  "verify",
+  "wait-eval",
+  "wait-for"
+];
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const resolveIntegrationScript = path.join(scriptDir, "resolve-integration.mjs");
@@ -76,11 +110,13 @@ function main() {
   const resolvedPackageJsonPath = path.resolve(packageJsonPath);
   const sourceEditable = parseBooleanOption(args.sourceEditable, true);
   const sourceAffectsPage = parseBooleanOption(args.sourceAffectsPage, true);
+  const stateDirectory = optionalString(args.stateDir);
   if (sourceEditable !== true || sourceAffectsPage !== true) {
     writeBrowserCliPrepare({
       packageJsonPath: resolvedPackageJsonPath,
       sourceEditable,
-      sourceAffectsPage
+      sourceAffectsPage,
+      stateDirectory
     });
     return;
   }
@@ -103,6 +139,24 @@ function main() {
     usage: usage.required
   });
 
+  const requiredAction = status === "action_required"
+    ? writeRequiredPrepareState({
+        packageJsonPath: resolvedPackageJsonPath,
+        sourceEditable,
+        sourceAffectsPage,
+        dependency,
+        usage,
+        install,
+        use,
+        descriptions,
+        nextAction,
+        stateDirectory
+      })
+    : null;
+  if (requiredAction === null) {
+    removeRequiredActionState(stateDirectory);
+  }
+
   process.stdout.write(`${JSON.stringify({
     status,
     packageJson: resolvedPackageJsonPath,
@@ -115,12 +169,14 @@ function main() {
     use,
     descriptions,
     required: integration.required === true || dependency.required.length > 0 || usage.required.length > 0,
+    requiredAction,
     nextAction
   }, null, 2)}\n`);
   process.exitCode = status === "pass" ? EXIT_PASS : EXIT_ACTION_REQUIRED;
 }
 
-function writeBrowserCliPrepare({ packageJsonPath, sourceEditable, sourceAffectsPage }) {
+function writeBrowserCliPrepare({ packageJsonPath, sourceEditable, sourceAffectsPage, stateDirectory }) {
+  removeRequiredActionState(stateDirectory);
   const packageJson = readPackageJson(packageJsonPath);
   const dependencies = collectDependencies(packageJson);
   const dependency = resolveRequiredPackageStatus({
@@ -228,7 +284,7 @@ function toCamelCase(value) {
 
 function usage() {
   process.stderr.write(
-    "Usage: node skills/openruntime/scripts/prepare.mjs --package-json <path-to-package.json> [--source-editable true|false] [--source-affects-page true|false]\n"
+    "Usage: node skills/openruntime/scripts/prepare.mjs --package-json <path-to-package.json> [--source-editable true|false] [--source-affects-page true|false] [--state-dir <path>]\n"
   );
 }
 
@@ -447,6 +503,7 @@ function createNextAction({ dependency, usage, install, use }) {
   if (install.length > 0) {
     return {
       type: "install_missing_dependencies",
+      code: "OPENRUNTIME_DEPENDENCY_REQUIRED",
       required: true,
       commands: createInstallCommands(dependency.installSpecs),
       install,
@@ -465,6 +522,7 @@ function createNextAction({ dependency, usage, install, use }) {
   if (usage.missing.length > 0) {
     return {
       type: "apply_required_usage",
+      code: "OPENRUNTIME_USAGE_REQUIRED",
       required: true,
       use,
       usage,
@@ -482,6 +540,120 @@ function createNextAction({ dependency, usage, install, use }) {
     type: "continue_workflow",
     required: false
   };
+}
+
+function writeRequiredPrepareState({
+  packageJsonPath,
+  sourceEditable,
+  sourceAffectsPage,
+  dependency,
+  usage,
+  install,
+  use,
+  descriptions,
+  nextAction,
+  stateDirectory
+}) {
+  const existing = readRequiredActionState(stateDirectory);
+  const cwd = getRequiredActionCwd();
+  const stateFile = getRequiredActionStateFile(stateDirectory);
+  const now = new Date().toISOString();
+  const state = {
+    schemaVersion: REQUIRED_ACTION_SCHEMA_VERSION,
+    kind: REQUIRED_ACTION_KIND,
+    key: createRequiredActionStateKey(cwd),
+    cwd,
+    source: "prepare",
+    status: "pending",
+    code: nextAction.code ?? (install.length > 0
+      ? "OPENRUNTIME_DEPENDENCY_REQUIRED"
+      : "OPENRUNTIME_USAGE_REQUIRED"),
+    sourceEditable,
+    sourceAffectsPage,
+    canFallback: false,
+    allowedNextActions: REQUIRED_INTEGRATION_ALLOWED_ACTIONS,
+    forbiddenCommands: FORBIDDEN_REQUIRED_ACTION_COMMANDS,
+    integration: {
+      install,
+      use,
+      dependency,
+      usage: omitUsageUnknown(usage),
+      required: true
+    },
+    descriptions,
+    requiredAction: {
+      ...nextAction,
+      required: true,
+      canFallback: false,
+      fallbackAllowed: false,
+      rerun: {
+        type: "rerun_prepare"
+      }
+    },
+    prepare: {
+      packageJson: packageJsonPath,
+      sourceEditable,
+      sourceAffectsPage
+    },
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+    stateFile
+  };
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  fs.writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return state;
+}
+
+function omitUsageUnknown(usage) {
+  return {
+    checkedFrom: usage.checkedFrom,
+    required: usage.required,
+    detected: usage.detected,
+    missing: usage.missing
+  };
+}
+
+function readRequiredActionState(stateDirectory) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(getRequiredActionStateFile(stateDirectory), "utf8"));
+    return parsed !== null && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function removeRequiredActionState(stateDirectory) {
+  try {
+    fs.rmSync(getRequiredActionStateFile(stateDirectory), { force: true });
+  } catch {
+    // Best effort cleanup only.
+  }
+}
+
+function getRequiredActionStateFile(stateDirectory) {
+  const directory = stateDirectory ?? DEFAULT_REQUIRED_ACTION_DIR;
+  return path.join(directory, `${createRequiredActionStateKey(getRequiredActionCwd())}.json`);
+}
+
+function createRequiredActionStateKey(cwd) {
+  return `required-action-${createHash("sha256").update(normalizeRequiredActionCwd(cwd)).digest("hex").slice(0, 16)}`;
+}
+
+function getRequiredActionCwd() {
+  return normalizeRequiredActionCwd(process.cwd());
+}
+
+function normalizeRequiredActionCwd(cwd) {
+  const resolved = path.resolve(cwd);
+  try {
+    return fs.realpathSync.native(resolved);
+  } catch {
+    try {
+      return fs.realpathSync(resolved);
+    } catch {
+      return resolved;
+    }
+  }
 }
 
 function createInstallCommands(installSpecs) {
@@ -512,6 +684,10 @@ function pickDescriptions(source, names) {
     }
   }
   return result;
+}
+
+function optionalString(value) {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
 }
 
 function dedupe(items) {

@@ -61,6 +61,13 @@ OpenRuntime 已经生效；真正连接结果由 `CONNECTED` 确认。浏览器 
 进入 `CONNECTED`，按 `nextAction.type=use_browser_cli` 使用 `open`、`console`、
 `network`、`page-snapshot`、`eval`、`wait-eval` 等命令定位。
 
+在 `mode=source_integration` 且 `nextAction.required=true` 时，`prepare` 会写入
+`requiredAction` 状态文件。这是硬门禁，不是建议：必须先安装缺失依赖或完成源码接入，
+然后重跑 `prepare`。状态文件存在时，`console`、`network`、`page-snapshot`、
+`eval`、`wait-eval`、`snapshot`、`events`、`targets`、`wait-for`、`verify`
+等后续诊断/验收命令会失败。不要把“拿不到 structured snapshot/events”作为
+fallback 继续交付；只有 `mode=browser_cli` 时才允许使用浏览器 CLI 能力继续定位。
+
 禁止用下面方式绕过前置要求：
 
 - 用浏览器 `eval` 临时注入 OpenRuntime 或临时连接 Bridge。

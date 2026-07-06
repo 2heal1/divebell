@@ -316,7 +316,7 @@ test("resolve-integration treats declared packages with missing entries as insta
   }
 });
 
-test("prepare asks to install missing dependencies before opening the page", () => {
+test("prepare asks to install missing dependencies before opening the page", async () => {
   const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-install-"));
   const packageJsonPath = writeIntegrationPackageJson(root, {
     edenx: "1.0.0",
@@ -329,6 +329,9 @@ test("prepare asks to install missing dependencies before opening the page", () 
     assert.equal(result.exitCode, 2);
     assert.equal(result.output.status, "action_required");
     assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.equal(result.output.nextAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.requiredAction.source, "prepare");
     assert.deepEqual(result.output.install.sort(), [
       "@module-federation/observability-plugin",
       "@openruntime/core"
@@ -346,6 +349,27 @@ test("prepare asks to install missing dependencies before opening the page", () 
       "references/module-federation.md"
     );
     assert.match(result.output.nextAction.descriptions.usage.mf_observability.summary, /MF 生产者加载信息/);
+
+    const store = createFileRequiredActionStateStore(process.cwd(), result.stateDirectory);
+    const state = await store.read();
+    assert.equal(state?.source, "prepare");
+    assert.equal(state?.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+
+    let touchedSideEffect = false;
+    const output = createOutput();
+    const exitCode = await runCli(["console", "--limit", "10"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      requiredActionStateDirectory: result.stateDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        touchedSideEffect = true;
+        throw new Error("browser should not be queried");
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(touchedSideEffect, false);
+    assert.equal(JSON.parse(output.text()).code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -468,6 +492,8 @@ test("prepare asks to apply usage when dependencies are installed", () => {
     assert.equal(result.exitCode, 2);
     assert.equal(result.output.status, "action_required");
     assert.equal(result.output.nextAction.type, "apply_required_usage");
+    assert.equal(result.output.nextAction.code, "OPENRUNTIME_USAGE_REQUIRED");
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_USAGE_REQUIRED");
     assert.deepEqual(result.output.install, []);
     assert.deepEqual(result.output.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
     assert.deepEqual(result.output.nextAction.use.sort(), [
@@ -515,6 +541,53 @@ export default {
     assert.equal(result.output.nextAction.type, "continue_workflow");
     assert.deepEqual(result.output.install, []);
     assert.deepEqual(result.output.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare clears source integration required action in browser cli mode", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-clear-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0",
+    "@openruntime/cli": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/cli");
+  const store = createFileRequiredActionStateStore(process.cwd(), stateDirectory);
+
+  try {
+    await store.write({
+      source: "prepare",
+      status: "pending",
+      code: "OPENRUNTIME_USAGE_REQUIRED",
+      sourceEditable: true,
+      canFallback: false,
+      allowedNextActions: ["apply_required_usage", "rerun_prepare", "report_blocked"],
+      forbiddenCommands: ["console"],
+      integration: {
+        install: [],
+        use: ["@openruntime/modern-plugin"],
+        required: true
+      },
+      requiredAction: {
+        type: "apply_required_usage",
+        code: "OPENRUNTIME_USAGE_REQUIRED"
+      },
+      createdAt: "2026-07-02T00:00:00.000Z",
+      updatedAt: "2026-07-02T00:00:00.000Z"
+    });
+
+    const result = runPrepare(packageJsonPath, {}, [
+      "--source-affects-page",
+      "false",
+      "--state-dir",
+      stateDirectory
+    ]);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(await store.read(), undefined);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -3451,12 +3524,18 @@ function runPrepare(
   packageJsonPath: string,
   env: Record<string, string> = {},
   extraArgs: string[] = []
-): { exitCode: number | null; output: any; stderr: string } {
+): { exitCode: number | null; output: any; stderr: string; stateDirectory: string } {
+  const stateDirectory = extraArgs.includes("--state-dir")
+    ? String(extraArgs[extraArgs.indexOf("--state-dir") + 1])
+    : join(dirname(packageJsonPath), ".openruntime-test-state");
+  const effectiveExtraArgs = extraArgs.includes("--state-dir")
+    ? extraArgs
+    : [...extraArgs, "--state-dir", stateDirectory];
   const result = spawnSync(process.execPath, [
     repoScriptPath("skills", "openruntime", "scripts", "prepare.mjs"),
     "--package-json",
     packageJsonPath,
-    ...extraArgs
+    ...effectiveExtraArgs
   ], {
     encoding: "utf8",
     env: {
@@ -3469,7 +3548,8 @@ function runPrepare(
   return {
     exitCode: result.status,
     output: JSON.parse(result.stdout),
-    stderr: result.stderr
+    stderr: result.stderr,
+    stateDirectory
   };
 }
 

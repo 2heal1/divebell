@@ -316,6 +316,174 @@ test("resolve-integration treats declared packages with missing entries as insta
   }
 });
 
+test("prepare asks to install missing dependencies before opening the page", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-install-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.status, "action_required");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.install.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.output.nextAction.commands, [
+      "pnpm add @openruntime/core @module-federation/observability-plugin"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare uses browser cli mode when source changes do not affect the page", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-affects-page", "false"]);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(result.output.reason, "source_changes_do_not_affect_page");
+    assert.equal(result.output.nextAction.type, "install_openruntime_cli");
+    assert.deepEqual(result.output.install, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.use, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.dependency.required, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.usage.required, ["browser_cli"]);
+    assert.deepEqual(result.output.nextAction.commands, [
+      "pnpm add -D @openruntime/cli"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare uses browser cli mode when source is not editable", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-source-not-editable-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-editable", "false"]);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(result.output.reason, "source_not_editable");
+    assert.deepEqual(result.output.install, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.dependency.required, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.nextAction.install, ["@openruntime/cli"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare passes in browser cli mode when cli is installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-pass-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0",
+    "@openruntime/cli": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/cli");
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-editable", "false"]);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.status, "pass");
+    assert.equal(result.output.mode, "browser_cli");
+    assert.deepEqual(result.output.install, []);
+    assert.equal(result.output.nextAction.type, "use_browser_cli");
+    assert.deepEqual(result.output.nextAction.allowedCommands, [
+      "open",
+      "console",
+      "network",
+      "page-snapshot",
+      "eval",
+      "wait-eval",
+      "screenshot",
+      "close"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare asks to apply usage when dependencies are installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-usage-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.status, "action_required");
+    assert.equal(result.output.nextAction.type, "apply_required_usage");
+    assert.deepEqual(result.output.install, []);
+    assert.deepEqual(result.output.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.output.nextAction.use.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare passes when dependencies and source usage are detected", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-pass-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "openruntime.ts"), `
+import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+
+const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+runtime.connectBridge({ port: 17321 });
+`, "utf8");
+  writeFileSync(join(root, "vmok.config.ts"), `
+import { ObservabilityPlugin } from "@module-federation/observability-plugin";
+
+export default {
+  plugins: [ObservabilityPlugin()],
+};
+`, "utf8");
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.status, "pass");
+    assert.equal(result.output.nextAction.type, "continue_workflow");
+    assert.deepEqual(result.output.install, []);
+    assert.deepEqual(result.output.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow connected asks to install missing dependencies before usage changes", () => {
   const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-install-"));
   const stateDirectory = join(root, "state");
@@ -418,28 +586,29 @@ test("generates CLI reference markdown from the help table", () => {
 
 test("generates the skill CLI command section from the help table", () => {
   const markdown = createCliSkillSectionMarkdown();
-  const skillMarkdown = createCliSkillSectionMarkdown(undefined, { heading: "## 13. 常用 CLI" });
+  const skillMarkdown = createCliSkillSectionMarkdown(undefined, { heading: "## 常用 CLI" });
 
   assert.match(markdown, /^### 常用 CLI/m);
-  assert.match(skillMarkdown, /^## 13. 常用 CLI/m);
+  assert.match(skillMarkdown, /^## 常用 CLI/m);
   assert.doesNotMatch(skillMarkdown, /^### 常用 CLI/m);
-  assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
+  assert.match(markdown, /完整 CLI 清单见 `references\/cli.md`/);
   assert.match(markdown, /先用一次不带 `--id` \/ `--query` 的全量 `snapshot` 快速探测/);
   assert.match(markdown, /进入 PATCH 后必须补或复用最小 `business:\*` target/);
   assert.match(markdown, /通过后百分百相信 verify/);
   assert.match(markdown, /严禁再调用 `snapshot`、`console`、`page-snapshot`/);
   assert.match(markdown, /openruntime open <url>/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
+  assert.match(markdown, /openruntime console \[--level <level>\]/);
+  assert.match(markdown, /openruntime network \[--url <query>\]/);
+  assert.match(markdown, /openruntime page-snapshot/);
   assert.match(markdown, /openruntime eval <script>/);
   assert.match(markdown, /openruntime wait-eval <script>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /openruntime start /);
   assert.doesNotMatch(markdown, /openruntime export-profile /);
   assert.doesNotMatch(markdown, /openruntime import-profile /);
   assert.doesNotMatch(markdown, /openruntime get-window <path>/);
-  assert.doesNotMatch(markdown, /openruntime network \[--url <query>\]/);
   assert.doesNotMatch(markdown, /openruntime screenshot /);
-  assert.doesNotMatch(markdown, /openruntime console \[--level <level>\]/);
-  assert.doesNotMatch(markdown, /openruntime page-snapshot/);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
@@ -3240,6 +3409,32 @@ function runResolveIntegration(packageJsonPath: string, env: Record<string, stri
 
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
+}
+
+function runPrepare(
+  packageJsonPath: string,
+  env: Record<string, string> = {},
+  extraArgs: string[] = []
+): { exitCode: number | null; output: any; stderr: string } {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "prepare.mjs"),
+    "--package-json",
+    packageJsonPath,
+    ...extraArgs
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr
+  };
 }
 
 function runWorkflowConnected(

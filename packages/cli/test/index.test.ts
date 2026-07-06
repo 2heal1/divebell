@@ -336,6 +336,37 @@ test("prepare asks to install missing dependencies before opening the page", () 
     assert.deepEqual(result.output.nextAction.commands, [
       "pnpm add @openruntime/core @module-federation/observability-plugin"
     ]);
+    assert.match(result.output.descriptions.packages["@openruntime/core"].summary, /前置基础/);
+    assert.match(result.output.descriptions.packages["@openruntime/core"].summary, /connectBridge/);
+    assert.match(result.output.descriptions.packages["@module-federation/observability-plugin"].summary, /完整的 MF 生产者加载信息/);
+    assert.match(result.output.descriptions.packages["@module-federation/observability-plugin"].summary, /共享依赖信息/);
+    assert.equal(result.output.descriptions.packages["@openruntime/core"].reference, "references/core.md");
+    assert.equal(
+      result.output.descriptions.packages["@module-federation/observability-plugin"].reference,
+      "references/module-federation.md"
+    );
+    assert.match(result.output.nextAction.descriptions.usage.mf_observability.summary, /MF 生产者加载信息/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare explains modern plugin observable information", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-modern-plugin-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.install, ["@openruntime/modern-plugin"]);
+    assert.match(result.output.descriptions.packages["@openruntime/modern-plugin"].summary, /接入后就能获取 route/);
+    assert.match(result.output.descriptions.packages["@openruntime/modern-plugin"].summary, /hydration/);
+    assert.match(result.output.nextAction.descriptions.usage.modern_plugin.summary, /snapshot/);
+    assert.equal(result.output.descriptions.packages["@openruntime/modern-plugin"].reference, "references/modernjs.md");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -362,6 +393,8 @@ test("prepare uses browser cli mode when source changes do not affect the page",
     assert.deepEqual(result.output.nextAction.commands, [
       "pnpm add -D @openruntime/cli"
     ]);
+    assert.match(result.output.descriptions.packages["@openruntime/cli"].summary, /命令行工具/);
+    assert.equal(result.output.descriptions.usage.browser_cli.reference, "references/cli.md");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -441,6 +474,9 @@ test("prepare asks to apply usage when dependencies are installed", () => {
       "@module-federation/observability-plugin",
       "@openruntime/core"
     ].sort());
+    assert.match(result.output.nextAction.descriptions.packages["@openruntime/core"].summary, /MF\/Modern 插件采集的信息/);
+    assert.match(result.output.nextAction.descriptions.usage.core_runtime.summary, /前置条件/);
+    assert.match(result.output.nextAction.descriptions.usage.mf_observability.summary, /共享依赖信息/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

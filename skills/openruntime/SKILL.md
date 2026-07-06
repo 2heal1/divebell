@@ -42,6 +42,7 @@ node <openruntime-skill-dir>/scripts/prepare.mjs \
   静态检查无法确认的接入能力。
 - `install`：下一步需要安装或重装的包名。
 - `use`：当前项目类型需要使用的 OpenRuntime 相关包名。
+- `descriptions.packages/usage`：每个包和接入能力的简短用途说明，以及需要深入时读取的 reference。
 - `nextAction`：下一步必须执行的动作。
 
 按下面三种场景处理：

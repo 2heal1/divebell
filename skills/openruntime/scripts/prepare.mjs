@@ -15,6 +15,42 @@ const openRuntimeCliPackage = "@openruntime/cli";
 const packageInstallSpecEnvironment = {
   [openRuntimeCliPackage]: "OPENRUNTIME_CLI_PACKAGE"
 };
+const packageDescriptions = {
+  "@openruntime/core": {
+    summary: "页面侧运行时基础包，用于暴露页面信息、action 给 Agent，也是 MF observability 和 Modern plugin 被 Agent 读取的前置基础。安装并完成 connectBridge 后，页面暴露的业务 target、snapshot、event、action，以及 MF/Modern 插件采集的信息，才能通过 Bridge 被 CLI/Agent 获取。",
+    reference: "references/core.md"
+  },
+  "@openruntime/modern-plugin": {
+    summary: "Modern.js 接入包。接入后就能获取 route、loader、navigation、SSR、hydration 和业务 ready 相关状态，可帮助定位 Modern.js 页面加载和路由问题。",
+    reference: "references/modernjs.md"
+  },
+  "@module-federation/observability-plugin": {
+    summary: "Module Federation / Vmok 观测包。接入后就能获取完整的 MF 生产者加载信息、remote/manifest/remoteEntry/expose 状态、共享依赖信息和运行时错误，可帮助精准定位使用 MF/Vmok 后的问题。",
+    reference: "references/module-federation.md"
+  },
+  "@openruntime/cli": {
+    summary: "Agent 使用的命令行工具。源码不能影响页面时，用它打开页面并读取 console、network、page snapshot 或执行浏览器侧诊断命令。",
+    reference: "references/cli.md"
+  }
+};
+const usageDescriptions = {
+  core_runtime: {
+    summary: "接入后建立页面到 Bridge 的连接，是读取业务 target、snapshot、event、action 以及 MF/Modern 插件信息的前置条件。",
+    reference: "references/core.md"
+  },
+  modern_plugin: {
+    summary: "接入后能在 snapshot 中看到 Modern.js route、loader、navigation、SSR、hydration 和业务 ready 状态。",
+    reference: "references/modernjs.md"
+  },
+  mf_observability: {
+    summary: "接入后能在 snapshot 中看到 MF 生产者加载信息、remote/expose 状态、共享依赖信息和运行时错误。",
+    reference: "references/module-federation.md"
+  },
+  browser_cli: {
+    summary: "不改页面源码，只使用 OpenRuntime CLI 的浏览器能力进行打开页面、日志、网络和页面快照诊断。",
+    reference: "references/cli.md"
+  }
+};
 
 try {
   main();
@@ -58,6 +94,14 @@ function main() {
     : dependency.required;
   const nextAction = createNextAction({ dependency, usage, install, use });
   const status = nextAction.type === "continue_workflow" ? "pass" : "action_required";
+  const descriptions = createDescriptions({
+    packages: [
+      ...dependency.required,
+      ...use,
+      ...install
+    ],
+    usage: usage.required
+  });
 
   process.stdout.write(`${JSON.stringify({
     status,
@@ -69,6 +113,7 @@ function main() {
     usage,
     install,
     use,
+    descriptions,
     required: integration.required === true || dependency.required.length > 0 || usage.required.length > 0,
     nextAction
   }, null, 2)}\n`);
@@ -94,6 +139,10 @@ function writeBrowserCliPrepare({ packageJsonPath, sourceEditable, sourceAffects
         install,
         installSpecs: dependency.installSpecs,
         dependency,
+        descriptions: createDescriptions({
+          packages: install,
+          usage: ["browser_cli"]
+        }),
         afterInstall: {
           type: "use_browser_cli"
         }
@@ -115,6 +164,10 @@ function writeBrowserCliPrepare({ packageJsonPath, sourceEditable, sourceAffects
           "close"
         ]
       };
+  const descriptions = createDescriptions({
+    packages: [openRuntimeCliPackage],
+    usage: ["browser_cli"]
+  });
 
   process.stdout.write(`${JSON.stringify({
     status,
@@ -135,6 +188,7 @@ function writeBrowserCliPrepare({ packageJsonPath, sourceEditable, sourceAffects
     },
     install,
     use: [openRuntimeCliPackage],
+    descriptions,
     required: false,
     nextAction
   }, null, 2)}\n`);
@@ -398,6 +452,10 @@ function createNextAction({ dependency, usage, install, use }) {
       install,
       installSpecs: dependency.installSpecs,
       dependency,
+      descriptions: createDescriptions({
+        packages: install,
+        usage: usage.missing
+      }),
       afterInstall: {
         type: usage.missing.length > 0 ? "apply_required_usage" : "continue_workflow"
       }
@@ -410,6 +468,10 @@ function createNextAction({ dependency, usage, install, use }) {
       required: true,
       use,
       usage,
+      descriptions: createDescriptions({
+        packages: use,
+        usage: usage.missing
+      }),
       afterApply: {
         type: "open_page"
       }
@@ -432,6 +494,24 @@ function createCliInstallCommands(installSpecs) {
   return installSpecs.length > 0
     ? [`pnpm add -D ${installSpecs.join(" ")}`]
     : [];
+}
+
+function createDescriptions({ packages = [], usage = [] }) {
+  return {
+    packages: pickDescriptions(packageDescriptions, packages),
+    usage: pickDescriptions(usageDescriptions, usage)
+  };
+}
+
+function pickDescriptions(source, names) {
+  const result = {};
+  for (const name of dedupe(names)) {
+    const description = source[name];
+    if (description !== undefined) {
+      result[name] = description;
+    }
+  }
+  return result;
 }
 
 function dedupe(items) {

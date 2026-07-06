@@ -169,6 +169,93 @@ OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
 ~/.openruntime/extensions/foo/index.mjs
 ```
 
+### 创建一个扩展
+
+1. 创建扩展目录：
+
+```sh
+mkdir -p ~/.openruntime/extensions
+```
+
+2. 创建 `~/.openruntime/extensions/github-release.mjs`：
+
+```js
+export default {
+  schemaVersion: 1,
+  name: "github-release",
+  displayName: "GitHub Release",
+  description: "Finds the latest release for module-federation/core.",
+  commandReferences: [
+    {
+      category: "Extensions",
+      usage: "openruntime github-release latest",
+      description: "Open GitHub, find module-federation/core, and print the latest release."
+    }
+  ],
+  exampleReferences: [
+    {
+      command: "openruntime github-release latest",
+      description: "Print the latest module-federation/core release."
+    }
+  ],
+  async run(options) {
+    if (options.args.command[1] !== "latest") {
+      throw new Error("Usage: openruntime github-release latest");
+    }
+
+    const browser = options.openruntime.browser;
+
+    await browser.open("https://github.com", { noBridge: true });
+    await browser.fill('input[name="q"], input[aria-label="Search GitHub"]', "module-federation/core");
+    await browser.eval("document.querySelector('input[name=\"q\"], input[aria-label=\"Search GitHub\"]')?.form?.requestSubmit()");
+    await browser.waitEval("location.href.includes('/search')", { timeout: 10000 });
+
+    await browser.click('a[href="/module-federation/core"]');
+    await browser.waitEval("location.pathname === '/module-federation/core' || location.pathname === '/module-federation/core/'", { timeout: 10000 });
+
+    await browser.click('a[href="/module-federation/core/releases"]');
+    const ready = await browser.waitEval("document.querySelector('a[href*=\"/module-federation/core/releases/tag/\"]') !== null", { timeout: 10000 });
+    if (!ready.success) {
+      throw new Error(ready.reason ?? "GitHub releases did not load.");
+    }
+
+    const latest = await browser.eval(`(() => {
+      const releaseLink = document.querySelector('a[href*="/module-federation/core/releases/tag/"]');
+      const release = releaseLink?.closest('[data-testid="release"]') ?? releaseLink?.closest('.Box') ?? document.body;
+      const title = release?.querySelector('a[href*="/releases/tag/"], h1, h2')?.textContent?.replace(/\\s+/g, " ").trim() ?? "";
+      const tag = releaseLink?.href.split("/releases/tag/").at(-1) ?? "";
+      const publishedAt = release?.querySelector("relative-time")?.getAttribute("datetime") ?? "";
+      const notesPreview = release?.querySelector(".markdown-body")?.textContent?.replace(/\\s+/g, " ").trim().slice(0, 500) ?? "";
+      return {
+        repository: "module-federation/core",
+        title,
+        tag,
+        url: releaseLink?.href ?? location.href,
+        publishedAt,
+        notesPreview
+      };
+    })()`);
+
+    options.stdout.write(`${JSON.stringify({ result: latest }, null, 2)}\n`);
+    return 0;
+  }
+};
+```
+
+3. 确认扩展已被加载：
+
+```sh
+openruntime extensions list
+```
+
+4. 运行扩展：
+
+```sh
+openruntime github-release latest
+```
+
+这个例子通过 `options.openruntime.browser` 调用 OpenRuntime 能力，不需要再 spawn 一次 `openruntime`。`browser.open`、`browser.fill`、`browser.click`、`browser.waitEval` 用来操作浏览器；`browser.eval` 用来从页面读取结构化结果。
+
 扩展文件必须默认导出固定结构：
 
 ```js

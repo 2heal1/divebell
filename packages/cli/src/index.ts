@@ -69,6 +69,15 @@ import {
   readProfileInputFile,
   type ProfileExportResult
 } from "./profile.js";
+import {
+  createInternalExtensionRecords,
+  loadExternalCliExtensions,
+  type ExtensionLoadRecord
+} from "./external-extensions.js";
+import {
+  createOpenRuntimeExtensionApi,
+  type OpenRuntimeExtensionApi
+} from "./extension-api.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
@@ -131,6 +140,7 @@ export interface CliExtensionRunOptions {
   fetcher: Fetcher;
   bridgeUrl: string;
   runtimeSelector: RuntimeSelector;
+  openruntime: OpenRuntimeExtensionApi;
 }
 
 export interface OpenRuntimeCliExtension {
@@ -143,6 +153,7 @@ export interface OpenRuntimeCliExtension {
 export interface CreateOpenRuntimeCliOptions {
   packageInfo?: OpenRuntimePackageInfo;
   extensions?: readonly OpenRuntimeCliExtension[];
+  extensionLoadRecords?: readonly ExtensionLoadRecord[];
 }
 
 export interface OpenRuntimeCli {
@@ -158,6 +169,7 @@ interface OpenRuntimeCliConfig {
   commandReferences: readonly CliCommandReference[];
   exampleReferences: readonly CliExampleReference[];
   extensionRegistry: Map<string, OpenRuntimeCliExtension>;
+  extensionLoadRecords: readonly ExtensionLoadRecord[];
 }
 
 export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}): OpenRuntimeCli {
@@ -174,7 +186,8 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
   const config: OpenRuntimeCliConfig = {
     commandReferences,
     exampleReferences,
-    extensionRegistry
+    extensionRegistry,
+    extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions)
   };
   const packageInfo = options.packageInfo ?? cliPackageInfo;
 
@@ -194,8 +207,59 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
 
 export const defaultOpenRuntimeCli = createOpenRuntimeCli();
 
+export interface OpenRuntimeCliWithExternalExtensions {
+  cli: OpenRuntimeCli;
+  extensionLoadRecords: readonly ExtensionLoadRecord[];
+}
+
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
-  return await defaultOpenRuntimeCli.run(argv, options);
+  const stderr = options.stderr ?? process.stderr;
+  const loaded = await createOpenRuntimeCliWithExternalExtensions();
+  for (const record of loaded.extensionLoadRecords) {
+    if (record.source === "external" && record.status !== "loaded") {
+      stderr.write(formatExternalExtensionWarning(record));
+    }
+  }
+  return await loaded.cli.run(argv, {
+    ...options,
+    stderr
+  });
+}
+
+export async function createOpenRuntimeCliWithExternalExtensions(
+  options: CreateOpenRuntimeCliOptions = {},
+  env: NodeJS.ProcessEnv = process.env
+): Promise<OpenRuntimeCliWithExternalExtensions> {
+  const internalExtensions = options.extensions ?? [];
+  const reservedNames = [
+    ...createBuiltInCommandNameSet(),
+    ...internalExtensions.map((extension) => extension.name)
+  ];
+  const external = await loadExternalCliExtensions({
+    reservedNames,
+    env
+  });
+  const extensionLoadRecords = [
+    ...createInternalExtensionRecords(internalExtensions),
+    ...external.records
+  ];
+  return {
+    cli: createOpenRuntimeCli({
+      ...options,
+      extensions: [
+        ...internalExtensions,
+        ...external.extensions
+      ],
+      extensionLoadRecords
+    }),
+    extensionLoadRecords
+  };
+}
+
+function formatExternalExtensionWarning(record: ExtensionLoadRecord): string {
+  const location = record.path === undefined ? record.name : record.path;
+  const reason = record.reason ?? "unknown reason";
+  return `Skipped external OpenRuntime extension ${location}: ${reason}\n`;
 }
 
 async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
@@ -234,6 +298,10 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
 
     if (args.command[0] === "import-profile") {
       return await runImportProfileCommand(args, stdout, browserRunner);
+    }
+
+    if (args.command[0] === "extensions") {
+      return runExtensionsCommand(args, stdout, config.extensionLoadRecords);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -357,6 +425,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
 
     const extension = config.extensionRegistry.get(command);
     if (extension !== undefined) {
+      const bridgeStateStore = createBridgeStateStore(args, options.bridgeStateDirectory);
       return await extension.run({
         args,
         stdout,
@@ -364,7 +433,14 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
         browserRunner,
         fetcher,
         bridgeUrl: createBridgeUrl(args),
-        runtimeSelector: createRuntimeSelector(args)
+        runtimeSelector: createRuntimeSelector(args),
+        openruntime: createOpenRuntimeExtensionApi({
+          args,
+          fetcher,
+          browserRunner,
+          bridgeStarter,
+          bridgeStateStore
+        })
       });
     }
 
@@ -400,6 +476,9 @@ function createBuiltInCommandNameSet(): Set<string> {
     "__bridge-server",
     "start",
     "stop",
+    "export-profile",
+    "import-profile",
+    "extensions",
     "runtimes",
     "input-options",
     "run-action",
@@ -408,6 +487,21 @@ function createBuiltInCommandNameSet(): Set<string> {
     ...BROWSER_COMMAND_NAMES,
     ...RUNTIME_RESOURCE_COMMAND_NAMES
   ]);
+}
+
+function runExtensionsCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  records: readonly ExtensionLoadRecord[]
+): number {
+  const subcommand = args.command[1];
+  if (subcommand !== "list") {
+    throw new Error(`Unknown extensions command "${args.command.slice(1).join(" ")}".`);
+  }
+  writeJson(stdout, {
+    extensions: records
+  });
+  return 0;
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -1833,6 +1927,24 @@ export {
   getOptionValues,
   parseCliArgs
 } from "./args.js";
+export { createOpenRuntimeExtensionApi } from "./extension-api.js";
+export type {
+  OpenRuntimeBrowserApi,
+  OpenRuntimeBrowserConsoleEntry,
+  OpenRuntimeBrowserConsoleLevel,
+  OpenRuntimeBrowserConsoleOptions,
+  OpenRuntimeBrowserConsoleResult,
+  OpenRuntimeBrowserGotoOptions,
+  OpenRuntimeBrowserNetworkOptions,
+  OpenRuntimeBrowserOpenOptions,
+  OpenRuntimeBrowserScreenshotOptions,
+  OpenRuntimeBrowserWaitEvalResult,
+  OpenRuntimeExtensionApi,
+  OpenRuntimeInputOptionsRequest,
+  OpenRuntimeQueryValue,
+  OpenRuntimeResourceQuery,
+  OpenRuntimeWaitOptions
+} from "./extension-api.js";
 export type { ParsedCliArgs } from "./args.js";
 export {
   createDefaultBrowserProfileDirectory,
@@ -1861,3 +1973,4 @@ export {
   createHelpText
 } from "./help.js";
 export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";
+export type { ExtensionLoadRecord } from "./external-extensions.js";

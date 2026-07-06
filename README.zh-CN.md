@@ -140,6 +140,87 @@ openruntime release-note latest --limit 3
 
 ---
 
+## CLI 扩展
+
+OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己的工作流命令，而不需要修改 OpenRuntime 源码。
+
+外部扩展默认从这里读取：
+
+```text
+~/.openruntime/extensions
+```
+
+可以用环境变量改目录：
+
+```sh
+OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+```
+
+也可以关闭外部扩展：
+
+```sh
+OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+```
+
+支持两种文件形式：
+
+```text
+~/.openruntime/extensions/foo.mjs
+~/.openruntime/extensions/foo/index.mjs
+```
+
+扩展文件必须默认导出固定结构：
+
+```js
+export default {
+  schemaVersion: 1,
+  name: "foo",
+  displayName: "Foo",
+  description: "Foo extension",
+  commandReferences: [
+    {
+      category: "Extensions",
+      usage: "openruntime foo ping",
+      description: "Runs the Foo command."
+    }
+  ],
+  exampleReferences: [
+    {
+      command: "openruntime foo ping",
+      description: "Runs the Foo command."
+    }
+  ],
+  async run(options) {
+    const location = await options.openruntime.browser.eval("window.location.href");
+    const snapshot = await options.openruntime.snapshot({ query: "ready" });
+    options.stdout.write(JSON.stringify({ location, snapshot }, null, 2));
+    options.stdout.write("\n");
+    return 0;
+  }
+};
+```
+
+扩展里通过 `options.openruntime` 调用 OpenRuntime 能力，不需要自己 spawn CLI。`snapshot`、`targets`、`events`、`actions`、`runAction`、`waitFor` 会直接访问 Bridge；`browser.open`、`browser.eval`、`browser.network`、`browser.console` 是 OpenRuntime 对当前浏览器 runner 的稳定封装。
+
+外部扩展会在 help 里单独展示，并标注来源：
+
+```text
+External Extensions:
+  openruntime foo ping [external: foo]
+```
+
+查看当前加载结果：
+
+```sh
+openruntime extensions list
+```
+
+如果外部扩展和内置命令或内部扩展重名，OpenRuntime 会跳过外部扩展并打印警告。扩展加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
+
+外部扩展会执行本机代码，只加载可信文件。
+
+---
+
 ## Architecture
 
 ```text

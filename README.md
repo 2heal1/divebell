@@ -144,6 +144,8 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 OpenRuntime CLI can be extended with local extension files. This is useful when a team wants to add private workflow commands without changing the OpenRuntime source code.
 
+See [CLI Extension Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example.
+
 External extensions are loaded from:
 
 ```text
@@ -168,126 +170,6 @@ Two file layouts are supported:
 ~/.openruntime/extensions/foo.mjs
 ~/.openruntime/extensions/foo/index.mjs
 ```
-
-### Create an extension
-
-1. Create the extension directory:
-
-```sh
-mkdir -p ~/.openruntime/extensions
-```
-
-2. Create `~/.openruntime/extensions/github-release.mjs`:
-
-```js
-export default {
-  schemaVersion: 1,
-  name: "github-release",
-  displayName: "GitHub Release",
-  description: "Finds the latest release for module-federation/core.",
-  commandReferences: [
-    {
-      category: "Extensions",
-      usage: "openruntime github-release latest",
-      description: "Open GitHub, find module-federation/core, and print the latest release."
-    }
-  ],
-  exampleReferences: [
-    {
-      command: "openruntime github-release latest",
-      description: "Print the latest module-federation/core release."
-    }
-  ],
-  async run(options) {
-    if (options.args.command[1] !== "latest") {
-      throw new Error("Usage: openruntime github-release latest");
-    }
-
-    const browser = options.openruntime.browser;
-
-    await browser.open("https://github.com", { noBridge: true });
-    await browser.fill('input[name="q"], input[aria-label="Search GitHub"]', "module-federation/core");
-    await browser.eval("document.querySelector('input[name=\"q\"], input[aria-label=\"Search GitHub\"]')?.form?.requestSubmit()");
-    await browser.waitEval("location.href.includes('/search')", { timeout: 10000 });
-
-    await browser.click('a[href="/module-federation/core"]');
-    await browser.waitEval("location.pathname === '/module-federation/core' || location.pathname === '/module-federation/core/'", { timeout: 10000 });
-
-    await browser.click('a[href="/module-federation/core/releases"]');
-    const ready = await browser.waitEval("document.querySelector('a[href*=\"/module-federation/core/releases/tag/\"]') !== null", { timeout: 10000 });
-    if (!ready.success) {
-      throw new Error(ready.reason ?? "GitHub releases did not load.");
-    }
-
-    const latest = await browser.eval(`(() => {
-      const releaseLink = document.querySelector('a[href*="/module-federation/core/releases/tag/"]');
-      const release = releaseLink?.closest('[data-testid="release"]') ?? releaseLink?.closest('.Box') ?? document.body;
-      const title = release?.querySelector('a[href*="/releases/tag/"], h1, h2')?.textContent?.replace(/\\s+/g, " ").trim() ?? "";
-      const tag = releaseLink?.href.split("/releases/tag/").at(-1) ?? "";
-      const publishedAt = release?.querySelector("relative-time")?.getAttribute("datetime") ?? "";
-      const notesPreview = release?.querySelector(".markdown-body")?.textContent?.replace(/\\s+/g, " ").trim().slice(0, 500) ?? "";
-      return {
-        repository: "module-federation/core",
-        title,
-        tag,
-        url: releaseLink?.href ?? location.href,
-        publishedAt,
-        notesPreview
-      };
-    })()`);
-
-    options.stdout.write(`${JSON.stringify({ result: latest }, null, 2)}\n`);
-    return 0;
-  }
-};
-```
-
-3. Confirm that OpenRuntime loaded it:
-
-```sh
-openruntime extensions list
-```
-
-4. Run it:
-
-```sh
-openruntime github-release latest
-```
-
-The example uses `options.openruntime.browser` instead of spawning `openruntime` again. `browser.open`, `browser.fill`, `browser.click`, and `browser.waitEval` perform browser actions; `browser.eval` reads structured data from the page.
-
-An extension must default-export this shape:
-
-```js
-export default {
-  schemaVersion: 1,
-  name: "foo",
-  displayName: "Foo",
-  description: "Foo extension",
-  commandReferences: [
-    {
-      category: "Extensions",
-      usage: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
-  exampleReferences: [
-    {
-      command: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
-  async run(options) {
-    const location = await options.openruntime.browser.eval("window.location.href");
-    const snapshot = await options.openruntime.snapshot({ query: "ready" });
-    options.stdout.write(JSON.stringify({ location, snapshot }, null, 2));
-    options.stdout.write("\n");
-    return 0;
-  }
-};
-```
-
-Use `options.openruntime` to call OpenRuntime capabilities from the same CLI process. Runtime APIs such as `snapshot`, `targets`, `events`, `actions`, `runAction`, and `waitFor` call the Bridge directly. Browser APIs such as `browser.open`, `browser.eval`, `browser.network`, and `browser.console` are stable OpenRuntime wrappers over the current browser runner.
 
 External commands are shown separately in help and are marked with their source:
 

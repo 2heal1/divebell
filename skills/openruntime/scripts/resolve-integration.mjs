@@ -4,12 +4,46 @@ import fs from "node:fs";
 import path from "node:path";
 
 const MODERN_PLUGIN_MIN_VERSION = "3.4.0";
+const SOURCE_FILE_EXTENSIONS = new Set([
+  ".cjs",
+  ".cts",
+  ".html",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".mts",
+  ".ts",
+  ".tsx"
+]);
+const SOURCE_SCAN_EXCLUDED_DIRECTORIES = new Set([
+  ".cache",
+  ".eden-mono",
+  ".git",
+  ".next",
+  ".openruntime",
+  ".output",
+  ".turbo",
+  ".vmok",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules"
+]);
+const SOURCE_SCAN_MAX_BYTES = 512 * 1024;
+const SOURCE_SCAN_MAX_FILES = 2000;
 const modernPackages = [
   "@modern-js/runtime",
   "@modern-js/plugin",
   "@modern-js/app-tools"
 ];
+const openRuntimeCorePackage = "@openruntime/core";
+const openRuntimeModernPluginPackage = "@openruntime/modern-plugin";
 const mfObservabilityPackage = "@module-federation/observability-plugin";
+const packageInstallSpecEnvironment = {
+  [openRuntimeCorePackage]: "OPENRUNTIME_CORE_PACKAGE",
+  [openRuntimeModernPluginPackage]: "OPENRUNTIME_MODERN_PLUGIN_PACKAGE",
+  [mfObservabilityPackage]: "OPENRUNTIME_MF_OBSERVABILITY_PACKAGE"
+};
 const mfDependencySignals = [
   "@module-federation/enhanced",
   "@module-federation/"
@@ -30,7 +64,11 @@ function main() {
   const resolvedPackageJsonPath = path.resolve(packageJsonPath);
   const packageJson = readPackageJson(resolvedPackageJsonPath);
   const dependencies = collectDependencies(packageJson);
-  const result = resolveIntegration({ dependencies });
+  const result = resolveIntegration({
+    dependencies,
+    packageJsonPath: resolvedPackageJsonPath,
+    projectRoot: path.dirname(resolvedPackageJsonPath)
+  });
 
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
@@ -87,22 +125,162 @@ function collectDependencies(packageJson) {
   };
 }
 
-function resolveIntegration({ dependencies }) {
+function resolveIntegration({ dependencies, packageJsonPath, projectRoot }) {
   const modern = resolveModern(dependencies);
   const moduleFederation = resolveModuleFederation(dependencies);
-  const install = dedupe([
-    ...modern.install,
-    ...moduleFederation.install
+  const requiredPackages = dedupe([
+    ...modern.requiredPackages,
+    ...moduleFederation.requiredPackages
   ]);
-  const use = dedupe([
-    ...modern.use,
-    ...moduleFederation.use
+  const requiredUsage = dedupe([
+    ...modern.usage,
+    ...moduleFederation.usage
   ]);
+  const dependencyStatus = resolveDependencyStatus({
+    dependencies,
+    packageJsonPath,
+    projectRoot,
+    requiredPackages
+  });
+  const detectedUsage = detectUsage(projectRoot, requiredUsage);
 
   return {
-    install,
-    use
+    dependency: dependencyStatus,
+    usage: {
+      checkedFrom: [projectRoot],
+      required: requiredUsage,
+      detected: detectedUsage,
+      missing: requiredUsage.filter((item) => !detectedUsage.includes(item))
+    },
+    install: dependencyStatus.install,
+    use: requiredPackages,
+    required: requiredPackages.length > 0 || requiredUsage.length > 0
   };
+}
+
+function resolveDependencyStatus({ dependencies, packageJsonPath, projectRoot, requiredPackages }) {
+  const checkedFrom = [packageJsonPath];
+  const declared = [];
+  const installed = [];
+  const missing = [];
+  const invalid = [];
+
+  for (const name of requiredPackages) {
+    if (dependencies[name] === undefined) {
+      missing.push(name);
+      continue;
+    }
+
+    declared.push(name);
+    const installation = inspectPackageInstallation(projectRoot, name);
+    checkedFrom.push(installation.checkedFrom);
+    if (installation.ok) {
+      installed.push(name);
+    } else {
+      invalid.push({
+        name,
+        reason: installation.reason,
+        checkedFrom: installation.checkedFrom,
+        entry: installation.entry ?? null
+      });
+    }
+  }
+
+  const install = dedupe([
+    ...missing,
+    ...invalid.map((item) => item.name)
+  ]);
+  return {
+    checkedFrom: dedupe(checkedFrom),
+    required: requiredPackages,
+    declared,
+    installed,
+    missing,
+    invalid,
+    install,
+    installSpecs: install.map((name) => resolveInstallSpec(name))
+  };
+}
+
+function inspectPackageInstallation(projectRoot, name) {
+  const packageRoot = path.join(projectRoot, "node_modules", ...name.split("/"));
+  const packageJsonPath = path.join(packageRoot, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_json_not_found"
+    };
+  }
+
+  let packageJson;
+  try {
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+  } catch {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_json_invalid"
+    };
+  }
+
+  const entry = resolvePackageEntry(packageJson);
+  if (entry === null) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_entry_not_declared"
+    };
+  }
+
+  const entryPath = path.join(packageRoot, entry);
+  if (!fs.existsSync(entryPath)) {
+    return {
+      ok: false,
+      checkedFrom: packageJsonPath,
+      reason: "package_entry_not_found",
+      entry
+    };
+  }
+
+  return {
+    ok: true,
+    checkedFrom: packageJsonPath,
+    entry
+  };
+}
+
+function resolvePackageEntry(packageJson) {
+  const exported = packageJson.exports?.["."] ?? packageJson.exports;
+  const exportEntry = typeof exported === "string"
+    ? exported
+    : firstString([
+        exported?.browser,
+        exported?.import,
+        exported?.default,
+        exported?.require
+      ]);
+  const entry = firstString([
+    exportEntry,
+    packageJson.module,
+    packageJson.main
+  ]);
+  return entry === null ? null : entry.replace(/^\.\//, "");
+}
+
+function firstString(values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") return value;
+  }
+  return null;
+}
+
+function resolveInstallSpec(name) {
+  const envName = packageInstallSpecEnvironment[name];
+  const envValue = envName === undefined ? undefined : process.env[envName];
+  return typeof envValue === "string" && envValue.trim() !== ""
+    ? envValue.trim()
+    : name;
 }
 
 function resolveModern(dependencies) {
@@ -123,9 +301,6 @@ function resolveModern(dependencies) {
   const hasSupportedVersion = versionEntries.some((entry) =>
     entry.isPreview || compareVersions(entry.parsed, parseVersion(MODERN_PLUGIN_MIN_VERSION)) >= 0
   );
-  const hasModernPlugin = dependencies["@openruntime/modern-plugin"] !== undefined;
-  const hasCore = dependencies["@openruntime/core"] !== undefined;
-
   if (!detected) {
     return {
       detected: false,
@@ -135,8 +310,8 @@ function resolveModern(dependencies) {
         satisfied: false
       },
       versions,
-      install: [],
-      use: []
+      requiredPackages: [],
+      usage: []
     };
   }
 
@@ -149,8 +324,8 @@ function resolveModern(dependencies) {
         satisfied: true
       },
       versions,
-      install: hasModernPlugin ? [] : ["@openruntime/modern-plugin"],
-      use: ["@openruntime/modern-plugin"]
+      requiredPackages: [openRuntimeModernPluginPackage],
+      usage: ["modern_plugin"]
     };
   }
 
@@ -162,15 +337,14 @@ function resolveModern(dependencies) {
       satisfied: false
     },
     versions,
-    install: hasCore ? [] : ["@openruntime/core"],
-    use: ["@openruntime/core"]
+    requiredPackages: [openRuntimeCorePackage],
+    usage: ["core_runtime"]
   };
 }
 
 function resolveModuleFederation(dependencies) {
   const dependencyNames = Object.keys(dependencies);
   const detected = dependencyNames.some((name) => isMfDependency(name) || isVmokDependency(name));
-  const hasObservability = dependencies[mfObservabilityPackage] !== undefined;
 
   if (!detected) {
     return {
@@ -178,8 +352,8 @@ function resolveModuleFederation(dependencies) {
       versionGate: {
         required: false
       },
-      install: [],
-      use: []
+      requiredPackages: [],
+      usage: []
     };
   }
 
@@ -188,9 +362,85 @@ function resolveModuleFederation(dependencies) {
     versionGate: {
       required: false
     },
-    install: hasObservability ? [] : [mfObservabilityPackage],
-    use: [mfObservabilityPackage]
+    requiredPackages: [mfObservabilityPackage],
+    usage: ["mf_observability"]
   };
+}
+
+function detectUsage(projectRoot, requiredUsage) {
+  if (requiredUsage.length === 0) return [];
+  const content = readProjectSourceContent(projectRoot);
+  const detected = [];
+  if (requiredUsage.includes("core_runtime") && detectsCoreRuntimeUsage(content)) {
+    detected.push("core_runtime");
+  }
+  if (requiredUsage.includes("modern_plugin") && detectsModernPluginUsage(content)) {
+    detected.push("modern_plugin");
+  }
+  if (requiredUsage.includes("mf_observability") && detectsMfObservabilityUsage(content)) {
+    detected.push("mf_observability");
+  }
+  return detected;
+}
+
+function readProjectSourceContent(projectRoot) {
+  const chunks = [];
+  let scannedFiles = 0;
+
+  function walk(directory) {
+    if (scannedFiles >= SOURCE_SCAN_MAX_FILES) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (scannedFiles >= SOURCE_SCAN_MAX_FILES) return;
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (!SOURCE_SCAN_EXCLUDED_DIRECTORIES.has(entry.name)) {
+          walk(entryPath);
+        }
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!SOURCE_FILE_EXTENSIONS.has(path.extname(entry.name))) continue;
+
+      try {
+        const stat = fs.statSync(entryPath);
+        if (stat.size > SOURCE_SCAN_MAX_BYTES) continue;
+        chunks.push(fs.readFileSync(entryPath, "utf8"));
+        scannedFiles += 1;
+      } catch {
+        // Ignore unreadable generated or transient files.
+      }
+    }
+  }
+
+  walk(projectRoot);
+  return chunks.join("\n");
+}
+
+function detectsCoreRuntimeUsage(content) {
+  return (
+    content.includes(openRuntimeCorePackage) &&
+    /(?:createOpenRuntime|installOpenRuntimeOnWindow|connectBridge)\s*\(/.test(content)
+  ) || (
+    /connectBridge\s*\(/.test(content) &&
+    /openruntime/i.test(content)
+  );
+}
+
+function detectsModernPluginUsage(content) {
+  return content.includes(openRuntimeModernPluginPackage) ||
+    /openRuntimeModernPlugin\s*\(/.test(content);
+}
+
+function detectsMfObservabilityUsage(content) {
+  return content.includes(mfObservabilityPackage) ||
+    /ObservabilityPlugin\s*\(/.test(content);
 }
 
 function isMfDependency(name) {

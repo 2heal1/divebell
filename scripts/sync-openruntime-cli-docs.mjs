@@ -15,10 +15,11 @@ if (!noBuild) {
 const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/help.js")).href;
 const { createCliReferenceMarkdown, createCliSkillSectionMarkdown } = await import(helpModuleUrl);
 const cliReferenceContent = createCliReferenceMarkdown();
-const skillCliHeading = "## 13. 常用 CLI";
+const skillCliHeading = "## 常用 CLI";
 const cliSkillSection = createCliSkillSectionMarkdown(undefined, { heading: skillCliHeading });
 
 const cliReferencePath = join(repoRoot, "docs/cli-reference.md");
+const skillCliReferencePath = join(repoRoot, "skills/openruntime/references/cli.md");
 const skillPath = join(repoRoot, "skills/openruntime/SKILL.md");
 const skillContent = await readExisting(skillPath);
 const updatedSkillContent = replaceMarkdownSection(skillContent, skillCliHeading, cliSkillSection);
@@ -29,6 +30,10 @@ if (checkOnly) {
     hasMismatch = true;
     console.error(`${relative(repoRoot, cliReferencePath)} is out of date. Run "pnpm run docs:cli".`);
   }
+  if (await readExisting(skillCliReferencePath) !== cliReferenceContent) {
+    hasMismatch = true;
+    console.error(`${relative(repoRoot, skillCliReferencePath)} is out of date. Run "pnpm run docs:cli".`);
+  }
   if (skillContent !== updatedSkillContent) {
     hasMismatch = true;
     console.error(`${relative(repoRoot, skillPath)} CLI command section is out of date. Run "pnpm run docs:cli".`);
@@ -37,6 +42,9 @@ if (checkOnly) {
   await mkdir(dirname(cliReferencePath), { recursive: true });
   await writeFile(cliReferencePath, cliReferenceContent, "utf8");
   console.log(`updated ${relative(repoRoot, cliReferencePath)}`);
+  await mkdir(dirname(skillCliReferencePath), { recursive: true });
+  await writeFile(skillCliReferencePath, cliReferenceContent, "utf8");
+  console.log(`updated ${relative(repoRoot, skillCliReferencePath)}`);
   await writeFile(skillPath, updatedSkillContent, "utf8");
   console.log(`updated ${relative(repoRoot, skillPath)} CLI command section`);
 }

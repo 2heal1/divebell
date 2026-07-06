@@ -17,6 +17,7 @@ import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, typ
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
 import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
+import { createFileRequiredActionStateStore } from "../dist/required-action-state.js";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "openruntime");
@@ -90,6 +91,594 @@ test("prints help for command help without executing the command", async () => {
   }
 });
 
+test("blocks diagnostic commands while a required action is pending", async () => {
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-required-action-"));
+  const store = createFileRequiredActionStateStore(process.cwd(), stateDirectory);
+  await store.write({
+    source: "workflow.connected",
+    status: "pending",
+    code: "OPENRUNTIME_INTEGRATION_REQUIRED",
+    sourceEditable: true,
+    canFallback: false,
+    allowedNextActions: ["apply_required_integration", "rerun_connected", "report_blocked"],
+    forbiddenCommands: ["snapshot", "console"],
+    integration: {
+      install: ["@openruntime/core", "@module-federation/observability-plugin"],
+      use: ["@openruntime/core", "@module-federation/observability-plugin"],
+      required: true
+    },
+    requiredAction: {
+      type: "apply_required_integration",
+      code: "OPENRUNTIME_INTEGRATION_REQUIRED"
+    },
+    createdAt: "2026-07-02T00:00:00.000Z",
+    updatedAt: "2026-07-02T00:00:00.000Z"
+  });
+
+  let touchedSideEffect = false;
+  const output = createOutput();
+  const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    requiredActionStateDirectory: stateDirectory,
+    fetcher: async () => {
+      touchedSideEffect = true;
+      throw new Error("fetcher should not be called");
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(touchedSideEffect, false);
+  const result = JSON.parse(output.text());
+  assert.equal(result.code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
+  assert.equal(result.command, "snapshot");
+  assert.equal(result.nextAction.type, "apply_required_integration");
+  assert.match(output.errorText(), /OPENRUNTIME_REQUIRED_ACTION_PENDING/);
+});
+
+test("blocks required actions across symlinked working directories", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-required-action-cwd-"));
+  const stateDirectory = join(root, "state");
+  const realCwd = join(root, "real");
+  const linkedCwd = join(root, "linked");
+  mkdirSync(realCwd);
+  symlinkSync(realCwd, linkedCwd, "dir");
+
+  try {
+    const store = createFileRequiredActionStateStore(realCwd, stateDirectory);
+    await store.write({
+      source: "workflow.connected",
+      status: "pending",
+      code: "OPENRUNTIME_INTEGRATION_REQUIRED",
+      sourceEditable: true,
+      canFallback: false,
+      allowedNextActions: ["apply_required_integration", "rerun_connected", "report_blocked"],
+      forbiddenCommands: ["console"],
+      integration: {
+        install: ["@openruntime/core", "@module-federation/observability-plugin"],
+        use: ["@openruntime/core", "@module-federation/observability-plugin"],
+        required: true
+      },
+      requiredAction: {
+        type: "apply_required_integration",
+        code: "OPENRUNTIME_INTEGRATION_REQUIRED"
+      },
+      createdAt: "2026-07-02T00:00:00.000Z",
+      updatedAt: "2026-07-02T00:00:00.000Z"
+    });
+
+    const linkedStore = createFileRequiredActionStateStore(linkedCwd, stateDirectory);
+    const linkedState = await linkedStore.read();
+    assert.equal(linkedState?.code, "OPENRUNTIME_INTEGRATION_REQUIRED");
+
+    const previousCwd = process.cwd();
+    process.chdir(linkedCwd);
+    try {
+      let touchedSideEffect = false;
+      const output = createOutput();
+      const exitCode = await runCli(["console", "--limit", "10"], {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        requiredActionStateDirectory: stateDirectory,
+        browserRunner: createBrowserRunner(async () => {
+          touchedSideEffect = true;
+          throw new Error("browser should not be queried");
+        })
+      });
+
+      assert.equal(exitCode, 1);
+      assert.equal(touchedSideEffect, false);
+      const result = JSON.parse(output.text());
+      assert.equal(result.code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
+      assert.equal(result.command, "console");
+    } finally {
+      process.chdir(previousCwd);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration separates formal dependencies from temporary node_modules links", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-integration-"));
+  const project = join(root, "app");
+  const tempPlugin = join(root, "work", "openruntime-cli", "node_modules", "@module-federation", "observability-plugin");
+  const moduleFederationNodeModules = join(project, "node_modules", "@module-federation");
+  mkdirSync(project, { recursive: true });
+  mkdirSync(tempPlugin, { recursive: true });
+  mkdirSync(moduleFederationNodeModules, { recursive: true });
+  symlinkSync(tempPlugin, join(moduleFederationNodeModules, "observability-plugin"), "dir");
+  const packageJsonPath = writeIntegrationPackageJson(project, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.install.sort(), result.dependency.missing.sort());
+    assert.deepEqual(result.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration reports installed dependencies separately from missing usage", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-usage-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.dependency.installed.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.usage.detected, []);
+    assert.deepEqual(result.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration detects source usage separately from installed dependencies", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-detected-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "openruntime.ts"), `
+import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+
+const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+runtime.connectBridge({ port: 17321 });
+`, "utf8");
+  writeFileSync(join(root, "vmok.config.ts"), `
+import { ObservabilityPlugin } from "@module-federation/observability-plugin";
+
+export default {
+  plugins: [ObservabilityPlugin()],
+};
+`, "utf8");
+
+  try {
+    const result = runResolveIntegration(packageJsonPath);
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.usage.detected.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolve-integration treats declared packages with missing entries as install required", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-resolve-invalid-package-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "^0.0.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core", { createEntry: false });
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runResolveIntegration(packageJsonPath, {
+      OPENRUNTIME_CORE_PACKAGE: "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    });
+
+    assert.deepEqual(result.dependency.missing, []);
+    assert.deepEqual(result.dependency.invalid.map((item: any) => item.name), ["@openruntime/core"]);
+    assert.deepEqual(result.install, ["@openruntime/core"]);
+    assert.deepEqual(result.dependency.installSpecs, [
+      "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare asks to install missing dependencies before opening the page", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-install-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.status, "action_required");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.equal(result.output.nextAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.requiredAction.source, "prepare");
+    assert.deepEqual(result.output.install.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.output.nextAction.commands, [
+      "pnpm add @openruntime/core @module-federation/observability-plugin"
+    ]);
+    assert.match(result.output.descriptions.packages["@openruntime/core"].summary, /前置基础/);
+    assert.match(result.output.descriptions.packages["@openruntime/core"].summary, /connectBridge/);
+    assert.match(result.output.descriptions.packages["@module-federation/observability-plugin"].summary, /完整的 MF 生产者加载信息/);
+    assert.match(result.output.descriptions.packages["@module-federation/observability-plugin"].summary, /共享依赖信息/);
+    assert.equal(result.output.descriptions.packages["@openruntime/core"].reference, "references/core.md");
+    assert.equal(
+      result.output.descriptions.packages["@module-federation/observability-plugin"].reference,
+      "references/module-federation.md"
+    );
+    assert.match(result.output.nextAction.descriptions.usage.mf_observability.summary, /MF 生产者加载信息/);
+
+    const store = createFileRequiredActionStateStore(process.cwd(), result.stateDirectory);
+    const state = await store.read();
+    assert.equal(state?.source, "prepare");
+    assert.equal(state?.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+
+    let touchedSideEffect = false;
+    const output = createOutput();
+    const exitCode = await runCli(["console", "--limit", "10"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      requiredActionStateDirectory: result.stateDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        touchedSideEffect = true;
+        throw new Error("browser should not be queried");
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(touchedSideEffect, false);
+    assert.equal(JSON.parse(output.text()).code, "OPENRUNTIME_REQUIRED_ACTION_PENDING");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare explains modern plugin observable information", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-modern-plugin-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.install, ["@openruntime/modern-plugin"]);
+    assert.match(result.output.descriptions.packages["@openruntime/modern-plugin"].summary, /接入后就能获取 route/);
+    assert.match(result.output.descriptions.packages["@openruntime/modern-plugin"].summary, /hydration/);
+    assert.match(result.output.nextAction.descriptions.usage.modern_plugin.summary, /snapshot/);
+    assert.equal(result.output.descriptions.packages["@openruntime/modern-plugin"].reference, "references/modernjs.md");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare uses browser cli mode when source changes do not affect the page", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-affects-page", "false"]);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(result.output.reason, "source_changes_do_not_affect_page");
+    assert.equal(result.output.nextAction.type, "install_openruntime_cli");
+    assert.deepEqual(result.output.install, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.use, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.dependency.required, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.usage.required, ["browser_cli"]);
+    assert.deepEqual(result.output.nextAction.commands, [
+      "pnpm add -D @openruntime/cli"
+    ]);
+    assert.match(result.output.descriptions.packages["@openruntime/cli"].summary, /命令行工具/);
+    assert.equal(result.output.descriptions.usage.browser_cli.reference, "references/cli.md");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare uses browser cli mode when source is not editable", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-source-not-editable-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0"
+  });
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-editable", "false"]);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(result.output.reason, "source_not_editable");
+    assert.deepEqual(result.output.install, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.dependency.required, ["@openruntime/cli"]);
+    assert.deepEqual(result.output.nextAction.install, ["@openruntime/cli"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare passes in browser cli mode when cli is installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-pass-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0",
+    "@openruntime/cli": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/cli");
+
+  try {
+    const result = runPrepare(packageJsonPath, {}, ["--source-editable", "false"]);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.status, "pass");
+    assert.equal(result.output.mode, "browser_cli");
+    assert.deepEqual(result.output.install, []);
+    assert.equal(result.output.nextAction.type, "use_browser_cli");
+    assert.deepEqual(result.output.nextAction.allowedCommands, [
+      "open",
+      "console",
+      "network",
+      "page-snapshot",
+      "eval",
+      "wait-eval",
+      "screenshot",
+      "close"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare asks to apply usage when dependencies are installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-usage-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.status, "action_required");
+    assert.equal(result.output.nextAction.type, "apply_required_usage");
+    assert.equal(result.output.nextAction.code, "OPENRUNTIME_USAGE_REQUIRED");
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_USAGE_REQUIRED");
+    assert.deepEqual(result.output.install, []);
+    assert.deepEqual(result.output.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.output.nextAction.use.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.match(result.output.nextAction.descriptions.packages["@openruntime/core"].summary, /MF\/Modern 插件采集的信息/);
+    assert.match(result.output.nextAction.descriptions.usage.core_runtime.summary, /前置条件/);
+    assert.match(result.output.nextAction.descriptions.usage.mf_observability.summary, /共享依赖信息/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare passes when dependencies and source usage are detected", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-pass-"));
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+  mkdirSync(join(root, "src"), { recursive: true });
+  writeFileSync(join(root, "src", "openruntime.ts"), `
+import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+
+const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+runtime.connectBridge({ port: 17321 });
+`, "utf8");
+  writeFileSync(join(root, "vmok.config.ts"), `
+import { ObservabilityPlugin } from "@module-federation/observability-plugin";
+
+export default {
+  plugins: [ObservabilityPlugin()],
+};
+`, "utf8");
+
+  try {
+    const result = runPrepare(packageJsonPath);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.status, "pass");
+    assert.equal(result.output.nextAction.type, "continue_workflow");
+    assert.deepEqual(result.output.install, []);
+    assert.deepEqual(result.output.usage.missing, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("prepare clears source integration required action in browser cli mode", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-prepare-browser-cli-clear-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    "@modern-js/runtime": "3.4.0",
+    "@openruntime/cli": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/cli");
+  const store = createFileRequiredActionStateStore(process.cwd(), stateDirectory);
+
+  try {
+    await store.write({
+      source: "prepare",
+      status: "pending",
+      code: "OPENRUNTIME_USAGE_REQUIRED",
+      sourceEditable: true,
+      canFallback: false,
+      allowedNextActions: ["apply_required_usage", "rerun_prepare", "report_blocked"],
+      forbiddenCommands: ["console"],
+      integration: {
+        install: [],
+        use: ["@openruntime/modern-plugin"],
+        required: true
+      },
+      requiredAction: {
+        type: "apply_required_usage",
+        code: "OPENRUNTIME_USAGE_REQUIRED"
+      },
+      createdAt: "2026-07-02T00:00:00.000Z",
+      updatedAt: "2026-07-02T00:00:00.000Z"
+    });
+
+    const result = runPrepare(packageJsonPath, {}, [
+      "--source-affects-page",
+      "false",
+      "--state-dir",
+      stateDirectory
+    ]);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.output.mode, "browser_cli");
+    assert.equal(await store.read(), undefined);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow connected asks to install missing dependencies before usage changes", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-install-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0"
+  });
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.nextAction.dependency.missing.sort(), [
+      "@module-federation/observability-plugin",
+      "@openruntime/core"
+    ].sort());
+    assert.deepEqual(result.output.nextAction.requiredCommands, [
+      "pnpm add @openruntime/core @module-federation/observability-plugin"
+    ]);
+
+    const observe = runWorkflowObserve(root, stateDirectory);
+    assert.equal(observe.exitCode, 2);
+    assert.equal(observe.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(observe.output.nextAction.type, "install_missing_dependencies");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow connected asks to reinstall declared dependencies with invalid package entries", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-invalid-install-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "^0.0.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core", { createEntry: false });
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory, {
+      OPENRUNTIME_CORE_PACKAGE: "https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    });
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_DEPENDENCY_REQUIRED");
+    assert.equal(result.output.nextAction.type, "install_missing_dependencies");
+    assert.deepEqual(result.output.nextAction.dependency.invalid.map((item: any) => item.name), ["@openruntime/core"]);
+    assert.deepEqual(result.output.nextAction.requiredCommands, [
+      "pnpm add https://pkg.pr.new/2heal1/openruntime/@openruntime/core@test"
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow connected asks to apply usage after dependencies are installed", () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-workflow-usage-"));
+  const stateDirectory = join(root, "state");
+  const packageJsonPath = writeIntegrationPackageJson(root, {
+    edenx: "1.0.0",
+    "@vmok/kit": "1.0.0",
+    "@openruntime/core": "0.1.0",
+    "@module-federation/observability-plugin": "0.1.0"
+  });
+  writeInstalledPackage(root, "@openruntime/core");
+  writeInstalledPackage(root, "@module-federation/observability-plugin");
+
+  try {
+    const result = runWorkflowConnected(root, packageJsonPath, stateDirectory);
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.output.requiredAction.code, "OPENRUNTIME_USAGE_REQUIRED");
+    assert.equal(result.output.nextAction.type, "apply_required_usage");
+    assert.deepEqual(result.output.nextAction.dependency.missing, []);
+    assert.deepEqual(result.output.nextAction.usage.missing.sort(), ["core_runtime", "mf_observability"].sort());
+    assert.deepEqual(result.output.nextAction.requiredCommands, []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
@@ -106,28 +695,29 @@ test("generates CLI reference markdown from the help table", () => {
 
 test("generates the skill CLI command section from the help table", () => {
   const markdown = createCliSkillSectionMarkdown();
-  const skillMarkdown = createCliSkillSectionMarkdown(undefined, { heading: "## 13. 常用 CLI" });
+  const skillMarkdown = createCliSkillSectionMarkdown(undefined, { heading: "## 常用 CLI" });
 
   assert.match(markdown, /^### 常用 CLI/m);
-  assert.match(skillMarkdown, /^## 13. 常用 CLI/m);
+  assert.match(skillMarkdown, /^## 常用 CLI/m);
   assert.doesNotMatch(skillMarkdown, /^### 常用 CLI/m);
-  assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
+  assert.match(markdown, /完整 CLI 清单见 `references\/cli.md`/);
   assert.match(markdown, /先用一次不带 `--id` \/ `--query` 的全量 `snapshot` 快速探测/);
   assert.match(markdown, /进入 PATCH 后必须补或复用最小 `business:\*` target/);
   assert.match(markdown, /通过后百分百相信 verify/);
   assert.match(markdown, /严禁再调用 `snapshot`、`console`、`page-snapshot`/);
   assert.match(markdown, /openruntime open <url>/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
+  assert.match(markdown, /openruntime console \[--level <level>\]/);
+  assert.match(markdown, /openruntime network \[--url <query>\]/);
+  assert.match(markdown, /openruntime page-snapshot/);
   assert.match(markdown, /openruntime eval <script>/);
   assert.match(markdown, /openruntime wait-eval <script>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
+  assert.doesNotMatch(markdown, /openruntime start /);
   assert.doesNotMatch(markdown, /openruntime export-profile /);
   assert.doesNotMatch(markdown, /openruntime import-profile /);
   assert.doesNotMatch(markdown, /openruntime get-window <path>/);
-  assert.doesNotMatch(markdown, /openruntime network \[--url <query>\]/);
   assert.doesNotMatch(markdown, /openruntime screenshot /);
-  assert.doesNotMatch(markdown, /openruntime console \[--level <level>\]/);
-  assert.doesNotMatch(markdown, /openruntime page-snapshot/);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
@@ -2878,6 +3468,166 @@ test("recognizes a bin symlink as the cli entrypoint", () => {
     });
   }
 });
+
+function writeIntegrationPackageJson(projectRoot: string, dependencies: Record<string, string>): string {
+  mkdirSync(projectRoot, { recursive: true });
+  const packageJsonPath = join(projectRoot, "package.json");
+  writeFileSync(packageJsonPath, `${JSON.stringify({
+    name: "integration-fixture",
+    private: true,
+    dependencies
+  }, null, 2)}\n`, "utf8");
+  return packageJsonPath;
+}
+
+function writeInstalledPackage(
+  projectRoot: string,
+  name: string,
+  options: { createEntry?: boolean } = {}
+): void {
+  const packageRoot = join(projectRoot, "node_modules", ...name.split("/"));
+  const entryPath = join(packageRoot, "dist", "index.js");
+  mkdirSync(join(packageRoot, "dist"), { recursive: true });
+  writeFileSync(join(packageRoot, "package.json"), `${JSON.stringify({
+    name,
+    version: "0.1.0",
+    type: "module",
+    main: "./dist/index.js",
+    exports: {
+      ".": {
+        default: "./dist/index.js"
+      }
+    }
+  }, null, 2)}\n`, "utf8");
+  if (options.createEntry !== false) {
+    writeFileSync(entryPath, "export {};\n", "utf8");
+  }
+}
+
+function runResolveIntegration(packageJsonPath: string, env: Record<string, string> = {}): any {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "resolve-integration.mjs"),
+    packageJsonPath
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function runPrepare(
+  packageJsonPath: string,
+  env: Record<string, string> = {},
+  extraArgs: string[] = []
+): { exitCode: number | null; output: any; stderr: string; stateDirectory: string } {
+  const stateDirectory = extraArgs.includes("--state-dir")
+    ? String(extraArgs[extraArgs.indexOf("--state-dir") + 1])
+    : join(dirname(packageJsonPath), ".openruntime-test-state");
+  const effectiveExtraArgs = extraArgs.includes("--state-dir")
+    ? extraArgs
+    : [...extraArgs, "--state-dir", stateDirectory];
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "prepare.mjs"),
+    "--package-json",
+    packageJsonPath,
+    ...effectiveExtraArgs
+  ], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr,
+    stateDirectory
+  };
+}
+
+function runWorkflowConnected(
+  cwd: string,
+  packageJsonPath: string,
+  stateDirectory: string,
+  env: Record<string, string> = {}
+): { exitCode: number | null; output: any; stderr: string } {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "workflow.mjs"),
+    "connected",
+    "--package-json",
+    packageJsonPath,
+    "--bridge",
+    "http://127.0.0.1:9",
+    "--url",
+    "http://localhost:3000/",
+    "--out",
+    join(cwd, "openruntime-evidence.json"),
+    "--state-dir",
+    stateDirectory,
+    "--source-editable",
+    "true"
+  ], {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...env
+    }
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr
+  };
+}
+
+function runWorkflowObserve(
+  cwd: string,
+  stateDirectory: string
+): { exitCode: number | null; output: any; stderr: string } {
+  const result = spawnSync(process.execPath, [
+    repoScriptPath("skills", "openruntime", "scripts", "workflow.mjs"),
+    "observe",
+    "--url",
+    "http://localhost:3000/",
+    "--out",
+    join(cwd, "openruntime-evidence.json"),
+    "--state-dir",
+    stateDirectory
+  ], {
+    cwd,
+    encoding: "utf8"
+  });
+
+  assert.notEqual(result.stdout.trim(), "", result.stderr);
+  return {
+    exitCode: result.status,
+    output: JSON.parse(result.stdout),
+    stderr: result.stderr
+  };
+}
+
+function repoScriptPath(...segments: string[]): string {
+  const candidates = [
+    process.cwd(),
+    join(process.cwd(), "..", "..")
+  ];
+  for (const candidate of candidates) {
+    const filePath = join(candidate, ...segments);
+    if (existsSync(filePath)) return filePath;
+  }
+  throw new Error(`Could not find repo file: ${segments.join("/")}`);
+}
 
 function createOutput(): {
   stdout: { write(chunk: string): void };

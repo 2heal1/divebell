@@ -69,6 +69,11 @@ import {
   readProfileInputFile,
   type ProfileExportResult
 } from "./profile.js";
+import {
+  createFileRequiredActionStateStore,
+  type RequiredActionState,
+  type RequiredActionStateStore
+} from "./required-action-state.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
@@ -115,6 +120,7 @@ export interface CliRunOptions {
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;
   operationLogDirectory?: string;
+  requiredActionStateDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   exportChromeAuthProfile?: typeof exportChromeAuthProfile;
 }
@@ -205,6 +211,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
   const browserRunner = options.browserRunner ?? createNextBrowserRunner();
   const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(import.meta.url);
   const operationLogStore = createFileOperationLogStore(process.cwd(), options.operationLogDirectory);
+  const requiredActionStateStore = createFileRequiredActionStateStore(process.cwd(), options.requiredActionStateDirectory);
   const args = parseCliArgs(argv);
 
   try {
@@ -235,6 +242,14 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "import-profile") {
       return await runImportProfileCommand(args, stdout, browserRunner);
     }
+
+    const blockedByRequiredAction = await rejectIfRequiredActionPending(
+      args.command[0],
+      requiredActionStateStore,
+      stdout,
+      stderr
+    );
+    if (blockedByRequiredAction !== undefined) return blockedByRequiredAction;
 
     if (isBrowserCommand(args.command[0])) {
       return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore);
@@ -944,6 +959,35 @@ function getStringValue(value: unknown): string | undefined {
 
 function getNumberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+async function rejectIfRequiredActionPending(
+  command: string | undefined,
+  stateStore: RequiredActionStateStore,
+  stdout: { write(chunk: string): void },
+  stderr: { write(chunk: string): void }
+): Promise<number | undefined> {
+  if (command === undefined || command === "open" || command === "close") {
+    return undefined;
+  }
+  const state = await stateStore.read();
+  if (state === undefined || !state.forbiddenCommands.includes(command)) {
+    return undefined;
+  }
+  writeJson(stdout, createRequiredActionPendingFailure(command, state));
+  stderr.write("OPENRUNTIME_REQUIRED_ACTION_PENDING\n");
+  return 1;
+}
+
+function createRequiredActionPendingFailure(command: string, state: RequiredActionState): Record<string, unknown> {
+  return {
+    status: "fail",
+    code: "OPENRUNTIME_REQUIRED_ACTION_PENDING",
+    command,
+    requiredAction: state,
+    allowedNextActions: state.allowedNextActions,
+    nextAction: state.requiredAction
+  };
 }
 
 async function runBrowserCliCommand(

@@ -3,7 +3,8 @@
 `@openruntime/modern-plugin` lets a Modern.js app expose framework runtime
 state to OpenRuntime. It records information that Modern.js already knows:
 application render state, current route state, SSR state, hydration state, and
-optional business ready state.
+optional business ready state. When installed in `modern.config.ts`, it also
+records the Modern.js dev server lifecycle and latest dev compile result.
 
 The plugin does not decide whether a business page is usable. Framework targets
 only describe framework lifecycle. Business readiness should use the business
@@ -23,12 +24,32 @@ export default openRuntimeModernPlugin({
 });
 ```
 
+To expose dev server and compile state, add the same plugin in
+`modern.config.ts`:
+
+```ts
+import { appTools, defineConfig } from "@modern-js/app-tools";
+import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
+
+export default defineConfig({
+  plugins: [
+    appTools(),
+    openRuntimeModernPlugin({
+      bridge: {
+        port: 17321,
+      },
+    }),
+  ],
+});
+```
+
 Then use the OpenRuntime CLI against the page:
 
 ```sh
 pnpm exec openruntime targets --url http://localhost:19081/
 pnpm exec openruntime snapshot --url http://localhost:19081/
 pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
+pnpm exec openruntime wait-for modern:dev-server compiled --runtime modern:dev-server
 ```
 
 ## Targets
@@ -113,6 +134,41 @@ Common waits:
 ```sh
 pnpm exec openruntime wait-for modern:route ready --where pathname=/orders
 pnpm exec openruntime wait-for modern:route error --where pathname=/broken
+```
+
+### `modern:dev-server`
+
+Type: `modern.dev-server`
+
+This target is registered only when the plugin runs from `modern.config.ts`.
+It describes the dev server and the latest dev compile. It is published as a
+server-side runtime, so select it with `--runtime modern:dev-server`.
+
+Statuses:
+
+- `starting`: the Modern.js dev command has started or is restarting.
+- `running`: the dev server has started, but no compile result has been
+  observed yet.
+- `compiling`: a compiler has been created or a watched file changed.
+- `compiled`: the latest dev compile finished without errors.
+- `error`: the latest dev compile finished with errors.
+
+Common snapshot data:
+
+- `server.started`: whether Modern.js has reported the dev server as started.
+- `server.port`: dev server port when known.
+- `compile.done`: whether the latest compile has finished.
+- `compile.success`: whether the latest finished compile succeeded.
+- `compile.count`: number of compile completions observed.
+- `compile.isFirstCompile`: whether Modern.js marked this as the first compile.
+- `compile.errorsCount` and `compile.warningsCount`: counts reported by the
+  bundler when available.
+- `compile.environments`: Modern.js environments reported with the compile.
+
+Common wait:
+
+```sh
+pnpm exec openruntime wait-for modern:dev-server compiled --runtime modern:dev-server
 ```
 
 ## Optional Route Actions

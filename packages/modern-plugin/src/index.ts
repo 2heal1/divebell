@@ -2,8 +2,15 @@ import { createPackageInfo } from "@openruntime/core";
 
 export { openRuntimeModernPlugin } from "./plugin/create-plugin.js";
 export type {
+  ModernCompilerCreatedEvent,
+  ModernDevCompileDoneEvent,
+  ModernDevServerFileChangedEvent,
+  ModernDevServerPluginApi,
+  ModernDevServerStartedEvent,
+  ModernPluginApi,
   ModernRuntimePlugin,
   ModernRuntimePluginApi,
+  OpenRuntimeModernDevServerOptions,
   OpenRuntimeModernPluginOptions
 } from "./plugin/types.js";
 export type {

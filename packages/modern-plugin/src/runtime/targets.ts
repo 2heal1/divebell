@@ -3,18 +3,21 @@ import type { ModernRouteObject } from "../modern/events.js";
 
 export const modernTargetTypes = {
   app: "modern.app",
+  devServer: "modern.dev-server",
   ssr: "modern.ssr",
   hydration: "modern.hydration",
   route: "modern.route"
 } as const;
 
 const appStatuses = ["initializing", "rendering", "ready", "error"] as const;
+const devServerStatuses = ["starting", "running", "compiling", "compiled", "error"] as const;
 const ssrStatuses = ["unknown", "rendering", "server-rendered", "fallback", "invalidated", "error"] as const;
 const hydrationStatuses = ["running", "success", "fallback", "error"] as const;
 const routeStatuses = ["idle", "loading", "ready", "error"] as const;
 
 export const modernTargetIds = {
   app: "modern:app",
+  devServer: "modern:dev-server",
   ssr: "modern:ssr",
   hydration: "modern:hydration",
   route: "modern:route"
@@ -48,6 +51,17 @@ export function registerBaseTargets(runtime: OpenRuntimeCore, source: string): v
     label: "Modern.js app",
     description: "Overall Modern.js runtime state for this page.",
     statuses: [...appStatuses]
+  });
+}
+
+export function registerDevServerTarget(runtime: OpenRuntimeCore, source: string): void {
+  runtime.registerTarget({
+    id: modernTargetIds.devServer,
+    type: modernTargetTypes.devServer,
+    source,
+    label: "Modern.js dev server",
+    description: "Modern.js development server and latest dev compile state.",
+    statuses: [...devServerStatuses]
   });
 }
 

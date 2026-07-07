@@ -1,7 +1,12 @@
 import type {
   ModernRuntimePluginApi,
   ModernRuntimePlugin,
+  ModernCompilerCreatedEvent,
+  ModernDevCompileDoneEvent,
+  ModernDevServerFileChangedEvent,
+  ModernDevServerStartedEvent,
   ModernHydrationEvent,
+  ModernPluginApi,
   ModernRenderContext,
   ModernRouteComponentEvent,
   ModernRouteLoaderEvent,
@@ -11,7 +16,7 @@ import type {
 } from "../../dist/index.js";
 
 export interface ModernApiHarness {
-  api: ModernRuntimePluginApi;
+  api: ModernPluginApi;
   handlers: {
     onBeforeRender?: (context: ModernRenderContext) => void;
     onHydration?: (event: ModernHydrationEvent) => void;
@@ -20,6 +25,12 @@ export interface ModernApiHarness {
     onRouteLoader?: (event: ModernRouteLoaderEvent) => void;
     onRouteComponent?: (event: ModernRouteComponentEvent) => void;
     extendStreamSSR?: () => ModernStreamSsrExtender;
+    onBeforeDev?: () => void | Promise<void>;
+    onAfterDev?: (event: ModernDevServerStartedEvent) => void | Promise<void>;
+    onAfterCreateCompiler?: (event: ModernCompilerCreatedEvent) => void | Promise<void>;
+    onDevCompileDone?: (event: ModernDevCompileDoneEvent) => void | Promise<void>;
+    onFileChanged?: (event: ModernDevServerFileChangedEvent) => void | Promise<void>;
+    onBeforeRestart?: () => void | Promise<void>;
   };
 }
 
@@ -46,6 +57,37 @@ export function createModernApiHarness(plugin: ModernRuntimePlugin): ModernApiHa
     },
     extendStreamSSR(handler) {
       handlers.extendStreamSSR = handler;
+    }
+  };
+
+  plugin.setup(api);
+
+  return {
+    api,
+    handlers
+  };
+}
+
+export function createModernCliApiHarness(plugin: ModernRuntimePlugin): ModernApiHarness {
+  const handlers: ModernApiHarness["handlers"] = {};
+  const api: ModernPluginApi = {
+    onBeforeDev(handler) {
+      handlers.onBeforeDev = handler;
+    },
+    onAfterDev(handler) {
+      handlers.onAfterDev = handler;
+    },
+    onAfterCreateCompiler(handler) {
+      handlers.onAfterCreateCompiler = handler;
+    },
+    onDevCompileDone(handler) {
+      handlers.onDevCompileDone = handler;
+    },
+    onFileChanged(handler) {
+      handlers.onFileChanged = handler;
+    },
+    onBeforeRestart(handler) {
+      handlers.onBeforeRestart = handler;
     }
   };
 

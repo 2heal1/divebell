@@ -179,6 +179,7 @@ function shouldInvalidateSsrFromRoute(state: ModernPluginRuntimeState): boolean 
 }
 
 export function handleRouterCreated(state: ModernPluginRuntimeState, event: ModernRouterCreatedEvent): void {
+  state.setRouter(event.router);
   state.updateRouteFromRouterState(event.routes, event.router.state);
   syncAppFromRoute(state, {
     basename: event.basename,
@@ -192,6 +193,7 @@ export function handleRouterStateChange(
   state: ModernPluginRuntimeState,
   event: ModernRouterStateChangeEvent
 ): void {
+  state.setRouter(event.router);
   state.updateRouteFromRouterState(event.routes, event.state);
   syncAppFromRoute(state, {
     routeCount: event.routes.length

@@ -14,6 +14,8 @@ export interface OpenRuntimeModernPluginOptions {
   source?: string;
   bridge?: false | BridgeConnectOptions;
   host?: OpenRuntimeWindowHost;
+  injectRouteListAction?: boolean;
+  injectRouteNavigateAction?: boolean;
 }
 
 export interface ModernRuntimePlugin {

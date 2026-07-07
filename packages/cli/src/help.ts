@@ -1,5 +1,5 @@
 export interface CliCommandReference {
-  category: "Bridge and Browser" | "Runtime" | "Extensions";
+  category: "Bridge and Browser" | "Runtime" | "Extensions" | "External Extensions";
   usage: string;
   description: string;
 }
@@ -134,6 +134,11 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Runtime",
     usage: "openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]",
     description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
+  },
+  {
+    category: "Extensions",
+    usage: "openruntime extensions list",
+    description: "列出当前 CLI 已加载的内部扩展和外部插件。"
   }
 ];
 
@@ -180,10 +185,20 @@ export interface CliSkillSectionOptions {
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
+  const commandLines = categories.flatMap((category) => {
+    const commands = commandReferences.filter((command) => command.category === category);
+    if (commands.length === 0) return [];
+    return [
+      "",
+      `${category}:`,
+      ...commands.map((command) => `  ${command.usage}`)
+    ];
+  });
 
   return [
     "Usage:",
-    ...commandReferences.map((command) => `  ${command.usage}`),
+    ...commandLines,
     "",
     "Examples:",
     ...exampleReferences.map((example) => `  ${example.command}`)
@@ -193,11 +208,12 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
     Runtime: "Runtime",
-    Extensions: "扩展"
+    Extensions: "扩展",
+    "External Extensions": "外部插件"
   };
   const lines = [
     "# OpenRuntime CLI Reference",

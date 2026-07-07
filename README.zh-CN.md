@@ -140,6 +140,56 @@ openruntime release-note latest --limit 3
 
 ---
 
+## CLI 扩展
+
+OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己的工作流命令，而不需要修改 OpenRuntime 源码。
+
+扩展导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 扩展开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Extension Development](docs/cli-extensions.md)。
+
+外部扩展默认从这里读取：
+
+```text
+~/.openruntime/extensions
+```
+
+可以用环境变量改目录：
+
+```sh
+OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+```
+
+也可以关闭外部扩展：
+
+```sh
+OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+```
+
+支持两种文件形式：
+
+```text
+~/.openruntime/extensions/foo.mjs
+~/.openruntime/extensions/foo/index.mjs
+```
+
+外部扩展会在 help 里单独展示，并标注来源：
+
+```text
+External Extensions:
+  openruntime foo ping [external: foo]
+```
+
+查看当前加载结果：
+
+```sh
+openruntime extensions list
+```
+
+如果外部扩展和内置命令或内部扩展重名，OpenRuntime 会跳过外部扩展并打印警告。扩展加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
+
+外部扩展会执行本机代码，只加载可信文件。
+
+---
+
 ## Architecture
 
 ```text

@@ -9,6 +9,7 @@ export type {
 export type {
   ModernDataRouter,
   ModernHydrationEvent,
+  ModernNavigateOptions,
   ModernRenderContext,
   ModernRouteComponentEvent,
   ModernRouteLoaderEvent,

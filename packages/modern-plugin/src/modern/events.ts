@@ -85,6 +85,11 @@ export type ModernRouteComponentEvent =
 
 export interface ModernDataRouter {
   state?: ModernRouterState;
+  navigate?: (to: string, options?: ModernNavigateOptions) => unknown;
+}
+
+export interface ModernNavigateOptions {
+  replace?: boolean;
 }
 
 export interface ModernRouterState {

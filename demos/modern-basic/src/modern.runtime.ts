@@ -6,7 +6,9 @@ export default defineRuntimeConfig({
     openRuntimeModernPlugin({
       bridge: {
         port: 17321
-      }
+      },
+      injectRouteListAction: true,
+      injectRouteNavigateAction: true
     })
   ]
 });

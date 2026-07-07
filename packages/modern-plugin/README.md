@@ -115,6 +115,44 @@ pnpm exec openruntime wait-for modern:route ready --where pathname=/orders
 pnpm exec openruntime wait-for modern:route error --where pathname=/broken
 ```
 
+## Optional Route Actions
+
+The Modern.js plugin does not register route actions by default. Enable them
+explicitly when the page should expose route list and route navigation actions
+to Agents:
+
+```ts
+openRuntimeModernPlugin({
+  injectRouteListAction: true,
+  injectRouteNavigateAction: true,
+});
+```
+
+### `modern.route.list`
+
+Enabled by `injectRouteListAction`.
+
+This safe action returns the same known route manifest stored on the
+`modern:route` target.
+
+```sh
+pnpm exec openruntime run-action modern.route.list
+```
+
+### `modern.route.navigate`
+
+Enabled by `injectRouteNavigateAction`.
+
+This state-changing action navigates through the Modern.js router. The `to`
+input only accepts routes known by the current `modern:route` route manifest.
+Use input options to read the current candidate route pathnames:
+
+```sh
+pnpm exec openruntime input-options --action modern.route.navigate --input to
+pnpm exec openruntime run-action modern.route.navigate --payload '{"to":"/orders"}'
+pnpm exec openruntime wait-for modern:route ready --where pathname=/orders
+```
+
 ### `modern:ssr`
 
 Type: `modern.ssr`

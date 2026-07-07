@@ -2,6 +2,7 @@ import type {
   OpenRuntimeCore,
   OpenRuntimeWindowHost,
   RuntimeError,
+  RuntimeInputOption,
   RuntimeStatus
 } from "@openruntime/core";
 import {
@@ -9,6 +10,7 @@ import {
   syncServerRuntimeBridge
 } from "@openruntime/core";
 import type {
+  ModernDataRouter,
   ModernRouteMatch,
   ModernRouteObject,
   ModernRouterState
@@ -60,6 +62,13 @@ interface RouteComponentState {
   data?: unknown;
 }
 
+const routeListActionName = "modern.route.list";
+const routeNavigateActionName = "modern.route.navigate";
+
+type NavigableRouteManifestEntry = RouteManifestEntry & {
+  pathname: string;
+};
+
 export class ModernPluginRuntimeState {
   readonly source: string;
   readonly #options: OpenRuntimeModernPluginOptions;
@@ -68,7 +77,10 @@ export class ModernPluginRuntimeState {
   readonly #loaderStates = new Map<string, RouteLoaderState>();
   readonly #componentStates = new Map<string, RouteComponentState>();
   readonly #routeErrors = new Map<string, RuntimeError>();
+  readonly #routeListActionRuntimes = new WeakSet<OpenRuntimeCore>();
+  readonly #routeNavigateActionRuntimes = new WeakSet<OpenRuntimeCore>();
   #runtime?: OpenRuntimeCore;
+  #router?: ModernDataRouter;
   #serverRenderContext?: OpenRuntimeRenderContext;
   #serverSyncQueue: Promise<void> = Promise.resolve();
   #currentMatches: RouteRuntimeMatch[] = [];
@@ -93,6 +105,10 @@ export class ModernPluginRuntimeState {
 
   getHost(): OpenRuntimeWindowHost | undefined {
     return this.#options.host;
+  }
+
+  setRouter(router: ModernDataRouter): void {
+    this.#router = router;
   }
 
   startServerRender(): OpenRuntimeRenderContext {
@@ -260,7 +276,121 @@ export class ModernPluginRuntimeState {
   #ensureBaseTargets(runtime: OpenRuntimeCore): void {
     registerBaseTargets(runtime, this.source);
     registerRouteTargetInfos(runtime, this.source, [...this.#routes.values()]);
+    this.#ensureRouteActions(runtime);
     updateInitialSnapshot(runtime, this.source, modernTargetIds.app, "initializing");
+  }
+
+  #ensureRouteActions(runtime: OpenRuntimeCore): void {
+    if (this.#serverRenderContext !== undefined) {
+      return;
+    }
+
+    if (this.#options.injectRouteListAction === true && !this.#routeListActionRuntimes.has(runtime)) {
+      runtime.registerAction({
+        name: routeListActionName,
+        description: "List Modern.js routes known by the current page.",
+        source: this.source,
+        risk: "safe",
+        handler: () => ({
+          routes: this.#getRouteManifestEntries(),
+          routeCount: this.#routes.size
+        })
+      });
+      this.#routeListActionRuntimes.add(runtime);
+    }
+
+    if (this.#options.injectRouteNavigateAction === true && !this.#routeNavigateActionRuntimes.has(runtime)) {
+      runtime.registerAction({
+        name: routeNavigateActionName,
+        description: "Navigate to a known Modern.js route.",
+        source: this.source,
+        risk: "state-changing",
+        inputSchema: {
+          type: "object",
+          properties: {
+            to: {
+              type: "string",
+              description: "Known route pathname to navigate to."
+            },
+            replace: {
+              type: "boolean",
+              description: "Replace the current history entry instead of pushing a new entry."
+            }
+          },
+          required: ["to"],
+          additionalProperties: false
+        },
+        getInputOptions: (inputName) => {
+          if (inputName !== "to") {
+            return [];
+          }
+
+          return this.#getRouteNavigateOptions();
+        },
+        handler: async (payload) => this.#navigateRoute(payload)
+      });
+      this.#routeNavigateActionRuntimes.add(runtime);
+    }
+  }
+
+  #getRouteManifestEntries(): RouteManifestEntry[] {
+    return [...this.#routes.values()].map(getRouteManifestEntry);
+  }
+
+  #getRouteNavigateOptions(): RuntimeInputOption[] {
+    const seen = new Set<string>();
+    const options: RuntimeInputOption[] = [];
+
+    for (const route of this.#getRouteManifestEntries()) {
+      if (!isNavigableRouteManifestEntry(route) || seen.has(route.pathname)) {
+        continue;
+      }
+
+      seen.add(route.pathname);
+      options.push({
+        value: route.pathname,
+        description: getRouteOptionDescription(route)
+      });
+    }
+
+    return options;
+  }
+
+  async #navigateRoute(payload: unknown): Promise<Record<string, unknown>> {
+    const input = isRecord(payload) ? payload : {};
+    const to = typeof input.to === "string" ? input.to.trim() : "";
+    if (to === "") {
+      throw new Error("Route navigation requires a non-empty to value.");
+    }
+
+    const route = this.#resolveNavigableRoute(to);
+    if (route === undefined) {
+      throw new Error(`Route "${to}" is not in the Modern.js route list.`);
+    }
+
+    const router = this.#router;
+    if (typeof router?.navigate !== "function") {
+      throw new Error("Modern.js router navigation is not available.");
+    }
+
+    const replace = input.replace === true;
+    await router.navigate(route.pathname, { replace });
+
+    return {
+      to: route.pathname,
+      routeId: route.routeId,
+      replace
+    };
+  }
+
+  #resolveNavigableRoute(to: string): NavigableRouteManifestEntry | undefined {
+    return this.#getRouteManifestEntries().find((route): route is NavigableRouteManifestEntry => {
+      if (!isNavigableRouteManifestEntry(route)) {
+        return false;
+      }
+
+      return route.pathname === to || route.routeId === to;
+    });
   }
 
   #upsertRoute(info: RouteTargetInfo): void {
@@ -461,4 +591,20 @@ function dedupeRouteMatches(matches: RouteRuntimeMatch[]): RouteRuntimeMatch[] {
   }
 
   return deduped;
+}
+
+function getRouteOptionDescription(route: RouteManifestEntry): string {
+  if (route.modernRouteId !== undefined && route.modernRouteId !== route.pathname) {
+    return route.modernRouteId;
+  }
+
+  return route.routeId;
+}
+
+function isNavigableRouteManifestEntry(route: RouteManifestEntry): route is NavigableRouteManifestEntry {
+  return typeof route.pathname === "string" && route.pathname.startsWith("/");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

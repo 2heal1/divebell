@@ -5,8 +5,6 @@ import {
   createGetWindowScript,
   createWaitEvalScript,
   parseBrowserJsonOutput,
-  type BrowserRunOptions,
-  type BrowserRunResult,
   type BrowserRunner
 } from "./browser.js";
 import {
@@ -29,6 +27,8 @@ import {
   type RuntimeSelector
 } from "./client.js";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "./args.js";
+import { createError } from "./output.js";
+import type { CliOperationLogEntry } from "./operation-log.js";
 
 export type OpenRuntimeQueryValue =
   | string
@@ -41,25 +41,13 @@ export type OpenRuntimeQueryValue =
 export type OpenRuntimeResourceQuery = Record<string, OpenRuntimeQueryValue>;
 
 export interface OpenRuntimeWaitOptions {
-  selector?: RuntimeSelector;
   timeout?: number;
   where?: RuntimeDataCondition[];
 }
 
 export interface OpenRuntimeInputOptionsRequest {
-  selector?: RuntimeSelector;
   payload?: Record<string, unknown>;
   timeout?: number;
-}
-
-export interface OpenRuntimeBrowserOpenOptions extends BrowserRunOptions {
-  sessionId?: string;
-  cookies?: string;
-  noBridge?: boolean;
-}
-
-export interface OpenRuntimeBrowserGotoOptions {
-  sessionId?: string;
 }
 
 export interface OpenRuntimeBrowserScreenshotOptions {
@@ -103,9 +91,6 @@ export interface OpenRuntimeBrowserWaitEvalResult {
 }
 
 export interface OpenRuntimeBrowserApi {
-  raw(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
-  open(url: string, options?: OpenRuntimeBrowserOpenOptions): Promise<string>;
-  goto(url: string, options?: OpenRuntimeBrowserGotoOptions): Promise<string>;
   pageSnapshot<T = unknown>(): Promise<T>;
   click(target: string): Promise<string>;
   fill(target: string, value: string): Promise<string>;
@@ -116,19 +101,13 @@ export interface OpenRuntimeBrowserApi {
   screenshot(name?: string, options?: OpenRuntimeBrowserScreenshotOptions): Promise<string>;
   network(options?: OpenRuntimeBrowserNetworkOptions): Promise<string>;
   console(options?: OpenRuntimeBrowserConsoleOptions): Promise<OpenRuntimeBrowserConsoleResult>;
-  close(): Promise<string>;
 }
 
 export interface OpenRuntimeExtensionApi {
-  bridgeUrl: string;
-  runtimeSelector: RuntimeSelector;
-  ensureBridge(options?: { port?: number; timeout?: number }): Promise<EnsureBridgeResult | { bridgeUrl: string; status: "remote" }>;
-  runtimes(): Promise<BridgeRuntimeInfo[]>;
-  selectRuntime(selector?: RuntimeSelector): Promise<BridgeRuntimeInfo>;
-  targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  events<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  actions<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
+  snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
+  events<T = unknown>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
+  actions<T = unknown>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
   inputOptions<T = unknown>(
     actionName: string,
     inputName: string,
@@ -136,8 +115,7 @@ export interface OpenRuntimeExtensionApi {
   ): Promise<RuntimeResourceResult<T>>;
   runAction<T = unknown>(
     actionName: string,
-    payload?: Record<string, unknown>,
-    selector?: RuntimeSelector
+    payload?: Record<string, unknown>
   ): Promise<RuntimeResourceResult<T>>;
   waitFor<T = unknown>(
     targetId: string,
@@ -153,6 +131,7 @@ export interface CreateOpenRuntimeExtensionApiOptions {
   browserRunner: BrowserRunner;
   bridgeStarter: BridgeStarter;
   bridgeStateStore?: BridgeStateStore;
+  openContext?: CliOperationLogEntry;
 }
 
 export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensionApiOptions): OpenRuntimeExtensionApi {
@@ -184,6 +163,9 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
   };
 
   const chooseRuntime = async (selector: RuntimeSelector = runtimeSelector): Promise<BridgeRuntimeInfo> => {
+    if (!hasRuntimeSelectorValue(selector) && options.openContext === undefined) {
+      throw createOpenContextRequiredError();
+    }
     return selectRuntime(await listRuntimes(), selector);
   };
 
@@ -203,17 +185,12 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
   };
 
   return {
-    bridgeUrl,
-    runtimeSelector,
-    ensureBridge: ensureLocalBridge,
-    runtimes: listRuntimes,
-    selectRuntime: chooseRuntime,
-    targets: async (query, selector) => await fetchResource("targets", query, selector),
-    snapshot: async (query, selector) => await fetchResource("snapshot", query, selector),
-    events: async (query, selector) => await fetchResource("events", query, selector),
-    actions: async (query, selector) => await fetchResource("actions", query, selector),
+    targets: async (query) => await fetchResource("targets", query, undefined),
+    snapshot: async (query) => await fetchResource("snapshot", query, undefined),
+    events: async (query) => await fetchResource("events", query, undefined),
+    actions: async (query) => await fetchResource("actions", query, undefined),
     inputOptions: async (actionName, inputName, inputOptions = {}) => {
-      const runtime = await chooseRuntime(inputOptions.selector);
+      const runtime = await chooseRuntime();
       return await fetchInputOptions(
         options.fetcher,
         bridgeUrl,
@@ -224,12 +201,12 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
         inputOptions.timeout
       );
     },
-    runAction: async (actionName, payload, selector) => {
-      const runtime = await chooseRuntime(selector);
+    runAction: async (actionName, payload) => {
+      const runtime = await chooseRuntime();
       return await runRuntimeAction(options.fetcher, bridgeUrl, runtime, actionName, payload);
     },
     waitFor: async (targetId, status, waitOptions = {}) => {
-      const runtime = await chooseRuntime(waitOptions.selector);
+      const runtime = await chooseRuntime();
       return await waitForRuntime(
         options.fetcher,
         bridgeUrl,
@@ -241,44 +218,41 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
       );
     },
     browser: createOpenRuntimeBrowserApi({
-      args: options.args,
       browserRunner: options.browserRunner,
-      ensureLocalBridge
+      ...(options.openContext === undefined ? {} : { openContext: options.openContext })
     })
   };
 }
 
 function createOpenRuntimeBrowserApi(options: {
-  args: ParsedCliArgs;
   browserRunner: BrowserRunner;
-  ensureLocalBridge(): Promise<unknown>;
+  openContext?: CliOperationLogEntry;
 }): OpenRuntimeBrowserApi {
-  const runText = async (args: string[], runOptions?: BrowserRunOptions): Promise<string> => {
-    const result = await options.browserRunner.run(args, runOptions);
+  const runText = async (args: string[]): Promise<string> => {
+    if (options.openContext === undefined) {
+      throw createOpenContextRequiredError();
+    }
+    const result = await options.browserRunner.run(args);
     if (result.exitCode !== 0) {
-      throw new Error(result.stderr.trim() || result.stdout.trim() || `next-browser ${args[0] ?? "command"} failed.`);
+      throw createError({
+        code: "PAGE_OPERATION_FAILED",
+        kind: "browser",
+        message: result.stderr.trim() || result.stdout.trim() || `Browser command "${args[0] ?? "unknown"}" failed.`,
+        details: {
+          command: args,
+          ...(result.stdout.trim().length === 0 ? {} : { stdout: result.stdout.trim() }),
+          ...(result.stderr.trim().length === 0 ? {} : { stderr: result.stderr.trim() })
+        }
+      });
     }
     return result.stdout.trim();
   };
-  const runJson = async <T>(args: string[], runOptions?: BrowserRunOptions): Promise<T> => {
-    const output = await runText(args, runOptions);
+  const runJson = async <T>(args: string[]): Promise<T> => {
+    const output = await runText(args);
     return parseBrowserJsonOutput(output) as T;
   };
 
   return {
-    raw: async (args, runOptions) => await options.browserRunner.run(args, runOptions),
-    open: async (url, openOptions = {}) => {
-      if (openOptions.noBridge !== true && !hasOption(options.args, "no-bridge")) {
-        await options.ensureLocalBridge();
-      }
-      const browserArgs = ["open", withOpenRuntimeSession(url, openOptions.sessionId ?? getOptionValue(options.args, "session"))];
-      if (openOptions.cookies !== undefined) {
-        browserArgs.push("--cookies", openOptions.cookies);
-      }
-      return await runText(browserArgs, openOptions);
-    },
-    goto: async (url, gotoOptions = {}) =>
-      await runText(["goto", withOpenRuntimeSession(url, gotoOptions.sessionId ?? getOptionValue(options.args, "session"))]),
     pageSnapshot: async () => await runJson(["snapshot"]),
     click: async (target) => await runText(["click", target]),
     fill: async (target, value) => await runText(["fill", target, value]),
@@ -318,8 +292,21 @@ function createOpenRuntimeBrowserApi(options: {
         summary: summarizeConsoleEntries(entries)
       };
     },
-    close: async () => await runText(["close"])
   };
+}
+
+function hasRuntimeSelectorValue(selector: RuntimeSelector): boolean {
+  return selector.runtimeId !== undefined || selector.sessionId !== undefined || selector.url !== undefined;
+}
+
+function createOpenContextRequiredError(): Error {
+  return createError({
+    code: "OPEN_CONTEXT_REQUIRED",
+    kind: "validation",
+    message: "No opened page context was found.",
+    retryable: false,
+    hint: "Run `openruntime open <url>` before running page commands."
+  });
 }
 
 function createRuntimeSelector(args: ParsedCliArgs): RuntimeSelector {
@@ -506,10 +493,6 @@ function getNetworkLineUrl(line: string): string | undefined {
   const parts = line.trim().split(/\s+/);
   if (parts.length < 6) return undefined;
   return parts[5];
-}
-
-function hasOption(args: ParsedCliArgs, name: string): boolean {
-  return args.options.has(name);
 }
 
 function createOptionalNumberProperty<Name extends string>(

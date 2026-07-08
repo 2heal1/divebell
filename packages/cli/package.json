@@ -31,7 +31,7 @@
   },
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
+    "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
     "@openruntime/bridge": "workspace:^",

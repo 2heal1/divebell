@@ -140,53 +140,59 @@ openruntime release-note latest --limit 3
 
 ---
 
-## CLI 扩展
+## CLI 命令
 
-OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己的工作流命令，而不需要修改 OpenRuntime 源码。
+OpenRuntime CLI 支持加载本地命令文件。团队可以用它增加自己的页面操作命令，而不需要修改 OpenRuntime 源码。
 
-扩展导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 扩展开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Extension Development](docs/cli-extensions.md)。
+这里说的是页面命令开发：先由 agent 运行 `openruntime open <url>`，命令只操作当前已打开页面。需要自己打开浏览器并管理自动化流程时，应写独立自动化脚本。
 
-外部扩展默认从这里读取：
+命令导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 命令开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Command Development](docs/cli-extensions.md)。
+
+如果要写包含打开浏览器、等待页面和操作页面的独立自动化脚本，见 [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md)。
+
+命令文件默认从这里读取：
 
 ```text
-~/.openruntime/extensions
+~/.openruntime/commands
 ```
 
 可以用环境变量改目录：
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
 ```
 
-也可以关闭外部扩展：
+也可以关闭外部命令加载：
 
 ```sh
-OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
 支持两种文件形式：
 
 ```text
-~/.openruntime/extensions/foo.mjs
-~/.openruntime/extensions/foo/index.mjs
+~/.openruntime/commands/foo.mjs
+~/.openruntime/commands/foo/index.mjs
 ```
 
-外部扩展会在 help 里单独展示，并标注来源：
+外部命令会在 help 里单独展示，并标注来源：
 
 ```text
-External Extensions:
+External Commands:
   openruntime foo ping [external: foo]
 ```
 
 查看当前加载结果：
 
 ```sh
-openruntime extensions list
+openruntime commands list
 ```
 
-如果外部扩展和内置命令或内部扩展重名，OpenRuntime 会跳过外部扩展并打印警告。扩展加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
+如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，可以通过 `commands list` 查看失败原因。
 
-外部扩展会执行本机代码，只加载可信文件。
+在命令文件、测试或 CI 里调用 `defineCommand(...)` 和 `validateCommand(...)`，确保导出的命令格式有效。
+
+外部命令会执行本机代码，只加载可信文件。
 
 ---
 

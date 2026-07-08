@@ -57,7 +57,9 @@ import {
 } from "./help.js";
 import {
   createFileOperationLogStore,
+  createOperationSessionId,
   normalizeOpenRuntimeUrlForMatch,
+  type CliOperationLogEntry,
   type CliOperationLogStore
 } from "./operation-log.js";
 import {
@@ -78,6 +80,12 @@ import {
   createOpenRuntimeExtensionApi,
   type OpenRuntimeExtensionApi
 } from "./extension-api.js";
+import {
+  createError,
+  createCommandOutput,
+  writeErrorOutput,
+  type CommandOutput
+} from "./output.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
@@ -136,11 +144,19 @@ export interface CliExtensionRunOptions {
   stderr: {
     write(chunk: string): void;
   };
-  browserRunner: BrowserRunner;
   fetcher: Fetcher;
-  bridgeUrl: string;
-  runtimeSelector: RuntimeSelector;
+  page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;
+  output: CommandOutput;
+}
+
+export interface CliExtensionPageContext {
+  url: string;
+  openedUrl: string;
+  normalizedUrl: string;
+  bridgeUrl: string | null;
+  sessionId: string | null;
+  openedAt: number;
 }
 
 export interface OpenRuntimeCliExtension {
@@ -259,7 +275,7 @@ export async function createOpenRuntimeCliWithExternalExtensions(
 function formatExternalExtensionWarning(record: ExtensionLoadRecord): string {
   const location = record.path === undefined ? record.name : record.path;
   const reason = record.reason ?? "unknown reason";
-  return `Skipped external OpenRuntime extension ${location}: ${reason}\n`;
+  return `Skipped external OpenRuntime command ${location}: ${reason}\n`;
 }
 
 async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
@@ -300,8 +316,8 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
-    if (args.command[0] === "extensions") {
-      return runExtensionsCommand(args, stdout, config.extensionLoadRecords);
+    if (args.command[0] === "commands") {
+      return await runCommandsCommand(args, stdout, config.extensionLoadRecords);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -319,10 +335,12 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (isRuntimeResourceCommand(args.command[0])) {
-      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+      const resourceCommand = args.command[0];
+      const commandArgs = applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "unless-selector");
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(commandArgs, fetcher, bridgeStarter, createBridgeStateStore(commandArgs, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-      const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
-      const result = await fetchRuntimeResource(fetcher, bridgeUrl, runtime, args.command[0], createQuery(args, args.command[0]));
+      const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
+      const result = await fetchRuntimeResource(fetcher, bridgeUrl, runtime, resourceCommand, createQuery(commandArgs, resourceCommand));
       writeJson(stdout, result);
       return 0;
     }
@@ -331,9 +349,10 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       const actionName = requireOption(args, "action");
       const inputName = requireOption(args, "input");
       const payload = parsePayloadOption(args);
-      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+      const commandArgs = applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "unless-selector");
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(commandArgs, fetcher, bridgeStarter, createBridgeStateStore(commandArgs, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-      const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
+      const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
       const result = await fetchInputOptions(
         fetcher,
         bridgeUrl,
@@ -350,9 +369,10 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "run-action") {
       const actionName = requireCommandArgument(args, 1, "action name");
       const payload = parsePayloadOption(args);
-      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+      const commandArgs = applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "unless-selector");
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(commandArgs, fetcher, bridgeStarter, createBridgeStateStore(commandArgs, options.bridgeStateDirectory));
       const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-      const runtime = selectRuntime(runtimes, createRuntimeSelector(args));
+      const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
       const result = await runRuntimeAction(
         fetcher,
         bridgeUrl,
@@ -367,16 +387,17 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "verify") {
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
-      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
-      const where = parseWhereOptions(args);
+      const commandArgs = applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "unless-selector");
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(commandArgs, fetcher, bridgeStarter, createBridgeStateStore(commandArgs, options.bridgeStateDirectory));
+      const where = parseWhereOptions(commandArgs);
       try {
         const result = await runVerifyCommand(
-          args,
+          commandArgs,
           fetcher,
           bridgeUrl,
           browserRunner,
           bridgeStarter,
-          createBridgeStateStore(args, options.bridgeStateDirectory),
+          createBridgeStateStore(commandArgs, options.bridgeStateDirectory),
           targetId,
           status,
           where
@@ -394,16 +415,17 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command[0] === "wait-for") {
       const targetId = requireCommandArgument(args, 1, "target id");
       const status = requireCommandArgument(args, 2, "status");
-      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(args, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
-      const where = parseWhereOptions(args);
+      const commandArgs = applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "unless-selector");
+      const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(commandArgs, fetcher, bridgeStarter, createBridgeStateStore(commandArgs, options.bridgeStateDirectory));
+      const where = parseWhereOptions(commandArgs);
       try {
         const result = await waitForRuntimeCommand(
-          args,
+          commandArgs,
           fetcher,
           bridgeUrl,
           browserRunner,
           bridgeStarter,
-          createBridgeStateStore(args, options.bridgeStateDirectory),
+          createBridgeStateStore(commandArgs, options.bridgeStateDirectory),
           targetId,
           status,
           where
@@ -420,33 +442,45 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
 
     const command = args.command[0];
     if (command === undefined) {
-      throw new Error("Missing command.");
+      throw createError({
+        code: "CLI_COMMAND_MISSING",
+        kind: "validation",
+        message: "Missing command.",
+        hint: "Run `openruntime --help` to see available commands."
+      });
     }
 
     const extension = config.extensionRegistry.get(command);
     if (extension !== undefined) {
-      const bridgeStateStore = createBridgeStateStore(args, options.bridgeStateDirectory);
+      const openContext = await operationLogStore.read();
+      const extensionArgs = applyOpenContextDefaults(args, openContext);
+      const bridgeStateStore = createBridgeStateStore(extensionArgs, options.bridgeStateDirectory);
       return await extension.run({
-        args,
+        args: extensionArgs,
         stdout,
         stderr,
-        browserRunner,
         fetcher,
-        bridgeUrl: createBridgeUrl(args),
-        runtimeSelector: createRuntimeSelector(args),
+        ...(openContext === undefined ? {} : { page: createExtensionPageContext(openContext) }),
         openruntime: createOpenRuntimeExtensionApi({
-          args,
+          args: extensionArgs,
           fetcher,
           browserRunner,
           bridgeStarter,
-          bridgeStateStore
-        })
+          bridgeStateStore,
+          ...(openContext === undefined ? {} : { openContext })
+        }),
+        output: createCommandOutput(stdout, extensionArgs.command.join(" "))
       });
     }
 
-    throw new Error(`Unknown command "${args.command.join(" ")}".`);
+    throw createError({
+      code: "CLI_UNKNOWN_COMMAND",
+      kind: "validation",
+      message: `Unknown command "${args.command.join(" ")}".`,
+      hint: "Run `openruntime --help` to see available commands."
+    });
   } catch (error) {
-    stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    writeErrorOutput(stdout, args.command.join(" ") || "openruntime", error);
     return 1;
   }
 }
@@ -457,13 +491,13 @@ function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[])
 
   for (const extension of extensions) {
     if (extension.name.length === 0) {
-      throw new Error("CLI extension name must not be empty.");
+      throw new Error("CLI command name must not be empty.");
     }
     if (builtInCommandNames.has(extension.name)) {
-      throw new Error(`CLI extension "${extension.name}" conflicts with a built-in command.`);
+      throw new Error(`CLI command "${extension.name}" conflicts with a built-in command.`);
     }
     if (registry.has(extension.name)) {
-      throw new Error(`CLI extension "${extension.name}" is registered more than once.`);
+      throw new Error(`CLI command "${extension.name}" is registered more than once.`);
     }
     registry.set(extension.name, extension);
   }
@@ -478,7 +512,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "stop",
     "export-profile",
     "import-profile",
-    "extensions",
+    "commands",
     "runtimes",
     "input-options",
     "run-action",
@@ -489,19 +523,25 @@ function createBuiltInCommandNameSet(): Set<string> {
   ]);
 }
 
-function runExtensionsCommand(
+async function runCommandsCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   records: readonly ExtensionLoadRecord[]
-): number {
-  const subcommand = args.command[1];
-  if (subcommand !== "list") {
-    throw new Error(`Unknown extensions command "${args.command.slice(1).join(" ")}".`);
+): Promise<number> {
+  const commandAction = args.command[1];
+  if (commandAction === "list") {
+    writeJson(stdout, {
+      commands: records
+    });
+    return 0;
   }
-  writeJson(stdout, {
-    extensions: records
+
+  throw createError({
+    code: "CLI_COMMANDS_UNKNOWN_COMMAND",
+    kind: "validation",
+    message: `Unknown commands command "${args.command.slice(1).join(" ")}".`,
+    hint: "Run `openruntime commands list` to list loaded commands."
   });
-  return 0;
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -539,7 +579,14 @@ async function ensureLocalBridgeForRuntimeCommand(
 function requireOption(args: ParsedCliArgs, name: string): string {
   const value = getOptionValue(args, name);
   if (value === undefined || value.length === 0) {
-    throw new Error(`Missing required option "--${name}".`);
+    throw createError({
+      code: "CLI_REQUIRED_OPTION_MISSING",
+      kind: "validation",
+      message: `Missing required option "--${name}".`,
+      details: {
+        option: name
+      }
+    });
   }
   return value;
 }
@@ -547,7 +594,15 @@ function requireOption(args: ParsedCliArgs, name: string): string {
 function requireCommandArgument(args: ParsedCliArgs, index: number, label: string): string {
   const value = args.command[index];
   if (value === undefined || value.length === 0) {
-    throw new Error(`Missing required ${label}.`);
+    throw createError({
+      code: "CLI_REQUIRED_ARGUMENT_MISSING",
+      kind: "validation",
+      message: `Missing required ${label}.`,
+      details: {
+        argument: label,
+        index
+      }
+    });
   }
   return value;
 }
@@ -560,11 +615,21 @@ function parsePayloadOption(args: ParsedCliArgs): Record<string, unknown> | unde
   try {
     parsed = JSON.parse(payload);
   } catch {
-    throw new Error("--payload must be valid JSON.");
+    throw createError({
+      code: "CLI_PAYLOAD_INVALID_JSON",
+      kind: "validation",
+      message: "--payload must be valid JSON.",
+      hint: "Pass --payload as a JSON object string."
+    });
   }
 
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("--payload must be a JSON object.");
+    throw createError({
+      code: "CLI_PAYLOAD_INVALID_SHAPE",
+      kind: "validation",
+      message: "--payload must be a JSON object.",
+      hint: "Pass --payload as a JSON object string."
+    });
   }
 
   return parsed as Record<string, unknown>;
@@ -1053,6 +1118,9 @@ async function runBrowserCliCommand(
   const command = args.command[0];
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
+    const sessionId = getOpenCommandSessionId(args);
+    const openedUrl = withOpenRuntimeSession(url, sessionId);
+    const bridgeUrl = hasOption(args, "no-bridge") ? null : createBridgeUrl(args);
     await operationLogStore.remove();
     if (!hasOption(args, "no-bridge")) {
       await ensureBridge({
@@ -1063,26 +1131,41 @@ async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    const exitCode = await runBrowserAndPipe(
-      browserRunner,
-      createOpenBrowserArgs(args, url),
-      stdout,
-      stderr,
-      { ui: hasOption(args, "ui") }
-    );
-    if (exitCode === 0) {
-      const sessionId = getOptionValue(args, "session");
-      await operationLogStore.write({
-        command: "open",
-        url,
-        normalizedUrl: normalizeOpenRuntimeUrlForMatch(withOpenRuntimeSession(url, sessionId)),
-        bridgeUrl: hasOption(args, "no-bridge") ? null : createBridgeUrl(args),
-        sessionId: sessionId ?? null,
-        openedAt: Date.now(),
-        exitCode
+    const result = await browserRunner.run(createOpenBrowserArgs(args, url, sessionId), { ui: hasOption(args, "ui") });
+    if (result.exitCode !== 0) {
+      throw createError({
+        code: "PAGE_OPEN_FAILED",
+        kind: "browser",
+        message: result.stderr.trim() || result.stdout.trim() || "Could not open the page.",
+        details: {
+          url,
+          openedUrl,
+          ...(result.stdout.trim().length === 0 ? {} : { stdout: result.stdout.trim() }),
+          ...(result.stderr.trim().length === 0 ? {} : { stderr: result.stderr.trim() })
+        }
       });
     }
-    return exitCode;
+
+    const openedAt = Date.now();
+    const normalizedUrl = normalizeOpenRuntimeUrlForMatch(openedUrl);
+    await operationLogStore.write({
+      command: "open",
+      url,
+      normalizedUrl,
+      bridgeUrl,
+      sessionId,
+      openedAt,
+      exitCode: result.exitCode
+    });
+    createCommandOutput(stdout, args.command.join(" ")).ok({
+      url,
+      openedUrl,
+      normalizedUrl,
+      bridgeUrl,
+      sessionId,
+      openedAt
+    }, "Page opened.");
+    return 0;
   }
 
   if (command === "close") {
@@ -1091,31 +1174,35 @@ async function runBrowserCliCommand(
     return exitCode;
   }
 
+  const commandArgs = isBrowserPageCommand(command)
+    ? applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "always")
+    : args;
+
   if (command === "get-window") {
-    const path = requireCommandArgument(args, 1, "window path");
+    const path = requireCommandArgument(commandArgs, 1, "window path");
     return await runBrowserAndPipe(browserRunner, ["eval", createGetWindowScript(path)], stdout, stderr);
   }
 
   if (command === "click") {
-    return await runClickCommand(args, stdout, stderr, browserRunner);
+    return await runClickCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
   if (command === "wait-eval") {
-    const script = requireCommandArgument(args, 1, "eval script");
-    const result = await waitForBrowserEval(browserRunner, script, getNumberOption(args, "timeout"));
+    const script = requireCommandArgument(commandArgs, 1, "eval script");
+    const result = await waitForBrowserEval(browserRunner, script, getNumberOption(commandArgs, "timeout"));
     writeJson(stdout, result);
     return 0;
   }
 
   if (command === "network") {
-    return await runNetworkCommand(args, stdout, stderr, browserRunner);
+    return await runNetworkCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
   if (command === "console") {
-    return await runConsoleCommand(args, stdout, stderr, browserRunner);
+    return await runConsoleCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
-  return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
+  return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(commandArgs), stdout, stderr);
 }
 
 async function runClickCommand(
@@ -1380,7 +1467,12 @@ async function runExportProfileCommand(
   const outputPath = getOptionValue(args, "output");
   const domains = getProfileExportDomains(args);
   if (hasOption(args, "full")) {
-    throw new Error("--full is not supported by export-profile. Use --domain <domain> to narrow account export.");
+    throw createError({
+      code: "PROFILE_FULL_EXPORT_UNSUPPORTED",
+      kind: "validation",
+      message: "--full is not supported by export-profile. Use --domain <domain> to narrow account export.",
+      hint: "Use one or more --domain values to narrow account export."
+    });
   }
   const source = getProfileExportSource(args);
   if (source === "chrome") {
@@ -1426,7 +1518,11 @@ async function getPrintableProfileExportResult(result: ProfileExportResult): Pro
 function getProfileExportDomains(args: ParsedCliArgs): string[] {
   const domains = getOptionValues(args, "domain");
   if (domains.some((domain) => domain.trim().length === 0 || domain === "true")) {
-    throw new Error("--domain requires a domain value.");
+    throw createError({
+      code: "PROFILE_DOMAIN_REQUIRED",
+      kind: "validation",
+      message: "--domain requires a domain value."
+    });
   }
   return domains;
 }
@@ -1434,7 +1530,14 @@ function getProfileExportDomains(args: ParsedCliArgs): string[] {
 function getProfileExportSource(args: ParsedCliArgs): "chrome" | "openruntime" {
   const source = getOptionValue(args, "source") ?? "chrome";
   if (source !== "chrome" && source !== "openruntime") {
-    throw new Error("--source must be chrome or openruntime.");
+    throw createError({
+      code: "PROFILE_SOURCE_INVALID",
+      kind: "validation",
+      message: "--source must be chrome or openruntime.",
+      details: {
+        source
+      }
+    });
   }
   return source;
 }
@@ -1482,13 +1585,17 @@ function createBridgeStateStore(args: ParsedCliArgs, stateDirectory: string | un
   return createFileBridgeStateStore(createBridgeUrl(args), stateDirectory);
 }
 
-function createOpenBrowserArgs(args: ParsedCliArgs, url: string): string[] {
-  const browserArgs = ["open", withOpenRuntimeSession(url, getOptionValue(args, "session"))];
+function createOpenBrowserArgs(args: ParsedCliArgs, url: string, sessionId: string): string[] {
+  const browserArgs = ["open", withOpenRuntimeSession(url, sessionId)];
   const cookies = getOptionValue(args, "cookies");
   if (cookies !== undefined) {
     browserArgs.push("--cookies", cookies);
   }
   return browserArgs;
+}
+
+function getOpenCommandSessionId(args: ParsedCliArgs): string {
+  return getOptionValue(args, "session") ?? createOperationSessionId();
 }
 
 function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
@@ -1791,6 +1898,96 @@ function hasOption(args: ParsedCliArgs, name: string): boolean {
   return args.options.has(name);
 }
 
+function applyOpenContextDefaults(
+  args: ParsedCliArgs,
+  openContext: CliOperationLogEntry | undefined
+): ParsedCliArgs {
+  if (openContext === undefined) {
+    return args;
+  }
+
+  const options = cloneOptions(args.options);
+  if (openContext.bridgeUrl !== null) {
+    setDefaultOption(options, "bridge", openContext.bridgeUrl);
+  }
+  if (!hasRuntimeSelectorOption(args)) {
+    setDefaultOption(options, "url", openContext.url);
+    if (openContext.sessionId !== null) {
+      setDefaultOption(options, "session", openContext.sessionId);
+    }
+  }
+
+  return {
+    command: args.command,
+    options
+  };
+}
+
+function createExtensionPageContext(openContext: CliOperationLogEntry): CliExtensionPageContext {
+  return {
+    url: openContext.url,
+    openedUrl: withOpenRuntimeSession(openContext.url, openContext.sessionId ?? undefined),
+    normalizedUrl: openContext.normalizedUrl,
+    bridgeUrl: openContext.bridgeUrl,
+    sessionId: openContext.sessionId,
+    openedAt: openContext.openedAt
+  };
+}
+
+function applyOpenContextDefaultsOrThrow(
+  args: ParsedCliArgs,
+  openContext: CliOperationLogEntry | undefined,
+  requirement: "always" | "unless-selector"
+): ParsedCliArgs {
+  if (openContext === undefined && (requirement === "always" || !hasRuntimeSelectorOption(args))) {
+    throw createOpenContextRequiredError(args);
+  }
+  if (
+    openContext !== undefined &&
+    openContext.bridgeUrl === null &&
+    requirement === "unless-selector" &&
+    !hasRuntimeSelectorOption(args) &&
+    !hasOption(args, "bridge")
+  ) {
+    throw createError({
+      code: "OPEN_CONTEXT_REQUIRES_BRIDGE",
+      kind: "validation",
+      message: "The opened page context was created without a Bridge.",
+      retryable: false,
+      hint: "Run `openruntime open <url>` without `--no-bridge`, or pass `--bridge <url>` explicitly."
+    });
+  }
+  return applyOpenContextDefaults(args, openContext);
+}
+
+function createOpenContextRequiredError(args: ParsedCliArgs): Error {
+  const command = args.command.join(" ") || "openruntime";
+  return createError({
+    code: "OPEN_CONTEXT_REQUIRED",
+    kind: "validation",
+    message: "No opened page context was found.",
+    retryable: false,
+    hint: `Run \`openruntime open <url>\` before \`openruntime ${command}\`.`,
+    details: {
+      command
+    }
+  });
+}
+
+function hasRuntimeSelectorOption(args: ParsedCliArgs): boolean {
+  return hasOption(args, "runtime") || hasOption(args, "session") || hasOption(args, "url");
+}
+
+function cloneOptions(options: Map<string, string[]>): Map<string, string[]> {
+  return new Map([...options.entries()].map(([name, values]) => [name, [...values]]));
+}
+
+function setDefaultOption(options: Map<string, string[]>, name: string, value: string): void {
+  if (!options.has(name)) {
+    options.set(name, [value]);
+  }
+}
+
 function isRetryableWaitResult(result: unknown): boolean {
   if (result === null || typeof result !== "object") return false;
   const value = result as {
@@ -1815,7 +2012,7 @@ function isRetryableWaitError(error: unknown): boolean {
 
 function addOpenHint(error: unknown, selector: { sessionId?: string; url?: string }): Error {
   if (error instanceof Error && selector.url !== undefined && error.message.startsWith("No connected runtime matched")) {
-    return new Error(`${error.message}\nUse --open to open the page before waiting.`);
+    return new Error(`${error.message}\nRun \`openruntime open <url>\` before waiting.`);
   }
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -1843,6 +2040,10 @@ function createOptionalObjectProperty<Name extends string, Value extends object>
 
 function isBrowserCommand(command: string | undefined): command is BrowserCommandName {
   return BROWSER_COMMAND_NAMES.includes(command as BrowserCommandName);
+}
+
+function isBrowserPageCommand(command: string | undefined): command is BrowserCommandName {
+  return isBrowserCommand(command) && command !== "open" && command !== "goto" && command !== "close";
 }
 
 async function runBridgeServerCommand(
@@ -1934,9 +2135,7 @@ export type {
   OpenRuntimeBrowserConsoleLevel,
   OpenRuntimeBrowserConsoleOptions,
   OpenRuntimeBrowserConsoleResult,
-  OpenRuntimeBrowserGotoOptions,
   OpenRuntimeBrowserNetworkOptions,
-  OpenRuntimeBrowserOpenOptions,
   OpenRuntimeBrowserScreenshotOptions,
   OpenRuntimeBrowserWaitEvalResult,
   OpenRuntimeExtensionApi,
@@ -1973,4 +2172,29 @@ export {
   createHelpText
 } from "./help.js";
 export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";
+export {
+  defineCommand,
+  validateCommand
+} from "./command-definition.js";
+export type {
+  OpenRuntimeCommandDefinition,
+  ValidateCommandOptions
+} from "./command-definition.js";
 export type { ExtensionLoadRecord } from "./external-extensions.js";
+export {
+  createError,
+  createCommandOutput,
+  isCommandError,
+  runWithOutputErrorBoundary,
+  writeErrorOutput,
+  writeNeedsInputOutput,
+  writeOkOutput
+} from "./output.js";
+export type {
+  CommandErrorKind,
+  CommandErrorOptions,
+  CommandOutput,
+  CommandOutputMeta,
+  CommandOutputStatus,
+  CommandOutputWriter
+} from "./output.js";

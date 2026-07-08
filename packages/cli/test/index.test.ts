@@ -10,16 +10,19 @@ import {
   cliPackageInfo,
   createOpenRuntimeCliWithExternalExtensions,
   createOpenRuntimeCli,
+  defineCommand,
   getCliCommandName,
   runCli,
+  validateCommand,
   type OpenRuntimeCliExtension
 } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
 import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
+import { createOperationLogKey, createOperationSessionId } from "../dist/operation-log.js";
 import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
 
-process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS = "1";
+process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "openruntime");
@@ -34,6 +37,33 @@ test("exposes only canonical cli binaries", () => {
   const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
 
   assert.deepEqual(Object.keys(packageJson.bin), ["openruntime", "opr"]);
+});
+
+test("defines and validates command exports", () => {
+  const command = defineCommand({
+    schemaVersion: 1,
+    name: "demo",
+    commandReferences: [
+      {
+        category: "Commands",
+        usage: "openruntime demo ping",
+        description: "Runs demo."
+      }
+    ],
+    async run() {
+      return 0;
+    }
+  });
+
+  assert.equal(command.name, "demo");
+  assert.equal(validateCommand(command).name, "demo");
+  assert.throws(
+    () => validateCommand({
+      schemaVersion: 1,
+      name: "broken"
+    }),
+    /must export a run\(options\) function/
+  );
 });
 
 test("prints explicit runtime resource help", async () => {
@@ -55,7 +85,10 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /openruntime verify .*<target-id> <status>/);
   assert.match(output.text(), /openruntime wait-for .*--next/);
-  assert.match(output.text(), /openruntime extensions list/);
+  assert.match(output.text(), /openruntime commands list/);
+  assert.doesNotMatch(output.text(), /openruntime goto /);
+  assert.doesNotMatch(output.text(), /openruntime close/);
+  assert.doesNotMatch(output.text(), /\[--open\]/);
   assert.doesNotMatch(output.text(), /openruntime vmok /);
   assert.doesNotMatch(output.text(), /open[-]runtime/);
 });
@@ -104,7 +137,10 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /openruntime network \[--url <query>\]/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /openruntime extensions list/);
+  assert.match(markdown, /openruntime commands list/);
+  assert.doesNotMatch(markdown, /openruntime goto /);
+  assert.doesNotMatch(markdown, /openruntime close/);
+  assert.doesNotMatch(markdown, /\[--open\]/);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
@@ -137,32 +173,37 @@ test("generates the skill CLI command section from the help table", () => {
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
 
-test("registers an extension command and merges its help entries", async () => {
+test("registers a command and merges its help entries", async () => {
   const extension: OpenRuntimeCliExtension = {
     name: "demo",
     commandReferences: [
       {
-        category: "Extensions",
+        category: "Commands",
         usage: "openruntime demo ping [--url <url>]",
-        description: "Runs a demo extension command."
+        description: "Runs a demo command."
       }
     ],
     exampleReferences: [
       {
         command: "openruntime demo ping",
-        description: "Runs the demo extension."
+        description: "Runs the demo command."
       }
     ],
-    run: async ({ args, stdout, bridgeUrl, runtimeSelector, openruntime }) => {
+    run: async (options) => {
+      const { args, page, openruntime, output } = options;
       const snapshot = await openruntime.snapshot({ id: "target-1" });
       const browserValue = await openruntime.browser.eval("window.answer");
-      stdout.write(`${JSON.stringify({
+      output.ok({
         command: args.command,
-        bridgeUrl,
-        runtimeSelector,
+        hasBridgeUrlOption: "bridgeUrl" in options,
+        hasRuntimeSelectorOption: "runtimeSelector" in options,
+        hasEnsureBridgeApi: "ensureBridge" in openruntime,
+        hasRuntimesApi: "runtimes" in openruntime,
+        hasSelectRuntimeApi: "selectRuntime" in openruntime,
+        page,
         snapshot: snapshot.result,
         browserValue
-      })}\n`);
+      });
       return 0;
     }
   };
@@ -172,36 +213,83 @@ test("registers an extension command and merges its help entries", async () => {
   assert.deepEqual(cli.getCommandReferences().at(-1), extension.commandReferences?.[0]);
   assert.deepEqual(cli.getExampleReferences().at(-1), extension.exampleReferences?.[0]);
 
-  const output = createOutput();
-  const exitCode = await cli.run([
-    "demo",
-    "ping",
-    "--bridge",
-    "http://bridge.test",
-    "--session",
-    "session-1",
-    "--url",
-    "http://app.test/"
-  ], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    fetcher: async (url) => {
-      if (String(url).endsWith("/runtimes")) {
+  const context = createOpenContextFixture({
+    bridgeUrl: "http://bridge.test",
+    sessionId: "session-1",
+    url: "http://app.test/"
+  });
+  try {
+    const output = createOutput();
+    const exitCode = await cli.run([
+      "demo",
+      "ping",
+      "--bridge",
+      "http://bridge.test",
+      "--session",
+      "session-1",
+      "--url",
+      "http://app.test/"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      fetcher: async (url) => {
+        if (String(url).endsWith("/runtimes")) {
+          return jsonResponse({
+            runtimes: [
+              {
+                runtimeId: "runtime-1",
+                url: "http://app.test/",
+                sessionId: "session-1",
+                status: "connected",
+                connectedAt: 1,
+                lastSeenAt: 2
+              }
+            ]
+          });
+        }
+        assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/snapshot?id=target-1");
         return jsonResponse({
-          runtimes: [
-            {
-              runtimeId: "runtime-1",
-              url: "http://app.test/",
-              sessionId: "session-1",
-              status: "connected",
-              connectedAt: 1,
-              lastSeenAt: 2
+          targets: {
+            "target-1": {
+              id: "target-1",
+              type: "business.demo",
+              status: "ready",
+              updatedAt: 3
             }
-          ]
+          },
+          latestEventId: 4,
+          capturedAt: 5
         });
-      }
-      assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/snapshot?id=target-1");
-      return jsonResponse({
+      },
+      browserRunner: createBrowserRunner(async (args) => {
+        assert.deepEqual(args, ["eval", "window.answer"]);
+        return {
+          exitCode: 0,
+          stdout: "42\n",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("demo ping", {
+      command: ["demo", "ping"],
+      hasBridgeUrlOption: false,
+      hasRuntimeSelectorOption: false,
+      hasEnsureBridgeApi: false,
+      hasRuntimesApi: false,
+      hasSelectRuntimeApi: false,
+      page: {
+        url: "http://app.test/",
+        openedUrl: "http://app.test/?openruntimeSessionId=session-1",
+        normalizedUrl: "http://app.test/",
+        bridgeUrl: "http://bridge.test",
+        sessionId: "session-1",
+        openedAt: 1
+      },
+      snapshot: {
         targets: {
           "target-1": {
             id: "target-1",
@@ -212,54 +300,146 @@ test("registers an extension command and merges its help entries", async () => {
         },
         latestEventId: 4,
         capturedAt: 5
-      });
-    },
-    browserRunner: createBrowserRunner(async (args) => {
-      assert.deepEqual(args, ["eval", "window.answer"]);
-      return {
-        exitCode: 0,
-        stdout: "42\n",
-        stderr: ""
-      };
-    })
-  });
-
-  assert.equal(exitCode, 0);
-  assert.equal(output.errorText(), "");
-  assert.deepEqual(JSON.parse(output.text()), {
-    command: ["demo", "ping"],
-    bridgeUrl: "http://bridge.test",
-    runtimeSelector: {
-      sessionId: "session-1",
-      url: "http://app.test/?openruntimeSessionId=session-1"
-    },
-    snapshot: {
-      targets: {
-        "target-1": {
-          id: "target-1",
-          type: "business.demo",
-          status: "ready",
-          updatedAt: 3
-        }
       },
-      latestEventId: 4,
-      capturedAt: 5
-    },
-    browserValue: 42
-  });
+      browserValue: 42
+    }));
+  } finally {
+    context.cleanup();
+  }
 });
 
-test("loads external extensions from the configured directory", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-"));
+test("commands can wait for targets in the opened page context", async () => {
+  const extension: OpenRuntimeCliExtension = {
+    name: "demo",
+    commandReferences: [
+      {
+        category: "Commands",
+        usage: "openruntime demo wait",
+        description: "Waits for a demo target."
+      }
+    ],
+    run: async ({ openruntime, output }) => {
+      const result = await openruntime.waitFor("business:demo", "ready", {
+        timeout: 250
+      });
+      output.ok({
+        result
+      });
+      return 0;
+    }
+  };
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const context = createOpenContextFixture({
+    bridgeUrl: "http://bridge.test",
+    sessionId: "session-1",
+    url: "http://app.test/"
+  });
+  const calls: Array<{ url: string; method?: string; body?: unknown }> = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await cli.run(["demo", "wait"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      fetcher: async (url, init) => {
+        const call: { url: string; method?: string; body?: unknown } = {
+          url: String(url)
+        };
+        if (init?.method !== undefined) {
+          call.method = init.method;
+        }
+        if (init?.body !== undefined) {
+          call.body = JSON.parse(String(init.body));
+        }
+        calls.push(call);
+
+        if (String(url) === "http://bridge.test/runtimes") {
+          return jsonResponse({
+            runtimes: [
+              {
+                runtimeId: "runtime-1",
+                url: "http://app.test/?openruntimeSessionId=session-1",
+                sessionId: "session-1",
+                status: "connected",
+                connectedAt: 1,
+                lastSeenAt: 2
+              }
+            ]
+          });
+        }
+
+        assert.equal(String(url), "http://bridge.test/runtimes/runtime-1/wait-for");
+        return jsonResponse({
+          success: true,
+          condition: {
+            id: "business:demo",
+            status: "ready"
+          },
+          snapshot: {
+            targets: {},
+            latestEventId: 0,
+            capturedAt: 3
+          }
+        });
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(calls, [
+      {
+        url: "http://bridge.test/runtimes"
+      },
+      {
+        url: "http://bridge.test/runtimes/runtime-1/wait-for",
+        method: "POST",
+        body: {
+          targetId: "business:demo",
+          status: "ready",
+          timeout: 250
+        }
+      }
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("demo wait", {
+      result: {
+        runtime: {
+          runtimeId: "runtime-1",
+          url: "http://app.test/?openruntimeSessionId=session-1",
+          sessionId: "session-1",
+          status: "connected",
+          connectedAt: 1,
+          lastSeenAt: 2
+        },
+        result: {
+          success: true,
+          condition: {
+            id: "business:demo",
+            status: "ready"
+          },
+          snapshot: {
+            targets: {},
+            latestEventId: 0,
+            capturedAt: 3
+          }
+        }
+      }
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("loads external commands from the configured directory", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
       "  name: 'foo',",
       "  displayName: 'Foo',",
-      "  description: 'Foo extension',",
+      "  description: 'Foo command',",
       "  commandReferences: [{",
-      "    category: 'Extensions',",
+      "    category: 'Commands',",
       "    usage: 'openruntime foo ping',",
       "    description: 'Runs Foo.'",
       "  }],",
@@ -275,8 +455,8 @@ test("loads external extensions from the configured directory", async () => {
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "0",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.deepEqual(loaded.extensionLoadRecords.map((record) => ({
@@ -290,7 +470,7 @@ test("loads external extensions from the configured directory", async () => {
         status: "loaded"
       }
     ]);
-    assert.match(loaded.cli.createHelpText(), /External Extensions/);
+    assert.match(loaded.cli.createHelpText(), /External Commands/);
     assert.match(loaded.cli.createHelpText(), /openruntime foo ping \[external: foo\]/);
 
     const output = createOutput();
@@ -317,14 +497,14 @@ test("loads external extensions from the configured directory", async () => {
     });
 
     const listOutput = createOutput();
-    const listExitCode = await loaded.cli.run(["extensions", "list"], {
+    const listExitCode = await loaded.cli.run(["commands", "list"], {
       stdout: listOutput.stdout,
       stderr: listOutput.stderr
     });
 
     assert.equal(listExitCode, 0);
     assert.equal(listOutput.errorText(), "");
-    assert.equal(JSON.parse(listOutput.text()).extensions[0].path, join(tempDir, "foo.mjs"));
+    assert.equal(JSON.parse(listOutput.text()).commands[0].path, join(tempDir, "foo.mjs"));
   } finally {
     rmSync(tempDir, {
       recursive: true,
@@ -333,8 +513,8 @@ test("loads external extensions from the configured directory", async () => {
   }
 });
 
-test("skips conflicting or invalid external extensions without crashing", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-conflict-"));
+test("skips conflicting or invalid external commands without crashing", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-conflict-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -348,8 +528,8 @@ test("skips conflicting or invalid external extensions without crashing", async 
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "0",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -377,8 +557,8 @@ test("skips conflicting or invalid external extensions without crashing", async 
   }
 });
 
-test("honors disabled external extensions", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-disabled-"));
+test("honors disabled external commands", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-disabled-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
@@ -391,8 +571,8 @@ test("honors disabled external extensions", async () => {
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "1",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "1",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -405,10 +585,10 @@ test("honors disabled external extensions", async () => {
   }
 });
 
-test("warns when runCli skips an external extension", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-warning-"));
-  const previousDisable = process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS;
-  const previousDir = process.env.OPENRUNTIME_EXTENSIONS_DIR;
+test("warns when runCli skips an external command", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-warning-"));
+  const previousDisableCommands = process.env.OPENRUNTIME_DISABLE_COMMANDS;
+  const previousCommandsDir = process.env.OPENRUNTIME_COMMANDS_DIR;
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -418,8 +598,8 @@ test("warns when runCli skips an external extension", async () => {
       "};",
       ""
     ].join("\n"));
-    delete process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS;
-    process.env.OPENRUNTIME_EXTENSIONS_DIR = tempDir;
+    delete process.env.OPENRUNTIME_DISABLE_COMMANDS;
+    process.env.OPENRUNTIME_COMMANDS_DIR = tempDir;
 
     const output = createOutput();
     const exitCode = await runCli(["--help"], {
@@ -428,14 +608,14 @@ test("warns when runCli skips an external extension", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.match(output.errorText(), /Skipped external OpenRuntime extension/);
+    assert.match(output.errorText(), /Skipped external OpenRuntime command/);
     assert.match(output.errorText(), /conflicts with an existing command/);
   } finally {
-    process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS = previousDisable ?? "1";
-    if (previousDir === undefined) {
-      delete process.env.OPENRUNTIME_EXTENSIONS_DIR;
+    process.env.OPENRUNTIME_DISABLE_COMMANDS = previousDisableCommands ?? "1";
+    if (previousCommandsDir === undefined) {
+      delete process.env.OPENRUNTIME_COMMANDS_DIR;
     } else {
-      process.env.OPENRUNTIME_EXTENSIONS_DIR = previousDir;
+      process.env.OPENRUNTIME_COMMANDS_DIR = previousCommandsDir;
     }
     rmSync(tempDir, {
       recursive: true,
@@ -444,7 +624,7 @@ test("warns when runCli skips an external extension", async () => {
   }
 });
 
-test("rejects extensions that conflict with built-in commands", () => {
+test("rejects commands that conflict with built-in commands", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [
@@ -458,7 +638,7 @@ test("rejects extensions that conflict with built-in commands", () => {
   );
 });
 
-test("rejects duplicate extension command names", () => {
+test("rejects duplicate command names", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [
@@ -651,7 +831,7 @@ test("filters exported auth state by domain", () => {
 test("passes keyword query to events", async () => {
   const calls: string[] = [];
   const output = createOutput();
-  const exitCode = await runCli(["events", "--bridge", "http://bridge.test", "--query", "react", "--limit", "50"], {
+  const exitCode = await runCli(["events", "--bridge", "http://bridge.test", "--url", "http://app.test/", "--query", "react", "--limit", "50"], {
     stdout: output.stdout,
     stderr: output.stderr,
     fetcher: async (url) => {
@@ -812,8 +992,14 @@ test("rejects full profile export", async () => {
   });
 
   assert.equal(exitCode, 1);
-  assert.equal(output.text(), "");
-  assert.match(output.errorText(), /--full is not supported by export-profile/);
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("export-profile", {
+    code: "PROFILE_FULL_EXPORT_UNSUPPORTED",
+    kind: "validation",
+    message: "--full is not supported by export-profile. Use --domain <domain> to narrow account export.",
+    retryable: false,
+    hint: "Use one or more --domain values to narrow account export."
+  }));
   assert.equal(chromeWasRead, false);
 });
 
@@ -1484,6 +1670,8 @@ test("wait-for waits for a runtime to connect when none is currently connected",
     "wait-for",
     "--bridge",
     "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
     "modern:route",
     "ready",
     "--timeout",
@@ -1546,6 +1734,8 @@ test("wait-for keeps following when the current runtime has not registered the t
     "wait-for",
     "--bridge",
     "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
     "modern:route",
     "ready",
     "--timeout",
@@ -1640,6 +1830,8 @@ test("wait-for next ignores runtimes that were connected before the command star
     "wait-for",
     "--bridge",
     "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
     "modern:route",
     "ready",
     "--next",
@@ -2342,9 +2534,17 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(output.text(), "opened\n");
+  const sessionId = createOperationSessionId();
+  assertOpenOutput(output.text(), {
+    command: "open http://app.test/",
+    url: "http://app.test/",
+    openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+    normalizedUrl: "http://app.test/",
+    bridgeUrl: "http://localhost:18080",
+    sessionId
+  });
   assert.equal(output.errorText(), "");
-  assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
+  assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
 });
 
 test("opens a browser page with a stable OpenRuntime session", async () => {
@@ -2369,7 +2569,14 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(output.text(), "opened\n");
+  assertOpenOutput(output.text(), {
+    command: "open http://app.test/orders?region=cn#details",
+    url: "http://app.test/orders?region=cn#details",
+    openedUrl: "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
+    normalizedUrl: "http://app.test/orders?region=cn#details",
+    bridgeUrl: "http://localhost:17321",
+    sessionId: "session-orders"
+  });
   assert.deepEqual(browserCalls, [[
     "open",
     "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details"
@@ -2404,8 +2611,16 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(output.text(), "opened\n");
-  assert.deepEqual(browserCalls, [["open", "http://app.test/"]]);
+  const sessionId = createOperationSessionId();
+  assertOpenOutput(output.text(), {
+    command: "open http://app.test/",
+    url: "http://app.test/",
+    openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+    normalizedUrl: "http://app.test/",
+    bridgeUrl: null,
+    sessionId
+  });
+  assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
   assert.deepEqual(browserOptions, [{ ui: false }]);
 });
 
@@ -2429,7 +2644,14 @@ test("opens a visible browser page when ui is set and keeps the session query", 
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(output.text(), "opened\n");
+  assertOpenOutput(output.text(), {
+    command: "open http://app.test/orders",
+    url: "http://app.test/orders",
+    openedUrl: "http://app.test/orders?openruntimeSessionId=session-orders",
+    normalizedUrl: "http://app.test/orders",
+    bridgeUrl: null,
+    sessionId: "session-orders"
+  });
   assert.deepEqual(browserCalls, [["open", "http://app.test/orders?openruntimeSessionId=session-orders"]]);
   assert.deepEqual(browserOptions, [{ ui: true }]);
 });
@@ -2503,82 +2725,198 @@ test("records the latest open operation by working directory and removes it on c
   }
 });
 
+test("uses the latest open context as the default runtime selector", async () => {
+  const context = createOpenContextFixture({
+    bridgeUrl: "http://bridge.test",
+    sessionId: "session-open",
+    url: "http://app.test/orders",
+    normalizedUrl: "http://app.test/orders"
+  });
+  const calls: string[] = [];
+  const output = createOutput();
+
+  try {
+    const exitCode = await runCli(["snapshot", "--id", "modern:route"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      fetcher: async (url) => {
+        calls.push(String(url));
+        if (String(url) === "http://bridge.test/runtimes") {
+          return jsonResponse({
+            runtimes: [
+              {
+                runtimeId: "runtime-open",
+                url: "http://app.test/orders?openruntimeSessionId=session-open",
+                sessionId: "session-open",
+                status: "connected",
+                connectedAt: 1,
+                lastSeenAt: 2
+              }
+            ]
+          });
+        }
+        assert.equal(String(url), "http://bridge.test/runtimes/runtime-open/snapshot?id=modern%3Aroute");
+        return jsonResponse({
+          targets: {},
+          latestEventId: 0,
+          capturedAt: 3
+        });
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(calls, [
+      "http://bridge.test/runtimes",
+      "http://bridge.test/runtimes/runtime-open/snapshot?id=modern%3Aroute"
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), {
+      runtime: {
+        runtimeId: "runtime-open",
+        url: "http://app.test/orders?openruntimeSessionId=session-open",
+        sessionId: "session-open",
+        status: "connected",
+        connectedAt: 1,
+        lastSeenAt: 2
+      },
+      result: {
+        targets: {},
+        latestEventId: 0,
+        capturedAt: 3
+      }
+    });
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("requires an open context before browser page commands", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const output = createOutput();
+  try {
+    const exitCode = await runCli(["click", "Refresh order"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        throw new Error("browser should not be touched without an open context");
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(JSON.parse(output.text()), errorOutput("click Refresh order", {
+      code: "OPEN_CONTEXT_REQUIRED",
+      kind: "validation",
+      message: "No opened page context was found.",
+      retryable: false,
+      hint: "Run `openruntime open <url>` before `openruntime click Refresh order`.",
+      details: {
+        command: "click Refresh order"
+      }
+    }));
+  } finally {
+    rmSync(operationLogDirectory, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
 test("clicks interactive text with an exact page-side lookup", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["click", "Refresh order"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      browserCalls.push(args);
-      return {
-        exitCode: 0,
-        stdout: "{\"clicked\":true}\n",
-        stderr: ""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["click", "Refresh order"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "{\"clicked\":true}\n",
+          stderr: ""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 0);
-  assert.equal(output.text(), "clicked\n");
-  assert.equal(output.errorText(), "");
-  assert.equal(browserCalls.length, 1);
-  assert.equal(browserCalls[0]?.[0], "eval");
-  assert.match(browserCalls[0]?.[1] ?? "", /Refresh order/);
-  assert.match(browserCalls[0]?.[1] ?? "", /querySelectorAll/);
+    assert.equal(exitCode, 0);
+    assert.equal(output.text(), "clicked\n");
+    assert.equal(output.errorText(), "");
+    assert.equal(browserCalls.length, 1);
+    assert.equal(browserCalls[0]?.[0], "eval");
+    assert.match(browserCalls[0]?.[1] ?? "", /Refresh order/);
+    assert.match(browserCalls[0]?.[1] ?? "", /querySelectorAll/);
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("delegates click refs and explicit selectors to next-browser", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  for (const target of ["e7", "[data-testid=refresh-order]", "text=Refresh order"]) {
-    const exitCode = await runCli(["click", target], {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      browserRunner: createBrowserRunner(async (args) => {
-        browserCalls.push(args);
-        return {
-          exitCode: 0,
-          stdout: "clicked\n",
-          stderr: ""
-        };
-      })
-    });
-    assert.equal(exitCode, 0);
+  try {
+    for (const target of ["e7", "[data-testid=refresh-order]", "text=Refresh order"]) {
+      const exitCode = await runCli(["click", target], {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          browserCalls.push(args);
+          return {
+            exitCode: 0,
+            stdout: "clicked\n",
+            stderr: ""
+          };
+        })
+      });
+      assert.equal(exitCode, 0);
+    }
+
+    assert.equal(output.text(), "clicked\nclicked\nclicked\n");
+    assert.deepEqual(browserCalls, [
+      ["click", "e7"],
+      ["click", "[data-testid=refresh-order]"],
+      ["click", "text=Refresh order"]
+    ]);
+  } finally {
+    context.cleanup();
   }
-
-  assert.equal(output.text(), "clicked\nclicked\nclicked\n");
-  assert.deepEqual(browserCalls, [
-    ["click", "e7"],
-    ["click", "[data-testid=refresh-order]"],
-    ["click", "text=Refresh order"]
-  ]);
 });
 
 test("reports interactive text click errors without broad text fallback", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["click", "Refresh order"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      browserCalls.push(args);
-      return {
-        exitCode: 1,
-        stdout: "",
-        stderr: "Multiple interactive elements matched text \"Refresh order\""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["click", "Refresh order"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 1,
+          stdout: "",
+          stderr: "Multiple interactive elements matched text \"Refresh order\""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 1);
-  assert.equal(output.text(), "");
-  assert.match(output.errorText(), /Multiple interactive elements matched text "Refresh order"/);
-  assert.equal(browserCalls.length, 1);
-  assert.equal(browserCalls[0]?.[0], "eval");
+    assert.equal(exitCode, 1);
+    assert.equal(output.text(), "");
+    assert.match(output.errorText(), /Multiple interactive elements matched text "Refresh order"/);
+    assert.equal(browserCalls.length, 1);
+    assert.equal(browserCalls[0]?.[0], "eval");
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("starts the bridge in the background and returns after it is reachable", async () => {
@@ -2715,154 +3053,178 @@ test("stops by closing the browser session before stopping the bridge", async ()
 test("reads a window value through browser eval", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["get-window", "gf_data_v1"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      browserCalls.push(args);
-      assert.equal(args[0], "eval");
-      assert.match(args[1] ?? "", /gf_data_v1/);
-      return {
-        exitCode: 0,
-        stdout: JSON.stringify({
-          path: "gf_data_v1",
-          found: true,
-          value: {
-            route: "route-a"
-          }
-        }),
-        stderr: ""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["get-window", "gf_data_v1"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        assert.equal(args[0], "eval");
+        assert.match(args[1] ?? "", /gf_data_v1/);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            path: "gf_data_v1",
+            found: true,
+            value: {
+              route: "route-a"
+            }
+          }),
+          stderr: ""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 0);
-  assert.deepEqual(JSON.parse(output.text()), {
-    path: "gf_data_v1",
-    found: true,
-    value: {
-      route: "route-a"
-    }
-  });
-  assert.equal(browserCalls.length, 1);
+    assert.equal(exitCode, 0);
+    assert.deepEqual(JSON.parse(output.text()), {
+      path: "gf_data_v1",
+      found: true,
+      value: {
+        route: "route-a"
+      }
+    });
+    assert.equal(browserCalls.length, 1);
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("waits for a browser eval condition", async () => {
   const output = createOutput();
   let attempts = 0;
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["wait-eval", "window.gf_data_v1 != null", "--timeout", "500"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      assert.equal(args[0], "eval");
-      assert.match(args[1] ?? "", /window\.gf_data_v1/);
-      attempts += 1;
-      return {
-        exitCode: 0,
-        stdout: attempts === 1 ? "false\n" : "true\n",
-        stderr: ""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["wait-eval", "window.gf_data_v1 != null", "--timeout", "500"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        assert.equal(args[0], "eval");
+        assert.match(args[1] ?? "", /window\.gf_data_v1/);
+        attempts += 1;
+        return {
+          exitCode: 0,
+          stdout: attempts === 1 ? "false\n" : "true\n",
+          stderr: ""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 0);
-  assert.deepEqual(JSON.parse(output.text()), {
-    success: true,
-    condition: {
-      script: "window.gf_data_v1 != null"
-    },
-    value: true
-  });
-  assert.equal(attempts, 2);
+    assert.equal(exitCode, 0);
+    assert.deepEqual(JSON.parse(output.text()), {
+      success: true,
+      condition: {
+        script: "window.gf_data_v1 != null"
+      },
+      value: true
+    });
+    assert.equal(attempts, 2);
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("filters browser network requests by url", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["network", "--url", "/api/orders"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      browserCalls.push(args);
-      return {
-        exitCode: 0,
-        stdout: [
-          "# Network requests since last navigation",
-          "# Columns: idx status method type ms url [next-action=...]",
-          "# Use `network <idx>` for headers and body.",
-          "",
-          "0 200 GET fetch 12ms http://app.test/api/orders",
-          "1 200 GET script 3ms http://app.test/assets/app.js",
-          "2 FAIL GET xhr - http://app.test/api/orders/failed"
-        ].join("\n"),
-        stderr: ""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["network", "--url", "/api/orders"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: [
+            "# Network requests since last navigation",
+            "# Columns: idx status method type ms url [next-action=...]",
+            "# Use `network <idx>` for headers and body.",
+            "",
+            "0 200 GET fetch 12ms http://app.test/api/orders",
+            "1 200 GET script 3ms http://app.test/assets/app.js",
+            "2 FAIL GET xhr - http://app.test/api/orders/failed"
+          ].join("\n"),
+          stderr: ""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 0);
-  assert.equal(output.text(), [
-    "# Network requests since last navigation",
-    "# Columns: idx status method type ms url [next-action=...]",
-    "",
-    "0 200 GET fetch 12ms http://app.test/api/orders",
-    "2 FAIL GET xhr - http://app.test/api/orders/failed",
-    ""
-  ].join("\n"));
-  assert.deepEqual(browserCalls, [["network"]]);
+    assert.equal(exitCode, 0);
+    assert.equal(output.text(), [
+      "# Network requests since last navigation",
+      "# Columns: idx status method type ms url [next-action=...]",
+      "",
+      "0 200 GET fetch 12ms http://app.test/api/orders",
+      "2 FAIL GET xhr - http://app.test/api/orders/failed",
+      ""
+    ].join("\n"));
+    assert.deepEqual(browserCalls, [["network"]]);
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("filters browser console entries by level query and limit", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
 
-  const exitCode = await runCli(["console", "--level", "error", "--query", "react", "--limit", "1"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      browserCalls.push(args);
-      return {
-        exitCode: 0,
-        stdout: JSON.stringify([
-          { level: "warn", args: "React warning", timestamp: 1 },
-          { level: "error", args: "plain error", timestamp: 2 },
-          { level: "error", args: "ReactCurrentDispatcher failed", timestamp: 3 },
-          { level: "error", args: "React hydration failed", timestamp: 4 }
-        ]),
-        stderr: ""
-      };
-    })
-  });
+  try {
+    const exitCode = await runCli(["console", "--level", "error", "--query", "react", "--limit", "1"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify([
+            { level: "warn", args: "React warning", timestamp: 1 },
+            { level: "error", args: "plain error", timestamp: 2 },
+            { level: "error", args: "ReactCurrentDispatcher failed", timestamp: 3 },
+            { level: "error", args: "React hydration failed", timestamp: 4 }
+          ]),
+          stderr: ""
+        };
+      })
+    });
 
-  assert.equal(exitCode, 0);
-  assert.deepEqual(JSON.parse(output.text()), {
-    entries: [
-      {
-        level: "error",
-        args: "React hydration failed",
-        timestamp: 4
+    assert.equal(exitCode, 0);
+    assert.deepEqual(JSON.parse(output.text()), {
+      entries: [
+        {
+          level: "error",
+          args: "React hydration failed",
+          timestamp: 4
+        }
+      ],
+      summary: {
+        total: 1,
+        log: 0,
+        info: 0,
+        warn: 0,
+        error: 1
       }
-    ],
-    summary: {
-      total: 1,
-      log: 0,
-      info: 0,
-      warn: 0,
-      error: 1
-    }
-  });
-  assert.deepEqual(browserCalls, [[
-    "eval",
-    [
-      "(() => {",
-      "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
-      "  return Array.isArray(logs) ? logs : [];",
-      "})()"
-    ].join("\n")
-  ]]);
+    });
+    assert.deepEqual(browserCalls, [[
+      "eval",
+      [
+        "(() => {",
+        "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
+        "  return Array.isArray(logs) ? logs : [];",
+        "})()"
+      ].join("\n")
+    ]]);
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("suggests open when wait-for cannot find a matching runtime", async () => {
@@ -2894,12 +3256,12 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
         id: "modern:route",
         status: "ready"
       },
-      reason: "No connected runtime matched URL \"http://app.test/route-a\".\nUse --open to open the page before waiting."
+      reason: "No connected runtime matched URL \"http://app.test/route-a\".\nRun `openruntime open <url>` before waiting."
     }
   });
   assert.equal(
     output.errorText(),
-    "No connected runtime matched URL \"http://app.test/route-a\".\nUse --open to open the page before waiting.\n"
+    "No connected runtime matched URL \"http://app.test/route-a\".\nRun `openruntime open <url>` before waiting.\n"
   );
 });
 
@@ -3114,7 +3476,14 @@ test("rejects invalid payload json", async () => {
   });
 
   assert.equal(exitCode, 1);
-  assert.equal(output.errorText(), "--payload must be valid JSON.\n");
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("run-action route.pick", {
+    code: "CLI_PAYLOAD_INVALID_JSON",
+    kind: "validation",
+    message: "--payload must be valid JSON.",
+    retryable: false,
+    hint: "Pass --payload as a JSON object string."
+  }));
 });
 
 test("recognizes a bin symlink as the cli entrypoint", () => {
@@ -3154,6 +3523,104 @@ function createOutput(): {
     },
     text: () => stdout,
     errorText: () => stderr
+  };
+}
+
+function commandOutput(command: string, data: unknown, message: string | undefined = undefined): unknown {
+  return {
+    status: "ok",
+    ...(message === undefined ? {} : { message }),
+    data,
+    meta: {
+      version: 1,
+      command
+    }
+  };
+}
+
+function assertOpenOutput(
+  text: string,
+  expected: {
+    command: string;
+    url: string;
+    openedUrl: string;
+    normalizedUrl: string;
+    bridgeUrl: string | null;
+    sessionId: string;
+  }
+): void {
+  const parsed = JSON.parse(text);
+  assert.equal(parsed.status, "ok");
+  assert.equal(parsed.message, "Page opened.");
+  assert.deepEqual(parsed.meta, {
+    version: 1,
+    command: expected.command
+  });
+  assert.equal(parsed.data.url, expected.url);
+  assert.equal(parsed.data.openedUrl, expected.openedUrl);
+  assert.equal(parsed.data.normalizedUrl, expected.normalizedUrl);
+  assert.equal(parsed.data.bridgeUrl, expected.bridgeUrl);
+  assert.equal(parsed.data.sessionId, expected.sessionId);
+  assert.equal(typeof parsed.data.openedAt, "number");
+}
+
+function errorOutput(
+  command: string,
+  error: {
+    code: string;
+    kind: string;
+    message: string;
+    retryable: boolean;
+    hint?: string;
+    details?: Record<string, unknown>;
+  }
+): unknown {
+  return {
+    status: "error",
+    message: error.message,
+    error: {
+      code: error.code,
+      kind: error.kind,
+      retryable: error.retryable,
+      ...(error.hint === undefined ? {} : { hint: error.hint }),
+      ...(error.details === undefined ? {} : { details: error.details })
+    },
+    meta: {
+      version: 1,
+      command
+    }
+  };
+}
+
+function createOpenContextFixture(overrides: Partial<{
+  url: string;
+  normalizedUrl: string;
+  bridgeUrl: string | null;
+  sessionId: string | null;
+}> = {}): { operationLogDirectory: string; cleanup(): void } {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const key = createOperationLogKey(process.cwd());
+  const entry = {
+    schemaVersion: 1,
+    command: "open",
+    key,
+    cwd: process.cwd(),
+    url: overrides.url ?? "http://app.test/",
+    normalizedUrl: overrides.normalizedUrl ?? "http://app.test/",
+    bridgeUrl: overrides.bridgeUrl ?? "http://bridge.test",
+    sessionId: overrides.sessionId ?? "session-open",
+    openedAt: 1,
+    exitCode: 0
+  };
+  writeFileSync(join(operationLogDirectory, `${key}.json`), `${JSON.stringify(entry, null, 2)}\n`, "utf8");
+  return {
+    operationLogDirectory,
+    cleanup: () => {
+      rmSync(operationLogDirectory, {
+        recursive: true,
+        force: true
+      });
+    }
   };
 }
 

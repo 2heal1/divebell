@@ -1,5 +1,5 @@
 export interface CliCommandReference {
-  category: "Bridge and Browser" | "Runtime" | "Extensions" | "External Extensions";
+  category: "Bridge and Browser" | "Runtime" | "Commands" | "External Commands";
   usage: string;
   description: string;
 }
@@ -34,11 +34,6 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Bridge and Browser",
     usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime goto <url> [--session <id>]",
-    description: "让当前浏览器页面跳转到指定 URL。"
   },
   {
     category: "Bridge and Browser",
@@ -86,11 +81,6 @@ export const cliCommandReferences: CliCommandReference[] = [
     description: "兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。"
   },
   {
-    category: "Bridge and Browser",
-    usage: "openruntime close",
-    description: "关闭浏览器会话。"
-  },
-  {
     category: "Runtime",
     usage: "openruntime runtimes [--bridge <url>]",
     description: "列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。"
@@ -127,18 +117,18 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Runtime",
-    usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]",
+    usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
     description: "业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。"
   },
   {
     category: "Runtime",
-    usage: "openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]",
+    usage: "openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]",
     description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
   },
   {
-    category: "Extensions",
-    usage: "openruntime extensions list",
-    description: "列出当前 CLI 已加载的内部扩展和外部插件。"
+    category: "Commands",
+    usage: "openruntime commands list",
+    description: "列出当前 CLI 已加载的内置命令和外部命令文件。"
   }
 ];
 
@@ -185,7 +175,7 @@ export interface CliSkillSectionOptions {
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const commandLines = categories.flatMap((category) => {
     const commands = commandReferences.filter((command) => command.category === category);
     if (commands.length === 0) return [];
@@ -208,12 +198,12 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
     Runtime: "Runtime",
-    Extensions: "扩展",
-    "External Extensions": "外部插件"
+    Commands: "命令",
+    "External Commands": "外部命令"
   };
   const lines = [
     "# OpenRuntime CLI Reference",

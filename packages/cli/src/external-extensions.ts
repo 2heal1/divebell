@@ -116,7 +116,7 @@ export function markExternalCommandReferences(
 ): readonly CliCommandReference[] {
   return references.map((reference) => ({
     ...reference,
-    category: "External Extensions",
+    category: "External Subcommands",
     usage: `${reference.usage} [external: ${extensionName}]`,
     description: `${reference.description} [external: ${extensionName}]`
   }));
@@ -158,7 +158,7 @@ async function loadExternalExtension(
           source: "external",
           status: "skipped",
           path: candidate.path,
-          reason: `Extension command "${definition.name}" conflicts with an existing command.`
+          reason: `Subcommand "${definition.name}" conflicts with an existing command.`
         }
       };
     }
@@ -202,27 +202,27 @@ async function importExternalModule(modulePath: string): Promise<ExternalExtensi
 
 function validateExternalExtensionDefinition(value: unknown, modulePath: string): ExternalExtensionDefinition {
   if (typeof value !== "object" || value === null) {
-    throw new Error(`External extension must default-export an object: ${modulePath}`);
+    throw new Error(`External subcommand must default-export an object: ${modulePath}`);
   }
 
   const candidate = value as Partial<ExternalExtensionDefinition>;
   if (candidate.schemaVersion !== EXTERNAL_EXTENSION_SCHEMA_VERSION) {
-    throw new Error(`External extension schemaVersion must be ${EXTERNAL_EXTENSION_SCHEMA_VERSION}.`);
+    throw new Error(`External subcommand schemaVersion must be ${EXTERNAL_EXTENSION_SCHEMA_VERSION}.`);
   }
   if (typeof candidate.name !== "string" || candidate.name.length === 0) {
-    throw new Error("External extension name must be a non-empty string.");
+    throw new Error("External subcommand name must be a non-empty string.");
   }
   if (!/^[a-z][a-z0-9-]*$/.test(candidate.name)) {
-    throw new Error(`External extension name "${candidate.name}" must match /^[a-z][a-z0-9-]*$/.`);
+    throw new Error(`External subcommand name "${candidate.name}" must match /^[a-z][a-z0-9-]*$/.`);
   }
   if (typeof candidate.run !== "function") {
-    throw new Error(`External extension "${candidate.name}" must export a run(options) function.`);
+    throw new Error(`External subcommand "${candidate.name}" must export a run(options) function.`);
   }
   if (candidate.commandReferences !== undefined && !Array.isArray(candidate.commandReferences)) {
-    throw new Error(`External extension "${candidate.name}" commandReferences must be an array.`);
+    throw new Error(`External subcommand "${candidate.name}" commandReferences must be an array.`);
   }
   if (candidate.exampleReferences !== undefined && !Array.isArray(candidate.exampleReferences)) {
-    throw new Error(`External extension "${candidate.name}" exampleReferences must be an array.`);
+    throw new Error(`External subcommand "${candidate.name}" exampleReferences must be an array.`);
   }
 
   return {

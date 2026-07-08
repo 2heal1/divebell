@@ -18,7 +18,6 @@
 - `openruntime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
 - `openruntime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
 - `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
-- `openruntime goto <url> [--session <id>]` - 让当前浏览器页面跳转到指定 URL。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `openruntime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。
 - `openruntime fill <ref|selector> <value>` - 按页面引用或选择器填写输入框。
@@ -28,7 +27,6 @@
 - `openruntime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
 - `openruntime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
 - `openruntime console [--level <level>] [--query <keyword>] [--limit <n>]` - 兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。
-- `openruntime close` - 关闭浏览器会话。
 
 ### Runtime
 
@@ -39,12 +37,12 @@
 - `openruntime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - 列出页面声明的 runtime action。
 - `openruntime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]` - 读取 action 某个输入项的动态候选值。
 - `openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - 执行页面声明的 runtime action。
-- `openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
-- `openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--open] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
+- `openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
+- `openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
-### 扩展
+### 子命令
 
-- `openruntime extensions list` - 列出当前 CLI 已加载的内部扩展和外部插件。
+- `openruntime extensions list` - 列出当前 CLI 已加载的内部子命令和外部子命令文件。
 
 ## Examples
 

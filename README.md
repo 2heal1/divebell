@@ -140,13 +140,15 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 ---
 
-## CLI Extensions
+## CLI Subcommands
 
-OpenRuntime CLI can be extended with local extension files. This is useful when a team wants to add private workflow commands without changing the OpenRuntime source code.
+OpenRuntime CLI can load local subcommand files. This is useful when a team wants to add private page operation commands without changing the OpenRuntime source code.
 
-See [CLI Extension Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 扩展开发](docs/cli-extensions.zh-CN.md).
+This section is about subcommand development: the agent runs `openruntime open <url>` first, and the subcommand operates on the current opened page. General CLI extensions that open, navigate, or close the browser by themselves need a separate capability.
 
-External extensions are loaded from:
+See [CLI Sub-command Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 子命令开发](docs/cli-extensions.zh-CN.md).
+
+Subcommand files are loaded from:
 
 ```text
 ~/.openruntime/extensions
@@ -158,7 +160,7 @@ You can override the directory:
 OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
 ```
 
-You can disable external extensions:
+You can disable external subcommand loading:
 
 ```sh
 OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
@@ -171,10 +173,10 @@ Two file layouts are supported:
 ~/.openruntime/extensions/foo/index.mjs
 ```
 
-External commands are shown separately in help and are marked with their source:
+External subcommands are shown separately in help and are marked with their source:
 
 ```text
-External Extensions:
+External Subcommands:
   openruntime foo ping [external: foo]
 ```
 
@@ -184,9 +186,9 @@ Use this command to inspect what was loaded:
 openruntime extensions list
 ```
 
-If an external extension conflicts with a built-in command or an internal extension, OpenRuntime skips the external extension and prints a warning. A broken extension also does not crash the CLI; it is reported by `extensions list`.
+If an external subcommand conflicts with a built-in command or an internal subcommand, OpenRuntime skips the external subcommand and prints a warning. A broken subcommand also does not crash the CLI; it is reported by `extensions list`.
 
-External extensions are local code execution. Only load files you trust.
+External subcommands are local code execution. Only load files you trust.
 
 ---
 

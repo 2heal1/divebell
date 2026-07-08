@@ -64,6 +64,10 @@ export function createOperationLogKey(cwd: string): string {
   return `open-${createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 16)}`;
 }
 
+export function createOperationSessionId(cwd = process.cwd()): string {
+  return createOperationLogKey(cwd);
+}
+
 export function normalizeOpenRuntimeUrlForMatch(input: string): string {
   try {
     const url = new URL(input);

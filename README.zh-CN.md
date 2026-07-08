@@ -140,13 +140,15 @@ openruntime release-note latest --limit 3
 
 ---
 
-## CLI 扩展
+## CLI 子命令
 
-OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己的工作流命令，而不需要修改 OpenRuntime 源码。
+OpenRuntime CLI 支持加载本地子命令文件。团队可以用它增加自己的页面操作命令，而不需要修改 OpenRuntime 源码。
 
-扩展导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 扩展开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Extension Development](docs/cli-extensions.md)。
+这里说的是子命令开发：先由 agent 运行 `openruntime open <url>`，子命令只操作当前已打开页面。可以自己打开、跳转或关闭浏览器的通用 CLI 扩展能力需要单独设计。
 
-外部扩展默认从这里读取：
+子命令导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 子命令开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Sub-command Development](docs/cli-extensions.md)。
+
+子命令文件默认从这里读取：
 
 ```text
 ~/.openruntime/extensions
@@ -158,7 +160,7 @@ OpenRuntime CLI 支持加载本地扩展文件。团队可以用它增加自己�
 OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
 ```
 
-也可以关闭外部扩展：
+也可以关闭外部子命令加载：
 
 ```sh
 OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
@@ -171,10 +173,10 @@ OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
 ~/.openruntime/extensions/foo/index.mjs
 ```
 
-外部扩展会在 help 里单独展示，并标注来源：
+外部子命令会在 help 里单独展示，并标注来源：
 
 ```text
-External Extensions:
+External Subcommands:
   openruntime foo ping [external: foo]
 ```
 
@@ -184,9 +186,9 @@ External Extensions:
 openruntime extensions list
 ```
 
-如果外部扩展和内置命令或内部扩展重名，OpenRuntime 会跳过外部扩展并打印警告。扩展加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
+如果外部子命令和内置命令或内部子命令重名，OpenRuntime 会跳过外部子命令并打印警告。子命令加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
 
-外部扩展会执行本机代码，只加载可信文件。
+外部子命令会执行本机代码，只加载可信文件。
 
 ---
 

@@ -1,37 +1,37 @@
-# OpenRuntime CLI Sub-command Development Guide
+# OpenRuntime CLI Command Development Guide
 
-Chinese version: [CLI 子命令开发](cli-extensions.zh-CN.md)
+Chinese version: [CLI 命令开发](cli-extensions.zh-CN.md)
 
 ## When To Use
 
-OpenRuntime subcommands package project, team, or local workflows as repeatable page operation commands without changing the OpenRuntime CLI command dispatcher.
+OpenRuntime commands package project, team, or local workflows as repeatable page operation commands without changing the OpenRuntime CLI command dispatcher.
 
-This guide is about sub-command development, not general CLI extension development. A subcommand only operates on a page opened by `openruntime open <url>`. If you want to build a standalone CLI command that opens, navigates, or closes the browser by itself, that needs a separate CLI extension capability.
+This guide is about page commands mounted under `openruntime`. A command only operates on a page opened by `openruntime open <url>`. If you want to build a standalone CLI command that opens, navigates, or closes the browser by itself, that needs a separate capability.
 
-Use a subcommand when:
+Use a command when:
 
 - An agent needs to run the same page workflow repeatedly.
 - A command needs to read the current page and print structured JSON.
-- The page already exposes OpenRuntime Targets or Actions, and the subcommand only needs to query or run them.
+- The page already exposes OpenRuntime Targets or Actions, and the command only needs to query or run them.
 - A team wants stable commands for common project-specific page operations.
 
-If the page can expose stable Targets or Actions, prefer adding OpenRuntime Targets and Actions in the application, then call `snapshot`, `runAction`, or `waitFor` from the subcommand.
+If the page can expose stable Targets or Actions, prefer adding OpenRuntime Targets and Actions in the application, then call `snapshot`, `runAction`, or `waitFor` from the command.
 
 ## Execution Boundary
 
-Page subcommands operate on the current opened page. The agent should run:
+Page commands operate on the current opened page. The agent should run:
 
 ```sh
 openruntime open <url>
 ```
 
-Then invoke the subcommand:
+Then invoke the command:
 
 ```sh
-openruntime <sub-command>
+openruntime <command>
 ```
 
-Do not open, navigate, close, or replace the browser session inside a subcommand. The command also should not choose a Bridge or Runtime itself. The CLI passes the page context created by `openruntime open <url>` into the subcommand and uses it as the default page operation target.
+Do not open, navigate, close, or replace the browser session inside a command. The command also should not choose a Bridge or Runtime itself. The CLI passes the page context created by `openruntime open <url>` into the command and uses it as the default page operation target.
 
 If a command only supports specific URLs, validate `options.page.url` at the start and throw `createError(...)` with `PAGE_URL_UNSUPPORTED` when it does not match:
 
@@ -54,63 +54,63 @@ if (options.page === undefined || !isSupportedPage(options.page.url)) {
 
 ## Installation And Loading
 
-Subcommand files are loaded from:
+Command files are loaded from:
 
 ```text
-~/.openruntime/extensions
+~/.openruntime/commands
 ```
-
-The loading entry still uses the historical `extensions` directory and environment variable names. The files loaded here are OpenRuntime subcommands, not general CLI extensions.
 
 You can override the directory:
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
 ```
 
-You can disable external subcommand loading:
+You can disable external command loading:
 
 ```sh
-OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
 Use this command to inspect what was loaded:
 
 ```sh
-openruntime extensions list
+openruntime commands list
 ```
 
-External subcommands are shown separately in help and are marked with their source:
+External commands are shown separately in help and are marked with their source:
 
 ```text
-External Subcommands:
+External Commands:
   openruntime foo ping [external: foo]
 ```
 
-If an external subcommand conflicts with a built-in command or an internal subcommand, OpenRuntime skips the external subcommand and prints a warning. A broken subcommand also does not crash the CLI; it is reported by `extensions list`.
+If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported by `commands list`.
 
-External subcommands are local code execution. Only load files you trust.
+External commands are local code execution. Only load files you trust.
 
-## Subcommand File Structure
+## Command File Structure
 
 Two file layouts are supported:
 
 ```text
-~/.openruntime/extensions/foo.mjs
-~/.openruntime/extensions/foo/index.mjs
+~/.openruntime/commands/foo.mjs
+~/.openruntime/commands/foo/index.mjs
 ```
 
-A subcommand file must default-export this shape:
+A command file must default-export this shape. Prefer `defineCommand(...)` so the shape is fixed and typed:
 
 ```js
-export default {
+import { defineCommand } from "@openruntime/cli";
+
+export default defineCommand({
   schemaVersion: 1,
   name: "foo",
   displayName: "Foo",
-  description: "Foo subcommand",
+  description: "Foo command",
   commandReferences: [
     {
-      category: "Subcommands",
+      category: "Commands",
       usage: "openruntime foo ping",
       description: "Runs the Foo command."
     }
@@ -127,10 +127,19 @@ export default {
     });
     return 0;
   }
-};
+});
 ```
 
-The exported object currently follows the `OpenRuntimeCliExtension` interface from [`packages/cli/src/index.ts`](../packages/cli/src/index.ts). The interface name is historical; this guide describes restricted page subcommands. The OpenRuntime API object follows [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts).
+The exported object follows `OpenRuntimeCommandDefinition`. The OpenRuntime API object follows [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts).
+
+Use `validateCommand(...)` when tests or CI need to check a command export directly:
+
+```js
+import { validateCommand } from "@openruntime/cli";
+import command from "./foo.mjs";
+
+validateCommand(command);
+```
 
 ## Run Context: `run(options)`
 
@@ -145,7 +154,7 @@ The exported object currently follows the `OpenRuntimeCliExtension` interface fr
 | `options.output` | Unified JSON output helper for `ok`, `needs_input`, and `error` results. |
 | `options.openruntime` | Current-page query, page action, and page interaction capabilities. |
 
-A few low-level fields remain available for tests, debugging, or proxying external tools. Most subcommands should not depend on them:
+A few low-level fields remain available for tests, debugging, or proxying external tools. Most commands should not depend on them:
 
 | Field | When to use it |
 | --- | --- |
@@ -163,13 +172,13 @@ Data commands should prefer `options.output` instead of writing stdout directly.
 openruntime github-release latest --limit 3
 ```
 
-The subcommand receives:
+The command receives:
 
 ```js
 options.args.command; // ["github-release", "latest"]
 ```
 
-Flags are available in `options.args.options`. Subcommands can use these inputs for command behavior, but the page source still comes from `openruntime open <url>`.
+Flags are available in `options.args.options`. Commands can use these inputs for command behavior, but the page source still comes from `openruntime open <url>`.
 
 ### `options.page`: Current Page Information
 
@@ -238,7 +247,7 @@ throw createError({
 });
 ```
 
-If a subcommand handles an error itself instead of throwing, call `options.output.error(error)` and return a non-zero exit code:
+If a command handles an error itself instead of throwing, call `options.output.error(error)` and return a non-zero exit code:
 
 ```js
 options.output.error(createError({
@@ -253,7 +262,7 @@ return 1;
 
 ### `options.openruntime`: OpenRuntime Capabilities
 
-`options.openruntime` is scoped to the current opened page. Subcommands use the current page context directly and do not need to handle the low-level connection.
+`options.openruntime` is scoped to the current opened page. Commands use the current page context directly and do not need to handle the low-level connection.
 
 #### Page State And Declaration Queries
 
@@ -300,7 +309,7 @@ options.output.ok({
 
 #### Browser: Current Page Interaction
 
-Browser APIs operate on the current OpenRuntime browser session. Subcommands do not receive page open, navigation, close, or raw browser runner APIs; run `openruntime open <url>` before invoking a subcommand.
+Browser APIs operate on the current OpenRuntime browser session. Commands do not receive page open, navigation, close, or raw browser runner APIs; run `openruntime open <url>` before invoking a command.
 
 | API | Use it for |
 | --- | --- |
@@ -319,19 +328,19 @@ Use browser APIs for page interaction and fallback inspection. Use page state an
 
 ## Complete Example: Latest Release From GitHub
 
-Create `~/.openruntime/extensions/github-release.mjs`:
+Create `~/.openruntime/commands/github-release.mjs`:
 
 ```js
-import { createError } from "@openruntime/cli";
+import { createError, defineCommand } from "@openruntime/cli";
 
-export default {
+export default defineCommand({
   schemaVersion: 1,
   name: "github-release",
   displayName: "GitHub Release",
   description: "Reads the latest release from the current module-federation/core releases page.",
   commandReferences: [
     {
-      category: "Subcommands",
+      category: "Commands",
       usage: "openruntime github-release latest",
       description: "Read the latest release from the current GitHub releases page."
     }
@@ -396,7 +405,7 @@ export default {
     });
     return 0;
   }
-};
+});
 
 function isModuleFederationReleasesPage(input) {
   try {
@@ -436,12 +445,13 @@ Expected output shape:
 
 ## Best Practice Checklist
 
-- Run `openruntime open <url>` before a subcommand that needs page state.
-- Subcommands operate on the opened page; do not open, navigate, or close the browser session inside a command.
+- Run `openruntime open <url>` before a command that needs page state.
+- Commands operate on the opened page; do not open, navigate, or close the browser session inside a command.
 - Validate `options.page.url` when the command only supports specific pages.
 - Prefer `options.output` for command results, not direct stdout writes.
 - Prefer Targets and Actions over DOM parsing when the application provides them.
 - Use browser APIs for page interaction, fallback inspection, screenshots, console, and network data.
 - Use `browser.evalFile` for large page scripts; use `browser.eval` for small expressions.
 - Return `0` for success and throw an error or return non-zero for failure.
+- Export commands with `defineCommand(...)` and call `validateCommand(...)` from tests or CI before submitting changes.
 - Add `commandReferences` and `exampleReferences` so `openruntime --help` stays useful.

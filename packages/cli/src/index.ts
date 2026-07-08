@@ -275,7 +275,7 @@ export async function createOpenRuntimeCliWithExternalExtensions(
 function formatExternalExtensionWarning(record: ExtensionLoadRecord): string {
   const location = record.path === undefined ? record.name : record.path;
   const reason = record.reason ?? "unknown reason";
-  return `Skipped external OpenRuntime subcommand ${location}: ${reason}\n`;
+  return `Skipped external OpenRuntime command ${location}: ${reason}\n`;
 }
 
 async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
@@ -316,8 +316,8 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       return await runImportProfileCommand(args, stdout, browserRunner);
     }
 
-    if (args.command[0] === "extensions") {
-      return runExtensionsCommand(args, stdout, config.extensionLoadRecords);
+    if (args.command[0] === "commands") {
+      return await runCommandsCommand(args, stdout, config.extensionLoadRecords);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -491,13 +491,13 @@ function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[])
 
   for (const extension of extensions) {
     if (extension.name.length === 0) {
-      throw new Error("CLI subcommand name must not be empty.");
+      throw new Error("CLI command name must not be empty.");
     }
     if (builtInCommandNames.has(extension.name)) {
-      throw new Error(`CLI subcommand "${extension.name}" conflicts with a built-in command.`);
+      throw new Error(`CLI command "${extension.name}" conflicts with a built-in command.`);
     }
     if (registry.has(extension.name)) {
-      throw new Error(`CLI subcommand "${extension.name}" is registered more than once.`);
+      throw new Error(`CLI command "${extension.name}" is registered more than once.`);
     }
     registry.set(extension.name, extension);
   }
@@ -512,7 +512,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "stop",
     "export-profile",
     "import-profile",
-    "extensions",
+    "commands",
     "runtimes",
     "input-options",
     "run-action",
@@ -523,24 +523,25 @@ function createBuiltInCommandNameSet(): Set<string> {
   ]);
 }
 
-function runExtensionsCommand(
+async function runCommandsCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   records: readonly ExtensionLoadRecord[]
-): number {
-  const subcommand = args.command[1];
-  if (subcommand !== "list") {
-    throw createError({
-      code: "CLI_EXTENSIONS_UNKNOWN_COMMAND",
-      kind: "validation",
-      message: `Unknown extensions command "${args.command.slice(1).join(" ")}".`,
-      hint: "Run `openruntime extensions list` to list loaded subcommands."
+): Promise<number> {
+  const commandAction = args.command[1];
+  if (commandAction === "list") {
+    writeJson(stdout, {
+      commands: records
     });
+    return 0;
   }
-  writeJson(stdout, {
-    extensions: records
+
+  throw createError({
+    code: "CLI_COMMANDS_UNKNOWN_COMMAND",
+    kind: "validation",
+    message: `Unknown commands command "${args.command.slice(1).join(" ")}".`,
+    hint: "Run `openruntime commands list` to list loaded commands."
   });
-  return 0;
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -2171,6 +2172,14 @@ export {
   createHelpText
 } from "./help.js";
 export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";
+export {
+  defineCommand,
+  validateCommand
+} from "./command-definition.js";
+export type {
+  OpenRuntimeCommandDefinition,
+  ValidateCommandOptions
+} from "./command-definition.js";
 export type { ExtensionLoadRecord } from "./external-extensions.js";
 export {
   createError,

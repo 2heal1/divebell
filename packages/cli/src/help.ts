@@ -1,5 +1,5 @@
 export interface CliCommandReference {
-  category: "Bridge and Browser" | "Runtime" | "Subcommands" | "External Subcommands";
+  category: "Bridge and Browser" | "Runtime" | "Commands" | "External Commands";
   usage: string;
   description: string;
 }
@@ -126,9 +126,9 @@ export const cliCommandReferences: CliCommandReference[] = [
     description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
   },
   {
-    category: "Subcommands",
-    usage: "openruntime extensions list",
-    description: "列出当前 CLI 已加载的内部子命令和外部子命令文件。"
+    category: "Commands",
+    usage: "openruntime commands list",
+    description: "列出当前 CLI 已加载的内置命令和外部命令文件。"
   }
 ];
 
@@ -175,7 +175,7 @@ export interface CliSkillSectionOptions {
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Subcommands", "External Subcommands"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const commandLines = categories.flatMap((category) => {
     const commands = commandReferences.filter((command) => command.category === category);
     if (commands.length === 0) return [];
@@ -198,12 +198,12 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const exampleReferences = references.exampleReferences ?? cliExampleReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Subcommands", "External Subcommands"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
     Runtime: "Runtime",
-    Subcommands: "子命令",
-    "External Subcommands": "外部子命令"
+    Commands: "命令",
+    "External Commands": "外部命令"
   };
   const lines = [
     "# OpenRuntime CLI Reference",

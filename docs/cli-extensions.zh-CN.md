@@ -1,37 +1,37 @@
-# OpenRuntime CLI 子命令开发指南
+# OpenRuntime CLI 命令开发指南
 
-English version: [OpenRuntime CLI Sub-command Development](cli-extensions.md)
+English version: [OpenRuntime CLI Command Development](cli-extensions.md)
 
 ## 适用场景
 
-OpenRuntime 子命令适合把项目、团队或本机工作流封装成可重复调用的页面操作命令，而不需要修改 OpenRuntime CLI 主流程。
+OpenRuntime 命令适合把项目、团队或本机工作流封装成可重复调用的页面操作命令，而不需要修改 OpenRuntime CLI 主流程。
 
-这份指南讲的是“子命令开发”，不是通用 CLI 扩展开发。子命令只操作已经由 `openruntime open <url>` 打开的页面；如果要开发一个完全独立的 CLI 命令，并且由命令自己决定打开、跳转或关闭浏览器，需要单独设计另一套 CLI 扩展能力。
+这份指南讲的是挂载到 `openruntime` 下的页面命令。命令只操作已经由 `openruntime open <url>` 打开的页面；如果要开发一个完全独立的 CLI 命令，并且由命令自己决定打开、跳转或关闭浏览器，需要单独设计另一套能力。
 
 典型场景包括：
 
 - agent 需要反复执行同一套页面流程。
 - 命令需要读取当前页面信息并输出结构化 JSON。
-- 页面已经接入 OpenRuntime Target / Action，子命令只负责查询或执行这些声明能力。
+- 页面已经接入 OpenRuntime Target / Action，命令只负责查询或执行这些声明能力。
 - 团队希望把项目内的常用页面操作沉淀成稳定命令。
 
-如果页面本身可以暴露稳定的 Target 或 Action，优先在应用里接入 OpenRuntime Target / Action，然后在子命令里调用 `snapshot`、`runAction` 或 `waitFor`。
+如果页面本身可以暴露稳定的 Target 或 Action，优先在应用里接入 OpenRuntime Target / Action，然后在命令里调用 `snapshot`、`runAction` 或 `waitFor`。
 
 ## 执行边界
 
-页面类子命令只操作当前已打开页面。agent 应该先运行：
+页面类命令只操作当前已打开页面。agent 应该先运行：
 
 ```sh
 openruntime open <url>
 ```
 
-然后再调用子命令：
+然后再调用命令：
 
 ```sh
-openruntime <sub-command>
+openruntime <command>
 ```
 
-子命令不要在内部打开、跳转、关闭或替换浏览器会话，也不需要自己选择 Bridge 或 Runtime。CLI 会把 `openruntime open <url>` 建立的页面上下文传给子命令，并作为默认页面操作目标。
+命令不要在内部打开、跳转、关闭或替换浏览器会话，也不需要自己选择 Bridge 或 Runtime。CLI 会把 `openruntime open <url>` 建立的页面上下文传给命令，并作为默认页面操作目标。
 
 如果命令只支持特定 URL，在命令开头校验 `options.page.url`；不匹配时抛出 `PAGE_URL_UNSUPPORTED`：
 
@@ -54,63 +54,63 @@ if (options.page === undefined || !isSupportedPage(options.page.url)) {
 
 ## 安装与加载
 
-子命令文件默认从这里加载：
+命令文件默认从这里加载：
 
 ```text
-~/.openruntime/extensions
+~/.openruntime/commands
 ```
-
-当前加载入口沿用 `extensions` 目录和环境变量名称。这里加载的是 OpenRuntime 子命令，不代表通用 CLI 扩展。
 
 可以用环境变量覆盖目录：
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
 ```
 
-也可以关闭外部子命令加载：
+也可以关闭外部命令加载：
 
 ```sh
-OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
 查看当前加载结果：
 
 ```sh
-openruntime extensions list
+openruntime commands list
 ```
 
-外部子命令会在 help 里单独展示，并标注来源：
+外部命令会在 help 里单独展示，并标注来源：
 
 ```text
-External Subcommands:
+External Commands:
   openruntime foo ping [external: foo]
 ```
 
-如果外部子命令和内置命令或内部子命令重名，OpenRuntime 会跳过这个外部子命令并打印警告。子命令加载失败也不会导致 CLI 崩溃，可以通过 `extensions list` 查看失败原因。
+如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过这个外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，可以通过 `commands list` 查看失败原因。
 
-外部子命令会执行本机代码，只加载可信文件。
+外部命令会执行本机代码，只加载可信文件。
 
-## 子命令文件结构
+## 命令文件结构
 
 支持两种文件形式：
 
 ```text
-~/.openruntime/extensions/foo.mjs
-~/.openruntime/extensions/foo/index.mjs
+~/.openruntime/commands/foo.mjs
+~/.openruntime/commands/foo/index.mjs
 ```
 
-子命令文件必须默认导出这个结构：
+命令文件必须默认导出这个结构。推荐使用 `defineCommand(...)`，这样可以固定格式并获得类型提示：
 
 ```js
-export default {
+import { defineCommand } from "@openruntime/cli";
+
+export default defineCommand({
   schemaVersion: 1,
   name: "foo",
   displayName: "Foo",
-  description: "Foo subcommand",
+  description: "Foo command",
   commandReferences: [
     {
-      category: "Subcommands",
+      category: "Commands",
       usage: "openruntime foo ping",
       description: "Runs the Foo command."
     }
@@ -127,10 +127,19 @@ export default {
     });
     return 0;
   }
-};
+});
 ```
 
-导出的对象目前对应 [`packages/cli/src/index.ts`](../packages/cli/src/index.ts) 里的 `OpenRuntimeCliExtension` 接口。接口名沿用历史命名，但这份文档描述的是受限的页面子命令。`options.openruntime` 对应 [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts)。
+导出的对象对应 `OpenRuntimeCommandDefinition`。`options.openruntime` 对应 [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts)。
+
+如果需要在测试或 CI 中直接校验导出对象，可以使用 `validateCommand(...)`：
+
+```js
+import { validateCommand } from "@openruntime/cli";
+import command from "./foo.mjs";
+
+validateCommand(command);
+```
 
 ## 运行上下文：`run(options)`
 
@@ -145,7 +154,7 @@ export default {
 | `options.output` | 统一 JSON 输出 helper，用来写 `ok`、`needs_input` 和 `error` 结果。 |
 | `options.openruntime` | 当前页面查询、页面动作和页面交互能力。 |
 
-还有几个低层字段会保留给测试、调试或代理外部工具使用，普通子命令不建议依赖：
+还有几个低层字段会保留给测试、调试或代理外部工具使用，普通命令不建议依赖：
 
 | 字段 | 什么时候用 |
 | --- | --- |
@@ -163,13 +172,13 @@ export default {
 openruntime github-release latest --limit 3
 ```
 
-子命令里会看到：
+命令里会看到：
 
 ```js
 options.args.command; // ["github-release", "latest"]
 ```
 
-flag 会出现在 `options.args.options`。子命令可以基于这些输入决定具体业务行为，但页面来源仍然由 `openruntime open <url>` 决定。
+flag 会出现在 `options.args.options`。命令可以基于这些输入决定具体业务行为，但页面来源仍然由 `openruntime open <url>` 决定。
 
 ### `options.page`：当前页面信息
 
@@ -238,7 +247,7 @@ throw createError({
 });
 ```
 
-如果子命令自己处理错误而不是抛出，可以调用 `options.output.error(error)`，然后返回非 0 退出码：
+如果命令自己处理错误而不是抛出，可以调用 `options.output.error(error)`，然后返回非 0 退出码：
 
 ```js
 options.output.error(createError({
@@ -253,7 +262,7 @@ return 1;
 
 ### `options.openruntime`：OpenRuntime 能力
 
-`options.openruntime` 面向当前已打开页面。子命令直接使用当前页面上下文，不需要处理底层连接。
+`options.openruntime` 面向当前已打开页面。命令直接使用当前页面上下文，不需要处理底层连接。
 
 #### 页面状态与声明查询
 
@@ -300,7 +309,7 @@ options.output.ok({
 
 #### Browser：当前页面交互
 
-Browser API 操作当前 OpenRuntime 浏览器会话。子命令不会收到打开页面、跳转、关闭或底层 browser runner API；调用子命令前先运行 `openruntime open <url>`。
+Browser API 操作当前 OpenRuntime 浏览器会话。命令不会收到打开页面、跳转、关闭或底层 browser runner API；调用命令前先运行 `openruntime open <url>`。
 
 | API | 用途 |
 | --- | --- |
@@ -319,19 +328,19 @@ Browser API 操作当前 OpenRuntime 浏览器会话。子命令不会收到打�
 
 ## 完整示例：读取 GitHub 最新 Release
 
-创建 `~/.openruntime/extensions/github-release.mjs`：
+创建 `~/.openruntime/commands/github-release.mjs`：
 
 ```js
-import { createError } from "@openruntime/cli";
+import { createError, defineCommand } from "@openruntime/cli";
 
-export default {
+export default defineCommand({
   schemaVersion: 1,
   name: "github-release",
   displayName: "GitHub Release",
   description: "Reads the latest release from the current module-federation/core releases page.",
   commandReferences: [
     {
-      category: "Subcommands",
+      category: "Commands",
       usage: "openruntime github-release latest",
       description: "Read the latest release from the current GitHub releases page."
     }
@@ -396,7 +405,7 @@ export default {
     });
     return 0;
   }
-};
+});
 
 function isModuleFederationReleasesPage(input) {
   try {
@@ -436,12 +445,13 @@ openruntime github-release latest
 
 ## 最佳实践检查清单
 
-- 需要页面状态的子命令，先运行 `openruntime open <url>`。
-- 子命令只操作已打开页面，不要在命令内打开、跳转或关闭浏览器会话。
+- 需要页面状态的命令，先运行 `openruntime open <url>`。
+- 命令只操作已打开页面，不要在命令内打开、跳转或关闭浏览器会话。
 - 命令只支持特定页面时，先校验 `options.page.url`。
 - 优先使用 `options.output` 输出结果，不要直接写 `stdout`。
 - 应用已经提供 Target 或 Action 时，优先用它们，不要解析 DOM。
 - 页面交互、兜底检查、截图、console、network 使用 Browser API。
 - 大段页面脚本用 `browser.evalFile`；小表达式用 `browser.eval`。
 - 成功返回 `0`，失败时抛错或返回非零。
+- 使用 `defineCommand(...)` 导出命令，并在测试或 CI 里调用 `validateCommand(...)` 校验。
 - 补充 `commandReferences` 和 `exampleReferences`，保证 `openruntime --help` 有用。

@@ -10,8 +10,10 @@ import {
   cliPackageInfo,
   createOpenRuntimeCliWithExternalExtensions,
   createOpenRuntimeCli,
+  defineCommand,
   getCliCommandName,
   runCli,
+  validateCommand,
   type OpenRuntimeCliExtension
 } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
@@ -20,7 +22,7 @@ import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../di
 import { createOperationLogKey, createOperationSessionId } from "../dist/operation-log.js";
 import { exportChromeAuthProfile, filterStorageStateByDomains, resolveChromeProfile } from "../dist/profile.js";
 
-process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS = "1";
+process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
 
 test("exposes the cli package marker", () => {
   assert.equal(getCliCommandName(), "openruntime");
@@ -35,6 +37,33 @@ test("exposes only canonical cli binaries", () => {
   const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
 
   assert.deepEqual(Object.keys(packageJson.bin), ["openruntime", "opr"]);
+});
+
+test("defines and validates command exports", () => {
+  const command = defineCommand({
+    schemaVersion: 1,
+    name: "demo",
+    commandReferences: [
+      {
+        category: "Commands",
+        usage: "openruntime demo ping",
+        description: "Runs demo."
+      }
+    ],
+    async run() {
+      return 0;
+    }
+  });
+
+  assert.equal(command.name, "demo");
+  assert.equal(validateCommand(command).name, "demo");
+  assert.throws(
+    () => validateCommand({
+      schemaVersion: 1,
+      name: "broken"
+    }),
+    /must export a run\(options\) function/
+  );
 });
 
 test("prints explicit runtime resource help", async () => {
@@ -56,7 +85,7 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /openruntime verify .*<target-id> <status>/);
   assert.match(output.text(), /openruntime wait-for .*--next/);
-  assert.match(output.text(), /openruntime extensions list/);
+  assert.match(output.text(), /openruntime commands list/);
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
@@ -108,7 +137,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /openruntime network \[--url <query>\]/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /openruntime extensions list/);
+  assert.match(markdown, /openruntime commands list/);
   assert.doesNotMatch(markdown, /openruntime goto /);
   assert.doesNotMatch(markdown, /openruntime close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
@@ -144,20 +173,20 @@ test("generates the skill CLI command section from the help table", () => {
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
 
-test("registers a subcommand and merges its help entries", async () => {
+test("registers a command and merges its help entries", async () => {
   const extension: OpenRuntimeCliExtension = {
     name: "demo",
     commandReferences: [
       {
-        category: "Subcommands",
+        category: "Commands",
         usage: "openruntime demo ping [--url <url>]",
-        description: "Runs a demo subcommand."
+        description: "Runs a demo command."
       }
     ],
     exampleReferences: [
       {
         command: "openruntime demo ping",
-        description: "Runs the demo subcommand."
+        description: "Runs the demo command."
       }
     ],
     run: async (options) => {
@@ -279,12 +308,12 @@ test("registers a subcommand and merges its help entries", async () => {
   }
 });
 
-test("subcommands can wait for targets in the opened page context", async () => {
+test("commands can wait for targets in the opened page context", async () => {
   const extension: OpenRuntimeCliExtension = {
     name: "demo",
     commandReferences: [
       {
-        category: "Subcommands",
+        category: "Commands",
         usage: "openruntime demo wait",
         description: "Waits for a demo target."
       }
@@ -400,17 +429,17 @@ test("subcommands can wait for targets in the opened page context", async () => 
   }
 });
 
-test("loads external extensions from the configured directory", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-"));
+test("loads external commands from the configured directory", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
       "  name: 'foo',",
       "  displayName: 'Foo',",
-      "  description: 'Foo extension',",
+      "  description: 'Foo command',",
       "  commandReferences: [{",
-      "    category: 'Subcommands',",
+      "    category: 'Commands',",
       "    usage: 'openruntime foo ping',",
       "    description: 'Runs Foo.'",
       "  }],",
@@ -426,8 +455,8 @@ test("loads external extensions from the configured directory", async () => {
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "0",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.deepEqual(loaded.extensionLoadRecords.map((record) => ({
@@ -441,7 +470,7 @@ test("loads external extensions from the configured directory", async () => {
         status: "loaded"
       }
     ]);
-    assert.match(loaded.cli.createHelpText(), /External Subcommands/);
+    assert.match(loaded.cli.createHelpText(), /External Commands/);
     assert.match(loaded.cli.createHelpText(), /openruntime foo ping \[external: foo\]/);
 
     const output = createOutput();
@@ -468,14 +497,14 @@ test("loads external extensions from the configured directory", async () => {
     });
 
     const listOutput = createOutput();
-    const listExitCode = await loaded.cli.run(["extensions", "list"], {
+    const listExitCode = await loaded.cli.run(["commands", "list"], {
       stdout: listOutput.stdout,
       stderr: listOutput.stderr
     });
 
     assert.equal(listExitCode, 0);
     assert.equal(listOutput.errorText(), "");
-    assert.equal(JSON.parse(listOutput.text()).extensions[0].path, join(tempDir, "foo.mjs"));
+    assert.equal(JSON.parse(listOutput.text()).commands[0].path, join(tempDir, "foo.mjs"));
   } finally {
     rmSync(tempDir, {
       recursive: true,
@@ -484,8 +513,8 @@ test("loads external extensions from the configured directory", async () => {
   }
 });
 
-test("skips conflicting or invalid external extensions without crashing", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-conflict-"));
+test("skips conflicting or invalid external commands without crashing", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-conflict-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -499,8 +528,8 @@ test("skips conflicting or invalid external extensions without crashing", async 
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "0",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -528,8 +557,8 @@ test("skips conflicting or invalid external extensions without crashing", async 
   }
 });
 
-test("honors disabled external extensions", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-disabled-"));
+test("honors disabled external commands", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-disabled-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
@@ -542,8 +571,8 @@ test("honors disabled external extensions", async () => {
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS: "1",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      OPENRUNTIME_DISABLE_COMMANDS: "1",
+      OPENRUNTIME_COMMANDS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -556,10 +585,10 @@ test("honors disabled external extensions", async () => {
   }
 });
 
-test("warns when runCli skips an external extension", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-warning-"));
-  const previousDisable = process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS;
-  const previousDir = process.env.OPENRUNTIME_EXTENSIONS_DIR;
+test("warns when runCli skips an external command", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-warning-"));
+  const previousDisableCommands = process.env.OPENRUNTIME_DISABLE_COMMANDS;
+  const previousCommandsDir = process.env.OPENRUNTIME_COMMANDS_DIR;
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -569,8 +598,8 @@ test("warns when runCli skips an external extension", async () => {
       "};",
       ""
     ].join("\n"));
-    delete process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS;
-    process.env.OPENRUNTIME_EXTENSIONS_DIR = tempDir;
+    delete process.env.OPENRUNTIME_DISABLE_COMMANDS;
+    process.env.OPENRUNTIME_COMMANDS_DIR = tempDir;
 
     const output = createOutput();
     const exitCode = await runCli(["--help"], {
@@ -579,14 +608,14 @@ test("warns when runCli skips an external extension", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.match(output.errorText(), /Skipped external OpenRuntime subcommand/);
+    assert.match(output.errorText(), /Skipped external OpenRuntime command/);
     assert.match(output.errorText(), /conflicts with an existing command/);
   } finally {
-    process.env.OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS = previousDisable ?? "1";
-    if (previousDir === undefined) {
-      delete process.env.OPENRUNTIME_EXTENSIONS_DIR;
+    process.env.OPENRUNTIME_DISABLE_COMMANDS = previousDisableCommands ?? "1";
+    if (previousCommandsDir === undefined) {
+      delete process.env.OPENRUNTIME_COMMANDS_DIR;
     } else {
-      process.env.OPENRUNTIME_EXTENSIONS_DIR = previousDir;
+      process.env.OPENRUNTIME_COMMANDS_DIR = previousCommandsDir;
     }
     rmSync(tempDir, {
       recursive: true,
@@ -595,7 +624,7 @@ test("warns when runCli skips an external extension", async () => {
   }
 });
 
-test("rejects extensions that conflict with built-in commands", () => {
+test("rejects commands that conflict with built-in commands", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [
@@ -609,7 +638,7 @@ test("rejects extensions that conflict with built-in commands", () => {
   );
 });
 
-test("rejects duplicate subcommand names", () => {
+test("rejects duplicate command names", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [

@@ -140,55 +140,57 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 ---
 
-## CLI Subcommands
+## CLI Commands
 
-OpenRuntime CLI can load local subcommand files. This is useful when a team wants to add private page operation commands without changing the OpenRuntime source code.
+OpenRuntime CLI can load local command files. This is useful when a team wants to add private page operation commands without changing the OpenRuntime source code.
 
-This section is about subcommand development: the agent runs `openruntime open <url>` first, and the subcommand operates on the current opened page. General CLI extensions that open, navigate, or close the browser by themselves need a separate capability.
+This section is about page command development: the agent runs `openruntime open <url>` first, and the command operates on the current opened page. Standalone CLI capabilities that open, navigate, or close the browser by themselves need a separate design.
 
-See [CLI Sub-command Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 子命令开发](docs/cli-extensions.zh-CN.md).
+See [CLI Command Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 命令开发](docs/cli-extensions.zh-CN.md).
 
-Subcommand files are loaded from:
+Command files are loaded from:
 
 ```text
-~/.openruntime/extensions
+~/.openruntime/commands
 ```
 
 You can override the directory:
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime extensions list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
 ```
 
-You can disable external subcommand loading:
+You can disable external command loading:
 
 ```sh
-OPENRUNTIME_DISABLE_EXTERNAL_EXTENSIONS=1 openruntime --help
+OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
 Two file layouts are supported:
 
 ```text
-~/.openruntime/extensions/foo.mjs
-~/.openruntime/extensions/foo/index.mjs
+~/.openruntime/commands/foo.mjs
+~/.openruntime/commands/foo/index.mjs
 ```
 
-External subcommands are shown separately in help and are marked with their source:
+External commands are shown separately in help and are marked with their source:
 
 ```text
-External Subcommands:
+External Commands:
   openruntime foo ping [external: foo]
 ```
 
 Use this command to inspect what was loaded:
 
 ```sh
-openruntime extensions list
+openruntime commands list
 ```
 
-If an external subcommand conflicts with a built-in command or an internal subcommand, OpenRuntime skips the external subcommand and prints a warning. A broken subcommand also does not crash the CLI; it is reported by `extensions list`.
+If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported by `commands list`.
 
-External subcommands are local code execution. Only load files you trust.
+Use `defineCommand(...)` and `validateCommand(...)` in command files, tests, or CI to keep the exported command shape valid.
+
+External commands are local code execution. Only load files you trust.
 
 ---
 

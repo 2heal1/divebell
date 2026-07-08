@@ -6,7 +6,7 @@ Chinese version: [CLI 命令开发](cli-extensions.zh-CN.md)
 
 OpenRuntime commands package project, team, or local workflows as repeatable page operation commands without changing the OpenRuntime CLI command dispatcher.
 
-This guide is about page commands mounted under `openruntime`. A command only operates on a page opened by `openruntime open <url>`. If you want to build a standalone CLI command that opens, navigates, or closes the browser by itself, that needs a separate capability.
+This guide is about page commands mounted under `openruntime`. A command only operates on a page opened by `openruntime open <url>`. If you want to build a standalone script that opens the browser and manages the automation flow itself, see [Automating with OpenRuntime CLI](cli-automation-scripts.md).
 
 Use a command when:
 

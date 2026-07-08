@@ -144,9 +144,11 @@ openruntime release-note latest --limit 3
 
 OpenRuntime CLI 支持加载本地命令文件。团队可以用它增加自己的页面操作命令，而不需要修改 OpenRuntime 源码。
 
-这里说的是页面命令开发：先由 agent 运行 `openruntime open <url>`，命令只操作当前已打开页面。可以自己打开、跳转或关闭浏览器的独立 CLI 能力需要单独设计。
+这里说的是页面命令开发：先由 agent 运行 `openruntime open <url>`，命令只操作当前已打开页面。需要自己打开浏览器并管理自动化流程时，应写独立自动化脚本。
 
 命令导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 命令开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Command Development](docs/cli-extensions.md)。
+
+如果要写包含打开浏览器、等待页面和操作页面的独立自动化脚本，见 [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md)。
 
 命令文件默认从这里读取：
 

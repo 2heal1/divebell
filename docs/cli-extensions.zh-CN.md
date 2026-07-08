@@ -6,7 +6,7 @@ English version: [OpenRuntime CLI Command Development](cli-extensions.md)
 
 OpenRuntime 命令适合把项目、团队或本机工作流封装成可重复调用的页面操作命令，而不需要修改 OpenRuntime CLI 主流程。
 
-这份指南讲的是挂载到 `openruntime` 下的页面命令。命令只操作已经由 `openruntime open <url>` 打开的页面；如果要开发一个完全独立的 CLI 命令，并且由命令自己决定打开、跳转或关闭浏览器，需要单独设计另一套能力。
+这份指南讲的是挂载到 `openruntime` 下的页面命令。命令只操作已经由 `openruntime open <url>` 打开的页面；如果要写一个自己打开浏览器并管理自动化流程的独立脚本，见 [使用 OpenRuntime CLI 编写自动化脚本](cli-automation-scripts.zh-CN.md)。
 
 典型场景包括：
 

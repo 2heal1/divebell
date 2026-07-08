@@ -144,9 +144,11 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 OpenRuntime CLI can load local command files. This is useful when a team wants to add private page operation commands without changing the OpenRuntime source code.
 
-This section is about page command development: the agent runs `openruntime open <url>` first, and the command operates on the current opened page. Standalone CLI capabilities that open, navigate, or close the browser by themselves need a separate design.
+This section is about page command development: the agent runs `openruntime open <url>` first, and the command operates on the current opened page. Use standalone automation scripts when the workflow needs to open the browser and manage the automation flow itself.
 
 See [CLI Command Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 命令开发](docs/cli-extensions.zh-CN.md).
+
+For standalone scripts that open the browser, wait for the page, and run page operations, see [Automating with OpenRuntime CLI](docs/cli-automation-scripts.md). Chinese documentation is available at [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md).
 
 Command files are loaded from:
 

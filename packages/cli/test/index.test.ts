@@ -18,7 +18,7 @@ import {
 } from "../dist/index.js";
 import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment, type BrowserRunOptions, type BrowserRunner } from "../dist/browser.js";
 import { isEntryPoint } from "../dist/entry.js";
-import { createCliReferenceMarkdown, createCliSkillSectionMarkdown } from "../dist/help.js";
+import { createCliReferenceMarkdown } from "../dist/help.js";
 import { createOperationLogKey, createOperationSessionId } from "../dist/operation-log.js";
 import { convertAuthConnectorPayloadToStorageState, exportAuthProfileWithConnector, writeAuthConnectorExtension } from "../dist/auth-connector.js";
 import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/profile.js";
@@ -91,7 +91,9 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.match(output.text(), /openruntime verify .*<target-id> <status>/);
   assert.match(output.text(), /openruntime wait-for .*--next/);
-  assert.match(output.text(), /openruntime commands list/);
+  assert.match(output.text(), /openruntime snapshot .* - 读取当前 runtime snapshot 状态。/);
+  assert.match(output.text(), /openruntime wait-for .* - 等待 target 到达指定状态/);
+  assert.doesNotMatch(output.text(), /openruntime commands list/);
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
@@ -148,38 +150,10 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /openruntime network \[--url <query>\]/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /openruntime commands list/);
+  assert.doesNotMatch(markdown, /openruntime commands list/);
   assert.doesNotMatch(markdown, /openruntime goto /);
   assert.doesNotMatch(markdown, /openruntime close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
-  assert.doesNotMatch(markdown, /openruntime vmok /);
-  assert.doesNotMatch(markdown, /open[-]runtime/);
-});
-
-test("generates the skill CLI command section from the help table", () => {
-  const markdown = createCliSkillSectionMarkdown();
-  const skillMarkdown = createCliSkillSectionMarkdown(undefined, { heading: "## 13. 常用 CLI" });
-
-  assert.match(markdown, /^### 常用 CLI/m);
-  assert.match(skillMarkdown, /^## 13. 常用 CLI/m);
-  assert.doesNotMatch(skillMarkdown, /^### 常用 CLI/m);
-  assert.match(markdown, /完整 CLI 清单见 `docs\/cli-reference.md`/);
-  assert.match(markdown, /先用一次不带 `--id` \/ `--query` 的全量 `snapshot` 快速探测/);
-  assert.match(markdown, /进入 PATCH 后必须补或复用最小 `business:\*` target/);
-  assert.match(markdown, /通过后百分百相信 verify/);
-  assert.match(markdown, /严禁再调用 `snapshot`、`console`、`page-snapshot`/);
-  assert.match(markdown, /openruntime open <url>/);
-  assert.match(markdown, /openruntime verify .*<target-id> <status>/);
-  assert.match(markdown, /openruntime eval <script>/);
-  assert.match(markdown, /openruntime wait-eval <script>/);
-  assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.doesNotMatch(markdown, /openruntime export-profile /);
-  assert.doesNotMatch(markdown, /openruntime import-profile /);
-  assert.doesNotMatch(markdown, /openruntime get-window <path>/);
-  assert.doesNotMatch(markdown, /openruntime network \[--url <query>\]/);
-  assert.doesNotMatch(markdown, /openruntime screenshot /);
-  assert.doesNotMatch(markdown, /openruntime console \[--level <level>\]/);
-  assert.doesNotMatch(markdown, /openruntime page-snapshot/);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
 });
@@ -442,6 +416,7 @@ test("commands can wait for targets in the opened page context", async () => {
 
 test("loads external commands from the configured directory", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-"));
+  const context = createOpenContextFixture();
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
@@ -454,7 +429,10 @@ test("loads external commands from the configured directory", async () => {
       "    usage: 'openruntime foo ping',",
       "    description: 'Runs Foo.'",
       "  }],",
-      "  exampleReferences: [],",
+      "  exampleReferences: [{",
+      "    command: 'openruntime foo ping',",
+      "    description: 'Runs Foo example.'",
+      "  }],",
       "  async run({ args, stdout, openruntime }) {",
       "    const value = await openruntime.browser.eval('window.foo');",
       "    stdout.write(`${JSON.stringify({ command: args.command, value })}\\n`);",
@@ -483,11 +461,14 @@ test("loads external commands from the configured directory", async () => {
     ]);
     assert.match(loaded.cli.createHelpText(), /External Commands/);
     assert.match(loaded.cli.createHelpText(), /openruntime foo ping \[external: foo\]/);
+    assert.match(loaded.cli.createHelpText(), /Runs Foo\./);
+    assert.match(loaded.cli.createHelpText(), /Runs Foo example\./);
 
     const output = createOutput();
     const exitCode = await loaded.cli.run(["foo", "ping"], {
       stdout: output.stdout,
       stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
       browserRunner: createBrowserRunner(async (args) => {
         assert.deepEqual(args, ["eval", "window.foo"]);
         return {
@@ -507,20 +488,23 @@ test("loads external commands from the configured directory", async () => {
       }
     });
 
-    const listOutput = createOutput();
-    const listExitCode = await loaded.cli.run(["commands", "list"], {
-      stdout: listOutput.stdout,
-      stderr: listOutput.stderr
+    const helpOutput = createOutput();
+    const helpExitCode = await loaded.cli.run(["--help"], {
+      stdout: helpOutput.stdout,
+      stderr: helpOutput.stderr
     });
 
-    assert.equal(listExitCode, 0);
-    assert.equal(listOutput.errorText(), "");
-    assert.equal(JSON.parse(listOutput.text()).commands[0].path, join(tempDir, "foo.mjs"));
+    assert.equal(helpExitCode, 0);
+    assert.equal(helpOutput.errorText(), "");
+    assert.match(helpOutput.text(), /External Commands:/);
+    assert.match(helpOutput.text(), /openruntime foo ping \[external: foo\] - Runs Foo\./);
+    assert.match(helpOutput.text(), /openruntime foo ping - Runs Foo example\./);
   } finally {
     rmSync(tempDir, {
       recursive: true,
       force: true
     });
+    context.cleanup();
   }
 });
 
@@ -809,10 +793,16 @@ test("imports, lists, and clears the current auth profile", async () => {
     assert.equal(exported.path, inputPath);
 
     let closeArgs: string[] | undefined;
+    let appliedProfileDirectory: string | undefined;
+    let appliedStorageState: unknown;
     const importOutput = createOutput();
     const importExitCode = await runCli(["auth", "import", "--input", inputPath], {
       stdout: importOutput.stdout,
       stderr: importOutput.stderr,
+      authStateApplier: async (applierProfileDirectory, storageState) => {
+        appliedProfileDirectory = applierProfileDirectory;
+        appliedStorageState = storageState;
+      },
       browserRunner: createBrowserRunner(async (args) => {
         closeArgs = args;
         return {
@@ -830,7 +820,10 @@ test("imports, lists, and clears the current auth profile", async () => {
       kind: "auth",
       profileDirectory
     });
-    assert.deepEqual(JSON.parse(readFileSync(join(profileDirectory, AUTH_STATE_FILE_NAME), "utf8")), {
+    const importedStorageState = JSON.parse(readFileSync(join(profileDirectory, AUTH_STATE_FILE_NAME), "utf8"));
+    assert.equal(appliedProfileDirectory, profileDirectory);
+    assert.deepEqual(appliedStorageState, importedStorageState);
+    assert.deepEqual(importedStorageState, {
       cookies: [
         {
           name: "sid",
@@ -2183,6 +2176,8 @@ test("wait-for next reports when no new runtime connects before timeout", async 
     "wait-for",
     "--bridge",
     "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
     "modern:route",
     "ready",
     "--next",
@@ -2227,6 +2222,8 @@ test("wait-for rejects next with strict mode", async () => {
     "wait-for",
     "--bridge",
     "http://bridge.test",
+    "--url",
+    "http://app.test/orders",
     "modern:route",
     "ready",
     "--next",

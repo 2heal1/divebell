@@ -63,7 +63,7 @@ Command files are loaded from:
 You can override the directory:
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
 ```
 
 You can disable external command loading:
@@ -72,20 +72,22 @@ You can disable external command loading:
 OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
-Use this command to inspect what was loaded:
+Use help to inspect the commands that were loaded:
 
 ```sh
-openruntime commands list
+openruntime --help
 ```
 
-External commands are shown separately in help and are marked with their source:
+External commands are shown separately in help with descriptions and are marked with their source:
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo]
+  openruntime foo ping [external: foo] - Runs Foo.
 ```
 
-If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported by `commands list`.
+If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported as a warning when the CLI loads external commands.
+
+`openruntime --help` is the discovery path for agents. Command authors must provide clear `commandReferences` and `exampleReferences`; agents should not guess how to run a command from only its name or file path.
 
 External commands are local code execution. Only load files you trust.
 
@@ -454,4 +456,5 @@ Expected output shape:
 - Use `browser.evalFile` for large page scripts; use `browser.eval` for small expressions.
 - Return `0` for success and throw an error or return non-zero for failure.
 - Export commands with `defineCommand(...)` and call `validateCommand(...)` from tests or CI before submitting changes.
-- Add `commandReferences` and `exampleReferences` so `openruntime --help` stays useful.
+- Add clear `commandReferences` and `exampleReferences`; agents should only run discovered commands whose usage or examples match the current task.
+- Keep `commandReferences` and `exampleReferences` accurate so `openruntime --help` stays useful.

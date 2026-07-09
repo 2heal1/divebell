@@ -72,6 +72,7 @@ import {
   listProfile,
   readProfileInput,
   readProfileInputFile,
+  type AuthStateApplier,
   type ProfileExportResult
 } from "./profile.js";
 import {
@@ -137,6 +138,7 @@ export interface CliRunOptions {
   operationLogDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   authConnectorExporter?: typeof exportAuthProfileWithConnector;
+  authStateApplier?: AuthStateApplier;
 }
 
 export interface CliExtensionRunOptions {
@@ -312,11 +314,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (args.command[0] === "auth") {
-      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector);
-    }
-
-    if (args.command[0] === "commands") {
-      return await runCommandsCommand(args, stdout, config.extensionLoadRecords);
+      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -510,7 +508,6 @@ function createBuiltInCommandNameSet(): Set<string> {
     "start",
     "stop",
     "auth",
-    "commands",
     "runtimes",
     "input-options",
     "run-action",
@@ -519,27 +516,6 @@ function createBuiltInCommandNameSet(): Set<string> {
     ...BROWSER_COMMAND_NAMES,
     ...RUNTIME_RESOURCE_COMMAND_NAMES
   ]);
-}
-
-async function runCommandsCommand(
-  args: ParsedCliArgs,
-  stdout: { write(chunk: string): void },
-  records: readonly ExtensionLoadRecord[]
-): Promise<number> {
-  const commandAction = args.command[1];
-  if (commandAction === "list") {
-    writeJson(stdout, {
-      commands: records
-    });
-    return 0;
-  }
-
-  throw createError({
-    code: "CLI_COMMANDS_UNKNOWN_COMMAND",
-    kind: "validation",
-    message: `Unknown commands command "${args.command.slice(1).join(" ")}".`,
-    hint: "Run `openruntime commands list` to list loaded commands."
-  });
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -1460,14 +1436,15 @@ async function runAuthCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   browserRunner: BrowserRunner,
-  authConnectorExporter: typeof exportAuthProfileWithConnector
+  authConnectorExporter: typeof exportAuthProfileWithConnector,
+  authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
   const action = args.command[1];
   if (action === "export") {
     return await runAuthExportCommand(args, stdout, authConnectorExporter);
   }
   if (action === "import") {
-    return await runAuthImportCommand(args, stdout, browserRunner);
+    return await runAuthImportCommand(args, stdout, browserRunner, authStateApplier);
   }
   if (action === "list") {
     writeJson(stdout, await listProfile({
@@ -1526,7 +1503,8 @@ async function runAuthExportCommand(
 async function runAuthImportCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
-  browserRunner: BrowserRunner
+  browserRunner: BrowserRunner,
+  authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
   await closeBrowserForProfileCommand(browserRunner);
   const inputPath = getOptionValue(args, "input");
@@ -1535,7 +1513,8 @@ async function runAuthImportCommand(
     : await readProfileInputFile(inputPath);
   const result = await importProfile({
     input,
-    profileDirectory: getProfileDirectory()
+    profileDirectory: getProfileDirectory(),
+    ...createOptionalObjectProperty("applyAuthState", authStateApplier)
   });
   writeJson(stdout, result);
   return 0;
@@ -2226,10 +2205,9 @@ export {
   cliCommandReferences,
   cliExampleReferences,
   createCliReferenceMarkdown,
-  createCliSkillSectionMarkdown,
   createHelpText
 } from "./help.js";
-export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";
+export type { CliCommandReference, CliExampleReference } from "./help.js";
 export {
   defineCommand,
   validateCommand

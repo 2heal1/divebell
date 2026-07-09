@@ -518,21 +518,24 @@ function createRunVerifyNextAction() {
 function createObserveNextAction() {
   return {
     type: "run_observe",
-    summary: "Runtime is connected. Run workflow observe to choose plugin snapshot evidence or normal browser diagnosis."
+    summary: "Runtime is connected. Run workflow observe to choose plugin snapshot evidence or normal browser diagnosis. Use openruntime --help when extension command discovery is needed."
   };
 }
 
 function createSnapshotObserveNextAction(pluginSnapshot, url) {
   const commands = [
+    "pnpm exec openruntime --help",
     "pnpm exec openruntime snapshot --url <app-url>"
   ];
   return {
     type: "snapshot_observe",
-    summary: "Plugin snapshot evidence is available. First run one full snapshot without --id/--query. If it is not useful, switch to OpenRuntime browser diagnosis such as console/network/page-snapshot/eval.",
+    summary: "Plugin snapshot evidence is available. Inspect --help only when extension command discovery is useful, then run one full snapshot without --id/--query. If it is not useful, switch to OpenRuntime browser diagnosis such as console/network/page-snapshot/eval.",
     plugins: pluginSnapshot.plugins,
     url: url ?? null,
     commands,
     rules: [
+      "External extension commands are shown in --help under External Commands and are marked with [external: <name>].",
+      "Use an extension command only when its usage and description match the task.",
       "Do not run multiple snapshot variants in parallel on first observe.",
       "Use --id or --query only after the full snapshot reveals a concrete target or keyword worth narrowing.",
       "Do not add a business target during observe; add or reuse it when entering patch/final verification."
@@ -543,9 +546,16 @@ function createSnapshotObserveNextAction(pluginSnapshot, url) {
 function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
   return {
     type: "browser_diagnose",
-    summary: "No installed MF/Vmok/Modern snapshot plugin was found. Diagnose normally with console/page-snapshot/network. Add a business target only when business facts or JS execution must be verified.",
+    summary: "No installed MF/Vmok/Modern snapshot plugin was found. Inspect --help only when extension command discovery is useful, then diagnose normally with console/page-snapshot/network. Add a business target only when business facts or JS execution must be verified.",
     missingInstall: pluginSnapshot.missingInstall,
-    url: url ?? null
+    url: url ?? null,
+    commands: [
+      "pnpm exec openruntime --help"
+    ],
+    rules: [
+      "External extension commands are shown in --help under External Commands and are marked with [external: <name>].",
+      "Use an extension command only when its usage and description match the task."
+    ]
   };
 }
 

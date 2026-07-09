@@ -13,15 +13,10 @@ if (!noBuild) {
 }
 
 const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/help.js")).href;
-const { createCliReferenceMarkdown, createCliSkillSectionMarkdown } = await import(helpModuleUrl);
+const { createCliReferenceMarkdown } = await import(helpModuleUrl);
 const cliReferenceContent = createCliReferenceMarkdown();
-const skillCliHeading = "## 13. 常用 CLI";
-const cliSkillSection = createCliSkillSectionMarkdown(undefined, { heading: skillCliHeading });
 
 const cliReferencePath = join(repoRoot, "docs/cli-reference.md");
-const skillPath = join(repoRoot, "skills/openruntime/SKILL.md");
-const skillContent = await readExisting(skillPath);
-const updatedSkillContent = replaceMarkdownSection(skillContent, skillCliHeading, cliSkillSection);
 
 let hasMismatch = false;
 if (checkOnly) {
@@ -29,16 +24,10 @@ if (checkOnly) {
     hasMismatch = true;
     console.error(`${relative(repoRoot, cliReferencePath)} is out of date. Run "pnpm run docs:cli".`);
   }
-  if (skillContent !== updatedSkillContent) {
-    hasMismatch = true;
-    console.error(`${relative(repoRoot, skillPath)} CLI command section is out of date. Run "pnpm run docs:cli".`);
-  }
 } else {
   await mkdir(dirname(cliReferencePath), { recursive: true });
   await writeFile(cliReferencePath, cliReferenceContent, "utf8");
   console.log(`updated ${relative(repoRoot, cliReferencePath)}`);
-  await writeFile(skillPath, updatedSkillContent, "utf8");
-  console.log(`updated ${relative(repoRoot, skillPath)} CLI command section`);
 }
 
 if (hasMismatch) {
@@ -64,19 +53,4 @@ async function readExisting(path) {
     }
     throw error;
   }
-}
-
-function replaceMarkdownSection(markdown, heading, replacement) {
-  const normalizedReplacement = replacement.endsWith("\n") ? replacement : `${replacement}\n`;
-  const start = markdown.indexOf(`${heading}\n`);
-  if (start === -1) {
-    throw new Error(`Could not find "${heading}" section in skills/openruntime/SKILL.md.`);
-  }
-
-  const nextHeadingPattern = /^## /gm;
-  nextHeadingPattern.lastIndex = start + heading.length + 1;
-  const nextHeading = nextHeadingPattern.exec(markdown);
-  const end = nextHeading === null ? markdown.length : nextHeading.index;
-  const separator = end < markdown.length && !normalizedReplacement.endsWith("\n\n") ? "\n" : "";
-  return `${markdown.slice(0, start)}${normalizedReplacement}${separator}${markdown.slice(end)}`;
 }

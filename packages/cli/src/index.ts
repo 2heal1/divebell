@@ -315,10 +315,6 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector);
     }
 
-    if (args.command[0] === "commands") {
-      return await runCommandsCommand(args, stdout, config.extensionLoadRecords);
-    }
-
     if (isBrowserCommand(args.command[0])) {
       return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore);
     }
@@ -510,7 +506,6 @@ function createBuiltInCommandNameSet(): Set<string> {
     "start",
     "stop",
     "auth",
-    "commands",
     "runtimes",
     "input-options",
     "run-action",
@@ -519,27 +514,6 @@ function createBuiltInCommandNameSet(): Set<string> {
     ...BROWSER_COMMAND_NAMES,
     ...RUNTIME_RESOURCE_COMMAND_NAMES
   ]);
-}
-
-async function runCommandsCommand(
-  args: ParsedCliArgs,
-  stdout: { write(chunk: string): void },
-  records: readonly ExtensionLoadRecord[]
-): Promise<number> {
-  const commandAction = args.command[1];
-  if (commandAction === "list") {
-    writeJson(stdout, {
-      commands: records
-    });
-    return 0;
-  }
-
-  throw createError({
-    code: "CLI_COMMANDS_UNKNOWN_COMMAND",
-    kind: "validation",
-    message: `Unknown commands command "${args.command.slice(1).join(" ")}".`,
-    hint: "Run `openruntime commands list` to list loaded commands."
-  });
 }
 
 function createRuntimeSelector(args: ParsedCliArgs, options: { ignoreRuntimeId?: boolean } = {}): RuntimeSelector {
@@ -2226,10 +2200,9 @@ export {
   cliCommandReferences,
   cliExampleReferences,
   createCliReferenceMarkdown,
-  createCliSkillSectionMarkdown,
   createHelpText
 } from "./help.js";
-export type { CliCommandReference, CliExampleReference, CliSkillSectionOptions } from "./help.js";
+export type { CliCommandReference, CliExampleReference } from "./help.js";
 export {
   defineCommand,
   validateCommand

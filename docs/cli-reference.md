@@ -42,10 +42,6 @@
 - `openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]` - 业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。
 - `openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]` - 等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。
 
-### 命令
-
-- `openruntime commands list` - 列出当前 CLI 已加载的内置命令和外部命令文件。
-
 ## Examples
 
 - `openruntime snapshot --id modern:route` - 从最新 connected runtime 读取一个 route target。

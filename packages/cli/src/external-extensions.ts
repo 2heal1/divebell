@@ -105,8 +105,7 @@ export function markExternalCommandReferences(
   return references.map((reference) => ({
     ...reference,
     category: "External Commands",
-    usage: `${reference.usage} [external: ${commandName}]`,
-    description: `${reference.description} [external: ${commandName}]`
+    usage: `${reference.usage} [external: ${commandName}]`
   }));
 }
 

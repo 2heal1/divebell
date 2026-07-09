@@ -63,7 +63,7 @@ if (options.page === undefined || !isSupportedPage(options.page.url)) {
 可以用环境变量覆盖目录：
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
 ```
 
 也可以关闭外部命令加载：
@@ -72,20 +72,22 @@ OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
 OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ```
 
-查看当前加载结果：
+查看当前加载的命令：
 
 ```sh
-openruntime commands list
+openruntime --help
 ```
 
-外部命令会在 help 里单独展示，并标注来源：
+外部命令会在 help 里单独展示描述，并标注来源：
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo]
+  openruntime foo ping [external: foo] - Runs Foo.
 ```
 
-如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过这个外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，可以通过 `commands list` 查看失败原因。
+如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过这个外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，CLI 加载外部命令时会用 warning 报出原因。
+
+`openruntime --help` 是 Agent 发现扩展命令的入口。命令作者必须提供清晰的 `commandReferences` 和 `exampleReferences`；Agent 不应只根据命令名或文件路径猜测调用方式。
 
 外部命令会执行本机代码，只加载可信文件。
 
@@ -454,4 +456,5 @@ openruntime github-release latest
 - 大段页面脚本用 `browser.evalFile`；小表达式用 `browser.eval`。
 - 成功返回 `0`，失败时抛错或返回非零。
 - 使用 `defineCommand(...)` 导出命令，并在测试或 CI 里调用 `validateCommand(...)` 校验。
-- 补充 `commandReferences` 和 `exampleReferences`，保证 `openruntime --help` 有用。
+- 补充清晰的 `commandReferences` 和 `exampleReferences`；Agent 只应运行用法或示例匹配当前任务的已发现命令。
+- 保持 `commandReferences` 和 `exampleReferences` 准确，保证 `openruntime --help` 有用。

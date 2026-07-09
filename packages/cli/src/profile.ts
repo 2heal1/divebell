@@ -51,6 +51,8 @@ export interface ProfileClearResult {
   removedOrigins?: string[];
 }
 
+export type AuthStateApplier = (profileDirectory: string, storageState: unknown) => Promise<void>;
+
 export function getProfileDirectory(env: NodeJS.ProcessEnv = process.env): string {
   return resolveBrowserProfileDirectory(env);
 }
@@ -88,11 +90,14 @@ export async function exportAuthStateProfile(options: {
 export async function importProfile(options: {
   input: string;
   profileDirectory: string;
+  applyAuthState?: AuthStateApplier;
 }): Promise<ProfileImportResult> {
   const bundle = decodeProfileBundle(options.input);
   const profileDirectory = resolve(options.profileDirectory);
   const storageState = mergeStorageStates(await readSavedAuthState(profileDirectory), bundle.storageState);
 
+  await saveAuthState(profileDirectory, storageState);
+  const applyAuthState = options.applyAuthState ?? applyAuthStateWithBrowser;
   await applyAuthState(profileDirectory, storageState);
   return {
     kind: "auth",
@@ -208,13 +213,8 @@ export function persistAuthStateOnClose(context: BrowserContext, profileDirector
   return context;
 }
 
-async function applyAuthState(profileDirectory: string, storageState: unknown): Promise<void> {
+async function applyAuthStateWithBrowser(profileDirectory: string, storageState: unknown): Promise<void> {
   const resolvedProfileDirectory = resolve(profileDirectory);
-  await mkdir(resolvedProfileDirectory, {
-    recursive: true,
-    mode: 0o700
-  });
-  await saveAuthState(resolvedProfileDirectory, storageState);
   const context = await chromium.launchPersistentContext(resolvedProfileDirectory, createProfileLaunchOptions());
   try {
     await context.setStorageState(storageState as Parameters<BrowserContext["setStorageState"]>[0]);

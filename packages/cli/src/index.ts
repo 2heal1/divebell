@@ -72,6 +72,7 @@ import {
   listProfile,
   readProfileInput,
   readProfileInputFile,
+  type AuthStateApplier,
   type ProfileExportResult
 } from "./profile.js";
 import {
@@ -137,6 +138,7 @@ export interface CliRunOptions {
   operationLogDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   authConnectorExporter?: typeof exportAuthProfileWithConnector;
+  authStateApplier?: AuthStateApplier;
 }
 
 export interface CliExtensionRunOptions {
@@ -312,7 +314,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     }
 
     if (args.command[0] === "auth") {
-      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector);
+      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -1434,14 +1436,15 @@ async function runAuthCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   browserRunner: BrowserRunner,
-  authConnectorExporter: typeof exportAuthProfileWithConnector
+  authConnectorExporter: typeof exportAuthProfileWithConnector,
+  authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
   const action = args.command[1];
   if (action === "export") {
     return await runAuthExportCommand(args, stdout, authConnectorExporter);
   }
   if (action === "import") {
-    return await runAuthImportCommand(args, stdout, browserRunner);
+    return await runAuthImportCommand(args, stdout, browserRunner, authStateApplier);
   }
   if (action === "list") {
     writeJson(stdout, await listProfile({
@@ -1500,7 +1503,8 @@ async function runAuthExportCommand(
 async function runAuthImportCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
-  browserRunner: BrowserRunner
+  browserRunner: BrowserRunner,
+  authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
   await closeBrowserForProfileCommand(browserRunner);
   const inputPath = getOptionValue(args, "input");
@@ -1509,7 +1513,8 @@ async function runAuthImportCommand(
     : await readProfileInputFile(inputPath);
   const result = await importProfile({
     input,
-    profileDirectory: getProfileDirectory()
+    profileDirectory: getProfileDirectory(),
+    ...createOptionalObjectProperty("applyAuthState", authStateApplier)
   });
   writeJson(stdout, result);
   return 0;

@@ -793,10 +793,16 @@ test("imports, lists, and clears the current auth profile", async () => {
     assert.equal(exported.path, inputPath);
 
     let closeArgs: string[] | undefined;
+    let appliedProfileDirectory: string | undefined;
+    let appliedStorageState: unknown;
     const importOutput = createOutput();
     const importExitCode = await runCli(["auth", "import", "--input", inputPath], {
       stdout: importOutput.stdout,
       stderr: importOutput.stderr,
+      authStateApplier: async (applierProfileDirectory, storageState) => {
+        appliedProfileDirectory = applierProfileDirectory;
+        appliedStorageState = storageState;
+      },
       browserRunner: createBrowserRunner(async (args) => {
         closeArgs = args;
         return {
@@ -814,7 +820,10 @@ test("imports, lists, and clears the current auth profile", async () => {
       kind: "auth",
       profileDirectory
     });
-    assert.deepEqual(JSON.parse(readFileSync(join(profileDirectory, AUTH_STATE_FILE_NAME), "utf8")), {
+    const importedStorageState = JSON.parse(readFileSync(join(profileDirectory, AUTH_STATE_FILE_NAME), "utf8"));
+    assert.equal(appliedProfileDirectory, profileDirectory);
+    assert.deepEqual(appliedStorageState, importedStorageState);
+    assert.deepEqual(importedStorageState, {
       cookies: [
         {
           name: "sid",

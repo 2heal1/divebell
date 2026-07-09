@@ -88,6 +88,8 @@ Runtime API is responsible for providing the real internal runtime state of the 
 
 For Agents, it is recommended to read Runtime API first and then combine it with browser capabilities for validation, instead of relying entirely on browser automation.
 
+For browser login state export, import, inspection, and cleanup, see [Browser Auth Profiles](docs/auth-profiles.md). Chinese documentation is available at [浏览器登录态 Profile](docs/auth-profiles.zh-CN.md).
+
 ---
 
 ## Example

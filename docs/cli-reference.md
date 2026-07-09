@@ -15,8 +15,10 @@
 
 - `openruntime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。
 - `openruntime stop [--port <port>]` - 先关闭浏览器会话，再停止 CLI 管理的 Bridge。
-- `openruntime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]` - 导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。
-- `openruntime import-profile <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
+- `openruntime auth export --url <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]` - 通过 Chrome Auth Connector 扩展导出指定网站账号状态；首次会打开 Chrome 引导安装或加载扩展。
+- `openruntime auth import <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
+- `openruntime auth list` - 列出当前 OpenRuntime 浏览器 profile 里已导入的站点。
+- `openruntime auth clear [--url <url>]` - 清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。
 - `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `openruntime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。

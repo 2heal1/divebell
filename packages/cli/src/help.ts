@@ -22,13 +22,23 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime export-profile [--source chrome|openruntime] [--domain <domain>] [--chrome-profile <name>] [--chrome-user-data-dir <path>] [--timeout <ms>] [--output <path>]",
-    description: "导出账号状态；默认读取本机 Chrome 的最近使用 profile，--domain 会访问指定站点并导出该站点相关 Cookie、本地存储和 IndexedDB。"
+    usage: "openruntime auth export --url <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]",
+    description: "通过 Chrome Auth Connector 扩展导出指定网站账号状态；首次会打开 Chrome 引导安装或加载扩展。"
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime import-profile <content-or-path> | --input <path>",
+    usage: "openruntime auth import <content-or-path> | --input <path>",
     description: "导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime auth list",
+    description: "列出当前 OpenRuntime 浏览器 profile 里已导入的站点。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime auth clear [--url <url>]",
+    description: "清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。"
   },
   {
     category: "Bridge and Browser",

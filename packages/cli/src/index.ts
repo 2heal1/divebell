@@ -16,6 +16,9 @@ import {
 } from "@openruntime/core";
 import { getNumberOption, getOptionValue, getOptionValues, parseCliArgs, type ParsedCliArgs } from "./args.js";
 import {
+  exportAuthProfileWithConnector
+} from "./auth-connector.js";
+import {
   createConsoleLogScript,
   createGetWindowScript,
   createInteractiveTextClickScript,
@@ -63,10 +66,10 @@ import {
   type CliOperationLogStore
 } from "./operation-log.js";
 import {
-  exportAuthProfile,
-  exportChromeAuthProfile,
+  clearProfile,
   getProfileDirectory,
   importProfile,
+  listProfile,
   readProfileInput,
   readProfileInputFile,
   type ProfileExportResult
@@ -133,7 +136,7 @@ export interface CliRunOptions {
   bridgeStateDirectory?: string;
   operationLogDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
-  exportChromeAuthProfile?: typeof exportChromeAuthProfile;
+  authConnectorExporter?: typeof exportAuthProfileWithConnector;
 }
 
 export interface CliExtensionRunOptions {
@@ -308,12 +311,8 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
       return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore, options.bridgeProcessController);
     }
 
-    if (args.command[0] === "export-profile") {
-      return await runExportProfileCommand(args, stdout, browserRunner, options.exportChromeAuthProfile ?? exportChromeAuthProfile);
-    }
-
-    if (args.command[0] === "import-profile") {
-      return await runImportProfileCommand(args, stdout, browserRunner);
+    if (args.command[0] === "auth") {
+      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector);
     }
 
     if (args.command[0] === "commands") {
@@ -510,8 +509,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "__bridge-server",
     "start",
     "stop",
-    "export-profile",
-    "import-profile",
+    "auth",
     "commands",
     "runtimes",
     "input-options",
@@ -1458,45 +1456,118 @@ async function runStopCommand(
   return 0;
 }
 
-async function runExportProfileCommand(
+async function runAuthCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   browserRunner: BrowserRunner,
-  chromeAuthExporter: typeof exportChromeAuthProfile
+  authConnectorExporter: typeof exportAuthProfileWithConnector
 ): Promise<number> {
-  const outputPath = getOptionValue(args, "output");
-  const domains = getProfileExportDomains(args);
-  if (hasOption(args, "full")) {
-    throw createError({
-      code: "PROFILE_FULL_EXPORT_UNSUPPORTED",
-      kind: "validation",
-      message: "--full is not supported by export-profile. Use --domain <domain> to narrow account export.",
-      hint: "Use one or more --domain values to narrow account export."
-    });
+  const action = args.command[1];
+  if (action === "export") {
+    return await runAuthExportCommand(args, stdout, authConnectorExporter);
   }
-  const source = getProfileExportSource(args);
-  if (source === "chrome") {
-    const result = await chromeAuthExporter({
-      ...(outputPath === undefined ? {} : { outputPath }),
-      ...createOptionalStringProperty("userDataDirectory", getOptionValue(args, "chrome-user-data-dir")),
-      ...createOptionalStringProperty("profile", getOptionValue(args, "chrome-profile")),
-      ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
-      ...(domains.length === 0 ? {} : { domains })
+  if (action === "import") {
+    return await runAuthImportCommand(args, stdout, browserRunner);
+  }
+  if (action === "list") {
+    writeJson(stdout, await listProfile({
+      profileDirectory: getProfileDirectory()
+    }));
+    return 0;
+  }
+  if (action === "clear") {
+    const url = getOptionValue(args, "url") ?? args.command[2];
+    await closeBrowserForProfileCommand(browserRunner, {
+      allowMissingBrowser: true
     });
-    stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
+    writeJson(stdout, await clearProfile({
+      profileDirectory: getProfileDirectory(),
+      ...createOptionalStringProperty("url", url)
+    }));
     return 0;
   }
 
-  await closeBrowserForProfileCommand(browserRunner);
-  const profileDirectory = getProfileDirectory();
-  const result = await exportAuthProfile({
-    profileDirectory,
-    ...(outputPath === undefined ? {} : { outputPath }),
-    ...(domains.length === 0 ? {} : { domains })
+  throw createError({
+    code: "AUTH_COMMAND_INVALID",
+    kind: "validation",
+    message: "auth requires export, import, list, or clear.",
+    outputCommand: "auth",
+    hint: "Use `openruntime auth export --url <url>`, `openruntime auth import --input <path>`, `openruntime auth list`, or `openruntime auth clear --url <url>`."
   });
+}
 
+async function runAuthExportCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  authConnectorExporter: typeof exportAuthProfileWithConnector
+): Promise<number> {
+  const requestedUrl = getOptionValue(args, "url") ?? args.command[2];
+  if (requestedUrl === undefined || requestedUrl.length === 0) {
+    throw createError({
+      code: "AUTH_EXPORT_URL_REQUIRED",
+      kind: "validation",
+      message: "auth export requires --url <url>.",
+      hint: "Use `openruntime auth export --url https://app.example.com`."
+    });
+  }
+
+  const result = await authConnectorExporter({
+    requestedUrl: normalizeAuthExportUrl(requestedUrl),
+    ...createOptionalStringProperty("outputPath", getOptionValue(args, "output")),
+    ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
+    ...createOptionalStringProperty("extensionDirectory", getOptionValue(args, "extension-dir")),
+    ...createOptionalStringProperty("extensionInstallUrl", getOptionValue(args, "extension-install-url")),
+    ...createOptionalStringProperty("extensionIconPath", getOptionValue(args, "extension-icon"))
+  });
   stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
   return 0;
+}
+
+async function runAuthImportCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  await closeBrowserForProfileCommand(browserRunner);
+  const inputPath = getOptionValue(args, "input");
+  const input = inputPath === undefined
+    ? await readProfileInput(args.command[2])
+    : await readProfileInputFile(inputPath);
+  const result = await importProfile({
+    input,
+    profileDirectory: getProfileDirectory()
+  });
+  writeJson(stdout, result);
+  return 0;
+}
+
+function normalizeAuthExportUrl(input: string): string {
+  let url: URL;
+  const trimmed = input.trim();
+  const urlLike = hasUrlScheme(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    url = new URL(urlLike);
+  } catch {
+    throw createError({
+      code: "AUTH_EXPORT_URL_INVALID",
+      kind: "validation",
+      message: `Invalid auth export URL "${input}".`,
+      hint: "Pass an http or https URL, or a plain domain."
+    });
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw createError({
+      code: "AUTH_EXPORT_URL_UNSUPPORTED",
+      kind: "validation",
+      message: "Auth export URL must use http or https.",
+      hint: "Pass an http or https URL, or a plain domain."
+    });
+  }
+  return url.href;
+}
+
+function hasUrlScheme(input: string): boolean {
+  return /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(input);
 }
 
 async function getPrintableProfileExportResult(result: ProfileExportResult): Promise<string> {
@@ -1515,56 +1586,26 @@ async function getPrintableProfileExportResult(result: ProfileExportResult): Pro
   return path;
 }
 
-function getProfileExportDomains(args: ParsedCliArgs): string[] {
-  const domains = getOptionValues(args, "domain");
-  if (domains.some((domain) => domain.trim().length === 0 || domain === "true")) {
-    throw createError({
-      code: "PROFILE_DOMAIN_REQUIRED",
-      kind: "validation",
-      message: "--domain requires a domain value."
-    });
-  }
-  return domains;
-}
-
-function getProfileExportSource(args: ParsedCliArgs): "chrome" | "openruntime" {
-  const source = getOptionValue(args, "source") ?? "chrome";
-  if (source !== "chrome" && source !== "openruntime") {
-    throw createError({
-      code: "PROFILE_SOURCE_INVALID",
-      kind: "validation",
-      message: "--source must be chrome or openruntime.",
-      details: {
-        source
-      }
-    });
-  }
-  return source;
-}
-
-async function runImportProfileCommand(
-  args: ParsedCliArgs,
-  stdout: { write(chunk: string): void },
-  browserRunner: BrowserRunner
-): Promise<number> {
-  await closeBrowserForProfileCommand(browserRunner);
-  const inputPath = getOptionValue(args, "input");
-  const input = inputPath === undefined
-    ? await readProfileInput(args.command[1])
-    : await readProfileInputFile(inputPath);
-  const result = await importProfile({
-    input,
-    profileDirectory: getProfileDirectory()
-  });
-  writeJson(stdout, result);
-  return 0;
-}
-
-async function closeBrowserForProfileCommand(browserRunner: BrowserRunner): Promise<void> {
+async function closeBrowserForProfileCommand(
+  browserRunner: BrowserRunner,
+  options: {
+    allowMissingBrowser?: boolean;
+  } = {}
+): Promise<void> {
   const result = await browserRunner.run(["close"]);
   if (result.exitCode !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || "Could not close OpenRuntime browser.");
+    const message = result.stderr.trim() || result.stdout.trim() || "Could not close OpenRuntime browser.";
+    if (options.allowMissingBrowser === true && isMissingBrowserCloseError(message)) {
+      return;
+    }
+    throw new Error(message);
   }
+}
+
+function isMissingBrowserCloseError(message: string): boolean {
+  return message.includes("daemon failed to start")
+    || message.includes("ECONNREFUSED")
+    || message.includes("ENOENT");
 }
 
 function createBridgeUrl(args: ParsedCliArgs): string {
@@ -1939,7 +1980,7 @@ function applyOpenContextDefaultsOrThrow(
   openContext: CliOperationLogEntry | undefined,
   requirement: "always" | "unless-selector"
 ): ParsedCliArgs {
-  if (openContext === undefined && (requirement === "always" || !hasRuntimeSelectorOption(args))) {
+  if (openContext === undefined && (requirement === "always" || (!hasRuntimeSelectorOption(args) && !hasOption(args, "bridge")))) {
     throw createOpenContextRequiredError(args);
   }
   if (
@@ -2145,6 +2186,23 @@ export type {
   OpenRuntimeWaitOptions
 } from "./extension-api.js";
 export type { ParsedCliArgs } from "./args.js";
+export {
+  convertAuthConnectorPayloadToStorageState,
+  exportAuthProfileWithConnector,
+  getDefaultAuthConnectorExtensionDirectory,
+  openAuthConnectorSetupPage,
+  writeAuthConnectorExtension
+} from "./auth-connector.js";
+export type {
+  AuthConnectorBrowserOpener,
+  AuthConnectorCookie,
+  AuthConnectorExportOptions,
+  AuthConnectorExtensionOptions,
+  AuthConnectorOriginState,
+  AuthConnectorPayload,
+  AuthConnectorStorageEntry,
+  AuthConnectorStorageState
+} from "./auth-connector.js";
 export {
   createDefaultBrowserProfileDirectory,
   createNextBrowserEnvironment,

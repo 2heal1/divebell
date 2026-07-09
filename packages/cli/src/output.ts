@@ -22,6 +22,7 @@ export interface CommandErrorOptions {
   code: string;
   kind: CommandErrorKind;
   message: string;
+  outputCommand?: string;
   retryable?: boolean;
   hint?: string;
   details?: Record<string, unknown>;
@@ -37,6 +38,7 @@ export interface CommandOutput {
 export class CommandError extends Error {
   readonly code: string;
   readonly kind: CommandErrorKind;
+  readonly outputCommand?: string;
   readonly retryable: boolean;
   readonly hint?: string;
   readonly details?: Record<string, unknown>;
@@ -47,6 +49,9 @@ export class CommandError extends Error {
     this.name = "CommandError";
     this.code = options.code;
     this.kind = options.kind;
+    if (options.outputCommand !== undefined) {
+      this.outputCommand = options.outputCommand;
+    }
     this.retryable = options.retryable ?? false;
     if (options.hint !== undefined) {
       this.hint = options.hint;
@@ -130,6 +135,7 @@ export function writeErrorOutput(
   error: unknown
 ): void {
   const normalized = normalizeCommandError(error);
+  const outputCommand = normalized.outputCommand ?? command;
   writeOutput(stdout, {
     status: "error",
     message: normalized.message,
@@ -141,7 +147,7 @@ export function writeErrorOutput(
       ...(normalized.details === undefined ? {} : { details: normalized.details })
     },
     ...(normalized.data === undefined ? {} : { data: normalized.data }),
-    meta: createMeta(command)
+    meta: createMeta(outputCommand)
   });
 }
 

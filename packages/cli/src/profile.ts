@@ -1,22 +1,16 @@
 import { gzipSync, gunzipSync } from "node:zlib";
 import { Buffer } from "node:buffer";
 import {
-  constants,
-  existsSync,
-  lstatSync,
-  readFileSync
+  existsSync
 } from "node:fs";
-import { access, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { chromium, type BrowserContext, type Route } from "playwright";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { chromium, type BrowserContext } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
 export const AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
-const CHROME_PROFILE_EXPORT_TIMEOUT_MS = 60_000;
-const DOMAIN_CAPTURE_ROUTE_PATTERN = "**/*";
-const DOMAIN_CAPTURE_HTML = "<!doctype html><html><head><meta charset=\"utf-8\"><title>OpenRuntime Profile Export</title></head><body></body></html>";
 
 interface AuthProfileBundle {
   version: 1;
@@ -36,21 +30,25 @@ export interface ProfileImportResult {
   profileDirectory: string;
 }
 
-export interface ChromeProfileExportOptions {
-  outputPath?: string;
-  userDataDirectory?: string;
-  profile?: string;
-  timeout?: number;
-  domains?: string[];
-  env?: NodeJS.ProcessEnv;
-  platform?: NodeJS.Platform;
+export interface ProfileListResult {
+  kind: "auth";
+  profileDirectory: string;
+  authStatePath: string;
+  imported: boolean;
+  sites: Array<{
+    site: string;
+    cookies: number;
+    origins: string[];
+  }>;
 }
 
-export interface ResolvedChromeProfile {
-  userDataDirectory: string;
-  profileDirectoryName: string;
+export interface ProfileClearResult {
+  kind: "auth";
   profileDirectory: string;
-  label: string;
+  removed: boolean;
+  url?: string;
+  removedCookies?: number;
+  removedOrigins?: string[];
 }
 
 export function getProfileDirectory(env: NodeJS.ProcessEnv = process.env): string {
@@ -61,55 +59,15 @@ export function getAuthStatePath(profileDirectory: string): string {
   return join(resolve(profileDirectory), AUTH_STATE_FILE_NAME);
 }
 
-export async function exportAuthProfile(options: {
-  profileDirectory: string;
+export async function exportAuthStateProfile(options: {
+  storageState: unknown;
   outputPath?: string;
-  domains?: string[];
 }): Promise<ProfileExportResult> {
-  const domains = normalizeProfileDomains(options.domains ?? []);
-  const storageState = filterStorageStateByNormalizedDomains(
-    await captureAuthState(options.profileDirectory),
-    domains
-  );
   const content = encodeProfileBundle({
     version: 1,
     kind: "auth",
     createdAt: new Date().toISOString(),
-    storageState
-  });
-
-  if (options.outputPath !== undefined) {
-    const path = resolve(options.outputPath);
-    await writeTextFile(path, content);
-    return {
-      kind: "auth",
-      path
-    };
-  }
-
-  return {
-    kind: "auth",
-    content
-  };
-}
-
-export async function exportChromeAuthProfile(options: ChromeProfileExportOptions = {}): Promise<ProfileExportResult> {
-  const domains = normalizeProfileDomains(options.domains ?? []);
-  const chromeProfile = resolveChromeProfile(options);
-  let storageState: unknown;
-  try {
-    storageState = domains.length > 0
-      ? await captureCopiedChromeDomainAuthState(chromeProfile, options.timeout, domains)
-      : await captureChromeAuthState(chromeProfile, options.timeout, domains);
-  } catch (error) {
-    throw new Error(`Could not read Chrome profile "${chromeProfile.label}". ${formatChromeProfileReadError(error, domains.length > 0)}`);
-  }
-
-  const content = encodeProfileBundle({
-    version: 1,
-    kind: "auth",
-    createdAt: new Date().toISOString(),
-    storageState
+    storageState: options.storageState
   });
 
   if (options.outputPath !== undefined) {
@@ -133,11 +91,71 @@ export async function importProfile(options: {
 }): Promise<ProfileImportResult> {
   const bundle = decodeProfileBundle(options.input);
   const profileDirectory = resolve(options.profileDirectory);
+  const storageState = mergeStorageStates(await readSavedAuthState(profileDirectory), bundle.storageState);
 
-  await applyAuthState(profileDirectory, bundle.storageState);
+  await applyAuthState(profileDirectory, storageState);
   return {
     kind: "auth",
     profileDirectory
+  };
+}
+
+export async function listProfile(options: {
+  profileDirectory: string;
+}): Promise<ProfileListResult> {
+  const profileDirectory = resolve(options.profileDirectory);
+  const authStatePath = getAuthStatePath(profileDirectory);
+  const storageState = await readSavedAuthState(profileDirectory);
+
+  return {
+    kind: "auth",
+    profileDirectory,
+    authStatePath,
+    imported: storageState !== undefined,
+    sites: listStorageStateSites(storageState)
+  };
+}
+
+export async function clearProfile(options: {
+  profileDirectory: string;
+  url?: string;
+}): Promise<ProfileClearResult> {
+  const profileDirectory = resolve(options.profileDirectory);
+  assertSafeProfileClearPath(profileDirectory);
+
+  if (options.url !== undefined) {
+    const storageState = await readSavedAuthState(profileDirectory);
+    const cleared = clearStorageStateByUrl(storageState, options.url);
+    const removed = cleared.removedCookies > 0 || cleared.removedOrigins.length > 0;
+    if (removed) {
+      await rm(profileDirectory, {
+        recursive: true,
+        force: true
+      });
+      if (hasStorageStateEntries(cleared.storageState)) {
+        await saveAuthState(profileDirectory, cleared.storageState);
+      }
+    }
+    return {
+      kind: "auth",
+      profileDirectory,
+      removed,
+      url: cleared.url.href,
+      removedCookies: cleared.removedCookies,
+      removedOrigins: cleared.removedOrigins
+    };
+  }
+
+  const removed = existsSync(profileDirectory);
+  await rm(profileDirectory, {
+    recursive: true,
+    force: true
+  });
+
+  return {
+    kind: "auth",
+    profileDirectory,
+    removed
   };
 }
 
@@ -156,38 +174,6 @@ export async function readProfileInput(input: string | undefined): Promise<strin
 
 export async function readProfileInputFile(path: string): Promise<string> {
   return await readFile(resolve(path), "utf8");
-}
-
-export function getDefaultChromeUserDataDirectory(
-  env: NodeJS.ProcessEnv = process.env,
-  platform: NodeJS.Platform = process.platform
-): string {
-  const home = env.HOME ?? homedir();
-  if (platform === "darwin") {
-    return join(home, "Library", "Application Support", "Google", "Chrome");
-  }
-  if (platform === "win32") {
-    return join(env.LOCALAPPDATA ?? join(home, "AppData", "Local"), "Google", "Chrome", "User Data");
-  }
-  return join(env.XDG_CONFIG_HOME ?? join(home, ".config"), "google-chrome");
-}
-
-export function resolveChromeProfile(options: ChromeProfileExportOptions = {}): ResolvedChromeProfile {
-  const env = options.env ?? process.env;
-  const platform = options.platform ?? process.platform;
-  const defaultUserDataDirectory = getDefaultChromeUserDataDirectory(env, platform);
-  const rawProfile = options.profile;
-
-  if (rawProfile !== undefined && isAbsolute(rawProfile)) {
-    const profileDirectory = resolve(rawProfile);
-    return createResolvedChromeProfile(dirname(profileDirectory), basename(profileDirectory), undefined);
-  }
-
-  const userDataDirectory = resolve(options.userDataDirectory ?? defaultUserDataDirectory);
-  assertChromeUserDataDirectoryExists(userDataDirectory);
-  const localState = readChromeLocalState(userDataDirectory);
-  const profileDirectoryName = selectChromeProfileDirectoryName(localState, rawProfile);
-  return createResolvedChromeProfile(userDataDirectory, profileDirectoryName, localState);
 }
 
 export async function saveAuthState(profileDirectory: string, storageState: unknown): Promise<void> {
@@ -220,189 +206,6 @@ export function persistAuthStateOnClose(context: BrowserContext, profileDirector
   }) as BrowserContext["close"];
   context.close = wrappedClose;
   return context;
-}
-
-async function captureAuthState(profileDirectory: string): Promise<unknown> {
-  const resolvedProfileDirectory = resolve(profileDirectory);
-  await assertProfileDirectoryExists(resolvedProfileDirectory);
-  const context = await chromium.launchPersistentContext(resolvedProfileDirectory, createProfileLaunchOptions());
-  try {
-    const savedState = await readSavedAuthState(resolvedProfileDirectory);
-    const storageState = mergeStorageStates(savedState, await context.storageState({ indexedDB: true }));
-    await saveAuthState(resolvedProfileDirectory, storageState);
-    return storageState;
-  } finally {
-    await context.close();
-  }
-}
-
-async function captureChromeAuthState(
-  chromeProfile: ResolvedChromeProfile,
-  timeout: number | undefined,
-  domains: string[]
-): Promise<unknown> {
-  assertChromeProfileIsNotLocked(chromeProfile);
-  const launchOptions = createProfileLaunchOptions() ?? {};
-  const context = await chromium.launchPersistentContext(chromeProfile.userDataDirectory, {
-    ...launchOptions,
-    channel: "chrome",
-    ignoreDefaultArgs: ["--use-mock-keychain"],
-    timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS,
-    args: [
-      ...(launchOptions.args ?? []),
-      `--profile-directory=${chromeProfile.profileDirectoryName}`,
-      "--no-first-run",
-      "--no-default-browser-check"
-    ]
-  });
-  try {
-    if (domains.length > 0) {
-      return await captureVisitedDomainAuthState(context, domains, timeout);
-    }
-    return await context.storageState({ indexedDB: true });
-  } finally {
-    await context.close();
-  }
-}
-
-async function captureCopiedChromeDomainAuthState(
-  chromeProfile: ResolvedChromeProfile,
-  timeout: number | undefined,
-  domains: string[]
-): Promise<unknown> {
-  const copiedProfile = await copyChromeProfileForDomainExport(chromeProfile, domains);
-  try {
-    return await captureChromeAuthState(copiedProfile, timeout, domains);
-  } finally {
-    await rm(copiedProfile.userDataDirectory, {
-      recursive: true,
-      force: true
-    });
-  }
-}
-
-async function captureVisitedDomainAuthState(
-  context: BrowserContext,
-  domains: string[],
-  timeout: number | undefined
-): Promise<unknown> {
-  const routeHandler = createDomainCaptureRouteHandler(domains);
-  await context.route(DOMAIN_CAPTURE_ROUTE_PATTERN, routeHandler);
-  try {
-    for (const domain of domains) {
-      const page = await context.newPage();
-      try {
-        await page.goto(`https://${domain}/`, {
-          waitUntil: "domcontentloaded",
-          timeout: timeout ?? CHROME_PROFILE_EXPORT_TIMEOUT_MS
-        });
-        await page.evaluate(async () => {
-          void window.localStorage.length;
-          if (typeof window.indexedDB.databases === "function") {
-            await window.indexedDB.databases().catch(() => []);
-          }
-        });
-      } finally {
-        await page.close().catch(() => undefined);
-      }
-    }
-    return filterStorageStateByNormalizedDomains(
-      await context.storageState({ indexedDB: true }),
-      domains
-    );
-  } finally {
-    await context.unroute(DOMAIN_CAPTURE_ROUTE_PATTERN, routeHandler).catch(() => undefined);
-  }
-}
-
-function createDomainCaptureRouteHandler(domains: string[]): (route: Route) => Promise<void> {
-  return async (route) => {
-    const host = getOriginHost(route.request().url());
-    if (host !== undefined && domains.some((domain) => domainMatchesHost(host, domain))) {
-      await route.fulfill({
-        status: 200,
-        contentType: "text/html; charset=utf-8",
-        body: DOMAIN_CAPTURE_HTML
-      });
-      return;
-    }
-
-    await route.abort("blockedbyclient");
-  };
-}
-
-async function copyChromeProfileForDomainExport(
-  chromeProfile: ResolvedChromeProfile,
-  domains: string[]
-): Promise<ResolvedChromeProfile> {
-  const userDataDirectory = await mkdtemp(join(tmpdir(), "openruntime-chrome-profile-"));
-  const profileDirectory = join(userDataDirectory, chromeProfile.profileDirectoryName);
-  await mkdir(profileDirectory, {
-    recursive: true,
-    mode: 0o700
-  });
-
-  await copyChromeProfileEntry(chromeProfile.userDataDirectory, userDataDirectory, "Local State");
-  for (const name of [
-    "Preferences",
-    "Secure Preferences",
-    "Cookies",
-    "Cookies-journal",
-    "Network",
-    "Local Storage"
-  ]) {
-    await copyChromeProfileEntry(chromeProfile.profileDirectory, profileDirectory, name);
-  }
-  await copyChromeIndexedDbForDomains(chromeProfile.profileDirectory, profileDirectory, domains);
-
-  return {
-    userDataDirectory,
-    profileDirectoryName: chromeProfile.profileDirectoryName,
-    profileDirectory,
-    label: `${chromeProfile.label} copy`
-  };
-}
-
-async function copyChromeProfileEntry(sourceDirectory: string, targetDirectory: string, name: string): Promise<void> {
-  const sourcePath = join(sourceDirectory, name);
-  if (!existsSync(sourcePath)) return;
-  await mkdir(targetDirectory, {
-    recursive: true,
-    mode: 0o700
-  });
-  await cp(sourcePath, join(targetDirectory, name), {
-    recursive: true,
-    force: true,
-    filter: shouldCopyChromeProfilePath
-  });
-}
-
-async function copyChromeIndexedDbForDomains(sourceProfileDirectory: string, targetProfileDirectory: string, domains: string[]): Promise<void> {
-  const sourceIndexedDbDirectory = join(sourceProfileDirectory, "IndexedDB");
-  if (!existsSync(sourceIndexedDbDirectory)) return;
-
-  const entries = await readdir(sourceIndexedDbDirectory, {
-    withFileTypes: true
-  });
-  for (const entry of entries) {
-    if (!entry.isDirectory() || !chromeIndexedDbDirectoryMatchesDomains(entry.name, domains)) {
-      continue;
-    }
-    await copyChromeProfileEntry(sourceIndexedDbDirectory, join(targetProfileDirectory, "IndexedDB"), entry.name);
-  }
-}
-
-function chromeIndexedDbDirectoryMatchesDomains(name: string, domains: string[]): boolean {
-  const normalizedName = name.toLowerCase();
-  if (!normalizedName.endsWith(".indexeddb.leveldb") && !normalizedName.endsWith(".indexeddb.blob")) {
-    return false;
-  }
-
-  return domains.some((domain) => normalizedName.includes(`_${domain}_`) || normalizedName.includes(`.${domain}_`));
-}
-
-function shouldCopyChromeProfilePath(sourcePath: string): boolean {
-  return basename(sourcePath) !== "LOCK";
 }
 
 async function applyAuthState(profileDirectory: string, storageState: unknown): Promise<void> {
@@ -456,27 +259,6 @@ function mergeStorageStates(savedState: unknown | undefined, browserState: unkno
   };
 }
 
-export function filterStorageStateByDomains(storageState: unknown, domains: string[]): unknown {
-  return filterStorageStateByNormalizedDomains(storageState, normalizeProfileDomains(domains));
-}
-
-function filterStorageStateByNormalizedDomains(storageState: unknown, normalizedDomains: string[]): unknown {
-  if (!isStorageState(storageState)) return storageState;
-  if (normalizedDomains.length === 0) return storageState;
-
-  return {
-    ...storageState,
-    cookies: storageState.cookies.filter((cookie) => {
-      const cookieDomain = typeof cookie.domain === "string" ? normalizeCookieDomain(cookie.domain) : undefined;
-      return cookieDomain !== undefined && normalizedDomains.some((domain) => domainMatchesCookie(cookieDomain, domain));
-    }),
-    origins: storageState.origins.filter((origin) => {
-      const originHost = typeof origin.origin === "string" ? getOriginHost(origin.origin) : undefined;
-      return originHost !== undefined && normalizedDomains.some((domain) => domainMatchesHost(originHost, domain));
-    })
-  };
-}
-
 function mergeStorageOrigins(savedOrigin: Record<string, unknown>, browserOrigin: Record<string, unknown>): Record<string, unknown> {
   const savedLocalStorage = Array.isArray(savedOrigin.localStorage)
     ? savedOrigin.localStorage
@@ -514,6 +296,110 @@ function mergeStorageItems<T extends Record<string, unknown>>(
   return [...items.values()];
 }
 
+function listStorageStateSites(storageState: unknown | undefined): ProfileListResult["sites"] {
+  if (!isStorageState(storageState)) return [];
+
+  const sites = new Map<string, {
+    cookies: number;
+    origins: Set<string>;
+  }>();
+
+  for (const cookie of storageState.cookies) {
+    if (typeof cookie.domain !== "string") continue;
+    const site = normalizeCookieDomain(cookie.domain);
+    if (site.length === 0) continue;
+    const entry = sites.get(site) ?? {
+      cookies: 0,
+      origins: new Set<string>()
+    };
+    entry.cookies += 1;
+    sites.set(site, entry);
+  }
+
+  for (const origin of storageState.origins) {
+    if (typeof origin.origin !== "string") continue;
+    const site = getOriginHost(origin.origin);
+    if (site === undefined) continue;
+    const entry = sites.get(site) ?? {
+      cookies: 0,
+      origins: new Set<string>()
+    };
+    entry.origins.add(origin.origin);
+    sites.set(site, entry);
+  }
+
+  return [...sites.entries()]
+    .sort(([siteA], [siteB]) => siteA.localeCompare(siteB))
+    .map(([site, entry]) => ({
+      site,
+      cookies: entry.cookies,
+      origins: [...entry.origins].sort()
+    }));
+}
+
+function clearStorageStateByUrl(storageState: unknown | undefined, requestedUrl: string): {
+  storageState: unknown;
+  url: NormalizedProfileUrl;
+  removedCookies: number;
+  removedOrigins: string[];
+} {
+  const url = normalizeProfileUrl(requestedUrl);
+  if (!isStorageState(storageState)) {
+    return {
+      storageState: createEmptyStorageState(),
+      url,
+      removedCookies: 0,
+      removedOrigins: []
+    };
+  }
+
+  const remainingCookies: Record<string, unknown>[] = [];
+  let removedCookies = 0;
+  for (const cookie of storageState.cookies) {
+    const cookieDomain = typeof cookie.domain === "string" ? normalizeCookieDomain(cookie.domain) : undefined;
+    if (cookieDomain !== undefined && domainMatchesCookie(cookieDomain, url.host)) {
+      removedCookies += 1;
+      continue;
+    }
+    remainingCookies.push(cookie);
+  }
+
+  const remainingOrigins: Record<string, unknown>[] = [];
+  const removedOrigins: string[] = [];
+  for (const origin of storageState.origins) {
+    if (origin.origin === url.origin) {
+      removedOrigins.push(url.origin);
+      continue;
+    }
+    remainingOrigins.push(origin);
+  }
+
+  return {
+    storageState: {
+      ...storageState,
+      cookies: remainingCookies,
+      origins: remainingOrigins
+    },
+    url,
+    removedCookies,
+    removedOrigins: [...new Set(removedOrigins)].sort()
+  };
+}
+
+function hasStorageStateEntries(storageState: unknown): boolean {
+  return isStorageState(storageState) && (storageState.cookies.length > 0 || storageState.origins.length > 0);
+}
+
+function createEmptyStorageState(): {
+  cookies: Record<string, unknown>[];
+  origins: Record<string, unknown>[];
+} {
+  return {
+    cookies: [],
+    origins: []
+  };
+}
+
 function isStorageState(value: unknown): value is {
   cookies: Record<string, unknown>[];
   origins: Record<string, unknown>[];
@@ -527,22 +413,36 @@ function toRecordItems(items: unknown[]): Record<string, unknown>[] {
   return items.filter((item): item is Record<string, unknown> => item !== null && typeof item === "object");
 }
 
-function normalizeProfileDomains(domains: string[]): string[] {
-  return domains.map(normalizeProfileDomain);
+interface NormalizedProfileUrl {
+  href: string;
+  origin: string;
+  host: string;
 }
 
-function normalizeProfileDomain(input: string): string {
-  const trimmed = input.trim().toLowerCase();
+function normalizeProfileUrl(input: string): NormalizedProfileUrl {
+  const trimmed = input.trim();
   if (trimmed.length === 0 || trimmed === "true") {
-    throw new Error("--domain requires a domain value.");
+    throw new Error("--url requires a URL value.");
   }
-
-  const urlLike = trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+  const urlLike = hasUrlScheme(trimmed) ? trimmed : `https://${trimmed}`;
+  let url: URL;
   try {
-    return normalizeCookieDomain(new URL(urlLike).hostname);
+    url = new URL(urlLike);
   } catch {
-    throw new Error(`Invalid profile domain "${input}".`);
+    throw new Error(`Invalid profile clear URL "${input}".`);
   }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Profile clear URL must use http or https.");
+  }
+  return {
+    href: url.href,
+    origin: url.origin,
+    host: normalizeCookieDomain(url.hostname)
+  };
+}
+
+function hasUrlScheme(input: string): boolean {
+  return /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(input);
 }
 
 function normalizeCookieDomain(domain: string): string {
@@ -565,132 +465,6 @@ function domainMatchesHost(host: string, requestedDomain: string): boolean {
   return host === requestedDomain || host.endsWith(`.${requestedDomain}`);
 }
 
-function createResolvedChromeProfile(
-  userDataDirectory: string,
-  profileDirectoryName: string,
-  localState: Record<string, unknown> | undefined
-): ResolvedChromeProfile {
-  const profileDirectory = resolve(userDataDirectory, profileDirectoryName);
-  assertProfilePathInside(userDataDirectory, profileDirectory);
-  if (!existsSync(profileDirectory)) {
-    throw new Error(`Chrome profile was not found at ${profileDirectory}.`);
-  }
-
-  const metadata = getChromeProfileMetadata(localState, profileDirectoryName);
-  const labelParts = [
-    metadata.name,
-    metadata.userName,
-    profileDirectoryName
-  ].filter((value): value is string => value !== undefined && value.length > 0);
-
-  return {
-    userDataDirectory,
-    profileDirectoryName,
-    profileDirectory,
-    label: labelParts.join(" / ")
-  };
-}
-
-function assertChromeProfileIsNotLocked(chromeProfile: ResolvedChromeProfile): void {
-  const lockPaths = [
-    join(chromeProfile.userDataDirectory, "SingletonLock"),
-    join(chromeProfile.userDataDirectory, "SingletonSocket"),
-    join(chromeProfile.userDataDirectory, "SingletonCookie")
-  ];
-  if (lockPaths.some((path) => lstatSync(path, { throwIfNoEntry: false }) !== undefined)) {
-    throw new Error(`Chrome profile "${chromeProfile.label}" is currently in use. Quit Google Chrome and retry.`);
-  }
-}
-
-function formatChromeProfileReadError(error: unknown, usedDomainCopy: boolean): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("currently in use") || message.includes("ProcessSingleton") || message.includes("SingletonLock") || message.includes("profile is already in use")) {
-    return "Chrome profile is currently in use. Quit Google Chrome and retry.";
-  }
-  if (message.includes("Timeout")) {
-    if (usedDomainCopy) {
-      return "Timed out while reading the copied Chrome profile or visiting the domain. Pass --timeout <ms>.";
-    }
-    return "Timed out while opening the Chrome profile. Make sure Google Chrome is fully quit and retry, pass --timeout <ms>, or use --domain <domain> if you only need one site.";
-  }
-  return "Quit Google Chrome and retry, or pass --chrome-profile <name>.";
-}
-
-function assertChromeUserDataDirectoryExists(userDataDirectory: string): void {
-  if (!existsSync(userDataDirectory)) {
-    throw new Error(`Chrome user data directory was not found at ${userDataDirectory}.`);
-  }
-}
-
-function readChromeLocalState(userDataDirectory: string): Record<string, unknown> {
-  const path = join(userDataDirectory, "Local State");
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      throw new Error(`Chrome Local State was not found at ${path}.`);
-    }
-    throw new Error(`Chrome Local State could not be read at ${path}.`);
-  }
-}
-
-function selectChromeProfileDirectoryName(localState: Record<string, unknown>, requestedProfile: string | undefined): string {
-  const profiles = getChromeProfileInfoCache(localState);
-  if (requestedProfile !== undefined && requestedProfile.length > 0) {
-    const match = profiles.find((profile) =>
-      profile.directory === requestedProfile ||
-      profile.name === requestedProfile ||
-      profile.userName === requestedProfile
-    );
-    if (match !== undefined) return match.directory;
-    return requestedProfile;
-  }
-
-  const profileState = getRecord(localState.profile);
-  const lastUsed = typeof profileState?.last_used === "string" ? profileState.last_used : undefined;
-  if (lastUsed !== undefined && lastUsed.length > 0) return lastUsed;
-  return "Default";
-}
-
-function getChromeProfileInfoCache(localState: Record<string, unknown>): Array<{
-  directory: string;
-  name?: string;
-  userName?: string;
-}> {
-  const profileState = getRecord(localState.profile);
-  const infoCache = getRecord(profileState?.info_cache);
-  if (infoCache === undefined) return [];
-  return Object.entries(infoCache).map(([directory, value]) => {
-    const metadata = getRecord(value);
-    const name = typeof metadata?.name === "string" ? metadata.name : undefined;
-    const userName = typeof metadata?.user_name === "string" ? metadata.user_name : undefined;
-    return {
-      directory,
-      ...(name === undefined ? {} : { name }),
-      ...(userName === undefined ? {} : { userName })
-    };
-  });
-}
-
-function getChromeProfileMetadata(localState: Record<string, unknown> | undefined, profileDirectoryName: string): {
-  name?: string;
-  userName?: string;
-} {
-  if (localState === undefined) return {};
-  return getChromeProfileInfoCache(localState).find((profile) => profile.directory === profileDirectoryName) ?? {};
-}
-
-function getRecord(value: unknown): Record<string, unknown> | undefined {
-  return value !== null && typeof value === "object" ? value as Record<string, unknown> : undefined;
-}
-
-function assertProfilePathInside(userDataDirectory: string, profileDirectory: string): void {
-  const relativePath = relative(resolve(userDataDirectory), resolve(profileDirectory));
-  if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
-    throw new Error(`Chrome profile must be inside ${userDataDirectory}.`);
-  }
-}
-
 async function readSavedAuthState(profileDirectory: string): Promise<unknown | undefined> {
   try {
     return JSON.parse(await readFile(getAuthStatePath(profileDirectory), "utf8"));
@@ -700,11 +474,11 @@ async function readSavedAuthState(profileDirectory: string): Promise<unknown | u
   }
 }
 
-async function assertProfileDirectoryExists(profileDirectory: string): Promise<void> {
-  try {
-    await access(profileDirectory, constants.R_OK);
-  } catch {
-    throw new Error(`OpenRuntime browser profile was not found at ${profileDirectory}. Open a page and log in first.`);
+function assertSafeProfileClearPath(profileDirectory: string): void {
+  const resolved = resolve(profileDirectory);
+  const home = resolve(homedir());
+  if (resolved === "/" || resolved === home || dirname(resolved) === resolved) {
+    throw new Error(`Refusing to clear unsafe OpenRuntime profile path: ${resolved}.`);
   }
 }
 

@@ -88,6 +88,8 @@ Runtime API 则负责提供页面内部真实的运行状态。
 
 对于 Agent，更推荐优先读取 Runtime API，再结合浏览器能力完成验证，而不是完全依赖浏览器自动化。
 
+浏览器登录态的导出、导入、查看和清理用法见 [浏览器登录态 Profile](docs/auth-profiles.zh-CN.md)。英文文档见 [Browser Auth Profiles](docs/auth-profiles.md)。
+
 ---
 
 ## Example

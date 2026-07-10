@@ -51,6 +51,28 @@ test("defines and validates command exports", () => {
     }),
     /must export a run\(options\) function/
   );
+  assert.throws(
+    () => defineCommand({
+      schemaVersion: 1,
+      name: "broken-skill",
+      skill: { path: "SKILL.md" },
+      async run() {
+        return 0;
+      }
+    }),
+    /skill\.path must be an absolute path to SKILL\.md/
+  );
+  assert.throws(
+    () => defineCommand({
+      schemaVersion: 1,
+      name: "missing-skill",
+      skill: { path: join(tmpdir(), "openruntime-missing-skill", "SKILL.md") },
+      async run() {
+        return 0;
+      }
+    }),
+    /skill does not exist/
+  );
 });
 
 test("prints explicit runtime resource help", async () => {
@@ -85,6 +107,8 @@ test("prints explicit runtime resource help", async () => {
   assert.doesNotMatch(output.text(), /\[--open\]/);
   assert.doesNotMatch(output.text(), /openruntime vmok /);
   assert.doesNotMatch(output.text(), /open[-]runtime/);
+  assert.doesNotMatch(output.text(), /Examples:/);
+  assert.doesNotMatch(output.text(), /Skill: available/);
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -142,6 +166,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /\[--open\]/);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
+  assert.doesNotMatch(markdown, /## Examples/);
 });
 
 test("recognizes a bin symlink as the cli entrypoint", () => {

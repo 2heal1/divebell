@@ -78,16 +78,16 @@ Use help to inspect the commands that were loaded:
 openruntime --help
 ```
 
-External commands are shown separately in help with descriptions and are marked with their source:
+External commands are shown separately in help with descriptions:
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo] - Runs Foo.
+  openruntime foo ping - Runs Foo.
 ```
 
 If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported as a warning when the CLI loads external commands.
 
-`openruntime --help` is the discovery path for agents. Command authors must provide clear `commandReferences` and `exampleReferences`; agents should not guess how to run a command from only its name or file path.
+`openruntime --help` is the discovery path for agents. Command authors must provide clear `commandReferences`; agents should not guess how to run a command from only its name or file path.
 
 External commands are local code execution. Only load files you trust.
 
@@ -117,12 +117,6 @@ export default defineCommand({
       description: "Runs the Foo command."
     }
   ],
-  exampleReferences: [
-    {
-      command: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
   async run(options) {
     options.output.ok({
       result: "pong"
@@ -142,6 +136,57 @@ import command from "./foo.mjs";
 
 validateCommand(command);
 ```
+
+## Provide a Skill for a Complex Command
+
+A command may provide at most one local `SKILL.md`. Prefer the directory layout so the command, skill, and referenced files stay together:
+
+```text
+~/.openruntime/commands/foo/index.mjs
+~/.openruntime/commands/foo/SKILL.md
+~/.openruntime/commands/foo/references/...
+```
+
+Declare the absolute `SKILL.md` path through `skill.path`:
+
+```js
+import { fileURLToPath } from "node:url";
+import { defineCommand } from "@openruntime/cli";
+
+export default defineCommand({
+  schemaVersion: 1,
+  name: "foo",
+  skill: {
+    path: fileURLToPath(new URL("./SKILL.md", import.meta.url))
+  },
+  commandReferences: [
+    {
+      category: "Commands",
+      usage: "openruntime foo ping",
+      description: "Runs the Foo command."
+    }
+  ],
+  async run(options) {
+    options.output.ok({ result: "pong" });
+    return 0;
+  }
+});
+```
+
+When a skill exists, `openruntime --help` adds these lines at the bottom of the corresponding command section:
+
+```text
+Skill: available for foo.
+Skill usage: `openruntime <command> --skill`
+```
+
+The following command prints the absolute `SKILL.md` path without running the command's business logic:
+
+```sh
+openruntime foo --skill
+```
+
+`skill.path` must be an absolute path to an existing `SKILL.md` file. Commands without a skill do not show the skill hint and return a clear error for `--skill`. The `--skill` flag is reserved for command skill discovery and must not be used as a business option.
 
 ## Run Context: `run(options)`
 
@@ -347,12 +392,6 @@ export default defineCommand({
       description: "Read the latest release from the current GitHub releases page."
     }
   ],
-  exampleReferences: [
-    {
-      command: "openruntime github-release latest",
-      description: "Print the latest module-federation/core release."
-    }
-  ],
   async run(options) {
     if (options.args.command[1] !== "latest") {
       throw new Error("Usage: openruntime github-release latest");
@@ -456,5 +495,6 @@ Expected output shape:
 - Use `browser.evalFile` for large page scripts; use `browser.eval` for small expressions.
 - Return `0` for success and throw an error or return non-zero for failure.
 - Export commands with `defineCommand(...)` and call `validateCommand(...)` from tests or CI before submitting changes.
-- Add clear `commandReferences` and `exampleReferences`; agents should only run discovered commands whose usage or examples match the current task.
-- Keep `commandReferences` and `exampleReferences` accurate so `openruntime --help` stays useful.
+- Add clear `commandReferences`; agents should only run discovered commands whose usage and description match the current task.
+- Complex commands may declare one local `SKILL.md`; distribute it together with the command.
+- Keep `commandReferences` accurate so `openruntime --help` stays useful.

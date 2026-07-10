@@ -1,4 +1,5 @@
-import type { CliCommandReference, CliExampleReference } from "./help.js";
+import { validateCommandSkill, type OpenRuntimeCommandSkill } from "./command-skill.js";
+import type { CliCommandReference } from "./help.js";
 import type { CliExtensionRunOptions } from "./index.js";
 
 export const OPENRUNTIME_COMMAND_SCHEMA_VERSION = 1;
@@ -8,8 +9,8 @@ export interface OpenRuntimeCommandDefinition {
   name: string;
   displayName?: string;
   description?: string;
+  skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
-  exampleReferences?: readonly CliExampleReference[];
   run(options: CliExtensionRunOptions): Promise<number>;
 }
 
@@ -42,17 +43,18 @@ export function validateCommand(value: unknown, options: ValidateCommandOptions 
   if (candidate.commandReferences !== undefined && !Array.isArray(candidate.commandReferences)) {
     throw new Error(`Command "${candidate.name}" commandReferences must be an array.`);
   }
-  if (candidate.exampleReferences !== undefined && !Array.isArray(candidate.exampleReferences)) {
-    throw new Error(`Command "${candidate.name}" exampleReferences must be an array.`);
-  }
+
+  const skill = candidate.skill === undefined
+    ? undefined
+    : validateCommandSkill(candidate.skill, candidate.name);
 
   return {
     schemaVersion: candidate.schemaVersion,
     name: candidate.name,
     ...(candidate.displayName === undefined ? {} : { displayName: candidate.displayName }),
     ...(candidate.description === undefined ? {} : { description: candidate.description }),
+    ...(skill === undefined ? {} : { skill }),
     ...(candidate.commandReferences === undefined ? {} : { commandReferences: candidate.commandReferences }),
-    ...(candidate.exampleReferences === undefined ? {} : { exampleReferences: candidate.exampleReferences }),
     run: async (runOptions) => await candidate.run!(runOptions)
   };
 }

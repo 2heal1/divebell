@@ -19,12 +19,6 @@ test("registers a command and merges its help entries", async () => {
         description: "Runs a demo command."
       }
     ],
-    exampleReferences: [
-      {
-        command: "openruntime demo ping",
-        description: "Runs the demo command."
-      }
-    ],
     run: async (options) => {
       const { args, page, openruntime, output } = options;
       const snapshot = await openruntime.snapshot({ id: "target-1" });
@@ -47,7 +41,6 @@ test("registers a command and merges its help entries", async () => {
 
   assert.match(cli.createHelpText(), /openruntime demo ping/);
   assert.deepEqual(cli.getCommandReferences().at(-1), extension.commandReferences?.[0]);
-  assert.deepEqual(cli.getExampleReferences().at(-1), extension.exampleReferences?.[0]);
 
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
@@ -141,6 +134,89 @@ test("registers a command and merges its help entries", async () => {
     }));
   } finally {
     context.cleanup();
+  }
+});
+
+test("shows and resolves command skills without running commands", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-skill-"));
+  const skillPath = join(tempDir, "SKILL.md");
+  writeFileSync(skillPath, "# Demo skill\n", "utf8");
+  let runCount = 0;
+
+  try {
+    const cli = createOpenRuntimeCli({
+      extensions: [
+        {
+          name: "demo",
+          skill: { path: skillPath },
+          commandReferences: [
+            {
+              category: "Commands",
+              usage: "openruntime demo ping",
+              description: "Runs demo."
+            }
+          ],
+          run: async () => {
+            runCount += 1;
+            return 0;
+          }
+        },
+        {
+          name: "plain",
+          commandReferences: [
+            {
+              category: "Commands",
+              usage: "openruntime plain ping",
+              description: "Runs without a skill."
+            }
+          ],
+          run: async () => {
+            runCount += 1;
+            return 0;
+          }
+        }
+      ]
+    });
+
+    const help = cli.createHelpText();
+    assert.match(help, /openruntime demo ping - Runs demo\./);
+    assert.match(help, /openruntime plain ping - Runs without a skill\./);
+    assert.match(help, /Skill: available for demo\./);
+    assert.match(help, /Skill usage: `openruntime <command> --skill`/);
+    assert.doesNotMatch(help, /Examples:/);
+
+    const skillOutput = createOutput();
+    const skillExitCode = await cli.run(["demo", "--skill"], {
+      stdout: skillOutput.stdout,
+      stderr: skillOutput.stderr
+    });
+    assert.equal(skillExitCode, 0);
+    assert.equal(skillOutput.text(), `${skillPath}\n`);
+    assert.equal(skillOutput.errorText(), "");
+    assert.equal(runCount, 0);
+
+    const unavailableOutput = createOutput();
+    const unavailableExitCode = await cli.run(["plain", "--skill"], {
+      stdout: unavailableOutput.stdout,
+      stderr: unavailableOutput.stderr
+    });
+    assert.equal(unavailableExitCode, 1);
+    assert.equal(JSON.parse(unavailableOutput.text()).error.code, "CLI_COMMAND_SKILL_UNAVAILABLE");
+    assert.equal(runCount, 0);
+
+    const invalidUsageOutput = createOutput();
+    const invalidUsageExitCode = await cli.run(["demo", "ping", "--skill"], {
+      stdout: invalidUsageOutput.stdout,
+      stderr: invalidUsageOutput.stderr
+    });
+    assert.equal(invalidUsageExitCode, 1);
+    assert.equal(JSON.parse(invalidUsageOutput.text()).error.code, "CLI_COMMAND_SKILL_USAGE_INVALID");
+    assert.equal(runCount, 0);
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
   }
 });
 
@@ -268,13 +344,16 @@ test("commands can wait for targets in the opened page context", async () => {
 test("loads external commands from the configured directory", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-"));
   const context = createOpenContextFixture();
+  const skillPath = join(tempDir, "SKILL.md");
   try {
+    writeFileSync(skillPath, "# Foo skill\n", "utf8");
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
       "  name: 'foo',",
       "  displayName: 'Foo',",
       "  description: 'Foo command',",
+      `  skill: { path: ${JSON.stringify(skillPath)} },`,
       "  commandReferences: [{",
       "    category: 'Commands',",
       "    usage: 'openruntime foo ping',",
@@ -311,9 +390,12 @@ test("loads external commands from the configured directory", async () => {
       }
     ]);
     assert.match(loaded.cli.createHelpText(), /External Commands/);
-    assert.match(loaded.cli.createHelpText(), /openruntime foo ping \[external: foo\]/);
+    assert.match(loaded.cli.createHelpText(), /openruntime foo ping - Runs Foo\./);
+    assert.doesNotMatch(loaded.cli.createHelpText(), /\[external: foo\]/);
     assert.match(loaded.cli.createHelpText(), /Runs Foo\./);
-    assert.match(loaded.cli.createHelpText(), /Runs Foo example\./);
+    assert.doesNotMatch(loaded.cli.createHelpText(), /Runs Foo example\./);
+    assert.match(loaded.cli.createHelpText(), /Skill: available for foo\./);
+    assert.match(loaded.cli.createHelpText(), /Skill usage: `openruntime <command> --skill`/);
 
     const output = createOutput();
     const exitCode = await loaded.cli.run(["foo", "ping"], {
@@ -339,6 +421,15 @@ test("loads external commands from the configured directory", async () => {
       }
     });
 
+    const skillOutput = createOutput();
+    const skillExitCode = await loaded.cli.run(["foo", "--skill"], {
+      stdout: skillOutput.stdout,
+      stderr: skillOutput.stderr
+    });
+    assert.equal(skillExitCode, 0);
+    assert.equal(skillOutput.text(), `${skillPath}\n`);
+    assert.equal(skillOutput.errorText(), "");
+
     const helpOutput = createOutput();
     const helpExitCode = await loaded.cli.run(["--help"], {
       stdout: helpOutput.stdout,
@@ -348,8 +439,9 @@ test("loads external commands from the configured directory", async () => {
     assert.equal(helpExitCode, 0);
     assert.equal(helpOutput.errorText(), "");
     assert.match(helpOutput.text(), /External Commands:/);
-    assert.match(helpOutput.text(), /openruntime foo ping \[external: foo\] - Runs Foo\./);
-    assert.match(helpOutput.text(), /openruntime foo ping - Runs Foo example\./);
+    assert.match(helpOutput.text(), /openruntime foo ping - Runs Foo\./);
+    assert.match(helpOutput.text(), /Skill: available for foo\./);
+    assert.doesNotMatch(helpOutput.text(), /Examples:/);
   } finally {
     rmSync(tempDir, {
       recursive: true,

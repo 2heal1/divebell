@@ -100,8 +100,10 @@ node <openruntime-skill-dir>/scripts/workflow.mjs observe \
   --out openruntime-evidence.json
 ```
 
-需要确认当前 CLI 命令、参数、示例或扩展命令时，运行 `pnpm exec openruntime --help`。
-扩展命令会出现在 `External Commands`，并带 `[external: <name>]` 标记；只在描述明确匹配当前任务时使用。
+需要确认当前 CLI 命令、参数或扩展命令时，运行 `pnpm exec openruntime --help`。
+扩展命令会出现在 `Commands` 或 `External Commands`。如果区域末尾显示某个命令有 skill，先运行
+`pnpm exec openruntime <command> --skill` 获取 `SKILL.md` 的绝对路径，读取并遵循后再使用该命令。
+只在命令描述明确匹配当前任务时使用扩展命令。
 
 如果 `observe.nextAction.type=snapshot_observe`，先把插件 snapshot 当作一次快速探测，
 不要把它当成必须完成的定位主路径。首次只跑一次全量 snapshot，不带 `--id`、`--query`、

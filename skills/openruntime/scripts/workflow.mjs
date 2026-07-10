@@ -534,7 +534,8 @@ function createSnapshotObserveNextAction(pluginSnapshot, url) {
     url: url ?? null,
     commands,
     rules: [
-      "External extension commands are shown in --help under External Commands and are marked with [external: <name>].",
+      "External extension commands are shown in --help under External Commands.",
+      "When the command section reports an available skill, run openruntime <command> --skill and read the returned SKILL.md before using that command.",
       "Use an extension command only when its usage and description match the task.",
       "Do not run multiple snapshot variants in parallel on first observe.",
       "Use --id or --query only after the full snapshot reveals a concrete target or keyword worth narrowing.",
@@ -553,7 +554,8 @@ function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
       "pnpm exec openruntime --help"
     ],
     rules: [
-      "External extension commands are shown in --help under External Commands and are marked with [external: <name>].",
+      "External extension commands are shown in --help under External Commands.",
+      "When the command section reports an available skill, run openruntime <command> --skill and read the returned SKILL.md before using that command.",
       "Use an extension command only when its usage and description match the task."
     ]
   };

@@ -53,11 +53,11 @@ import {
 import { isEntryPoint } from "./entry.js";
 import {
   cliCommandReferences,
-  cliExampleReferences,
   createHelpText,
   type CliCommandReference,
-  type CliExampleReference
+  type CliCommandSkillReference
 } from "./help.js";
+import { validateCommandSkill, type OpenRuntimeCommandSkill } from "./command-skill.js";
 import {
   createFileOperationLogStore,
   createOperationSessionId,
@@ -166,8 +166,8 @@ export interface CliExtensionPageContext {
 
 export interface OpenRuntimeCliExtension {
   name: string;
+  skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
-  exampleReferences?: readonly CliExampleReference[];
   run(options: CliExtensionRunOptions): Promise<number>;
 }
 
@@ -183,12 +183,11 @@ export interface OpenRuntimeCli {
   run(argv?: string[], options?: CliRunOptions): Promise<number>;
   createHelpText(): string;
   getCommandReferences(): CliCommandReference[];
-  getExampleReferences(): CliExampleReference[];
 }
 
 interface OpenRuntimeCliConfig {
   commandReferences: readonly CliCommandReference[];
-  exampleReferences: readonly CliExampleReference[];
+  commandSkillReferences: readonly CliCommandSkillReference[];
   extensionRegistry: Map<string, OpenRuntimeCliExtension>;
   extensionLoadRecords: readonly ExtensionLoadRecord[];
 }
@@ -200,13 +199,10 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
     ...cliCommandReferences,
     ...extensions.flatMap((extension) => extension.commandReferences ?? [])
   ];
-  const exampleReferences = [
-    ...cliExampleReferences,
-    ...extensions.flatMap((extension) => extension.exampleReferences ?? [])
-  ];
+  const commandSkillReferences = extensions.flatMap(createCommandSkillReferences);
   const config: OpenRuntimeCliConfig = {
     commandReferences,
-    exampleReferences,
+    commandSkillReferences,
     extensionRegistry,
     extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions)
   };
@@ -219,10 +215,9 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
       await runCliWithConfig(config, argv, runOptions),
     createHelpText: () => createHelpText({
       commandReferences,
-      exampleReferences
+      commandSkillReferences
     }),
-    getCommandReferences: () => [...commandReferences],
-    getExampleReferences: () => [...exampleReferences]
+    getCommandReferences: () => [...commandReferences]
   };
 }
 
@@ -296,7 +291,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
     if (args.command.length === 0 || hasOption(args, "help")) {
       stdout.write(`${createHelpText({
         commandReferences: config.commandReferences,
-        exampleReferences: config.exampleReferences
+        commandSkillReferences: config.commandSkillReferences
       })}\n`);
       return 0;
     }
@@ -449,6 +444,27 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
 
     const extension = config.extensionRegistry.get(command);
     if (extension !== undefined) {
+      if (hasOption(args, "skill")) {
+        if (args.command.length !== 1 || getOptionValue(args, "skill") !== "true") {
+          throw createError({
+            code: "CLI_COMMAND_SKILL_USAGE_INVALID",
+            kind: "validation",
+            message: `Command skill lookup only accepts the command name.`,
+            hint: `Run \`openruntime ${command} --skill\`.`
+          });
+        }
+        if (extension.skill === undefined) {
+          throw createError({
+            code: "CLI_COMMAND_SKILL_UNAVAILABLE",
+            kind: "not_found",
+            message: `Command "${command}" does not provide a skill.`,
+            hint: "Run `openruntime --help` to see commands with available skills."
+          });
+        }
+        const skill = validateCommandSkill(extension.skill, extension.name);
+        stdout.write(`${skill.path}\n`);
+        return 0;
+      }
       const openContext = await operationLogStore.read();
       const extensionArgs = applyOpenContextDefaults(args, openContext);
       const bridgeStateStore = createBridgeStateStore(extensionArgs, options.bridgeStateDirectory);
@@ -496,10 +512,29 @@ function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[])
     if (registry.has(extension.name)) {
       throw new Error(`CLI command "${extension.name}" is registered more than once.`);
     }
+    if (extension.skill !== undefined) {
+      validateCommandSkill(extension.skill, extension.name);
+    }
     registry.set(extension.name, extension);
   }
 
   return registry;
+}
+
+function createCommandSkillReferences(extension: OpenRuntimeCliExtension): CliCommandSkillReference[] {
+  if (extension.skill === undefined) return [];
+  let category: CliCommandSkillReference["category"] | undefined;
+  for (const reference of extension.commandReferences ?? []) {
+    if (reference.category === "Commands" || reference.category === "External Commands") {
+      category = reference.category;
+      break;
+    }
+  }
+  if (category === undefined) return [];
+  return [{
+    category,
+    command: extension.name
+  }];
 }
 
 function createBuiltInCommandNameSet(): Set<string> {
@@ -2203,11 +2238,11 @@ export type { Fetcher, RuntimeResourceResult, RuntimeSelector } from "./client.j
 export { isEntryPoint } from "./entry.js";
 export {
   cliCommandReferences,
-  cliExampleReferences,
   createCliReferenceMarkdown,
   createHelpText
 } from "./help.js";
-export type { CliCommandReference, CliExampleReference } from "./help.js";
+export type { CliCommandReference, CliCommandSkillReference } from "./help.js";
+export type { OpenRuntimeCommandSkill } from "./command-skill.js";
 export {
   defineCommand,
   validateCommand

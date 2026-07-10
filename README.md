@@ -161,7 +161,7 @@ Command files are loaded from:
 You can override the directory:
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
 ```
 
 You can disable external command loading:
@@ -177,20 +177,20 @@ Two file layouts are supported:
 ~/.openruntime/commands/foo/index.mjs
 ```
 
-External commands are shown separately in help and are marked with their source:
+External commands are shown separately in help:
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo]
+  openruntime foo ping - Runs Foo.
 ```
 
-Use this command to inspect what was loaded:
+Complex commands may declare one local `SKILL.md`. Help lists the commands that provide a skill, and this command prints its absolute path:
 
 ```sh
-openruntime commands list
+openruntime foo --skill
 ```
 
-If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported by `commands list`.
+If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported as a warning while commands are loaded.
 
 Use `defineCommand(...)` and `validateCommand(...)` in command files, tests, or CI to keep the exported command shape valid.
 

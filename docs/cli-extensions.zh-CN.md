@@ -78,16 +78,16 @@ OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 openruntime --help
 ```
 
-外部命令会在 help 里单独展示描述，并标注来源：
+外部命令会在 help 里单独展示描述：
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo] - Runs Foo.
+  openruntime foo ping - Runs Foo.
 ```
 
 如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过这个外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，CLI 加载外部命令时会用 warning 报出原因。
 
-`openruntime --help` 是 Agent 发现扩展命令的入口。命令作者必须提供清晰的 `commandReferences` 和 `exampleReferences`；Agent 不应只根据命令名或文件路径猜测调用方式。
+`openruntime --help` 是 Agent 发现扩展命令的入口。命令作者必须提供清晰的 `commandReferences`；Agent 不应只根据命令名或文件路径猜测调用方式。
 
 外部命令会执行本机代码，只加载可信文件。
 
@@ -117,12 +117,6 @@ export default defineCommand({
       description: "Runs the Foo command."
     }
   ],
-  exampleReferences: [
-    {
-      command: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
   async run(options) {
     options.output.ok({
       result: "pong"
@@ -142,6 +136,57 @@ import command from "./foo.mjs";
 
 validateCommand(command);
 ```
+
+## 为复杂命令提供 Skill
+
+一个命令最多对应一个本地 `SKILL.md`。推荐使用目录形式，让命令文件、skill 和它引用的其他文件放在一起：
+
+```text
+~/.openruntime/commands/foo/index.mjs
+~/.openruntime/commands/foo/SKILL.md
+~/.openruntime/commands/foo/references/...
+```
+
+命令通过 `skill.path` 声明 `SKILL.md` 的绝对路径：
+
+```js
+import { fileURLToPath } from "node:url";
+import { defineCommand } from "@openruntime/cli";
+
+export default defineCommand({
+  schemaVersion: 1,
+  name: "foo",
+  skill: {
+    path: fileURLToPath(new URL("./SKILL.md", import.meta.url))
+  },
+  commandReferences: [
+    {
+      category: "Commands",
+      usage: "openruntime foo ping",
+      description: "Runs the Foo command."
+    }
+  ],
+  async run(options) {
+    options.output.ok({ result: "pong" });
+    return 0;
+  }
+});
+```
+
+存在 skill 时，`openruntime --help` 会在对应命令区域末尾显示：
+
+```text
+Skill: available for foo.
+Skill usage: `openruntime <command> --skill`
+```
+
+运行下面的命令会直接输出 `SKILL.md` 的绝对路径，不会执行 `foo` 的业务逻辑：
+
+```sh
+openruntime foo --skill
+```
+
+`skill.path` 必须是指向现有 `SKILL.md` 文件的绝对路径。没有 skill 的命令不会显示 skill 提示，调用 `--skill` 时会返回明确错误。`--skill` 是扩展命令的保留参数，不能再作为业务参数使用。
 
 ## 运行上下文：`run(options)`
 
@@ -347,12 +392,6 @@ export default defineCommand({
       description: "Read the latest release from the current GitHub releases page."
     }
   ],
-  exampleReferences: [
-    {
-      command: "openruntime github-release latest",
-      description: "Print the latest module-federation/core release."
-    }
-  ],
   async run(options) {
     if (options.args.command[1] !== "latest") {
       throw new Error("Usage: openruntime github-release latest");
@@ -456,5 +495,6 @@ openruntime github-release latest
 - 大段页面脚本用 `browser.evalFile`；小表达式用 `browser.eval`。
 - 成功返回 `0`，失败时抛错或返回非零。
 - 使用 `defineCommand(...)` 导出命令，并在测试或 CI 里调用 `validateCommand(...)` 校验。
-- 补充清晰的 `commandReferences` 和 `exampleReferences`；Agent 只应运行用法或示例匹配当前任务的已发现命令。
-- 保持 `commandReferences` 和 `exampleReferences` 准确，保证 `openruntime --help` 有用。
+- 补充清晰的 `commandReferences`；Agent 只应运行用法和描述匹配当前任务的已发现命令。
+- 复杂命令可以声明一个本地 `SKILL.md`，并保证它随命令一起分发。
+- 保持 `commandReferences` 准确，保证 `openruntime --help` 有用。

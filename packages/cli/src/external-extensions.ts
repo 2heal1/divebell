@@ -99,13 +99,11 @@ export function createInternalExtensionRecords(extensions: readonly OpenRuntimeC
 }
 
 export function markExternalCommandReferences(
-  references: readonly CliCommandReference[],
-  commandName: string
+  references: readonly CliCommandReference[]
 ): readonly CliCommandReference[] {
   return references.map((reference) => ({
     ...reference,
-    category: "External Commands",
-    usage: `${reference.usage} [external: ${commandName}]`
+    category: "External Commands"
   }));
 }
 
@@ -164,11 +162,9 @@ async function loadExternalCommand(
     return {
       extension: {
         name: definition.name,
+        ...(definition.skill === undefined ? {} : { skill: definition.skill }),
         ...(definition.commandReferences === undefined ? {} : {
-          commandReferences: markExternalCommandReferences(definition.commandReferences, definition.name)
-        }),
-        ...(definition.exampleReferences === undefined ? {} : {
-          exampleReferences: definition.exampleReferences
+          commandReferences: markExternalCommandReferences(definition.commandReferences)
         }),
         run: definition.run
       },

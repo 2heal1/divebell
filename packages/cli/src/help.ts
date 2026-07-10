@@ -4,11 +4,6 @@ export interface CliCommandReference {
   description: string;
 }
 
-export interface CliExampleReference {
-  command: string;
-  description: string;
-}
-
 export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
@@ -137,68 +132,46 @@ export const cliCommandReferences: CliCommandReference[] = [
   }
 ];
 
-export const cliExampleReferences: CliExampleReference[] = [
-  {
-    command: "openruntime snapshot --id modern:route",
-    description: "从最新 connected runtime 读取一个 route target。"
-  },
-  {
-    command: "openruntime events --target-id modern:route --limit 50",
-    description: "查看某个 target 的最近事件。"
-  },
-  {
-    command: "openruntime events --query react --limit 50",
-    description: "按关键词查看相关事件。"
-  },
-  {
-    command: "openruntime snapshot --query runtime-error",
-    description: "查询页面主动写入 snapshot 的错误状态。"
-  },
-  {
-    command: "openruntime wait-for modern:route ready --where pathname=/orders --timeout 10000",
-    description: "等待指定 pathname 的 route target ready。"
-  },
-  {
-    command: "openruntime verify business:orders:risk-panel ready --url http://localhost:4412 --timeout 10000",
-    description: "用业务 target 做最终验收；通过后只写结果和清理，严禁重复取证。"
-  },
-  {
-    command: "openruntime wait-for modern:route ready --next --where pathname=/orders --timeout 10000",
-    description: "等待下一次新连接 runtime 的 route target ready。"
-  }
-];
+export interface CliCommandSkillReference {
+  category: "Commands" | "External Commands";
+  command: string;
+}
 
 export interface CliReferenceCollection {
   commandReferences?: readonly CliCommandReference[];
-  exampleReferences?: readonly CliExampleReference[];
+  commandSkillReferences?: readonly CliCommandSkillReference[];
 }
 
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
-  const exampleReferences = references.exampleReferences ?? cliExampleReferences;
+  const commandSkillReferences = references.commandSkillReferences ?? [];
   const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const commandLines = categories.flatMap((category) => {
     const commands = commandReferences.filter((command) => command.category === category);
     if (commands.length === 0) return [];
+    const skillCommands = commandSkillReferences
+      .filter((reference) => reference.category === category)
+      .map((reference) => reference.command);
     return [
       "",
       `${category}:`,
-      ...commands.map((command) => `  ${command.usage} - ${command.description}`)
+      ...commands.map((command) => `  ${command.usage} - ${command.description}`),
+      ...(skillCommands.length === 0 ? [] : [
+        "",
+        `  Skill: available for ${skillCommands.join(", ")}.`,
+        "  Skill usage: `openruntime <command> --skill`"
+      ])
     ];
   });
 
   return [
     "Usage:",
-    ...commandLines,
-    "",
-    "Examples:",
-    ...exampleReferences.map((example) => `  ${example.command} - ${example.description}`)
+    ...commandLines
   ].join("\n");
 }
 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
-  const exampleReferences = references.exampleReferences ?? cliExampleReferences;
   const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge 和浏览器",
@@ -228,11 +201,6 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
     for (const command of categoryCommands) {
       lines.push(`- \`${command.usage}\` - ${command.description}`);
     }
-  }
-
-  lines.push("", "## Examples", "");
-  for (const example of exampleReferences) {
-    lines.push(`- \`${example.command}\` - ${example.description}`);
   }
 
   return `${lines.join("\n")}\n`;

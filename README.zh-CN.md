@@ -161,7 +161,7 @@ OpenRuntime CLI 支持加载本地命令文件。团队可以用它增加自己�
 可以用环境变量改目录：
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime commands list
+OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
 ```
 
 也可以关闭外部命令加载：
@@ -177,20 +177,20 @@ OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
 ~/.openruntime/commands/foo/index.mjs
 ```
 
-外部命令会在 help 里单独展示，并标注来源：
+外部命令会在 help 里单独展示：
 
 ```text
 External Commands:
-  openruntime foo ping [external: foo]
+  openruntime foo ping - Runs Foo.
 ```
 
-查看当前加载结果：
+复杂命令可以声明一个本地 `SKILL.md`。Help 会列出哪些命令提供 skill，下面的命令会输出它的绝对路径：
 
 ```sh
-openruntime commands list
+openruntime foo --skill
 ```
 
-如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，可以通过 `commands list` 查看失败原因。
+如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，加载命令时会直接打印失败原因。
 
 在命令文件、测试或 CI 里调用 `defineCommand(...)` 和 `validateCommand(...)`，确保导出的命令格式有效。
 

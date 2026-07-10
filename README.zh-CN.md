@@ -14,6 +14,8 @@ Runtime API for AI-powered development.
 
 中文 | [English](./README.md)
 
+Agent 使用入口：[OpenRuntime Skill](./skills/openruntime/SKILL.md)
+
 # OpenRuntime
 
 OpenRuntime 是一套面向 Agent 的前端 **Runtime API**。

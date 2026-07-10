@@ -1,0 +1,27 @@
+skills/openruntime/SKILL.md
+  s_9866e647a1d91f::t_1e2e458dd0acf0 4-9,12,14-16,18,20,22,24-27,29-30,32,34-36,38-39,41,43,45-47,49-50,52,54-58,60,62-73,75,77,79-84
+skills/openruntime/references/integrate.md
+  s_9866e647a1d91f::t_2663597bbedf70 1-125
+skills/openruntime/references/troubleshoot.md
+  s_9866e647a1d91f::t_659d1badacaf68 1-299
+skills/openruntime/references/use-cli.md
+  s_9866e647a1d91f::t_063c231e33add4 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "aae01c8a0bb3a1b2ccaab3ecb4b93ad64e0906ee",
+  "prompts": {},
+  "sessions": {
+    "s_9866e647a1d91f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4a13-0005-71a0-ada6-f11575d9fd3b",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

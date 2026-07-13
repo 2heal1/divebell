@@ -1,0 +1,75 @@
+.github/workflows/ci.yml
+  s_14d1c53bb08d35::t_fbfa8a018162cd 43-52
+.github/workflows/recording-runtime-release-pr.yml
+  s_14d1c53bb08d35::t_b1e7e68acc858b 1-89
+.github/workflows/recording-runtime-release.yml
+  s_14d1c53bb08d35::t_6887d58bfe6522 1-104
+.gitignore
+  s_14d1c53bb08d35::t_8a65b96c5b4adf 3
+README.md
+  s_14d1c53bb08d35::t_940e24760c56a7 97-114
+README.zh-CN.md
+  s_14d1c53bb08d35::t_633020140a70df 97-114
+docs/cli-reference.md
+  s_14d1c53bb08d35::t_1b6de8e086359d 22-26
+docs/record-browser-workflows.md
+  s_14d1c53bb08d35::t_c88861b02e37c5 1-95
+docs/record-browser-workflows.zh-CN.md
+  s_14d1c53bb08d35::t_9d951d36efca69 1-95
+docs/recording-runtime-release.md
+  s_14d1c53bb08d35::t_2c83466bdc67e3 1-48
+docs/recording-runtime-release.zh-CN.md
+  s_14d1c53bb08d35::t_809c6ffdff12db 1-53
+docs/recording-workflow.md
+  s_14d1c53bb08d35::t_3d322af751cd11 1-137
+package.json
+  s_14d1c53bb08d35::t_47d04019d15ec7 16-17
+packages/cli/src/help.ts
+  s_14d1c53bb08d35::t_a9ae98bde2cf94 38-62
+packages/cli/src/index.ts
+  s_14d1c53bb08d35::t_d502b36874546a 93,316-327,559
+packages/cli/src/next-browser-profile-preload.ts
+  s_14d1c53bb08d35::t_01938e574b5e15 3-4,8-25,77,89-434
+packages/cli/src/record.ts
+  s_14d1c53bb08d35::t_520901e0d404c9 1-1866
+packages/cli/test/record.test.ts
+  s_14d1c53bb08d35::t_fd75e1b131f64b 1-922
+scripts/build-recording-skill-runtime.mjs
+  s_14d1c53bb08d35::t_188a628c3fb7e3 1-170
+scripts/bump-recording-skill-runtime.mjs
+  s_14d1c53bb08d35::t_4f8f6f0993ee17 1-72
+scripts/verify-recording-skill-runtime.mjs
+  s_14d1c53bb08d35::t_781bcfc38627ae 1-75
+skills/record-openruntime-workflow/SKILL.md
+  s_14d1c53bb08d35::t_b352ea8f715d04 1-128
+skills/record-openruntime-workflow/agents/openai.yaml
+  s_14d1c53bb08d35::t_ac1e5eb7fbb8cc 1-4
+skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+  s_14d1c53bb08d35::t_d615243a00047d 1-62
+skills/record-openruntime-workflow/references/openruntime-cli.md
+  s_14d1c53bb08d35::t_bdfa6b39c41dfe 1-121
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_14d1c53bb08d35::t_5c84d0322ee023 1-164
+skills/record-openruntime-workflow/scripts/probe-openruntime-cli.mjs
+  s_14d1c53bb08d35::t_6e85572f64415b 1-168
+skills/record-openruntime-workflow/scripts/runtime-release.mjs
+  s_14d1c53bb08d35::t_d6133c5a0c7948 1-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "902c6a2078550dc81941b34d5b554e2c5b18a971",
+  "prompts": {},
+  "sessions": {
+    "s_14d1c53bb08d35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1126-51c7-7921-abba-4109f7be8297",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

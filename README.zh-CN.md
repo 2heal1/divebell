@@ -104,10 +104,11 @@ skill 会打开可见浏览器。用户可以正常跳转页面、点击、输�
 
 - Skill：[`record-openruntime-workflow`](./skills/record-openruntime-workflow/SKILL.md)
 - 使用指南：[录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md)
-- 运行包：从固定版本的 GitHub Release 下载，校验 SHA-256 后缓存在本地。
-- 演示视频：[查看浏览器录制流程](https://github.com/2heal1/openruntime/releases/download/demo-assets-v1/openruntime-recording-skill-demo.mp4)。
 
-英文文档见 [Record Browser Workflows with an Agent](./docs/record-browser-workflows.md)。
+**演示视频**
+
+https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
+
 
 ---
 

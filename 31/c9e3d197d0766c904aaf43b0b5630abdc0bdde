@@ -1,0 +1,27 @@
+README.md
+  s_14d1c53bb08d35::t_37f28e50de9cfd 108
+README.zh-CN.md
+  s_14d1c53bb08d35::t_32eb99238cfca7 108
+docs/record-browser-workflows.md
+  s_14d1c53bb08d35::t_56ee0fd66d4a46 13,15
+docs/record-browser-workflows.zh-CN.md
+  s_14d1c53bb08d35::t_e91ef3bb4ed0cd 13,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "31c9e3d197d0766c904aaf43b0b5630abdc0bdde",
+  "prompts": {},
+  "sessions": {
+    "s_14d1c53bb08d35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1126-51c7-7921-abba-4109f7be8297",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

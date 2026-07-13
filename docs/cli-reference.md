@@ -19,6 +19,11 @@
 - `openruntime auth import <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
 - `openruntime auth list` - 列出当前 OpenRuntime 浏览器 profile 里已导入的站点。
 - `openruntime auth clear [--url <url>]` - 清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。
+- `openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]` - 按固定时长打开页面并生成 .orrec 录制包，记录页面快照、DOM、人工操作、OpenRuntime 状态和可选麦克风音频。
+- `openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]` - 启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下，并注入点击和输入监听；用户操作完成后应继续执行 record stop。
+- `openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]` - 结束人工操作录制，采集点击、输入、键盘、语音文字和收尾状态，默认关闭浏览器并生成 generated-script.mjs 脚本草稿。
+- `openruntime record generate-script --input <path> [--out <path>]` - 从已有 .orrec 录制包重新生成 JS 脚本草稿。
+- `openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]` - 把 .orrec 里的麦克风录音转成 transcript.json；默认使用 whisper-1 以获得带时间节点的片段和词级结果。
 - `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `openruntime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。

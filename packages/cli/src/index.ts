@@ -90,6 +90,7 @@ import {
   writeErrorOutput,
   type CommandOutput
 } from "./output.js";
+import { runRecordCommand } from "./record.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
@@ -310,6 +311,18 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
 
     if (args.command[0] === "auth") {
       return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
+    }
+
+    if (args.command[0] === "record") {
+      return await runRecordCommand({
+        args,
+        stdout,
+        fetcher,
+        browserRunner,
+        bridgeUrl: createBridgeUrl(args),
+        bridgeStarter,
+        bridgeStateStore: createBridgeStateStore(args, options.bridgeStateDirectory)
+      });
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -543,6 +556,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "start",
     "stop",
     "auth",
+    "record",
     "runtimes",
     "input-options",
     "run-action",

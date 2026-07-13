@@ -1,0 +1,89 @@
+name: Prepare Recording Skill Runtime Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version increment for the recording skill runtime
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: recording-skill-runtime-release-pr
+  cancel-in-progress: false
+
+jobs:
+  prepare-release-pr:
+    if: github.repository == '2heal1/openruntime'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+
+      - name: Confirm current runtime is released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
+          if ! gh release view "$current_tag" >/dev/null 2>&1; then
+            echo "Current runtime release $current_tag does not exist yet." >&2
+            echo "Merge the initial recording runtime manifest and let the publish workflow finish first." >&2
+            exit 1
+          fi
+
+      - name: Bump runtime version
+        run: node scripts/bump-recording-skill-runtime.mjs "${{ inputs.bump }}"
+
+      - name: Read release metadata
+        id: metadata
+        run: |
+          version=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').version")
+          tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create release branch and pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+        run: |
+          branch="release/recording-skill-runtime-v${VERSION}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
+            echo "Release branch already exists: $branch"
+            if [ -n "$existing" ]; then echo "Pull request: $existing"; fi
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+          git commit -m "chore: prepare recording runtime ${VERSION}"
+          git push origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore: release recording runtime ${VERSION}" \
+            --body "Bumps the recording skill runtime manifest to ${VERSION}. After this PR is merged, the publish workflow will build ${TAG}, create the GitHub Release, and upload the runtime bundle plus its SHA-256 file."
+          gh workflow run ci.yml --ref "$branch"

@@ -1,0 +1,41 @@
+.github/workflows/ci.yml
+  s_14d1c53bb08d35::t_372f8f3f2999ee 43-47
+.github/workflows/prepare-release.yml
+  s_14d1c53bb08d35::t_9fc9dfa6643471 1,7,17,22,27,41-42,44,49-50,52,69,80-86,91-92
+.github/workflows/release.yml
+  s_14d1c53bb08d35::t_cf5cbfa100c34b 1,4,7-8,12-13,16,21-24,26,28,31,39,43-44,49-64,68-73,78,105,128-130
+docs/record-browser-workflows.md
+  s_14d1c53bb08d35::t_e3552948d83412 35
+docs/record-browser-workflows.zh-CN.md
+  s_14d1c53bb08d35::t_141c7b5bb21948 35
+docs/recording-runtime-release.md
+  s_14d1c53bb08d35::t_aa8ec340396a1d 1,3,5-31,33,35,37-44,46-61,66,68-77,79,86,90-94,100,105
+docs/recording-runtime-release.zh-CN.md
+  s_14d1c53bb08d35::t_2ad225398c8f63 1,3,5-24,26,28-31,33,35,37-61,65-66,68-77,79,86,90-94,100,105
+package.json
+  s_14d1c53bb08d35::t_b097e700282132 24-26
+scripts/bump-recording-skill-runtime.mjs
+  s_14d1c53bb08d35::t_cfe113c60d5ec3 9-14,21-25,27-32,37-40,50-59,61,63-67,78-80,85
+scripts/npm-release.mjs
+  s_14d1c53bb08d35::t_5d4be701b65d8b 1-191
+scripts/validate-openruntime-release.mjs
+  s_14d1c53bb08d35::t_432c06a4bd87f4 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "16849c54d7a07846a1c02ee4244a2e5766bf55cf",
+  "prompts": {},
+  "sessions": {
+    "s_14d1c53bb08d35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f1126-51c7-7921-abba-4109f7be8297",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

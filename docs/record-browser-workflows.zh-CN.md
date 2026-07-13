@@ -10,11 +10,9 @@
 
 ## 演示视频
 
-视频即将上传。上传到 GitHub Release 后，把下面的占位地址替换为真实附件地址：
+[查看浏览器录制流程](https://github.com/2heal1/openruntime/releases/download/demo-assets-v1/openruntime-recording-skill-demo.mp4)。
 
-```text
-https://github.com/2heal1/openruntime/releases/download/<tag>/<video-file>.mp4
-```
+视频放在独立的演示资源 Release 中，不跟随运行包和 npm 包版本重复发布。
 
 ## 安装
 

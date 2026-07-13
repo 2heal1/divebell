@@ -105,8 +105,7 @@ This workflow is useful when the expected automation is easier to demonstrate th
 - Skill: [`record-openruntime-workflow`](./skills/record-openruntime-workflow/SKILL.md)
 - Guide: [Record Browser Workflows with an Agent](./docs/record-browser-workflows.md)
 - Runtime delivery: downloaded from a versioned GitHub Release, verified with SHA-256, and cached locally.
-- Demo video: coming soon. The final GitHub Release video URL will be added here.
-<!-- Demo video URL: https://github.com/2heal1/openruntime/releases/download/<tag>/<video-file>.mp4 -->
+- Demo video: [Watch the browser recording workflow](https://github.com/2heal1/openruntime/releases/download/demo-assets-v1/openruntime-recording-skill-demo.mp4).
 
 Chinese documentation is available at [录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md).
 

@@ -10,11 +10,9 @@ Use it when a task is easier to demonstrate than to specify from scratch, such a
 
 ## Demo Video
 
-The demo video is coming soon. After uploading it to a GitHub Release, replace this placeholder with the real asset URL:
+[Watch the browser recording workflow](https://github.com/2heal1/openruntime/releases/download/demo-assets-v1/openruntime-recording-skill-demo.mp4).
 
-```text
-https://github.com/2heal1/openruntime/releases/download/<tag>/<video-file>.mp4
-```
+The video is published in a dedicated demo-assets Release, separate from runtime and npm package releases.
 
 ## Install
 

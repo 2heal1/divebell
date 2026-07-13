@@ -94,6 +94,24 @@ Runtime API 则负责提供页面内部真实的运行状态。
 
 ---
 
+## 录制浏览器流程
+
+OpenRuntime 提供了一个可以安装到 Agent 的 skill，用来把一次人工浏览器演示转换成可重复运行的 JavaScript 脚本草稿。
+
+skill 会打开可见浏览器。用户可以正常跳转页面、点击、输入，并通过语音补充最终想要的结果。用户说“结束”后，Agent 会关闭浏览器，把操作过程、页面状态和语音时间对应起来，再生成可以检查和重新运行的脚本。
+
+当一个任务“演示起来比从头描述更容易”时，这个流程尤其适合。第一版优先生成 JavaScript 脚本，而不是直接生成新 skill，便于先运行、验证和修正。
+
+- Skill：[`record-openruntime-workflow`](./skills/record-openruntime-workflow/SKILL.md)
+- 使用指南：[录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md)
+- 运行包：从固定版本的 GitHub Release 下载，校验 SHA-256 后缓存在本地。
+- 演示视频：即将上传，后续会在这里补充 GitHub Release 视频链接。
+<!-- 演示视频地址：https://github.com/2heal1/openruntime/releases/download/<tag>/<video-file>.mp4 -->
+
+英文文档见 [Record Browser Workflows with an Agent](./docs/record-browser-workflows.md)。
+
+---
+
 ## Example
 
 例如，一个已经接入 OpenRuntime 的 Release Notes 页面可以声明：

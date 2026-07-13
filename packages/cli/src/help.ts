@@ -37,6 +37,31 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+    description: "按固定时长打开页面并生成 .orrec 录制包，记录页面快照、DOM、人工操作、OpenRuntime 状态和可选麦克风音频。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+    description: "启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下，并注入点击和输入监听；用户操作完成后应继续执行 record stop。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
+    description: "结束人工操作录制，采集点击、输入、键盘、语音文字和收尾状态，默认关闭浏览器并生成 generated-script.mjs 脚本草稿。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime record generate-script --input <path> [--out <path>]",
+    description: "从已有 .orrec 录制包重新生成 JS 脚本草稿。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
+    description: "把 .orrec 里的麦克风录音转成 transcript.json；默认使用 whisper-1 以获得带时间节点的片段和词级结果。"
+  },
+  {
+    category: "Bridge and Browser",
     usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
   },

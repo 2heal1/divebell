@@ -94,6 +94,24 @@ For browser login state export, import, inspection, and cleanup, see [Browser Au
 
 ---
 
+## Record a Browser Workflow
+
+OpenRuntime includes an installable Agent skill that turns one manual browser walkthrough into a reusable JavaScript automation draft.
+
+After the skill starts a visible browser, the user can navigate, click, type, and optionally describe the intended result by voice. When the user says the workflow is complete, the Agent closes the browser, aligns the recorded actions with page state and speech timestamps, and produces a script that can be reviewed and run again.
+
+This workflow is useful when the expected automation is easier to demonstrate than to describe from scratch. The first version generates a JavaScript script rather than a new skill, making the result easier to inspect, test, and refine.
+
+- Skill: [`record-openruntime-workflow`](./skills/record-openruntime-workflow/SKILL.md)
+- Guide: [Record Browser Workflows with an Agent](./docs/record-browser-workflows.md)
+- Runtime delivery: downloaded from a versioned GitHub Release, verified with SHA-256, and cached locally.
+- Demo video: coming soon. The final GitHub Release video URL will be added here.
+<!-- Demo video URL: https://github.com/2heal1/openruntime/releases/download/<tag>/<video-file>.mp4 -->
+
+Chinese documentation is available at [录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md).
+
+---
+
 ## Example
 
 For example, a Release Notes page integrated with OpenRuntime can declare:

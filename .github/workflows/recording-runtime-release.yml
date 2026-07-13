@@ -1,0 +1,104 @@
+name: Publish Recording Skill Runtime
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: recording-skill-runtime-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == '2heal1/openruntime' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm --filter . --filter "./packages/*" install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Build runtime bundle
+        env:
+          RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime
+        run: node scripts/build-recording-skill-runtime.mjs --output-dir "$RUNTIME_OUTPUT"
+
+      - name: Verify runtime bundle
+        env:
+          RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime
+        run: node scripts/verify-recording-skill-runtime.mjs --output-dir "$RUNTIME_OUTPUT"
+
+      - name: Read release metadata
+        id: metadata
+        env:
+          RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime
+        run: |
+          node - <<'NODE'
+          const { appendFileSync } = require('node:fs');
+          const { join } = require('node:path');
+          const manifest = require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json');
+          appendFileSync(process.env.GITHUB_OUTPUT, [
+            `version=${manifest.version}`,
+            `tag=${manifest.tag}`,
+            `asset=${join(process.env.RUNTIME_OUTPUT, manifest.asset.name)}`,
+            `asset_name=${manifest.asset.name}`,
+            `checksum=${join(process.env.RUNTIME_OUTPUT, manifest.asset.checksumName)}`,
+            `checksum_name=${manifest.asset.checksumName}`
+          ].join('\n') + '\n');
+          NODE
+
+      - name: Create or finish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          ASSET: ${{ steps.metadata.outputs.asset }}
+          ASSET_NAME: ${{ steps.metadata.outputs.asset_name }}
+          CHECKSUM: ${{ steps.metadata.outputs.checksum }}
+          CHECKSUM_NAME: ${{ steps.metadata.outputs.checksum_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            is_draft=$(gh release view "$TAG" --json isDraft --jq '.isDraft')
+            asset_names=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+            if [ "$is_draft" = "false" ]; then
+              if echo "$asset_names" | grep -Fxq "$ASSET_NAME" && echo "$asset_names" | grep -Fxq "$CHECKSUM_NAME"; then
+                echo "Release $TAG is already published with both assets."
+                exit 0
+              fi
+              echo "Published release $TAG is missing expected assets; refusing to mutate it." >&2
+              exit 1
+            fi
+            gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
+          else
+            gh release create "$TAG" "$ASSET" "$CHECKSUM" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "Recording Skill Runtime ${VERSION}" \
+              --notes "Runtime bundle used by record-openruntime-workflow. The skill downloads this asset on first use, verifies SHA-256, and caches it by version."
+          fi
+          gh release edit "$TAG" --draft=false --latest=false

@@ -40,6 +40,11 @@ jobs:
       - name: Run package checks
         run: pnpm run version:check && pnpm run build && pnpm run test
 
+      - name: Pack npm release packages
+        env:
+          NPM_PACKAGES_OUTPUT: ${{ runner.temp }}/npm-packages
+        run: node scripts/npm-release.mjs pack --output-dir "$NPM_PACKAGES_OUTPUT"
+
       - name: Build recording skill runtime
         env:
           RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime

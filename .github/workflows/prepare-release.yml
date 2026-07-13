@@ -1,10 +1,10 @@
-name: Prepare Recording Skill Runtime Release
+name: Prepare OpenRuntime Release
 
 on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version increment for the recording skill runtime
+        description: Version increment for all OpenRuntime packages and the recording runtime
         required: true
         default: patch
         type: choice
@@ -14,17 +14,17 @@ on:
           - major
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
-  actions: write
 
 concurrency:
-  group: recording-skill-runtime-release-pr
+  group: prepare-openruntime-release
   cancel-in-progress: false
 
 jobs:
   prepare-release-pr:
-    if: github.repository == '2heal1/openruntime'
+    if: github.repository == '2heal1/openruntime' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,19 +38,18 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24.13.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
-      - name: Confirm current runtime is released
+      - name: Confirm current release baseline
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           current_tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
-          if ! gh release view "$current_tag" >/dev/null 2>&1; then
-            echo "Current runtime release $current_tag does not exist yet." >&2
-            echo "Merge the initial recording runtime manifest and let the publish workflow finish first." >&2
-            exit 1
-          fi
+          gh release view "$current_tag" >/dev/null
+          node scripts/npm-release.mjs check
 
-      - name: Bump runtime version
+      - name: Bump release version
         run: node scripts/bump-recording-skill-runtime.mjs "${{ inputs.bump }}"
 
       - name: Read release metadata
@@ -67,7 +66,7 @@ jobs:
           VERSION: ${{ steps.metadata.outputs.version }}
           TAG: ${{ steps.metadata.outputs.tag }}
         run: |
-          branch="release/recording-skill-runtime-v${VERSION}"
+          branch="release/openruntime-v${VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
             existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
             echo "Release branch already exists: $branch"
@@ -78,12 +77,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
-          git commit -m "chore: prepare recording runtime ${VERSION}"
+          git add \
+            packages/core/package.json \
+            packages/bridge/package.json \
+            packages/modern-plugin/package.json \
+            packages/cli/package.json \
+            skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+          git commit -m "chore: prepare OpenRuntime ${VERSION}"
           git push origin "$branch"
           gh pr create \
             --base main \
             --head "$branch" \
-            --title "chore: release recording runtime ${VERSION}" \
-            --body "Bumps the recording skill runtime manifest to ${VERSION}. After this PR is merged, the publish workflow will build ${TAG}, create the GitHub Release, and upload the runtime bundle plus its SHA-256 file."
+            --title "chore: release OpenRuntime ${VERSION}" \
+            --body "Bumps every OpenRuntime npm package and the recording skill runtime to ${VERSION}. After this PR passes CI and is merged, the trusted workflow publishes npm packages through OIDC, then creates ${TAG} with the recording runtime assets."
           gh workflow run ci.yml --ref "$branch"

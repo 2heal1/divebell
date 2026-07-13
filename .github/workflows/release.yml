@@ -1,29 +1,34 @@
-name: Publish Recording Skill Runtime
+name: Publish OpenRuntime Release
 
 on:
-  push:
+  pull_request:
     branches:
       - main
-    paths:
-      - skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
-  workflow_dispatch:
+    types:
+      - closed
 
 permissions:
   contents: write
+  id-token: write
+  pull-requests: read
 
 concurrency:
-  group: recording-skill-runtime-release
+  group: openruntime-release-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   publish:
-    if: github.repository == '2heal1/openruntime' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == '2heal1/openruntime' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/openruntime-v')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
+      - name: Checkout merged release
         uses: actions/checkout@v5
         with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -31,24 +36,46 @@ jobs:
         with:
           version: 10.18.1
 
-      - name: Setup Node.js
+      - name: Setup Node.js for npm OIDC
         uses: actions/setup-node@v6
         with:
           node-version: 24.13.0
-          cache: pnpm
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
         run: pnpm --filter . --filter "./packages/*" install --frozen-lockfile
 
+      - name: Install OIDC-capable npm
+        run: npm install --global npm@11.15.0
+
+      - name: Validate merged release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          RELEASE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          RELEASE_FILES: ${{ runner.temp }}/openruntime-release-files.txt
+        run: |
+          gh pr diff "${{ github.event.pull_request.number }}" --name-only > "$RELEASE_FILES"
+          node scripts/validate-openruntime-release.mjs \
+            --branch "$RELEASE_BRANCH" \
+            --base "$RELEASE_BASE_SHA" \
+            --changed-files "$RELEASE_FILES"
+
       - name: Build packages
         run: pnpm run build
 
-      - name: Build runtime bundle
+      - name: Publish npm packages with OIDC
+        env:
+          NPM_PACKAGES_OUTPUT: ${{ runner.temp }}/npm-packages
+        run: node scripts/npm-release.mjs publish --output-dir "$NPM_PACKAGES_OUTPUT"
+
+      - name: Build recording runtime bundle
         env:
           RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime
         run: node scripts/build-recording-skill-runtime.mjs --output-dir "$RUNTIME_OUTPUT"
 
-      - name: Verify runtime bundle
+      - name: Verify recording runtime bundle
         env:
           RUNTIME_OUTPUT: ${{ runner.temp }}/recording-skill-runtime
         run: node scripts/verify-recording-skill-runtime.mjs --output-dir "$RUNTIME_OUTPUT"
@@ -75,6 +102,7 @@ jobs:
       - name: Create or finish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           TAG: ${{ steps.metadata.outputs.tag }}
           VERSION: ${{ steps.metadata.outputs.version }}
           ASSET: ${{ steps.metadata.outputs.asset }}
@@ -97,8 +125,8 @@ jobs:
           else
             gh release create "$TAG" "$ASSET" "$CHECKSUM" \
               --draft \
-              --target "$GITHUB_SHA" \
-              --title "Recording Skill Runtime ${VERSION}" \
-              --notes "Runtime bundle used by record-openruntime-workflow. The skill downloads this asset on first use, verifies SHA-256, and caches it by version."
+              --target "$RELEASE_SHA" \
+              --title "OpenRuntime ${VERSION}" \
+              --notes "Publishes all @openruntime npm packages through OIDC and provides the versioned runtime bundle used by record-openruntime-workflow."
           fi
           gh release edit "$TAG" --draft=false --latest=false

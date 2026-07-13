@@ -1,48 +1,105 @@
-# Publish the Recording Skill Runtime
+# OpenRuntime Release Flow
 
-The recording skill runtime is not committed to Git. The repository stores only a version manifest. GitHub Actions builds the archive and uploads the archive plus its checksum to a GitHub Release. Users download it once and reuse a versioned local cache.
+OpenRuntime uses one controlled release chain for all four npm packages and the recording skill runtime. Merging an ordinary feature branch into `main` does not publish anything.
 
-## Initial setup
+```text
+Run Prepare OpenRuntime Release manually
+→ create release/openruntime-vX.Y.Z
+→ update versions and open a pull request
+→ maintainer reviews and merges after CI passes
+→ publish four npm packages through OIDC
+→ create the GitHub Release only after npm succeeds
+→ upload the recording runtime and SHA-256 file
+```
 
-Under **Settings > Actions > General > Workflow permissions**, enable:
+## One-time bootstrap
 
-- **Read and write permissions**
-- **Allow GitHub Actions to create and approve pull requests**
+npm trusted publishers can only be configured for packages that already exist. Before enabling OIDC, publish the current version once with a maintainer account:
 
-When this change first reaches `main`, **Publish Recording Skill Runtime** automatically builds and verifies the bundle, creates the `recording-skill-runtime-v0.1.0` Release, uploads both assets, and publishes the Release.
+```bash
+npm login
+npm install --global npm@11.15.0
+pnpm run build
+node scripts/npm-release.mjs publish --output-dir /tmp/openruntime-npm-bootstrap
+```
 
-Use **Squash and merge** for the initial feature pull request, then delete the feature branch. This prevents the `.tgz` files committed during early development from becoming reachable from `main`.
+Packages are published in dependency order:
+
+- `@openruntime/core`
+- `@openruntime/bridge`
+- `@openruntime/modern-plugin`
+- `@openruntime/cli`
+
+An existing package version is skipped, so an interrupted bootstrap can be rerun.
+
+After all packages exist, open **Settings > Trusted Publisher** for each npm package and use:
+
+| Field | Value |
+| --- | --- |
+| Provider | GitHub Actions |
+| Organization or user | `2heal1` |
+| Repository | `openruntime` |
+| Workflow filename | `release.yml` |
+| Environment name | Leave empty |
+| Allowed actions | `npm publish` |
+
+The workflow filename is case-sensitive. Enter only the filename, without `.github/workflows/`. A maintainer with account-level two-factor authentication can configure all four packages from the CLI instead:
+
+```bash
+npm trust github @openruntime/core --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/bridge --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/modern-plugin --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/cli --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+```
+
+`npm trust` rejects a package that does not exist, so complete the bootstrap publish first. Then verify the baseline:
+
+```bash
+node scripts/npm-release.mjs check
+```
+
+After one successful OIDC release, traditional publish tokens can be disabled under npm Publishing access.
 
 ## Later releases
 
 1. Open the repository **Actions** page.
-2. Select **Prepare Recording Skill Runtime Release**.
+2. Select **Prepare OpenRuntime Release**.
 3. Run it with a `patch`, `minor`, or `major` increment.
-4. The workflow creates a `release/recording-skill-runtime-v<version>` branch and pull request.
-5. Review and merge the pull request.
-6. The merge to `main` automatically publishes the matching GitHub Release.
+4. The workflow confirms that the current version exists on npm and in GitHub Releases.
+5. It creates `release/openruntime-v<version>` and opens a pull request.
+6. Review the version changes and wait for CI.
+7. Merge the pull request into `main`.
+8. **Publish OpenRuntime Release** publishes all npm packages through OIDC.
+9. Only after npm succeeds, it creates the GitHub Release and uploads the recording runtime.
 
-No manual asset upload is required. Every runtime Release contains:
+The release pull request may only change four `package.json` files and the recording runtime manifest. The branch name, npm package versions, and runtime version must match exactly.
+
+## Release output
+
+Every release publishes the same version of all four npm packages and adds these GitHub Release assets:
 
 ```text
 openruntime-recording-runtime-<version>.tgz
 openruntime-recording-runtime-<version>.tgz.sha256
 ```
 
-The skill reads the pinned URLs in `skills/record-openruntime-workflow/references/openruntime-cli-runtime.json`. It never follows a latest-release URL. Each release pull request updates the version, tag, filenames, and download URLs together.
+The skill reads pinned URLs from `skills/record-openruntime-workflow/references/openruntime-cli-runtime.json`, verifies SHA-256, and caches by version. It never follows a latest-release URL.
 
 ## Retry behavior
 
-- A draft Release can be rerun; its assets are replaced and then published.
-- A published Release with both expected assets is treated as complete.
-- A published Release missing an asset causes a failure instead of silently mutating published content.
+- An npm package version that already exists is skipped.
+- GitHub Release creation does not begin until every npm package is published.
+- A draft GitHub Release can be rerun and its assets replaced.
+- A published Release with both assets is treated as complete.
+- A published Release missing an asset causes a failure without mutating it.
 
 ## Local verification
 
 ```bash
 pnpm run build
+node scripts/npm-release.mjs pack --output-dir /tmp/openruntime-npm-packages
 pnpm run build:recording-runtime -- --output-dir /tmp/openruntime-recording-runtime
 pnpm run verify:recording-runtime -- --output-dir /tmp/openruntime-recording-runtime
 ```
 
-Verification installs the runtime in a fresh temporary directory, runs the CLI, and runs it again to confirm cache reuse.
+npm OIDC requires a GitHub-hosted runner, Node.js 22.14.0 or newer, and npm 11.5.1 or newer. The workflow does not use `NPM_TOKEN`.

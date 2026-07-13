@@ -32,7 +32,7 @@ skills/record-openruntime-workflow
 
 用户不需要预先安装全局 `openruntime` 命令。启动前，Agent 会检查当前环境里是否已有可复用版本；没有时从 GitHub Release 下载固定运行包，校验 SHA-256，并按版本缓存。
 
-运行包的自动发布和版本升级方式见 [发布录制 Skill 运行包](./recording-runtime-release.zh-CN.md)。
+统一版本发布方式见 [OpenRuntime 发版流程](./recording-runtime-release.zh-CN.md)。
 
 ## 使用
 

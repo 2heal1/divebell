@@ -32,7 +32,7 @@ For Codex, place the complete directory at:
 
 A global `openruntime` installation is not required. Before recording, the Agent checks for a compatible local CLI; otherwise the skill downloads the fixed runtime bundle from GitHub Releases, verifies SHA-256, and caches it by version.
 
-See [Publish the Recording Skill Runtime](./recording-runtime-release.md) for automated publishing and version updates.
+See the [OpenRuntime Release Flow](./recording-runtime-release.md) for coordinated package and runtime releases.
 
 ## Use
 

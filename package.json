@@ -21,7 +21,9 @@
     "verify:stage7": "node ./scripts/verify-stage7-release.mjs",
     "changeset": "changeset",
     "version:packages": "changeset version",
-    "publish:packages": "changeset publish",
+    "release:npm:check": "node ./scripts/npm-release.mjs check",
+    "release:npm:pack": "node ./scripts/npm-release.mjs pack",
+    "publish:packages": "node ./scripts/npm-release.mjs publish",
     "version:check": "node ./scripts/check-package-versions.mjs",
     "clean": "node ./scripts/clean.mjs"
   },

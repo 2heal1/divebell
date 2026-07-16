@@ -6,8 +6,11 @@
   "scripts": {
     "dev": "modern dev",
     "build": "modern build",
+    "verify:chunk-map": "pnpm --dir ../../packages/modern-plugin build && modern build && node ./scripts/verify-chunk-map.mjs",
     "serve": "modern serve",
     "verify": "node ./scripts/verify-openruntime.mjs",
+    "verify:memory": "pnpm --dir ../../packages/cli build && openruntime memory check --url http://localhost:19081/ --scenario ./scripts/memory-scenario.mjs --artifact-dir ./.memory-artifacts",
+    "verify:code-usage": "pnpm --dir ../../packages/modern-plugin build && pnpm --dir ../../packages/cli build && node ./scripts/verify-code-usage.mjs",
     "verify:route-component-error": "node ./scripts/verify-route-component-error.mjs"
   },
   "dependencies": {
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@modern-js/app-tools": "link:../../../../work/modern.js/packages/solutions/app-tools",
+    "@openruntime/cli": "workspace:^",
     "@types/react": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react",
     "@types/react-dom": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.17/node_modules/@types/react-dom",
     "typescript": "5.9.3"

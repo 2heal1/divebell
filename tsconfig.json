@@ -3,6 +3,8 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/bridge" },
+    { "path": "./packages/chunk-map" },
+    { "path": "./packages/rspack-plugin" },
     { "path": "./packages/cli" },
     { "path": "./packages/modern-plugin" }
   ]

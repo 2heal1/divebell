@@ -128,3 +128,65 @@ pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic build
 ```
+
+## Chunk Map 检查
+
+```bash
+pnpm --filter @openruntime/demo-modern-basic verify:chunk-map
+```
+
+检查会执行一次真实生产构建，确认所有 JavaScript 文件都能唯一映射到
+`dist/openruntime-chunks.json`，文件大小一致，并验证 Orders 页面属于异步
+chunk 且能还原到 `src/routes/orders/page.tsx`。
+检查还会确认 React、React DOM、React Router 等第三方依赖的名称和版本，区分
+Modern.js、OpenRuntime 工作区依赖，并避免把 `.modern-js` 自动生成入口误判为
+第三方代码。
+
+## 内存稳定性检查
+
+先保持 demo 运行，再在另一个终端执行：
+
+```bash
+OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
+pnpm --filter @openruntime/demo-modern-basic verify:memory
+```
+
+检查会先预热页面，再让首页和 Orders 页面往返 12 次。每轮都会请求垃圾回收并记录 JS heap、DOM 节点和事件监听器，最后将报告、分配记录和前后两份快照保存到 `.memory-artifacts/`。
+
+`verify:memory` 直接执行 `openruntime memory check`。demo 自己只在
+`scripts/memory-scenario.mjs` 中描述首页和 Orders 之间的往返操作；浏览器管理、
+内存采集、结果计算和文件保存都由 OpenRuntime CLI 完成。
+
+报告的 `verdict` 有两种结果：
+
+- `no-clear-growth`：这次流程没有看到明确的持续增长。
+- `suspicious-growth`：回收后仍有持续增长，需要继续对比前后快照和 Top 函数。
+
+可以调整次数或输出目录：
+
+```bash
+pnpm --filter @openruntime/demo-modern-basic verify:memory -- --iterations 20 --artifact-dir /tmp/modern-basic-memory
+```
+
+## 代码使用检查
+
+完整的首次接入、操作流程、报告解读和常见问题见
+[分块与代码使用分析](../../docs/code-usage-analysis.zh-CN.md)。
+
+先执行 `verify:chunk-map` 生成生产构建，并保持 demo 服务运行。然后使用包含代码
+记录能力的 agent-browser：
+
+```bash
+OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
+pnpm --filter @openruntime/demo-modern-basic verify:code-usage
+```
+
+检查会分别记录首屏和进入 Orders 页面两个阶段，再把结果还原到业务文件、
+OpenRuntime/Modern.js 工作区包以及 React 等第三方包。完整结果保存在
+`.code-usage-artifacts/report.json`，摘要会列出体积最大的包和首屏低使用候选。
+
+生成并打开可视化报告：
+
+```bash
+pnpm exec openruntime code-usage report demos/modern-basic/.code-usage-artifacts/report.json
+```

@@ -6,8 +6,10 @@
     [
       "@openruntime/core",
       "@openruntime/bridge",
+      "@openruntime/chunk-map",
       "@openruntime/cli",
-      "@openruntime/modern-plugin"
+      "@openruntime/modern-plugin",
+      "@openruntime/rspack-plugin"
     ]
   ],
   "linked": [],

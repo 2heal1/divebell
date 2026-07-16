@@ -137,6 +137,139 @@ test("registers a command and merges its help entries", async () => {
   }
 });
 
+test("exposes memory capture commands to CLI extensions", async () => {
+  const extension: OpenRuntimeCliExtension = {
+    name: "memory-demo",
+    run: async ({ openruntime, output }) => {
+      output.ok({
+        metrics: await openruntime.browser.memory.metrics(),
+        status: await openruntime.browser.memory.status(),
+        started: await openruntime.browser.memory.sampling.start({ samplingInterval: 1024 }),
+        stopped: await openruntime.browser.memory.sampling.stop({
+          path: "/tmp/openruntime.heapprofile",
+          top: 10,
+          maxSize: 4096
+        }),
+        snapshot: await openruntime.browser.memory.snapshot({
+          path: "/tmp/openruntime.heapsnapshot",
+          collectGarbage: false,
+          timeout: 5000,
+          maxSize: 8192
+        }),
+        garbageCollected: await openruntime.browser.memory.collectGarbage(),
+        cancelled: await openruntime.browser.memory.cancel()
+      });
+      return 0;
+    }
+  };
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await cli.run(["memory-demo"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({ name: args.slice(0, -1).join(" ") }),
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["memory", "collect-garbage", "--json"],
+      ["memory", "metrics", "--json"],
+      ["memory", "status", "--json"],
+      ["memory", "sampling", "start", "--sampling-interval", "1024", "--json"],
+      ["memory", "sampling", "stop", "/tmp/openruntime.heapprofile", "--top", "10", "--max-size", "4096", "--json"],
+      ["memory", "snapshot", "/tmp/openruntime.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192", "--json"],
+      ["memory", "collect-garbage", "--json"],
+      ["memory", "cancel", "--json"]
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("memory-demo", {
+      metrics: { name: "memory metrics" },
+      status: { name: "memory status" },
+      started: { name: "memory sampling start --sampling-interval 1024" },
+      stopped: { name: "memory sampling stop /tmp/openruntime.heapprofile --top 10 --max-size 4096" },
+      snapshot: { name: "memory snapshot /tmp/openruntime.heapsnapshot --no-gc --timeout 5000 --max-size 8192" },
+      garbageCollected: { name: "memory collect-garbage" },
+      cancelled: { name: "memory cancel" }
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("exposes coverage commands to CLI extensions", async () => {
+  const extension: OpenRuntimeCliExtension = {
+    name: "coverage-demo",
+    run: async ({ openruntime, output }) => {
+      output.ok({
+        status: await openruntime.browser.coverage.status(),
+        started: await openruntime.browser.coverage.start({ callCount: true }),
+        taken: await openruntime.browser.coverage.take({
+          path: "/tmp/first.coverage.json",
+          label: "first-screen",
+          maxSize: 4096
+        }),
+        stopped: await openruntime.browser.coverage.stop({
+          path: "/tmp/orders.coverage.json",
+          label: "orders"
+        }),
+        cancelled: await openruntime.browser.coverage.cancel()
+      });
+      return 0;
+    }
+  };
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await cli.run(["coverage-demo"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({ name: args.slice(0, -1).join(" ") }),
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["coverage", "status", "--json"],
+      ["coverage", "start", "--call-count", "--json"],
+      ["coverage", "take", "/tmp/first.coverage.json", "--label", "first-screen", "--max-size", "4096", "--json"],
+      ["coverage", "stop", "/tmp/orders.coverage.json", "--label", "orders", "--json"],
+      ["coverage", "cancel", "--json"]
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("coverage-demo", {
+      status: { name: "coverage status" },
+      started: { name: "coverage start --call-count" },
+      taken: { name: "coverage take /tmp/first.coverage.json --label first-screen --max-size 4096" },
+      stopped: { name: "coverage stop /tmp/orders.coverage.json --label orders" },
+      cancelled: { name: "coverage cancel" }
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("shows and resolves command skills without running commands", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-skill-"));
   const skillPath = join(tempDir, "SKILL.md");

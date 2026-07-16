@@ -2,73 +2,110 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 import { convertAuthConnectorPayloadToStorageState, exportAuthProfileWithConnector, writeAuthConnectorExtension } from "../dist/auth-connector.js";
-import { createDefaultBrowserProfileDirectory, createNextBrowserEnvironment } from "../dist/browser.js";
+import {
+  createAgentBrowserEnvironment,
+  createAgentBrowserRunner,
+  createDefaultBrowserProfileDirectory,
+  createDefaultBrowserRunner
+} from "../dist/browser.js";
 import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/profile.js";
 
 import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
-test("configures next-browser with a persistent OpenRuntime profile", () => {
-  const env = createNextBrowserEnvironment({
-    NODE_OPTIONS: "--enable-source-maps",
-    OPENRUNTIME_BROWSER_PROFILE_DIR: "/tmp/custom-openruntime-profile"
+test("uses the default OpenRuntime browser profile directory", () => {
+  const env = createAgentBrowserEnvironment({});
+
+  assert.equal(env.AGENT_BROWSER_PROFILE, createDefaultBrowserProfileDirectory());
+});
+
+test("configures agent-browser with the shared profile and a stable session", () => {
+  const env = createAgentBrowserEnvironment({
+    OPENRUNTIME_BROWSER_PROFILE_DIR: "/tmp/custom-openruntime-profile",
+    OPENRUNTIME_AGENT_BROWSER_SESSION: "memory-check"
   });
 
-  assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, "/tmp/custom-openruntime-profile");
-  assert.equal(env.NEXT_BROWSER_HEADLESS, "1");
-  assert.match(env.NODE_OPTIONS ?? "", /--enable-source-maps/);
-  assert.match(env.NODE_OPTIONS ?? "", /--import file:\/\//);
+  assert.equal(env.AGENT_BROWSER_PROFILE, "/tmp/custom-openruntime-profile");
+  assert.equal(env.AGENT_BROWSER_SESSION, "memory-check");
+  assert.equal(env.AGENT_BROWSER_HEADED, undefined);
+
+  const visibleEnv = createAgentBrowserEnvironment({}, "/tmp/visible-profile", "visible", { ui: true });
+  assert.equal(visibleEnv.AGENT_BROWSER_PROFILE, "/tmp/visible-profile");
+  assert.equal(visibleEnv.AGENT_BROWSER_SESSION, "visible");
+  assert.equal(visibleEnv.AGENT_BROWSER_HEADED, "1");
 });
 
-test("allows visible browser mode for next-browser", () => {
-  const env = createNextBrowserEnvironment({
-    NEXT_BROWSER_HEADLESS: "1"
-  }, undefined, { ui: true });
+test("runs agent-browser through a replaceable executable entry", async () => {
+  const runner = createAgentBrowserRunner({
+    executablePath: process.execPath,
+    prefixArgs: [
+      "-e",
+      "process.stdout.write(JSON.stringify({ success: true, data: { args: process.argv.slice(1), profile: process.env.AGENT_BROWSER_PROFILE, session: process.env.AGENT_BROWSER_SESSION } }))"
+    ],
+    profileDirectory: "/tmp/openruntime-agent-browser-profile",
+    session: "openruntime-test"
+  });
 
-  assert.equal(env.NEXT_BROWSER_HEADLESS, undefined);
+  const result = await runner.run(["memory", "metrics", "--json"]);
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    args: ["memory", "metrics", "--json"],
+    profile: "/tmp/openruntime-agent-browser-profile",
+    session: "openruntime-test"
+  });
 });
 
-test("uses the default OpenRuntime browser profile directory", () => {
-  const env = createNextBrowserEnvironment({});
+test("uses agent-browser as the default browser runner", async () => {
+  const runner = createDefaultBrowserRunner({
+    env: {},
+    agentBrowser: {
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ args: process.argv.slice(1), session: process.env.AGENT_BROWSER_SESSION }))"
+      ],
+      session: "default-agent-browser"
+    }
+  });
 
-  assert.equal(env.OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR, createDefaultBrowserProfileDirectory());
+  const result = await runner.run(["snapshot"]);
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    args: ["snapshot"],
+    session: "default-agent-browser"
+  });
 });
 
-test("keeps the persistent profile when next-browser closes its temporary profile", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-profile-"));
-  const profileDirectory = join(tempDir, "profile");
-  const temporaryProfileDirectory = join(tempDir, "next-browser-profile-test");
-  const preloadUrl = pathToFileURL(join(process.cwd(), "dist", "next-browser-profile-preload.js")).href;
-  const script = [
-    "const fs = require('node:fs');",
-    "const path = require('node:path');",
-    `const tempProfile = ${JSON.stringify(temporaryProfileDirectory)};`,
-    "fs.mkdirSync(tempProfile, { recursive: true });",
-    "fs.writeFileSync(path.join(tempProfile, 'login-state'), 'kept');",
-    "fs.rmSync(tempProfile, { recursive: true, force: true });"
-  ].join("");
+test("preserves agent-browser memory error codes while exposing a readable error", async () => {
+  const runner = createAgentBrowserRunner({
+    executablePath: process.execPath,
+    prefixArgs: [
+      "-e",
+      "process.stdout.write(JSON.stringify({ success: false, errorCode: 'memory_no_capture', error: 'No memory capture is active' })); process.exitCode = 1"
+    ]
+  });
 
+  const result = await runner.run(["memory", "cancel", "--json"]);
+  assert.equal(result.exitCode, 1);
+  assert.equal(result.stderr, "No memory capture is active");
+  assert.deepEqual(JSON.parse(result.stdout), {
+    errorCode: "memory_no_capture",
+    error: "No memory capture is active"
+  });
+});
+
+test("loads an imported OpenRuntime auth state through agent-browser", () => {
+  const profileDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-profile-"));
+  const authStatePath = join(profileDirectory, AUTH_STATE_FILE_NAME);
   try {
-    const result = spawnSync(process.execPath, ["--import", preloadUrl, "-e", script], {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR: profileDirectory
-      }
-    });
-
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(existsSync(join(profileDirectory, "login-state")), true);
+    writeFileSync(authStatePath, JSON.stringify({ cookies: [], origins: [] }));
+    const env = createAgentBrowserEnvironment({}, profileDirectory);
+    assert.equal(env.AGENT_BROWSER_STATE, authStatePath);
   } finally {
-    rmSync(tempDir, {
-      recursive: true,
-      force: true
-    });
+    rmSync(profileDirectory, { recursive: true, force: true });
   }
 });
 
@@ -220,7 +257,7 @@ test("imports, lists, and clears the current auth profile", async () => {
         return {
           exitCode: 1,
           stdout: "",
-          stderr: "daemon failed to start (/tmp/next-browser.sock)"
+          stderr: "daemon failed to start (/tmp/agent-browser.sock)"
         };
       })
     });
@@ -265,7 +302,7 @@ test("imports, lists, and clears the current auth profile", async () => {
         return {
           exitCode: 1,
           stdout: "",
-          stderr: "daemon failed to start (/tmp/next-browser.sock)"
+          stderr: "daemon failed to start (/tmp/agent-browser.sock)"
         };
       })
     });

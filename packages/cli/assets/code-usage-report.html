@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenRuntime 代码使用分析</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: #f7f7f5;
+      --foreground: #20201d;
+      --card: #ffffff;
+      --card-foreground: #20201d;
+      --muted: #ebeae5;
+      --muted-foreground: #66645e;
+      --primary: #295b4a;
+      --primary-foreground: #ffffff;
+      --accent: #e2eee9;
+      --accent-foreground: #173f32;
+      --border: #d9d7cf;
+      --input: #cfcdc5;
+      --ring: #397a65;
+      --destructive: #b33b32;
+      --series-used: #397a65;
+      --series-unused: #dedcd4;
+      --series-warning: #bf7b28;
+      --shadow: 0 12px 30px rgba(35, 35, 30, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #181a18;
+        --foreground: #f0f1ed;
+        --card: #222522;
+        --card-foreground: #f0f1ed;
+        --muted: #30332f;
+        --muted-foreground: #b2b6af;
+        --primary: #9cc9b7;
+        --primary-foreground: #173328;
+        --accent: #283d35;
+        --accent-foreground: #d8eee5;
+        --border: #3d413c;
+        --input: #555a53;
+        --ring: #9cc9b7;
+        --destructive: #ef9188;
+        --series-used: #80bca4;
+        --series-unused: #3b3f3a;
+        --series-warning: #e0a25b;
+        --shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    button, input, select { font: inherit; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent);
+      outline-offset: 2px;
+    }
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 48px;
+    }
+    .heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(24px, 4vw, 38px); font-weight: 500; letter-spacing: -0.025em; }
+    h2 { font-size: 18px; font-weight: 500; }
+    .subtitle, .meta, .hint { color: var(--muted-foreground); }
+    .subtitle { margin-top: 6px; }
+    .meta { max-width: 560px; text-align: right; font-size: 13px; overflow-wrap: anywhere; }
+    .controls {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    label { display: grid; gap: 6px; color: var(--muted-foreground); font-size: 13px; }
+    select, input {
+      min-height: 40px;
+      border: 1px solid var(--input);
+      border-radius: 9px;
+      background: var(--card);
+      color: var(--card-foreground);
+      padding: 8px 11px;
+    }
+    input { min-width: min(280px, 100%); }
+    .segmented { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--muted); }
+    .segmented button {
+      min-height: 34px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted-foreground);
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    .segmented button[aria-pressed="true"] {
+      background: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .card {
+      background: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    .stat { padding: 16px 18px; }
+    .stat-label { color: var(--muted-foreground); font-size: 13px; }
+    .stat-value { margin-top: 4px; font-size: clamp(22px, 4vw, 32px); font-weight: 500; }
+    .stat-note { margin-top: 2px; color: var(--muted-foreground); font-size: 12px; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.75fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .panel { padding: 18px; }
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .panel-head .hint { font-size: 12px; }
+    .rows { display: grid; gap: 8px; }
+    .usage-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(150px, 1.25fr) minmax(180px, 2fr) 88px;
+      align-items: center;
+      gap: 12px;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: inherit;
+      padding: 9px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .usage-row:hover, .usage-row[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); }
+    .row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-kind { display: block; color: var(--muted-foreground); font-size: 11px; }
+    .bar {
+      height: 13px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--series-unused);
+    }
+    .bar-used { height: 100%; background: var(--series-used); min-width: 0; }
+    .row-value { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .empty { padding: 36px 12px; color: var(--muted-foreground); text-align: center; }
+    .detail { position: sticky; top: 16px; }
+    .detail-name { margin-top: 8px; overflow-wrap: anywhere; font-size: 18px; font-weight: 500; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+    .detail-value { margin-top: 2px; font-size: 19px; font-variant-numeric: tabular-nums; }
+    .detail-path { margin-top: 16px; color: var(--muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
+    .candidate {
+      margin-top: 16px;
+      padding: 12px;
+      border-left: 3px solid var(--series-warning);
+      background: color-mix(in srgb, var(--series-warning) 10%, transparent);
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+    }
+    .legend { display: flex; gap: 14px; margin-top: 14px; color: var(--muted-foreground); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--series-used); }
+    .swatch.unused { background: var(--series-unused); border: 1px solid var(--border); }
+    .phase-note { margin: 16px 0 0; color: var(--muted-foreground); font-size: 12px; }
+    .error { padding: 24px; color: var(--destructive); }
+
+    @media (max-width: 780px) {
+      .heading { display: block; }
+      .meta { margin-top: 10px; text-align: left; }
+      .stats { grid-template-columns: 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .detail { position: static; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 20px, 1180px); padding-top: 20px; }
+      .controls { align-items: stretch; }
+      .controls label, .controls select, .controls input { width: 100%; }
+      .segmented { width: 100%; }
+      .segmented button { flex: 1; }
+      .usage-row { grid-template-columns: 1fr 72px; gap: 7px; }
+      .usage-row .bar { grid-column: 1 / -1; grid-row: 2; }
+      .row-value { grid-column: 2; grid-row: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main id="openruntime-code-usage-report" class="shell">
+    <header class="heading">
+      <div>
+        <h1>代码使用分析</h1>
+        <p class="subtitle">查看业务源码、依赖包和分块在各阶段的实际执行体积</p>
+      </div>
+      <p id="report-meta" class="meta"></p>
+    </header>
+
+    <section class="controls" aria-label="分析范围">
+      <label>记录阶段
+        <select id="phase-select"></select>
+      </label>
+      <div class="segmented" role="group" aria-label="查看维度">
+        <button type="button" data-view="application" aria-pressed="true">业务代码</button>
+        <button type="button" data-view="packages" aria-pressed="false">依赖包</button>
+        <button type="button" data-view="sources" aria-pressed="false">全部文件</button>
+        <button type="button" data-view="chunks" aria-pressed="false">分块</button>
+      </div>
+      <label>排序
+        <select id="sort-select">
+          <option value="size">体积从大到小</option>
+          <option value="low-use">使用率从低到高</option>
+          <option value="used">已使用体积</option>
+        </select>
+      </label>
+      <label>查找
+        <input id="search-input" type="search" placeholder="搜索源码、包名或文件路径">
+      </label>
+    </section>
+
+    <section class="stats" aria-label="阶段概览">
+      <article class="card stat">
+        <div class="stat-label">已映射体积</div>
+        <div id="total-size" class="stat-value">—</div>
+        <div id="item-count" class="stat-note"></div>
+      </article>
+      <article class="card stat">
+        <div class="stat-label">实际执行</div>
+        <div id="used-percent" class="stat-value">—</div>
+        <div id="used-size" class="stat-note"></div>
+      </article>
+      <article class="card stat">
+        <div class="stat-label">低使用候选</div>
+        <div id="candidate-count" class="stat-value">—</div>
+        <div class="stat-note">至少 1 KB，使用率低于 10%</div>
+      </article>
+    </section>
+
+    <section class="layout">
+      <article class="card panel">
+        <div class="panel-head">
+          <h2 id="list-title">业务代码使用情况</h2>
+          <span id="list-count" class="hint"></span>
+        </div>
+        <div id="usage-rows" class="rows"></div>
+        <div class="legend" aria-label="图例">
+          <span><i class="swatch"></i>已执行</span>
+          <span><i class="swatch unused"></i>未执行</span>
+        </div>
+        <p class="phase-note">不同阶段分别计数；后续阶段的 0% 表示该阶段没有再次执行，不代表此前从未使用。</p>
+      </article>
+
+      <aside class="card panel detail" aria-live="polite">
+        <span id="detail-kind" class="hint">选择左侧项目查看详情</span>
+        <div id="detail-name" class="detail-name">—</div>
+        <div class="detail-grid">
+          <div><div class="hint">总体积</div><div id="detail-total" class="detail-value">—</div></div>
+          <div><div class="hint">已执行</div><div id="detail-used" class="detail-value">—</div></div>
+          <div><div class="hint">未执行</div><div id="detail-unused" class="detail-value">—</div></div>
+          <div><div class="hint">使用率</div><div id="detail-ratio" class="detail-value">—</div></div>
+        </div>
+        <div id="detail-path" class="detail-path"></div>
+        <div id="candidate-note" class="candidate" hidden></div>
+      </aside>
+    </section>
+    <div id="report-error" class="card error" hidden></div>
+  </main>
+
+  <script id="openruntime-report-data" type="application/json">__OPENRUNTIME_REPORT_DATA__</script>
+  <script>
+    (() => {
+      const root = document.getElementById("openruntime-code-usage-report");
+      const dataElement = document.getElementById("openruntime-report-data");
+      const phaseSelect = document.getElementById("phase-select");
+      const sortSelect = document.getElementById("sort-select");
+      const searchInput = document.getElementById("search-input");
+      const rowsElement = document.getElementById("usage-rows");
+      const viewButtons = Array.from(root.querySelectorAll("[data-view]"));
+      let state = { phaseIndex: 0, view: "application", selectedKey: null };
+
+      try {
+        const report = JSON.parse(dataElement.textContent || "{}");
+        const usage = report.usage && Array.isArray(report.usage.phases) ? report.usage : report;
+        if (!usage || !Array.isArray(usage.phases) || usage.phases.length === 0) {
+          throw new Error("报告中没有可展示的阶段数据。请传入代码使用分析生成的 report.json。");
+        }
+
+        document.getElementById("report-meta").textContent = [
+          report.url || "",
+          usage.buildId ? `构建 ${usage.buildId}` : ""
+        ].filter(Boolean).join(" · ");
+
+        usage.phases.forEach((phase, index) => {
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = phase.label || `阶段 ${index + 1}`;
+          phaseSelect.append(option);
+        });
+
+        const getItems = (phase) => {
+          if (state.view === "application") {
+            return (phase.sources || [])
+              .filter(isBusinessSource)
+              .map((item) => sourceItem(item));
+          }
+          if (state.view === "packages") {
+            return (phase.packages || [])
+              .filter((item) => item.kind !== "application")
+              .map((item) => ({
+                key: `${item.kind}:${item.packageName}@${item.packageVersion || ""}`,
+                name: item.packageVersion ? `${item.packageName}@${item.packageVersion}` : item.packageName,
+                kind: kindLabel(item.kind),
+                total: item.totalBytes || 0,
+                used: item.usedBytes || 0,
+                ratio: numberOrNull(item.usedRatio),
+                detail: `分块：${(item.chunkIds || []).join(", ") || "—"} · 文件数：${item.sourceCount || 0}`
+              }));
+          }
+          if (state.view === "sources") {
+            return (phase.sources || []).map((item) => sourceItem(item));
+          }
+          return (phase.chunks || []).map((item) => ({
+            key: `chunk:${item.chunkId}`,
+            name: `分块 ${item.chunkId}`,
+            kind: item.initial ? "首屏" : "异步",
+            total: item.totalBytes || 0,
+            used: item.usedBytes || 0,
+            ratio: numberOrNull(item.usedRatio),
+            detail: (item.files || []).join(" · ")
+          }));
+        };
+
+        const render = () => {
+          const phase = usage.phases[state.phaseIndex];
+          const query = searchInput.value.trim().toLocaleLowerCase();
+          const allItems = getItems(phase);
+          const items = allItems
+            .filter((item) => query.length === 0 || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(query))
+            .sort(sortItems(sortSelect.value));
+          const total = allItems.reduce((sum, item) => sum + item.total, 0);
+          const used = allItems.reduce((sum, item) => sum + item.used, 0);
+          const candidates = allItems.filter(isCandidate);
+
+          document.getElementById("total-size").textContent = formatBytes(total);
+          document.getElementById("item-count").textContent = `${allItems.length} 个${viewLabel(state.view)}`;
+          document.getElementById("used-percent").textContent = formatPercent(total === 0 ? null : used / total);
+          document.getElementById("used-size").textContent = `${formatBytes(used)} 已执行`;
+          document.getElementById("candidate-count").textContent = String(candidates.length);
+          document.getElementById("list-title").textContent = `${viewLabel(state.view)}使用情况`;
+          document.getElementById("list-count").textContent = `显示 ${Math.min(items.length, 40)} / ${items.length}`;
+
+          rowsElement.replaceChildren();
+          const visibleItems = items.slice(0, 40);
+          if (visibleItems.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "没有符合条件的结果";
+            rowsElement.append(empty);
+            showDetail(null);
+            return;
+          }
+          if (!visibleItems.some((item) => item.key === state.selectedKey)) {
+            state.selectedKey = visibleItems[0].key;
+          }
+          visibleItems.forEach((item) => rowsElement.append(createRow(item)));
+          showDetail(visibleItems.find((item) => item.key === state.selectedKey) || visibleItems[0]);
+        };
+
+        const createRow = (item) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "usage-row";
+          button.setAttribute("aria-selected", String(item.key === state.selectedKey));
+          button.setAttribute("aria-label", `${item.name}，使用率 ${formatPercent(item.ratio)}`);
+
+          const name = document.createElement("span");
+          name.className = "row-name";
+          name.textContent = item.name;
+          const kind = document.createElement("span");
+          kind.className = "row-kind";
+          kind.textContent = item.kind;
+          name.append(kind);
+
+          const bar = document.createElement("span");
+          bar.className = "bar";
+          const usedBar = document.createElement("span");
+          usedBar.className = "bar-used";
+          usedBar.style.width = `${Math.max(0, Math.min(100, (item.ratio || 0) * 100))}%`;
+          bar.append(usedBar);
+
+          const value = document.createElement("span");
+          value.className = "row-value";
+          value.textContent = `${formatPercent(item.ratio)} · ${formatBytes(item.total)}`;
+
+          button.append(name, bar, value);
+          button.addEventListener("click", () => {
+            state.selectedKey = item.key;
+            render();
+          });
+          return button;
+        };
+
+        const showDetail = (item) => {
+          document.getElementById("detail-kind").textContent = item ? item.kind : "选择左侧项目查看详情";
+          document.getElementById("detail-name").textContent = item ? item.name : "—";
+          document.getElementById("detail-total").textContent = item ? formatBytes(item.total) : "—";
+          document.getElementById("detail-used").textContent = item ? formatBytes(item.used) : "—";
+          document.getElementById("detail-unused").textContent = item ? formatBytes(Math.max(0, item.total - item.used)) : "—";
+          document.getElementById("detail-ratio").textContent = item ? formatPercent(item.ratio) : "—";
+          document.getElementById("detail-path").textContent = item ? item.detail : "";
+          const note = document.getElementById("candidate-note");
+          note.hidden = !item || !isCandidate(item);
+          note.textContent = item && isCandidate(item)
+            ? `该项体积 ${formatBytes(item.total)}，本阶段只执行 ${formatPercent(item.ratio)}。建议检查是否能移出首屏或改为按需加载。`
+            : "";
+        };
+
+        phaseSelect.addEventListener("change", () => {
+          state.phaseIndex = Number(phaseSelect.value);
+          state.selectedKey = null;
+          render();
+        });
+        sortSelect.addEventListener("change", render);
+        searchInput.addEventListener("input", render);
+        viewButtons.forEach((button) => button.addEventListener("click", () => {
+          state.view = button.dataset.view;
+          state.selectedKey = null;
+          viewButtons.forEach((candidate) => candidate.setAttribute(
+            "aria-pressed",
+            String(candidate === button)
+          ));
+          render();
+        }));
+        render();
+      } catch (error) {
+        document.querySelectorAll(".controls, .stats, .layout").forEach((element) => { element.hidden = true; });
+        const errorElement = document.getElementById("report-error");
+        errorElement.hidden = false;
+        errorElement.textContent = error instanceof Error ? error.message : String(error);
+      }
+
+      function sortItems(mode) {
+        if (mode === "low-use") return (left, right) => (left.ratio ?? 1) - (right.ratio ?? 1) || right.total - left.total;
+        if (mode === "used") return (left, right) => right.used - left.used || right.total - left.total;
+        return (left, right) => right.total - left.total || left.name.localeCompare(right.name);
+      }
+      function isCandidate(item) { return item.total >= 1024 && item.ratio !== null && item.ratio < 0.1; }
+      function numberOrNull(value) { return typeof value === "number" && Number.isFinite(value) ? value : null; }
+      function formatPercent(value) { return value === null ? "—" : `${(value * 100).toFixed(value < 0.1 ? 1 : 0)}%`; }
+      function formatBytes(value) {
+        if (!Number.isFinite(value)) return "—";
+        if (value < 1024) return `${Math.round(value)} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / 1024 / 1024).toFixed(2)} MB`;
+      }
+      function kindLabel(kind) {
+        return ({ application: "业务代码", workspace: "工作区", "third-party": "第三方", runtime: "运行时", unknown: "未知" })[kind] || "未知";
+      }
+      function viewLabel(view) { return ({ application: "业务代码", packages: "依赖包", sources: "文件", chunks: "分块" })[view] || "项目"; }
+      function sourceItem(item) {
+        return {
+          key: item.sourcePath,
+          name: shortPath(item.sourcePath),
+          kind: kindLabel(item.owner && item.owner.kind),
+          total: item.totalBytes || 0,
+          used: item.usedBytes || 0,
+          ratio: numberOrNull(item.usedRatio),
+          detail: `分块：${(item.chunkIds || []).join(", ") || "—"} · ${item.sourcePath}`
+        };
+      }
+      function isBusinessSource(item) {
+        if (!item.owner || item.owner.kind !== "application") return false;
+        const path = String(item.owner.packageSubpath || item.sourcePath || "").replaceAll("\\", "/");
+        return !path.includes("/node_modules/.modern-js/") && !path.startsWith("node_modules/.modern-js/");
+      }
+      function shortPath(path) {
+        const normalized = String(path || "").replaceAll("\\", "/");
+        const marker = normalized.lastIndexOf("/node_modules/");
+        if (marker >= 0) return normalized.slice(marker + 14);
+        const parts = normalized.split("/");
+        return parts.slice(-4).join("/") || normalized;
+      }
+    })();
+  </script>
+</body>
+</html>

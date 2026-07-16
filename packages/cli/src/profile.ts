@@ -6,7 +6,6 @@ import {
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { chromium, type BrowserContext } from "playwright";
 import { resolveBrowserProfileDirectory } from "./browser.js";
 
 export const PROFILE_TOKEN_PREFIX = "openruntime-profile:v1";
@@ -97,8 +96,9 @@ export async function importProfile(options: {
   const storageState = mergeStorageStates(await readSavedAuthState(profileDirectory), bundle.storageState);
 
   await saveAuthState(profileDirectory, storageState);
-  const applyAuthState = options.applyAuthState ?? applyAuthStateWithBrowser;
-  await applyAuthState(profileDirectory, storageState);
+  if (options.applyAuthState !== undefined) {
+    await options.applyAuthState(profileDirectory, storageState);
+  }
   return {
     kind: "auth",
     profileDirectory
@@ -191,48 +191,6 @@ export async function saveAuthState(profileDirectory: string, storageState: unkn
     encoding: "utf8",
     mode: 0o600
   });
-}
-
-export async function applyStoredAuthState(context: BrowserContext, profileDirectory: string): Promise<void> {
-  const storageState = await readSavedAuthState(profileDirectory);
-  if (storageState === undefined) return;
-  await context.setStorageState(storageState as Parameters<BrowserContext["setStorageState"]>[0]);
-}
-
-export function persistAuthStateOnClose(context: BrowserContext, profileDirectory: string): BrowserContext {
-  const originalClose = context.close.bind(context);
-  let didPersist = false;
-  const wrappedClose = (async (...args: Parameters<BrowserContext["close"]>) => {
-    if (!didPersist) {
-      didPersist = true;
-      await persistCurrentAuthState(context, profileDirectory);
-    }
-    return await originalClose(...args);
-  }) as BrowserContext["close"];
-  context.close = wrappedClose;
-  return context;
-}
-
-async function applyAuthStateWithBrowser(profileDirectory: string, storageState: unknown): Promise<void> {
-  const resolvedProfileDirectory = resolve(profileDirectory);
-  const context = await chromium.launchPersistentContext(resolvedProfileDirectory, createProfileLaunchOptions());
-  try {
-    await context.setStorageState(storageState as Parameters<BrowserContext["setStorageState"]>[0]);
-  } finally {
-    await context.close();
-  }
-}
-
-async function persistCurrentAuthState(context: BrowserContext, profileDirectory: string): Promise<void> {
-  try {
-    const storageState = mergeStorageStates(
-      await readSavedAuthState(profileDirectory),
-      await context.storageState({ indexedDB: true })
-    );
-    await saveAuthState(profileDirectory, storageState);
-  } catch (error) {
-    process.stderr.write(`OpenRuntime profile state could not be saved: ${error instanceof Error ? error.message : String(error)}\n`);
-  }
 }
 
 function mergeStorageStates(savedState: unknown | undefined, browserState: unknown): unknown {
@@ -535,14 +493,6 @@ function isProfileBundle(value: unknown, kind: "auth"): value is AuthProfileBund
   const bundle = value as Record<string, unknown>;
   if (bundle.version !== 1 || bundle.kind !== kind || typeof bundle.createdAt !== "string") return false;
   return "storageState" in bundle;
-}
-
-function createProfileLaunchOptions(): Parameters<typeof chromium.launchPersistentContext>[1] {
-  return {
-    headless: true,
-    viewport: null,
-    args: process.getuid?.() === 0 ? ["--no-sandbox"] : []
-  };
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

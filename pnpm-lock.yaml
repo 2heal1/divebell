@@ -55,6 +55,9 @@ importers:
       '@modern-js/app-tools':
         specifier: link:../../../../work/modern.js/packages/solutions/app-tools
         version: link:../../../../work/modern.js/packages/solutions/app-tools
+      '@openruntime/cli':
+        specifier: workspace:^
+        version: link:../../packages/cli
       '@types/react':
         specifier: link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react
         version: link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react
@@ -143,20 +146,19 @@ importers:
         specifier: 0.10.3
         version: 0.10.3
 
+  packages/chunk-map: {}
+
   packages/cli:
     dependencies:
       '@openruntime/bridge':
         specifier: workspace:^
         version: link:../bridge
+      '@openruntime/chunk-map':
+        specifier: workspace:^
+        version: link:../chunk-map
       '@openruntime/core':
         specifier: workspace:^
         version: link:../core
-      '@vercel/next-browser':
-        specifier: 0.7.1
-        version: 0.7.1
-      playwright:
-        specifier: 1.60.0
-        version: 1.60.0
     devDependencies:
       '@rstest/core':
         specifier: 0.10.3
@@ -170,9 +172,25 @@ importers:
 
   packages/modern-plugin:
     dependencies:
+      '@openruntime/chunk-map':
+        specifier: workspace:^
+        version: link:../chunk-map
       '@openruntime/core':
         specifier: workspace:^
         version: link:../core
+      '@openruntime/rspack-plugin':
+        specifier: workspace:^
+        version: link:../rspack-plugin
+    devDependencies:
+      '@rstest/core':
+        specifier: 0.10.3
+        version: 0.10.3
+
+  packages/rspack-plugin:
+    dependencies:
+      '@openruntime/chunk-map':
+        specifier: workspace:^
+        version: link:../chunk-map
     devDependencies:
       '@rstest/core':
         specifier: 0.10.3
@@ -268,14 +286,6 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
-
-  '@next/playwright@16.2.0-canary.80':
-    resolution: {integrity: sha512-dU0ArRa86on/ntA/r5YkWaJr6hJ8Dq3AbWvSWETlBTinXMk5gKZH04jUYMzYXK0kyAQQKWg/hcEjDwGTkOnSqw==}
-    peerDependencies:
-      '@playwright/test': '>=1.0.0'
-    peerDependenciesMeta:
-      '@playwright/test':
-        optional: true
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -394,11 +404,6 @@ packages:
   '@types/node@24.13.1':
     resolution: {integrity: sha512-RSpUJGmvsJ1ZeBehQZFhIdpsz+bIpES0nIQXko4Ybq+N+kX6XvOq3Jo+iJ82FWLdblFq85AsMikd3m35jgezYg==}
 
-  '@vercel/next-browser@0.7.1':
-    resolution: {integrity: sha512-gnCZvBKflr4ItxdRpk4D6SHGj6tjzHaOw4OSsyFBgxpL4d5Ua5dDTDaz6R2KzRBo5WaQlQTMSVSSHC5SViwAIw==}
-    engines: {node: '>=20'}
-    hasBin: true
-
   ansi-colors@4.1.3:
     resolution: {integrity: sha512-/6w/C21Pm1A7aZitlI5Ni/2J6FFQN8i1Cvz3kHABAAbw93v/NlvKdVOqz7CCWz/3iv/JplRSEEZ83XION15ovw==}
     engines: {node: '>=6'}
@@ -478,11 +483,6 @@ packages:
   fs-extra@8.1.0:
     resolution: {integrity: sha512-yhlQgA6mnOJUKOsRUFsgJdQCvkKhcz8tlZG5HBQfReYZy46OwLcY+Zia0mtdHsOo9y/hP+CxMN0TU9QxoOtG4g==}
     engines: {node: '>=6 <7 || >=8'}
-
-  fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
-    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
-    os: [darwin]
 
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
@@ -613,16 +613,6 @@ packages:
     resolution: {integrity: sha512-u9mdErTewKSMsr+ceCt8VcNuNP0ro5AXiPXhUVApuEyqr2Zlvt+DdCFBcm+yGWN8mhOdZJ27meIDbnoZgfzpOw==}
     hasBin: true
 
-  playwright-core@1.60.0:
-    resolution: {integrity: sha512-9bW6zvX/m0lEbgTKJ6YppOKx8H3VOPBMOCFh2irXFOT4BbHgrx5hPjwJYLT40Lu+4qtD36qKc/Hn56StUW57IA==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  playwright@1.60.0:
-    resolution: {integrity: sha512-hheHdokM8cdqCb0lcE3s+zT4t4W+vvjpGxsZlDnikarzx8tSzMebh3UiFtgqwFwnTnjYQcsyMF8ei2mCO/tpeA==}
-    engines: {node: '>=18'}
-    hasBin: true
-
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
@@ -672,10 +662,6 @@ packages:
   slash@3.0.0:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
-
-  source-map-js@1.2.1:
-    resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
-    engines: {node: '>=0.10.0'}
 
   spawndamnit@3.0.1:
     resolution: {integrity: sha512-MmnduQUuHCoFckZoWnXsTg7JaiLBJrKFj9UI2MbRPGaJeVpsLcVBu6P/IGZovziM/YBsellCmsprgNA+w0CzVg==}
@@ -912,8 +898,6 @@ snapshots:
       '@tybys/wasm-util': 0.10.2
     optional: true
 
-  '@next/playwright@16.2.0-canary.80': {}
-
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -1016,14 +1000,6 @@ snapshots:
     dependencies:
       undici-types: 7.18.2
 
-  '@vercel/next-browser@0.7.1':
-    dependencies:
-      '@next/playwright': 16.2.0-canary.80
-      playwright: 1.60.0
-      source-map-js: 1.2.1
-    transitivePeerDependencies:
-      - '@playwright/test'
-
   ansi-colors@4.1.3: {}
 
   ansi-regex@5.0.1: {}
@@ -1101,9 +1077,6 @@ snapshots:
       graceful-fs: 4.2.11
       jsonfile: 4.0.0
       universalify: 0.1.2
-
-  fsevents@2.3.2:
-    optional: true
 
   glob-parent@5.1.2:
     dependencies:
@@ -1208,14 +1181,6 @@ snapshots:
 
   pkg-pr-new@0.0.75: {}
 
-  playwright-core@1.60.0: {}
-
-  playwright@1.60.0:
-    dependencies:
-      playwright-core: 1.60.0
-    optionalDependencies:
-      fsevents: 2.3.2
-
   prettier@2.8.8: {}
 
   quansync@0.2.11: {}
@@ -1250,8 +1215,6 @@ snapshots:
   signal-exit@4.1.0: {}
 
   slash@3.0.0: {}
-
-  source-map-js@1.2.1: {}
 
   spawndamnit@3.0.1:
     dependencies:

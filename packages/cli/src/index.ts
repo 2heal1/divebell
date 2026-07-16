@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { once } from "node:events";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createBridgeServer, type BridgeRuntimeInfo, type BridgeServer } from "@openruntime/bridge";
@@ -19,13 +19,13 @@ import {
   exportAuthProfileWithConnector
 } from "./auth-connector.js";
 import {
-  createConsoleLogScript,
+  createDefaultBrowserRunner,
   createGetWindowScript,
   createInteractiveTextClickScript,
-  createNextBrowserRunner,
   createWaitEvalScript,
   parseBrowserJsonOutput,
   type BrowserRunOptions,
+  type BrowserRunResult,
   type BrowserRunner
 } from "./browser.js";
 import {
@@ -91,11 +91,18 @@ import {
   type CommandOutput
 } from "./output.js";
 import { runRecordCommand } from "./record.js";
+import {
+  openHtmlReport,
+  writeCodeUsageReportHtml,
+  type HtmlReportOpener
+} from "./analysis-report.js";
+import { analyzeCodeUsageFiles } from "./code-usage-analysis.js";
+import { runMemoryCheck } from "./memory-check.js";
 
 export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
 
-type BrowserCommandName = "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "console" | "close";
+type BrowserCommandName = "open" | "goto" | "page-snapshot" | "click" | "fill" | "eval" | "wait-eval" | "get-window" | "screenshot" | "network" | "console" | "memory" | "coverage" | "close";
 type RuntimeResourceCommandName = "targets" | "snapshot" | "events" | "actions";
 
 const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
@@ -110,6 +117,8 @@ const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
   "screenshot",
   "network",
   "console",
+  "memory",
+  "coverage",
   "close"
 ];
 
@@ -140,6 +149,7 @@ export interface CliRunOptions {
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   authConnectorExporter?: typeof exportAuthProfileWithConnector;
   authStateApplier?: AuthStateApplier;
+  htmlReportOpener?: HtmlReportOpener;
 }
 
 export interface CliExtensionRunOptions {
@@ -283,7 +293,7 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
-  const browserRunner = options.browserRunner ?? createNextBrowserRunner();
+  const browserRunner = options.browserRunner ?? createDefaultBrowserRunner();
   const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(import.meta.url);
   const operationLogStore = createFileOperationLogStore(process.cwd(), options.operationLogDirectory);
   const args = parseCliArgs(argv);
@@ -323,6 +333,22 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
         bridgeStarter,
         bridgeStateStore: createBridgeStateStore(args, options.bridgeStateDirectory)
       });
+    }
+
+    if (args.command[0] === "memory" && args.command[1] === "check") {
+      return await runMemoryCheckCommand(args, stdout, browserRunner);
+    }
+
+    if (args.command[0] === "code-usage" && args.command[1] === "analyze") {
+      return await runCodeUsageAnalyzeCommand(args, stdout);
+    }
+
+    if (args.command[0] === "code-usage" && args.command[1] === "report") {
+      return await runCodeUsageReportCommand(
+        args,
+        stdout,
+        options.htmlReportOpener ?? openHtmlReport
+      );
     }
 
     if (isBrowserCommand(args.command[0])) {
@@ -511,6 +537,175 @@ async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], op
   }
 }
 
+async function runCodeUsageAnalyzeCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void }
+): Promise<number> {
+  if (args.command.length !== 2) {
+    throw createError({
+      code: "CODE_USAGE_ANALYZE_USAGE_INVALID",
+      kind: "validation",
+      message: "Code usage analysis accepts options instead of positional paths.",
+      hint: "Run `openruntime code-usage analyze --chunk-map <path> --coverage <path>`.",
+      details: { command: args.command }
+    });
+  }
+  const chunkMap = requireOption(args, "chunk-map");
+  const coverage = getOptionValues(args, "coverage");
+  if (coverage.length === 0) {
+    throw createError({
+      code: "CODE_USAGE_COVERAGE_REQUIRED",
+      kind: "validation",
+      message: "At least one --coverage path is required.",
+      hint: "Repeat --coverage for each recorded phase."
+    });
+  }
+
+  try {
+    const result = await analyzeCodeUsageFiles({
+      chunkMap,
+      coverage,
+      ...createOptionalStringProperty("assets", getOptionValue(args, "assets")),
+      ...createOptionalStringProperty("output", getOptionValue(args, "output"))
+    });
+    createCommandOutput(stdout, args.command.join(" ")).ok({
+      chunkMap: result.chunkMap,
+      coverage: result.coverage,
+      assets: result.assets,
+      output: result.output,
+      phaseCount: result.phaseCount
+    }, "Code usage analysis created.");
+    return 0;
+  } catch (error) {
+    throw createError({
+      code: "CODE_USAGE_ANALYSIS_FAILED",
+      kind: "validation",
+      message: error instanceof Error ? error.message : String(error),
+      details: { chunkMap, coverage }
+    });
+  }
+}
+
+async function runMemoryCheckCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  browserRunner: BrowserRunner
+): Promise<number> {
+  if (args.command.length !== 2) {
+    throw createError({
+      code: "MEMORY_CHECK_USAGE_INVALID",
+      kind: "validation",
+      message: "Memory check accepts options instead of positional paths.",
+      hint: "Run `openruntime memory check --url <url> --scenario <path>`.",
+      details: { command: args.command }
+    });
+  }
+  const url = requireOption(args, "url");
+  const scenarioPath = requireOption(args, "scenario");
+  const warmup = getPositiveIntegerOption(args, "warmup", 3);
+  const iterations = getPositiveIntegerOption(args, "iterations", 12);
+
+  try {
+    const result = await runMemoryCheck({
+      url,
+      scenarioPath,
+      artifactDirectory: getOptionValue(args, "artifact-dir") ?? ".memory-artifacts",
+      warmup,
+      iterations,
+      browserRunner,
+      ui: hasOption(args, "ui")
+    });
+    createCommandOutput(stdout, args.command.join(" ")).ok({
+      reportPath: result.reportPath,
+      baselineSnapshotPath: result.baselineSnapshotPath,
+      finalSnapshotPath: result.finalSnapshotPath,
+      allocationProfilePath: result.allocationProfilePath,
+      verdict: result.report.verdict,
+      reasons: result.report.reasons,
+      deltas: result.report.deltas,
+      slopesPerIteration: result.report.slopesPerIteration,
+      topFunctions: result.report.topFunctions
+    }, "Memory check completed.");
+    return 0;
+  } catch (error) {
+    throw createError({
+      code: "MEMORY_CHECK_FAILED",
+      kind: "browser",
+      message: error instanceof Error ? error.message : String(error),
+      details: { url, scenarioPath, warmup, iterations }
+    });
+  }
+}
+
+function getPositiveIntegerOption(
+  args: ParsedCliArgs,
+  name: string,
+  fallback: number
+): number {
+  const value = getOptionValue(args, name);
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw createError({
+      code: "POSITIVE_INTEGER_OPTION_INVALID",
+      kind: "validation",
+      message: `--${name} must be a positive integer.`,
+      details: { option: name, value }
+    });
+  }
+  return parsed;
+}
+
+async function runCodeUsageReportCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void },
+  opener: HtmlReportOpener
+): Promise<number> {
+  if (args.command.length !== 3) {
+    throw createError({
+      code: "ANALYSIS_REPORT_INPUT_REQUIRED",
+      kind: "validation",
+      message: "A code usage report JSON path is required.",
+      hint: "Run `openruntime code-usage report <report.json>`.",
+      details: { command: args.command }
+    });
+  }
+  const inputPath = requireCommandArgument(args, 2, "analysis report JSON path");
+  let report;
+  try {
+    report = await writeCodeUsageReportHtml({
+      inputPath,
+      ...createOptionalStringProperty("outputPath", getOptionValue(args, "output"))
+    });
+  } catch (error) {
+    throw createError({
+      code: "ANALYSIS_REPORT_INVALID",
+      kind: "validation",
+      message: error instanceof Error ? error.message : String(error),
+      details: { inputPath }
+    });
+  }
+  const opened = !hasOption(args, "no-open");
+  if (opened) {
+    try {
+      await opener(report.htmlPath);
+    } catch (error) {
+      throw createError({
+        code: "ANALYSIS_REPORT_OPEN_FAILED",
+        kind: "internal",
+        message: `The report was created but could not be opened: ${error instanceof Error ? error.message : String(error)}`,
+        hint: `Open ${report.htmlPath} manually.`,
+        details: { ...report }
+      });
+    }
+  }
+  createCommandOutput(stdout, args.command.join(" ")).ok({
+    ...report,
+    opened
+  }, opened ? "Analysis report created and opened." : "Analysis report created.");
+  return 0;
+}
+
 function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[]): Map<string, OpenRuntimeCliExtension> {
   const registry = new Map<string, OpenRuntimeCliExtension>();
   const builtInCommandNames = createBuiltInCommandNameSet();
@@ -557,6 +752,7 @@ function createBuiltInCommandNameSet(): Set<string> {
     "stop",
     "auth",
     "record",
+    "code-usage",
     "runtimes",
     "input-options",
     "run-action",
@@ -1154,7 +1350,7 @@ async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    const result = await browserRunner.run(createOpenBrowserArgs(args, url, sessionId), { ui: hasOption(args, "ui") });
+    const result = await openBrowserPage(browserRunner, args, openedUrl, { ui: hasOption(args, "ui") });
     if (result.exitCode !== 0) {
       throw createError({
         code: "PAGE_OPEN_FAILED",
@@ -1225,6 +1421,38 @@ async function runBrowserCliCommand(
     return await runConsoleCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
+  if (command === "eval") {
+    const file = getOptionValue(commandArgs, "file");
+    if (file !== undefined) {
+      return await runBrowserAndPipe(browserRunner, ["eval", await readFile(file, "utf8")], stdout, stderr);
+    }
+  }
+
+  if (
+    command === "memory"
+    && commandArgs.command[1] === "metrics"
+    && !hasOption(commandArgs, "no-gc")
+  ) {
+    const garbageCollection = await browserRunner.run([
+      "memory",
+      "collect-garbage",
+      "--json"
+    ]);
+    if (garbageCollection.exitCode !== 0) {
+      if (garbageCollection.stdout.length > 0) {
+        stdout.write(garbageCollection.stdout.endsWith("\n")
+          ? garbageCollection.stdout
+          : `${garbageCollection.stdout}\n`);
+      }
+      if (garbageCollection.stderr.length > 0) {
+        stderr.write(garbageCollection.stderr.endsWith("\n")
+          ? garbageCollection.stderr
+          : `${garbageCollection.stderr}\n`);
+      }
+      return garbageCollection.exitCode;
+    }
+  }
+
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(commandArgs), stdout, stderr);
 }
 
@@ -1236,7 +1464,7 @@ async function runClickCommand(
 ): Promise<number> {
   const target = requireCommandArgument(args, 1, "ref, selector, or text");
   if (!shouldPreferInteractiveTextClick(target)) {
-    return await runBrowserAndPipe(browserRunner, ["click", target], stdout, stderr);
+    return await runBrowserAndPipe(browserRunner, ["click", normalizeAgentBrowserTarget(target)], stdout, stderr);
   }
 
   const result = await browserRunner.run(["eval", createInteractiveTextClickScript(target)]);
@@ -1654,12 +1882,35 @@ function createBridgeStateStore(args: ParsedCliArgs, stateDirectory: string | un
   return createFileBridgeStateStore(createBridgeUrl(args), stateDirectory);
 }
 
-function createOpenBrowserArgs(args: ParsedCliArgs, url: string, sessionId: string): string[] {
-  const browserArgs = ["open", withOpenRuntimeSession(url, sessionId)];
+async function openBrowserPage(
+  browserRunner: BrowserRunner,
+  args: ParsedCliArgs,
+  openedUrl: string,
+  options: BrowserRunOptions
+): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
-  if (cookies !== undefined) {
-    browserArgs.push("--cookies", cookies);
+  if (cookies === undefined) {
+    return await browserRunner.run(["open", openedUrl], options);
   }
+
+  const launch = await browserRunner.run(["open"], options);
+  if (launch.exitCode !== 0) return launch;
+  const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
+  if (applyCookies.exitCode !== 0) return applyCookies;
+  return await browserRunner.run(["goto", openedUrl]);
+}
+
+function normalizeAgentBrowserTarget(target: string): string {
+  const trimmed = target.trim();
+  return /^e\d+$/.test(trimmed) ? `@${trimmed}` : target;
+}
+
+function createAgentBrowserScreenshotArgs(args: ParsedCliArgs): string[] {
+  const browserArgs = ["screenshot"];
+  if (hasOption(args, "full-page")) {
+    browserArgs.push("--full");
+  }
+  browserArgs.push(...args.command.slice(1));
   return browserArgs;
 }
 
@@ -1676,30 +1927,81 @@ function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
     return ["snapshot"];
   }
   if (command === "click") {
-    return ["click", requireCommandArgument(args, 1, "ref, selector, or text")];
+    return ["click", normalizeAgentBrowserTarget(requireCommandArgument(args, 1, "ref, selector, or text"))];
   }
   if (command === "fill") {
     return [
       "fill",
-      requireCommandArgument(args, 1, "ref or selector"),
+      normalizeAgentBrowserTarget(requireCommandArgument(args, 1, "ref or selector")),
       requireCommandArgument(args, 2, "value")
     ];
   }
   if (command === "eval") {
-    const file = getOptionValue(args, "file");
-    if (file !== undefined) {
-      return ["eval", "--file", file];
-    }
     return ["eval", requireCommandArgument(args, 1, "eval script")];
   }
   if (command === "screenshot") {
-    const browserArgs = ["screenshot", ...args.command.slice(1)];
-    if (hasOption(args, "full-page")) {
-      browserArgs.push("--full-page");
-    }
-    return browserArgs;
+    return createAgentBrowserScreenshotArgs(args);
+  }
+  if (command === "memory") {
+    return createMemoryBrowserArgs(args);
+  }
+  if (command === "coverage") {
+    return createCoverageBrowserArgs(args);
   }
   return ["close"];
+}
+
+function createMemoryBrowserArgs(args: ParsedCliArgs): string[] {
+  const command = args.command.slice(1);
+  const key = command.slice(0, 2).join(" ");
+  const browserArgs = ["memory"];
+
+  if (["metrics", "status", "collect-garbage", "cancel"].includes(command[0] ?? "") && command.length === 1) {
+    browserArgs.push(command[0] as string);
+  } else if (key === "sampling start" && command.length === 2) {
+    browserArgs.push("sampling", "start");
+    appendBrowserNumberOption(browserArgs, args, "sampling-interval");
+  } else if (key === "sampling stop" && command.length <= 3) {
+    browserArgs.push("sampling", "stop", ...command.slice(2));
+    appendBrowserNumberOption(browserArgs, args, "top");
+    appendBrowserNumberOption(browserArgs, args, "max-size");
+  } else if (command[0] === "snapshot" && command.length <= 2) {
+    browserArgs.push("snapshot", ...command.slice(1));
+    if (hasOption(args, "no-gc")) browserArgs.push("--no-gc");
+    appendBrowserNumberOption(browserArgs, args, "timeout");
+    appendBrowserNumberOption(browserArgs, args, "max-size");
+  } else {
+    throw new Error("Invalid memory command. Run `openruntime --help` to see the supported forms.");
+  }
+  browserArgs.push("--json");
+  return browserArgs;
+}
+
+function createCoverageBrowserArgs(args: ParsedCliArgs): string[] {
+  const command = args.command.slice(1);
+  const operation = command[0];
+  const browserArgs = ["coverage"];
+
+  if (["status", "cancel"].includes(operation ?? "") && command.length === 1) {
+    browserArgs.push(operation as string);
+  } else if (operation === "start" && command.length === 1) {
+    browserArgs.push("start");
+    if (hasOption(args, "call-count")) browserArgs.push("--call-count");
+  } else if (["take", "stop"].includes(operation ?? "") && command.length <= 2) {
+    browserArgs.push(operation as string, ...command.slice(1));
+    const label = getOptionValue(args, "label");
+    if (label !== undefined) browserArgs.push("--label", label);
+    appendBrowserNumberOption(browserArgs, args, "max-size");
+  } else {
+    throw new Error("Invalid coverage command. Run `openruntime --help` to see the supported forms.");
+  }
+  browserArgs.push("--json");
+  return browserArgs;
+}
+
+function appendBrowserNumberOption(browserArgs: string[], args: ParsedCliArgs, name: string): void {
+  const value = getOptionValue(args, name);
+  if (value !== undefined) browserArgs.push(`--${name}`, value);
 }
 
 function shouldPreferInteractiveTextClick(target: string): boolean {
@@ -1744,7 +2046,7 @@ async function runNetworkCommand(
   stderr: { write(chunk: string): void },
   browserRunner: BrowserRunner
 ): Promise<number> {
-  const result = await browserRunner.run(["network"]);
+  const result = await browserRunner.run(["network", "requests"]);
   const urlQuery = getOptionValue(args, "url");
   const output = result.exitCode === 0 && urlQuery !== undefined
     ? filterNetworkOutputByUrl(result.stdout, urlQuery)
@@ -1772,7 +2074,7 @@ async function runConsoleCommand(
   stderr: { write(chunk: string): void },
   browserRunner: BrowserRunner
 ): Promise<number> {
-  const result = await browserRunner.run(["eval", createConsoleLogScript()]);
+  const result = await browserRunner.run(["console", "--json"]);
   if (result.exitCode !== 0) {
     if (result.stdout.length > 0) {
       stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
@@ -1799,16 +2101,24 @@ async function runConsoleCommand(
 }
 
 function parseConsoleEntries(value: unknown): BrowserConsoleEntry[] {
-  if (!Array.isArray(value)) return [];
+  const rawEntries = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.messages)
+      ? value.messages
+      : [];
 
-  return value.flatMap((entry): BrowserConsoleEntry[] => {
+  return rawEntries.flatMap((entry): BrowserConsoleEntry[] => {
     if (entry === null || typeof entry !== "object") return [];
     const item = entry as Record<string, unknown>;
-    const level = normalizeConsoleLevel(item.level);
+    const level = normalizeConsoleLevel(item.level ?? item.type);
     if (level === undefined) return [];
     return [{
       level,
-      args: typeof item.args === "string" ? item.args : String(item.args ?? ""),
+      args: typeof item.text === "string"
+        ? item.text
+        : typeof item.args === "string"
+          ? item.args
+          : String(item.args ?? ""),
       ...createOptionalNumberProperty("timestamp", typeof item.timestamp === "number" ? item.timestamp : undefined)
     }];
   });
@@ -1899,14 +2209,16 @@ function normalizeNetworkOutput(output: string): string {
 
 function getNetworkLineUrl(line: string): string | undefined {
   const parts = line.trim().split(/\s+/);
-  if (parts.length < 6) return undefined;
-  return parts[5];
+  if (/^\[[^\]]+\]$/.test(parts[0] ?? "") && parts.length >= 3) {
+    return parts[2];
+  }
+  return parts.length >= 6 ? parts[5] : undefined;
 }
 
 async function runBrowserOrThrow(browserRunner: BrowserRunner, browserArgs: string[]): Promise<void> {
   const result = await browserRunner.run(browserArgs);
   if (result.exitCode !== 0) {
-    throw new Error(result.stderr.trim() || result.stdout.trim() || `next-browser ${browserArgs[0]} failed.`);
+    throw new Error(result.stderr.trim() || result.stdout.trim() || `Browser command ${browserArgs[0]} failed.`);
   }
 }
 
@@ -2204,6 +2516,16 @@ export type {
   OpenRuntimeBrowserConsoleLevel,
   OpenRuntimeBrowserConsoleOptions,
   OpenRuntimeBrowserConsoleResult,
+  OpenRuntimeBrowserMemoryApi,
+  OpenRuntimeBrowserMemoryBaseResult,
+  OpenRuntimeBrowserMemoryCaptureResult,
+  OpenRuntimeBrowserMemoryMetricsResult,
+  OpenRuntimeBrowserMemorySamplingStartOptions,
+  OpenRuntimeBrowserMemorySamplingStopOptions,
+  OpenRuntimeBrowserMemorySamplingStopResult,
+  OpenRuntimeBrowserMemorySnapshotOptions,
+  OpenRuntimeBrowserMemorySnapshotResult,
+  OpenRuntimeBrowserMemoryStatusResult,
   OpenRuntimeBrowserNetworkOptions,
   OpenRuntimeBrowserScreenshotOptions,
   OpenRuntimeBrowserWaitEvalResult,
@@ -2232,12 +2554,32 @@ export type {
   AuthConnectorStorageState
 } from "./auth-connector.js";
 export {
+  OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV,
+  OPENRUNTIME_AGENT_BROWSER_SESSION_ENV,
+  OPENRUNTIME_BROWSER_PROFILE_ENV,
+  createAgentBrowserEnvironment,
+  createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
-  createNextBrowserEnvironment,
-  createNextBrowserRunner,
+  createDefaultBrowserRunner,
   parseBrowserJsonOutput
 } from "./browser.js";
-export type { BrowserRunner, BrowserRunResult } from "./browser.js";
+export { runMemoryCheck } from "./memory-check.js";
+export type {
+  MemoryCheckPage,
+  MemoryCheckReport,
+  MemoryCheckScenario,
+  MemoryCheckScenarioContext,
+  MemoryMetricPoint,
+  RunMemoryCheckOptions,
+  RunMemoryCheckResult
+} from "./memory-check.js";
+export type {
+  AgentBrowserRunnerOptions,
+  BrowserRunner,
+  BrowserRunOptions,
+  BrowserRunResult,
+  DefaultBrowserRunnerOptions
+} from "./browser.js";
 export {
   fetchInputOptions,
   fetchRuntimeResource,

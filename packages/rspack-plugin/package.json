@@ -1,17 +1,13 @@
 {
-  "name": "@openruntime/cli",
+  "name": "@openruntime/rspack-plugin",
   "version": "0.1.1",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2heal1/openruntime.git",
-    "directory": "packages/cli"
+    "directory": "packages/rspack-plugin"
   },
   "author": "2heal1",
-  "bin": {
-    "openruntime": "./dist/index.js",
-    "opr": "./dist/index.js"
-  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -21,7 +17,6 @@
     }
   },
   "files": [
-    "assets/**/*",
     "dist/**/*.d.ts",
     "dist/**/*.d.ts.map",
     "dist/**/*.js",
@@ -32,12 +27,10 @@
   },
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run"
+    "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
-    "@openruntime/bridge": "workspace:^",
-    "@openruntime/chunk-map": "workspace:^",
-    "@openruntime/core": "workspace:^"
+    "@openruntime/chunk-map": "workspace:^"
   },
   "devDependencies": {
     "@rstest/core": "0.10.3"

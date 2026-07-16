@@ -6,10 +6,5 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   },
-  "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../bridge" },
-    { "path": "../chunk-map" }
-  ]
+  "include": ["src/**/*.ts"]
 }

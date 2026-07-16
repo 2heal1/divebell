@@ -1,7 +1,8 @@
 import { appTools, defineConfig } from "@modern-js/app-tools";
+import { openRuntimeChunkMapPlugin } from "@openruntime/modern-plugin/chunk-map";
 
 export default defineConfig({
-  plugins: [appTools()],
+  plugins: [appTools(), openRuntimeChunkMapPlugin()],
   output: {
     polyfill: "off",
     disableTsChecker: true,

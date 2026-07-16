@@ -1,0 +1,123 @@
+.gitignore
+  s_282a23903ef534::t_a619cf7a048b3c 6-7
+packages/rspack-plugin/package.json
+  s_282a23903ef534::t_42f6b092b2737c 1-38
+packages/cli/src/analysis-report.ts
+  s_282a23903ef534::t_52f8c1ac21d4f0 1-134
+packages/cli/test/analysis-report.test.ts
+  s_282a23903ef534::t_50e53451877599 1-273
+packages/chunk-map/src/types.ts
+  s_282a23903ef534::t_fa14b0d42529a9 1-102
+packages/cli/src/index.ts
+  s_282a23903ef534::t_2512396322921e 3,22,28,94-100,105,120-121,152,296,338-353,540-708,755,1353,1424-1455,1467,1885-1890,1892-1911,1913,1930,1935,1943-1949,1954-2006,2049,2077,2104-2108,2110,2113,2117-2121,2212-2215,2221,2519-2528,2557-2561,2563,2566-2582
+tsconfig.json
+  s_282a23903ef534::t_99545316afdf24 6-7
+packages/modern-plugin/tsconfig.json
+  s_282a23903ef534::t_beb975f5c02c8b 10-14
+demos/modern-basic/scripts/verify-code-usage.mjs
+  s_282a23903ef534::t_334640c99821e1 1-179
+demos/modern-basic/README.md
+  s_282a23903ef534::t_469564a6b6936f 131-192
+packages/cli/package.json
+  s_282a23903ef534::t_0b9392100fa133 39-40
+packages/cli/src/browser.ts
+  s_282a23903ef534::t_db0f9690fa210f 2,4,23-29,31-37,39-41,43-50,53-67,71-78,81,85,88,92,100-130,144,147,151-158,160-166
+packages/modern-plugin/src/chunk-map/index.ts
+  s_282a23903ef534::t_9429eea9bd88ff 1-39
+packages/cli/src/extension-api.ts
+  s_282a23903ef534::t_0f3b0ec969c93e 3,93-256,268-269,422-424,426,436,441,449,461-510,514-531,644-648,650,653,657-661,667-670,740-748
+packages/chunk-map/src/coverage-types.ts
+  s_282a23903ef534::t_9c07e6be75623b 1-92
+packages/cli/src/memory-check.ts
+  s_282a23903ef534::t_044b231d72e834 1-337
+packages/cli/tsconfig.json
+  s_282a23903ef534::t_b00dd92c8a3d1d 10-14
+packages/modern-plugin/src/chunk-map/plugin.ts
+  s_282a23903ef534::t_635ae76886831c 1-41
+packages/rspack-plugin/test/plugin.test.ts
+  s_282a23903ef534::t_2e152a1c79650b 1-76
+packages/modern-plugin/test/chunk-map.test.ts
+  s_282a23903ef534::t_3e43810e85f131 1-266
+demos/modern-basic/scripts/verify-chunk-map.mjs
+  s_282a23903ef534::t_3195a3ef5b1ac1 1-164
+packages/chunk-map/src/index.ts
+  s_282a23903ef534::t_20bb79894adb48 1-30
+docs/cli-reference.md
+  s_282a23903ef534::t_fbb620a7186a60 37-41
+packages/cli/assets/code-usage-report.html
+  s_282a23903ef534::t_b199d35692c7f1 1-511
+packages/chunk-map/src/match.ts
+  s_282a23903ef534::t_c5a65bc61a6378 1-97
+docs/memory-diagnostics-plan.zh-CN.md
+  s_282a23903ef534::t_4d32cbe956e1e2 1-506
+packages/rspack-plugin/src/index.ts
+  s_282a23903ef534::t_9f94383722a751 1-212
+packages/cli/test/memory-check.test.ts
+  s_282a23903ef534::t_d34fff1b162701 1-84
+packages/chunk-map/tsconfig.json
+  s_282a23903ef534::t_b87e9b4bded216 1-10
+packages/cli/test/profile.test.ts
+  s_282a23903ef534::t_03326389e39c87 9-14,19-28,31-38,41-50,52-58,61-72,74-79,82-89,91-98,100-106,108,260,305
+demos/modern-basic/scripts/memory-scenario.mjs
+  s_282a23903ef534::t_e18907bd2212f4 1-28
+packages/cli/test/extensions.test.ts
+  s_282a23903ef534::t_d0929a67a4d31e 140-272
+packages/cli/src/profile.ts
+  s_282a23903ef534::t_d4240bef125e90 99-101
+.changeset/config.json
+  s_282a23903ef534::t_4dc144aa72cbae 9,11-12
+demos/modern-basic/package.json
+  s_282a23903ef534::t_cdc014f78936ba 9,12-13,25
+packages/cli/test/cli-core.test.ts
+  s_282a23903ef534::t_ee4bab7956edd1 161-164
+packages/chunk-map/src/analyze-coverage.ts
+  s_282a23903ef534::t_defff7198b80e6 1-25,28-29,32-33,35-65,67-70,72-167,169-174,176-196,198-202,204-223,225-239,241-252,254-257,260-265,268-272,275-291,293,296-304,306-308,310-321,323,326-328,330-341,343,346-349,351-364,367-370,372-388,390-391,394-399,402-407,410-411,414-415,418-424,427-428,431-435
+packages/cli/README.md
+  s_282a23903ef534::t_3e3939862dba19 1-76
+packages/modern-plugin/package.json
+  s_282a23903ef534::t_fe1a8c28000b88 17-20,37-39
+packages/cli/src/help.ts
+  s_282a23903ef534::t_eced5805617465 113-137
+demos/modern-basic/modern.config.ts
+  s_282a23903ef534::t_100404017fd631 2,5
+packages/chunk-map/package.json
+  s_282a23903ef534::t_1561f7fb6b429f 1-31
+packages/rspack-plugin/tsconfig.json
+  s_282a23903ef534::t_76870ae5fd865a 1-11
+packages/cli/src/code-usage-analysis.ts
+  s_282a23903ef534::t_41ea464364481f 1-159
+packages/chunk-map/src/create.ts
+  s_282a23903ef534::t_c9b5b134e1479a 1-497
+docs/code-usage-analysis.zh-CN.md
+  s_282a23903ef534::t_34674978af3f48 1-267
+packages/cli/test/browser.test.ts
+  s_282a23903ef534::t_5824c2be4d2b1b 366,391,654-656,665-666,669,689-694,717-898
+docs/memory-analysis.zh-CN.md
+  s_282a23903ef534::t_058bec2dca39ba 1-115
+packages/rspack-plugin/tsconfig.test.json
+  s_282a23903ef534::t_94656b64251a8e 1-9
+docs/chunk-map.zh-CN.md
+  s_282a23903ef534::t_47e97fecd39686 1-137
+packages/rspack-plugin/README.md
+  s_282a23903ef534::t_492af6bb51adb6 1-26
+pnpm-lock.yaml
+  s_282a23903ef534::t_d2ce5aae73658f 58-60,149-150,156-158,175-177,181-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e686fd1358b2409ddcbc031696467b43c1de009e",
+  "prompts": {},
+  "sessions": {
+    "s_282a23903ef534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ffb-4dca-7fd0-b8b1-9b306f8c942e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

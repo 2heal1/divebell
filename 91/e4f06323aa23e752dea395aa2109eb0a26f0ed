@@ -1,0 +1,137 @@
+.changeset/config.json
+  s_282a23903ef534::t_7bd7e72744b9c4 9,11-12
+.gitignore
+  s_282a23903ef534::t_f99f5b93326e9b 5-6
+demos/modern-basic/modern.config.ts
+  s_282a23903ef534::t_181c23b5b22323 2,5
+demos/modern-basic/package.json
+  s_282a23903ef534::t_f1d402a4659446 9,12-13,25
+demos/modern-basic/scripts/memory-scenario.mjs
+  s_282a23903ef534::t_765536c2f4d672 1-28
+demos/modern-basic/scripts/verify-chunk-map.mjs
+  s_282a23903ef534::t_b1ed81317dee0d 1-160
+docs/chunk-map.zh-CN.md
+  s_282a23903ef534::t_a9059bc6c499b6 1-137
+docs/cli-reference.md
+  s_282a23903ef534::t_574ed7b257cae8 32-36
+packages/chunk-map/package.json
+  s_282a23903ef534::t_2fb5f0ef7c8ce2 1-31
+packages/chunk-map/src/analyze-coverage.ts
+  s_5797beab94c435::t_bfb22204c2438e 1-437
+packages/chunk-map/src/coverage-types.ts
+  s_b881499c344d69::t_fd79fe538299c2 1-92
+packages/chunk-map/src/create.ts
+  s_282a23903ef534::t_4fab0b1ab2655d 1-497
+packages/chunk-map/src/index.ts
+  s_282a23903ef534::t_12d323ed25ef3c 1-30
+packages/chunk-map/src/match.ts
+  s_282a23903ef534::t_be2fed797db7c5 1-97
+packages/chunk-map/src/types.ts
+  s_282a23903ef534::t_17166c66a4de17 1-2,4-9,11-16,18-22,24-32,34-43,46-57,60-66,69-72,74-102
+packages/chunk-map/tsconfig.json
+  s_282a23903ef534::t_478a7d7b10ab45 1-10
+packages/cli/README.md
+  s_282a23903ef534::t_76cfa04a7ae6d2 1-76
+packages/cli/assets/code-usage-report.html
+  s_282a23903ef534::t_237c5bc4a0d96c 1-511
+packages/cli/package.json
+  s_282a23903ef534::t_c73825b24f3ba5 39-40
+packages/cli/src/analysis-report.ts
+  s_282a23903ef534::t_5d80d6461c0de5 1-134
+packages/cli/src/browser.ts
+  s_282a23903ef534::t_671f1cb23dd919 2,4,23-29,31-37,39-41,43-50,53-67,71-78,81,85,88,92,100-130,144,147,151-158,160-166
+packages/cli/src/code-usage-analysis.ts
+  s_282a23903ef534::t_cc1d73b68c1140 1-159
+packages/cli/src/extension-api.ts
+  s_282a23903ef534::t_117afa57ac7fc1 3,93-256,268-269,422-424,426,436,441,449,461-510,514-531,644-648,650,653,657-661,667-670,740-748
+packages/cli/src/help.ts
+  s_282a23903ef534::t_c5eae039738fc1 88-112
+packages/cli/src/index.ts
+  s_282a23903ef534::t_b14a18ed58eb82 3,22,28,93-99,104,119-120,151,295,325-340,527-695,741,1339,1410-1441,1453,1871-1876,1878-1897,1899,1916,1921,1929-1935,1940-1992,2035,2063,2090-2094,2096,2099,2103-2107,2198-2201,2207,2505-2514,2543-2547,2549,2552-2568
+packages/cli/src/memory-check.ts
+  s_282a23903ef534::t_c87b0e76bd0a34 1-337
+packages/cli/src/profile.ts
+  s_282a23903ef534::t_8994c92f500dea 99-101
+packages/cli/test/analysis-report.test.ts
+  s_282a23903ef534::t_400167531145c9 1-273
+packages/cli/test/browser.test.ts
+  s_282a23903ef534::t_d79dd64de080ca 366,391,654-656,665-666,669,689-694,717-898
+packages/cli/test/cli-core.test.ts
+  s_282a23903ef534::t_44a7937dc38d0e 161-164
+packages/cli/test/extensions.test.ts
+  s_282a23903ef534::t_952b95ad420dd3 140-272
+packages/cli/test/memory-check.test.ts
+  s_282a23903ef534::t_5f96a3414ec832 1-84
+packages/cli/test/profile.test.ts
+  s_282a23903ef534::t_a9b19d43bf282b 9-14,19-28,31-38,41-50,52-58,61-72,74-79,82-89,91-98,100-106,108,260,305
+packages/cli/tsconfig.json
+  s_282a23903ef534::t_664e81ddc84a5e 10-14
+packages/modern-plugin/package.json
+  s_282a23903ef534::t_19226874506a32 17-20,37-39
+packages/modern-plugin/src/chunk-map/index.ts
+  s_282a23903ef534::t_f88c19e90f6906 1-39
+packages/modern-plugin/src/chunk-map/plugin.ts
+  s_282a23903ef534::t_e24963d1999364 1-41
+packages/modern-plugin/test/chunk-map.test.ts
+  s_282a23903ef534::t_2967c6fc8bb0dc 1-266
+packages/modern-plugin/tsconfig.json
+  s_282a23903ef534::t_9233298bec42c9 10-14
+packages/rspack-plugin/README.md
+  s_282a23903ef534::t_b35fb95b004de3 1-26
+packages/rspack-plugin/package.json
+  s_5797beab94c435::t_3e12cb16b91dbe 1-38
+packages/rspack-plugin/src/index.ts
+  s_282a23903ef534::t_1ab7ca820f8bf0 1-212
+packages/rspack-plugin/test/plugin.test.ts
+  s_282a23903ef534::t_f615090f9f0c96 1-76
+packages/rspack-plugin/tsconfig.json
+  s_282a23903ef534::t_f0b5fda866640b 1-11
+packages/rspack-plugin/tsconfig.test.json
+  s_5797beab94c435::t_247cad8efbfb99 1-9
+pnpm-lock.yaml
+  s_245c3da920cb89::t_5723e7448bb5af 58-60,149-150,156-158,175-177,181-193
+tsconfig.json
+  s_282a23903ef534::t_1784b44951f6ed 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "91e4f06323aa23e752dea395aa2109eb0a26f0ed",
+  "prompts": {},
+  "sessions": {
+    "s_245c3da920cb89": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f68cb-7a9b-7092-ab48-02e7b9592595",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_282a23903ef534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ffb-4dca-7fd0-b8b1-9b306f8c942e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_5797beab94c435": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6532-1fe5-7df1-af71-923a548cd513",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_b881499c344d69": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f63c1-cd61-7252-a8b7-4656a5de5164",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

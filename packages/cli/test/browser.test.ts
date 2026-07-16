@@ -363,7 +363,7 @@ test("clicks interactive text with an exact page-side lookup", async () => {
   }
 });
 
-test("delegates click refs and explicit selectors to next-browser", async () => {
+test("delegates refs and explicit selectors to agent-browser", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
   const context = createOpenContextFixture();
@@ -388,7 +388,7 @@ test("delegates click refs and explicit selectors to next-browser", async () => 
 
     assert.equal(output.text(), "clicked\nclicked\nclicked\n");
     assert.deepEqual(browserCalls, [
-      ["click", "e7"],
+      ["click", "@e7"],
       ["click", "[data-testid=refresh-order]"],
       ["click", "text=Refresh order"]
     ]);
@@ -651,13 +651,9 @@ test("filters browser network requests by url", async () => {
         return {
           exitCode: 0,
           stdout: [
-            "# Network requests since last navigation",
-            "# Columns: idx status method type ms url [next-action=...]",
-            "# Use `network <idx>` for headers and body.",
-            "",
-            "0 200 GET fetch 12ms http://app.test/api/orders",
-            "1 200 GET script 3ms http://app.test/assets/app.js",
-            "2 FAIL GET xhr - http://app.test/api/orders/failed"
+            "[123.1] GET http://app.test/api/orders (fetch) 200",
+            "[123.2] GET http://app.test/assets/app.js (script) 200",
+            "[123.3] GET http://app.test/api/orders/failed (xhr)"
           ].join("\n"),
           stderr: ""
         };
@@ -666,14 +662,11 @@ test("filters browser network requests by url", async () => {
 
     assert.equal(exitCode, 0);
     assert.equal(output.text(), [
-      "# Network requests since last navigation",
-      "# Columns: idx status method type ms url [next-action=...]",
-      "",
-      "0 200 GET fetch 12ms http://app.test/api/orders",
-      "2 FAIL GET xhr - http://app.test/api/orders/failed",
+      "[123.1] GET http://app.test/api/orders (fetch) 200",
+      "[123.3] GET http://app.test/api/orders/failed (xhr)",
       ""
     ].join("\n"));
-    assert.deepEqual(browserCalls, [["network"]]);
+    assert.deepEqual(browserCalls, [["network", "requests"]]);
   } finally {
     context.cleanup();
   }
@@ -693,12 +686,12 @@ test("filters browser console entries by level query and limit", async () => {
         browserCalls.push(args);
         return {
           exitCode: 0,
-          stdout: JSON.stringify([
-            { level: "warn", args: "React warning", timestamp: 1 },
-            { level: "error", args: "plain error", timestamp: 2 },
-            { level: "error", args: "ReactCurrentDispatcher failed", timestamp: 3 },
-            { level: "error", args: "React hydration failed", timestamp: 4 }
-          ]),
+          stdout: JSON.stringify({ messages: [
+            { type: "warn", text: "React warning", timestamp: 1 },
+            { type: "error", text: "plain error", timestamp: 2 },
+            { type: "error", text: "ReactCurrentDispatcher failed", timestamp: 3 },
+            { type: "error", text: "React hydration failed", timestamp: 4 }
+          ] }),
           stderr: ""
         };
       })
@@ -721,15 +714,188 @@ test("filters browser console entries by level query and limit", async () => {
         error: 1
       }
     });
-    assert.deepEqual(browserCalls, [[
-      "eval",
-      [
-        "(() => {",
-        "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
-        "  return Array.isArray(logs) ? logs : [];",
-        "})()"
-      ].join("\n")
-    ]]);
+    assert.deepEqual(browserCalls, [["console", "--json"]]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards supported memory commands as JSON requests", async () => {
+  const context = createOpenContextFixture();
+  const commands = [
+    ["memory", "metrics"],
+    ["memory", "status"],
+    ["memory", "sampling", "start"],
+    ["memory", "sampling", "stop"],
+    ["memory", "snapshot"],
+    ["memory", "collect-garbage"],
+    ["memory", "cancel"]
+  ];
+  const calls: string[][] = [];
+
+  try {
+    for (const command of commands) {
+      const output = createOutput();
+      const exitCode = await runCli(command, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          calls.push(args);
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ command: args.slice(0, -1) }),
+            stderr: ""
+          };
+        })
+      });
+
+      assert.equal(exitCode, 0);
+      assert.equal(output.errorText(), "");
+      assert.deepEqual(JSON.parse(output.text()), { command });
+    }
+    assert.deepEqual(calls, commands.flatMap((command) =>
+      command[1] === "metrics"
+        ? [
+            ["memory", "collect-garbage", "--json"],
+            ["memory", "metrics", "--json"]
+          ]
+        : [[...command, "--json"]]));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("allows advanced callers to read memory metrics without garbage collection", async () => {
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+  const output = createOutput();
+
+  try {
+    const exitCode = await runCli(["memory", "metrics", "--no-gc"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        return { exitCode: 0, stdout: "{}", stderr: "" };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [["memory", "metrics", "--json"]]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards memory capture paths and limits", async () => {
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+  const commands = [
+    {
+      cli: ["memory", "sampling", "start", "--sampling-interval", "1024"],
+      browser: ["memory", "sampling", "start", "--sampling-interval", "1024", "--json"]
+    },
+    {
+      cli: ["memory", "sampling", "stop", "/tmp/result.heapprofile", "--top", "10", "--max-size", "4096"],
+      browser: ["memory", "sampling", "stop", "/tmp/result.heapprofile", "--top", "10", "--max-size", "4096", "--json"]
+    },
+    {
+      cli: ["memory", "snapshot", "/tmp/result.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192"],
+      browser: ["memory", "snapshot", "/tmp/result.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192", "--json"]
+    }
+  ];
+
+  try {
+    for (const command of commands) {
+      const output = createOutput();
+      const exitCode = await runCli(command.cli, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          calls.push(args);
+          return { exitCode: 0, stdout: "{}", stderr: "" };
+        })
+      });
+      assert.equal(exitCode, 0);
+      assert.equal(output.errorText(), "");
+    }
+    assert.deepEqual(calls, commands.map((command) => command.browser));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards supported coverage commands as JSON requests", async () => {
+  const context = createOpenContextFixture();
+  const commands = [
+    ["coverage", "status"],
+    ["coverage", "start"],
+    ["coverage", "take"],
+    ["coverage", "stop"],
+    ["coverage", "cancel"]
+  ];
+  const calls: string[][] = [];
+
+  try {
+    for (const command of commands) {
+      const output = createOutput();
+      const exitCode = await runCli(command, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          calls.push(args);
+          return { exitCode: 0, stdout: JSON.stringify({ command: args.slice(0, -1) }), stderr: "" };
+        })
+      });
+      assert.equal(exitCode, 0);
+      assert.equal(output.errorText(), "");
+      assert.deepEqual(JSON.parse(output.text()), { command });
+    }
+    assert.deepEqual(calls, commands.map((command) => [...command, "--json"]));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards coverage paths, labels, call counts, and limits", async () => {
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+  const commands = [
+    {
+      cli: ["coverage", "start", "--call-count"],
+      browser: ["coverage", "start", "--call-count", "--json"]
+    },
+    {
+      cli: ["coverage", "take", "/tmp/first.coverage.json", "--label", "first-screen", "--max-size", "4096"],
+      browser: ["coverage", "take", "/tmp/first.coverage.json", "--label", "first-screen", "--max-size", "4096", "--json"]
+    },
+    {
+      cli: ["coverage", "stop", "/tmp/orders.coverage.json", "--label", "orders"],
+      browser: ["coverage", "stop", "/tmp/orders.coverage.json", "--label", "orders", "--json"]
+    }
+  ];
+
+  try {
+    for (const command of commands) {
+      const output = createOutput();
+      const exitCode = await runCli(command.cli, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          calls.push(args);
+          return { exitCode: 0, stdout: "{}", stderr: "" };
+        })
+      });
+      assert.equal(exitCode, 0);
+      assert.equal(output.errorText(), "");
+    }
+    assert.deepEqual(calls, commands.map((command) => command.browser));
   } finally {
     context.cleanup();
   }

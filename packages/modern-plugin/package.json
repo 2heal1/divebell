@@ -14,6 +14,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./chunk-map": {
+      "types": "./dist/chunk-map/index.d.ts",
+      "default": "./dist/chunk-map/index.js"
     }
   },
   "files": [
@@ -30,7 +34,9 @@
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
-    "@openruntime/core": "workspace:^"
+    "@openruntime/chunk-map": "workspace:^",
+    "@openruntime/core": "workspace:^",
+    "@openruntime/rspack-plugin": "workspace:^"
   },
   "peerDependencies": {
     "@modern-js/runtime": ">=3.2.2"

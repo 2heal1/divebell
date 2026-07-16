@@ -1,7 +1,7 @@
 import { OPEN_RUNTIME_SESSION_QUERY_PARAM, type RuntimeDataCondition, type RuntimeSnapshot, type RuntimeTargetDescriptor } from "@openruntime/core";
 import type { BridgeRuntimeInfo } from "@openruntime/bridge";
+import { readFile } from "node:fs/promises";
 import {
-  createConsoleLogScript,
   createGetWindowScript,
   createWaitEvalScript,
   parseBrowserJsonOutput,
@@ -90,6 +90,170 @@ export interface OpenRuntimeBrowserWaitEvalResult {
   reason?: string;
 }
 
+export interface OpenRuntimeBrowserMemoryBaseResult {
+  memoryApiVersion: number;
+}
+
+export interface OpenRuntimeBrowserMemoryMetricsResult extends OpenRuntimeBrowserMemoryBaseResult {
+  browserSession: string;
+  targetId: string;
+  url: string;
+  timestamp: string;
+  jsHeapUsedSize: number | null;
+  jsHeapTotalSize: number | null;
+  documents: number | null;
+  nodes: number | null;
+  jsEventListeners: number | null;
+}
+
+export type OpenRuntimeBrowserMemoryStatusResult = OpenRuntimeBrowserMemoryBaseResult & (
+  | { active: false }
+  | {
+      active: true;
+      captureId: string;
+      captureType: "sampling" | "snapshot";
+      browserSession: string;
+      targetId: string;
+      url: string;
+      startedAt: string;
+      outputPath: string | null;
+      samplingInterval: number | null;
+      cancelRequested: boolean;
+    }
+);
+
+export interface OpenRuntimeBrowserMemoryCaptureResult extends OpenRuntimeBrowserMemoryBaseResult {
+  captureId: string;
+  captureType: "sampling" | "snapshot";
+  browserSession: string;
+  targetId: string;
+  url: string;
+  startedAt: string;
+}
+
+export interface OpenRuntimeBrowserMemorySamplingStopResult extends OpenRuntimeBrowserMemoryCaptureResult {
+  finishedAt: string;
+  samplingInterval: number;
+  path: string;
+  fileSize: number;
+  allocationBytes: number;
+  topFunctions: Array<{
+    functionName: string;
+    url: string;
+    lineNumber: number;
+    columnNumber: number;
+    selfSize: number;
+  }>;
+}
+
+export interface OpenRuntimeBrowserMemorySnapshotResult extends OpenRuntimeBrowserMemoryCaptureResult {
+  finishedAt: string;
+  path: string;
+  fileSize: number;
+  chunkCount: number;
+  durationMs: number;
+  garbageCollectedFirst: boolean;
+  valid: boolean;
+}
+
+export interface OpenRuntimeBrowserMemorySamplingStartOptions {
+  samplingInterval?: number;
+}
+
+export interface OpenRuntimeBrowserMemoryMetricsOptions {
+  collectGarbage?: boolean;
+}
+
+export interface OpenRuntimeBrowserMemorySamplingStopOptions {
+  path?: string;
+  top?: number;
+  maxSize?: number;
+}
+
+export interface OpenRuntimeBrowserMemorySnapshotOptions {
+  path?: string;
+  collectGarbage?: boolean;
+  timeout?: number;
+  maxSize?: number;
+}
+
+export interface OpenRuntimeBrowserMemoryApi {
+  metrics<T = OpenRuntimeBrowserMemoryMetricsResult>(
+    options?: OpenRuntimeBrowserMemoryMetricsOptions
+  ): Promise<T>;
+  status<T = OpenRuntimeBrowserMemoryStatusResult>(): Promise<T>;
+  sampling: {
+    start<T = OpenRuntimeBrowserMemoryCaptureResult>(
+      options?: OpenRuntimeBrowserMemorySamplingStartOptions
+    ): Promise<T>;
+    stop<T = OpenRuntimeBrowserMemorySamplingStopResult>(
+      options?: OpenRuntimeBrowserMemorySamplingStopOptions
+    ): Promise<T>;
+  };
+  snapshot<T = OpenRuntimeBrowserMemorySnapshotResult>(
+    options?: OpenRuntimeBrowserMemorySnapshotOptions
+  ): Promise<T>;
+  collectGarbage<T = unknown>(): Promise<T>;
+  cancel<T = unknown>(): Promise<T>;
+}
+
+export interface OpenRuntimeBrowserCoverageBaseResult {
+  coverageApiVersion: number;
+}
+
+export type OpenRuntimeBrowserCoverageStatusResult = OpenRuntimeBrowserCoverageBaseResult & (
+  | { active: false }
+  | {
+      active: true;
+      captureId: string;
+      browserSession: string;
+      targetId: string;
+      url: string;
+      startedAt: string;
+      callCount: boolean;
+      checkpointCount: number;
+    }
+);
+
+export interface OpenRuntimeBrowserCoverageStartOptions {
+  callCount?: boolean;
+}
+
+export interface OpenRuntimeBrowserCoverageCheckpointOptions {
+  path?: string;
+  label?: string;
+  maxSize?: number;
+}
+
+export interface OpenRuntimeBrowserCoverageCheckpointResult extends OpenRuntimeBrowserCoverageBaseResult {
+  captureId: string;
+  checkpoint: number;
+  label: string | null;
+  browserSession: string;
+  targetId: string;
+  url: string;
+  capturedAt: string;
+  path: string;
+  fileSize: number;
+  scriptCount: number;
+  functionCount: number;
+  rangeCount: number;
+}
+
+export interface OpenRuntimeBrowserCoverageApi {
+  status<T = OpenRuntimeBrowserCoverageStatusResult>(): Promise<T>;
+  start<T = OpenRuntimeBrowserCoverageStatusResult>(
+    options?: OpenRuntimeBrowserCoverageStartOptions
+  ): Promise<T>;
+  take<T = OpenRuntimeBrowserCoverageCheckpointResult>(
+    options?: OpenRuntimeBrowserCoverageCheckpointOptions
+  ): Promise<T>;
+  stop<T = OpenRuntimeBrowserCoverageCheckpointResult>(
+    options?: OpenRuntimeBrowserCoverageCheckpointOptions
+  ): Promise<T>;
+  cancel<T = unknown>(): Promise<T>;
+}
+
 export interface OpenRuntimeBrowserApi {
   pageSnapshot<T = unknown>(): Promise<T>;
   click(target: string): Promise<string>;
@@ -101,6 +265,8 @@ export interface OpenRuntimeBrowserApi {
   screenshot(name?: string, options?: OpenRuntimeBrowserScreenshotOptions): Promise<string>;
   network(options?: OpenRuntimeBrowserNetworkOptions): Promise<string>;
   console(options?: OpenRuntimeBrowserConsoleOptions): Promise<OpenRuntimeBrowserConsoleResult>;
+  memory: OpenRuntimeBrowserMemoryApi;
+  coverage: OpenRuntimeBrowserCoverageApi;
 }
 
 export interface OpenRuntimeExtensionApi {
@@ -253,11 +419,11 @@ function createOpenRuntimeBrowserApi(options: {
   };
 
   return {
-    pageSnapshot: async () => await runJson(["snapshot"]),
-    click: async (target) => await runText(["click", target]),
-    fill: async (target, value) => await runText(["fill", target, value]),
+    pageSnapshot: async <T = unknown>() => await runText(["snapshot"]) as T,
+    click: async (target) => await runText(["click", normalizeAgentBrowserTarget(target)]),
+    fill: async (target, value) => await runText(["fill", normalizeAgentBrowserTarget(target), value]),
     eval: async (script) => await runJson(["eval", script]),
-    evalFile: async (path) => await runJson(["eval", "--file", path]),
+    evalFile: async (path) => await runJson(["eval", await readFile(path, "utf8")]),
     waitEval: async (script, waitOptions = {}) =>
       await waitForBrowserEval(options.browserRunner, script, waitOptions.timeout),
     getWindow: async (path) => await runJson(["eval", createGetWindowScript(path)]),
@@ -267,12 +433,12 @@ function createOpenRuntimeBrowserApi(options: {
         args.push(name);
       }
       if (screenshotOptions.fullPage === true) {
-        args.push("--full-page");
+        args.push("--full");
       }
       return await runText(args);
     },
     network: async (networkOptions = {}) => {
-      const output = await runText(["network"]);
+      const output = await runText(["network", "requests"]);
       return networkOptions.url === undefined
         ? normalizeNetworkOutput(output)
         : filterNetworkOutputByUrl(output, networkOptions.url);
@@ -280,7 +446,7 @@ function createOpenRuntimeBrowserApi(options: {
     console: async (consoleOptions = {}) => {
       const levels = normalizeConsoleLevels(consoleOptions.levels);
       const entries = filterConsoleEntries(
-        parseConsoleEntries(await runJson(["eval", createConsoleLogScript()])),
+        parseConsoleEntries(await runJson(["console", "--json"])),
         {
           ...(levels === undefined ? {} : { levels }),
           ...(consoleOptions.query === undefined ? {} : { query: consoleOptions.query }),
@@ -292,7 +458,75 @@ function createOpenRuntimeBrowserApi(options: {
         summary: summarizeConsoleEntries(entries)
       };
     },
+    memory: {
+      metrics: async (memoryOptions = {}) => {
+        if (memoryOptions.collectGarbage !== false) {
+          await runJson(["memory", "collect-garbage", "--json"]);
+        }
+        return await runJson(["memory", "metrics", "--json"]);
+      },
+      status: async () => await runJson(["memory", "status", "--json"]),
+      sampling: {
+        start: async (memoryOptions = {}) => {
+          const args = ["memory", "sampling", "start"];
+          appendNumberOption(args, "sampling-interval", memoryOptions.samplingInterval);
+          args.push("--json");
+          return await runJson(args);
+        },
+        stop: async (memoryOptions = {}) => {
+          const args = ["memory", "sampling", "stop"];
+          if (memoryOptions.path !== undefined) args.push(memoryOptions.path);
+          appendNumberOption(args, "top", memoryOptions.top);
+          appendNumberOption(args, "max-size", memoryOptions.maxSize);
+          args.push("--json");
+          return await runJson(args);
+        }
+      },
+      snapshot: async (memoryOptions = {}) => {
+        const args = ["memory", "snapshot"];
+        if (memoryOptions.path !== undefined) args.push(memoryOptions.path);
+        if (memoryOptions.collectGarbage === false) args.push("--no-gc");
+        appendNumberOption(args, "timeout", memoryOptions.timeout);
+        appendNumberOption(args, "max-size", memoryOptions.maxSize);
+        args.push("--json");
+        return await runJson(args);
+      },
+      collectGarbage: async () => await runJson(["memory", "collect-garbage", "--json"]),
+      cancel: async () => await runJson(["memory", "cancel", "--json"])
+    },
+    coverage: {
+      status: async () => await runJson(["coverage", "status", "--json"]),
+      start: async (coverageOptions = {}) => {
+        const args = ["coverage", "start"];
+        if (coverageOptions.callCount === true) args.push("--call-count");
+        args.push("--json");
+        return await runJson(args);
+      },
+      take: async (coverageOptions = {}) =>
+        await runJson(createCoverageCheckpointArgs("take", coverageOptions)),
+      stop: async (coverageOptions = {}) =>
+        await runJson(createCoverageCheckpointArgs("stop", coverageOptions)),
+      cancel: async () => await runJson(["coverage", "cancel", "--json"])
+    }
   };
+}
+
+function createCoverageCheckpointArgs(
+  operation: "take" | "stop",
+  options: OpenRuntimeBrowserCoverageCheckpointOptions
+): string[] {
+  const args = ["coverage", operation];
+  if (options.path !== undefined) args.push(options.path);
+  if (options.label !== undefined) args.push("--label", options.label);
+  appendNumberOption(args, "max-size", options.maxSize);
+  args.push("--json");
+  return args;
+}
+
+function appendNumberOption(args: string[], name: string, value: number | undefined): void {
+  if (value !== undefined) {
+    args.push(`--${name}`, String(value));
+  }
 }
 
 function hasRuntimeSelectorValue(selector: RuntimeSelector): boolean {
@@ -407,19 +641,31 @@ async function waitForBrowserEval(
 }
 
 function parseConsoleEntries(value: unknown): OpenRuntimeBrowserConsoleEntry[] {
-  if (!Array.isArray(value)) return [];
+  const rawEntries = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.messages)
+      ? value.messages
+      : [];
 
-  return value.flatMap((entry): OpenRuntimeBrowserConsoleEntry[] => {
+  return rawEntries.flatMap((entry): OpenRuntimeBrowserConsoleEntry[] => {
     if (entry === null || typeof entry !== "object") return [];
     const item = entry as Record<string, unknown>;
-    const level = normalizeConsoleLevel(item.level);
+    const level = normalizeConsoleLevel(item.level ?? item.type);
     if (level === undefined) return [];
     return [{
       level,
-      args: typeof item.args === "string" ? item.args : String(item.args ?? ""),
+      args: typeof item.text === "string"
+        ? item.text
+        : typeof item.args === "string"
+          ? item.args
+          : String(item.args ?? ""),
       ...(typeof item.timestamp === "number" ? { timestamp: item.timestamp } : {})
     }];
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function normalizeConsoleLevels(
@@ -491,8 +737,15 @@ function normalizeNetworkOutput(output: string): string {
 
 function getNetworkLineUrl(line: string): string | undefined {
   const parts = line.trim().split(/\s+/);
-  if (parts.length < 6) return undefined;
-  return parts[5];
+  if (/^\[[^\]]+\]$/.test(parts[0] ?? "") && parts.length >= 3) {
+    return parts[2];
+  }
+  return parts.length >= 6 ? parts[5] : undefined;
+}
+
+function normalizeAgentBrowserTarget(target: string): string {
+  const trimmed = target.trim();
+  return /^e\d+$/.test(trimmed) ? `@${trimmed}` : target;
 }
 
 function createOptionalNumberProperty<Name extends string>(

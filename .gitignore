@@ -3,4 +3,5 @@ dist/
 skills/record-openruntime-workflow/references/openruntime-cli/*.tgz
 *.tsbuildinfo
 .DS_Store
-
+demos/modern-basic/.memory-artifacts/
+demos/modern-basic/.code-usage-artifacts/

@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { createRequire } from "node:module";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -20,37 +20,111 @@ export interface BrowserRunner {
   run(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
 }
 
-export const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
-const NEXT_BROWSER_PROFILE_ENV = "OPENRUNTIME_NEXT_BROWSER_PROFILE_DIR";
-
-export interface NextBrowserRunnerOptions {
-  profileDirectory?: string;
+interface AgentBrowserJsonResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+  errorCode?: string;
 }
 
-export function createNextBrowserRunner(options: NextBrowserRunnerOptions = {}): BrowserRunner {
+export const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
+export const OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV = "OPENRUNTIME_AGENT_BROWSER_EXECUTABLE";
+export const OPENRUNTIME_AGENT_BROWSER_SESSION_ENV = "OPENRUNTIME_AGENT_BROWSER_SESSION";
+const AGENT_BROWSER_PROFILE_ENV = "AGENT_BROWSER_PROFILE";
+const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
+const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
+const AGENT_BROWSER_STATE_ENV = "AGENT_BROWSER_STATE";
+const OPENRUNTIME_AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
+
+export interface AgentBrowserRunnerOptions {
+  executablePath?: string;
+  prefixArgs?: string[];
+  profileDirectory?: string;
+  session?: string;
+  env?: NodeJS.ProcessEnv;
+  cwd?: string;
+}
+
+export interface DefaultBrowserRunnerOptions {
+  env?: NodeJS.ProcessEnv;
+  agentBrowser?: AgentBrowserRunnerOptions;
+}
+
+export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions = {}): BrowserRunner {
+  const env = options.env ?? process.env;
+  return createAgentBrowserRunner({
+    ...options.agentBrowser,
+    env
+  });
+}
+
+export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}): BrowserRunner {
+  const baseEnv = options.env ?? process.env;
+  const executablePath = options.executablePath
+    ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV]
+    ?? "agent-browser";
+  const prefixArgs = options.prefixArgs ?? [];
+
   return {
     run: async (args, runOptions = {}) => {
       try {
-        const result = await execFileAsync(process.execPath, [resolveNextBrowserCliPath(), ...args], {
-          env: createNextBrowserEnvironment(process.env, options.profileDirectory, runOptions),
+        const result = await execFileAsync(executablePath, [...prefixArgs, ...args], {
+          cwd: options.cwd,
+          env: createAgentBrowserEnvironment(
+            baseEnv,
+            options.profileDirectory,
+            options.session,
+            runOptions
+          ),
           maxBuffer: 1024 * 1024 * 10
         });
-        return {
+        return normalizeAgentBrowserRunResult({
           exitCode: 0,
           stdout: result.stdout,
           stderr: result.stderr
-        };
+        }, args);
       } catch (error) {
         if (isExecError(error)) {
-          return {
+          return normalizeAgentBrowserRunResult({
             exitCode: typeof error.code === "number" ? error.code : 1,
             stdout: typeof error.stdout === "string" ? error.stdout : "",
             stderr: typeof error.stderr === "string" ? error.stderr : error.message
-          };
+          }, args);
         }
         throw error;
       }
     }
+  };
+}
+
+function normalizeAgentBrowserRunResult(result: BrowserRunResult, args: string[]): BrowserRunResult {
+  if (!args.includes("--json") || result.stdout.trim().length === 0) {
+    return result;
+  }
+
+  let response: AgentBrowserJsonResponse;
+  try {
+    response = JSON.parse(result.stdout) as AgentBrowserJsonResponse;
+  } catch {
+    return result;
+  }
+  if (typeof response.success !== "boolean") {
+    return result;
+  }
+  if (!response.success) {
+    const error = response.error ?? (result.stderr.trim() || "agent-browser command failed");
+    return {
+      exitCode: result.exitCode === 0 ? 1 : result.exitCode,
+      stdout: response.errorCode === undefined
+        ? ""
+        : `${JSON.stringify({ errorCode: response.errorCode, error })}\n`,
+      stderr: error
+    };
+  }
+  return {
+    exitCode: result.exitCode,
+    stdout: response.data === undefined ? "" : `${JSON.stringify(response.data)}\n`,
+    stderr: result.stderr
   };
 }
 
@@ -67,21 +141,29 @@ export function resolveBrowserProfileDirectory(
   );
 }
 
-export function createNextBrowserEnvironment(
+export function createAgentBrowserEnvironment(
   baseEnv: NodeJS.ProcessEnv,
   profileDirectory?: string,
+  session?: string,
   options: BrowserRunOptions = {}
 ): NodeJS.ProcessEnv {
   const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
-  const envWithoutBrowserMode = { ...baseEnv };
-  delete envWithoutBrowserMode.NEXT_BROWSER_HEADLESS;
-
-  return {
-    ...envWithoutBrowserMode,
-    [NEXT_BROWSER_PROFILE_ENV]: resolvedProfileDirectory,
-    ...(options.ui === true ? {} : { NEXT_BROWSER_HEADLESS: "1" }),
-    NODE_OPTIONS: appendNodeImportOption(baseEnv.NODE_OPTIONS, resolveNextBrowserProfilePreloadUrl())
+  const authStatePath = join(resolvedProfileDirectory, OPENRUNTIME_AUTH_STATE_FILE_NAME);
+  const env: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    [AGENT_BROWSER_PROFILE_ENV]: resolvedProfileDirectory,
+    [AGENT_BROWSER_SESSION_ENV]: session
+      ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_SESSION_ENV]
+      ?? "openruntime",
+    ...(existsSync(authStatePath) ? { [AGENT_BROWSER_STATE_ENV]: authStatePath } : {})
   };
+
+  if (options.ui === true) {
+    env[AGENT_BROWSER_HEADED_ENV] = "1";
+  } else {
+    delete env[AGENT_BROWSER_HEADED_ENV];
+  }
+  return env;
 }
 
 export function createGetWindowScript(path: string): string {
@@ -107,15 +189,6 @@ export function createGetWindowScript(path: string): string {
 
 export function createWaitEvalScript(script: string): string {
   return `Boolean((${script}))`;
-}
-
-export function createConsoleLogScript(): string {
-  return [
-    "(() => {",
-    "  const logs = window.__NEXT_BROWSER_CONSOLE_LOGS__;",
-    "  return Array.isArray(logs) ? logs : [];",
-    "})()"
-  ].join("\n");
 }
 
 export function createInteractiveTextClickScript(text: string): string {
@@ -196,24 +269,6 @@ export function parseBrowserJsonOutput(stdout: string): unknown {
     return undefined;
   }
   return JSON.parse(trimmed);
-}
-
-function resolveNextBrowserCliPath(): string {
-  const require = createRequire(import.meta.url);
-  const packageJsonPath = require.resolve("@vercel/next-browser/package.json");
-  return join(dirname(packageJsonPath), "dist", "cli.js");
-}
-
-function resolveNextBrowserProfilePreloadUrl(): string {
-  return new URL("./next-browser-profile-preload.js", import.meta.url).href;
-}
-
-function appendNodeImportOption(nodeOptions: string | undefined, importUrl: string): string {
-  const importOption = `--import ${importUrl}`;
-  if (nodeOptions === undefined || nodeOptions.trim().length === 0) {
-    return importOption;
-  }
-  return `${nodeOptions} ${importOption}`;
 }
 
 function isExecError(error: unknown): error is Error & {

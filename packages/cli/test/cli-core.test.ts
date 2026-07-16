@@ -158,6 +158,10 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /openruntime profile /);
   assert.match(markdown, /openruntime get-window <path>/);
   assert.match(markdown, /openruntime network \[--url <query>\]/);
+  assert.match(markdown, /openruntime memory <metrics\|status\|sampling start/);
+  assert.match(markdown, /openruntime code-usage analyze --chunk-map <path>/);
+  assert.match(markdown, /openruntime code-usage report <report\.json>/);
+  assert.match(markdown, /openruntime coverage <status\|start\|take\|stop\|cancel>/);
   assert.match(markdown, /openruntime verify .*<target-id> <status>/);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
   assert.doesNotMatch(markdown, /openruntime commands list/);

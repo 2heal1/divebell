@@ -111,6 +111,31 @@ export const cliCommandReferences: CliCommandReference[] = [
     description: "兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。"
   },
   {
+    category: "Bridge and Browser",
+    usage: "openruntime memory <metrics|status|sampling start|sampling stop|snapshot|cancel> [path] [options]",
+    description: "采集当前页面的内存指标、分配记录或快照；metrics 默认先清理临时内存，--no-gc 可读取清理前的瞬时值。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]",
+    description: "按场景自动完成预热、重复操作、指标、分配记录和前后快照，并输出内存检查结果。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
+    description: "分阶段记录当前页面实际执行过的代码，用于识别已加载但未使用的业务代码和第三方包。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
+    description: "使用指定的 Chunk Map、构建文件和页面代码记录，分析分块、源码文件与依赖包的实际使用情况。"
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
+    description: "把代码使用分析结果生成可交互报告并打开；--no-open 只生成文件。"
+  },
+  {
     category: "Runtime",
     usage: "openruntime runtimes [--bridge <url>]",
     description: "列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。"

@@ -34,6 +34,11 @@
 - `openruntime screenshot [name] [--full-page]` - 通过 OpenRuntime 浏览器层截图。
 - `openruntime network [--url <query>]` - 查看当前页面的网络请求列表，并可按 URL 文本过滤。
 - `openruntime console [--level <level>] [--query <keyword>] [--limit <n>]` - 兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。
+- `openruntime memory <metrics|status|sampling start|sampling stop|snapshot|cancel> [path] [options]` - 采集当前页面的内存指标、分配记录或快照；metrics 默认先清理临时内存，--no-gc 可读取清理前的瞬时值。
+- `openruntime memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]` - 按场景自动完成预热、重复操作、指标、分配记录和前后快照，并输出内存检查结果。
+- `openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]` - 分阶段记录当前页面实际执行过的代码，用于识别已加载但未使用的业务代码和第三方包。
+- `openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]` - 使用指定的 Chunk Map、构建文件和页面代码记录，分析分块、源码文件与依赖包的实际使用情况。
+- `openruntime code-usage report <report.json> [--output <report.html>] [--no-open]` - 把代码使用分析结果生成可交互报告并打开；--no-open 只生成文件。
 
 ### Runtime
 

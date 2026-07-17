@@ -1,0 +1,29 @@
+docs/cli-extensions.md
+  s_2b055a7f79fea3::t_5367382f083751 129
+docs/cli-extensions.zh-CN.md
+  s_2b055a7f79fea3::t_673e431a84966f 129
+docs/cli-reference.md
+  s_2b055a7f79fea3::t_cf8fdb61263fe3 5
+docs/temporary-agent-browser-fork.zh-CN.md
+  s_2b055a7f79fea3::t_2e6c122e3349c3 34
+packages/cli/package.json
+  s_2b055a7f79fea3::t_35b833d67faa8f 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d0437a618bb417428974559921de07ed914bdee9",
+  "prompts": {},
+  "sessions": {
+    "s_2b055a7f79fea3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6dea-2b6f-76b2-9459-4e5e91318e98",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

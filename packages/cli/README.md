@@ -6,11 +6,13 @@ OpenRuntime CLI is the direct entry point for coding agents. It opens pages, man
 
 ```sh
 pnpm add -D @openruntime/cli
-npm install -g agent-browser
-agent-browser install
+pnpm dlx @openruntime/agent-browser@0.32.0-openruntime.1 install
 ```
 
-The package provides both `openruntime` and `opr` binaries. All browser operations use `agent-browser`; set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only when using a custom or locally built binary.
+The package provides both `openruntime` and `opr` binaries. It currently includes
+`@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code
+coverage commands required by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE`
+only when using a custom or locally built binary.
 
 ## Minimal Development Loop
 

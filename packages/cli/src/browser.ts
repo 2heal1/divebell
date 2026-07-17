@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const require = createRequire(import.meta.url);
 
 export interface BrowserRunResult {
   exitCode: number;
@@ -60,10 +62,17 @@ export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions 
 
 export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}): BrowserRunner {
   const baseEnv = options.env ?? process.env;
-  const executablePath = options.executablePath
-    ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV]
-    ?? "agent-browser";
-  const prefixArgs = options.prefixArgs ?? [];
+  const configuredExecutablePath = options.executablePath
+    ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV];
+  const bundledEntryPath = configuredExecutablePath === undefined
+    ? resolveBundledAgentBrowserEntryPath()
+    : undefined;
+  const executablePath = configuredExecutablePath
+    ?? (bundledEntryPath === undefined ? "agent-browser" : process.execPath);
+  const prefixArgs = [
+    ...(bundledEntryPath === undefined ? [] : [bundledEntryPath]),
+    ...(options.prefixArgs ?? [])
+  ];
 
   return {
     run: async (args, runOptions = {}) => {
@@ -95,6 +104,14 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
       }
     }
   };
+}
+
+export function resolveBundledAgentBrowserEntryPath(): string | undefined {
+  try {
+    return require.resolve("@openruntime/agent-browser/bin/agent-browser.js");
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeAgentBrowserRunResult(result: BrowserRunResult, args: string[]): BrowserRunResult {

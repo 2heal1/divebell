@@ -10,7 +10,8 @@ import {
   createAgentBrowserEnvironment,
   createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
-  createDefaultBrowserRunner
+  createDefaultBrowserRunner,
+  resolveBundledAgentBrowserEntryPath
 } from "../dist/browser.js";
 import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/profile.js";
 
@@ -77,6 +78,16 @@ test("uses agent-browser as the default browser runner", async () => {
     args: ["snapshot"],
     session: "default-agent-browser"
   });
+});
+
+test("uses the packaged OpenRuntime agent-browser by default", async () => {
+  const entryPath = resolveBundledAgentBrowserEntryPath();
+  assert.match(entryPath ?? "", /@openruntime[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
+
+  const runner = createDefaultBrowserRunner({ env: {} });
+  const result = await runner.run(["--version"]);
+  assert.equal(result.exitCode, 0);
+  assert.match(result.stdout, /agent-browser 0\.32\.0-openruntime\.1/);
 });
 
 test("preserves agent-browser memory error codes while exposing a readable error", async () => {

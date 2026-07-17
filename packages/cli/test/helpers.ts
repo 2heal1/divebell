@@ -3,8 +3,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { BrowserRunOptions, BrowserRunner } from "../dist/browser.js";
-import { createOperationLogKey } from "../dist/operation-log.js";
+import type { BrowserRunOptions, BrowserRunner } from "../dist/features/browser/runner.js";
+import { createOperationLogKey } from "../dist/utils/operation-log.js";
 
 process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
 

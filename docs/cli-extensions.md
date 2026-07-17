@@ -126,7 +126,7 @@ export default defineCommand({
 });
 ```
 
-The exported object follows `OpenRuntimeCommandDefinition`. The OpenRuntime API object follows [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts).
+The exported object follows `OpenRuntimeCommandDefinition`. The OpenRuntime API object follows [`packages/cli/src/features/extension/api.ts`](../packages/cli/src/features/extension/api.ts).
 
 Use `validateCommand(...)` when tests or CI need to check a command export directly:
 

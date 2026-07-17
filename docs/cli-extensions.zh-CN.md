@@ -126,7 +126,7 @@ export default defineCommand({
 });
 ```
 
-导出的对象对应 `OpenRuntimeCommandDefinition`。`options.openruntime` 对应 [`packages/cli/src/extension-api.ts`](../packages/cli/src/extension-api.ts)。
+导出的对象对应 `OpenRuntimeCommandDefinition`。`options.openruntime` 对应 [`packages/cli/src/features/extension/api.ts`](../packages/cli/src/features/extension/api.ts)。
 
 如果需要在测试或 CI 中直接校验导出对象，可以使用 `validateCommand(...)`：
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "@rstest/core";
 
-import { createCodeUsageReportHtml } from "../dist/analysis-report.js";
+import { createCodeUsageReportHtml } from "../dist/features/analysis/report.js";
 import { runCli } from "../dist/index.js";
 
 import { createOutput } from "./helpers.js";

@@ -1,0 +1,294 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { parseBrowserJsonOutput, type BrowserRunner } from "../browser/runner.js";
+import { fetchRuntimeResource, fetchRuntimes, selectRuntime, type Fetcher, type RuntimeSelector } from "../runtime/client.js";
+import { readJsonLinesIfExists } from "./storage.js";
+import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
+
+const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
+export async function setRecordingInstrumentation(
+  browserRunner: BrowserRunner,
+  outputDirectory: string,
+  startedAt: Date
+): Promise<OperationEntry> {
+  const started = new Date();
+  const scriptPath = join(outputDirectory, "recording-instrumentation.js");
+  await writeFile(scriptPath, createInteractionRecorderScript(startedAt.getTime()), "utf8");
+  const result = await browserRunner.run(["instrumentation", "set", scriptPath]);
+  return {
+    type: "browser.instrumentation.set",
+    path: scriptPath,
+    startedAt: started.toISOString(),
+    endedAt: new Date().toISOString(),
+    exitCode: result.exitCode,
+    stdout: result.stdout.trim(),
+    stderr: result.stderr.trim()
+  };
+}
+
+export async function collectInteractionEvents(outputDirectory: string, browserRunner: BrowserRunner): Promise<{
+  operation: OperationEntry;
+  interactions: InteractionEvent[];
+}> {
+  const started = new Date();
+  const result = await browserRunner.run(["browser-logs"]);
+  const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(join(outputDirectory, "interaction-events.raw.jsonl"));
+  const browserLogInteractions = result.exitCode === 0 ? parseInteractionEventsFromBrowserLogs(result.stdout) : [];
+  const interactions = mergeInteractionEvents(persistedInteractions, browserLogInteractions);
+  return {
+    operation: {
+      type: "interactions.collect",
+      startedAt: started.toISOString(),
+      endedAt: new Date().toISOString(),
+      exitCode: result.exitCode,
+      count: interactions.length,
+      persistedCount: persistedInteractions.length,
+      browserLogCount: browserLogInteractions.length,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim()
+    },
+    interactions
+  };
+}
+
+export async function sampleRuntime(
+  fetcher: Fetcher,
+  bridgeUrl: string,
+  selector: RuntimeSelector,
+  sampledAt: Date
+): Promise<RuntimeSample> {
+  try {
+    const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
+    const runtime = selectRuntime(runtimes, selector);
+    const [targets, snapshot, actions, events] = await Promise.all([
+      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "targets", new URLSearchParams()),
+      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "snapshot", new URLSearchParams()),
+      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "actions", new URLSearchParams()),
+      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "events", createEventsQuery())
+    ]);
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: true,
+      runtimes,
+      runtime,
+      resources: {
+        targets: targets.result,
+        snapshot: snapshot.result,
+        actions: actions.result,
+        events: events.result
+      }
+    };
+  } catch (error) {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+export async function samplePageSnapshot(
+  browserRunner: BrowserRunner,
+  sampledAt: Date
+): Promise<PageSnapshotSample> {
+  const result = await browserRunner.run(["snapshot"]);
+  if (result.exitCode !== 0) {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: false,
+      exitCode: result.exitCode,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim()
+    };
+  }
+
+  try {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: true,
+      exitCode: result.exitCode,
+      result: parseBrowserJsonOutput(result.stdout)
+    };
+  } catch {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: true,
+      exitCode: result.exitCode,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim()
+    };
+  }
+}
+
+export async function sampleDomSnapshot(
+  browserRunner: BrowserRunner,
+  sampledAt: Date
+): Promise<DomSnapshotSample> {
+  const result = await browserRunner.run(["eval", createDomSnapshotScript()]);
+  if (result.exitCode !== 0) {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: false,
+      exitCode: result.exitCode,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim()
+    };
+  }
+
+  try {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: true,
+      exitCode: result.exitCode,
+      result: parseBrowserJsonOutput(result.stdout)
+    };
+  } catch {
+    return {
+      sampledAt: sampledAt.toISOString(),
+      ok: true,
+      exitCode: result.exitCode,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim()
+    };
+  }
+}
+
+function createDomSnapshotScript(): string {
+  return [
+    "(() => {",
+    "  const html = document.documentElement?.outerHTML ?? '';",
+    "  return {",
+    "    url: location.href,",
+    "    title: document.title,",
+    "    capturedAt: Date.now(),",
+    "    htmlLength: html.length,",
+    "    html: html.slice(0, 200000)",
+    "  };",
+    "})()"
+  ].join("\n");
+}
+
+function createInteractionRecorderScript(recordingStartedAtMs: number): string {
+  return [
+    "(() => {",
+    "  const marker = " + JSON.stringify(RECORD_EVENT_CONSOLE_MARKER) + ";",
+    "  const startedAt = " + JSON.stringify(recordingStartedAtMs) + ";",
+    "  if (window.__OPENRUNTIME_INTERACTION_RECORDER_INSTALLED__) return;",
+    "  window.__OPENRUNTIME_INTERACTION_RECORDER_INSTALLED__ = true;",
+    "  const textOf = (value, max = 160) => String(value ?? '').replace(/\\s+/g, ' ').trim().slice(0, max);",
+    "  const cssEscape = (value) => {",
+    "    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);",
+    "    return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\\\$&');",
+    "  };",
+    "  const selectorFor = (element) => {",
+    "    if (!(element instanceof Element)) return undefined;",
+    "    const test = (selector) => {",
+    "      try { return document.querySelectorAll(selector).length === 1; } catch { return false; }",
+    "    };",
+    "    const id = element.getAttribute('id');",
+    "    if (id) {",
+    "      const selector = `#${cssEscape(id)}`;",
+    "      if (test(selector)) return selector;",
+    "    }",
+    "    const attrs = ['data-testid', 'data-test-id', 'aria-label', 'name', 'placeholder', 'title'];",
+    "    for (const attr of attrs) {",
+    "      const value = element.getAttribute(attr);",
+    "      if (!value) continue;",
+    "      const selector = `${element.tagName.toLowerCase()}[${attr}=${JSON.stringify(value)}]`;",
+    "      if (test(selector)) return selector;",
+    "    }",
+    "    const parts = [];",
+    "    let current = element;",
+    "    while (current && current.nodeType === 1 && current !== document.documentElement) {",
+    "      let part = current.tagName.toLowerCase();",
+    "      const parent = current.parentElement;",
+    "      if (!parent) break;",
+    "      const siblings = Array.from(parent.children).filter((item) => item.tagName === current.tagName);",
+    "      if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;",
+    "      parts.unshift(part);",
+    "      const selector = parts.join(' > ');",
+    "      if (test(selector)) return selector;",
+    "      current = parent;",
+    "    }",
+    "    return parts.join(' > ') || undefined;",
+    "  };",
+    "  const targetOf = (event) => {",
+    "    const element = event.target instanceof Element ? event.target : undefined;",
+    "    if (!element) return undefined;",
+    "    const input = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : undefined;",
+    "    const value = input ? (input.type === 'password' ? '[redacted]' : input.value) : undefined;",
+    "    return {",
+    "      selector: selectorFor(element),",
+    "      tagName: element.tagName.toLowerCase(),",
+    "      role: element.getAttribute('role') ?? undefined,",
+    "      name: element.getAttribute('name') ?? undefined,",
+    "      inputType: input instanceof HTMLInputElement ? input.type : undefined,",
+    "      text: textOf(element.textContent),",
+    "      value",
+    "    };",
+    "  };",
+    "  const emit = (type, event, extra = {}) => {",
+    "    try {",
+    "      const entry = {",
+    "        type,",
+    "        timeMs: Math.max(0, Date.now() - startedAt),",
+    "        url: location.href,",
+    "        title: document.title,",
+    "        target: targetOf(event),",
+    "        ...extra",
+    "      };",
+    "      console.info(marker + JSON.stringify(entry));",
+    "    } catch (error) {",
+    "      console.info(marker + JSON.stringify({ type: 'recorder-error', timeMs: Math.max(0, Date.now() - startedAt), message: String(error) }));",
+    "    }",
+    "  };",
+    "  document.addEventListener('click', (event) => emit('click', event, { pointer: { x: event.clientX, y: event.clientY, button: event.button } }), true);",
+    "  document.addEventListener('input', (event) => emit('input', event), true);",
+    "  document.addEventListener('change', (event) => emit('change', event), true);",
+    "  document.addEventListener('keydown', (event) => emit('keydown', event, { key: event.key, code: event.code, altKey: event.altKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey }), true);",
+    "  document.addEventListener('submit', (event) => emit('submit', event), true);",
+    "  console.info(marker + JSON.stringify({ type: 'recorder-ready', timeMs: Math.max(0, Date.now() - startedAt), url: location.href, title: document.title }));",
+    "})()"
+  ].join("\n");
+}
+
+function parseInteractionEventsFromBrowserLogs(stdout: string): InteractionEvent[] {
+  const events: InteractionEvent[] = [];
+  const seen = new Set<string>();
+  for (const line of stdout.split(/\r?\n/u)) {
+    const markerIndex = line.indexOf(RECORD_EVENT_CONSOLE_MARKER);
+    if (markerIndex < 0) continue;
+    const payload = line.slice(markerIndex + RECORD_EVENT_CONSOLE_MARKER.length).trim();
+    if (payload.length === 0 || seen.has(payload)) continue;
+    try {
+      const parsed = JSON.parse(payload) as InteractionEvent;
+      if (typeof parsed.type === "string" && typeof parsed.timeMs === "number") {
+        seen.add(payload);
+        events.push(parsed);
+      }
+    } catch {
+      // Ignore unrelated console lines that happen to contain the marker.
+    }
+  }
+  return events.sort((left, right) => left.timeMs - right.timeMs);
+}
+
+export function mergeInteractionEvents(...sources: InteractionEvent[][]): InteractionEvent[] {
+  const merged: InteractionEvent[] = [];
+  const seen = new Set<string>();
+  for (const source of sources) {
+    for (const event of source) {
+      const key = JSON.stringify(event);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(event);
+    }
+  }
+  return merged.sort((left, right) => left.timeMs - right.timeMs);
+}
+
+function createEventsQuery(): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("limit", "50");
+  return params;
+}

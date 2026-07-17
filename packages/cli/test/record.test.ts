@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
-import type { BrowserRunOptions, BrowserRunner } from "../dist/browser.js";
+import type { BrowserRunOptions, BrowserRunner } from "../dist/features/browser/runner.js";
 
 test("records browser snapshots and OpenRuntime runtime samples into an orrec directory", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-recording-"));

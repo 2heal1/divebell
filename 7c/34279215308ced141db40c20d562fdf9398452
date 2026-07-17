@@ -1,0 +1,33 @@
+docs/memory-diagnostics-plan.zh-CN.md
+  s_282a23903ef534::t_2b4f453d8b794e 478-481,486,504
+docs/temporary-agent-browser-fork.zh-CN.md
+  s_282a23903ef534::t_27a9a76de178c5 1-37
+packages/cli/README.md
+  s_282a23903ef534::t_1edabeae1e9193 9,12-15
+packages/cli/package.json
+  s_282a23903ef534::t_082c828d038abe 38
+packages/cli/src/browser.ts
+  s_282a23903ef534::t_f3681ffb18e636 3,9,65-75,109-116
+packages/cli/test/profile.test.ts
+  s_282a23903ef534::t_ff092e7214e776 13-14,83-92
+pnpm-lock.yaml
+  s_282a23903ef534::t_9e9e116046bc5c 153-155,305-309,921-922
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c34279215308ced141db40c20d562fdf9398452",
+  "prompts": {},
+  "sessions": {
+    "s_282a23903ef534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ffb-4dca-7fd0-b8b1-9b306f8c942e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

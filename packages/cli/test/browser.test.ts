@@ -5,8 +5,8 @@ import { join } from "node:path";
 import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
-import { type BrowserRunOptions } from "../dist/browser.js";
-import { createOperationSessionId } from "../dist/operation-log.js";
+import { type BrowserRunOptions } from "../dist/features/browser/runner.js";
+import { createOperationSessionId } from "../dist/utils/operation-log.js";
 
 import { assertOpenOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 

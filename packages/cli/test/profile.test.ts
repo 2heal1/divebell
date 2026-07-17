@@ -5,15 +5,15 @@ import { dirname, join } from "node:path";
 import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
-import { convertAuthConnectorPayloadToStorageState, exportAuthProfileWithConnector, writeAuthConnectorExtension } from "../dist/auth-connector.js";
+import { convertAuthConnectorPayloadToStorageState, exportAuthProfileWithConnector, writeAuthConnectorExtension } from "../dist/features/auth/connector/index.js";
 import {
   createAgentBrowserEnvironment,
   createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
   createDefaultBrowserRunner,
   resolveBundledAgentBrowserEntryPath
-} from "../dist/browser.js";
-import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/profile.js";
+} from "../dist/features/browser/runner.js";
+import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/features/auth/profile.js";
 
 import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 

@@ -6,8 +6,8 @@ import { pathToFileURL } from "node:url";
 import { test } from "@rstest/core";
 
 import { cliPackageInfo, defineCommand, getCliCommandName, runCli, validateCommand } from "../dist/index.js";
-import { isEntryPoint } from "../dist/entry.js";
-import { createCliReferenceMarkdown } from "../dist/help.js";
+import { isEntryPoint } from "../dist/utils/entry.js";
+import { createCliReferenceMarkdown } from "../dist/commands/help.js";
 
 import { createBrowserRunner, createOutput } from "./helpers.js";
 

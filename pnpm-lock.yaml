@@ -150,6 +150,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@openruntime/agent-browser':
+        specifier: 0.32.0-openruntime.1
+        version: 0.32.0-openruntime.1
       '@openruntime/bridge':
         specifier: workspace:^
         version: link:../bridge
@@ -298,6 +301,11 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
+
+  '@openruntime/agent-browser@0.32.0-openruntime.1':
+    resolution: {integrity: sha512-U7OGEFeuO7M/DFmxiGqxnAi4CS7bjeS2srnJI7TkV5c74L7eEuCorAbcTLfu5R40XRHeQYrvixa487xFbYIixA==}
+    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
+    hasBin: true
 
   '@rsbuild/core@2.0.11':
     resolution: {integrity: sha512-Mpp/viUSkVdSWJkFipdZxM2nUztrBwSnMm6Q86bPzLHtHnXqQ3VFpSMlA4wWRyySNddP6s6efKiVpx0ZOCf7Gg==}
@@ -909,6 +917,8 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
+
+  '@openruntime/agent-browser@0.32.0-openruntime.1': {}
 
   '@rsbuild/core@2.0.11':
     dependencies:

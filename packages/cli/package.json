@@ -35,6 +35,7 @@
     "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
+    "@openruntime/agent-browser": "0.32.0-openruntime.1",
     "@openruntime/bridge": "workspace:^",
     "@openruntime/chunk-map": "workspace:^",
     "@openruntime/core": "workspace:^"

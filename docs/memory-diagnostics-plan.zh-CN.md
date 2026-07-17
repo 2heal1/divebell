@@ -475,11 +475,15 @@ MF 归属只能提高诊断范围和责任判断，不能替代 heap snapshot �
 
 ## 4. 当前准备状态与最终联调入口
 
-截至 2026-07-15，已使用支持内存命令的 agent-browser fork 完成命令和协议核对。该 fork 基于 agent-browser `0.31.2`，内存实现直接复用 daemon 维护的当前页面连接，不要求用户提供 CDP 地址或调试端口。
+截至 2026-07-17，支持内存命令的 fork 已发布为
+`@openruntime/agent-browser@0.32.0-openruntime.1`。它基于 agent-browser `0.32.0`，
+内存实现直接复用 daemon 维护的当前页面连接，不要求用户提供 CDP 地址或调试端口。
+临时使用范围和恢复官方版本的条件见[临时版本记录](temporary-agent-browser-fork.zh-CN.md)。
 
 OpenRuntime 侧已经完成以下接入：
 
 - `agent-browser` 已成为唯一浏览器入口，不再需要浏览器后端切换配置。
+- OpenRuntime CLI 已固定依赖当前临时版本，普通用户不再需要另外安装或指定本地构建。
 - 可通过 `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` 指定自有构建，不要求它已经安装到全局命令目录。
 - OpenRuntime 与 agent-browser 共用稳定的浏览器 session 和持久化 profile，内存采集与页面操作落在同一个页面会话。
 - CLI 已提供 `memory metrics`、`memory status`、`memory sampling start`、`memory sampling stop`、`memory snapshot` 和 `memory cancel` 的 JSON 调用入口；`metrics` 默认自动完成垃圾回收，底层清理命令仅保留给高级调用。
@@ -497,7 +501,7 @@ OpenRuntime 侧已经完成以下接入：
 
 基础能力联调已经完成。下一阶段进入性能优化专项，剩余工作为：
 
-1. 构建 fork 的发布产物，并在实际项目中由 OpenRuntime 指向该文件运行。
+1. 跟踪上游合入和正式发版，满足恢复条件后切回官方版本。
 2. 使用一个确定泄漏和一个已经修复的页面做端到端对照。
 3. 在真实 Modern.js 路由和 MF remote 场景中补齐源码归属、保留链分析和修复后复测。
 

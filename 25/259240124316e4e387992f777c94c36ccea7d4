@@ -1,0 +1,45 @@
+.changeset/fix-agent-browser-auth.md
+  s_cfe7292ad59ed2::t_26a40400fe5e6a 1-5
+README.md
+  s_cfe7292ad59ed2::t_232388f9d28401 85
+README.zh-CN.md
+  s_cfe7292ad59ed2::t_1327aece26fe65 85
+docs/auth-profiles.md
+  s_cfe7292ad59ed2::t_5f85c8940f0e8a 3,29-32,53-54
+docs/auth-profiles.zh-CN.md
+  s_cfe7292ad59ed2::t_7ce74f0f4f337e 3,29-32,53-54
+docs/memory-diagnostics-plan.zh-CN.md
+  s_cfe7292ad59ed2::t_24342fd1e6b4be 488
+packages/cli/src/commands/auth.ts
+  s_cfe7292ad59ed2::t_a9320e9bdc963d 8,10,29,35-55,101-107,114-118,169-170
+packages/cli/src/commands/browser.ts
+  s_cfe7292ad59ed2::t_ca29c9b6ce35af 22,40-42
+packages/cli/src/features/auth/browser-state.ts
+  s_cfe7292ad59ed2::t_197db7b7767644 1-172
+packages/cli/src/features/auth/profile.ts
+  s_cfe7292ad59ed2::t_85943dfa7960b6 54,59-63,94,100-103,106
+packages/cli/src/features/browser/runner.ts
+  s_cfe7292ad59ed2::t_036dc221fe2e01 2,21,33-34,48-51,58-59,142,145-146,148-149,159-176
+packages/cli/src/features/browser/types.ts
+  s_cfe7292ad59ed2::t_1958d8247bcf09 13-16
+packages/cli/test/profile.test.ts
+  s_cfe7292ad59ed2::t_b4b0fe405b683f 14,17-18,22,25-29,32,38,40,44,46,55,65,119,124-130,136-344,389,401,412,485,490,501-506,536,541,552-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "25259240124316e4e387992f777c94c36ccea7d4",
+  "prompts": {},
+  "sessions": {
+    "s_cfe7292ad59ed2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f798f-31d9-7f80-be8b-3259a9504a5f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

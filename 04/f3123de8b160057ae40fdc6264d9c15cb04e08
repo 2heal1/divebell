@@ -1,0 +1,69 @@
+.changeset/quiet-bridges-connect.md
+  s_c2f2499cef82fb::t_7bdc6b33045c25 1-8
+docs/cli-reference.md
+  s_c2f2499cef82fb::t_53f50840be229a 22
+packages/bridge/src/runtime-store.ts
+  s_c2f2499cef82fb::t_09b30120f291e8 69,73-75,87-89,91,104-106,108,186-200
+packages/bridge/src/server.ts
+  s_c2f2499cef82fb::t_382efd2d08f627 111-120,180,184-186,199,202-205,211,251-267
+packages/bridge/src/types.ts
+  s_c2f2499cef82fb::t_039b096d8cec9a 9-10,12
+packages/bridge/test/server.test.ts
+  s_c2f2499cef82fb::t_b9bbd5ebf86572 186-238
+packages/cli/src/commands/browser.ts
+  s_c2f2499cef82fb::t_acd01b6068f80c 1-4,7,48,160,164,168-183,190-199
+packages/cli/src/commands/help.ts
+  s_c2f2499cef82fb::t_b57857318ebc3a 58
+packages/cli/src/commands/runtime.ts
+  s_c2f2499cef82fb::t_5f678c8f03c548 126
+packages/cli/src/features/bridge/inject.ts
+  s_c2f2499cef82fb::t_f24a13ad3c3654 1-12,14-16,18-28,31-46,49-54,57-100,103-138,140-142,144-149,151-160,162,165-166,169-175,178-225,228-235,238-239,242-243
+packages/cli/src/features/runtime/client.ts
+  s_c2f2499cef82fb::t_4d96ae02295af6 119-120,141-144
+packages/cli/src/runner.ts
+  s_c2f2499cef82fb::t_319ef877df1bfd 31-33
+packages/cli/test/browser.test.ts
+  s_c2f2499cef82fb::t_aaada4dce60e17 55,88-92,210-219,243-251
+packages/cli/test/runtime-read.test.ts
+  s_c2f2499cef82fb::t_850bef9eddee4b 263-298
+packages/cli/test/stage2-flow.test.ts
+  s_c2f2499cef82fb::t_c4e83bdd01c941 2,4-5,9-13,21-24,86-91,93-150,158-159,181-182,208-209,230-231,241-248,250-251,257-260,270,276,295,356-357,362,370-381,408-413
+packages/core/src/index.ts
+  s_c2f2499cef82fb::t_528a1a38108a75 7-16
+packages/core/src/runtime/window.ts
+  s_c2f2499cef82fb::t_d31984c32f39ba 6-30,35-36,42-44,48-70,77-165,177
+packages/core/test/runtime/window-api.test.ts
+  s_c2f2499cef82fb::t_997405876b614b 7,9,22-80
+packages/modern-plugin/src/index.ts
+  s_c2f2499cef82fb::t_bbc0ed117a1457 7-8
+packages/modern-plugin/src/plugin/types.ts
+  s_c2f2499cef82fb::t_5bb4fa279c2355 1,15,21-24
+packages/modern-plugin/src/runtime/resolve-runtime.ts
+  s_c2f2499cef82fb::t_49620f2b50ac82 13-15,21,25-34
+scripts/verify-stage7-release.mjs
+  s_c2f2499cef82fb::t_86000813475edb 2,5,66-68,96-99,101,147,161-162,164,166-167,172-202,239-240
+skills/openruntime/references/core.md
+  s_c2f2499cef82fb::t_dc77397a664363 127-129,132-136,138-142,144-145,894,1011,1024,1040,1042
+skills/openruntime/references/modernjs.md
+  s_c2f2499cef82fb::t_b5a69169aeeb7b 52-53,58-59,61-63,66,79,82
+skills/openruntime/scripts/workflow.mjs
+  s_c2f2499cef82fb::t_ac0e1d23a757ad 109,430,447,461,472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "04f3123de8b160057ae40fdc6264d9c15cb04e08",
+  "prompts": {},
+  "sessions": {
+    "s_c2f2499cef82fb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7936-f155-7d32-89d0-a2431ec50e97",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

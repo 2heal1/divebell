@@ -156,9 +156,6 @@ importers:
       '@openruntime/bridge':
         specifier: workspace:^
         version: link:../bridge
-      '@openruntime/chunk-map':
-        specifier: workspace:^
-        version: link:../chunk-map
       '@openruntime/core':
         specifier: workspace:^
         version: link:../core
@@ -166,6 +163,14 @@ importers:
       '@rstest/core':
         specifier: 0.10.3
         version: 0.10.3
+
+  packages/command-code-usage: {}
+
+  packages/command-imitate: {}
+
+  packages/command-memory: {}
+
+  packages/command-trobule-shooting: {}
 
   packages/core:
     devDependencies:

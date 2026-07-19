@@ -1,14 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Fetcher } from "../runtime/client.js";
-import { createOptionalNumberProperty, createOptionalStringProperty } from "../../utils/command.js";
 import { readJsonLinesIfExists, writeJsonFile } from "./storage.js";
 import { normalizeTranscriptSegments, normalizeTranscriptWords } from "./script.js";
 import type { AudioCaptureSummary, AudioChunkEntry, LiveTranscriptEvent, OperationEntry, RecordingFiles, TranscriptData, TranscriptSegment, TranscriptWord } from "./types.js";
 
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
 export async function transcribeAudioFile(
-  fetcher: Fetcher,
+  fetcher: typeof fetch,
   audioPath: string,
   apiKey: string,
   model: string
@@ -51,6 +49,20 @@ export async function transcribeAudioFile(
     segments: normalizeTranscriptSegments(parsed.segments, parsed.text),
     words: normalizeTranscriptWords(parsed.words)
   };
+}
+
+function createOptionalNumberProperty<Name extends string>(
+  name: Name,
+  value: number | undefined
+): Record<Name, number> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, number>;
+}
+
+function createOptionalStringProperty<Name extends string>(
+  name: Name,
+  value: string | undefined
+): Record<Name, string> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, string>;
 }
 
 export async function collectAudioCapture(

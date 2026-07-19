@@ -11,34 +11,10 @@
   },
   "packages": [
     {
-      "name": "@next/playwright",
+      "name": "@openruntime/agent-browser",
       "source": "registry",
-      "specifier": "@next/playwright@16.2.0-canary.80",
-      "file": "next-playwright-16.2.0-canary.80.tgz"
-    },
-    {
-      "name": "source-map-js",
-      "source": "registry",
-      "specifier": "source-map-js@1.2.1",
-      "file": "source-map-js-1.2.1.tgz"
-    },
-    {
-      "name": "playwright-core",
-      "source": "registry",
-      "specifier": "playwright-core@1.60.0",
-      "file": "playwright-core-1.60.0.tgz"
-    },
-    {
-      "name": "playwright",
-      "source": "registry",
-      "specifier": "playwright@1.60.0",
-      "file": "playwright-1.60.0.tgz"
-    },
-    {
-      "name": "@vercel/next-browser",
-      "source": "registry",
-      "specifier": "@vercel/next-browser@0.7.1",
-      "file": "vercel-next-browser-0.7.1.tgz"
+      "specifier": "@openruntime/agent-browser@0.32.0-openruntime.1",
+      "file": "openruntime-agent-browser-0.32.0-openruntime.1.tgz"
     },
     {
       "name": "@openruntime/core",
@@ -57,6 +33,12 @@
       "source": "workspace",
       "directory": "packages/cli",
       "file": "openruntime-cli-0.1.1.tgz"
+    },
+    {
+      "name": "@openruntime/command-imitate",
+      "source": "workspace",
+      "directory": "packages/command-imitate",
+      "file": "openruntime-command-imitate-0.1.1.tgz"
     }
   ]
 }

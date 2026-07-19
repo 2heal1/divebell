@@ -9,7 +9,11 @@
       "@openruntime/chunk-map",
       "@openruntime/cli",
       "@openruntime/modern-plugin",
-      "@openruntime/rspack-plugin"
+      "@openruntime/rspack-plugin",
+      "@openruntime/command-code-usage",
+      "@openruntime/command-trobule-shooting",
+      "@openruntime/command-imitate",
+      "@openruntime/command-memory"
     ]
   ],
   "linked": [],

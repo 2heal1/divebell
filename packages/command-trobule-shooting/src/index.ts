@@ -1,0 +1,88 @@
+import type {
+  OpenRuntimeCommandDefinition,
+  ParsedCliArgs
+} from "@openruntime/cli";
+
+import {
+  createVerifyCommandFailure,
+  runVerifyCommand
+} from "./verify.js";
+
+const command: OpenRuntimeCommandDefinition = {
+  schemaVersion: 1,
+  name: "verify",
+  commandReferences: [{
+    category: "Commands",
+    usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
+    description: "业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。"
+  }],
+  run: async (options) => {
+    const targetId = requireArgument(options.args, 1, "target id");
+    const status = requireArgument(options.args, 2, "status");
+    const where = parseWhereOptions(options.args);
+    try {
+      const result = await runVerifyCommand(
+        options.openruntime,
+        targetId,
+        status,
+        where,
+        getNumberOption(options.args, "timeout")
+      );
+      writeJson(options.stdout, result);
+      return result.result.success ? 0 : 1;
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      writeJson(options.stdout, createVerifyCommandFailure(targetId, status, where, reason));
+      options.stderr.write(`${reason}\n`);
+      return 1;
+    }
+  }
+};
+
+export default command;
+export { createVerifyCommandFailure, runVerifyCommand } from "./verify.js";
+export type * from "./types.js";
+
+function requireArgument(args: ParsedCliArgs, index: number, label: string): string {
+  const value = args.command[index];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`Missing required ${label}.`);
+  }
+  return value;
+}
+
+function getNumberOption(args: ParsedCliArgs, name: string): number | undefined {
+  const value = args.options.get(name)?.at(-1);
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseWhereOptions(args: ParsedCliArgs): Array<{ path: string; equals: unknown }> | undefined {
+  const values = args.options.get("where") ?? [];
+  if (values.length === 0) return undefined;
+  return values.map((value) => {
+    const equalsIndex = value.indexOf("=");
+    if (equalsIndex <= 0) throw new Error("--where must use the form path=value.");
+    const path = value.slice(0, equalsIndex).trim();
+    if (path.length === 0) throw new Error("--where path must not be empty.");
+    return {
+      path,
+      equals: parseValue(value.slice(equalsIndex + 1))
+    };
+  });
+}
+
+function parseValue(raw: string): unknown {
+  const value = raw.trim();
+  if (value.length === 0) return "";
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function writeJson(stdout: { write(chunk: string): void }, value: unknown): void {
+  stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}

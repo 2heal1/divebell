@@ -119,31 +119,6 @@ export async function runBrowserCliCommand(
     }
   }
 
-  if (
-    command === "memory"
-    && commandArgs.command[1] === "metrics"
-    && !hasOption(commandArgs, "no-gc")
-  ) {
-    const garbageCollection = await browserRunner.run([
-      "memory",
-      "collect-garbage",
-      "--json"
-    ]);
-    if (garbageCollection.exitCode !== 0) {
-      if (garbageCollection.stdout.length > 0) {
-        stdout.write(garbageCollection.stdout.endsWith("\n")
-          ? garbageCollection.stdout
-          : `${garbageCollection.stdout}\n`);
-      }
-      if (garbageCollection.stderr.length > 0) {
-        stderr.write(garbageCollection.stderr.endsWith("\n")
-          ? garbageCollection.stderr
-          : `${garbageCollection.stderr}\n`);
-      }
-      return garbageCollection.exitCode;
-    }
-  }
-
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(commandArgs), stdout, stderr);
 }
 

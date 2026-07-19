@@ -9,8 +9,14 @@ const manifestPath = resolve(repositoryRoot, getOption("--manifest") ??
 const packagePaths = [
   "packages/core/package.json",
   "packages/bridge/package.json",
+  "packages/chunk-map/package.json",
+  "packages/rspack-plugin/package.json",
   "packages/modern-plugin/package.json",
-  "packages/cli/package.json"
+  "packages/cli/package.json",
+  "packages/command-code-usage/package.json",
+  "packages/command-trobule-shooting/package.json",
+  "packages/command-imitate/package.json",
+  "packages/command-memory/package.json"
 ];
 const bump = process.argv.slice(2).find((value) => !value.startsWith("--"));
 if (!["patch", "minor", "major"].includes(bump)) {

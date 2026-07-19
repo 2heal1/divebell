@@ -1,9 +1,8 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { getNumberOption } from "../../utils/args.js";
-import { resolveBrowserProfileDirectory, type BrowserRunner } from "../browser/runner.js";
-import { ensureBridge } from "../bridge/process.js";
-import { createOptionalNumberProperty, hasOption } from "../../utils/command.js";
+import { resolve } from "node:path";
+import type { OpenRuntimeBrowserApi } from "@openruntime/cli";
 import { ensureJsonLinesFile, writeJsonFile } from "./storage.js";
 import type { OperationEntry, RecordCommandOptions, RecordingFiles } from "./types.js";
 
@@ -11,13 +10,8 @@ const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
 const RECORD_AUDIO_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_AUDIO__";
 const OPENRUNTIME_RECORDING_CONTROL_FILE = "recording-session.json";
 export async function ensureRecordBridge(options: RecordCommandOptions, bridgeUrl: string): Promise<void> {
-  await ensureBridge({
-    fetcher: options.fetcher,
-    bridgeUrl,
-    starter: options.bridgeStarter,
-    stateStore: options.bridgeStateStore,
-    ...createOptionalNumberProperty("port", getNumberOption(options.args, "port"))
-  });
+  const port = getNumberOption(options.args, "port");
+  await options.openruntime.scope({ bridge: bridgeUrl }).ensureBridge(port === undefined ? {} : { port });
 }
 
 export async function tryEnsureRecordBridge(
@@ -37,7 +31,7 @@ export async function tryEnsureRecordBridge(
 
 export async function openRecordingBrowser(options: RecordCommandOptions, openedUrl: string): Promise<OperationEntry> {
   const openStartedAt = new Date();
-  const openResult = await options.browserRunner.run(["open", openedUrl], {
+  const openResult = await options.openruntime.browser.raw(["open", openedUrl], {
     ui: !hasOption(options.args, "headless")
   });
   const operation: OperationEntry = {
@@ -65,9 +59,9 @@ export function createSkippedBrowserOpenOperation(openedUrl: string): OperationE
   };
 }
 
-export async function closeRecordingBrowser(browserRunner: BrowserRunner): Promise<OperationEntry> {
+export async function closeRecordingBrowser(browser: OpenRuntimeBrowserApi): Promise<OperationEntry> {
   const closeStartedAt = new Date();
-  const closeResult = await browserRunner.run(["close"]);
+  const closeResult = await browser.raw(["close"]);
   return {
     type: "browser.close",
     startedAt: closeStartedAt.toISOString(),
@@ -141,9 +135,9 @@ export async function clearRecordingControlFile(): Promise<void> {
   });
 }
 
-export async function resetRecordingBrowser(browserRunner: BrowserRunner): Promise<OperationEntry> {
+export async function resetRecordingBrowser(browser: OpenRuntimeBrowserApi): Promise<OperationEntry> {
   const started = new Date();
-  const result = await browserRunner.run(["close"]);
+  const result = await browser.raw(["close"]);
   return {
     type: "browser.reset",
     startedAt: started.toISOString(),
@@ -152,4 +146,19 @@ export async function resetRecordingBrowser(browserRunner: BrowserRunner): Promi
     stdout: result.stdout.trim(),
     stderr: result.stderr.trim()
   };
+}
+
+function resolveBrowserProfileDirectory(): string {
+  return resolve(process.env.OPENRUNTIME_BROWSER_PROFILE_DIR ?? join(homedir(), ".openruntime", "browser-profile"));
+}
+
+function getNumberOption(args: RecordCommandOptions["args"], name: string): number | undefined {
+  const value = args.options.get(name)?.at(-1);
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function hasOption(args: RecordCommandOptions["args"], name: string): boolean {
+  return args.options.has(name);
 }

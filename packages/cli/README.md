@@ -14,6 +14,19 @@ The package provides both `openruntime` and `opr` binaries. It currently include
 coverage commands required by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE`
 only when using a custom or locally built binary.
 
+Optional workflows are installed as command packages and then appear under the
+same `openruntime` executable:
+
+```sh
+openruntime commands add @openruntime/command-code-usage
+openruntime commands add @openruntime/command-trobule-shooting
+openruntime commands add @openruntime/command-imitate
+openruntime commands add @openruntime/command-memory
+openruntime commands list
+```
+
+Use `commands update <package>` or `commands remove <package>` to manage them.
+
 ## Minimal Development Loop
 
 ```sh
@@ -21,16 +34,20 @@ openruntime open http://localhost:19080/ --session orders-demo
 openruntime snapshot --session orders-demo --id business:orders
 openruntime run-action --session orders-demo \
   demo.refresh-orders --payload '{"amount":2,"source":"cli"}'
-openruntime verify --session orders-demo \
-  business:orders ready --where updatedBy=cli --timeout 5000
+openruntime wait-for --session orders-demo \
+  business:orders ready --timeout 5000
 ```
 
 The browser commands also work with pages that do not integrate OpenRuntime. Structured Targets, Snapshots, Events, Actions, and business verification require an application-side integration through `@openruntime/core` or a framework plugin.
 
 ## Memory analysis
 
-Basic memory analysis is built into the CLI and does not require a framework or
+Install the memory command package first. It does not require a framework or
 build plugin:
+
+```sh
+openruntime commands add @openruntime/command-memory
+```
 
 ```sh
 openruntime memory check \
@@ -57,7 +74,14 @@ numbers. Use `--no-gc` only when the pre-cleanup instantaneous value is needed.
 ## Optional chunk analysis
 
 Deeper chunk, source file, and package usage analysis requires build metadata
-from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`. The CLI accepts
+from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`. Install the
+analysis command package first:
+
+```sh
+openruntime commands add @openruntime/command-code-usage
+```
+
+The command accepts
 the exact local artifact path, including when the recorded page is deployed:
 
 ```sh

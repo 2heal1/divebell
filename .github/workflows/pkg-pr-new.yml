@@ -49,5 +49,11 @@ jobs:
           --commentWithSha
           packages/core
           packages/bridge
+          packages/chunk-map
+          packages/rspack-plugin
           packages/cli
           packages/modern-plugin
+          packages/command-code-usage
+          packages/command-trobule-shooting
+          packages/command-imitate
+          packages/command-memory

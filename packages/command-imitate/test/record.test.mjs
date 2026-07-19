@@ -2,16 +2,19 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "@rstest/core";
+import { test } from "node:test";
 
-import { runCli } from "../dist/index.js";
-import type { BrowserRunOptions, BrowserRunner } from "../dist/features/browser/runner.js";
+import command from "../dist/index.js";
+import { createOpenRuntimeCli } from "../../cli/dist/index.js";
+
+const cli = createOpenRuntimeCli({ extensions: [command] });
+const runCli = cli.run;
 
 test("records browser snapshots and OpenRuntime runtime samples into an orrec directory", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "openruntime-recording-"));
   const outputDir = join(tempDir, "demo.orrec");
-  const browserCalls: Array<{ args: string[]; options?: BrowserRunOptions }> = [];
-  const fetchUrls: string[] = [];
+  const browserCalls = [];
+  const fetchUrls = [];
   const output = createOutput();
 
   try {
@@ -166,8 +169,8 @@ test("starts and stops a manual recording and generates a script", async () => {
   const outputDir = join(tempDir, "demo.orrec");
   const originalProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
   process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = join(tempDir, "browser-profile");
-  const browserCalls: Array<{ args: string[]; options?: BrowserRunOptions }> = [];
-  const fetchUrls: string[] = [];
+  const browserCalls = [];
+  const fetchUrls = [];
 
   try {
     const startOutput = createOutput();
@@ -343,7 +346,7 @@ test("generates a script from persisted interaction events after navigation", as
   const outputDir = join(tempDir, "demo.orrec");
   const originalProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
   process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = join(tempDir, "browser-profile");
-  const browserCalls: Array<{ args: string[]; options?: BrowserRunOptions }> = [];
+  const browserCalls = [];
 
   try {
     const browserRunner = createBrowserRunner(async (args, options) => {
@@ -666,7 +669,7 @@ test("captures audio chunks and transcribes a recording", async () => {
       stderr: transcribeOutput.stderr,
       fetcher: async (input, init) => {
         assert.equal(String(input), "https://api.openai.com/v1/audio/transcriptions");
-        assert.equal((init?.headers as Record<string, string>).authorization, "Bearer test-key");
+        assert.equal(init?.headers.authorization, "Bearer test-key");
         return jsonResponse({
           text: "打开 issues 页面",
           segments: [
@@ -720,7 +723,7 @@ test("starts a manual recording with a blank page and default recordings output"
   const originalCwd = process.cwd();
   const originalProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
   process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = join(tempDir, "browser-profile");
-  const browserCalls: Array<{ args: string[]; options?: BrowserRunOptions }> = [];
+  const browserCalls = [];
   const output = createOutput();
 
   try {
@@ -810,12 +813,7 @@ test("starts a manual recording with a blank page and default recordings output"
   }
 });
 
-function createOutput(): {
-  stdout: { write(chunk: string): void };
-  stderr: { write(chunk: string): void };
-  text(): string;
-  errorText(): string;
-} {
+function createOutput() {
   let stdout = "";
   let stderr = "";
   return {
@@ -834,7 +832,7 @@ function createOutput(): {
   };
 }
 
-function jsonResponse(body: unknown): Response {
+function jsonResponse(body) {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: {
@@ -843,7 +841,7 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
-function createRecordingFetcher(fetchUrls: string[] = []): typeof fetch {
+function createRecordingFetcher(fetchUrls = []) {
   return async (input) => {
     fetchUrls.push(String(input));
     const textUrl = String(input);
@@ -909,13 +907,7 @@ function createRecordingFetcher(fetchUrls: string[] = []): typeof fetch {
   };
 }
 
-function createBrowserRunner(
-  run: (args: string[], options?: BrowserRunOptions) => Promise<{
-    exitCode: number;
-    stdout: string;
-    stderr: string;
-  }>
-): BrowserRunner {
+function createBrowserRunner(run) {
   return {
     run
   };

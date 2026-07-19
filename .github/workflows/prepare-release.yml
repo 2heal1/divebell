@@ -80,14 +80,22 @@ jobs:
           git add \
             packages/core/package.json \
             packages/bridge/package.json \
+            packages/chunk-map/package.json \
+            packages/rspack-plugin/package.json \
             packages/modern-plugin/package.json \
             packages/cli/package.json \
+            packages/command-code-usage/package.json \
+            packages/command-trobule-shooting/package.json \
+            packages/command-imitate/package.json \
+            packages/command-memory/package.json \
             skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
-          git commit -m "chore: prepare OpenRuntime ${VERSION}"
+          git commit -m "chore: prepare OpenRuntime ${VERSION}" -m "Co-Authored-By: Riff"
           git push origin "$branch"
           gh pr create \
             --base main \
             --head "$branch" \
             --title "chore: release OpenRuntime ${VERSION}" \
-            --body "Bumps every OpenRuntime npm package and the recording skill runtime to ${VERSION}. After this PR passes CI and is merged, the trusted workflow publishes npm packages through OIDC, then creates ${TAG} with the recording runtime assets."
+            --body "Bumps every OpenRuntime npm package and the recording skill runtime to ${VERSION}. After this PR passes CI and is merged, the trusted workflow publishes npm packages through OIDC, then creates ${TAG} with the recording runtime assets.
+
+          Co-Authored-By: Riff"
           gh workflow run ci.yml --ref "$branch"

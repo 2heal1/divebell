@@ -1,16 +1,20 @@
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
-import type { ParsedCliArgs } from "../../utils/args.js";
-import type { BrowserRunner } from "../browser/runner.js";
-import type { BridgeStarter, BridgeStateStore } from "../bridge/process.js";
-import type { Fetcher } from "../runtime/client.js";
+import type { OpenRuntimeExtensionApi, ParsedCliArgs } from "@openruntime/cli";
+
+interface BridgeRuntimeInfo {
+  runtimeId: string;
+  url: string;
+  sessionId?: string;
+  status: string;
+  connectedAt: number;
+  lastSeenAt: number;
+}
+
 export interface RecordCommandOptions {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
-  fetcher: Fetcher;
-  browserRunner: BrowserRunner;
+  fetcher: typeof fetch;
+  openruntime: OpenRuntimeExtensionApi;
   bridgeUrl: string;
-  bridgeStarter: BridgeStarter;
-  bridgeStateStore: BridgeStateStore;
 }
 
 export interface RecordingFiles {

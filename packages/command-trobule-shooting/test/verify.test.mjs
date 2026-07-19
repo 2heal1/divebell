@@ -1,13 +1,37 @@
 import assert from "node:assert/strict";
-import { test } from "@rstest/core";
+import { test } from "node:test";
 
-import { runCli } from "../dist/index.js";
+import command from "../dist/index.js";
+import { createOpenRuntimeCli } from "../../cli/dist/index.js";
 
-import { createBrowserRunner, createOutput, jsonResponse } from "./helpers.js";
+const cli = createOpenRuntimeCli({ extensions: [command] });
+const runCli = cli.run;
+
+function createOutput() {
+  let stdout = "";
+  let stderr = "";
+  return {
+    stdout: { write: (chunk) => { stdout += chunk; } },
+    stderr: { write: (chunk) => { stderr += chunk; } },
+    text: () => stdout,
+    errorText: () => stderr
+  };
+}
+
+function jsonResponse(body) {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+function createBrowserRunner(run) {
+  return { run };
+}
 
 test("verify passes only when a business target reaches the expected status", async () => {
   const output = createOutput();
-  const browserCalls: string[][] = [];
+  const browserCalls = [];
   const exitCode = await runCli([
     "verify",
     "--bridge",
@@ -175,7 +199,7 @@ test("verify matches localhost and IPv4 loopback runtime URLs", async () => {
 
 test("verify does not treat a ready Modern route as business success when the page is blank", async () => {
   const output = createOutput();
-  const browserCalls: string[][] = [];
+  const browserCalls = [];
   const exitCode = await runCli([
     "verify",
     "--bridge",
@@ -375,7 +399,7 @@ test("verify reports MF readiness as runtime-layer evidence when no business tar
 
 test("verify suggests an existing business target instead of running a blank-page fallback", async () => {
   const output = createOutput();
-  const browserCalls: string[][] = [];
+  const browserCalls = [];
   const exitCode = await runCli([
     "verify",
     "--bridge",

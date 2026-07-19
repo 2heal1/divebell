@@ -1,13 +1,13 @@
 # OpenRuntime Release Flow
 
-OpenRuntime uses one controlled release chain for all four npm packages and the recording skill runtime. Merging an ordinary feature branch into `main` does not publish anything.
+OpenRuntime uses one controlled release chain for all ten npm packages and the recording skill runtime. Merging an ordinary feature branch into `main` does not publish anything.
 
 ```text
 Run Prepare OpenRuntime Release manually
 → create release/openruntime-vX.Y.Z
 → update versions and open a pull request
 → maintainer reviews and merges after CI passes
-→ publish four npm packages through OIDC
+→ publish ten npm packages through OIDC
 → create the GitHub Release only after npm succeeds
 → upload the recording runtime and SHA-256 file
 ```
@@ -27,8 +27,14 @@ Packages are published in dependency order:
 
 - `@openruntime/core`
 - `@openruntime/bridge`
+- `@openruntime/chunk-map`
+- `@openruntime/rspack-plugin`
 - `@openruntime/modern-plugin`
 - `@openruntime/cli`
+- `@openruntime/command-code-usage`
+- `@openruntime/command-trobule-shooting`
+- `@openruntime/command-imitate`
+- `@openruntime/command-memory`
 
 An existing package version is skipped, so an interrupted bootstrap can be rerun.
 
@@ -43,13 +49,19 @@ After all packages exist, open **Settings > Trusted Publisher** for each npm pac
 | Environment name | Leave empty |
 | Allowed actions | `npm publish` |
 
-The workflow filename is case-sensitive. Enter only the filename, without `.github/workflows/`. A maintainer with account-level two-factor authentication can configure all four packages from the CLI instead:
+The workflow filename is case-sensitive. Enter only the filename, without `.github/workflows/`. A maintainer with account-level two-factor authentication can configure all ten packages from the CLI instead:
 
 ```bash
 npm trust github @openruntime/core --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/bridge --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/chunk-map --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/rspack-plugin --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/modern-plugin --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/cli --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-code-usage --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-trobule-shooting --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-imitate --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-memory --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 ```
 
 `npm trust` rejects a package that does not exist, so complete the bootstrap publish first. Then verify the baseline:
@@ -72,11 +84,11 @@ After one successful OIDC release, traditional publish tokens can be disabled un
 8. **Publish OpenRuntime Release** publishes all npm packages through OIDC.
 9. Only after npm succeeds, it creates the GitHub Release and uploads the recording runtime.
 
-The release pull request may only change four `package.json` files and the recording runtime manifest. The branch name, npm package versions, and runtime version must match exactly.
+The release pull request may only change ten `package.json` files and the recording runtime manifest. The branch name, npm package versions, and runtime version must match exactly.
 
 ## Release output
 
-Every release publishes the same version of all four npm packages and adds these GitHub Release assets:
+Every release publishes the same version of all ten npm packages and adds these GitHub Release assets:
 
 ```text
 openruntime-recording-runtime-<version>.tgz

@@ -9,8 +9,14 @@ const manifestPath = "skills/record-openruntime-workflow/references/openruntime-
 const packagePaths = [
   "packages/core/package.json",
   "packages/bridge/package.json",
+  "packages/chunk-map/package.json",
+  "packages/rspack-plugin/package.json",
   "packages/modern-plugin/package.json",
-  "packages/cli/package.json"
+  "packages/cli/package.json",
+  "packages/command-code-usage/package.json",
+  "packages/command-trobule-shooting/package.json",
+  "packages/command-imitate/package.json",
+  "packages/command-memory/package.json"
 ];
 const allowedFiles = new Set([...packagePaths, manifestPath]);
 const branch = getOption("--branch");

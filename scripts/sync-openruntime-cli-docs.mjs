@@ -12,7 +12,7 @@ if (!noBuild) {
   run("pnpm", ["--dir", "packages/cli", "run", "build"]);
 }
 
-const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/help.js")).href;
+const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/commands/help.js")).href;
 const { createCliReferenceMarkdown } = await import(helpModuleUrl);
 const cliReferenceContent = createCliReferenceMarkdown();
 

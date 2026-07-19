@@ -54,7 +54,34 @@ if (options.page === undefined || !isSupportedPage(options.page.url)) {
 
 ## Installation And Loading
 
-Command files are loaded from:
+Install distributed commands from npm packages:
+
+```sh
+openruntime commands add @scope/command-name
+openruntime commands list
+openruntime commands update @scope/command-name
+openruntime commands remove @scope/command-name
+```
+
+The CLI downloads packages into its managed commands directory and loads them
+automatically; users do not run a global `npm install`. A command package must
+not declare runtime dependencies. Its published files must contain everything
+needed at runtime, and installation rejects packages that violate this rule.
+Declare command entries in `package.json`:
+
+```json
+{
+  "name": "@scope/command-name",
+  "version": "1.0.0",
+  "type": "module",
+  "openruntime": {
+    "schemaVersion": 1,
+    "commands": ["./dist/index.js"]
+  }
+}
+```
+
+Loose command files remain available for local development. They are loaded from:
 
 ```text
 ~/.openruntime/commands
@@ -100,7 +127,9 @@ Two file layouts are supported:
 ~/.openruntime/commands/foo/index.mjs
 ```
 
-A command file must default-export this shape. Prefer `defineCommand(...)` so the shape is fixed and typed:
+A command file must default-export this shape. Local source can use
+`defineCommand(...)` for type guidance. Before publishing an npm command package,
+compile it into a self-contained file that no longer imports `@openruntime/cli`:
 
 ```js
 import { defineCommand } from "@openruntime/cli";

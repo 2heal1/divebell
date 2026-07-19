@@ -2,12 +2,31 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "@rstest/core";
+import { test } from "node:test";
 
-import { createCodeUsageReportHtml } from "../dist/features/analysis/report.js";
-import { runCli } from "../dist/index.js";
+import command, {
+  createCodeUsageReportHtml,
+  runCodeUsageReportCommand
+} from "../dist/index.js";
+import {
+  createCommandOutput,
+  createOpenRuntimeCli,
+  parseCliArgs
+} from "../../cli/dist/index.js";
 
-import { createOutput } from "./helpers.js";
+const cli = createOpenRuntimeCli({ extensions: [command] });
+const runCli = cli.run;
+
+function createOutput() {
+  let stdout = "";
+  let stderr = "";
+  return {
+    stdout: { write: (chunk) => { stdout += chunk; } },
+    stderr: { write: (chunk) => { stderr += chunk; } },
+    text: () => stdout,
+    errorText: () => stderr
+  };
+}
 
 const report = {
   url: "http://localhost:19081/</script><script>alert(1)</script>",
@@ -84,8 +103,7 @@ test("code-usage report generates an HTML file without requiring a page session"
       "--no-open"
     ], {
       stdout: output.stdout,
-      stderr: output.stderr,
-      htmlReportOpener: async () => { openCalls += 1; }
+      stderr: output.stderr
     });
 
     assert.equal(exitCode, 0);
@@ -106,15 +124,16 @@ test("code-usage report opens the generated file by default", async () => {
   const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-open-"));
   const inputPath = join(directory, "report.json");
   writeFileSync(inputPath, JSON.stringify(report), "utf8");
-  const opened: string[] = [];
+  const opened = [];
   const output = createOutput();
 
   try {
-    const exitCode = await runCli(["code-usage", "report", inputPath], {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      htmlReportOpener: async (path) => { opened.push(path); }
-    });
+    const args = parseCliArgs(["code-usage", "report", inputPath]);
+    const exitCode = await runCodeUsageReportCommand(
+      args,
+      createCommandOutput(output.stdout, args.command.join(" ")),
+      async (path) => { opened.push(path); }
+    );
 
     assert.equal(exitCode, 0);
     assert.deepEqual(opened, [join(directory, "report.html")]);
@@ -133,8 +152,7 @@ test("code-usage report rejects unrelated JSON instead of creating an empty page
   try {
     const exitCode = await runCli(["code-usage", "report", inputPath, "--no-open"], {
       stdout: output.stdout,
-      stderr: output.stderr,
-      htmlReportOpener: async () => {}
+      stderr: output.stderr
     });
 
     assert.equal(exitCode, 1);
@@ -212,7 +230,7 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
     }],
     packages: []
   }), "utf8");
-  const checkpoint = (label: string, secondLineCount: number) => ({
+  const checkpoint = (label, secondLineCount) => ({
     schemaVersion: 1,
     label,
     scripts: [{
@@ -254,16 +272,16 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
     assert.equal(commandResult.data.phaseCount, 2);
     assert.equal(commandResult.data.chunkMap, chunkMapPath);
     const analysis = JSON.parse(readFileSync(reportPath, "utf8"));
-    assert.deepEqual(analysis.phases.map((phase: { label: string }) => phase.label), [
+    assert.deepEqual(analysis.phases.map((phase) => phase.label), [
       "first-screen",
       "orders"
     ]);
     assert.equal(analysis.phases[0].unmatchedScriptUrls.length, 0);
     const firstDemo = analysis.phases[0].packages.find(
-      (item: { packageName: string }) => item.packageName === "demo"
+      (item) => item.packageName === "demo"
     );
     const secondDemo = analysis.phases[1].packages.find(
-      (item: { packageName: string }) => item.packageName === "demo"
+      (item) => item.packageName === "demo"
     );
     assert.equal(firstDemo.usedBytes, 0);
     assert.equal(secondDemo.usedBytes, 5);

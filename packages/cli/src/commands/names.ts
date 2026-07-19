@@ -13,7 +13,6 @@ export const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
   "screenshot",
   "network",
   "console",
-  "memory",
   "coverage",
   "close"
 ];
@@ -31,12 +30,10 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "start",
     "stop",
     "auth",
-    "record",
-    "code-usage",
+    "commands",
     "runtimes",
     "input-options",
     "run-action",
-    "verify",
     "wait-for",
     ...BROWSER_COMMAND_NAMES,
     ...RUNTIME_RESOURCE_COMMAND_NAMES

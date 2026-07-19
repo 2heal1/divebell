@@ -3,6 +3,26 @@ export type { CliCommandReference } from "../types/commands.js";
 
 export const cliCommandReferences: CliCommandReference[] = [
   {
+    category: "Commands",
+    usage: "openruntime commands add <npm-package> [--commands-dir <path>]",
+    description: "下载、验证并安装一个没有运行依赖的 OpenRuntime 命令包。"
+  },
+  {
+    category: "Commands",
+    usage: "openruntime commands list [--commands-dir <path>]",
+    description: "列出已经安装的 OpenRuntime 命令包和它们提供的命令。"
+  },
+  {
+    category: "Commands",
+    usage: "openruntime commands update <package> [--commands-dir <path>]",
+    description: "下载并启用命令包的最新版本；失败时继续保留原版本。"
+  },
+  {
+    category: "Commands",
+    usage: "openruntime commands remove <package> [--commands-dir <path>]",
+    description: "卸载指定命令包。"
+  },
+  {
     category: "Bridge and Browser",
     usage: "openruntime start [--port <port>]",
     description: "显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。"
@@ -31,31 +51,6 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Bridge and Browser",
     usage: "openruntime auth clear [--url <url>]",
     description: "清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-    description: "按固定时长打开页面并生成 .orrec 录制包，记录页面快照、DOM、人工操作、OpenRuntime 状态和可选麦克风音频。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-    description: "启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下，并注入点击和输入监听；用户操作完成后应继续执行 record stop。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
-    description: "结束人工操作录制，采集点击、输入、键盘、语音文字和收尾状态，默认关闭浏览器并生成 generated-script.mjs 脚本草稿。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime record generate-script --input <path> [--out <path>]",
-    description: "从已有 .orrec 录制包重新生成 JS 脚本草稿。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
-    description: "把 .orrec 里的麦克风录音转成 transcript.json；默认使用 whisper-1 以获得带时间节点的片段和词级结果。"
   },
   {
     category: "Bridge and Browser",
@@ -109,28 +104,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime memory <metrics|status|sampling start|sampling stop|snapshot|cancel> [path] [options]",
-    description: "采集当前页面的内存指标、分配记录或快照；metrics 默认先清理临时内存，--no-gc 可读取清理前的瞬时值。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]",
-    description: "按场景自动完成预热、重复操作、指标、分配记录和前后快照，并输出内存检查结果。"
-  },
-  {
-    category: "Bridge and Browser",
     usage: "openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
     description: "分阶段记录当前页面实际执行过的代码，用于识别已加载但未使用的业务代码和第三方包。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
-    description: "使用指定的 Chunk Map、构建文件和页面代码记录，分析分块、源码文件与依赖包的实际使用情况。"
-  },
-  {
-    category: "Bridge and Browser",
-    usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
-    description: "把代码使用分析结果生成可交互报告并打开；--no-open 只生成文件。"
   },
   {
     category: "Runtime",
@@ -166,11 +141,6 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Runtime",
     usage: "openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
     description: "执行页面声明的 runtime action。"
-  },
-  {
-    category: "Runtime",
-    usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
-    description: "业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。"
   },
   {
     category: "Runtime",

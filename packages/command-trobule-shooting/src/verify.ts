@@ -1,36 +1,40 @@
-import type { RuntimeDataCondition, RuntimeSnapshot, RuntimeSnapshotTarget, RuntimeTargetDescriptor } from "@openruntime/core";
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
-import type { BrowserRunner } from "../browser/runner.js";
-import { parseBrowserJsonOutput } from "../browser/runner.js";
-import { fetchRuntimeResource, type Fetcher } from "./client.js";
-import { createOptionalNumberProperty, createOptionalStringProperty } from "../../utils/command.js";
-import { createWaitForFailure, waitForRuntimeCommand } from "./wait.js";
-import type { ParsedCliArgs } from "../../utils/args.js";
-import { createFileBridgeStateStore, type BridgeStarter } from "../bridge/process.js";
+import type { OpenRuntimeExtensionApi } from "@openruntime/cli";
 import type { VerifyTargetClass, VerifyVisibilityResult, VerifyCommandResult } from "./types.js";
+
+interface RuntimeTargetDescriptor {
+  id: string;
+  type: string;
+  source?: string;
+}
+
+interface RuntimeSnapshotTarget extends RuntimeTargetDescriptor {
+  status: string;
+}
+
+interface RuntimeSnapshot {
+  targets: Record<string, RuntimeSnapshotTarget>;
+}
+
+interface RuntimeDataCondition {
+  path: string;
+  equals: unknown;
+}
 export async function runVerifyCommand(
-  args: ParsedCliArgs,
-  fetcher: Fetcher,
-  bridgeUrl: string,
-  browserRunner: BrowserRunner,
-  bridgeStarter: BridgeStarter,
-  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  openruntime: OpenRuntimeExtensionApi,
   targetId: string,
   status: string,
-  where: RuntimeDataCondition[] | undefined
+  where: RuntimeDataCondition[] | undefined,
+  timeout: number | undefined
 ): Promise<VerifyCommandResult> {
-  const waitResult = await waitForRuntimeCommand(
-    args,
-    fetcher,
-    bridgeUrl,
-    browserRunner,
-    bridgeStarter,
-    bridgeStateStore,
+  const waitResult = await openruntime.waitFor(
     targetId,
     status,
-    where
+    {
+      ...(where === undefined ? {} : { where }),
+      ...(timeout === undefined ? {} : { timeout })
+    }
   );
-  const targetDefinitions = await fetchVerifyTargetDefinitions(fetcher, bridgeUrl, waitResult.runtime);
+  const targetDefinitions = await fetchVerifyTargetDefinitions(openruntime);
   const waitPayload = waitResult.result;
   const target = getVerifyTarget(targetId, waitPayload, targetDefinitions);
   const targetClass = classifyVerifyTarget(target);
@@ -38,7 +42,7 @@ export async function runVerifyCommand(
   const hasBusinessTarget = businessTargetHints.length > 0 || targetClass === "business";
   const visibility = targetClass === "business" || hasBusinessTarget
     ? createSkippedVisibility("Business target evidence is available.")
-    : await readVerifyVisibility(browserRunner);
+    : await readVerifyVisibility(openruntime);
   const evidence = createVerifyEvidence({
     targetId,
     targetClass,
@@ -57,7 +61,7 @@ export async function runVerifyCommand(
   }
 
   return {
-    runtime: waitResult.runtime,
+    ...(waitResult.runtime === undefined ? {} : { runtime: waitResult.runtime }),
     result: {
       success: evidence.level === "business" && getWaitSuccess(waitPayload) === true,
       condition,
@@ -102,22 +106,33 @@ export function createVerifyCommandFailure(
 }
 
 async function fetchVerifyTargetDefinitions(
-  fetcher: Fetcher,
-  bridgeUrl: string,
-  runtime: BridgeRuntimeInfo
+  openruntime: OpenRuntimeExtensionApi
 ): Promise<RuntimeTargetDescriptor[]> {
   try {
-    const result = await fetchRuntimeResource<RuntimeTargetDescriptor[]>(
-      fetcher,
-      bridgeUrl,
-      runtime,
-      "targets",
-      new URLSearchParams()
-    );
+    const result = await openruntime.targets<RuntimeTargetDescriptor[]>();
     return Array.isArray(result.result) ? result.result : [];
   } catch {
     return [];
   }
+}
+
+function createWaitForFailure(
+  targetId: string,
+  status: string,
+  where: RuntimeDataCondition[] | undefined,
+  reason: string
+): { result: unknown } {
+  return {
+    result: {
+      success: false,
+      condition: {
+        id: targetId,
+        status,
+        ...(where === undefined ? {} : { where })
+      },
+      reason
+    }
+  };
 }
 
 function createVerifyEvidence(options: {
@@ -259,19 +274,9 @@ function classifyVerifyTarget(target: RuntimeSnapshotTarget | RuntimeTargetDescr
   return "business";
 }
 
-async function readVerifyVisibility(browserRunner: BrowserRunner): Promise<VerifyVisibilityResult> {
-  const result = await browserRunner.run(["eval", createPageVisibilityScript()]);
-  if (result.exitCode !== 0) {
-    return {
-      checked: true,
-      status: "unavailable",
-      blank: null,
-      reason: result.stderr.trim() || result.stdout.trim() || "Browser visibility check failed."
-    };
-  }
-
+async function readVerifyVisibility(openruntime: OpenRuntimeExtensionApi): Promise<VerifyVisibilityResult> {
   try {
-    const parsed = parseBrowserJsonOutput(result.stdout);
+    const parsed = await openruntime.browser.eval(createPageVisibilityScript());
     if (!isRecord(parsed)) {
       return {
         checked: true,
@@ -287,22 +292,30 @@ async function readVerifyVisibility(browserRunner: BrowserRunner): Promise<Verif
       status: blank === true ? "blank" : blank === false ? "visible" : "unknown",
       blank,
       details: {
-        ...createOptionalStringProperty("url", getStringValue(parsed.url)),
-        ...createOptionalStringProperty("title", getStringValue(parsed.title)),
-        ...createOptionalNumberProperty("textLength", getNumberValue(parsed.textLength)),
-        ...createOptionalNumberProperty("visibleElementCount", getNumberValue(parsed.visibleElementCount)),
-        ...createOptionalNumberProperty("bodyChildElementCount", getNumberValue(parsed.bodyChildElementCount)),
-        ...createOptionalNumberProperty("rootChildElementCount", getNumberValue(parsed.rootChildElementCount))
+        ...optionalString("url", getStringValue(parsed.url)),
+        ...optionalString("title", getStringValue(parsed.title)),
+        ...optionalNumber("textLength", getNumberValue(parsed.textLength)),
+        ...optionalNumber("visibleElementCount", getNumberValue(parsed.visibleElementCount)),
+        ...optionalNumber("bodyChildElementCount", getNumberValue(parsed.bodyChildElementCount)),
+        ...optionalNumber("rootChildElementCount", getNumberValue(parsed.rootChildElementCount))
       }
     };
   } catch (error) {
     return {
       checked: true,
-      status: "unknown",
+      status: "unavailable",
       blank: null,
       reason: error instanceof Error ? error.message : String(error)
     };
   }
+}
+
+function optionalString<Name extends string>(name: Name, value: string | undefined): Record<Name, string> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, string>;
+}
+
+function optionalNumber<Name extends string>(name: Name, value: number | undefined): Record<Name, number> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, number>;
 }
 
 function createSkippedVisibility(reason: string): VerifyVisibilityResult {

@@ -1,6 +1,5 @@
 import { appendFile, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createOptionalStringProperty } from "../../utils/command.js";
 import type {
   DomSnapshotSample,
   InteractionEvent,
@@ -28,6 +27,13 @@ export function createRecordingFiles(): RecordingFiles {
     operations: "operations.jsonl",
     transcript: "transcript.json"
   };
+}
+
+function createOptionalStringProperty<Name extends string>(
+  name: Name,
+  value: string | undefined
+): Record<Name, string> | Record<string, never> {
+  return value === undefined ? {} : { [name]: value } as Record<Name, string>;
 }
 
 export async function writeRecordingFiles(

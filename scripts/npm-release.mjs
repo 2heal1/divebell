@@ -13,8 +13,14 @@ if (!["check", "pack", "publish"].includes(mode)) {
 const packageDefinitions = [
   { directory: "packages/core", filePrefix: "openruntime-core" },
   { directory: "packages/bridge", filePrefix: "openruntime-bridge" },
+  { directory: "packages/chunk-map", filePrefix: "openruntime-chunk-map" },
+  { directory: "packages/rspack-plugin", filePrefix: "openruntime-rspack-plugin" },
   { directory: "packages/modern-plugin", filePrefix: "openruntime-modern-plugin" },
-  { directory: "packages/cli", filePrefix: "openruntime-cli" }
+  { directory: "packages/cli", filePrefix: "openruntime-cli" },
+  { directory: "packages/command-code-usage", filePrefix: "openruntime-command-code-usage" },
+  { directory: "packages/command-trobule-shooting", filePrefix: "openruntime-command-trobule-shooting" },
+  { directory: "packages/command-imitate", filePrefix: "openruntime-command-imitate" },
+  { directory: "packages/command-memory", filePrefix: "openruntime-command-memory" }
 ];
 const packages = await Promise.all(packageDefinitions.map(async (definition) => ({
   ...definition,
@@ -92,6 +98,9 @@ async function validateArchive(archive, expectedName, expectedVersion) {
   });
   if (dependencyValues.some((value) => typeof value === "string" && value.startsWith("workspace:"))) {
     throw new Error(`${expectedName} still contains a workspace dependency after packing.`);
+  }
+  if (packed.openruntime?.commands !== undefined && dependencyValues.length > 0) {
+    throw new Error(`${expectedName} command packages must not declare runtime dependencies.`);
   }
 }
 

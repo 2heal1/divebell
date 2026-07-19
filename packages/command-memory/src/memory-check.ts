@@ -2,11 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import {
-  createWaitEvalScript,
-  parseBrowserJsonOutput,
-  type BrowserRunner
-} from "../browser/runner.js";
+import type { OpenRuntimeBrowserApi } from "@openruntime/cli";
 
 import type { MemoryCheckPage, MemoryCheckScenario, RunMemoryCheckOptions, MemoryMetricPoint, MemoryCheckReport, RunMemoryCheckResult } from "./types.js";
 export type { MemoryCheckPage, MemoryCheckScenarioContext, MemoryCheckScenario, RunMemoryCheckOptions, MemoryMetricPoint, MemoryCheckReport, RunMemoryCheckResult } from "./types.js";
@@ -20,14 +16,14 @@ export async function runMemoryCheck(
   const allocationProfilePath = resolve(artifactDirectory, "allocation.heapprofile");
   const reportPath = resolve(artifactDirectory, "report.json");
   const scenario = await loadMemoryCheckScenario(options.scenarioPath);
-  const page = createMemoryCheckPage(options.browserRunner);
+  const page = createMemoryCheckPage(options.browser);
   const series: MemoryMetricPoint[] = [];
   let samplingStarted = false;
 
   await mkdir(artifactDirectory, { recursive: true });
   try {
     await runBrowserOrThrow(
-      options.browserRunner,
+      options.browser,
       ["open", options.url],
       { ui: options.ui === true }
     );
@@ -37,15 +33,15 @@ export async function runMemoryCheck(
       await scenario.run({ page, iteration: index, phase: "warmup" });
     }
 
-    const baseline = await readComparableMetrics(options.browserRunner, 0);
-    await runJson(options.browserRunner, [
+    const baseline = await readComparableMetrics(options.browser, 0);
+    await runJson(options.browser, [
       "memory",
       "snapshot",
       baselineSnapshotPath,
       "--timeout",
       "120000"
     ]);
-    await runJson(options.browserRunner, [
+    await runJson(options.browser, [
       "memory",
       "sampling",
       "start",
@@ -56,10 +52,10 @@ export async function runMemoryCheck(
 
     for (let index = 1; index <= options.iterations; index += 1) {
       await scenario.run({ page, iteration: index, phase: "measure" });
-      series.push(await readComparableMetrics(options.browserRunner, index));
+      series.push(await readComparableMetrics(options.browser, index));
     }
 
-    const allocation = await runJson(options.browserRunner, [
+    const allocation = await runJson(options.browser, [
       "memory",
       "sampling",
       "stop",
@@ -69,10 +65,10 @@ export async function runMemoryCheck(
     ]);
     samplingStarted = false;
     const final = await readComparableMetrics(
-      options.browserRunner,
+      options.browser,
       options.iterations + 1
     );
-    await runJson(options.browserRunner, [
+    await runJson(options.browser, [
       "memory",
       "snapshot",
       finalSnapshotPath,
@@ -99,9 +95,9 @@ export async function runMemoryCheck(
     };
   } finally {
     if (samplingStarted) {
-      await options.browserRunner.run(["memory", "cancel", "--json"]);
+      await options.browser.raw(["memory", "cancel", "--json"]);
     }
-    await options.browserRunner.run(["close"]);
+    await options.browser.raw(["close"]);
   }
 }
 
@@ -117,14 +113,14 @@ async function loadMemoryCheckScenario(path: string): Promise<MemoryCheckScenari
   return scenario as unknown as MemoryCheckScenario;
 }
 
-function createMemoryCheckPage(browserRunner: BrowserRunner): MemoryCheckPage {
+function createMemoryCheckPage(browser: OpenRuntimeBrowserApi): MemoryCheckPage {
   return {
-    eval: async (script) => await runJson(browserRunner, ["eval", script], false),
+    eval: async (script) => await runJson(browser, ["eval", script], false),
     waitEval: async (script, options = {}) => {
       const deadline = Date.now() + (options.timeout ?? 10_000);
       let lastError = "Condition did not become true.";
       while (Date.now() <= deadline) {
-        const result = await browserRunner.run(["eval", createWaitEvalScript(script)]);
+        const result = await browser.raw(["eval", createWaitEvalScript(script)]);
         if (result.exitCode === 0) {
           try {
             if (parseBrowserJsonOutput(result.stdout) === true) return;
@@ -142,11 +138,11 @@ function createMemoryCheckPage(browserRunner: BrowserRunner): MemoryCheckPage {
 }
 
 async function readComparableMetrics(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   iteration: number
 ): Promise<MemoryMetricPoint> {
-  await runJson(browserRunner, ["memory", "collect-garbage"]);
-  const metrics = await runJson(browserRunner, ["memory", "metrics"]);
+  await runJson(browser, ["memory", "collect-garbage"]);
+  const metrics = await runJson(browser, ["memory", "metrics"]);
   return {
     iteration,
     jsHeapUsedSize: numberOrNull(metrics.jsHeapUsedSize),
@@ -158,12 +154,12 @@ async function readComparableMetrics(
 }
 
 async function runJson(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   args: string[],
   appendJson = true
 ): Promise<Record<string, unknown>> {
   const browserArgs = appendJson ? [...args, "--json"] : args;
-  const result = await browserRunner.run(browserArgs);
+  const result = await browser.raw(browserArgs);
   if (result.exitCode !== 0) {
     throw new Error(
       result.stderr.trim()
@@ -177,11 +173,11 @@ async function runJson(
 }
 
 async function runBrowserOrThrow(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   args: string[],
   options: { ui?: boolean }
 ): Promise<void> {
-  const result = await browserRunner.run(args, options);
+  const result = await browser.raw(args, options);
   if (result.exitCode !== 0) {
     throw new Error(
       result.stderr.trim()
@@ -280,4 +276,13 @@ function errorMessage(error: unknown): string {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
+}
+
+function createWaitEvalScript(script: string): string {
+  return `Boolean((${script}))`;
+}
+
+function parseBrowserJsonOutput(stdout: string): unknown {
+  const trimmed = stdout.trim();
+  return trimmed.length === 0 ? undefined : JSON.parse(trimmed);
 }

@@ -1,0 +1,30 @@
+{
+  "name": "@openruntime/command-code-usage",
+  "version": "0.1.1",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2heal1/openruntime.git",
+    "directory": "packages/command-code-usage"
+  },
+  "author": "2heal1",
+  "main": "./dist/index.js",
+  "openruntime": {
+    "schemaVersion": 1,
+    "commands": [
+      "./dist/index.js"
+    ]
+  },
+  "files": [
+    "assets/**/*",
+    "dist/**/*.js",
+    "dist/**/*.js.map"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b --pretty false && node ./scripts/assemble.mjs",
+    "test": "pnpm run build && node --test test/*.test.mjs"
+  }
+}

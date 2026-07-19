@@ -18,6 +18,11 @@ const runtimeManifest = await readRuntimeManifest(skillDirectory);
 const runtimeLayout = resolveRuntimeLayout(runtimeManifest);
 const installDirectory = runtimeLayout.installDirectory;
 const installedCli = runtimeLayout.installedCli;
+const managedCommandsDirectory = join(installDirectory, "commands");
+const runtimeEnvironment = {
+  ...process.env,
+  OPENRUNTIME_COMMANDS_DIR: managedCommandsDirectory
+};
 const userArgs = process.argv.slice(2);
 
 const explicitCli = process.env.OPENRUNTIME_CLI;
@@ -25,23 +30,33 @@ if (explicitCli !== undefined && explicitCli.length > 0 && !isSelfReference(expl
   runOrExit(toInvocation(explicitCli), userArgs);
 }
 
-if (await canRun(toInvocation(installedCli))) {
-  runOrExit(toInvocation(installedCli), userArgs);
+if (await canRun(toInvocation(installedCli), runtimeEnvironment) &&
+    supportsRecordCommand(toInvocation(installedCli), runtimeEnvironment)) {
+  runOrExit(toInvocation(installedCli), userArgs, runtimeEnvironment);
 }
 
 let runtimeFailure;
 try {
   await prepareRuntimePackages(runtimeManifest, runtimeLayout);
   const installResult = installReleasedCli(runtimeManifest, runtimeLayout.packageDirectory, installDirectory);
-  if (installResult.status === 0 && await canRun(toInvocation(installedCli))) {
-    runOrExit(toInvocation(installedCli), userArgs);
+  const commandResult = installResult.status === 0
+    ? installReleasedRecordCommand(runtimeManifest, runtimeLayout.packageDirectory)
+    : undefined;
+  if (installResult.status === 0 && commandResult?.status === 0 &&
+      await canRun(toInvocation(installedCli), runtimeEnvironment) &&
+      supportsRecordCommand(toInvocation(installedCli), runtimeEnvironment)) {
+    runOrExit(toInvocation(installedCli), userArgs, runtimeEnvironment);
   }
 
   runtimeFailure = [
     "Failed to install the OpenRuntime CLI from the released runtime bundle.",
     formatSpawnText(installResult.stderr),
     formatSpawnText(installResult.stdout),
-    installResult.error?.message
+    installResult.error?.message,
+    commandResult?.status === 0 ? undefined : "Failed to install the recording command package.",
+    formatSpawnText(commandResult?.stderr),
+    formatSpawnText(commandResult?.stdout),
+    commandResult?.error?.message
   ].filter(Boolean).join("\n");
 } catch (error) {
   runtimeFailure = error instanceof Error ? error.message : String(error);
@@ -87,7 +102,7 @@ function isSelfReference(command) {
   }
 }
 
-async function canRun(invocation) {
+async function canRun(invocation, env = process.env) {
   if (invocation.args.length > 0) {
     const filePath = invocation.args[0];
     try {
@@ -98,15 +113,23 @@ async function canRun(invocation) {
   }
 
   const result = spawnSync(invocation.command, [...invocation.args, "--help"], {
-    env: process.env,
+    env,
     stdio: "ignore"
   });
   return result.status === 0;
 }
 
-function runOrExit(invocation, args) {
+function supportsRecordCommand(invocation, env) {
+  const result = spawnSync(invocation.command, [...invocation.args, "--help"], {
+    env,
+    encoding: "utf8"
+  });
+  return result.status === 0 && result.stdout.includes("openruntime record start");
+}
+
+function runOrExit(invocation, args, env = process.env) {
   const result = spawnSync(invocation.command, [...invocation.args, ...args], {
-    env: process.env,
+    env,
     stdio: "inherit"
   });
   if (result.error !== undefined) {
@@ -114,6 +137,27 @@ function runOrExit(invocation, args) {
     process.exit(127);
   }
   process.exit(result.status ?? 1);
+}
+
+function installReleasedRecordCommand(manifest, packageDirectory) {
+  const commandPackage = manifest.packages.find((item) => item.name === "@openruntime/command-imitate");
+  if (commandPackage === undefined) {
+    return {
+      status: 1,
+      stdout: "",
+      stderr: "Recording runtime does not include @openruntime/command-imitate."
+    };
+  }
+  return spawnSync(installedCli, [
+    "commands",
+    "add",
+    join(packageDirectory, commandPackage.file),
+    "--commands-dir",
+    managedCommandsDirectory
+  ], {
+    env: runtimeEnvironment,
+    encoding: "utf8"
+  });
 }
 
 function installReleasedCli(manifest, packageDirectory, destination) {

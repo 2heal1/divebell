@@ -138,7 +138,7 @@ async function opr(args) {
 
 ## 编写脚本步骤
 
-完整 CLI 命令和参数见 [`CLI Reference`](cli-reference.md)。本教程只展示把固定流程写成脚本时最常用的步骤。
+完整 CLI 命令和参数见 [`CLI Reference`](cli-reference.md)。Bridge 自动连接和多 Runtime 选择见 [浏览器连接与多 Runtime 使用指南](runtime-connections.zh-CN.md)。本教程只展示把固定流程写成脚本时最常用的步骤。
 
 ### 准备脚本输入
 
@@ -150,7 +150,7 @@ async function opr(args) {
 | `session` | 当前脚本使用的会话标识；并发或 Runtime 查询时建议显式设置。 |
 | `timeout` | 等待页面或 Runtime 状态的超时时间。 |
 | `headless/ui` | 默认静默运行；需要可见浏览器时给 `open` 加 `--ui`。 |
-| `bridge` | 默认自动准备本地 Bridge；需要连接指定 Bridge 时传 `--bridge <url>`。 |
+| `bridge` | 默认自动准备本地 Bridge，并在跳转前放入连接管理器，连接页面注册的所有 runtime；需要连接指定 Bridge 时传 `--bridge <url>`，不需要连接时传 `--no-bridge`。 |
 
 ### 打开页面
 

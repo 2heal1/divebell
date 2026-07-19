@@ -110,6 +110,16 @@ class NodeBridgeServer implements BridgeServer {
 
       if (
         request.method === "POST" &&
+        segments.length === 3 &&
+        segments[0] === "runtimes" &&
+        segments[2] === "disconnect"
+      ) {
+        await this.#handleRuntimeDisconnect(segments[1] ?? "", request, response);
+        return;
+      }
+
+      if (
+        request.method === "POST" &&
         segments.length === 4 &&
         segments[0] === "runtimes" &&
         segments[2] === "responses"
@@ -167,9 +177,13 @@ class NodeBridgeServer implements BridgeServer {
       throw new BridgeHttpError(400, "missing_runtime_url", "Runtime connection must include a url query.");
     }
     const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
+    const connectionId = normalizeOptionalQuery(url.searchParams.get("connectionId"));
     const runtimeId = normalizeOptionalQuery(url.searchParams.get("runtimeId"));
     const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId")) ?? getOpenRuntimeSessionIdFromUrl(runtimeUrl);
     const renderId = normalizeOptionalQuery(url.searchParams.get("renderId"));
+    const source = normalizeOptionalQuery(url.searchParams.get("source"));
+    const name = normalizeOptionalQuery(url.searchParams.get("name"));
+    const parentRuntimeId = normalizeOptionalQuery(url.searchParams.get("parentRuntimeId"));
 
     response.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
@@ -182,15 +196,19 @@ class NodeBridgeServer implements BridgeServer {
     const stream = new ServerSentEventStream(response);
     const runtime = this.#store.connect(runtimeUrl, stream, {
       ...(pageInstanceId === undefined ? {} : { pageInstanceId }),
+      ...(connectionId === undefined ? {} : { connectionId }),
       ...(runtimeId === undefined ? {} : { runtimeId }),
       ...(sessionId === undefined ? {} : { sessionId }),
-      ...(renderId === undefined ? {} : { renderId })
+      ...(renderId === undefined ? {} : { renderId }),
+      ...(source === undefined ? {} : { source }),
+      ...(name === undefined ? {} : { name }),
+      ...(parentRuntimeId === undefined ? {} : { parentRuntimeId })
     });
     stream.send("connected", {
       runtimeId: runtime.runtimeId
     });
 
-    request.on("close", () => {
+    response.on("close", () => {
       this.#store.disconnect(runtime.runtimeId, stream);
     });
   }
@@ -228,6 +246,23 @@ class NodeBridgeServer implements BridgeServer {
     writeJson(response, 200, {
       accepted: true
     });
+  }
+
+  async #handleRuntimeDisconnect(
+    runtimeId: string,
+    request: IncomingMessage,
+    response: ServerResponse
+  ): Promise<void> {
+    const body = await readJson(request);
+    const connectionId = isRecord(body) ? getStringField(body, "connectionId") : undefined;
+    if (connectionId === undefined) {
+      throw new BridgeHttpError(400, "missing_connection_id", "Runtime disconnect must include connectionId.");
+    }
+
+    if (!this.#store.disconnectConnection(runtimeId, connectionId)) {
+      throw new BridgeHttpError(409, "runtime_connection_mismatch", "Runtime connection did not match the current page instance.");
+    }
+    writeJson(response, 200, { disconnected: true });
   }
 
   async #handleRuntimeRead(

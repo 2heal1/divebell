@@ -4,7 +4,8 @@ export { openRuntimeModernPlugin } from "./plugin/create-plugin.js";
 export type {
   ModernRuntimePlugin,
   ModernRuntimePluginApi,
-  OpenRuntimeModernPluginOptions
+  OpenRuntimeModernPluginOptions,
+  OpenRuntimeServerBridgeOptions
 } from "./plugin/types.js";
 export type {
   ModernDataRouter,

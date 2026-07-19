@@ -1,5 +1,4 @@
 import type {
-  BridgeConnectOptions,
   OpenRuntimeCore,
   OpenRuntimeWindowHost,
   RuntimeError
@@ -37,7 +36,6 @@ export type ModernGarfishStatus = typeof modernGarfishStatuses[number];
 export interface OpenRuntimeGarfishReporterOptions {
   runtime?: OpenRuntimeCore;
   source?: string;
-  bridge?: false | BridgeConnectOptions;
   host?: OpenRuntimeWindowHost;
 }
 

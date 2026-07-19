@@ -260,6 +260,42 @@ test("selects the latest matching runtime for read commands", async () => {
   });
 });
 
+test("requires an explicit runtime for actions when multiple instances match", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "run-action",
+    "--bridge",
+    "http://bridge.test",
+    "--url",
+    "http://app.test/",
+    "route.pick"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async () => jsonResponse({
+      runtimes: [
+        {
+          runtimeId: "runtime-main",
+          url: "http://app.test/",
+          status: "connected",
+          connectedAt: 1,
+          lastSeenAt: 2
+        },
+        {
+          runtimeId: "runtime-child",
+          url: "http://app.test/",
+          status: "connected",
+          connectedAt: 3,
+          lastSeenAt: 4
+        }
+      ]
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.match(JSON.parse(output.text()).message, /Pass --runtime with one of: runtime-main, runtime-child/);
+});
+
 test("matches runtime url when root path trailing slash differs", async () => {
   const output = createOutput();
   const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://app.test"], {

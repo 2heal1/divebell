@@ -1,6 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { createBridgeUrl } from "../features/bridge/config.js";
+import { createBridgeInitScript } from "../features/bridge/inject.js";
 import { createFileBridgeStateStore, ensureBridge, type BridgeStarter } from "../features/bridge/process.js";
 import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
@@ -41,7 +45,7 @@ export async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    const result = await openBrowserPage(browserRunner, args, openedUrl, { ui: hasOption(args, "ui") });
+    const result = await openBrowserPage(browserRunner, args, openedUrl, bridgeUrl, { ui: hasOption(args, "ui") });
     if (result.exitCode !== 0) {
       throw createError({
         code: "PAGE_OPEN_FAILED",
@@ -153,16 +157,43 @@ async function openBrowserPage(
   browserRunner: BrowserRunner,
   args: ParsedCliArgs,
   openedUrl: string,
+  bridgeUrl: string | null,
   options: BrowserRunOptions
 ): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
-  if (cookies === undefined) {
+  if (cookies === undefined && bridgeUrl === null) {
     return await browserRunner.run(["open", openedUrl], options);
   }
 
+  if (bridgeUrl !== null) {
+    const scriptPath = await ensureBridgeInitScript(bridgeUrl);
+    if (cookies === undefined) {
+      return await browserRunner.run(["open", openedUrl, "--init-script", scriptPath], options);
+    }
+
+    const launch = await browserRunner.run(["open", "--init-script", scriptPath], options);
+    if (launch.exitCode !== 0) return launch;
+    const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
+    if (applyCookies.exitCode !== 0) return applyCookies;
+    return await browserRunner.run(["goto", openedUrl]);
+  }
+
+  if (cookies === undefined) {
+    return await browserRunner.run(["open", openedUrl], options);
+  }
   const launch = await browserRunner.run(["open"], options);
   if (launch.exitCode !== 0) return launch;
   const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
   if (applyCookies.exitCode !== 0) return applyCookies;
   return await browserRunner.run(["goto", openedUrl]);
+}
+
+async function ensureBridgeInitScript(bridgeUrl: string): Promise<string> {
+  const directory = join(tmpdir(), "openruntime-bridge-init");
+  const script = createBridgeInitScript(bridgeUrl);
+  const key = createHash("sha256").update(script).digest("hex").slice(0, 16);
+  const scriptPath = join(directory, `bridge-${key}.js`);
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await writeFile(scriptPath, script, { encoding: "utf8", mode: 0o600 });
+  return scriptPath;
 }

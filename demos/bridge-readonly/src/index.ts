@@ -139,10 +139,6 @@ runtime.updateSnapshot({
 });
 setReady();
 
-runtime.connectBridge({
-  port: getBridgePort()
-});
-
 document.querySelector('[data-action="ready"]')?.addEventListener("click", setReady);
 document.querySelector('[data-action="loading"]')?.addEventListener("click", setLoading);
 document.querySelector('[data-action="error"]')?.addEventListener("click", setError);
@@ -228,12 +224,6 @@ function setText(id: string, value: string): void {
   if (element !== null) {
     element.textContent = value;
   }
-}
-
-function getBridgePort(): number {
-  const port = new URLSearchParams(location.search).get("bridgePort");
-  const number = Number(port);
-  return Number.isFinite(number) && number > 0 ? number : 17321;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

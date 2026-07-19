@@ -6,7 +6,10 @@ export interface BridgeRuntimeInfo {
   sessionId?: string;
   renderId?: string;
   source?: string;
+  name?: string;
+  parentRuntimeId?: string;
   pageInstanceId?: string;
+  connectionId?: string;
   status: BridgeRuntimeStatus;
   connectedAt: number;
   lastSeenAt: number;

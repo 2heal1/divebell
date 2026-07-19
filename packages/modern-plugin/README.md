@@ -16,20 +16,23 @@ Add the plugin in `src/modern.runtime.ts`:
 ```ts
 import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
 
-export default openRuntimeModernPlugin({
-  bridge: {
-    port: 17321,
-  },
-});
+export default openRuntimeModernPlugin();
 ```
 
-Then use the OpenRuntime CLI against the page:
+Open the page with the CLI so it can connect every registered runtime, then query it:
 
 ```sh
+pnpm exec openruntime open http://localhost:19081/
 pnpm exec openruntime targets --url http://localhost:19081/
 pnpm exec openruntime snapshot --url http://localhost:19081/
 pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
 ```
+
+For pages that expose multiple Runtime instances, including micro-frontend
+children, see [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md).
+
+For SSR state that must be sent before hydration, the plugin still accepts
+`bridge: { port: 17321 }` as an optional server-side setting.
 
 ## Targets
 

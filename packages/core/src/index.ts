@@ -4,11 +4,18 @@ export type { OpenRuntimePackageInfo, OpenRuntimePackageName } from "./shared/pa
 export { createOpenRuntime, RuntimeCenter } from "./runtime/center.js";
 export {
   getOpenRuntimeFromWindow,
-  installOpenRuntimeOnWindow
+  getOpenRuntimeRegistryFromWindow,
+  installOpenRuntimeOnWindow,
+  uninstallOpenRuntimeFromWindow
 } from "./runtime/window.js";
-export type { OpenRuntimeWindowHost } from "./runtime/window.js";
 export type {
-  BridgeConnectOptions,
+  OpenRuntimeInstance,
+  OpenRuntimeInstanceOptions,
+  OpenRuntimeRegistry,
+  OpenRuntimeRegistryEvent,
+  OpenRuntimeWindowHost
+} from "./runtime/window.js";
+export type {
   BridgeServerRuntimeSyncPayload,
   BridgeServerRuntimeSyncResponse,
   BridgeServerSyncOptions,

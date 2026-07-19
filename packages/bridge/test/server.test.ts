@@ -183,6 +183,59 @@ test("keeps same-url page instances separate", async () => {
   }
 });
 
+test("tracks multiple runtimes in one page and disconnects one instance explicitly", async () => {
+  const server = createBridgeServer({ clock: createClock(2820) });
+  const address = await server.listen({ port: 0 });
+  const main = await openRuntimeStream(
+    `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-main&runtimeId=runtime-main&name=main&source=demo`
+  );
+  const child = await openRuntimeStream(
+    `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-child&runtimeId=runtime-child&name=checkout&source=demo&parentRuntimeId=runtime-main`
+  );
+  let replacementChild: TestRuntimeStream | undefined;
+
+  try {
+    await main.next("connected");
+    await child.next("connected");
+    const connected = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(
+      connected.runtimes.toSorted((left, right) => left.runtimeId.localeCompare(right.runtimeId)).map((runtime) => ({
+        runtimeId: runtime.runtimeId,
+        name: runtime.name,
+        source: runtime.source,
+        parentRuntimeId: runtime.parentRuntimeId
+      })),
+      [
+        { runtimeId: "runtime-child", name: "checkout", source: "demo", parentRuntimeId: "runtime-main" },
+        { runtimeId: "runtime-main", name: "main", source: "demo", parentRuntimeId: undefined }
+      ]
+    );
+
+    replacementChild = await openRuntimeStream(
+      `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-child-new&runtimeId=runtime-child&name=checkout&source=demo&parentRuntimeId=runtime-main`
+    );
+    await replacementChild.next("connected");
+
+    const staleDisconnect = await fetch(`${address.url}/runtimes/runtime-child/disconnect`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ connectionId: "connection-child" })
+    });
+    assert.equal(staleDisconnect.status, 409);
+    const afterStaleDisconnect = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.equal(afterStaleDisconnect.runtimes.some((runtime) => runtime.runtimeId === "runtime-child"), true);
+
+    await postJson(`${address.url}/runtimes/runtime-child/disconnect`, { connectionId: "connection-child-new" });
+    const remaining = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
+    assert.deepEqual(remaining.runtimes.map((runtime) => runtime.runtimeId), ["runtime-main"]);
+  } finally {
+    main.close();
+    child.close();
+    replacementChild?.close();
+    await server.close();
+  }
+});
+
 test("tracks a stable session across refreshed runtimes", async () => {
   const ids = ["runtime-before-refresh", "runtime-after-refresh"];
   const server = createBridgeServer({

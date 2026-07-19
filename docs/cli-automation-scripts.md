@@ -138,7 +138,7 @@ async function opr(args) {
 
 ## Script Steps
 
-See the full command list and parameters in [CLI Reference](cli-reference.md). This guide only shows the common steps used to turn a fixed flow into a script.
+See the full command list and parameters in [CLI Reference](cli-reference.md). For automatic Bridge connections and Runtime selection, see [Browser Connections and Multiple Runtimes](runtime-connections.md). This guide only shows the common steps used to turn a fixed flow into a script.
 
 ### Prepare Inputs
 
@@ -150,7 +150,7 @@ Automation scripts usually work with these inputs:
 | `session` | Session id for this script; recommended for concurrent scripts and Runtime queries. |
 | `timeout` | Timeout for page or Runtime waits. |
 | `headless/ui` | The browser runs quietly by default; pass `--ui` to `open` for a visible browser. |
-| `bridge` | Local Bridge is prepared automatically by default; pass `--bridge <url>` for a specific Bridge. |
+| `bridge` | Local Bridge is prepared automatically by default. A connection manager is installed before navigation and connects every runtime registered by the page. Pass `--bridge <url>` for a specific Bridge or `--no-bridge` to disable injection. |
 
 ### Open The Page
 

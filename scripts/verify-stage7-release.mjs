@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { createBridgeServer } from "../packages/bridge/dist/index.js";
-import { createOpenRuntime } from "../packages/core/dist/index.js";
+import { createOpenRuntime, installOpenRuntimeOnWindow } from "../packages/core/dist/index.js";
 import { runCli } from "../packages/cli/dist/index.js";
 
 class NodeEventSource {
@@ -62,7 +63,9 @@ await main();
 async function main() {
   const previousEventSource = globalThis.EventSource;
   const previousLocation = globalThis.location;
-  const previousBridgeConnection = globalThis.__OPEN_RUNTIME_BRIDGE_CONNECTION__;
+  const previousRuntime = globalThis.__OPEN_RUNTIME__;
+  const previousRegistry = globalThis.__OPEN_RUNTIME_REGISTRY__;
+  const previousBridgeManager = globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__;
 
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
@@ -90,11 +93,12 @@ async function main() {
         bridgeManagedBy: "cli"
       }
     });
-    runtime.connectBridge({
-      port: address.port,
-      autoReconnect: false,
-      runtimeId: "stage7-release-runtime"
+    installOpenRuntimeOnWindow(runtime, globalThis, {
+      runtimeId: "stage7-release-runtime",
+      name: "stage7-release",
+      source: "stage7-smoke"
     });
+    await openWithInjectedBridge(address.url);
 
     await waitForConnectedRuntime(address.url);
 
@@ -140,6 +144,7 @@ async function main() {
 
     console.log("Stage 7 release smoke verification passed.");
   } finally {
+    globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__?.close();
     for (const source of NodeEventSource.instances) {
       source.close();
     }
@@ -153,13 +158,46 @@ async function main() {
     } else {
       globalThis.location = previousLocation;
     }
-    if (previousBridgeConnection === undefined) {
-      delete globalThis.__OPEN_RUNTIME_BRIDGE_CONNECTION__;
+    if (previousRuntime === undefined) {
+      delete globalThis.__OPEN_RUNTIME__;
     } else {
-      globalThis.__OPEN_RUNTIME_BRIDGE_CONNECTION__ = previousBridgeConnection;
+      globalThis.__OPEN_RUNTIME__ = previousRuntime;
     }
+    restoreOptionalGlobal("__OPEN_RUNTIME_REGISTRY__", previousRegistry);
+    restoreOptionalGlobal("__OPEN_RUNTIME_BRIDGE_MANAGER__", previousBridgeManager);
     await bridge.close();
   }
+}
+
+async function openWithInjectedBridge(bridgeUrl) {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "open",
+    "http://stage7-release.test/",
+    "--bridge",
+    bridgeUrl,
+    "--session",
+    "stage7-release"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: {
+      run: async (args) => {
+        if (args[0] === "open" && args[1] !== undefined) {
+          globalThis.location = { href: args[1] };
+          assert.equal(args[2], "--init-script");
+          globalThis.eval(readFileSync(args[3], "utf8"));
+        }
+        return { exitCode: 0, stdout: "", stderr: "" };
+      }
+    }
+  });
+  assert.equal(exitCode, 0, output.errorText());
+}
+
+function restoreOptionalGlobal(name, value) {
+  if (value === undefined) delete globalThis[name];
+  else globalThis[name] = value;
 }
 
 async function runCliJson(argv) {
@@ -198,7 +236,8 @@ async function waitForConnectedRuntime(bridgeUrl) {
     const body = await response.json();
     if (
       body.runtimes?.some(
-        (runtime) => runtime.status === "connected" && runtime.url === "http://stage7-release.test/"
+        (runtime) => runtime.status === "connected" &&
+          runtime.url === "http://stage7-release.test/?openruntimeSessionId=stage7-release"
       )
     ) {
       return;

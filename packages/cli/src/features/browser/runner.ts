@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -18,7 +18,7 @@ const AGENT_BROWSER_PROFILE_ENV = "AGENT_BROWSER_PROFILE";
 const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
 const AGENT_BROWSER_STATE_ENV = "AGENT_BROWSER_STATE";
-const OPENRUNTIME_AUTH_STATE_FILE_NAME = ".openruntime-auth-state.json";
+const AGENT_BROWSER_RESTORE_ENV = "AGENT_BROWSER_RESTORE";
 
 export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions = {}): BrowserRunner {
   const env = options.env ?? process.env;
@@ -30,6 +30,8 @@ export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions 
 
 export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}): BrowserRunner {
   const baseEnv = options.env ?? process.env;
+  const profileDirectory = resolveBrowserProfileDirectory(baseEnv, options.profileDirectory);
+  const restoreName = resolveAgentBrowserSession(baseEnv, profileDirectory, options.session);
   const configuredExecutablePath = options.executablePath
     ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV];
   const bundledEntryPath = configuredExecutablePath === undefined
@@ -43,14 +45,18 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
   ];
 
   return {
+    authState: {
+      profileDirectory,
+      restoreName
+    },
     run: async (args, runOptions = {}) => {
       try {
         const result = await execFileAsync(executablePath, [...prefixArgs, ...args], {
           cwd: options.cwd,
           env: createAgentBrowserEnvironment(
             baseEnv,
-            options.profileDirectory,
-            options.session,
+            profileDirectory,
+            restoreName,
             runOptions
           ),
           maxBuffer: 1024 * 1024 * 10
@@ -133,15 +139,14 @@ export function createAgentBrowserEnvironment(
   options: BrowserRunOptions = {}
 ): NodeJS.ProcessEnv {
   const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
-  const authStatePath = join(resolvedProfileDirectory, OPENRUNTIME_AUTH_STATE_FILE_NAME);
+  const resolvedSession = resolveAgentBrowserSession(baseEnv, resolvedProfileDirectory, session);
   const env: NodeJS.ProcessEnv = {
     ...baseEnv,
-    [AGENT_BROWSER_PROFILE_ENV]: resolvedProfileDirectory,
-    [AGENT_BROWSER_SESSION_ENV]: session
-      ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_SESSION_ENV]
-      ?? "openruntime",
-    ...(existsSync(authStatePath) ? { [AGENT_BROWSER_STATE_ENV]: authStatePath } : {})
+    [AGENT_BROWSER_SESSION_ENV]: resolvedSession,
+    [AGENT_BROWSER_RESTORE_ENV]: resolvedSession
   };
+  delete env[AGENT_BROWSER_PROFILE_ENV];
+  delete env[AGENT_BROWSER_STATE_ENV];
 
   if (options.ui === true) {
     env[AGENT_BROWSER_HEADED_ENV] = "1";
@@ -149,6 +154,24 @@ export function createAgentBrowserEnvironment(
     delete env[AGENT_BROWSER_HEADED_ENV];
   }
   return env;
+}
+
+export function resolveAgentBrowserSession(
+  baseEnv: NodeJS.ProcessEnv = process.env,
+  profileDirectory?: string,
+  session?: string
+): string {
+  const configuredSession = session ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_SESSION_ENV];
+  if (configuredSession !== undefined && configuredSession.length > 0) {
+    return configuredSession;
+  }
+
+  const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
+  if (resolvedProfileDirectory === resolve(createDefaultBrowserProfileDirectory())) {
+    return "openruntime";
+  }
+  const profileKey = createHash("sha256").update(resolvedProfileDirectory).digest("hex").slice(0, 12);
+  return `openruntime-${profileKey}`;
 }
 
 export function createGetWindowScript(path: string): string {

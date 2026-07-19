@@ -485,7 +485,7 @@ OpenRuntime 侧已经完成以下接入：
 - `agent-browser` 已成为唯一浏览器入口，不再需要浏览器后端切换配置。
 - OpenRuntime CLI 已固定依赖当前临时版本，普通用户不再需要另外安装或指定本地构建。
 - 可通过 `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` 指定自有构建，不要求它已经安装到全局命令目录。
-- OpenRuntime 与 agent-browser 共用稳定的浏览器 session 和持久化 profile，内存采集与页面操作落在同一个页面会话。
+- OpenRuntime 与 agent-browser 共用稳定的浏览器 session 和自动恢复状态，内存采集与页面操作落在同一个页面会话。
 - CLI 已提供 `memory metrics`、`memory status`、`memory sampling start`、`memory sampling stop`、`memory snapshot` 和 `memory cancel` 的 JSON 调用入口；`metrics` 默认自动完成垃圾回收，底层清理命令仅保留给高级调用。
 - CLI 扩展也能通过 `openruntime.browser.memory` 使用同一组能力，后续组合诊断命令不需要再次接触底层进程调用。
 - 已按 fork 的真实 JSON 包装格式接入成功结果；失败时保留稳定错误码和可读错误信息。

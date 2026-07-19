@@ -51,11 +51,16 @@ export async function exportAuthStateProfile(options: {
 export async function importProfile(options: {
   input: string;
   profileDirectory: string;
+  currentStorageState?: unknown;
   applyAuthState?: AuthStateApplier;
 }): Promise<ProfileImportResult> {
   const bundle = decodeProfileBundle(options.input);
   const profileDirectory = resolve(options.profileDirectory);
-  const storageState = mergeStorageStates(await readSavedAuthState(profileDirectory), bundle.storageState);
+  const savedStorageState = await readSavedAuthState(profileDirectory);
+  const existingStorageState = options.currentStorageState === undefined
+    ? savedStorageState
+    : mergeStorageStates(savedStorageState, options.currentStorageState);
+  const storageState = mergeStorageStates(existingStorageState, bundle.storageState);
 
   await saveAuthState(profileDirectory, storageState);
   if (options.applyAuthState !== undefined) {
@@ -86,15 +91,19 @@ export async function listProfile(options: {
 export async function clearProfile(options: {
   profileDirectory: string;
   url?: string;
+  currentStorageState?: unknown;
 }): Promise<ProfileClearResult> {
   const profileDirectory = resolve(options.profileDirectory);
   assertSafeProfileClearPath(profileDirectory);
 
   if (options.url !== undefined) {
-    const storageState = await readSavedAuthState(profileDirectory);
+    const savedStorageState = await readSavedAuthState(profileDirectory);
+    const storageState = options.currentStorageState === undefined
+      ? savedStorageState
+      : mergeStorageStates(savedStorageState, options.currentStorageState);
     const cleared = clearStorageStateByUrl(storageState, options.url);
     const removed = cleared.removedCookies > 0 || cleared.removedOrigins.length > 0;
-    if (removed) {
+    if (removed || options.currentStorageState !== undefined) {
       await rm(profileDirectory, {
         recursive: true,
         force: true

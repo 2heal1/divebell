@@ -1,6 +1,6 @@
 # 浏览器登录态 Profile
 
-OpenRuntime 可以把浏览器登录态导出成 `.oprprofile` 文件，再导入到 OpenRuntime 后续打开页面时使用的浏览器 Profile 里。
+OpenRuntime 可以把浏览器登录态导出成 `.oprprofile` 文件，再导入到 OpenRuntime 后续打开页面时使用的浏览器会话里。
 
 ## 导出
 
@@ -26,6 +26,10 @@ openruntime auth import --input /tmp/example-auth.oprprofile
 
 再次导入新的 `.oprprofile` 会和已有登录态合并，所以多个网站可以一个个导出、一个个导入。
 
+OpenRuntime 会使用 agent-browser 的自动恢复能力保存后续变化。导入文件只在导入时应用一次，不会在每次启动时用旧内容覆盖网站已经更新的登录状态。
+
+在迁移到 agent-browser 之前已经保存的登录状态，会在后续第一次执行 `openruntime open` 时自动接续，不需要重新导入。
+
 ## 查看和清理
 
 查看已经导入了哪些站点：
@@ -45,6 +49,8 @@ openruntime auth clear
 ```sh
 openruntime auth clear --url https://example.com
 ```
+
+只清理某个站点时，其他站点的登录状态会继续保留。清空全部登录态后，后续启动也不会从 agent-browser 的自动恢复记录里重新出现。
 
 查看导入状态统一用 `auth list`。
 

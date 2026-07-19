@@ -82,7 +82,7 @@ The CLI also provides browser control capabilities, including:
 - taking screenshots
 - inspecting Network
 - inspecting Console
-- importing and exporting browser profiles
+- importing and exporting browser login state
 
 Browser capabilities are responsible for entering pages and collecting external information.
 

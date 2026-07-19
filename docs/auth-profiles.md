@@ -1,6 +1,6 @@
 # Browser Auth Profiles
 
-OpenRuntime can export browser login state to an `.oprprofile` file, then import it into the OpenRuntime browser profile used by later `openruntime open` commands.
+OpenRuntime can export browser login state to an `.oprprofile` file, then import it into the browser session used by later `openruntime open` commands.
 
 ## Export
 
@@ -26,6 +26,10 @@ After import, later OpenRuntime browser sessions use this login state by default
 
 Importing another `.oprprofile` merges it with the existing imported state, so multiple sites can be imported one by one.
 
+OpenRuntime uses agent-browser automatic restore for later changes. An imported file is applied once during import, so stale contents are not replayed on every launch over login state that a site has already refreshed.
+
+Login state saved before the agent-browser migration is applied automatically on the first later `openruntime open`; it does not need to be imported again.
+
 ## Inspect And Clear
 
 List imported sites:
@@ -45,6 +49,8 @@ Clear only one site:
 ```sh
 openruntime auth clear --url https://example.com
 ```
+
+Clearing one site keeps the other sites signed in. Clearing everything also removes the agent-browser automatic restore record, so removed login state does not return on the next launch.
 
 Use `auth list` to inspect imported auth state.
 

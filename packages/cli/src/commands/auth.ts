@@ -5,8 +5,9 @@ import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/ar
 import { exportAuthProfileWithConnector } from "../features/auth/connector/index.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import { clearProfile, getProfileDirectory, importProfile, listProfile, readProfileInput, readProfileInputFile, type AuthStateApplier, type ProfileExportResult } from "../features/auth/profile.js";
+import { applySavedAuthState, applySavedAuthStateIfPresent, captureCurrentAuthState, clearAgentBrowserRestore, closeBrowserForAuthState } from "../features/auth/browser-state.js";
 import { createError } from "../utils/output.js";
-import { createOptionalNumberProperty, createOptionalObjectProperty, createOptionalStringProperty, writeJson } from "../utils/command.js";
+import { createOptionalNumberProperty, createOptionalStringProperty, writeJson } from "../utils/command.js";
 
 const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
 export async function runAuthCommand(
@@ -25,19 +26,33 @@ export async function runAuthCommand(
   }
   if (action === "list") {
     writeJson(stdout, await listProfile({
-      profileDirectory: getProfileDirectory()
+      profileDirectory: getBrowserProfileDirectory(browserRunner)
     }));
     return 0;
   }
   if (action === "clear") {
     const url = getOptionValue(args, "url") ?? args.command[2];
-    await closeBrowserForProfileCommand(browserRunner, {
-      allowMissingBrowser: true
-    });
-    writeJson(stdout, await clearProfile({
-      profileDirectory: getProfileDirectory(),
-      ...createOptionalStringProperty("url", url)
-    }));
+    const profileDirectory = getBrowserProfileDirectory(browserRunner);
+    const currentStorageState = url === undefined
+      ? undefined
+      : await captureCurrentAuthState(browserRunner);
+    await clearAgentBrowserRestore(browserRunner, profileDirectory);
+    try {
+      const result = await clearProfile({
+        profileDirectory,
+        ...createOptionalStringProperty("url", url),
+        ...(currentStorageState === undefined ? {} : { currentStorageState })
+      });
+      await applySavedAuthStateIfPresent(browserRunner, profileDirectory);
+      writeJson(stdout, result);
+    } catch (error) {
+      try {
+        await applySavedAuthStateIfPresent(browserRunner, profileDirectory);
+      } catch {
+        // Keep the original clear error; a later `open` retries unapplied saved auth.
+      }
+      throw error;
+    }
     return 0;
   }
 
@@ -83,15 +98,24 @@ async function runAuthImportCommand(
   browserRunner: BrowserRunner,
   authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
-  await closeBrowserForProfileCommand(browserRunner);
+  const profileDirectory = getBrowserProfileDirectory(browserRunner);
+  let currentStorageState: unknown | undefined;
+  if (authStateApplier === undefined) {
+    currentStorageState = await captureCurrentAuthState(browserRunner);
+  } else {
+    await closeBrowserForAuthState(browserRunner);
+  }
   const inputPath = getOptionValue(args, "input");
   const input = inputPath === undefined
     ? await readProfileInput(args.command[2])
     : await readProfileInputFile(inputPath);
   const result = await importProfile({
     input,
-    profileDirectory: getProfileDirectory(),
-    ...createOptionalObjectProperty("applyAuthState", authStateApplier)
+    profileDirectory,
+    ...(currentStorageState === undefined ? {} : { currentStorageState }),
+    applyAuthState: authStateApplier ?? (async (applierProfileDirectory) => {
+      await applySavedAuthState(browserRunner, applierProfileDirectory);
+    })
   });
   writeJson(stdout, result);
   return 0;
@@ -142,24 +166,6 @@ async function getPrintableProfileExportResult(result: ProfileExportResult): Pro
   return path;
 }
 
-async function closeBrowserForProfileCommand(
-  browserRunner: BrowserRunner,
-  options: {
-    allowMissingBrowser?: boolean;
-  } = {}
-): Promise<void> {
-  const result = await browserRunner.run(["close"]);
-  if (result.exitCode !== 0) {
-    const message = result.stderr.trim() || result.stdout.trim() || "Could not close OpenRuntime browser.";
-    if (options.allowMissingBrowser === true && isMissingBrowserCloseError(message)) {
-      return;
-    }
-    throw new Error(message);
-  }
-}
-
-function isMissingBrowserCloseError(message: string): boolean {
-  return message.includes("daemon failed to start")
-    || message.includes("ECONNREFUSED")
-    || message.includes("ENOENT");
+function getBrowserProfileDirectory(browserRunner: BrowserRunner): string {
+  return browserRunner.authState?.profileDirectory ?? getProfileDirectory();
 }

@@ -10,6 +10,10 @@ export interface BrowserRunOptions {
 
 export interface BrowserRunner {
   run(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
+  authState?: {
+    profileDirectory: string;
+    restoreName: string;
+  };
 }
 
 export interface AgentBrowserJsonResponse {
@@ -41,4 +45,3 @@ export interface BrowserConsoleEntry {
   args: string;
   timestamp?: number;
 }
-

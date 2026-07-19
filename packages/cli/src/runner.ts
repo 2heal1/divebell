@@ -28,7 +28,9 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
   const browserRunner = options.browserRunner ?? createDefaultBrowserRunner();
-  const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(import.meta.url);
+  const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(
+    new URL("./bin.js", import.meta.url).href
+  );
   const operationLogStore = createFileOperationLogStore(process.cwd(), options.operationLogDirectory);
   const args = parseCliArgs(argv);
 

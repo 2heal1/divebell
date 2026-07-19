@@ -19,7 +19,7 @@
 - `openruntime auth import <content-or-path> | --input <path>` - 导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。
 - `openruntime auth list` - 列出当前 OpenRuntime 浏览器 profile 里已导入的站点。
 - `openruntime auth clear [--url <url>]` - 清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。
-- `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。
+- `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，默认先准备 Bridge，并在加载前放入连接管理器，自动连接页面注册的所有 runtime；--ui 打开可见浏览器，--no-bridge 不连接。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素引用。
 - `openruntime click <ref|selector|text>` - 按页面引用、选择器或可见文本点击元素。
 - `openruntime fill <ref|selector> <value>` - 按页面引用或选择器填写输入框。

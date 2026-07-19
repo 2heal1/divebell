@@ -1,4 +1,4 @@
-import type { BridgeConnectOptions, OpenRuntimeCore, OpenRuntimeWindowHost } from "@openruntime/core";
+import type { OpenRuntimeCore, OpenRuntimeWindowHost } from "@openruntime/core";
 import type {
   ModernHydrationEvent,
   ModernRenderContext,
@@ -12,10 +12,14 @@ import type {
 export interface OpenRuntimeModernPluginOptions {
   runtime?: OpenRuntimeCore;
   source?: string;
-  bridge?: false | BridgeConnectOptions;
+  bridge?: false | OpenRuntimeServerBridgeOptions;
   host?: OpenRuntimeWindowHost;
   injectRouteListAction?: boolean;
   injectRouteNavigateAction?: boolean;
+}
+
+export interface OpenRuntimeServerBridgeOptions {
+  port?: number;
 }
 
 export interface ModernRuntimePlugin {

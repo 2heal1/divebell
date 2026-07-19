@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { request as httpRequest, type IncomingMessage } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "@rstest/core";
 
 import { createBridgeServer } from "../../bridge/dist/index.js";
-import { createOpenRuntime } from "../../core/dist/index.js";
+import {
+  createOpenRuntime,
+  installOpenRuntimeOnWindow,
+  uninstallOpenRuntimeFromWindow
+} from "../../core/dist/index.js";
 import { runCli } from "../dist/index.js";
 
 process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
@@ -11,6 +18,10 @@ process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
 test("runs the stage 2 cli flow against a connected runtime", async () => {
   const previousEventSource = globalThis.EventSource;
   const previousLocation = globalThis.location;
+  const previousRuntime = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME__;
+  const previousRegistry = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME_REGISTRY__;
+  const previousManager = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME_BRIDGE_MANAGER__;
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-stage2-flow-"));
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
 
@@ -72,11 +83,71 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       }
     });
 
-    runtime.connectBridge({
-      port: address.port,
-      autoReconnect: false
+    const childRuntime = createOpenRuntime();
+    childRuntime.registerTarget({
+      id: "microfrontend:checkout",
+      type: "demo.microfrontend",
+      source: "checkout",
+      statuses: ["mounted", "unmounted"]
     });
-    await waitForConnectedRuntime(address.url);
+    childRuntime.updateSnapshot({
+      id: "microfrontend:checkout",
+      status: "mounted"
+    });
+
+    const host = globalThis as unknown as Window;
+    installOpenRuntimeOnWindow(runtime, host, {
+      runtimeId: "runtime-orders",
+      name: "orders",
+      source: "demo"
+    });
+    const openOutput = createOutput();
+    const openExitCode = await runCli([
+      "open",
+      "http://app.test/",
+      "--bridge",
+      address.url,
+      "--session",
+      "stage2-flow"
+    ], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      operationLogDirectory,
+      browserRunner: {
+        run: async (args) => {
+          if (args[0] === "open" && args[1] !== undefined) {
+            (globalThis as unknown as { location: Location }).location = { href: args[1] } as Location;
+            const scriptPath = args[3];
+            assert.equal(args[2], "--init-script");
+            assert.equal(typeof scriptPath, "string");
+            globalThis.eval(readFileSync(scriptPath as string, "utf8"));
+          }
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }
+      }
+    });
+    assert.equal(openExitCode, 0, openOutput.errorText());
+    await waitForConnectedRuntimes(address.url, 1);
+
+    installOpenRuntimeOnWindow(childRuntime, host, {
+      runtimeId: "runtime-checkout",
+      name: "checkout",
+      source: "demo",
+      parentRuntimeId: "runtime-orders"
+    });
+    await waitForConnectedRuntimes(address.url, 2);
+
+    const runtimes = await runCliJson<{
+      runtimes: Array<{ runtimeId: string; name?: string; parentRuntimeId?: string }>;
+    }>(["runtimes", "--bridge", address.url]);
+    assert.deepEqual(runtimes.runtimes.toSorted((left, right) => left.runtimeId.localeCompare(right.runtimeId)).map((item) => ({
+      runtimeId: item.runtimeId,
+      name: item.name,
+      parentRuntimeId: item.parentRuntimeId
+    })), [
+      { runtimeId: "runtime-checkout", name: "checkout", parentRuntimeId: "runtime-orders" },
+      { runtimeId: "runtime-orders", name: "orders", parentRuntimeId: undefined }
+    ]);
 
     const options = await runCliJson<{
       result: Array<{ value: string }>;
@@ -84,6 +155,8 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "input-options",
       "--bridge",
       address.url,
+      "--runtime",
+      "runtime-orders",
       "--url",
       "http://app.test/",
       "--action",
@@ -105,6 +178,8 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "run-action",
       "--bridge",
       address.url,
+      "--runtime",
+      "runtime-orders",
       "--url",
       "http://app.test/",
       "demo.refresh-orders",
@@ -130,6 +205,8 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "wait-for",
       "--bridge",
       address.url,
+      "--runtime",
+      "runtime-orders",
       "--url",
       "http://app.test/",
       "business:orders",
@@ -150,6 +227,8 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "events",
       "--bridge",
       address.url,
+      "--runtime",
+      "runtime-orders",
       "--url",
       "http://app.test/",
       "--limit",
@@ -159,12 +238,26 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "action.started",
       "action.success"
     ]);
+
+    assert.equal(uninstallOpenRuntimeFromWindow(childRuntime, host), true);
+    assert.equal(
+      (globalThis as unknown as { __OPEN_RUNTIME_BRIDGE_MANAGER__?: { connectionCount: number } })
+        .__OPEN_RUNTIME_BRIDGE_MANAGER__?.connectionCount,
+      1
+    );
+    await waitForRuntimeMissing(address.url, "runtime-checkout");
   } finally {
+    (globalThis as unknown as { __OPEN_RUNTIME_BRIDGE_MANAGER__?: { close(): void } })
+      .__OPEN_RUNTIME_BRIDGE_MANAGER__?.close();
     for (const source of NodeEventSource.instances) {
       source.close();
     }
     restoreGlobal("EventSource", previousEventSource);
     restoreLocation(previousLocation);
+    restoreOptionalGlobal("__OPEN_RUNTIME__", previousRuntime);
+    restoreOptionalGlobal("__OPEN_RUNTIME_REGISTRY__", previousRegistry);
+    restoreOptionalGlobal("__OPEN_RUNTIME_BRIDGE_MANAGER__", previousManager);
+    rmSync(operationLogDirectory, { recursive: true, force: true });
     await bridge.close();
   }
 });
@@ -174,11 +267,13 @@ class NodeEventSource {
 
   onerror: (() => void) | undefined;
   readonly #request: ReturnType<typeof httpRequest>;
+  #response: IncomingMessage | undefined;
   readonly #listeners = new Map<string, Array<(event: MessageEvent) => void>>();
 
   constructor(url: string) {
     NodeEventSource.instances.push(this);
     this.#request = httpRequest(url, { method: "GET" }, (response) => {
+      this.#response = response;
       this.#read(response);
     });
     this.#request.on("error", () => {
@@ -197,6 +292,7 @@ class NodeEventSource {
   }
 
   close(): void {
+    this.#response?.destroy();
     this.#request.destroy();
   }
 
@@ -257,18 +353,30 @@ function createOutput(): {
   };
 }
 
-async function waitForConnectedRuntime(bridgeUrl: string): Promise<void> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+async function waitForConnectedRuntimes(bridgeUrl: string, count: number): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
     const response = await fetch(`${bridgeUrl}/runtimes`);
     const body = await response.json() as {
       runtimes?: Array<{ status?: string; url?: string }>;
     };
-    if (body.runtimes?.some((runtime) => runtime.status === "connected" && runtime.url === "http://app.test/")) {
+    if (body.runtimes?.filter((runtime) => runtime.status === "connected").length === count) {
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error("Runtime did not connect to the Bridge.");
+}
+
+async function waitForRuntimeMissing(bridgeUrl: string, runtimeId: string): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const response = await fetch(`${bridgeUrl}/runtimes`);
+    const body = await response.json() as {
+      runtimes?: Array<{ runtimeId?: string }>;
+    };
+    if (!body.runtimes?.some((runtime) => runtime.runtimeId === runtimeId)) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Runtime ${runtimeId} remained in the connected runtime list.`);
 }
 
 function parseServerSentEvent(raw: string): { event: string; data: unknown } {
@@ -295,6 +403,12 @@ function restoreGlobal(name: "EventSource", value: typeof EventSource | undefine
 
 function restoreLocation(value: Location): void {
   (globalThis as unknown as { location: Location }).location = value;
+}
+
+function restoreOptionalGlobal(name: string, value: unknown): void {
+  const host = globalThis as unknown as Record<string, unknown>;
+  if (value === undefined) delete host[name];
+  else host[name] = value;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

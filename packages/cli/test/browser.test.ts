@@ -52,7 +52,7 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
     sessionId
   });
   assert.equal(output.errorText(), "");
-  assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
+  assertBridgeOpenCalls(browserCalls, `http://app.test/?openruntimeSessionId=${sessionId}`, "http://localhost:18080");
 });
 
 test("opens a browser page with a stable OpenRuntime session", async () => {
@@ -85,10 +85,11 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
     bridgeUrl: "http://localhost:17321",
     sessionId: "session-orders"
   });
-  assert.deepEqual(browserCalls, [[
-    "open",
-    "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details"
-  ]]);
+  assertBridgeOpenCalls(
+    browserCalls,
+    "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
+    "http://localhost:17321"
+  );
 });
 
 test("opens a browser page without touching the bridge when no-bridge is set", async () => {
@@ -206,10 +207,16 @@ test("records the latest open operation by working directory and removes it on c
     assert.equal(operation.bridgeUrl, "http://bridge.test");
     assert.equal(operation.sessionId, "session-orders");
     assert.equal(operation.exitCode, 0);
-    assert.deepEqual(browserCalls, [
-      ["open", "http://127.0.0.1:3000/orders?openruntimeSessionId=session-orders"],
-      ["open", "http://localhost:3000/users?openruntimeSessionId=session-orders"]
-    ]);
+    assertBridgeOpenCalls(
+      browserCalls.slice(0, 1),
+      "http://127.0.0.1:3000/orders?openruntimeSessionId=session-orders",
+      "http://bridge.test"
+    );
+    assertBridgeOpenCalls(
+      browserCalls.slice(1),
+      "http://localhost:3000/users?openruntimeSessionId=session-orders",
+      "http://bridge.test"
+    );
 
     const closeOutput = createOutput();
     const closeExitCode = await runCli(["close"], {
@@ -232,6 +239,15 @@ test("records the latest open operation by working directory and removes it on c
     });
   }
 });
+
+function assertBridgeOpenCalls(calls: string[][], openedUrl: string, bridgeUrl: string): void {
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.[0], "open");
+  assert.equal(calls[0]?.[1], openedUrl);
+  assert.equal(calls[0]?.[2], "--init-script");
+  assert.match(calls[0]?.[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+  assert.equal(typeof bridgeUrl, "string");
+}
 
 test("uses the latest open context as the default runtime selector", async () => {
   const context = createOpenContextFixture({

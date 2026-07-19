@@ -92,6 +92,8 @@ For Agents, it is recommended to read Runtime API first and then combine it with
 
 For browser login state export, import, inspection, and cleanup, see [Browser Auth Profiles](docs/auth-profiles.md). Chinese documentation is available at [浏览器登录态 Profile](docs/auth-profiles.zh-CN.md).
 
+For CLI-managed Bridge connections and micro-frontend pages with multiple Runtime instances, see [Browser Connections and Multiple Runtimes](docs/runtime-connections.md). Chinese documentation is available at [浏览器连接与多 Runtime 使用指南](docs/runtime-connections.zh-CN.md).
+
 ---
 
 ## Record a Browser Workflow

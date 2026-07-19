@@ -66,9 +66,13 @@ export class RuntimeConnectionStore {
     stream: RuntimeStream,
     options: {
       pageInstanceId?: string;
+      connectionId?: string;
       runtimeId?: string;
       sessionId?: string;
       renderId?: string;
+      source?: string;
+      name?: string;
+      parentRuntimeId?: string;
     } = {}
   ): BridgeRuntimeInfo {
     const now = this.#clock.now();
@@ -80,7 +84,11 @@ export class RuntimeConnectionStore {
         url,
         ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
         ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
+        ...(options.source === undefined ? {} : { source: options.source }),
+        ...(options.name === undefined ? {} : { name: options.name }),
+        ...(options.parentRuntimeId === undefined ? {} : { parentRuntimeId: options.parentRuntimeId }),
         ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
+        ...(options.connectionId === undefined ? {} : { connectionId: options.connectionId }),
         status: "connected",
         lastSeenAt: now
       };
@@ -93,7 +101,11 @@ export class RuntimeConnectionStore {
       url,
       ...(options.sessionId === undefined ? {} : { sessionId: options.sessionId }),
       ...(options.renderId === undefined ? {} : { renderId: options.renderId }),
+      ...(options.source === undefined ? {} : { source: options.source }),
+      ...(options.name === undefined ? {} : { name: options.name }),
+      ...(options.parentRuntimeId === undefined ? {} : { parentRuntimeId: options.parentRuntimeId }),
       ...(options.pageInstanceId === undefined ? {} : { pageInstanceId: options.pageInstanceId }),
+      ...(options.connectionId === undefined ? {} : { connectionId: options.connectionId }),
       status: "connected",
       connectedAt: now,
       lastSeenAt: now
@@ -169,6 +181,21 @@ export class RuntimeConnectionStore {
       pending.reject(createRuntimeDisconnectedError(`Runtime "${runtimeId}" disconnected before responding to request "${requestId}".`));
     }
     runtime.pending.clear();
+  }
+
+  disconnectConnection(runtimeId: string, connectionId: string): boolean {
+    const runtime = this.#runtimes.get(runtimeId);
+    if (
+      runtime?.stream === undefined ||
+      runtime.info.connectionId !== connectionId
+    ) {
+      return false;
+    }
+
+    const stream = runtime.stream;
+    this.disconnect(runtimeId, stream);
+    stream.close();
+    return true;
   }
 
   disconnectAll(): void {

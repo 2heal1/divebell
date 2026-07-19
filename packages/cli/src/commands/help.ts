@@ -55,7 +55,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
     usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "打开页面，默认会先准备 Bridge，并以静默浏览器模式运行；--ui 打开可见浏览器。"
+    description: "打开页面，默认先准备 Bridge，并在加载前放入连接管理器，自动连接页面注册的所有 runtime；--ui 打开可见浏览器，--no-bridge 不连接。"
   },
   {
     category: "Bridge and Browser",

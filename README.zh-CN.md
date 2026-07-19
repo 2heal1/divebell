@@ -173,6 +173,8 @@ OpenRuntime CLI 支持加载本地命令文件。团队可以用它增加自己�
 
 如果要写包含打开浏览器、等待页面和操作页面的独立自动化脚本，见 [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md)。
 
+浏览器如何自动连接 Bridge，以及微前端页面中如何查看和选择多个 Runtime，见 [浏览器连接与多 Runtime 使用指南](docs/runtime-connections.zh-CN.md)。英文文档见 [Browser Connections and Multiple Runtimes](docs/runtime-connections.md)。
+
 命令文件默认从这里读取：
 
 ```text

@@ -2,6 +2,8 @@
 
 这个 demo 是一个基础 Rsbuild 项目，用来验收 roadmap 阶段 2：页面连接 Bridge，CLI 从页面外读取状态、读取输入选项、执行 action，并用 `wait-for` 等待结果。
 
+完整操作方式和多 Runtime 场景见 [浏览器连接与多 Runtime 使用指南](../../docs/runtime-connections.zh-CN.md)。
+
 ## 准备
 
 在仓库根目录先构建一次：
@@ -12,27 +14,21 @@ pnpm build
 
 ## 启动
 
-开第一个终端，启动 Bridge：
-
-```bash
-pnpm exec openruntime start --port 17321
-```
-
-开第二个终端，启动 demo 页面：
+开第一个终端，启动 demo 页面：
 
 ```bash
 pnpm --filter @openruntime/demo-bridge-readonly dev
 ```
 
-然后打开：
+开第二个终端，用 CLI 打开页面。CLI 会自动启动 Bridge，并在页面加载前放入连接管理器：
 
-```txt
-http://localhost:19080/
+```bash
+pnpm exec openruntime open http://localhost:19080/ --ui
 ```
 
 ## 验收
 
-在第三个终端执行下面命令。
+继续在终端执行下面命令。
 
 查看已连接页面：
 
@@ -95,16 +91,10 @@ pnpm exec openruntime wait-for --url http://localhost:19080/ business:orders rea
 - `run-action` 能增加 orders 数量。
 - `wait-for` 能返回 `business:orders` 已经是 `ready`。
 
-如果 Bridge 端口不是 `17321`，打开页面时带上同样的端口：
-
-```txt
-http://localhost:19080/?bridgePort=17322
-```
-
-CLI 命令也要加上：
+如果 Bridge 端口不是 `17321`，打开页面和后续命令都加上：
 
 ```bash
---bridge http://localhost:17322
+--port 17322
 ```
 
 ## 构建检查

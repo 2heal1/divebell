@@ -106,7 +106,7 @@ async function runConnected(args) {
 
   const nextAction = bridgeResult.ok === false || matchingOpenOperation === undefined
     ? createOpenPageNextAction(bridge, url, { bridgeReachable: bridgeResult.ok !== false })
-    : createConnectBridgeNextAction(integration, bridge, url);
+    : createInstallRuntimeNextAction(integration, bridge, url);
   const exhausted = evidence.attempts.connected >= MAX_ATTEMPTS;
   evidence.connected = {
     ok: false,
@@ -427,8 +427,7 @@ function createOpenPageNextAction(bridge, url, options = {}) {
   };
 }
 
-function createConnectBridgeNextAction(integration, bridge, url) {
-  const port = bridgePort(bridge);
+function createInstallRuntimeNextAction(integration, bridge, url) {
   const install = integration.install.length > 0
     ? [`pnpm add ${integration.install.join(" ")}`]
     : [];
@@ -445,7 +444,7 @@ function createConnectBridgeNextAction(integration, bridge, url) {
   if (use.has("@openruntime/modern-plugin")) {
     return {
       type: "connect_modern_plugin",
-      summary: "No connected runtime was found. Wire the Modern plugin with a Bridge port in source, restart the app, then rerun this connected check.",
+      summary: "No connected runtime was found. Wire the Modern plugin in source, restart the app, then reopen it with the CLI and rerun this connected check.",
       commands: install,
       reference: "skills/openruntime/references/modernjs.md",
       bridge,
@@ -459,11 +458,7 @@ import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
 
 export default defineRuntimeConfig({
   plugins: [
-    openRuntimeModernPlugin({
-      bridge: {
-        port: ${port},
-      },
-    }),
+    openRuntimeModernPlugin(),
   ],
 });`
         }
@@ -474,7 +469,7 @@ export default defineRuntimeConfig({
 
   return {
     type: "connect_core_runtime",
-    summary: "No connected runtime was found. Install a Core runtime at the app entry, connect Bridge in source, restart the app, then rerun this connected check.",
+    summary: "No connected runtime was found. Install a Core runtime on window, restart the app, then reopen it with the CLI and rerun this connected check.",
     commands: install,
     reference: "skills/openruntime/references/modernjs.md",
     bridge,
@@ -497,10 +492,6 @@ runtime.registerTarget({
 runtime.updateSnapshot({
   id: "app:ready",
   status: "ready",
-});
-
-runtime.connectBridge({
-  port: ${port},
 });`
       }
     ],
@@ -806,14 +797,6 @@ function parseJsonOutput(output) {
     }
   }
   return undefined;
-}
-
-function bridgePort(bridge) {
-  try {
-    return new URL(bridge).port || "17321";
-  } catch {
-    return "17321";
-  }
 }
 
 function trimTrailingSlash(value) {

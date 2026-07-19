@@ -124,51 +124,26 @@ function getOpenRuntimeFromWindow(
 const runtime = getOpenRuntimeFromWindow() ?? installOpenRuntimeOnWindow(createOpenRuntime());
 ```
 
-### connectBridge
-
-连接 CLI Bridge，让 Agent 能通过命令读取 targets、snapshot、events 并执行 action。
-
-**什么时候使用**
-
-- 源码可改，需要接入 OpenRuntime 证据链。
-- 页面启动后要让 `pnpm exec openruntime runtimes` 能看到 connected runtime。
-
-**行为说明**
-
-- 默认端口使用 `OPEN_RUNTIME_BRIDGE_DEFAULT_PORT`，当前是 `17321`。
-- 项目已有配置、环境变量或全局常量传入端口时，使用项目端口，不要硬编码。
-- 源码不可改且无法连接时，明确标记 runtime evidence unavailable。
+同一页面允许注册多个 runtime。主应用和子应用分别安装实例时，为每个实例提供稳定的
+`runtimeId`；子应用卸载时同步注销。第一个实例仍作为默认实例供旧代码读取，完整实例
+列表通过 registry 获取。
 
 ```ts
-import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
+import {
+  getOpenRuntimeRegistryFromWindow,
+  installOpenRuntimeOnWindow,
+  uninstallOpenRuntimeFromWindow,
+} from "@openruntime/core";
 
-interface BridgeConnectOptions {
-  // Bridge 端口；默认端口常量是 17321。
-  port?: number;
-  // 是否自动重连。
-  autoReconnect?: boolean;
-  // 页面实例 ID，用于区分同 URL 的多个页面实例。
-  pageInstanceId?: string;
-  // runtime ID。
-  runtimeId?: string;
-  // session ID，通常来自 URL session 参数。
-  sessionId?: string;
-  // 渲染实例 ID。
-  renderId?: string;
-}
+installOpenRuntimeOnWindow(runtime, window, {
+  runtimeId: "runtime-orders",
+  name: "orders",
+  parentRuntimeId: "runtime-main",
+});
 
-interface OpenRuntimeCore {
-  connectBridge(options?: BridgeConnectOptions): void;
-}
+const instances = getOpenRuntimeRegistryFromWindow()?.list() ?? [];
+uninstallOpenRuntimeFromWindow(runtime);
 ```
-
-```ts
-runtime.connectBridge({ port: OPEN_RUNTIME_BRIDGE_DEFAULT_PORT });
-```
-
-:::tip
-`OPEN_RUNTIME_SESSION_QUERY_PARAM` 是 URL 上的 session 参数名。需要区分多个同 URL 页面时，用它生成或读取 session。
-:::
 
 ### registerTarget
 
@@ -916,7 +891,7 @@ const matched = matchesRuntimeCondition(
 **行为说明**
 
 - 这是服务端同步入口，不是浏览器页面的默认接入方式。
-- 浏览器页面优先使用 `connectBridge`。
+- 浏览器页面由 `openruntime open` 自动连接所有已注册实例。
 
 ```ts
 function syncServerRuntimeBridge(
@@ -992,7 +967,6 @@ pnpm exec openruntime wait-for <target-id> ready --url <url> --timeout 10000
 
 ```ts
 import {
-  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
   createOpenRuntime,
   getOpenRuntimeFromWindow,
   installOpenRuntimeOnWindow,
@@ -1000,8 +974,6 @@ import {
 
 const runtime =
   getOpenRuntimeFromWindow() ?? installOpenRuntimeOnWindow(createOpenRuntime());
-
-runtime.connectBridge({ port: OPEN_RUNTIME_BRIDGE_DEFAULT_PORT });
 
 runtime.registerTarget({
   id: "business:orders:risk-panel",
@@ -1036,7 +1008,7 @@ runtime.updateSnapshot({
 
 ## Bridge 和连接
 
-源码可改时，必须在源码或框架插件配置里连接 Bridge；源码不可改时，明确标记 runtime evidence unavailable。
+页面源码只负责注册 runtime。CLI 打开浏览器时会自动连接 Bridge。
 
 Core 直接接入示例：
 
@@ -1044,15 +1016,12 @@ Core 直接接入示例：
 import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
 
 const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
-
-runtime.connectBridge({
-  port: 17321,
-});
 ```
 
 连接确认：
 
 ```bash
+pnpm exec openruntime open <app-url> --bridge http://localhost:17321
 pnpm exec openruntime runtimes --bridge http://localhost:17321
 ```
 
@@ -1068,16 +1037,11 @@ import {
   installOpenRuntimeOnWindow,
 } from "@openruntime/core";
 
-export function ensureOpenRuntimeConnected() {
+export function ensureOpenRuntimeInstalled() {
   const existing = getOpenRuntimeFromWindow();
-  const runtime = existing ?? installOpenRuntimeOnWindow(createOpenRuntime());
-
-  runtime.connectBridge({ port: 17321 });
-  return runtime;
+  return existing ?? installOpenRuntimeOnWindow(createOpenRuntime());
 }
 ```
-
-如果项目已经通过配置、环境变量或全局常量传入 Bridge 端口，使用项目里的端口值，不要硬编码。
 
 ## Target
 

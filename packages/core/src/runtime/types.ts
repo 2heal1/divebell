@@ -10,7 +10,6 @@ import type { GetEventsQuery, GetEventsResult } from "../event/types.js";
 import type { GetSnapshotQuery, RuntimeSnapshot, UpdateSnapshotInput } from "../snapshot/types.js";
 import type { GetTargetsQuery, RegisterTargetInput, RuntimeTargetDescriptor } from "../target/types.js";
 import type { RuntimeCondition, RuntimeWaitOptions, RuntimeWaitResult } from "../wait/types.js";
-import type { BridgeConnectOptions } from "../bridge/types.js";
 
 export interface RuntimeError {
   message: string;
@@ -20,7 +19,6 @@ export interface RuntimeError {
 }
 
 export interface OpenRuntimeCore {
-  connectBridge(options?: BridgeConnectOptions): void;
   registerTarget(target: RegisterTargetInput): void;
   unregisterTarget(targetId: string): void;
   getTargets(query?: GetTargetsQuery): RuntimeTargetDescriptor[];

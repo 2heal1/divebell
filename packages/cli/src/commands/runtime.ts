@@ -123,7 +123,7 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
       createBridgeStateStore(commandArgs, bridgeStateDirectory)
     );
     const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
+    const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs), { requireUnique: true });
     const result = await runRuntimeAction(fetcher, bridgeUrl, runtime, actionName, payload);
     writeJson(stdout, result);
     return 0;

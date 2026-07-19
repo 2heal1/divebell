@@ -8,8 +8,6 @@ import type {
   RuntimeInputOptionsOptions
 } from "../action/types.js";
 import { validateActionPayload } from "../action/validation.js";
-import { connectBridge } from "../bridge/connect.js";
-import type { BridgeConnectOptions } from "../bridge/types.js";
 import { EventLog } from "../event/log.js";
 import type { GetEventsQuery, GetEventsResult } from "../event/types.js";
 import { SnapshotStore } from "../snapshot/store.js";
@@ -38,7 +36,6 @@ export class RuntimeCenter implements OpenRuntimeCore {
   readonly #events: EventLog;
   readonly #actions: ActionRegistry;
   readonly #waits = new WaitManager();
-  #bridgeConnected = false;
 
   constructor(options: CreateOpenRuntimeOptions = {}) {
     const clock = options.clock ?? systemClock;
@@ -46,15 +43,6 @@ export class RuntimeCenter implements OpenRuntimeCore {
     this.#snapshot = new SnapshotStore(clock);
     this.#events = new EventLog(clock);
     this.#actions = new ActionRegistry(clock);
-  }
-
-  connectBridge(options?: BridgeConnectOptions): void {
-    if (this.#bridgeConnected) {
-      return;
-    }
-
-    connectBridge(this, options);
-    this.#bridgeConnected = true;
   }
 
   registerTarget(target: RegisterTargetInput): void {

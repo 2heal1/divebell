@@ -49,22 +49,21 @@ route readiness or failure.
 
 For older non-preview Modern/EdenX versions, use `@openruntime/core` directly
 at a stable business point instead: register the smallest target that proves
-the task, update it to `pending`, `ready`, or `error`, connect the Bridge, then
-verify through `runtimes`, `targets`, `snapshot`, and `verify`. Use `wait-for`
+the task, update it to `pending`, `ready`, or `error`, install it on `window`, then
+open the page with the CLI and verify through `runtimes`, `targets`, `snapshot`, and `verify`. Use `wait-for`
 only when you need to wait for a concrete target state before the final
 business verification.
 
 Installing `@openruntime/core` is not enough by itself. The page must install a
-runtime on `window` and call `connectBridge`, otherwise the CLI will not see a
-connected runtime:
+runtime on `window`. `openruntime open` connects every registered runtime and
+reconnects them after reloads.
 
-When `@openruntime/modern-plugin` is already wired but the `bridge` option is
-missing, edit the runtime configuration in source. Do not use browser `eval`
-to call `connectBridge`; it creates a one-off state that the next reload loses
-and it does not prove the app is correctly integrated.
+When `@openruntime/modern-plugin` is already wired, reopen the page with
+`openruntime open <url>` before diagnosing a missing connection. Do not add
+page-side Bridge connection code.
 
 If `workflow.mjs connected` reports no connected runtime, use its `nextAction`
-snippet. For supported Modern versions, wire the Modern plugin with `bridge`.
+snippet. For supported Modern versions, wire the Modern plugin.
 For older versions, wire the Core entrypoint. If source edits are not allowed,
 mark runtime evidence unavailable and use browser fallback evidence explicitly.
 If a runtime connects but Modern targets are missing, check the Modern plugin
@@ -74,16 +73,13 @@ wiring instead of adding an empty Core runtime:
 import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
 
 const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
-
-runtime.connectBridge({
-  port: 17321,
-});
 ```
 
 After installing `@openruntime/modern-plugin`, always verify that runtime state
-is actually connected. Opening a page through the Bridge is not enough.
+is actually connected by opening the page through the CLI first.
 
 ```bash
+pnpm exec openruntime open <app-url> --bridge <bridge-url>
 pnpm exec openruntime runtimes --bridge <bridge-url>
 pnpm exec openruntime targets --bridge <bridge-url>
 pnpm exec openruntime snapshot --bridge <bridge-url>

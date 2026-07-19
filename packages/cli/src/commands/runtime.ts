@@ -23,10 +23,6 @@ import {
   ensureLocalBridgeForRuntimeCommand
 } from "../features/runtime/selector.js";
 import {
-  createVerifyCommandFailure,
-  runVerifyCommand
-} from "../features/runtime/verify.js";
-import {
   createWaitForFailure,
   isFailedWaitResult,
   waitForRuntimeCommand
@@ -131,43 +127,6 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
     const result = await runRuntimeAction(fetcher, bridgeUrl, runtime, actionName, payload);
     writeJson(stdout, result);
     return 0;
-  }
-
-  if (args.command[0] === "verify") {
-    const targetId = requireCommandArgument(args, 1, "target id");
-    const status = requireCommandArgument(args, 2, "status");
-    const commandArgs = applyOpenContextDefaultsOrThrow(
-      args,
-      await operationLogStore.read(),
-      "unless-selector"
-    );
-    const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(
-      commandArgs,
-      fetcher,
-      bridgeStarter,
-      createBridgeStateStore(commandArgs, bridgeStateDirectory)
-    );
-    const where = parseWhereOptions(commandArgs);
-    try {
-      const result = await runVerifyCommand(
-        commandArgs,
-        fetcher,
-        bridgeUrl,
-        browserRunner,
-        bridgeStarter,
-        createBridgeStateStore(commandArgs, bridgeStateDirectory),
-        targetId,
-        status,
-        where
-      );
-      writeJson(stdout, result);
-      return result.result.success === true ? 0 : 1;
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      writeJson(stdout, createVerifyCommandFailure(targetId, status, where, reason));
-      stderr.write(`${reason}\n`);
-      return 1;
-    }
   }
 
   if (args.command[0] === "wait-for") {

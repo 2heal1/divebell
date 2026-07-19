@@ -18,6 +18,12 @@ OpenRuntime CLI 自动化脚本适合把一段完整页面流程写成可重复�
 
 如果页面已经暴露稳定的 Target 或 Action，脚本里优先调用 `snapshot`、`run-action`、`wait-for` 或 `verify`。浏览器操作更适合做进入页面、兜底检查和截图取证。
 
+脚本使用 `verify` 前，先安装对应命令包：
+
+```sh
+openruntime commands add @openruntime/command-trobule-shooting
+```
+
 ## 为什么用 OpenRuntime 写脚本
 
 把固定流程写成 OpenRuntime CLI 自动化脚本，核心收益是稳定和离线化。

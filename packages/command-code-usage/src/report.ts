@@ -37,9 +37,9 @@ export async function createCodeUsageReportHtml(report: unknown): Promise<string
 
 async function readReportTemplate(): Promise<string> {
   const candidates = [
-    fileURLToPath(new URL("../../../assets/code-usage-report.html", import.meta.url)),
+    fileURLToPath(new URL("../assets/code-usage-report.html", import.meta.url)),
     resolve(process.cwd(), "assets/code-usage-report.html"),
-    resolve(process.cwd(), "packages/cli/assets/code-usage-report.html")
+    resolve(process.cwd(), "packages/command-code-usage/assets/code-usage-report.html")
   ];
   for (const path of new Set(candidates)) {
     try {

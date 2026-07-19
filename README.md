@@ -130,6 +130,7 @@ release-note.list-latest
 When an Agent retrieves the latest Release Notes, it can follow a stable flow:
 
 ```sh
+openruntime commands add @openruntime/command-trobule-shooting
 openruntime start
 
 openruntime open \

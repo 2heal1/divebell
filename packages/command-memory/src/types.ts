@@ -1,21 +1,4 @@
-import type { OpenRuntimeCodeUsageReport } from "@openruntime/chunk-map";
-import type { BrowserRunner } from "../browser/runner.js";
-export interface AnalyzeCodeUsageFilesOptions {
-  chunkMap: string;
-  coverage: string[];
-  assets?: string;
-  output?: string;
-}
-
-export interface AnalyzeCodeUsageFilesResult {
-  chunkMap: string;
-  coverage: string[];
-  assets: string;
-  output: string;
-  phaseCount: number;
-  report: OpenRuntimeCodeUsageReport;
-}
-
+import type { OpenRuntimeBrowserApi } from "@openruntime/cli";
 
 export interface MemoryCheckPage {
   eval(script: string): Promise<unknown>;
@@ -39,7 +22,7 @@ export interface RunMemoryCheckOptions {
   artifactDirectory: string;
   warmup: number;
   iterations: number;
-  browserRunner: BrowserRunner;
+  browser: OpenRuntimeBrowserApi;
   ui?: boolean;
 }
 
@@ -73,17 +56,3 @@ export interface RunMemoryCheckResult {
   allocationProfilePath: string;
   report: MemoryCheckReport;
 }
-
-
-export interface CodeUsageReportWriteOptions {
-  inputPath: string;
-  outputPath?: string;
-}
-
-export interface CodeUsageReportWriteResult {
-  inputPath: string;
-  htmlPath: string;
-  phaseCount: number;
-}
-
-export type HtmlReportOpener = (htmlPath: string) => Promise<void>;

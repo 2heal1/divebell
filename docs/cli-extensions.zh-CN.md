@@ -54,7 +54,32 @@ if (options.page === undefined || !isSupportedPage(options.page.url)) {
 
 ## 安装与加载
 
-命令文件默认从这里加载：
+对外分发的命令使用 npm 包安装：
+
+```sh
+openruntime commands add @scope/command-name
+openruntime commands list
+openruntime commands update @scope/command-name
+openruntime commands remove @scope/command-name
+```
+
+CLI 会把包下载到统一管理的命令目录并自动加载，用户不需要再执行全局 `npm install`。
+命令包不能声明运行依赖；发布内容必须已经包含运行所需的代码。安装时会检查这一点，
+不符合要求的包会被拒绝。包的 `package.json` 需要声明入口：
+
+```json
+{
+  "name": "@scope/command-name",
+  "version": "1.0.0",
+  "type": "module",
+  "openruntime": {
+    "schemaVersion": 1,
+    "commands": ["./dist/index.js"]
+  }
+}
+```
+
+本机开发时也可以直接放置命令文件。默认目录是：
 
 ```text
 ~/.openruntime/commands
@@ -100,7 +125,8 @@ External Commands:
 ~/.openruntime/commands/foo/index.mjs
 ```
 
-命令文件必须默认导出这个结构。推荐使用 `defineCommand(...)`，这样可以固定格式并获得类型提示：
+命令文件必须默认导出这个结构。本机源码可以使用 `defineCommand(...)` 获得类型提示；
+发布 npm 命令包时，需要把它编译成不再引用 `@openruntime/cli` 的独立文件：
 
 ```js
 import { defineCommand } from "@openruntime/cli";

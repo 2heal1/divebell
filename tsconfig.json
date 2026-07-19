@@ -6,6 +6,10 @@
     { "path": "./packages/chunk-map" },
     { "path": "./packages/rspack-plugin" },
     { "path": "./packages/cli" },
-    { "path": "./packages/modern-plugin" }
+    { "path": "./packages/modern-plugin" },
+    { "path": "./packages/command-code-usage" },
+    { "path": "./packages/command-trobule-shooting" },
+    { "path": "./packages/command-imitate" },
+    { "path": "./packages/command-memory" }
   ]
 }

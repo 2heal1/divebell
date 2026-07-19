@@ -44,39 +44,10 @@ export function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
   if (command === "screenshot") {
     return createAgentBrowserScreenshotArgs(args);
   }
-  if (command === "memory") {
-    return createMemoryBrowserArgs(args);
-  }
   if (command === "coverage") {
     return createCoverageBrowserArgs(args);
   }
   return ["close"];
-}
-
-function createMemoryBrowserArgs(args: ParsedCliArgs): string[] {
-  const command = args.command.slice(1);
-  const key = command.slice(0, 2).join(" ");
-  const browserArgs = ["memory"];
-
-  if (["metrics", "status", "collect-garbage", "cancel"].includes(command[0] ?? "") && command.length === 1) {
-    browserArgs.push(command[0] as string);
-  } else if (key === "sampling start" && command.length === 2) {
-    browserArgs.push("sampling", "start");
-    appendBrowserNumberOption(browserArgs, args, "sampling-interval");
-  } else if (key === "sampling stop" && command.length <= 3) {
-    browserArgs.push("sampling", "stop", ...command.slice(2));
-    appendBrowserNumberOption(browserArgs, args, "top");
-    appendBrowserNumberOption(browserArgs, args, "max-size");
-  } else if (command[0] === "snapshot" && command.length <= 2) {
-    browserArgs.push("snapshot", ...command.slice(1));
-    if (hasOption(args, "no-gc")) browserArgs.push("--no-gc");
-    appendBrowserNumberOption(browserArgs, args, "timeout");
-    appendBrowserNumberOption(browserArgs, args, "max-size");
-  } else {
-    throw new Error("Invalid memory command. Run `openruntime --help` to see the supported forms.");
-  }
-  browserArgs.push("--json");
-  return browserArgs;
 }
 
 function createCoverageBrowserArgs(args: ParsedCliArgs): string[] {

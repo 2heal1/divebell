@@ -1,29 +1,23 @@
 import { parseCliArgs } from "./utils/args.js";
-import { openHtmlReport } from "./features/analysis/report.js";
 import { exportAuthProfileWithConnector } from "./features/auth/connector/index.js";
 import { createDefaultBrowserRunner } from "./features/browser/runner.js";
 import { createDetachedBridgeStarter } from "./features/bridge/process.js";
 import { createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
 import { createError, writeErrorOutput } from "./utils/output.js";
-import {
-  runCodeUsageAnalyzeCommand,
-  runCodeUsageReportCommand,
-  runMemoryCheckCommand
-} from "./commands/analysis.js";
 import { runAuthCommand } from "./commands/auth.js";
 import {
   runBridgeServerCommand,
   runStartCommand,
   runStopCommand
 } from "./commands/bridge.js";
-import { createBridgeStateStore, createBridgeUrl } from "./features/bridge/config.js";
+import { createBridgeStateStore } from "./features/bridge/config.js";
 import { runBrowserCliCommand } from "./commands/browser.js";
 import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
-import { runRecordCommand } from "./commands/recording.js";
 import { runRuntimeCliCommand } from "./commands/runtime.js";
 import { hasOption } from "./utils/command.js";
+import { runCommandsCommand } from "./commands/installed.js";
 import type {
   CliRunOptions,
   OpenRuntimeCliConfig
@@ -63,32 +57,13 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
       return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
     }
 
-    if (args.command[0] === "record") {
-      return await runRecordCommand({
+    if (args.command[0] === "commands") {
+      return await runCommandsCommand({
         args,
         stdout,
-        fetcher,
-        browserRunner,
-        bridgeUrl: createBridgeUrl(args),
-        bridgeStarter,
-        bridgeStateStore: createBridgeStateStore(args, options.bridgeStateDirectory)
+        ...(options.commandsDirectory === undefined ? {} : { commandsDirectory: options.commandsDirectory }),
+        ...(options.commandPackageDownloader === undefined ? {} : { commandPackageDownloader: options.commandPackageDownloader })
       });
-    }
-
-    if (args.command[0] === "memory" && args.command[1] === "check") {
-      return await runMemoryCheckCommand(args, stdout, browserRunner);
-    }
-
-    if (args.command[0] === "code-usage" && args.command[1] === "analyze") {
-      return await runCodeUsageAnalyzeCommand(args, stdout);
-    }
-
-    if (args.command[0] === "code-usage" && args.command[1] === "report") {
-      return await runCodeUsageReportCommand(
-        args,
-        stdout,
-        options.htmlReportOpener ?? openHtmlReport
-      );
     }
 
     if (isBrowserCommand(args.command[0])) {

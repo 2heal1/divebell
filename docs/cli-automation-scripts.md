@@ -18,6 +18,12 @@ Typical use cases:
 
 If the page exposes stable Targets or Actions, prefer `snapshot`, `run-action`, `wait-for`, or `verify` in the script. Browser operations are better for entering the page, fallback checks, and evidence capture.
 
+Install the verification command before a script uses `verify`:
+
+```sh
+openruntime commands add @openruntime/command-trobule-shooting
+```
+
 ## Why Use OpenRuntime For Scripts
 
 The main benefits are stability and offline reuse.

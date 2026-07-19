@@ -9,6 +9,7 @@ import {
 import type { OpenRuntimeCliExtension } from "../types/commands.js";
 import { validateCommand } from "./definition.js";
 import type { ExtensionLoadRecord } from "../types/commands.js";
+import { getInstalledCommandEntryPaths } from "./installed.js";
 
 export type { ExtensionLoadRecord } from "../types/commands.js";
 
@@ -41,7 +42,14 @@ export async function loadExternalCliExtensions(options: {
 
   let candidates: ExternalExtensionCandidate[];
   try {
-    candidates = await findExternalExtensionCandidates(directory);
+    const [looseCandidates, installedPaths] = await Promise.all([
+      findExternalExtensionCandidates(directory),
+      getInstalledCommandEntryPaths(directory)
+    ]);
+    candidates = [
+      ...installedPaths.map((path) => ({ path })),
+      ...looseCandidates
+    ];
   } catch (error) {
     return {
       extensions: [],

@@ -1,22 +1,68 @@
 import { mkdir } from "node:fs/promises";
-import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime, setRecordingInstrumentation } from "../features/recording/capture.js";
-import { collectAudioCapture, transcribeAudioFile } from "../features/recording/audio.js";
-import { clearRecordingControlFile, closeRecordingBrowser, createSkippedBrowserOpenOperation, ensureRecordBridge, openRecordingBrowser, resetRecordingBrowser, tryEnsureRecordBridge, writeRecordingControlFile } from "../features/recording/session.js";
-import { createManifestPath, writeGeneratedScript } from "../features/recording/script.js";
-import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "../features/recording/storage.js";
+import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime, setRecordingInstrumentation } from "./capture.js";
+import { collectAudioCapture, transcribeAudioFile } from "./audio.js";
+import { clearRecordingControlFile, closeRecordingBrowser, createSkippedBrowserOpenOperation, ensureRecordBridge, openRecordingBrowser, resetRecordingBrowser, tryEnsureRecordBridge, writeRecordingControlFile } from "./session.js";
+import { createManifestPath, writeGeneratedScript } from "./script.js";
+import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
 import { join, resolve } from "node:path";
-import { OPEN_RUNTIME_SESSION_QUERY_PARAM } from "@openruntime/core";
-import { getOptionValue, type ParsedCliArgs } from "../utils/args.js";
-import type { RuntimeSelector } from "../features/runtime/client.js";
+import type { OpenRuntimeCommandDefinition, ParsedCliArgs } from "@openruntime/cli";
 
-import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "../features/recording/types.js";
-export type * from "../features/recording/types.js";
+import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "./types.js";
+export type * from "./types.js";
+const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
+
+interface RuntimeSelector {
+  runtimeId?: string;
+  sessionId?: string;
+  url?: string;
+}
 const DEFAULT_RECORD_DURATION_MS = 10_000;
 const DEFAULT_RECORD_INTERVAL_MS = 1_000;
 const DEFAULT_RECORD_START_URL = "about:blank";
 const RECORDING_FORMAT = "openruntime-recording";
 const RECORDING_VERSION = 1;
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
+
+const command: OpenRuntimeCommandDefinition = {
+  schemaVersion: 1,
+  name: "record",
+  commandReferences: [
+    {
+      category: "Commands",
+      usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+      description: "按固定时长打开页面并生成 .orrec 录制包，记录页面快照、DOM、人工操作、OpenRuntime 状态和可选麦克风音频。"
+    },
+    {
+      category: "Commands",
+      usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
+      description: "启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下。"
+    },
+    {
+      category: "Commands",
+      usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
+      description: "结束人工操作录制，采集人工操作和收尾状态，默认关闭浏览器并生成脚本草稿。"
+    },
+    {
+      category: "Commands",
+      usage: "openruntime record generate-script --input <path> [--out <path>]",
+      description: "从已有 .orrec 录制包重新生成 JS 脚本草稿。"
+    },
+    {
+      category: "Commands",
+      usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
+      description: "把 .orrec 里的麦克风录音转成带时间信息的文字。"
+    }
+  ],
+  run: async (options) => await runRecordCommand({
+    args: options.args,
+    stdout: options.stdout,
+    fetcher: options.fetcher,
+    openruntime: options.openruntime,
+    bridgeUrl: createBridgeUrl(options.args)
+  })
+};
+
+export default command;
 
 export async function runRecordCommand(options: RecordCommandOptions): Promise<number> {
   const subcommand = options.args.command[1];
@@ -59,7 +105,7 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<num
 
   await mkdir(outputDirectory, { recursive: true });
   operations.push(await writeRecordingControlFile(outputDirectory, files, startedAt, hasOption(options.args, "mic")));
-  operations.push(await resetRecordingBrowser(options.browserRunner));
+  operations.push(await resetRecordingBrowser(options.openruntime.browser));
   await ensureRecordBridge(options, options.bridgeUrl);
 
   if (!hasOption(options.args, "no-open")) {
@@ -67,13 +113,13 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<num
   } else {
     operations.push(createSkippedBrowserOpenOperation(openedUrl));
   }
-  operations.push(await setRecordingInstrumentation(options.browserRunner, outputDirectory, startedAt));
+  operations.push(await setRecordingInstrumentation(options.openruntime.browser, outputDirectory, startedAt));
 
   const sampledAt = new Date();
   const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-    sampleRuntime(options.fetcher, options.bridgeUrl, runtimeSelector, sampledAt),
-    samplePageSnapshot(options.browserRunner, sampledAt),
-    sampleDomSnapshot(options.browserRunner, sampledAt)
+    sampleRuntime(options.openruntime, runtimeSelector, sampledAt),
+    samplePageSnapshot(options.openruntime.browser, sampledAt),
+    sampleDomSnapshot(options.openruntime.browser, sampledAt)
   ]);
   runtimeSamples.push(runtimeSample);
   pageSnapshots.push(pageSnapshot);
@@ -122,21 +168,26 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
     sessionId,
     getOptionValue(options.args, "runtime")
   );
+  const scopedOpenRuntime = options.openruntime.scope({
+    bridge: bridgeUrl,
+    ...(recording.manifest.url === DEFAULT_RECORD_START_URL ? {} : { url: recording.manifest.url }),
+    ...(sessionId === undefined ? {} : { session: sessionId })
+  });
   const stopStartedAt = new Date();
 
   const bridge = await tryEnsureRecordBridge(options, bridgeUrl);
 
   const sampledAt = new Date();
   const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-    sampleRuntime(options.fetcher, bridgeUrl, runtimeSelector, sampledAt),
-    samplePageSnapshot(options.browserRunner, sampledAt),
-    sampleDomSnapshot(options.browserRunner, sampledAt)
+    sampleRuntime(scopedOpenRuntime, runtimeSelector, sampledAt),
+    samplePageSnapshot(scopedOpenRuntime.browser, sampledAt),
+    sampleDomSnapshot(scopedOpenRuntime.browser, sampledAt)
   ]);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.runtime), runtimeSample);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.pageSnapshots), pageSnapshot);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.domSnapshots), domSnapshot);
 
-  const interactionCollection = await collectInteractionEvents(outputDirectory, options.browserRunner);
+  const interactionCollection = await collectInteractionEvents(outputDirectory, options.openruntime.browser);
   await writeJsonLines(join(outputDirectory, recording.manifest.files.interactions), interactionCollection.interactions);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), interactionCollection.operation);
 
@@ -152,7 +203,7 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
 
   let closeOperation: OperationEntry | undefined;
   if (!hasOption(options.args, "no-close")) {
-    closeOperation = await closeRecordingBrowser(options.browserRunner);
+    closeOperation = await closeRecordingBrowser(options.openruntime.browser);
     await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), closeOperation);
   } else {
     closeOperation = {
@@ -334,9 +385,9 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
   do {
     const sampledAt = new Date();
     const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-      sampleRuntime(options.fetcher, options.bridgeUrl, runtimeSelector, sampledAt),
-      samplePageSnapshot(options.browserRunner, sampledAt),
-      sampleDomSnapshot(options.browserRunner, sampledAt)
+      sampleRuntime(options.openruntime, runtimeSelector, sampledAt),
+      samplePageSnapshot(options.openruntime.browser, sampledAt),
+      sampleDomSnapshot(options.openruntime.browser, sampledAt)
     ]);
     runtimeSamples.push(runtimeSample);
     pageSnapshots.push(pageSnapshot);
@@ -566,6 +617,17 @@ function createRecordRuntimeSelector(
 
 function hasOption(args: ParsedCliArgs, name: string): boolean {
   return args.options.has(name);
+}
+
+function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {
+  return args.options.get(name)?.at(-1);
+}
+
+function createBridgeUrl(args: ParsedCliArgs): string {
+  const bridge = getOptionValue(args, "bridge");
+  if (bridge !== undefined) return bridge.replace(/\/$/, "");
+  const port = getOptionValue(args, "port") ?? "17321";
+  return `http://localhost:${port}`;
 }
 
 function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {

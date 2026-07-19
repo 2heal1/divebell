@@ -47,8 +47,6 @@ export {
   parseBrowserJsonOutput
 } from "./features/browser/runner.js";
 export type * from "./features/browser/runner.js";
-export { runMemoryCheck } from "./features/analysis/memory-check.js";
-export type * from "./features/analysis/memory-check.js";
 export {
   fetchInputOptions,
   fetchRuntimeResource,
@@ -71,6 +69,22 @@ export type { OpenRuntimeCommandSkill } from "./commands/skill.js";
 export { defineCommand, validateCommand } from "./commands/definition.js";
 export type * from "./commands/definition.js";
 export type { ExtensionLoadRecord } from "./commands/external.js";
+export {
+  OPENRUNTIME_COMMAND_PACKAGE_SCHEMA_VERSION,
+  OPENRUNTIME_COMMANDS_DIRECTORY_ENV,
+  addCommandPackage,
+  createNpmCommandPackageDownloader,
+  getInstalledCommandEntryPaths,
+  readInstalledCommandPackageRegistry,
+  removeCommandPackage,
+  resolveCommandsDirectory
+} from "./commands/installed.js";
+export type {
+  CommandPackageDownloader,
+  InstalledCommandPackage,
+  InstalledCommandPackageRegistry,
+  OpenRuntimeCommandPackageManifest
+} from "./commands/installed.js";
 export {
   createCommandOutput,
   createError,

@@ -1,20 +1,19 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseBrowserJsonOutput, type BrowserRunner } from "../browser/runner.js";
-import { fetchRuntimeResource, fetchRuntimes, selectRuntime, type Fetcher, type RuntimeSelector } from "../runtime/client.js";
+import type { OpenRuntimeBrowserApi, OpenRuntimeExtensionApi } from "@openruntime/cli";
 import { readJsonLinesIfExists } from "./storage.js";
 import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
 
 const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
 export async function setRecordingInstrumentation(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   outputDirectory: string,
   startedAt: Date
 ): Promise<OperationEntry> {
   const started = new Date();
   const scriptPath = join(outputDirectory, "recording-instrumentation.js");
   await writeFile(scriptPath, createInteractionRecorderScript(startedAt.getTime()), "utf8");
-  const result = await browserRunner.run(["instrumentation", "set", scriptPath]);
+  const result = await browser.raw(["instrumentation", "set", scriptPath]);
   return {
     type: "browser.instrumentation.set",
     path: scriptPath,
@@ -26,12 +25,12 @@ export async function setRecordingInstrumentation(
   };
 }
 
-export async function collectInteractionEvents(outputDirectory: string, browserRunner: BrowserRunner): Promise<{
+export async function collectInteractionEvents(outputDirectory: string, browser: OpenRuntimeBrowserApi): Promise<{
   operation: OperationEntry;
   interactions: InteractionEvent[];
 }> {
   const started = new Date();
-  const result = await browserRunner.run(["browser-logs"]);
+  const result = await browser.raw(["browser-logs"]);
   const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(join(outputDirectory, "interaction-events.raw.jsonl"));
   const browserLogInteractions = result.exitCode === 0 ? parseInteractionEventsFromBrowserLogs(result.stdout) : [];
   const interactions = mergeInteractionEvents(persistedInteractions, browserLogInteractions);
@@ -52,24 +51,22 @@ export async function collectInteractionEvents(outputDirectory: string, browserR
 }
 
 export async function sampleRuntime(
-  fetcher: Fetcher,
-  bridgeUrl: string,
-  selector: RuntimeSelector,
+  openruntime: OpenRuntimeExtensionApi,
+  selector: { runtimeId?: string; sessionId?: string; url?: string },
   sampledAt: Date
 ): Promise<RuntimeSample> {
   try {
-    const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    const runtime = selectRuntime(runtimes, selector);
     const [targets, snapshot, actions, events] = await Promise.all([
-      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "targets", new URLSearchParams()),
-      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "snapshot", new URLSearchParams()),
-      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "actions", new URLSearchParams()),
-      fetchRuntimeResource(fetcher, bridgeUrl, runtime, "events", createEventsQuery())
+      openruntime.targets({}, selector),
+      openruntime.snapshot({}, selector),
+      openruntime.actions({}, selector),
+      openruntime.events({ limit: 50 }, selector)
     ]);
+    const runtime = targets.runtime;
     return {
       sampledAt: sampledAt.toISOString(),
       ok: true,
-      runtimes,
+      runtimes: [runtime],
       runtime,
       resources: {
         targets: targets.result,
@@ -88,10 +85,10 @@ export async function sampleRuntime(
 }
 
 export async function samplePageSnapshot(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   sampledAt: Date
 ): Promise<PageSnapshotSample> {
-  const result = await browserRunner.run(["snapshot"]);
+  const result = await browser.raw(["snapshot"]);
   if (result.exitCode !== 0) {
     return {
       sampledAt: sampledAt.toISOString(),
@@ -121,10 +118,10 @@ export async function samplePageSnapshot(
 }
 
 export async function sampleDomSnapshot(
-  browserRunner: BrowserRunner,
+  browser: OpenRuntimeBrowserApi,
   sampledAt: Date
 ): Promise<DomSnapshotSample> {
-  const result = await browserRunner.run(["eval", createDomSnapshotScript()]);
+  const result = await browser.raw(["eval", createDomSnapshotScript()]);
   if (result.exitCode !== 0) {
     return {
       sampledAt: sampledAt.toISOString(),
@@ -287,8 +284,7 @@ export function mergeInteractionEvents(...sources: InteractionEvent[][]): Intera
   return merged.sort((left, right) => left.timeMs - right.timeMs);
 }
 
-function createEventsQuery(): URLSearchParams {
-  const params = new URLSearchParams();
-  params.set("limit", "50");
-  return params;
+function parseBrowserJsonOutput(stdout: string): unknown {
+  const trimmed = stdout.trim();
+  return trimmed.length === 0 ? undefined : JSON.parse(trimmed);
 }

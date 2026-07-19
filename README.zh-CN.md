@@ -131,6 +131,7 @@ release-note.list-latest
 Agent 获取最新 Release Notes 时，可以按固定流程执行：
 
 ```sh
+openruntime commands add @openruntime/command-trobule-shooting
 openruntime start
 
 openruntime open \

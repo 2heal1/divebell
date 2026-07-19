@@ -188,5 +188,6 @@ OpenRuntime/Modern.js 工作区包以及 React 等第三方包。完整结果保
 生成并打开可视化报告：
 
 ```bash
+pnpm exec openruntime commands add @openruntime/command-code-usage
 pnpm exec openruntime code-usage report demos/modern-basic/.code-usage-artifacts/report.json
 ```

@@ -6,7 +6,8 @@ import {
 } from "../bridge/process.js";
 import {
   type Fetcher,
-  type RuntimeResourceResult
+  type RuntimeResourceResult,
+  type RuntimeSelector
 } from "../runtime/client.js";
 import type { ParsedCliArgs } from "../../utils/args.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
@@ -236,6 +237,12 @@ export interface OpenRuntimeBrowserCoverageApi {
 }
 
 export interface OpenRuntimeBrowserApi {
+  raw(args: string[], options?: { ui?: boolean }): Promise<{
+    exitCode: number;
+    stdout: string;
+    stderr: string;
+  }>;
+  profileDirectory(): string;
   pageSnapshot<T = unknown>(): Promise<T>;
   click(target: string): Promise<string>;
   fill(target: string, value: string): Promise<string>;
@@ -251,10 +258,17 @@ export interface OpenRuntimeBrowserApi {
 }
 
 export interface OpenRuntimeExtensionApi {
-  targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
-  snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
-  events<T = unknown>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
-  actions<T = unknown>(query?: OpenRuntimeResourceQuery): Promise<RuntimeResourceResult<T>>;
+  scope(options: {
+    bridge?: string;
+    runtime?: string;
+    session?: string;
+    url?: string;
+  }): OpenRuntimeExtensionApi;
+  ensureBridge(options?: { port?: number; timeout?: number }): Promise<unknown>;
+  targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  events<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  actions<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   inputOptions<T = unknown>(
     actionName: string,
     inputName: string,

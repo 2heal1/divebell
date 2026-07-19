@@ -1,6 +1,5 @@
 import type { BridgeServer } from "@openruntime/bridge";
 import type { OpenRuntimePackageInfo } from "@openruntime/core";
-import type { HtmlReportOpener } from "../features/analysis/report.js";
 import type { AuthStateApplier } from "../features/auth/profile.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import type { BridgeProcessController, BridgeStarter } from "../features/bridge/process.js";
@@ -13,6 +12,7 @@ import type {
 } from "./commands.js";
 import type { exportAuthProfileWithConnector } from "../features/auth/connector/index.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
+import type { CommandPackageDownloader } from "../commands/installed.js";
 
 export type {
   CliExtensionPageContext,
@@ -36,7 +36,8 @@ export interface CliRunOptions {
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   authConnectorExporter?: typeof exportAuthProfileWithConnector;
   authStateApplier?: AuthStateApplier;
-  htmlReportOpener?: HtmlReportOpener;
+  commandsDirectory?: string;
+  commandPackageDownloader?: CommandPackageDownloader;
 }
 
 export interface RuntimeCliCommandOptions {

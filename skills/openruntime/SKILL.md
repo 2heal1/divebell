@@ -62,6 +62,8 @@ OpenRuntime 让页面主动暴露运行时事实和声明动作。先判断用�
 - 需要确认当前命令、参数、示例或扩展命令时，运行当前环境实际可用的
   `openruntime --help`、`opr --help` 或项目内等价命令。扩展命令以 help 中的
   `External Commands` 描述为准，不根据命令名、文件名或旧文档猜测用法。
+- `verify` 不在 help 中时，先运行
+  `openruntime commands add @openruntime/command-trobule-shooting`，再进入最终业务验收。
 - 如果 help 显示某个命令有可用 skill，先运行 `openruntime <command> --skill` 获取其
   `SKILL.md` 路径，完整读取并遵循后再执行该命令。命令 skill 只约束这段子任务；完成后
   继续根 `SKILL.md` 选定的主流程。

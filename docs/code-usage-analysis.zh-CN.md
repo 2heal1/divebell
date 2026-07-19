@@ -7,6 +7,12 @@
 [内存分析指南](memory-analysis.zh-CN.md)。只有需要把浏览器中的代码记录还原到分块、
 源码文件和依赖包时，才需要下面的接入。
 
+先安装分析命令：
+
+```bash
+openruntime commands add @openruntime/command-code-usage
+```
+
 ## 整体流程
 
 ```text

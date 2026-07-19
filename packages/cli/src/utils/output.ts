@@ -36,7 +36,12 @@ export function createError(options: CommandErrorOptions): CommandError {
 }
 
 export function isCommandError(error: unknown): error is CommandError {
-  return error instanceof CommandError;
+  return error instanceof CommandError || (
+    error instanceof Error
+    && typeof (error as Partial<CommandError>).code === "string"
+    && typeof (error as Partial<CommandError>).kind === "string"
+    && typeof (error as Partial<CommandError>).retryable === "boolean"
+  );
 }
 
 export function createCommandOutput(stdout: CommandOutputWriter, command: string): CommandOutput {

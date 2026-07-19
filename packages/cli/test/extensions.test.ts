@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,6 +8,210 @@ import { test } from "@rstest/core";
 import { createOpenRuntimeCliWithExternalExtensions, createOpenRuntimeCli, runCli, type OpenRuntimeCliExtension } from "../dist/index.js";
 
 import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
+
+test("installs, loads, lists, and removes a self-contained npm command package", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-package-test-"));
+  const commandsDirectory = join(tempDir, "commands");
+  const packageRoot = join(tempDir, "fixture", "package");
+  const archivePath = join(tempDir, "demo-command-1.0.0.tgz");
+  const updatedPackageRoot = join(tempDir, "fixture-updated", "package");
+  const updatedArchivePath = join(tempDir, "demo-command-1.1.0.tgz");
+  mkdirSync(packageRoot, { recursive: true });
+  writeFileSync(join(packageRoot, "package.json"), `${JSON.stringify({
+    name: "@demo/command-hello",
+    version: "1.0.0",
+    type: "module",
+    openruntime: {
+      schemaVersion: 1,
+      commands: ["./index.mjs"]
+    }
+  }, null, 2)}\n`, "utf8");
+  writeFileSync(join(packageRoot, "index.mjs"), `export default {
+  schemaVersion: 1,
+  name: "hello-installed",
+  commandReferences: [{ category: "Commands", usage: "openruntime hello-installed", description: "Runs installed command." }],
+  async run({ output }) { output.ok({ installed: true }); return 0; }
+};\n`, "utf8");
+  const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
+    encoding: "utf8"
+  });
+  assert.equal(tarResult.status, 0, tarResult.stderr);
+  mkdirSync(updatedPackageRoot, { recursive: true });
+  writeFileSync(join(updatedPackageRoot, "package.json"), `${JSON.stringify({
+    name: "@demo/command-hello",
+    version: "1.1.0",
+    type: "module",
+    openruntime: {
+      schemaVersion: 1,
+      commands: ["./index.mjs"]
+    }
+  }, null, 2)}\n`, "utf8");
+  writeFileSync(join(updatedPackageRoot, "index.mjs"), `export default {
+  schemaVersion: 1,
+  name: "hello-installed",
+  commandReferences: [{ category: "Commands", usage: "openruntime hello-installed", description: "Runs updated command." }],
+  async run({ output }) { output.ok({ installed: true, updated: true }); return 0; }
+};\n`, "utf8");
+  const updatedTarResult = spawnSync("tar", ["-czf", updatedArchivePath, "-C", join(tempDir, "fixture-updated"), "package"], {
+    encoding: "utf8"
+  });
+  assert.equal(updatedTarResult.status, 0, updatedTarResult.stderr);
+
+  try {
+    const cli = createOpenRuntimeCli();
+    const addOutput = createOutput();
+    const addExitCode = await cli.run([
+      "commands",
+      "add",
+      "@demo/command-hello"
+    ], {
+      stdout: addOutput.stdout,
+      stderr: addOutput.stderr,
+      commandsDirectory,
+      commandPackageDownloader: {
+        download: async () => archivePath
+      }
+    });
+    assert.equal(addExitCode, 0);
+    assert.equal(JSON.parse(addOutput.text()).package.name, "@demo/command-hello");
+
+    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+      ...process.env,
+      OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
+      OPENRUNTIME_DISABLE_COMMANDS: "0"
+    });
+    assert.deepEqual(loaded.cli.extensions.map((item) => item.name), ["hello-installed"]);
+    const commandOutputBuffer = createOutput();
+    assert.equal(await loaded.cli.run(["hello-installed"], {
+      stdout: commandOutputBuffer.stdout,
+      stderr: commandOutputBuffer.stderr
+    }), 0);
+    assert.deepEqual(JSON.parse(commandOutputBuffer.text()), commandOutput("hello-installed", {
+      installed: true
+    }));
+
+    const listOutput = createOutput();
+    assert.equal(await cli.run(["commands", "list"], {
+      stdout: listOutput.stdout,
+      stderr: listOutput.stderr,
+      commandsDirectory
+    }), 0);
+    assert.deepEqual(JSON.parse(listOutput.text()).packages[0].commands, ["hello-installed"]);
+
+    const failedUpdateOutput = createOutput();
+    assert.equal(await cli.run(["commands", "update", "@demo/command-hello"], {
+      stdout: failedUpdateOutput.stdout,
+      stderr: failedUpdateOutput.stderr,
+      commandsDirectory,
+      commandPackageDownloader: {
+        download: async () => {
+          throw new Error("simulated download failure");
+        }
+      }
+    }), 1);
+    const afterFailedUpdateOutput = createOutput();
+    assert.equal(await cli.run(["commands", "list"], {
+      stdout: afterFailedUpdateOutput.stdout,
+      stderr: afterFailedUpdateOutput.stderr,
+      commandsDirectory
+    }), 0);
+    assert.equal(JSON.parse(afterFailedUpdateOutput.text()).packages[0].version, "1.0.0");
+
+    const updateOutput = createOutput();
+    assert.equal(await cli.run(["commands", "update", "@demo/command-hello"], {
+      stdout: updateOutput.stdout,
+      stderr: updateOutput.stderr,
+      commandsDirectory,
+      commandPackageDownloader: {
+        download: async () => updatedArchivePath
+      }
+    }), 0);
+    assert.equal(JSON.parse(updateOutput.text()).package.version, "1.1.0");
+
+    const updated = await createOpenRuntimeCliWithExternalExtensions({}, {
+      ...process.env,
+      OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
+      OPENRUNTIME_DISABLE_COMMANDS: "0"
+    });
+    const updatedOutput = createOutput();
+    assert.equal(await updated.cli.run(["hello-installed"], {
+      stdout: updatedOutput.stdout,
+      stderr: updatedOutput.stderr
+    }), 0);
+    assert.deepEqual(JSON.parse(updatedOutput.text()), commandOutput("hello-installed", {
+      installed: true,
+      updated: true
+    }));
+
+    const removeOutput = createOutput();
+    assert.equal(await cli.run(["commands", "remove", "@demo/command-hello"], {
+      stdout: removeOutput.stdout,
+      stderr: removeOutput.stderr,
+      commandsDirectory
+    }), 0);
+    assert.equal(JSON.parse(removeOutput.text()).status, "removed");
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("rejects npm command packages that declare runtime dependencies", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-package-dependency-test-"));
+  const commandsDirectory = join(tempDir, "commands");
+  const packageRoot = join(tempDir, "fixture", "package");
+  const archivePath = join(tempDir, "dependent-command-1.0.0.tgz");
+  mkdirSync(packageRoot, { recursive: true });
+  writeFileSync(join(packageRoot, "package.json"), `${JSON.stringify({
+    name: "@demo/command-dependent",
+    version: "1.0.0",
+    type: "module",
+    dependencies: {
+      "left-pad": "1.3.0"
+    },
+    openruntime: {
+      schemaVersion: 1,
+      commands: ["./index.mjs"]
+    }
+  }, null, 2)}\n`, "utf8");
+  writeFileSync(join(packageRoot, "index.mjs"), `export default {
+  schemaVersion: 1,
+  name: "dependent",
+  async run() { return 0; }
+};\n`, "utf8");
+  const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
+    encoding: "utf8"
+  });
+  assert.equal(tarResult.status, 0, tarResult.stderr);
+
+  try {
+    const output = createOutput();
+    const exitCode = await createOpenRuntimeCli().run([
+      "commands",
+      "add",
+      "@demo/command-dependent"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      commandsDirectory,
+      commandPackageDownloader: {
+        download: async () => archivePath
+      }
+    });
+    assert.equal(exitCode, 1);
+    assert.match(output.text(), /must not declare dependencies/);
+    assert.equal(output.errorText(), "");
+
+    const listOutput = createOutput();
+    assert.equal(await createOpenRuntimeCli().run(["commands", "list"], {
+      stdout: listOutput.stdout,
+      stderr: listOutput.stderr,
+      commandsDirectory
+    }), 0);
+    assert.deepEqual(JSON.parse(listOutput.text()).packages, []);
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
+});
 
 test("registers a command and merges its help entries", async () => {
   const extension: OpenRuntimeCliExtension = {
@@ -107,7 +311,7 @@ test("registers a command and merges its help entries", async () => {
       command: ["demo", "ping"],
       hasBridgeUrlOption: false,
       hasRuntimeSelectorOption: false,
-      hasEnsureBridgeApi: false,
+      hasEnsureBridgeApi: true,
       hasRuntimesApi: false,
       hasSelectRuntimeApi: false,
       page: {

@@ -1,13 +1,13 @@
 # OpenRuntime 发版流程
 
-OpenRuntime 使用一条受控发版链路，同时发布四个 npm 包和录制 Skill 运行包。普通功能分支合入 `main` 不会触发发布。
+OpenRuntime 使用一条受控发版链路，同时发布十个 npm 包和录制 Skill 运行包。普通功能分支合入 `main` 不会触发发布。
 
 ```text
 手动运行 Prepare OpenRuntime Release
 → 自动创建 release/openruntime-vX.Y.Z 分支
 → 自动修改版本号并创建合并请求
 → CI 通过后由维护者确认合入
-→ 使用 npm OIDC 发布四个包
+→ 使用 npm OIDC 发布十个包
 → npm 全部成功后创建 GitHub Release
 → 上传 Skill 运行包和 SHA-256 文件
 ```
@@ -27,12 +27,18 @@ node scripts/npm-release.mjs publish --output-dir /tmp/openruntime-npm-bootstrap
 
 - `@openruntime/core`
 - `@openruntime/bridge`
+- `@openruntime/chunk-map`
+- `@openruntime/rspack-plugin`
 - `@openruntime/modern-plugin`
 - `@openruntime/cli`
+- `@openruntime/command-code-usage`
+- `@openruntime/command-trobule-shooting`
+- `@openruntime/command-imitate`
+- `@openruntime/command-memory`
 
 已经存在的同版本包会跳过，所以中途中断后可以直接重试。
 
-四个包都存在后，分别打开 npm 包的 **Settings > Trusted Publisher**，填写同一组配置：
+十个包都存在后，分别打开 npm 包的 **Settings > Trusted Publisher**，填写同一组配置：
 
 | 字段 | 值 |
 | --- | --- |
@@ -48,8 +54,14 @@ node scripts/npm-release.mjs publish --output-dir /tmp/openruntime-npm-bootstrap
 ```bash
 npm trust github @openruntime/core --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/bridge --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/chunk-map --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/rspack-plugin --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/modern-plugin --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 npm trust github @openruntime/cli --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-code-usage --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-trobule-shooting --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-imitate --repo 2heal1/openruntime --file release.yml --allow-publish --yes
+npm trust github @openruntime/command-memory --repo 2heal1/openruntime --file release.yml --allow-publish --yes
 ```
 
 如果某个包还不存在，`npm trust` 会拒绝配置，应先完成上面的首次发布。配置完成后，本地运行：
@@ -72,11 +84,11 @@ node scripts/npm-release.mjs check
 8. **Publish OpenRuntime Release** 自动通过 OIDC 发布 npm 包。
 9. npm 全部发布成功后，自动创建 GitHub Release 并上传录制运行包。
 
-发版合并请求只允许修改四个 `package.json` 和录制运行包版本清单。分支名称、四个 npm 包版本和运行包版本必须完全一致，否则发布会停止。
+发版合并请求只允许修改十个 `package.json` 和录制运行包版本清单。分支名称、十个 npm 包版本和运行包版本必须完全一致，否则发布会停止。
 
 ## 发布结果
 
-每次发版包含相同版本的四个 npm 包，以及 GitHub Release 中的：
+每次发版包含相同版本的十个 npm 包，以及 GitHub Release 中的：
 
 ```text
 openruntime-recording-runtime-<version>.tgz

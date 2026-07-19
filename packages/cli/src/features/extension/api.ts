@@ -5,13 +5,16 @@ import {
   createGetWindowScript,
   createWaitEvalScript,
   parseBrowserJsonOutput,
+  resolveBrowserProfileDirectory,
   type BrowserRunner
 } from "../browser/runner.js";
 import {
   canAutoStartBridge,
+  createFileBridgeStateStore,
   ensureBridge as ensureOpenRuntimeBridge,
   type EnsureBridgeResult
 } from "../bridge/process.js";
+import { waitForRuntimeCommand } from "../runtime/wait.js";
 import {
   fetchInputOptions,
   fetchRuntimeResource,
@@ -19,7 +22,6 @@ import {
   normalizeBridgeUrl,
   runRuntimeAction,
   selectRuntime,
-  waitForRuntime,
   type RuntimeResourceResult,
   type RuntimeSelector
 } from "../runtime/client.js";
@@ -37,7 +39,8 @@ import type {
   OpenRuntimeBrowserCoverageCheckpointOptions,
   OpenRuntimeBrowserWaitEvalResult,
   OpenRuntimeExtensionApi,
-  OpenRuntimeResourceQuery
+  OpenRuntimeResourceQuery,
+  OpenRuntimeWaitOptions
 } from "./types.js";
 export type * from "./types.js";
 
@@ -92,10 +95,15 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
   };
 
   return {
-    targets: async (query) => await fetchResource("targets", query, undefined),
-    snapshot: async (query) => await fetchResource("snapshot", query, undefined),
-    events: async (query) => await fetchResource("events", query, undefined),
-    actions: async (query) => await fetchResource("actions", query, undefined),
+    scope: (scopeOptions) => createOpenRuntimeExtensionApi({
+      ...options,
+      args: withStringOptions(options.args, scopeOptions)
+    }),
+    ensureBridge: ensureLocalBridge,
+    targets: async (query, selector) => await fetchResource("targets", query, selector),
+    snapshot: async (query, selector) => await fetchResource("snapshot", query, selector),
+    events: async (query, selector) => await fetchResource("events", query, selector),
+    actions: async (query, selector) => await fetchResource("actions", query, selector),
     inputOptions: async (actionName, inputName, inputOptions = {}) => {
       const runtime = await chooseRuntime();
       return await fetchInputOptions(
@@ -112,31 +120,60 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
       const runtime = await chooseRuntime();
       return await runRuntimeAction(options.fetcher, bridgeUrl, runtime, actionName, payload);
     },
-    waitFor: async (targetId, status, waitOptions = {}) => {
-      const runtime = await chooseRuntime();
-      return await waitForRuntime(
+    waitFor: async <T = unknown>(targetId: string, status: string, waitOptions: OpenRuntimeWaitOptions = {}) => {
+      const waitArgs = withNumberOption(options.args, "timeout", waitOptions.timeout);
+      return await waitForRuntimeCommand(
+        waitArgs,
         options.fetcher,
         bridgeUrl,
-        runtime,
+        options.browserRunner,
+        options.bridgeStarter,
+        options.bridgeStateStore ?? createFileBridgeStateStore(bridgeUrl),
         targetId,
         status,
-        waitOptions.timeout,
         waitOptions.where
-      );
+      ) as RuntimeResourceResult<T>;
     },
     browser: createOpenRuntimeBrowserApi({
       browserRunner: options.browserRunner,
+      allowWithoutOpenContext: hasRuntimeSelectorValue(runtimeSelector),
       ...(options.openContext === undefined ? {} : { openContext: options.openContext })
     })
   };
 }
 
+function withStringOptions(
+  args: ParsedCliArgs,
+  values: Record<string, string | undefined>
+): ParsedCliArgs {
+  const options = new Map(args.options);
+  for (const [name, value] of Object.entries(values)) {
+    if (value === undefined) continue;
+    options.set(name, [value]);
+  }
+  return {
+    command: [...args.command],
+    options
+  };
+}
+
+function withNumberOption(args: ParsedCliArgs, name: string, value: number | undefined): ParsedCliArgs {
+  if (value === undefined) return args;
+  const options = new Map(args.options);
+  options.set(name, [String(value)]);
+  return {
+    command: [...args.command],
+    options
+  };
+}
+
 function createOpenRuntimeBrowserApi(options: {
   browserRunner: BrowserRunner;
+  allowWithoutOpenContext: boolean;
   openContext?: CliOperationLogEntry;
 }): OpenRuntimeBrowserApi {
   const runText = async (args: string[]): Promise<string> => {
-    if (options.openContext === undefined) {
+    if (options.openContext === undefined && !options.allowWithoutOpenContext) {
       throw createOpenContextRequiredError();
     }
     const result = await options.browserRunner.run(args);
@@ -160,6 +197,8 @@ function createOpenRuntimeBrowserApi(options: {
   };
 
   return {
+    raw: async (args, runOptions = {}) => await options.browserRunner.run(args, runOptions),
+    profileDirectory: () => resolveBrowserProfileDirectory(),
     pageSnapshot: async <T = unknown>() => await runText(["snapshot"]) as T,
     click: async (target) => await runText(["click", normalizeAgentBrowserTarget(target)]),
     fill: async (target, value) => await runText(["fill", normalizeAgentBrowserTarget(target), value]),

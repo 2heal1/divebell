@@ -1,0 +1,165 @@
+.changeset/config.json
+  s_9fd13cee690640::t_db43d00e9a05cf 12-16
+.github/workflows/pkg-pr-new.yml
+  s_9fd13cee690640::t_bb3e9898330b95 52-53,56-59
+.github/workflows/prepare-release.yml
+  s_9fd13cee690640::t_f74d8eda625d9a 83-84,87-90,92,98-100
+README.md
+  s_9fd13cee690640::t_4942421d1dab8c 133
+README.zh-CN.md
+  s_9fd13cee690640::t_c13ec552288da2 134
+demos/modern-basic/README.md
+  s_9fd13cee690640::t_65a00950e0fa3d 191
+demos/modern-basic/package.json
+  s_9fd13cee690640::t_a9d9ca1c1d76d6 12-13
+demos/modern-basic/scripts/run-command-package.mjs
+  s_9fd13cee690640::t_10faae122cc3d4 1-45
+demos/modern-basic/scripts/verify-code-usage.mjs
+  s_9fd13cee690640::t_de59f58b18a891 13,20,28-29,46
+docs/cli-automation-scripts.md
+  s_9fd13cee690640::t_d96b707d0c8a46 21-26
+docs/cli-automation-scripts.zh-CN.md
+  s_9fd13cee690640::t_788154beb07904 21-26
+docs/cli-extensions.md
+  s_9fd13cee690640::t_d697dcf93403b2 57-84,130-132
+docs/cli-extensions.zh-CN.md
+  s_9fd13cee690640::t_5f9c44b6e4e13f 57-82,128-129
+docs/cli-reference.md
+  s_9fd13cee690640::t_4162cc6b398797 5,44-50
+docs/code-usage-analysis.zh-CN.md
+  s_9fd13cee690640::t_11660a1134ec89 10-15
+docs/memory-analysis.zh-CN.md
+  s_9fd13cee690640::t_750d7dc9d72c46 3-8
+docs/recording-runtime-release.md
+  s_9fd13cee690640::t_3d0ab09a95b7e5 3,10,30-31,34-37,52,57-58,61-64,87,91
+docs/recording-runtime-release.zh-CN.md
+  s_9fd13cee690640::t_a47352d0655a4c 3,10,30-31,34-37,41,57-58,61-64,87,91
+packages/cli/README.md
+  s_9fd13cee690640::t_6ffd3b382a2758 17-29,37-38,45,48-51,77-84
+packages/cli/src/commands/external.ts
+  s_9fd13cee690640::t_ea966dfc067411 12,45-52
+packages/cli/src/commands/help.ts
+  s_9fd13cee690640::t_cd51931e7e5330 5-24
+packages/cli/src/commands/installed.ts
+  s_9fd13cee690640::t_3119baa1b4f7ad 1-501
+packages/cli/src/commands/names.ts
+  s_9fd13cee690640::t_0b9b2c411fb154 33
+packages/cli/src/features/extension/api.ts
+  s_9fd13cee690640::t_6614ec38570a33 8,13,17,42-43,98-106,123-126,129-131,135,139,145-169,172,176,200-201
+packages/cli/src/features/extension/types.ts
+  s_9fd13cee690640::t_9e8f8360280c8d 9-10,240-245,261-271
+packages/cli/src/index.ts
+  s_9fd13cee690640::t_19837985cf72b8 72-87
+packages/cli/src/runner.ts
+  s_9fd13cee690640::t_5f41cafb1b926c 14,20,60-61,64-65
+packages/cli/src/types/cli.ts
+  s_9fd13cee690640::t_fcc904d000e6fb 15,39-40
+packages/cli/src/utils/output.ts
+  s_9fd13cee690640::t_c32b061ddac4ad 39-44
+packages/cli/test/cli-core.test.ts
+  s_9fd13cee690640::t_31fa8d8d4826ce 100,104,161-163,165,167
+packages/cli/test/extensions.test.ts
+  s_9fd13cee690640::t_fa2298d2966bef 2,12-215,314
+packages/cli/tsconfig.json
+  s_9fd13cee690640::t_76c7122f287324 12
+packages/command-code-usage/package.json
+  s_9fd13cee690640::t_8bd83cfc3b67a7 1-30
+packages/command-code-usage/scripts/assemble.mjs
+  s_9fd13cee690640::t_c696879b870695 1-21
+packages/command-code-usage/src/index.ts
+  s_9fd13cee690640::t_0b76338420b7ef 1-51,53,56,60,66,78-79,81,90,93,100-101,104,108,111-112,117,120,123,126,131,134-135,139,145-190
+packages/command-code-usage/src/report.ts
+  s_9fd13cee690640::t_23c4ea3555566f 40,42
+packages/command-code-usage/src/types.ts
+  s_9fd13cee690640::t_ca0cab00ebf208 1-30
+packages/command-code-usage/test/command.test.mjs
+  s_9fd13cee690640::t_17b25743645a0f 5,7-15,17-29,106,127,131-136,155,233,275,281,284
+packages/command-code-usage/tsconfig.json
+  s_9fd13cee690640::t_0cf00fb7845a47 1-14
+packages/command-imitate/package.json
+  s_9fd13cee690640::t_f9b0db1ff6206f 1-27
+packages/command-imitate/src/audio.ts
+  s_9fd13cee690640::t_0b2f204343b661 9,54-67
+packages/command-imitate/src/capture.ts
+  s_9fd13cee690640::t_800f6190a27ee7 3,9,16,28,33,54-55,60-63,65,69,88,91,121,124,287-289
+packages/command-imitate/src/index.ts
+  s_9fd13cee690640::t_4e9d7c7b0dd660 2-6,8,10-18,26-66,108,116,120-122,171-175,182-184,190,206,388-390,622-632
+packages/command-imitate/src/session.ts
+  s_9fd13cee690640::t_26249fd5ca0efb 2,4-5,13-14,34,62,64,138,140,150-164
+packages/command-imitate/src/storage.ts
+  s_9fd13cee690640::t_22998d22256bc3 32-38
+packages/command-imitate/src/types.ts
+  s_9fd13cee690640::t_523709948c9d9e 1-11,15-16
+packages/command-imitate/test/record.test.mjs
+  s_9fd13cee690640::t_44983c63a7fd8d 5,7-11,16-17,172-173,349,672,726,816,835,844,910
+packages/command-imitate/tsconfig.json
+  s_9fd13cee690640::t_edcb74f0aa82af 1-13
+packages/command-memory/package.json
+  s_9fd13cee690640::t_74aa815608c47d 1-27
+packages/command-memory/src/index.ts
+  s_9fd13cee690640::t_d3d33354062cec 1-189
+packages/command-memory/src/memory-check.ts
+  s_9fd13cee690640::t_c19b0b6a134e6c 5,19,26,36-37,44,55,58,68,71,98,100,116,118,123,141,144-145,157,162,176,180,280-288
+packages/command-memory/src/types.ts
+  s_9fd13cee690640::t_440223a264c4a3 1,25
+packages/command-memory/test/memory-check.test.mjs
+  s_9fd13cee690640::t_0c6e0b4aae22b5 5,7-26,43,103-175
+packages/command-memory/tsconfig.json
+  s_9fd13cee690640::t_5a939c57cdd214 1-13
+packages/command-trobule-shooting/package.json
+  s_9fd13cee690640::t_e24a4ed29b878d 1-27
+packages/command-trobule-shooting/src/index.ts
+  s_9fd13cee690640::t_9c45108fec5323 1-88
+packages/command-trobule-shooting/src/types.ts
+  s_9fd13cee690640::t_e64fc3df4f1e89 1-32
+packages/command-trobule-shooting/src/verify.ts
+  s_9fd13cee690640::t_026d19ea9d678a 1,3-21,23,26-27,29,32-35,37,45,64,109,112,119-137,277,279,295-300,306,313-320
+packages/command-trobule-shooting/test/verify.test.mjs
+  s_9fd13cee690640::t_d406c7eb507070 2,4-5,7-30,34,202,402
+packages/command-trobule-shooting/tsconfig.json
+  s_9fd13cee690640::t_9f29fd3d1cb785 1-13
+packages/rspack-plugin/README.md
+  s_9fd13cee690640::t_2425d9bf684032 18
+pnpm-lock.yaml
+  s_9fd13cee690640::t_ae8b3741a17f22 167-174
+scripts/bump-recording-skill-runtime.mjs
+  s_9fd13cee690640::t_315fa486a548c4 12-13,15-19
+scripts/clean.mjs
+  s_9fd13cee690640::t_4a1939bfa09335 5-16
+scripts/npm-release.mjs
+  s_9fd13cee690640::t_124b93c5d07ea7 16-17,19-23,102-104
+scripts/sync-openruntime-cli-docs.mjs
+  s_9fd13cee690640::t_15260d683acc80 15
+scripts/validate-openruntime-release.mjs
+  s_9fd13cee690640::t_cfb2dabbe42024 12-13,15-19
+skills/openruntime/SKILL.md
+  s_9fd13cee690640::t_9c9b05d13cafa4 65-66
+skills/openruntime/scripts/workflow.mjs
+  s_9fd13cee690640::t_2e1d816691f0e7 329
+skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+  s_9fd13cee690640::t_5383f132e0b3c8 14,16-17,36-41
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_9fd13cee690640::t_86fb383cb81465 21-25,33-35,42-48,55-59,105,116,122-130,132,142-162
+tsconfig.base.json
+  s_9fd13cee690640::t_4f7aaa3dc6a490 11
+tsconfig.json
+  s_9fd13cee690640::t_558a64dab846b1 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a24651894f0a93ea7f092e2edbf8a103e6ef9e01",
+  "prompts": {},
+  "sessions": {
+    "s_9fd13cee690640": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f67-be02-7a41-a460-64a0b5a6d232",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

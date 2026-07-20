@@ -1,0 +1,59 @@
+.changeset/fix-agent-browser-auth.md
+  s_7753ae76e54d01::t_17141c5fc117bf 5
+docs/auth-profiles.md
+  s_7753ae76e54d01::t_f10cf0ac6898b7 11,17-19,24,27-28,66-67,69-70
+docs/auth-profiles.zh-CN.md
+  s_7753ae76e54d01::t_715814b900017e 11,17-19,24,27-28,66-67,69-70
+docs/cli-reference.md
+  s_cfe7292ad59ed2::t_dd7922da0e704d 5,14-32,36-50
+packages/cli/src/commands/auth.ts
+  s_7753ae76e54d01::t_8fdd7cbdbdc621 1,7,63,72,77-78,82,85,91,101-110,159,161
+packages/cli/src/commands/help.ts
+  s_7753ae76e54d01::t_d3aedf60b5d61f 8,13,18,23,28,33,37-38,42-43,48,53,58,63,68,73,78,83,88,93,98,103,108,113,118,123,128,133,138,143,148,187,189-190,197
+packages/cli/src/features/auth/connector/index.ts
+  s_cfe7292ad59ed2::t_803e5ae05f0df1 64
+packages/cli/src/features/auth/connector/types.ts
+  s_7753ae76e54d01::t_695f1879b71bed 3
+packages/cli/src/features/auth/profile.ts
+  s_cfe7292ad59ed2::t_0ab2322be1fbb4 27,36-37,40
+packages/cli/src/features/auth/types.ts
+  s_7753ae76e54d01::t_20af43738b289a 10
+packages/cli/test/cli-core.test.ts
+  s_7753ae76e54d01::t_657b302f38f2ea 91-94,104-105,114,155-158,176
+packages/cli/test/profile.test.ts
+  s_cfe7292ad59ed2::t_a9334fc542bb32 174,243-274,425,649,656-685,694,702,911,913-914,917-924,932-933
+packages/command-code-usage/src/index.ts
+  s_cfe7292ad59ed2::t_01115dc928bd18 17,22
+packages/command-imitate/src/index.ts
+  s_cfe7292ad59ed2::t_69678a903e1d1d 33,38,43,48,53
+packages/command-memory/src/index.ts
+  s_cfe7292ad59ed2::t_186128f370337e 16,21
+packages/command-trobule-shooting/src/index.ts
+  s_cfe7292ad59ed2::t_215bbebe301619 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c429495d176dccaa2f83425cc014d9f7dd198d22",
+  "prompts": {},
+  "sessions": {
+    "s_7753ae76e54d01": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7d6d-d110-7b23-a320-9debee7d84b5",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_cfe7292ad59ed2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f798f-31d9-7f80-be8b-3259a9504a5f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

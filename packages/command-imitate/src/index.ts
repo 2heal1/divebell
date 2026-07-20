@@ -30,27 +30,27 @@ const command: OpenRuntimeCommandDefinition = {
     {
       category: "Commands",
       usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-      description: "按固定时长打开页面并生成 .orrec 录制包，记录页面快照、DOM、人工操作、OpenRuntime 状态和可选麦克风音频。"
+      description: "Open a page for a fixed duration and create an .orrec package with page snapshots, DOM, interactions, OpenRuntime state, and optional microphone audio."
     },
     {
       category: "Commands",
       usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-      description: "启动一次人工操作录制；不传 URL 时打开空白页，不传 out 时写入当前目录 recordings 下。"
+      description: "Start a manual recording; open a blank page when URL is omitted and write under ./recordings when out is omitted."
     },
     {
       category: "Commands",
       usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
-      description: "结束人工操作录制，采集人工操作和收尾状态，默认关闭浏览器并生成脚本草稿。"
+      description: "Stop a manual recording, capture final interactions and state, then close the browser and draft a script by default."
     },
     {
       category: "Commands",
       usage: "openruntime record generate-script --input <path> [--out <path>]",
-      description: "从已有 .orrec 录制包重新生成 JS 脚本草稿。"
+      description: "Regenerate a JavaScript script draft from an existing .orrec recording."
     },
     {
       category: "Commands",
       usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
-      description: "把 .orrec 里的麦克风录音转成带时间信息的文字。"
+      description: "Transcribe microphone audio from an .orrec recording into timestamped text."
     }
   ],
   run: async (options) => await runRecordCommand({

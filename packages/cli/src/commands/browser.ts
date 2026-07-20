@@ -19,6 +19,7 @@ import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
+import { ensureSavedAuthStateApplied } from "../features/auth/browser-state.js";
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -36,6 +37,9 @@ export async function runBrowserCliCommand(
     const openedUrl = withOpenRuntimeSession(url, sessionId);
     const bridgeUrl = hasOption(args, "no-bridge") ? null : createBridgeUrl(args);
     await operationLogStore.remove();
+    if (browserRunner.authState !== undefined) {
+      await ensureSavedAuthStateApplied(browserRunner, browserRunner.authState.profileDirectory);
+    }
     if (!hasOption(args, "no-bridge")) {
       await ensureBridge({
         fetcher,

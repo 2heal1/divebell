@@ -1,6 +1,6 @@
 export interface AuthConnectorExportOptions {
   requestedUrl: string;
-  outputPath?: string;
+  outputPath: string;
   timeout?: number;
   extensionDirectory?: string;
   extensionInstallUrl?: string;
@@ -79,4 +79,3 @@ export interface AuthConnectorServerState {
   resolve(payload: AuthConnectorPayload): void;
   reject(error: Error): void;
 }
-

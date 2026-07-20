@@ -5,147 +5,147 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Commands",
     usage: "openruntime commands add <npm-package> [--commands-dir <path>]",
-    description: "下载、验证并安装一个没有运行依赖的 OpenRuntime 命令包。"
+    description: "Download, validate, and install an OpenRuntime command package with no runtime dependencies."
   },
   {
     category: "Commands",
     usage: "openruntime commands list [--commands-dir <path>]",
-    description: "列出已经安装的 OpenRuntime 命令包和它们提供的命令。"
+    description: "List installed OpenRuntime command packages and the commands they provide."
   },
   {
     category: "Commands",
     usage: "openruntime commands update <package> [--commands-dir <path>]",
-    description: "下载并启用命令包的最新版本；失败时继续保留原版本。"
+    description: "Download and activate the latest command package version; keep the current version if the update fails."
   },
   {
     category: "Commands",
     usage: "openruntime commands remove <package> [--commands-dir <path>]",
-    description: "卸载指定命令包。"
+    description: "Uninstall the specified command package."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime start [--port <port>]",
-    description: "显式启动或复用 CLI 管理的 Bridge；多数命令会自动准备本地 Bridge，通常不需要手动运行。"
+    description: "Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime stop [--port <port>]",
-    description: "先关闭浏览器会话，再停止 CLI 管理的 Bridge。"
+    description: "Close the browser session, then stop the CLI-managed Bridge."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth export --url <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]",
-    description: "通过 Chrome Auth Connector 扩展导出指定网站账号状态；首次会打开 Chrome 引导安装或加载扩展。"
+    usage: "openruntime auth export <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]",
+    description: "Export login state for a site to a file through the Chrome Auth Connector; create a temporary file when --output is omitted."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth import <content-or-path> | --input <path>",
-    description: "导入 OpenRuntime 浏览器账号状态，让后续打开页面默认使用这份账号。"
+    usage: "openruntime auth import <path>",
+    description: "Import browser login state from a file for later OpenRuntime pages."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime auth list",
-    description: "列出当前 OpenRuntime 浏览器 profile 里已导入的站点。"
+    description: "List sites imported into the current OpenRuntime browser profile."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime auth clear [--url <url>]",
-    description: "清理当前 OpenRuntime 浏览器 profile；带 --url 时只清理这个 URL 对应的站点登录态。"
+    description: "Clear the current OpenRuntime browser profile, or only the site matched by --url."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "打开页面，默认先准备 Bridge，并在加载前放入连接管理器，自动连接页面注册的所有 runtime；--ui 打开可见浏览器，--no-bridge 不连接。"
+    description: "Open a page and connect its runtimes through the Bridge by default; use --ui for a visible browser or --no-bridge to skip connection."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime page-snapshot",
-    description: "读取当前页面快照，包括可操作元素引用。"
+    description: "Read the current page snapshot, including actionable element references."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime click <ref|selector|text>",
-    description: "按页面引用、选择器或可见文本点击元素。"
+    description: "Click an element by page reference, selector, or visible text."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime fill <ref|selector> <value>",
-    description: "按页面引用或选择器填写输入框。"
+    description: "Fill an input by page reference or selector."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime eval <script>",
-    description: "在页面内执行脚本，也支持 --file <path> 读取脚本文件。"
+    description: "Run a script in the page, or load one from --file <path>."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime wait-eval <script> [--timeout <ms>]",
-    description: "轮询页面表达式，直到结果为 true。"
+    description: "Poll a page expression until it returns true."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime get-window <path>",
-    description: "读取 window/globalThis 上的点分路径，例如 gf_data_v1。"
+    description: "Read a dotted path from window/globalThis, such as gf_data_v1."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime screenshot [name] [--full-page]",
-    description: "通过 OpenRuntime 浏览器层截图。"
+    description: "Capture a screenshot through the OpenRuntime browser layer."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime network [--url <query>]",
-    description: "查看当前页面的网络请求列表，并可按 URL 文本过滤。"
+    description: "List network requests from the current page and optionally filter them by URL text."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime console [--level <level>] [--query <keyword>] [--limit <n>]",
-    description: "兜底读取当前页面浏览器 console 日志；结构化验收和排错优先用 snapshot --query。"
+    description: "Read browser console logs as a fallback; prefer snapshot --query for structured verification and troubleshooting."
   },
   {
     category: "Bridge and Browser",
     usage: "openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
-    description: "分阶段记录当前页面实际执行过的代码，用于识别已加载但未使用的业务代码和第三方包。"
+    description: "Capture code executed by the current page in stages to identify loaded but unused application and third-party code."
   },
   {
     category: "Runtime",
     usage: "openruntime runtimes [--bridge <url>]",
-    description: "列出连接到 Bridge 的 runtime；本地 Bridge 不存在时会自动启动。"
+    description: "List runtimes connected to the Bridge, starting a local Bridge automatically when needed."
   },
   {
     category: "Runtime",
     usage: "openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    description: "读取所选 runtime 注册的 target 定义。"
+    description: "Read target definitions registered by the selected runtime."
   },
   {
     category: "Runtime",
     usage: "openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
-    description: "读取当前 runtime snapshot 状态。"
+    description: "Read the current snapshot state from the selected runtime."
   },
   {
     category: "Runtime",
     usage: "openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]",
-    description: "读取 runtime event 历史。"
+    description: "Read runtime event history."
   },
   {
     category: "Runtime",
     usage: "openruntime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
-    description: "列出页面声明的 runtime action。"
+    description: "List runtime actions declared by the page."
   },
   {
     category: "Runtime",
     usage: "openruntime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
-    description: "读取 action 某个输入项的动态候选值。"
+    description: "Read dynamic choices for an action input."
   },
   {
     category: "Runtime",
     usage: "openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
-    description: "执行页面声明的 runtime action。"
+    description: "Run a runtime action declared by the page."
   },
   {
     category: "Runtime",
     usage: "openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]",
-    description: "等待 target 到达指定状态；--where 的 value 会按 JSON 字面量解析，可匹配 number、boolean、null。"
+    description: "Wait for a target to reach a status; --where values are parsed as JSON literals and can match numbers, booleans, or null."
   }
 ];
 
@@ -184,17 +184,17 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
-    "Bridge and Browser": "Bridge 和浏览器",
+    "Bridge and Browser": "Bridge and Browser",
     Runtime: "Runtime",
-    Commands: "命令",
-    "External Commands": "外部命令"
+    Commands: "Commands",
+    "External Commands": "External Commands"
   };
   const lines = [
     "# OpenRuntime CLI Reference",
     "",
     "<!-- This file is generated by scripts/sync-openruntime-cli-docs.mjs. Do not edit by hand. -->",
     "",
-    "本文档由 `packages/cli/src/commands/help.ts` 中的当前 CLI 命令表生成。",
+    "This document is generated from the current CLI command table in `packages/cli/src/commands/help.ts`.",
     "",
     "## Binaries",
     "",

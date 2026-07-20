@@ -14,7 +14,7 @@ const command: OpenRuntimeCommandDefinition = {
   commandReferences: [{
     category: "Commands",
     usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
-    description: "业务级验收 target：只有业务 target 成功才判定业务通过；Modern/MF/Garfish/Vmok 等底层 target 只作为底层证据。"
+    description: "Verify a business target; framework targets such as Modern, MF, Garfish, and Vmok are supporting evidence only."
   }],
   run: async (options) => {
     const targetId = requireArgument(options.args, 1, "target id");

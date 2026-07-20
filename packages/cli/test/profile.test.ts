@@ -11,31 +11,39 @@ import {
   createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
   createDefaultBrowserRunner,
+  resolveAgentBrowserSession,
   resolveBundledAgentBrowserEntryPath
 } from "../dist/features/browser/runner.js";
-import { AUTH_STATE_FILE_NAME, exportAuthStateProfile } from "../dist/features/auth/profile.js";
+import { AUTH_STATE_FILE_NAME, clearProfile, exportAuthStateProfile } from "../dist/features/auth/profile.js";
+import { AUTH_STATE_APPLIED_FILE_NAME, ensureSavedAuthStateApplied } from "../dist/features/auth/browser-state.js";
 
 import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
-test("uses the default OpenRuntime browser profile directory", () => {
+test("uses agent-browser automatic restore without a persistent browser profile", () => {
   const env = createAgentBrowserEnvironment({});
 
-  assert.equal(env.AGENT_BROWSER_PROFILE, createDefaultBrowserProfileDirectory());
+  assert.equal(env.AGENT_BROWSER_PROFILE, undefined);
+  assert.equal(env.AGENT_BROWSER_STATE, undefined);
+  assert.equal(env.AGENT_BROWSER_SESSION, "openruntime");
+  assert.equal(env.AGENT_BROWSER_RESTORE, "openruntime");
+  assert.equal(createDefaultBrowserProfileDirectory().endsWith(".openruntime/browser-profile"), true);
 });
 
-test("configures agent-browser with the shared profile and a stable session", () => {
+test("configures agent-browser with isolated automatic restore and a stable session", () => {
   const env = createAgentBrowserEnvironment({
     OPENRUNTIME_BROWSER_PROFILE_DIR: "/tmp/custom-openruntime-profile",
     OPENRUNTIME_AGENT_BROWSER_SESSION: "memory-check"
   });
 
-  assert.equal(env.AGENT_BROWSER_PROFILE, "/tmp/custom-openruntime-profile");
+  assert.equal(env.AGENT_BROWSER_PROFILE, undefined);
   assert.equal(env.AGENT_BROWSER_SESSION, "memory-check");
+  assert.equal(env.AGENT_BROWSER_RESTORE, "memory-check");
   assert.equal(env.AGENT_BROWSER_HEADED, undefined);
 
   const visibleEnv = createAgentBrowserEnvironment({}, "/tmp/visible-profile", "visible", { ui: true });
-  assert.equal(visibleEnv.AGENT_BROWSER_PROFILE, "/tmp/visible-profile");
+  assert.equal(visibleEnv.AGENT_BROWSER_PROFILE, undefined);
   assert.equal(visibleEnv.AGENT_BROWSER_SESSION, "visible");
+  assert.equal(visibleEnv.AGENT_BROWSER_RESTORE, "visible");
   assert.equal(visibleEnv.AGENT_BROWSER_HEADED, "1");
 });
 
@@ -44,7 +52,7 @@ test("runs agent-browser through a replaceable executable entry", async () => {
     executablePath: process.execPath,
     prefixArgs: [
       "-e",
-      "process.stdout.write(JSON.stringify({ success: true, data: { args: process.argv.slice(1), profile: process.env.AGENT_BROWSER_PROFILE, session: process.env.AGENT_BROWSER_SESSION } }))"
+      "process.stdout.write(JSON.stringify({ success: true, data: { args: process.argv.slice(1), profile: process.env.AGENT_BROWSER_PROFILE, restore: process.env.AGENT_BROWSER_RESTORE, session: process.env.AGENT_BROWSER_SESSION } }))"
     ],
     profileDirectory: "/tmp/openruntime-agent-browser-profile",
     session: "openruntime-test"
@@ -54,7 +62,7 @@ test("runs agent-browser through a replaceable executable entry", async () => {
   assert.equal(result.exitCode, 0);
   assert.deepEqual(JSON.parse(result.stdout), {
     args: ["memory", "metrics", "--json"],
-    profile: "/tmp/openruntime-agent-browser-profile",
+    restore: "openruntime-test",
     session: "openruntime-test"
   });
 });
@@ -108,15 +116,261 @@ test("preserves agent-browser memory error codes while exposing a readable error
   });
 });
 
-test("loads an imported OpenRuntime auth state through agent-browser", () => {
+test("never combines the OpenRuntime auth file with an agent-browser profile", () => {
   const profileDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-profile-"));
   const authStatePath = join(profileDirectory, AUTH_STATE_FILE_NAME);
   try {
     writeFileSync(authStatePath, JSON.stringify({ cookies: [], origins: [] }));
-    const env = createAgentBrowserEnvironment({}, profileDirectory);
-    assert.equal(env.AGENT_BROWSER_STATE, authStatePath);
+    const env = createAgentBrowserEnvironment({
+      AGENT_BROWSER_PROFILE: "/tmp/inherited-profile",
+      AGENT_BROWSER_STATE: authStatePath
+    }, profileDirectory);
+    assert.equal(env.AGENT_BROWSER_STATE, undefined);
+    assert.equal(env.AGENT_BROWSER_PROFILE, undefined);
+    assert.equal(typeof env.AGENT_BROWSER_RESTORE, "string");
   } finally {
     rmSync(profileDirectory, { recursive: true, force: true });
+  }
+});
+
+test("merges current browser auth and seeds automatic restore once on import", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-auth-seed-"));
+  const profileDirectory = join(tempDir, "profile");
+  const inputPath = join(tempDir, "auth.oprprofile");
+  const previousProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+  const previousSession = process.env.OPENRUNTIME_AGENT_BROWSER_SESSION;
+  try {
+    process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = profileDirectory;
+    process.env.OPENRUNTIME_AGENT_BROWSER_SESSION = "auth-seed-test";
+    await exportAuthStateProfile({
+      outputPath: inputPath,
+      storageState: {
+        cookies: [
+          {
+            name: "imported",
+            value: "new",
+            domain: ".example.com",
+            path: "/"
+          }
+        ],
+        origins: []
+      }
+    });
+
+    const currentStorageState = {
+      cookies: [
+        {
+          name: "current",
+          value: "kept",
+          domain: ".existing.example",
+          path: "/"
+        }
+      ],
+      origins: []
+    };
+    const browserCalls: string[][] = [];
+    let loadedStorageState: unknown;
+    const output = createOutput();
+    const exitCode = await runCli(["auth", "import", inputPath], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        if (args[0] === "state" && args[1] === "save") {
+          writeFileSync(args[2] ?? "", JSON.stringify(currentStorageState));
+        }
+        if (args[0] === "state" && args[1] === "load") {
+          loadedStorageState = JSON.parse(readFileSync(args[2] ?? "", "utf8"));
+        }
+        return {
+          exitCode: 0,
+          stdout: "",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(browserCalls.map((args) => args.slice(0, 2)), [
+      ["open"],
+      ["state", "save"],
+      ["close"],
+      ["open"],
+      ["state", "load"],
+      ["close"]
+    ]);
+    assert.deepEqual(loadedStorageState, {
+      cookies: [
+        {
+          name: "current",
+          value: "kept",
+          domain: ".existing.example",
+          path: "/"
+        },
+        {
+          name: "imported",
+          value: "new",
+          domain: ".example.com",
+          path: "/"
+        }
+      ],
+      origins: []
+    });
+    const normalEnv = createAgentBrowserEnvironment(process.env);
+    assert.equal(normalEnv.AGENT_BROWSER_STATE, undefined);
+    assert.equal(normalEnv.AGENT_BROWSER_PROFILE, undefined);
+    assert.equal(normalEnv.AGENT_BROWSER_RESTORE, "auth-seed-test");
+    assert.equal(existsSync(join(profileDirectory, AUTH_STATE_APPLIED_FILE_NAME)), true);
+  } finally {
+    if (previousProfileDirectory === undefined) {
+      delete process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+    } else {
+      process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = previousProfileDirectory;
+    }
+    if (previousSession === undefined) {
+      delete process.env.OPENRUNTIME_AGENT_BROWSER_SESSION;
+    } else {
+      process.env.OPENRUNTIME_AGENT_BROWSER_SESSION = previousSession;
+    }
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("requires the auth import path as a positional argument", async () => {
+  const output = createOutput();
+  let touchedBrowser = false;
+  const exitCode = await runCli([
+    "auth",
+    "import",
+    "--input",
+    "/tmp/auth.oprprofile"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => {
+      touchedBrowser = true;
+      return {
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(touchedBrowser, false);
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth import", {
+    code: "AUTH_IMPORT_PATH_REQUIRED",
+    kind: "validation",
+    message: "auth import requires <path>.",
+    retryable: false,
+    hint: "Use `openruntime auth import /path/to/auth.oprprofile`."
+  }));
+});
+
+test("applies auth saved before the agent-browser migration on the first open only", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-auth-migration-"));
+  const profileDirectory = join(tempDir, "profile");
+  const statePath = join(profileDirectory, AUTH_STATE_FILE_NAME);
+  try {
+    mkdirSync(profileDirectory, { recursive: true });
+    writeFileSync(statePath, JSON.stringify({
+      cookies: [
+        {
+          name: "legacy",
+          value: "kept",
+          domain: ".example.com",
+          path: "/"
+        }
+      ],
+      origins: []
+    }));
+
+    const browserCalls: string[][] = [];
+    const browserRunner = createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      };
+    });
+    browserRunner.authState = {
+      profileDirectory,
+      restoreName: "migration-one"
+    };
+
+    await ensureSavedAuthStateApplied(browserRunner, profileDirectory);
+    assert.deepEqual(browserCalls, [
+      ["open"],
+      ["state", "load", statePath],
+      ["close"]
+    ]);
+    assert.equal(existsSync(join(profileDirectory, AUTH_STATE_APPLIED_FILE_NAME)), true);
+
+    await ensureSavedAuthStateApplied(browserRunner, profileDirectory);
+    assert.equal(browserCalls.length, 3);
+
+    browserRunner.authState.restoreName = "migration-two";
+    await ensureSavedAuthStateApplied(browserRunner, profileDirectory);
+    assert.deepEqual(browserCalls.slice(3), [
+      ["open"],
+      ["state", "load", statePath],
+      ["close"]
+    ]);
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
+  }
+});
+
+test("preserves current browser auth when clearing a site with no matching state", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-auth-clear-preserve-"));
+  const profileDirectory = join(tempDir, "profile");
+  const statePath = join(profileDirectory, AUTH_STATE_FILE_NAME);
+  try {
+    mkdirSync(profileDirectory, { recursive: true });
+    writeFileSync(statePath, JSON.stringify({
+      cookies: [
+        {
+          name: "session",
+          value: "old",
+          domain: ".example.com",
+          path: "/"
+        }
+      ],
+      origins: []
+    }));
+
+    const result = await clearProfile({
+      profileDirectory,
+      url: "https://not-imported.example.org",
+      currentStorageState: {
+        cookies: [
+          {
+            name: "session",
+            value: "refreshed",
+            domain: ".example.com",
+            path: "/"
+          }
+        ],
+        origins: []
+      }
+    });
+
+    assert.equal(result.removed, false);
+    assert.equal(JSON.parse(readFileSync(statePath, "utf8")).cookies[0].value, "refreshed");
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
   }
 });
 
@@ -164,11 +418,11 @@ test("imports, lists, and clears the current auth profile", async () => {
     });
     assert.equal(exported.path, inputPath);
 
-    let closeArgs: string[] | undefined;
+    let browserCalls: string[][] = [];
     let appliedProfileDirectory: string | undefined;
     let appliedStorageState: unknown;
     const importOutput = createOutput();
-    const importExitCode = await runCli(["auth", "import", "--input", inputPath], {
+    const importExitCode = await runCli(["auth", "import", inputPath], {
       stdout: importOutput.stdout,
       stderr: importOutput.stderr,
       authStateApplier: async (applierProfileDirectory, storageState) => {
@@ -176,7 +430,7 @@ test("imports, lists, and clears the current auth profile", async () => {
         appliedStorageState = storageState;
       },
       browserRunner: createBrowserRunner(async (args) => {
-        closeArgs = args;
+        browserCalls.push(args);
         return {
           exitCode: 0,
           stdout: "",
@@ -187,7 +441,7 @@ test("imports, lists, and clears the current auth profile", async () => {
 
     assert.equal(importExitCode, 0);
     assert.equal(importOutput.errorText(), "");
-    assert.deepEqual(closeArgs, ["close"]);
+    assert.deepEqual(browserCalls, [["close"]]);
     assert.deepEqual(JSON.parse(importOutput.text()), {
       kind: "auth",
       profileDirectory
@@ -260,11 +514,12 @@ test("imports, lists, and clears the current auth profile", async () => {
     });
 
     const clearUrlOutput = createOutput();
+    browserCalls = [];
     const clearUrlExitCode = await runCli(["auth", "clear", "--url", "https://app.example.com/dashboard"], {
       stdout: clearUrlOutput.stdout,
       stderr: clearUrlOutput.stderr,
       browserRunner: createBrowserRunner(async (args) => {
-        closeArgs = args;
+        browserCalls.push(args);
         return {
           exitCode: 1,
           stdout: "",
@@ -275,7 +530,12 @@ test("imports, lists, and clears the current auth profile", async () => {
 
     assert.equal(clearUrlExitCode, 0);
     assert.equal(clearUrlOutput.errorText(), "");
-    assert.deepEqual(closeArgs, ["close"]);
+    assert.deepEqual(browserCalls, [
+      ["open"],
+      ["close"],
+      ["state", "clear", resolveAgentBrowserSession(process.env, profileDirectory), "--json"],
+      ["open"]
+    ]);
     assert.deepEqual(JSON.parse(clearUrlOutput.text()), {
       kind: "auth",
       profileDirectory,
@@ -305,11 +565,12 @@ test("imports, lists, and clears the current auth profile", async () => {
     });
 
     const clearOutput = createOutput();
+    browserCalls = [];
     const clearExitCode = await runCli(["auth", "clear"], {
       stdout: clearOutput.stdout,
       stderr: clearOutput.stderr,
       browserRunner: createBrowserRunner(async (args) => {
-        closeArgs = args;
+        browserCalls.push(args);
         return {
           exitCode: 1,
           stdout: "",
@@ -320,7 +581,10 @@ test("imports, lists, and clears the current auth profile", async () => {
 
     assert.equal(clearExitCode, 0);
     assert.equal(clearOutput.errorText(), "");
-    assert.deepEqual(closeArgs, ["close"]);
+    assert.deepEqual(browserCalls, [
+      ["close"],
+      ["state", "clear", resolveAgentBrowserSession(process.env, profileDirectory), "--json"]
+    ]);
     assert.deepEqual(JSON.parse(clearOutput.text()), {
       kind: "auth",
       profileDirectory,
@@ -346,7 +610,6 @@ test("exports auth profile through the Chrome auth connector", async () => {
   const exitCode = await runCli([
     "auth",
     "export",
-    "--url",
     "www.douyin.com",
     "--timeout",
     "120000",
@@ -383,13 +646,43 @@ test("exports auth profile through the Chrome auth connector", async () => {
   });
 });
 
-test("rejects unsupported auth export URLs before opening Chrome", async () => {
+test("requires the auth export URL as a positional argument", async () => {
   const output = createOutput();
   let didOpenChrome = false;
   const exitCode = await runCli([
     "auth",
     "export",
     "--url",
+    "example.com"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    authConnectorExporter: async () => {
+      didOpenChrome = true;
+      return {
+        kind: "auth",
+        path: "/tmp/unexpected.oprprofile"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(didOpenChrome, false);
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export", {
+    code: "AUTH_EXPORT_URL_REQUIRED",
+    kind: "validation",
+    message: "auth export requires <url>.",
+    retryable: false,
+    hint: "Use `openruntime auth export https://app.example.com`."
+  }));
+});
+
+test("rejects unsupported auth export URLs before opening Chrome", async () => {
+  const output = createOutput();
+  let didOpenChrome = false;
+  const exitCode = await runCli([
+    "auth",
+    "export",
     "ftp://example.com"
   ], {
     stdout: output.stdout,
@@ -398,7 +691,7 @@ test("rejects unsupported auth export URLs before opening Chrome", async () => {
       didOpenChrome = true;
       return {
         kind: "auth",
-        content: "unexpected"
+        path: "/tmp/unexpected.oprprofile"
       };
     }
   });
@@ -406,7 +699,7 @@ test("rejects unsupported auth export URLs before opening Chrome", async () => {
   assert.equal(exitCode, 1);
   assert.equal(output.errorText(), "");
   assert.equal(didOpenChrome, false);
-  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export", {
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export ftp://example.com", {
     code: "AUTH_EXPORT_URL_UNSUPPORTED",
     kind: "validation",
     message: "Auth export URL must use http or https.",
@@ -615,16 +908,20 @@ test("opens the auth connector setup page in automatic export mode", async () =>
   }
 });
 
-test("writes oversized profile export content to a temporary file", async () => {
+test("writes auth export to a temporary file when output is omitted", async () => {
   const output = createOutput();
-  const content = `openruntime-profile:v1:auth:${"a".repeat(40_000)}`;
-  const exitCode = await runCli(["auth", "export", "--url", "example.com"], {
+  let receivedOutputPath: string | undefined;
+  const exitCode = await runCli(["auth", "export", "example.com"], {
     stdout: output.stdout,
     stderr: output.stderr,
-    authConnectorExporter: async () => ({
-      kind: "auth",
-      content
-    })
+    authConnectorExporter: async (options) => {
+      receivedOutputPath = options.outputPath;
+      writeFileSync(options.outputPath, "profile-file");
+      return {
+        kind: "auth",
+        path: options.outputPath
+      };
+    }
   });
   const path = output.text().trim();
 
@@ -632,7 +929,8 @@ test("writes oversized profile export content to a temporary file", async () => 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
     assert.match(path, /openruntime-profile-export-.+\/openruntime-profile\.oprprofile$/);
-    assert.equal(readFileSync(path, "utf8"), `${content}\n`);
+    assert.equal(receivedOutputPath, path);
+    assert.equal(readFileSync(path, "utf8"), "profile-file");
   } finally {
     if (path.includes("openruntime-profile-export-") && existsSync(path)) {
       rmSync(dirname(path), {

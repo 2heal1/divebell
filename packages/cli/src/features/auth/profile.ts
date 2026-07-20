@@ -24,7 +24,7 @@ export function getAuthStatePath(profileDirectory: string): string {
 
 export async function exportAuthStateProfile(options: {
   storageState: unknown;
-  outputPath?: string;
+  outputPath: string;
 }): Promise<ProfileExportResult> {
   const content = encodeProfileBundle({
     version: 1,
@@ -33,29 +33,27 @@ export async function exportAuthStateProfile(options: {
     storageState: options.storageState
   });
 
-  if (options.outputPath !== undefined) {
-    const path = resolve(options.outputPath);
-    await writeTextFile(path, content);
-    return {
-      kind: "auth",
-      path
-    };
-  }
-
+  const path = resolve(options.outputPath);
+  await writeTextFile(path, content);
   return {
     kind: "auth",
-    content
+    path
   };
 }
 
 export async function importProfile(options: {
   input: string;
   profileDirectory: string;
+  currentStorageState?: unknown;
   applyAuthState?: AuthStateApplier;
 }): Promise<ProfileImportResult> {
   const bundle = decodeProfileBundle(options.input);
   const profileDirectory = resolve(options.profileDirectory);
-  const storageState = mergeStorageStates(await readSavedAuthState(profileDirectory), bundle.storageState);
+  const savedStorageState = await readSavedAuthState(profileDirectory);
+  const existingStorageState = options.currentStorageState === undefined
+    ? savedStorageState
+    : mergeStorageStates(savedStorageState, options.currentStorageState);
+  const storageState = mergeStorageStates(existingStorageState, bundle.storageState);
 
   await saveAuthState(profileDirectory, storageState);
   if (options.applyAuthState !== undefined) {
@@ -86,15 +84,19 @@ export async function listProfile(options: {
 export async function clearProfile(options: {
   profileDirectory: string;
   url?: string;
+  currentStorageState?: unknown;
 }): Promise<ProfileClearResult> {
   const profileDirectory = resolve(options.profileDirectory);
   assertSafeProfileClearPath(profileDirectory);
 
   if (options.url !== undefined) {
-    const storageState = await readSavedAuthState(profileDirectory);
+    const savedStorageState = await readSavedAuthState(profileDirectory);
+    const storageState = options.currentStorageState === undefined
+      ? savedStorageState
+      : mergeStorageStates(savedStorageState, options.currentStorageState);
     const cleared = clearStorageStateByUrl(storageState, options.url);
     const removed = cleared.removedCookies > 0 || cleared.removedOrigins.length > 0;
-    if (removed) {
+    if (removed || options.currentStorageState !== undefined) {
       await rm(profileDirectory, {
         recursive: true,
         force: true
@@ -124,19 +126,6 @@ export async function clearProfile(options: {
     profileDirectory,
     removed
   };
-}
-
-export async function readProfileInput(input: string | undefined): Promise<string> {
-  if (input === undefined || input.length === 0) {
-    throw new Error("Missing profile content or --input <path>.");
-  }
-
-  const path = resolve(input);
-  if (existsSync(path)) {
-    return await readFile(path, "utf8");
-  }
-
-  return input;
 }
 
 export async function readProfileInputFile(path: string): Promise<string> {

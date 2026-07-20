@@ -13,12 +13,12 @@ const command: OpenRuntimeCommandDefinition = {
     {
       category: "Commands",
       usage: "openruntime memory <metrics|status|sampling start|sampling stop|snapshot|cancel> [path] [options]",
-      description: "采集当前页面的内存指标、分配记录或快照。"
+      description: "Capture memory metrics, allocation profiles, or snapshots from the current page."
     },
     {
       category: "Commands",
       usage: "openruntime memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]",
-      description: "按场景自动完成预热、重复操作、指标、分配记录和前后快照，并输出内存检查结果。"
+      description: "Run a memory scenario with warmup, repeated operations, metrics, allocation capture, and before-and-after snapshots."
     }
   ],
   run: async (options) => {

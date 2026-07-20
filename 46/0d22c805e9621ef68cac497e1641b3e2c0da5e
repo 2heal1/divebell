@@ -1,0 +1,21 @@
+packages/command-code-usage/assets/code-usage-report.html
+  s_f92109a97e795b::t_af28b246285a45 9-11,13-16,18-27,31,34,39,43,49,53,56,59-60,62-70,72-74,76-77,79-81,85,87,89-99,101-123,127,133,136-137,139,143-144,147,153,156,164,167,170,172-173,177,183,186-187,189,193-196,199,203,208-210,212-213,219-222,224,229-231,244,251-259,269-270,275,280,484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "460d22c805e9621ef68cac497e1641b3e2c0da5e",
+  "prompts": {},
+  "sessions": {
+    "s_f92109a97e795b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7a31-46f9-7182-bb55-c04b85835182",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

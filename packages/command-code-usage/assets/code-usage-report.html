@@ -6,145 +6,154 @@
   <title>OpenRuntime 代码使用分析</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --background: #f7f7f5;
-      --foreground: #20201d;
+      color-scheme: light;
+      --background: #f7f8fa;
+      --foreground: #1d2025;
       --card: #ffffff;
-      --card-foreground: #20201d;
-      --muted: #ebeae5;
-      --muted-foreground: #66645e;
-      --primary: #295b4a;
+      --card-foreground: #1d2025;
+      --muted: #f0f2f5;
+      --muted-foreground: #727782;
+      --primary: #3f6fd8;
       --primary-foreground: #ffffff;
-      --accent: #e2eee9;
-      --accent-foreground: #173f32;
-      --border: #d9d7cf;
-      --input: #cfcdc5;
-      --ring: #397a65;
-      --destructive: #b33b32;
-      --series-used: #397a65;
-      --series-unused: #dedcd4;
-      --series-warning: #bf7b28;
-      --shadow: 0 12px 30px rgba(35, 35, 30, 0.08);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --background: #181a18;
-        --foreground: #f0f1ed;
-        --card: #222522;
-        --card-foreground: #f0f1ed;
-        --muted: #30332f;
-        --muted-foreground: #b2b6af;
-        --primary: #9cc9b7;
-        --primary-foreground: #173328;
-        --accent: #283d35;
-        --accent-foreground: #d8eee5;
-        --border: #3d413c;
-        --input: #555a53;
-        --ring: #9cc9b7;
-        --destructive: #ef9188;
-        --series-used: #80bca4;
-        --series-unused: #3b3f3a;
-        --series-warning: #e0a25b;
-        --shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
-      }
+      --accent: #eef3ff;
+      --accent-foreground: #23488f;
+      --border: #e4e7ec;
+      --input: #d8dde5;
+      --ring: #78a0ed;
+      --destructive: #bd4038;
+      --series-used: #5b83df;
+      --series-unused: #e9ecf1;
+      --series-warning: #c9822d;
+      --shadow: 0 1px 2px rgba(18, 25, 38, 0.025);
     }
 
     * { box-sizing: border-box; }
+    html { min-width: 320px; }
     body {
       margin: 0;
+      min-height: 100vh;
       background: var(--background);
       color: var(--foreground);
       font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
     button, input, select { font: inherit; }
     button:focus-visible, input:focus-visible, select:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent);
+      outline: 3px solid color-mix(in srgb, var(--ring) 38%, transparent);
       outline-offset: 2px;
     }
     .shell {
       width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 30px 0 48px;
+      padding: 36px 0 52px;
     }
     .heading {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
       gap: 24px;
-      margin-bottom: 22px;
+      margin-bottom: 24px;
     }
     h1, h2, p { margin: 0; }
-    h1 { font-size: clamp(24px, 4vw, 38px); font-weight: 500; letter-spacing: -0.025em; }
-    h2 { font-size: 18px; font-weight: 500; }
+    h1 { font-size: clamp(25px, 4vw, 34px); font-weight: 600; letter-spacing: -0.035em; }
+    h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
     .subtitle, .meta, .hint { color: var(--muted-foreground); }
-    .subtitle { margin-top: 6px; }
-    .meta { max-width: 560px; text-align: right; font-size: 13px; overflow-wrap: anywhere; }
+    .subtitle { margin-top: 5px; font-size: 14px; }
+    .meta {
+      max-width: 520px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--muted);
+      text-align: right;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .view-tabs {
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .segmented { display: flex; gap: 24px; overflow-x: auto; scrollbar-width: none; }
+    .segmented::-webkit-scrollbar { display: none; }
+    .segmented button {
+      position: relative;
+      flex: 0 0 auto;
+      min-height: 42px;
+      border: 0;
+      background: transparent;
+      color: var(--muted-foreground);
+      padding: 8px 0 10px;
+      cursor: pointer;
+      transition: color 160ms ease;
+    }
+    .segmented button::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      border-radius: 999px;
+      background: transparent;
+      transform: scaleX(0.6);
+      transition: background-color 160ms ease, transform 160ms ease;
+    }
+    .segmented button:hover { color: var(--foreground); }
+    .segmented button[aria-pressed="true"] { color: var(--foreground); font-weight: 600; }
+    .segmented button[aria-pressed="true"]::after { background: var(--primary); transform: scaleX(1); }
     .controls {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto minmax(240px, 1fr) auto;
       align-items: end;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
+      gap: 10px;
+      margin-bottom: 16px;
     }
     label { display: grid; gap: 6px; color: var(--muted-foreground); font-size: 13px; }
     select, input {
-      min-height: 40px;
+      min-height: 38px;
       border: 1px solid var(--input);
-      border-radius: 9px;
+      border-radius: 8px;
       background: var(--card);
       color: var(--card-foreground);
-      padding: 8px 11px;
+      padding: 7px 10px;
+      box-shadow: var(--shadow);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
     }
-    input { min-width: min(280px, 100%); }
-    .segmented { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--muted); }
-    .segmented button {
-      min-height: 34px;
-      border: 0;
-      border-radius: 7px;
-      background: transparent;
-      color: var(--muted-foreground);
-      padding: 6px 12px;
-      cursor: pointer;
-    }
-    .segmented button[aria-pressed="true"] {
-      background: var(--primary);
-      color: var(--primary-foreground);
-    }
+    select:hover, input:hover { border-color: #c9cfd9; }
+    input { width: 100%; }
     .stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     .card {
       background: var(--card);
       color: var(--card-foreground);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 13px;
       box-shadow: var(--shadow);
     }
-    .stat { padding: 16px 18px; }
+    .stat { min-width: 0; padding: 15px 18px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: 0; }
     .stat-label { color: var(--muted-foreground); font-size: 13px; }
-    .stat-value { margin-top: 4px; font-size: clamp(22px, 4vw, 32px); font-weight: 500; }
+    .stat-value { margin-top: 3px; font-size: clamp(22px, 4vw, 29px); font-weight: 600; letter-spacing: -0.025em; }
     .stat-note { margin-top: 2px; color: var(--muted-foreground); font-size: 12px; }
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.75fr);
-      gap: 16px;
+      grid-template-columns: minmax(0, 1.75fr) minmax(260px, 0.72fr);
+      gap: 14px;
       align-items: start;
     }
-    .panel { padding: 18px; }
+    .panel { padding: 19px; }
     .panel-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
     .panel-head .hint { font-size: 12px; }
-    .rows { display: grid; gap: 8px; }
+    .rows { display: grid; gap: 2px; }
     .usage-row {
       width: 100%;
       display: grid;
@@ -152,62 +161,73 @@
       align-items: center;
       gap: 12px;
       border: 0;
-      border-radius: 9px;
+      border-radius: 8px;
       background: transparent;
       color: inherit;
-      padding: 9px;
+      padding: 10px 9px;
       text-align: left;
       cursor: pointer;
+      transition: background-color 160ms ease, color 160ms ease;
     }
-    .usage-row:hover, .usage-row[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); }
+    .usage-row:hover { background: color-mix(in srgb, var(--accent) 58%, transparent); }
+    .usage-row[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); }
     .row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row-kind { display: block; color: var(--muted-foreground); font-size: 11px; }
     .bar {
-      height: 13px;
+      height: 6px;
       display: flex;
       overflow: hidden;
       border-radius: 999px;
       background: var(--series-unused);
     }
-    .bar-used { height: 100%; background: var(--series-used); min-width: 0; }
+    .bar-used { height: 100%; background: var(--series-used); min-width: 0; border-radius: inherit; transition: width 220ms ease; }
     .row-value { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
     .empty { padding: 36px 12px; color: var(--muted-foreground); text-align: center; }
-    .detail { position: sticky; top: 16px; }
-    .detail-name { margin-top: 8px; overflow-wrap: anywhere; font-size: 18px; font-weight: 500; }
+    .detail { position: sticky; top: 16px; background: color-mix(in srgb, var(--card) 92%, var(--background)); }
+    .detail-name { margin-top: 7px; overflow-wrap: anywhere; font-size: 17px; font-weight: 600; }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
-    .detail-value { margin-top: 2px; font-size: 19px; font-variant-numeric: tabular-nums; }
+    .detail-value { margin-top: 2px; font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
     .detail-path { margin-top: 16px; color: var(--muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
     .candidate {
       margin-top: 16px;
-      padding: 12px;
-      border-left: 3px solid var(--series-warning);
-      background: color-mix(in srgb, var(--series-warning) 10%, transparent);
-      border-radius: 0 8px 8px 0;
+      padding: 11px 12px;
+      border-left: 2px solid var(--series-warning);
+      background: color-mix(in srgb, var(--series-warning) 8%, transparent);
+      border-radius: 0 7px 7px 0;
       font-size: 13px;
     }
-    .legend { display: flex; gap: 14px; margin-top: 14px; color: var(--muted-foreground); font-size: 12px; }
+    .legend { display: flex; gap: 14px; margin-top: 15px; color: var(--muted-foreground); font-size: 12px; }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--series-used); }
     .swatch.unused { background: var(--series-unused); border: 1px solid var(--border); }
-    .phase-note { margin: 16px 0 0; color: var(--muted-foreground); font-size: 12px; }
+    .phase-note { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; }
     .error { padding: 24px; color: var(--destructive); }
 
     @media (max-width: 780px) {
       .heading { display: block; }
-      .meta { margin-top: 10px; text-align: left; }
+      .meta { width: fit-content; margin-top: 10px; text-align: left; }
+      .controls { grid-template-columns: 1fr 1fr; }
+      .search-control { grid-column: 1 / -1; grid-row: 1; }
       .stats { grid-template-columns: 1fr; }
+      .stat { border-right: 0; border-bottom: 1px solid var(--border); }
+      .stat:last-child { border-bottom: 0; }
       .layout { grid-template-columns: 1fr; }
       .detail { position: static; }
     }
     @media (max-width: 560px) {
       .shell { width: min(100% - 20px, 1180px); padding-top: 20px; }
-      .controls { align-items: stretch; }
+      .heading { margin-bottom: 18px; }
+      .segmented { gap: 18px; }
+      .controls { grid-template-columns: 1fr; align-items: stretch; }
+      .search-control { grid-column: auto; grid-row: auto; }
       .controls label, .controls select, .controls input { width: 100%; }
-      .segmented { width: 100%; }
-      .segmented button { flex: 1; }
+      .panel { padding: 14px; }
       .usage-row { grid-template-columns: 1fr 72px; gap: 7px; }
       .usage-row .bar { grid-column: 1 / -1; grid-row: 2; }
       .row-value { grid-column: 2; grid-row: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
@@ -221,16 +241,22 @@
       <p id="report-meta" class="meta"></p>
     </header>
 
-    <section class="controls" aria-label="分析范围">
-      <label>记录阶段
-        <select id="phase-select"></select>
-      </label>
+    <section class="view-tabs" aria-label="查看维度">
       <div class="segmented" role="group" aria-label="查看维度">
         <button type="button" data-view="application" aria-pressed="true">业务代码</button>
         <button type="button" data-view="packages" aria-pressed="false">依赖包</button>
         <button type="button" data-view="sources" aria-pressed="false">全部文件</button>
         <button type="button" data-view="chunks" aria-pressed="false">分块</button>
       </div>
+    </section>
+
+    <section class="controls" aria-label="分析范围">
+      <label>记录阶段
+        <select id="phase-select"></select>
+      </label>
+      <label class="search-control">查找
+        <input id="search-input" type="search" placeholder="搜索源码、包名或文件路径">
+      </label>
       <label>排序
         <select id="sort-select">
           <option value="size">体积从大到小</option>
@@ -238,23 +264,20 @@
           <option value="used">已使用体积</option>
         </select>
       </label>
-      <label>查找
-        <input id="search-input" type="search" placeholder="搜索源码、包名或文件路径">
-      </label>
     </section>
 
-    <section class="stats" aria-label="阶段概览">
-      <article class="card stat">
+    <section class="stats card" aria-label="阶段概览">
+      <article class="stat">
         <div class="stat-label">已映射体积</div>
         <div id="total-size" class="stat-value">—</div>
         <div id="item-count" class="stat-note"></div>
       </article>
-      <article class="card stat">
+      <article class="stat">
         <div class="stat-label">实际执行</div>
         <div id="used-percent" class="stat-value">—</div>
         <div id="used-size" class="stat-note"></div>
       </article>
-      <article class="card stat">
+      <article class="stat">
         <div class="stat-label">低使用候选</div>
         <div id="candidate-count" class="stat-value">—</div>
         <div class="stat-note">至少 1 KB，使用率低于 10%</div>
@@ -458,7 +481,7 @@
         }));
         render();
       } catch (error) {
-        document.querySelectorAll(".controls, .stats, .layout").forEach((element) => { element.hidden = true; });
+        document.querySelectorAll(".view-tabs, .controls, .stats, .layout").forEach((element) => { element.hidden = true; });
         const errorElement = document.getElementById("report-error");
         errorElement.hidden = false;
         errorElement.textContent = error instanceof Error ? error.message : String(error);

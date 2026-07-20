@@ -171,7 +171,7 @@ test("merges current browser auth and seeds automatic restore once on import", a
     const browserCalls: string[][] = [];
     let loadedStorageState: unknown;
     const output = createOutput();
-    const exitCode = await runCli(["auth", "import", "--input", inputPath], {
+    const exitCode = await runCli(["auth", "import", inputPath], {
       stdout: output.stdout,
       stderr: output.stderr,
       browserRunner: createBrowserRunner(async (args) => {
@@ -238,6 +238,38 @@ test("merges current browser auth and seeds automatic restore once on import", a
       force: true
     });
   }
+});
+
+test("requires the auth import path as a positional argument", async () => {
+  const output = createOutput();
+  let touchedBrowser = false;
+  const exitCode = await runCli([
+    "auth",
+    "import",
+    "--input",
+    "/tmp/auth.oprprofile"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => {
+      touchedBrowser = true;
+      return {
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(touchedBrowser, false);
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth import", {
+    code: "AUTH_IMPORT_PATH_REQUIRED",
+    kind: "validation",
+    message: "auth import requires <path>.",
+    retryable: false,
+    hint: "Use `openruntime auth import /path/to/auth.oprprofile`."
+  }));
 });
 
 test("applies auth saved before the agent-browser migration on the first open only", async () => {
@@ -390,7 +422,7 @@ test("imports, lists, and clears the current auth profile", async () => {
     let appliedProfileDirectory: string | undefined;
     let appliedStorageState: unknown;
     const importOutput = createOutput();
-    const importExitCode = await runCli(["auth", "import", "--input", inputPath], {
+    const importExitCode = await runCli(["auth", "import", inputPath], {
       stdout: importOutput.stdout,
       stderr: importOutput.stderr,
       authStateApplier: async (applierProfileDirectory, storageState) => {
@@ -578,7 +610,6 @@ test("exports auth profile through the Chrome auth connector", async () => {
   const exitCode = await runCli([
     "auth",
     "export",
-    "--url",
     "www.douyin.com",
     "--timeout",
     "120000",
@@ -615,13 +646,43 @@ test("exports auth profile through the Chrome auth connector", async () => {
   });
 });
 
-test("rejects unsupported auth export URLs before opening Chrome", async () => {
+test("requires the auth export URL as a positional argument", async () => {
   const output = createOutput();
   let didOpenChrome = false;
   const exitCode = await runCli([
     "auth",
     "export",
     "--url",
+    "example.com"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    authConnectorExporter: async () => {
+      didOpenChrome = true;
+      return {
+        kind: "auth",
+        path: "/tmp/unexpected.oprprofile"
+      };
+    }
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(didOpenChrome, false);
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export", {
+    code: "AUTH_EXPORT_URL_REQUIRED",
+    kind: "validation",
+    message: "auth export requires <url>.",
+    retryable: false,
+    hint: "Use `openruntime auth export https://app.example.com`."
+  }));
+});
+
+test("rejects unsupported auth export URLs before opening Chrome", async () => {
+  const output = createOutput();
+  let didOpenChrome = false;
+  const exitCode = await runCli([
+    "auth",
+    "export",
     "ftp://example.com"
   ], {
     stdout: output.stdout,
@@ -630,7 +691,7 @@ test("rejects unsupported auth export URLs before opening Chrome", async () => {
       didOpenChrome = true;
       return {
         kind: "auth",
-        content: "unexpected"
+        path: "/tmp/unexpected.oprprofile"
       };
     }
   });
@@ -638,7 +699,7 @@ test("rejects unsupported auth export URLs before opening Chrome", async () => {
   assert.equal(exitCode, 1);
   assert.equal(output.errorText(), "");
   assert.equal(didOpenChrome, false);
-  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export", {
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("auth export ftp://example.com", {
     code: "AUTH_EXPORT_URL_UNSUPPORTED",
     kind: "validation",
     message: "Auth export URL must use http or https.",
@@ -847,16 +908,20 @@ test("opens the auth connector setup page in automatic export mode", async () =>
   }
 });
 
-test("writes oversized profile export content to a temporary file", async () => {
+test("writes auth export to a temporary file when output is omitted", async () => {
   const output = createOutput();
-  const content = `openruntime-profile:v1:auth:${"a".repeat(40_000)}`;
-  const exitCode = await runCli(["auth", "export", "--url", "example.com"], {
+  let receivedOutputPath: string | undefined;
+  const exitCode = await runCli(["auth", "export", "example.com"], {
     stdout: output.stdout,
     stderr: output.stderr,
-    authConnectorExporter: async () => ({
-      kind: "auth",
-      content
-    })
+    authConnectorExporter: async (options) => {
+      receivedOutputPath = options.outputPath;
+      writeFileSync(options.outputPath, "profile-file");
+      return {
+        kind: "auth",
+        path: options.outputPath
+      };
+    }
   });
   const path = output.text().trim();
 
@@ -864,7 +929,8 @@ test("writes oversized profile export content to a temporary file", async () => 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
     assert.match(path, /openruntime-profile-export-.+\/openruntime-profile\.oprprofile$/);
-    assert.equal(readFileSync(path, "utf8"), `${content}\n`);
+    assert.equal(receivedOutputPath, path);
+    assert.equal(readFileSync(path, "utf8"), "profile-file");
   } finally {
     if (path.includes("openruntime-profile-export-") && existsSync(path)) {
       rmSync(dirname(path), {

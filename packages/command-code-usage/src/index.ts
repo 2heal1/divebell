@@ -14,12 +14,12 @@ const command: OpenRuntimeCommandDefinition = {
     {
       category: "Commands",
       usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
-      description: "使用指定的 Chunk Map、构建文件和页面代码记录，分析分块、源码文件与依赖包的实际使用情况。"
+      description: "Analyze actual chunk, source file, and dependency usage from a Chunk Map, build assets, and page coverage."
     },
     {
       category: "Commands",
       usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
-      description: "把代码使用分析结果生成可交互报告并打开；--no-open 只生成文件。"
+      description: "Generate and open an interactive code-usage report; use --no-open to create the file only."
     }
   ],
   run: async (options) => {

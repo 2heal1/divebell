@@ -8,19 +8,23 @@ Use this to export login state from the currently logged-in Chrome session.
 
 ```sh
 openruntime auth export \
-  --url example.com \
+  example.com \
   --output /tmp/example-auth.oprprofile
 ```
 
 The command opens a local connection page. On first use, the page guides the user to load the OpenRuntime Auth Connector extension. After the extension is installed, the page can start the export directly.
 
-`--url` accepts either a full `http` or `https` URL, or a plain domain such as `example.com`.
+The URL can be a full `http` or `https` URL, or a plain domain such as `example.com`.
+
+Export always creates an `.oprprofile` file. Use `--output` to choose its location; when omitted, OpenRuntime creates a temporary file and prints its path.
 
 ## Import
 
 ```sh
-openruntime auth import --input /tmp/example-auth.oprprofile
+openruntime auth import /tmp/example-auth.oprprofile
 ```
+
+Import accepts a file path only. Inline profile content and `--input` are not supported.
 
 After import, later OpenRuntime browser sessions use this login state by default.
 
@@ -59,11 +63,11 @@ Use `auth list` to inspect imported auth state.
 Export and import each site separately:
 
 ```sh
-openruntime auth export --url example.com --output /tmp/example-auth.oprprofile
-openruntime auth import --input /tmp/example-auth.oprprofile
+openruntime auth export example.com --output /tmp/example-auth.oprprofile
+openruntime auth import /tmp/example-auth.oprprofile
 
-openruntime auth export --url another.example --output /tmp/another-auth.oprprofile
-openruntime auth import --input /tmp/another-auth.oprprofile
+openruntime auth export another.example --output /tmp/another-auth.oprprofile
+openruntime auth import /tmp/another-auth.oprprofile
 
 openruntime auth list
 ```

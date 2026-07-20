@@ -24,7 +24,7 @@ export function getAuthStatePath(profileDirectory: string): string {
 
 export async function exportAuthStateProfile(options: {
   storageState: unknown;
-  outputPath?: string;
+  outputPath: string;
 }): Promise<ProfileExportResult> {
   const content = encodeProfileBundle({
     version: 1,
@@ -33,18 +33,11 @@ export async function exportAuthStateProfile(options: {
     storageState: options.storageState
   });
 
-  if (options.outputPath !== undefined) {
-    const path = resolve(options.outputPath);
-    await writeTextFile(path, content);
-    return {
-      kind: "auth",
-      path
-    };
-  }
-
+  const path = resolve(options.outputPath);
+  await writeTextFile(path, content);
   return {
     kind: "auth",
-    content
+    path
   };
 }
 
@@ -133,19 +126,6 @@ export async function clearProfile(options: {
     profileDirectory,
     removed
   };
-}
-
-export async function readProfileInput(input: string | undefined): Promise<string> {
-  if (input === undefined || input.length === 0) {
-    throw new Error("Missing profile content or --input <path>.");
-  }
-
-  const path = resolve(input);
-  if (existsSync(path)) {
-    return await readFile(path, "utf8");
-  }
-
-  return input;
 }
 
 export async function readProfileInputFile(path: string): Promise<string> {

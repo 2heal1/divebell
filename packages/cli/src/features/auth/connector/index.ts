@@ -61,7 +61,7 @@ export async function exportAuthProfileWithConnector(options: AuthConnectorExpor
 
     return await exportAuthStateProfile({
       storageState: convertAuthConnectorPayloadToStorageState(payload),
-      ...(options.outputPath === undefined ? {} : { outputPath: options.outputPath })
+      outputPath: options.outputPath
     });
   } finally {
     await closeServer(server, sockets);

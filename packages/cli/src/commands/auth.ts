@@ -1,15 +1,14 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { exportAuthProfileWithConnector } from "../features/auth/connector/index.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
-import { clearProfile, getProfileDirectory, importProfile, listProfile, readProfileInput, readProfileInputFile, type AuthStateApplier, type ProfileExportResult } from "../features/auth/profile.js";
+import { clearProfile, getProfileDirectory, importProfile, listProfile, readProfileInputFile, type AuthStateApplier } from "../features/auth/profile.js";
 import { applySavedAuthState, applySavedAuthStateIfPresent, captureCurrentAuthState, clearAgentBrowserRestore, closeBrowserForAuthState } from "../features/auth/browser-state.js";
 import { createError } from "../utils/output.js";
 import { createOptionalNumberProperty, createOptionalStringProperty, writeJson } from "../utils/command.js";
 
-const PROFILE_INLINE_OUTPUT_MAX_CHARS = 32_768;
 export async function runAuthCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -61,7 +60,7 @@ export async function runAuthCommand(
     kind: "validation",
     message: "auth requires export, import, list, or clear.",
     outputCommand: "auth",
-    hint: "Use `openruntime auth export --url <url>`, `openruntime auth import --input <path>`, `openruntime auth list`, or `openruntime auth clear --url <url>`."
+    hint: "Use `openruntime auth export <url>`, `openruntime auth import <path>`, `openruntime auth list`, or `openruntime auth clear --url <url>`."
   });
 }
 
@@ -70,25 +69,26 @@ async function runAuthExportCommand(
   stdout: { write(chunk: string): void },
   authConnectorExporter: typeof exportAuthProfileWithConnector
 ): Promise<number> {
-  const requestedUrl = getOptionValue(args, "url") ?? args.command[2];
+  const requestedUrl = args.command[2];
   if (requestedUrl === undefined || requestedUrl.length === 0) {
     throw createError({
       code: "AUTH_EXPORT_URL_REQUIRED",
       kind: "validation",
-      message: "auth export requires --url <url>.",
-      hint: "Use `openruntime auth export --url https://app.example.com`."
+      message: "auth export requires <url>.",
+      hint: "Use `openruntime auth export https://app.example.com`."
     });
   }
 
+  const outputPath = getOptionValue(args, "output") ?? await createTemporaryProfilePath();
   const result = await authConnectorExporter({
     requestedUrl: normalizeAuthExportUrl(requestedUrl),
-    ...createOptionalStringProperty("outputPath", getOptionValue(args, "output")),
+    outputPath,
     ...createOptionalNumberProperty("timeout", getNumberOption(args, "timeout")),
     ...createOptionalStringProperty("extensionDirectory", getOptionValue(args, "extension-dir")),
     ...createOptionalStringProperty("extensionInstallUrl", getOptionValue(args, "extension-install-url")),
     ...createOptionalStringProperty("extensionIconPath", getOptionValue(args, "extension-icon"))
   });
-  stdout.write(`${await getPrintableProfileExportResult(result)}\n`);
+  stdout.write(`${result.path}\n`);
   return 0;
 }
 
@@ -98,6 +98,16 @@ async function runAuthImportCommand(
   browserRunner: BrowserRunner,
   authStateApplier: AuthStateApplier | undefined
 ): Promise<number> {
+  const inputPath = args.command[2];
+  if (inputPath === undefined || inputPath.length === 0) {
+    throw createError({
+      code: "AUTH_IMPORT_PATH_REQUIRED",
+      kind: "validation",
+      message: "auth import requires <path>.",
+      hint: "Use `openruntime auth import /path/to/auth.oprprofile`."
+    });
+  }
+  const input = await readProfileInputFile(inputPath);
   const profileDirectory = getBrowserProfileDirectory(browserRunner);
   let currentStorageState: unknown | undefined;
   if (authStateApplier === undefined) {
@@ -105,10 +115,6 @@ async function runAuthImportCommand(
   } else {
     await closeBrowserForAuthState(browserRunner);
   }
-  const inputPath = getOptionValue(args, "input");
-  const input = inputPath === undefined
-    ? await readProfileInput(args.command[2])
-    : await readProfileInputFile(inputPath);
   const result = await importProfile({
     input,
     profileDirectory,
@@ -150,20 +156,9 @@ function hasUrlScheme(input: string): boolean {
   return /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(input);
 }
 
-async function getPrintableProfileExportResult(result: ProfileExportResult): Promise<string> {
-  if (result.path !== undefined) return result.path;
-  if (result.content === undefined) {
-    throw new Error("Profile export did not return content.");
-  }
-  if (result.content.length <= PROFILE_INLINE_OUTPUT_MAX_CHARS) return result.content;
-
+async function createTemporaryProfilePath(): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "openruntime-profile-export-"));
-  const path = join(directory, "openruntime-profile.oprprofile");
-  await writeFile(path, `${result.content}\n`, {
-    encoding: "utf8",
-    mode: 0o600
-  });
-  return path;
+  return join(directory, "openruntime-profile.oprprofile");
 }
 
 function getBrowserProfileDirectory(browserRunner: BrowserRunner): string {

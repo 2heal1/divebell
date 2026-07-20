@@ -7,8 +7,7 @@ export interface AuthProfileBundle {
 
 export interface ProfileExportResult {
   kind: "auth";
-  path?: string;
-  content?: string;
+  path: string;
 }
 
 export interface ProfileImportResult {
@@ -44,4 +43,3 @@ export interface NormalizedProfileUrl {
   origin: string;
   host: string;
 }
-

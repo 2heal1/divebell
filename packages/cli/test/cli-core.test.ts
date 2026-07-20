@@ -88,8 +88,10 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
   assert.match(output.text(), /openruntime actions .*--name <name>/);
   assert.match(output.text(), /openruntime open <url> .*--ui/);
-  assert.match(output.text(), /openruntime auth export --url <url>/);
-  assert.match(output.text(), /openruntime auth import <content-or-path> \| --input <path>/);
+  assert.match(output.text(), /openruntime auth export <url>/);
+  assert.doesNotMatch(output.text(), /openruntime auth export --url/);
+  assert.match(output.text(), /openruntime auth import <path>/);
+  assert.doesNotMatch(output.text(), /openruntime auth import .*--input/);
   assert.match(output.text(), /openruntime auth list/);
   assert.match(output.text(), /openruntime auth clear \[--url <url>\]/);
   assert.doesNotMatch(output.text(), /openruntime export-profile /);
@@ -99,8 +101,8 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.doesNotMatch(output.text(), /openruntime verify /);
   assert.match(output.text(), /openruntime wait-for .*--next/);
-  assert.match(output.text(), /openruntime snapshot .* - 读取当前 runtime snapshot 状态。/);
-  assert.match(output.text(), /openruntime wait-for .* - 等待 target 到达指定状态/);
+  assert.match(output.text(), /openruntime snapshot .* - Read the current snapshot state from the selected runtime\./);
+  assert.match(output.text(), /openruntime wait-for .* - Wait for a target to reach a status/);
   assert.match(output.text(), /openruntime commands list/);
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
@@ -109,6 +111,7 @@ test("prints explicit runtime resource help", async () => {
   assert.doesNotMatch(output.text(), /open[-]runtime/);
   assert.doesNotMatch(output.text(), /Examples:/);
   assert.doesNotMatch(output.text(), /Skill: available/);
+  assert.doesNotMatch(output.text(), /\p{Script=Han}/u);
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -149,8 +152,10 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /openruntime open <url>/);
-  assert.match(markdown, /openruntime auth export --url <url>/);
-  assert.match(markdown, /openruntime auth import <content-or-path>/);
+  assert.match(markdown, /openruntime auth export <url>/);
+  assert.doesNotMatch(markdown, /openruntime auth export --url/);
+  assert.match(markdown, /openruntime auth import <path>/);
+  assert.doesNotMatch(markdown, /openruntime auth import .*--input/);
   assert.match(markdown, /openruntime auth list/);
   assert.match(markdown, /openruntime auth clear \[--url <url>\]/);
   assert.doesNotMatch(markdown, /openruntime export-profile /);
@@ -168,6 +173,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /openruntime goto /);
   assert.doesNotMatch(markdown, /openruntime close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
+  assert.doesNotMatch(markdown, /\p{Script=Han}/u);
   assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
   assert.doesNotMatch(markdown, /## Examples/);

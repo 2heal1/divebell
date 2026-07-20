@@ -8,19 +8,23 @@ OpenRuntime 可以把浏览器登录态导出成 `.oprprofile` 文件，再导�
 
 ```sh
 openruntime auth export \
-  --url example.com \
+  example.com \
   --output /tmp/example-auth.oprprofile
 ```
 
 这个命令会打开一个本地连接页。首次使用时，页面会引导用户加载 OpenRuntime Auth Connector 扩展；扩展安装好以后，页面可以直接开始导出。
 
-`--url` 可以写完整的 `http` / `https` 地址，也可以直接写 `example.com` 这样的域名。
+URL 可以写完整的 `http` / `https` 地址，也可以直接写 `example.com` 这样的域名。
+
+导出始终生成 `.oprprofile` 文件。可以用 `--output` 指定位置；不指定时，OpenRuntime 会创建临时文件并输出它的路径。
 
 ## 导入
 
 ```sh
-openruntime auth import --input /tmp/example-auth.oprprofile
+openruntime auth import /tmp/example-auth.oprprofile
 ```
+
+导入只接受文件路径，不再接受内联内容或 `--input`。
 
 导入后，后续 OpenRuntime 打开的浏览器页面会默认使用这份登录态。
 
@@ -59,11 +63,11 @@ openruntime auth clear --url https://example.com
 每个网站分别导出和导入：
 
 ```sh
-openruntime auth export --url example.com --output /tmp/example-auth.oprprofile
-openruntime auth import --input /tmp/example-auth.oprprofile
+openruntime auth export example.com --output /tmp/example-auth.oprprofile
+openruntime auth import /tmp/example-auth.oprprofile
 
-openruntime auth export --url another.example --output /tmp/another-auth.oprprofile
-openruntime auth import --input /tmp/another-auth.oprprofile
+openruntime auth export another.example --output /tmp/another-auth.oprprofile
+openruntime auth import /tmp/another-auth.oprprofile
 
 openruntime auth list
 ```

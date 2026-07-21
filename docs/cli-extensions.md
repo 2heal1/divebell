@@ -1,529 +1,140 @@
-# OpenRuntime CLI Command Development Guide
+# OpenRuntime CLI Extension Development
 
-Chinese version: [CLI 命令开发](cli-extensions.zh-CN.md)
+Chinese version: [OpenRuntime CLI 扩展开发指南](cli-extensions.zh-CN.md)
 
-## When To Use
+## What an extension provides
 
-OpenRuntime commands package project, team, or local workflows as repeatable page operation commands without changing the OpenRuntime CLI command dispatcher.
+An OpenRuntime extension is the unit of installation and loading. One extension may provide:
 
-This guide is about page commands mounted under `openruntime`. A command only operates on a page opened by `openruntime open <url>`. If you want to build a standalone script that opens the browser and manages the automation flow itself, see [Automating with OpenRuntime CLI](cli-automation-scripts.md).
+- `commands` mounted under `openruntime`.
+- `hooks.open`, run before the browser opens a URL and able to contribute initialization scripts.
+- `hooks.detectStack`, run on demand by `openruntime stack`.
+- `hooks.close`, used to clean up resources created during `open`.
+- A local `SKILL.md` associated with a command.
 
-Use a command when:
+Page commands operate on the page created by the latest `openruntime open <url>`. Use [automation scripts](cli-automation-scripts.md) when a workflow must manage the whole browser lifecycle itself.
 
-- An agent needs to run the same page workflow repeatedly.
-- A command needs to read the current page and print structured JSON.
-- The page already exposes OpenRuntime Targets or Actions, and the command only needs to query or run them.
-- A team wants stable commands for common project-specific page operations.
-
-If the page can expose stable Targets or Actions, prefer adding OpenRuntime Targets and Actions in the application, then call `snapshot`, `runAction`, or `waitFor` from the command.
-
-## Execution Boundary
-
-Page commands operate on the current opened page. The agent should run:
+## Install and manage extensions
 
 ```sh
-openruntime open <url>
+openruntime extensions add @scope/package
+openruntime extensions list
+openruntime extensions update @scope/package
+openruntime extensions remove @scope/package
 ```
 
-Then invoke the command:
+The default directory is `~/.openruntime/extensions`. It can be changed or disabled with:
 
 ```sh
-openruntime <command>
+OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
+OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
 ```
 
-Do not open, navigate, close, or replace the browser session inside a command. The command also should not choose a Bridge or Runtime itself. The CLI passes the page context created by `openruntime open <url>` into the command and uses it as the default page operation target.
+Extensions execute local code. Only load trusted content.
 
-If a command only supports specific URLs, validate `options.page.url` at the start and throw `createError(...)` with `PAGE_URL_UNSUPPORTED` when it does not match:
+## npm package entry
 
-```js
-import { createError } from "@openruntime/cli";
-
-if (options.page === undefined || !isSupportedPage(options.page.url)) {
-  throw createError({
-    code: "PAGE_URL_UNSUPPORTED",
-    kind: "validation",
-    message: "This command only supports the module-federation/core releases page.",
-    hint: "Run `openruntime open https://github.com/module-federation/core/releases`.",
-    details: {
-      actualUrl: options.page?.url,
-      expectedUrl: "https://github.com/module-federation/core/releases"
-    }
-  });
-}
-```
-
-## Installation And Loading
-
-Install distributed commands from npm packages:
-
-```sh
-openruntime commands add @scope/command-name
-openruntime commands list
-openruntime commands update @scope/command-name
-openruntime commands remove @scope/command-name
-```
-
-The CLI downloads packages into its managed commands directory and loads them
-automatically; users do not run a global `npm install`. A command package must
-not declare runtime dependencies. Its published files must contain everything
-needed at runtime, and installation rejects packages that violate this rule.
-Declare command entries in `package.json`:
+Extension packages must be self-contained and cannot declare runtime dependencies. Declare one or more entries with `openruntime.extensions`:
 
 ```json
 {
-  "name": "@scope/command-name",
+  "name": "@scope/package",
   "version": "1.0.0",
   "type": "module",
   "openruntime": {
     "schemaVersion": 1,
-    "commands": ["./dist/index.js"]
+    "extensions": ["./dist/extension.js"]
   }
 }
 ```
 
-Loose command files remain available for local development. They are loaded from:
+Loose local entries may be placed at `~/.openruntime/extensions/foo.mjs` or `~/.openruntime/extensions/foo/index.mjs`.
 
-```text
-~/.openruntime/commands
-```
+## Extension declaration
 
-You can override the directory:
+OpenRuntime reads every extension entry during startup. Keep the entry declaration-only and load real command and hook implementations with `await import()`:
 
-```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
-```
+```ts
+import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
 
-You can disable external command loading:
-
-```sh
-OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
-```
-
-Use help to inspect the commands that were loaded:
-
-```sh
-openruntime --help
-```
-
-External commands are shown separately in help with descriptions:
-
-```text
-External Commands:
-  openruntime foo ping - Runs Foo.
-```
-
-If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported as a warning when the CLI loads external commands.
-
-`openruntime --help` is the discovery path for agents. Command authors must provide clear `commandReferences`; agents should not guess how to run a command from only its name or file path.
-
-External commands are local code execution. Only load files you trust.
-
-## Command File Structure
-
-Two file layouts are supported:
-
-```text
-~/.openruntime/commands/foo.mjs
-~/.openruntime/commands/foo/index.mjs
-```
-
-A command file must default-export this shape. Local source can use
-`defineCommand(...)` for type guidance. Before publishing an npm command package,
-compile it into a self-contained file that no longer imports `@openruntime/cli`:
-
-```js
-import { defineCommand } from "@openruntime/cli";
-
-export default defineCommand({
+const extension = {
   schemaVersion: 1,
   name: "foo",
-  displayName: "Foo",
-  description: "Foo command",
-  commandReferences: [
-    {
-      category: "Commands",
+  commands: [{
+    name: "foo",
+    commandReferences: [{
+      category: "Extensions",
       usage: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
-  async run(options) {
-    options.output.ok({
-      result: "pong"
-    });
-    return 0;
+      description: "Runs a Foo page operation."
+    }],
+    run: async options =>
+      await (await import("./commands/foo.js")).runFoo(options)
+  }],
+  hooks: {
+    open: async options =>
+      await (await import("./hooks/open.js")).open(options),
+    detectStack: async options =>
+      await (await import("./hooks/detect-stack.js")).detectStack(options),
+    close: async options =>
+      await (await import("./hooks/close.js")).close(options)
   }
-});
+} satisfies OpenRuntimeExtensionDefinition;
+
+export default extension;
 ```
 
-The exported object follows `OpenRuntimeCommandDefinition`. The OpenRuntime API object follows [`packages/cli/src/features/extension/api.ts`](../packages/cli/src/features/extension/api.ts).
+Do not statically import implementations or perform initialization, file reads, network requests, or top-level awaits in the entry. Relative dynamic imports must include the `.js` extension. Tests and CI may call `validateExtension(...)` on the default export.
 
-Use `validateCommand(...)` when tests or CI need to check a command export directly:
+## Hook behavior
 
-```js
-import { validateCommand } from "@openruntime/cli";
-import command from "./foo.mjs";
+### `open`
 
-validateCommand(command);
-```
+`open` runs before the browser opens the URL and may return initialization scripts:
 
-## Provide a Skill for a Complex Command
-
-A command may provide at most one local `SKILL.md`. Prefer the directory layout so the command, skill, and referenced files stay together:
-
-```text
-~/.openruntime/commands/foo/index.mjs
-~/.openruntime/commands/foo/SKILL.md
-~/.openruntime/commands/foo/references/...
-```
-
-Declare the absolute `SKILL.md` path through `skill.path`:
-
-```js
-import { fileURLToPath } from "node:url";
-import { defineCommand } from "@openruntime/cli";
-
-export default defineCommand({
-  schemaVersion: 1,
-  name: "foo",
-  skill: {
-    path: fileURLToPath(new URL("./SKILL.md", import.meta.url))
-  },
-  commandReferences: [
-    {
-      category: "Commands",
-      usage: "openruntime foo ping",
-      description: "Runs the Foo command."
-    }
-  ],
-  async run(options) {
-    options.output.ok({ result: "pong" });
-    return 0;
-  }
-});
-```
-
-When a skill exists, `openruntime --help` adds these lines at the bottom of the corresponding command section:
-
-```text
-Skill: available for foo.
-Skill usage: `openruntime <command> --skill`
-```
-
-The following command prints the absolute `SKILL.md` path without running the command's business logic:
-
-```sh
-openruntime foo --skill
-```
-
-`skill.path` must be an absolute path to an existing `SKILL.md` file. Commands without a skill do not show the skill hint and return a clear error for `--skill`. The `--skill` flag is reserved for command skill discovery and must not be used as a business option.
-
-## Run Context: `run(options)`
-
-### Parameter Overview
-
-`run(options)` receives:
-
-| Field | What it is for |
-| --- | --- |
-| `options.args` | Parsed CLI input. Use `options.args.command` for positional command parts and `options.args.options` for flags. |
-| `options.page` | Current page information from the latest `openruntime open <url>`. |
-| `options.output` | Unified JSON output helper for `ok`, `needs_input`, and `error` results. |
-| `options.openruntime` | Current-page query, page action, and page interaction capabilities. |
-
-A few low-level fields remain available for tests, debugging, or proxying external tools. Most commands should not depend on them:
-
-| Field | When to use it |
-| --- | --- |
-| `options.stdout` | The command intentionally returns raw text or proxies another tool's stdout. |
-| `options.stderr` | The command needs progress logs or proxies another tool's stderr. |
-| `options.fetcher` | Tests or advanced integrations need to replace the underlying request implementation. |
-
-Data commands should prefer `options.output` instead of writing stdout directly.
-
-### `options.args`: Command Input
-
-`options.args.command` contains the full command path. For example:
-
-```sh
-openruntime github-release latest --limit 3
-```
-
-The command receives:
-
-```js
-options.args.command; // ["github-release", "latest"]
-```
-
-Flags are available in `options.args.options`. Commands can use these inputs for command behavior, but the page source still comes from `openruntime open <url>`.
-
-### `options.page`: Current Page Information
-
-`options.page` comes from the latest successful `openruntime open <url>`. Page commands should use it to confirm that the current page is valid for the command.
-
-Fields:
-
-| Field | Meaning |
-| --- | --- |
-| `url` | The original page URL passed to `openruntime open`. |
-| `openedUrl` | The URL actually opened, which may include an OpenRuntime session parameter. |
-| `normalizedUrl` | The normalized URL used to match the current page. |
-| `bridgeUrl` | The Bridge URL used by this open operation, or `null` when no Bridge was used. |
-| `sessionId` | The session ID assigned to this open operation, or `null` when there is no session. |
-| `openedAt` | The timestamp for the open record. |
-
-Example:
-
-```js
-if (options.page === undefined) {
-  throw createError({
-    code: "OPEN_CONTEXT_REQUIRED",
-    kind: "validation",
-    message: "Open a page first.",
-    hint: "Run `openruntime open <url>` first."
-  });
+```ts
+export async function open() {
+  return { scripts: ["globalThis.__TEAM_MARKER__ = true;"] };
 }
 ```
 
-### `options.output`: Output And Error Contract
+OpenRuntime combines scripts from successful extensions with its own initialization script. One failed extension does not block the page or other extensions.
 
-Data commands should write exactly one JSON object to stdout. Use `options.output` so success, input requests, and errors keep the same shape.
+### `detectStack`
 
-Success output:
+`detectStack` only runs for `openruntime stack`; it does not slow down `openruntime open`.
 
-```js
-options.output.ok({
-  release: "1.2.3"
-}, "Found the latest release.");
-```
-
-When the command needs the agent or user to choose before continuing:
-
-```js
-options.output.needsInput("Select a release to inspect.", [
-  { label: "Release 1.2.3", value: "1.2.3" },
-  { label: "Release 1.2.2", value: "1.2.2" }
-]);
-return 1;
-```
-
-For expected failures, throw `createError(...)`. The CLI catches it and prints the unified error JSON.
-
-```js
-import { createError } from "@openruntime/cli";
-
-throw createError({
-  code: "RELEASE_NOT_FOUND",
-  kind: "not_found",
-  message: "The requested release was not found.",
-  retryable: false,
-  hint: "Check the release name or run without --release to list candidates.",
-  details: {
-    release: "1.2.3"
-  }
-});
-```
-
-If a command handles an error itself instead of throwing, call `options.output.error(error)` and return a non-zero exit code:
-
-```js
-options.output.error(createError({
-  code: "RELEASE_AUTH_FAILED",
-  kind: "auth",
-  message: "Could not read release data.",
-  retryable: true,
-  hint: "Log in and retry."
-}));
-return 1;
-```
-
-### `options.openruntime`: OpenRuntime Capabilities
-
-`options.openruntime` is scoped to the current opened page. Commands use the current page context directly and do not need to handle the low-level connection.
-
-#### Page State And Declaration Queries
-
-These APIs read the information exposed by the current opened page.
-
-| API | Use it for |
-| --- | --- |
-| `targets(query?)` | Read target definitions. |
-| `snapshot(query?)` | Read current target states. |
-| `events(query?)` | Read page event history. |
-| `actions(query?)` | List page-declared actions. |
-
-The `query` object maps to CLI query flags. Common keys include `id`, `type`, `source`, `status`, `query`, `targetId`, `action`, `since`, and `limit`.
-
-```js
-const snapshot = await options.openruntime.snapshot({
-  id: "business:checkout:summary"
-});
-
-options.output.ok({
-  result: snapshot
-});
-```
-
-#### Page Actions And State Waiting
-
-These APIs run actions declared by the current opened page or wait for page state changes.
-
-| API | Use it for |
-| --- | --- |
-| `inputOptions(actionName, inputName, { payload?, timeout? })` | Read dynamic input candidates for an action input. |
-| `runAction(actionName, payload?)` | Execute a page-declared action. |
-| `waitFor(targetId, status, { where?, timeout? })` | Wait until a page-declared target reaches a status. |
-
-```js
-const result = await options.openruntime.runAction("release-note.list-latest", {
-  limit: 3
-});
-
-options.output.ok({
-  result
-});
-```
-
-#### Browser: Current Page Interaction
-
-Browser APIs operate on the current OpenRuntime browser session. Commands do not receive page open, navigation, close, or raw browser runner APIs; run `openruntime open <url>` before invoking a command.
-
-| API | Use it for |
-| --- | --- |
-| `browser.pageSnapshot()` | Read the current page accessibility snapshot. |
-| `browser.click(target)` | Click by ref, selector, or text supported by the browser runner. |
-| `browser.fill(target, value)` | Fill an input by ref or selector. |
-| `browser.eval(script)` | Evaluate a JavaScript expression in the page and parse JSON output. |
-| `browser.evalFile(path)` | Evaluate a JavaScript file in the page. Useful for larger scripts. |
-| `browser.waitEval(script, { timeout? })` | Poll a page expression until it becomes true. |
-| `browser.getWindow(path)` | Read a dotted path from `window` / `globalThis`. |
-| `browser.screenshot(name?, { fullPage? })` | Capture a screenshot. |
-| `browser.network({ url? })` | Read recorded network requests, optionally filtered by URL text. |
-| `browser.console({ levels?, query?, limit? })` | Read captured browser console entries. |
-
-Use browser APIs for page interaction and fallback inspection. Use page state and page action APIs when the page already exposes structured Targets or Actions.
-
-## Complete Example: Latest Release From GitHub
-
-Create `~/.openruntime/commands/github-release.mjs`:
-
-```js
-import { createError, defineCommand } from "@openruntime/cli";
-
-export default defineCommand({
-  schemaVersion: 1,
-  name: "github-release",
-  displayName: "GitHub Release",
-  description: "Reads the latest release from the current module-federation/core releases page.",
-  commandReferences: [
-    {
-      category: "Commands",
-      usage: "openruntime github-release latest",
-      description: "Read the latest release from the current GitHub releases page."
-    }
-  ],
-  async run(options) {
-    if (options.args.command[1] !== "latest") {
-      throw new Error("Usage: openruntime github-release latest");
-    }
-
-    if (options.page === undefined || !isModuleFederationReleasesPage(options.page.url)) {
-      throw createError({
-        code: "PAGE_URL_UNSUPPORTED",
-        kind: "validation",
-        message: "This command only supports the module-federation/core releases page.",
-        hint: "Run `openruntime open https://github.com/module-federation/core/releases`.",
-        details: {
-          actualUrl: options.page?.url,
-          expectedUrl: "https://github.com/module-federation/core/releases"
-        }
-      });
-    }
-
-    const browser = options.openruntime.browser;
-
-    const ready = await browser.waitEval(`
-      document.querySelector('a[href*="/module-federation/core/releases/tag/"]') !== null
-    `, { timeout: 10000 });
-    if (!ready.success) {
-      throw createError({
-        code: "GITHUB_RELEASE_PAGE_REQUIRED",
-        kind: "validation",
-        message: "Open the module-federation/core releases page first.",
-        hint: "Run `openruntime open https://github.com/module-federation/core/releases`."
-      });
-    }
-
-    const latest = await browser.eval(`(() => {
-      const releaseLink = document.querySelector('a[href*="/module-federation/core/releases/tag/"]');
-      const release = releaseLink?.closest('[data-testid="release"]') ?? releaseLink?.closest('.Box') ?? document.body;
-      const title = release?.querySelector('a[href*="/releases/tag/"], h1, h2')?.textContent?.replace(/\\s+/g, " ").trim() ?? "";
-      const tag = releaseLink?.href.split("/releases/tag/").at(-1) ?? "";
-      const publishedAt = release?.querySelector("relative-time")?.getAttribute("datetime") ?? "";
-      const notesPreview = release?.querySelector(".markdown-body")?.textContent?.replace(/\\s+/g, " ").trim().slice(0, 500) ?? "";
-      return {
-        repository: "module-federation/core",
-        title,
-        tag,
-        url: releaseLink?.href ?? location.href,
-        publishedAt,
-        notesPreview
-      };
-    })()`);
-
-    options.output.ok({
-      result: latest
-    });
-    return 0;
-  }
-});
-
-function isModuleFederationReleasesPage(input) {
-  try {
-    const url = new URL(input);
-    return url.origin === "https://github.com" &&
-      url.pathname.replace(/\/$/, "") === "/module-federation/core/releases";
-  } catch {
-    return false;
-  }
+```ts
+export async function detectStack({ openruntime }) {
+  const detected = await openruntime.browser.eval(
+    "globalThis._MODERNJS_ROUTE_MANIFEST != null"
+  );
+  if (!detected) return;
+  return {
+    id: "modernjs",
+    name: "Modern.js",
+    evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
+    recommendedExtensions: ["@scope/modern-tools"]
+  };
 }
 ```
 
-Run:
+A result contains an ID and name, plus optional version, short evidence, and recommended extensions. Do not return complete page configuration or sensitive values. Detectors run concurrently and `openruntime stack` aggregates their results.
 
-```sh
-openruntime open https://github.com/module-federation/core/releases
-openruntime github-release latest
-```
+The latest result is reused for the same page and detector set. Run `openruntime stack --refresh` to force detection again.
 
-Expected output shape:
+### `close`
 
-```json
-{
-  "status": "ok",
-  "data": {
-    "result": {
-      "repository": "module-federation/core",
-      "title": "Release title",
-      "tag": "v0.0.0",
-      "url": "https://github.com/module-federation/core/releases/tag/v0.0.0",
-      "publishedAt": "2026-01-01T00:00:00Z",
-      "notesPreview": "..."
-    }
-  }
-}
-```
+`close` only runs for extensions that successfully participated in the matching `open`. Cleanup failures are reported but do not prevent the browser from closing.
 
-## Best Practice Checklist
+## Command context
 
-- Run `openruntime open <url>` before a command that needs page state.
-- Commands operate on the opened page; do not open, navigate, or close the browser session inside a command.
-- Validate `options.page.url` when the command only supports specific pages.
-- Prefer `options.output` for command results, not direct stdout writes.
-- Prefer Targets and Actions over DOM parsing when the application provides them.
-- Use browser APIs for page interaction, fallback inspection, screenshots, console, and network data.
-- Use `browser.evalFile` for large page scripts; use `browser.eval` for small expressions.
-- Return `0` for success and throw an error or return non-zero for failure.
-- Export commands with `defineCommand(...)` and call `validateCommand(...)` from tests or CI before submitting changes.
-- Add clear `commandReferences`; agents should only run discovered commands whose usage and description match the current task.
-- Complex commands may declare one local `SKILL.md`; distribute it together with the command.
-- Keep `commandReferences` accurate so `openruntime --help` stays useful.
+`run(options)` receives parsed arguments, the latest page context, structured output helpers, and `options.openruntime`. Browser operations include evaluation, window reads, click, fill, screenshots, network, and Console. Prefer `snapshot`, `runAction`, and `waitFor` for structured application state.
+
+A command may point `skill.path` at an existing absolute `SKILL.md`. `openruntime foo --skill` prints that path without running the command.
+
+## Verification
+
+- Confirm unrelated commands do not load implementation modules.
+- Verify `open`, `stack`, and `close` trigger only their matching hooks.
+- Verify one failed hook does not prevent other extensions from working.
+- Test page commands against a real or representative page after `openruntime open <url>`.

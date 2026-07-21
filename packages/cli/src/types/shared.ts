@@ -43,7 +43,7 @@ export interface CommandOutput {
 
 
 export interface CliOperationLogEntry {
-  schemaVersion: 1;
+  schemaVersion: 2;
   command: "open";
   key: string;
   cwd: string;
@@ -53,6 +53,15 @@ export interface CliOperationLogEntry {
   sessionId: string | null;
   openedAt: number;
   exitCode: number;
+  activeExtensions: string[];
+  stackDetection?: {
+    url: string;
+    detectedAt: number;
+    detections: unknown[];
+    failures: unknown[];
+    detectorCount: number;
+    detectorSignature: string;
+  };
 }
 
 export interface CliOperationLogStore {
@@ -60,4 +69,3 @@ export interface CliOperationLogStore {
   write(entry: Omit<CliOperationLogEntry, "schemaVersion" | "key" | "cwd">): Promise<void>;
   remove(): Promise<void>;
 }
-

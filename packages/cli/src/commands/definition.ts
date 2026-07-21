@@ -1,51 +1,122 @@
 import { validateCommandSkill } from "./skill.js";
+import type {
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition,
+  OpenRuntimeExtensionHooks,
+  ValidateExtensionOptions
+} from "../types/commands.js";
 
-export const OPENRUNTIME_COMMAND_SCHEMA_VERSION = 1;
+export type {
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition,
+  OpenRuntimeExtensionHooks,
+  ValidateExtensionOptions
+} from "../types/commands.js";
 
-import type { OpenRuntimeCommandDefinition, ValidateCommandOptions } from "../types/commands.js";
-export type { OpenRuntimeCommandDefinition, ValidateCommandOptions } from "../types/commands.js";
+export const OPENRUNTIME_EXTENSION_SCHEMA_VERSION = 1;
 
-export function defineCommand(command: OpenRuntimeCommandDefinition): OpenRuntimeCommandDefinition {
-  return validateCommand(command);
+export function defineExtension(extension: OpenRuntimeExtensionDefinition): OpenRuntimeExtensionDefinition {
+  return validateExtension(extension);
 }
 
-export function validateCommand(value: unknown, options: ValidateCommandOptions = {}): OpenRuntimeCommandDefinition {
-  if (typeof value !== "object" || value === null) {
-    throw new Error(createValidationMessage("Command must default-export an object.", options));
+export function validateExtension(
+  value: unknown,
+  options: ValidateExtensionOptions = {}
+): OpenRuntimeExtensionDefinition {
+  if (!isRecord(value)) {
+    throw new Error(createValidationMessage("Extension must default-export an object.", options));
   }
-
-  const candidate = value as Partial<OpenRuntimeCommandDefinition>;
-  if (candidate.schemaVersion !== OPENRUNTIME_COMMAND_SCHEMA_VERSION) {
-    throw new Error(`Command schemaVersion must be ${OPENRUNTIME_COMMAND_SCHEMA_VERSION}.`);
+  if (value.schemaVersion !== OPENRUNTIME_EXTENSION_SCHEMA_VERSION) {
+    throw new Error(`Extension schemaVersion must be ${OPENRUNTIME_EXTENSION_SCHEMA_VERSION}.`);
   }
-  if (typeof candidate.name !== "string" || candidate.name.length === 0) {
-    throw new Error("Command name must be a non-empty string.");
+  const name = validateName(value.name, "Extension");
+  const commands = validateCommands(value.commands, name);
+  const hooks = validateHooks(value.hooks, name);
+  if (commands.length === 0 && hooks === undefined) {
+    throw new Error(`Extension "${name}" must provide at least one command or hook.`);
   }
-  if (!/^[a-z][a-z0-9-]*$/.test(candidate.name)) {
-    throw new Error(`Command name "${candidate.name}" must match /^[a-z][a-z0-9-]*$/.`);
-  }
-  if (typeof candidate.run !== "function") {
-    throw new Error(`Command "${candidate.name}" must export a run(options) function.`);
-  }
-  if (candidate.commandReferences !== undefined && !Array.isArray(candidate.commandReferences)) {
-    throw new Error(`Command "${candidate.name}" commandReferences must be an array.`);
-  }
-
-  const skill = candidate.skill === undefined
-    ? undefined
-    : validateCommandSkill(candidate.skill, candidate.name);
 
   return {
-    schemaVersion: candidate.schemaVersion,
-    name: candidate.name,
-    ...(candidate.displayName === undefined ? {} : { displayName: candidate.displayName }),
-    ...(candidate.description === undefined ? {} : { description: candidate.description }),
-    ...(skill === undefined ? {} : { skill }),
-    ...(candidate.commandReferences === undefined ? {} : { commandReferences: candidate.commandReferences }),
-    run: async (runOptions) => await candidate.run!(runOptions)
+    schemaVersion: 1,
+    name,
+    ...(typeof value.displayName === "string" ? { displayName: value.displayName } : {}),
+    ...(typeof value.description === "string" ? { description: value.description } : {}),
+    ...(commands.length === 0 ? {} : { commands }),
+    ...(hooks === undefined ? {} : { hooks })
   };
 }
 
-function createValidationMessage(message: string, options: ValidateCommandOptions): string {
+function validateCommands(value: unknown, extensionName: string): OpenRuntimeExtensionCommand[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`Extension "${extensionName}" commands must be an array.`);
+  }
+  const names = new Set<string>();
+  return value.map((candidate) => {
+    if (!isRecord(candidate)) {
+      throw new Error(`Extension "${extensionName}" command must be an object.`);
+    }
+    const name = validateName(candidate.name, "Command");
+    if (names.has(name)) {
+      throw new Error(`Extension "${extensionName}" declares command "${name}" more than once.`);
+    }
+    names.add(name);
+    const run = candidate.run;
+    if (typeof run !== "function") {
+      throw new Error(`Command "${name}" must provide a run(options) function.`);
+    }
+    const commandReferences = candidate.commandReferences;
+    if (commandReferences !== undefined && !Array.isArray(commandReferences)) {
+      throw new Error(`Command "${name}" commandReferences must be an array.`);
+    }
+    const skill = candidate.skill === undefined
+      ? undefined
+      : validateCommandSkill(candidate.skill, name);
+    return {
+      name,
+      ...(skill === undefined ? {} : { skill }),
+      ...(commandReferences === undefined ? {} : {
+        commandReferences: commandReferences as NonNullable<OpenRuntimeExtensionCommand["commandReferences"]>
+      }),
+      run: async (runOptions) => await run(runOptions)
+    };
+  });
+}
+
+function validateHooks(value: unknown, extensionName: string): OpenRuntimeExtensionHooks | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new Error(`Extension "${extensionName}" hooks must be an object.`);
+  }
+  const supported = new Set(["open", "detectStack", "close"]);
+  for (const name of Object.keys(value)) {
+    if (!supported.has(name)) {
+      throw new Error(`Extension "${extensionName}" declares unsupported hook "${name}".`);
+    }
+    if (typeof value[name] !== "function") {
+      throw new Error(`Extension "${extensionName}" hook "${name}" must be a function.`);
+    }
+  }
+  if (Object.keys(value).length === 0) {
+    throw new Error(`Extension "${extensionName}" hooks must not be empty.`);
+  }
+  return value as unknown as OpenRuntimeExtensionHooks;
+}
+
+function validateName(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} name must be a non-empty string.`);
+  }
+  if (!/^[a-z][a-z0-9-]*$/.test(value)) {
+    throw new Error(`${label} name "${value}" must match /^[a-z][a-z0-9-]*$/`);
+  }
+  return value;
+}
+
+function createValidationMessage(message: string, options: ValidateExtensionOptions): string {
   return options.path === undefined ? message : `${message} ${options.path}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

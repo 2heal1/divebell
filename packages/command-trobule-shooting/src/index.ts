@@ -1,5 +1,5 @@
 import type {
-  OpenRuntimeCommandDefinition,
+  CliExtensionRunOptions,
   ParsedCliArgs
 } from "@openruntime/cli";
 
@@ -8,38 +8,27 @@ import {
   runVerifyCommand
 } from "./verify.js";
 
-const command: OpenRuntimeCommandDefinition = {
-  schemaVersion: 1,
-  name: "verify",
-  commandReferences: [{
-    category: "Commands",
-    usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
-    description: "Verify a business target; framework targets such as Modern, MF, Garfish, and Vmok are supporting evidence only."
-  }],
-  run: async (options) => {
-    const targetId = requireArgument(options.args, 1, "target id");
-    const status = requireArgument(options.args, 2, "status");
-    const where = parseWhereOptions(options.args);
-    try {
-      const result = await runVerifyCommand(
-        options.openruntime,
-        targetId,
-        status,
-        where,
-        getNumberOption(options.args, "timeout")
-      );
-      writeJson(options.stdout, result);
-      return result.result.success ? 0 : 1;
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      writeJson(options.stdout, createVerifyCommandFailure(targetId, status, where, reason));
-      options.stderr.write(`${reason}\n`);
-      return 1;
-    }
+export async function runVerifyCliCommand(options: CliExtensionRunOptions): Promise<number> {
+  const targetId = requireArgument(options.args, 1, "target id");
+  const status = requireArgument(options.args, 2, "status");
+  const where = parseWhereOptions(options.args);
+  try {
+    const result = await runVerifyCommand(
+      options.openruntime,
+      targetId,
+      status,
+      where,
+      getNumberOption(options.args, "timeout")
+    );
+    writeJson(options.stdout, result);
+    return result.result.success ? 0 : 1;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    writeJson(options.stdout, createVerifyCommandFailure(targetId, status, where, reason));
+    options.stderr.write(`${reason}\n`);
+    return 1;
   }
-};
-
-export default command;
+}
 export { createVerifyCommandFailure, runVerifyCommand } from "./verify.js";
 export type * from "./types.js";
 

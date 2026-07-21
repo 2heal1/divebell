@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { BrowserRunOptions, BrowserRunner } from "../dist/features/browser/runner.js";
 import { createOperationLogKey } from "../dist/utils/operation-log.js";
 
-process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
+process.env.OPENRUNTIME_DISABLE_EXTENSIONS = "1";
 
 export function createOutput(): {
   stdout: { write(chunk: string): void };
@@ -107,7 +107,7 @@ export function createOpenContextFixture(overrides: Partial<{
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
   const entry = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     command: "open",
     key,
     cwd: process.cwd(),
@@ -116,7 +116,8 @@ export function createOpenContextFixture(overrides: Partial<{
     bridgeUrl: overrides.bridgeUrl ?? "http://bridge.test",
     sessionId: overrides.sessionId ?? "session-open",
     openedAt: 1,
-    exitCode: 0
+    exitCode: 0,
+    activeExtensions: []
   };
   writeFileSync(join(operationLogDirectory, `${key}.json`), `${JSON.stringify(entry, null, 2)}\n`, "utf8");
   return {

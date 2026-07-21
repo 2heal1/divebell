@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import command, {
+import extension from "../dist/extension.js";
+import {
   createCodeUsageReportHtml,
   runCodeUsageReportCommand
 } from "../dist/index.js";
@@ -14,7 +15,7 @@ import {
   parseCliArgs
 } from "../../cli/dist/index.js";
 
-const cli = createOpenRuntimeCli({ extensions: [command] });
+const cli = createOpenRuntimeCli({ extensions: [extension] });
 const runCli = cli.run;
 
 function createOutput() {

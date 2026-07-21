@@ -99,8 +99,8 @@ async function validateArchive(archive, expectedName, expectedVersion) {
   if (dependencyValues.some((value) => typeof value === "string" && value.startsWith("workspace:"))) {
     throw new Error(`${expectedName} still contains a workspace dependency after packing.`);
   }
-  if (packed.openruntime?.commands !== undefined && dependencyValues.length > 0) {
-    throw new Error(`${expectedName} command packages must not declare runtime dependencies.`);
+  if (packed.openruntime?.extensions !== undefined && dependencyValues.length > 0) {
+    throw new Error(`${expectedName} extension packages must not declare runtime dependencies.`);
   }
 }
 

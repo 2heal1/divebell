@@ -27,11 +27,52 @@ export interface CliExtensionRunOptions {
   output: CommandOutput;
 }
 
-export interface OpenRuntimeCliExtension {
+export interface OpenRuntimeExtensionCommand {
   name: string;
   skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
   run(options: CliExtensionRunOptions): Promise<number>;
+}
+
+export interface OpenRuntimeOpenHookOptions {
+  args: ParsedCliArgs;
+  url: string;
+  openedUrl: string;
+}
+
+export interface OpenRuntimeOpenHookResult {
+  scripts?: readonly string[];
+}
+
+export interface OpenRuntimePageHookOptions {
+  args: ParsedCliArgs;
+  page: CliExtensionPageContext;
+  openruntime: OpenRuntimeExtensionApi;
+}
+
+export interface OpenRuntimeStackDetection {
+  id: string;
+  name: string;
+  version?: string;
+  evidence?: readonly string[];
+  recommendedExtensions?: readonly string[];
+}
+
+export interface OpenRuntimeExtensionHooks {
+  open?(options: OpenRuntimeOpenHookOptions): Promise<OpenRuntimeOpenHookResult | void>;
+  detectStack?(
+    options: OpenRuntimePageHookOptions
+  ): Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
+  close?(options: OpenRuntimePageHookOptions): Promise<void>;
+}
+
+export interface OpenRuntimeExtensionDefinition {
+  schemaVersion: 1;
+  name: string;
+  displayName?: string;
+  description?: string;
+  commands?: readonly OpenRuntimeExtensionCommand[];
+  hooks?: OpenRuntimeExtensionHooks;
 }
 
 export interface ExtensionCliCommandOptions {
@@ -43,7 +84,10 @@ export interface ExtensionCliCommandOptions {
   bridgeStarter: BridgeStarter;
   bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
-  extensionRegistry: Map<string, OpenRuntimeCliExtension>;
+  commandRegistry: Map<string, {
+    extension: OpenRuntimeExtensionDefinition;
+    command: OpenRuntimeExtensionCommand;
+  }>;
 }
 
 export interface ExtensionLoadRecord {
@@ -54,17 +98,7 @@ export interface ExtensionLoadRecord {
   reason?: string;
 }
 
-export interface OpenRuntimeCommandDefinition {
-  schemaVersion: 1;
-  name: string;
-  displayName?: string;
-  description?: string;
-  skill?: OpenRuntimeCommandSkill;
-  commandReferences?: readonly CliCommandReference[];
-  run(options: CliExtensionRunOptions): Promise<number>;
-}
-
-export interface ValidateCommandOptions {
+export interface ValidateExtensionOptions {
   path?: string;
 }
 
@@ -75,7 +109,7 @@ export interface OpenRuntimeCommandSkill {
 
 
 export interface ExternalExtensionLoadResult {
-  extensions: OpenRuntimeCliExtension[];
+  extensions: OpenRuntimeExtensionDefinition[];
   records: ExtensionLoadRecord[];
 }
 
@@ -89,14 +123,14 @@ export interface ExternalExtensionCandidate {
 
 
 export interface CliCommandReference {
-  category: "Bridge and Browser" | "Runtime" | "Commands" | "External Commands";
+  category: "Bridge and Browser" | "Runtime" | "Extensions" | "External Extensions";
   usage: string;
   description: string;
 }
 
 
 export interface CliCommandSkillReference {
-  category: "Commands" | "External Commands";
+  category: "Extensions" | "External Extensions";
   command: string;
 }
 

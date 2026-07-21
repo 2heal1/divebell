@@ -28,7 +28,7 @@ export function createFileOperationLogStore(
     write: async (entry) => {
       await mkdir(stateDirectory, { recursive: true });
       await writeFile(stateFile, `${JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         key,
         cwd: normalizedCwd,
         ...entry
@@ -68,7 +68,7 @@ export function normalizeOpenRuntimeUrlForMatch(input: string): string {
 function isCliOperationLogEntry(value: unknown): value is CliOperationLogEntry {
   if (value === null || typeof value !== "object") return false;
   const entry = value as Partial<CliOperationLogEntry>;
-  return entry.schemaVersion === 1 &&
+  return entry.schemaVersion === 2 &&
     entry.command === "open" &&
     typeof entry.key === "string" &&
     typeof entry.cwd === "string" &&
@@ -77,7 +77,22 @@ function isCliOperationLogEntry(value: unknown): value is CliOperationLogEntry {
     (typeof entry.bridgeUrl === "string" || entry.bridgeUrl === null) &&
     (typeof entry.sessionId === "string" || entry.sessionId === null) &&
     typeof entry.openedAt === "number" &&
-    typeof entry.exitCode === "number";
+    typeof entry.exitCode === "number" &&
+    Array.isArray(entry.activeExtensions) &&
+    entry.activeExtensions.every((value) => typeof value === "string") &&
+    isStackDetectionCache(entry.stackDetection);
+}
+
+function isStackDetectionCache(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const cache = value as Record<string, unknown>;
+  return typeof cache.url === "string" &&
+    typeof cache.detectedAt === "number" &&
+    Array.isArray(cache.detections) &&
+    Array.isArray(cache.failures) &&
+    typeof cache.detectorCount === "number" &&
+    typeof cache.detectorSignature === "string";
 }
 
 function isLoopbackHostname(hostname: string): boolean {

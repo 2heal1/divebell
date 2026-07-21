@@ -43,8 +43,10 @@ export async function runStopCommand(
   browserRunner: BrowserRunner,
   bridgeStateStore: BridgeStateStore,
   operationLogStore: CliOperationLogStore,
-  bridgeProcessController: BridgeProcessController | undefined
+  bridgeProcessController: BridgeProcessController | undefined,
+  beforeBrowserClose?: () => Promise<void>
 ): Promise<number> {
+  await beforeBrowserClose?.();
   const closeResult = await browserRunner.run(["close"]);
   await operationLogStore.remove();
   const bridgeResult = await stopManagedBridge({

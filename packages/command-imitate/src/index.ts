@@ -5,7 +5,7 @@ import { clearRecordingControlFile, closeRecordingBrowser, createSkippedBrowserO
 import { createManifestPath, writeGeneratedScript } from "./script.js";
 import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
 import { join, resolve } from "node:path";
-import type { OpenRuntimeCommandDefinition, ParsedCliArgs } from "@openruntime/cli";
+import type { CliExtensionRunOptions, ParsedCliArgs } from "@openruntime/cli";
 
 import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "./types.js";
 export type * from "./types.js";
@@ -23,46 +23,15 @@ const RECORDING_FORMAT = "openruntime-recording";
 const RECORDING_VERSION = 1;
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
 
-const command: OpenRuntimeCommandDefinition = {
-  schemaVersion: 1,
-  name: "record",
-  commandReferences: [
-    {
-      category: "Commands",
-      usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-      description: "Open a page for a fixed duration and create an .orrec package with page snapshots, DOM, interactions, OpenRuntime state, and optional microphone audio."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-      description: "Start a manual recording; open a blank page when URL is omitted and write under ./recordings when out is omitted."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
-      description: "Stop a manual recording, capture final interactions and state, then close the browser and draft a script by default."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime record generate-script --input <path> [--out <path>]",
-      description: "Regenerate a JavaScript script draft from an existing .orrec recording."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
-      description: "Transcribe microphone audio from an .orrec recording into timestamped text."
-    }
-  ],
-  run: async (options) => await runRecordCommand({
+export async function runRecordCliCommand(options: CliExtensionRunOptions): Promise<number> {
+  return await runRecordCommand({
     args: options.args,
     stdout: options.stdout,
     fetcher: options.fetcher,
     openruntime: options.openruntime,
     bridgeUrl: createBridgeUrl(options.args)
-  })
-};
-
-export default command;
+  });
+}
 
 export async function runRecordCommand(options: RecordCommandOptions): Promise<number> {
   const subcommand = options.args.command[1];

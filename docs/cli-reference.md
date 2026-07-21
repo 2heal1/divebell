@@ -20,6 +20,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `openruntime auth list` - List sites imported into the current OpenRuntime browser profile.
 - `openruntime auth clear [--url <url>]` - Clear the current OpenRuntime browser profile, or only the site matched by --url.
 - `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a page and connect its runtimes through the Bridge by default; use --ui for a visible browser or --no-bridge to skip connection.
+- `openruntime stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
 - `openruntime page-snapshot` - Read the current page snapshot, including actionable element references.
 - `openruntime click <ref|selector|text>` - Click an element by page reference, selector, or visible text.
 - `openruntime fill <ref|selector> <value>` - Fill an input by page reference or selector.
@@ -42,9 +43,9 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - Run a runtime action declared by the page.
 - `openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]` - Wait for a target to reach a status; --where values are parsed as JSON literals and can match numbers, booleans, or null.
 
-### Commands
+### Extensions
 
-- `openruntime commands add <npm-package> [--commands-dir <path>]` - Download, validate, and install an OpenRuntime command package with no runtime dependencies.
-- `openruntime commands list [--commands-dir <path>]` - List installed OpenRuntime command packages and the commands they provide.
-- `openruntime commands update <package> [--commands-dir <path>]` - Download and activate the latest command package version; keep the current version if the update fails.
-- `openruntime commands remove <package> [--commands-dir <path>]` - Uninstall the specified command package.
+- `openruntime extensions add <npm-package> [--extensions-dir <path>]` - Download, validate, and install an OpenRuntime extension package with no runtime dependencies.
+- `openruntime extensions list [--extensions-dir <path>]` - List installed OpenRuntime extension packages, commands, and hooks.
+- `openruntime extensions update <package> [--extensions-dir <path>]` - Download and activate the latest extension package version; keep the current version if the update fails.
+- `openruntime extensions remove <package> [--extensions-dir <path>]` - Uninstall the specified extension package.

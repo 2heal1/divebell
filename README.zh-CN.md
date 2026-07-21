@@ -131,7 +131,7 @@ release-note.list-latest
 Agent 获取最新 Release Notes 时，可以按固定流程执行：
 
 ```sh
-openruntime commands add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/command-trobule-shooting
 openruntime start
 
 openruntime open \
@@ -163,47 +163,47 @@ openruntime release-note latest --limit 3
 
 ---
 
-## CLI 命令
+## CLI 扩展
 
-OpenRuntime CLI 支持加载本地命令文件。团队可以用它增加自己的页面操作命令，而不需要修改 OpenRuntime 源码。
+OpenRuntime CLI 支持加载扩展。扩展可以提供命令、技术栈识别、页面打开脚本、清理逻辑和 Skill。
 
 这里说的是页面命令开发：先由 agent 运行 `openruntime open <url>`，命令只操作当前已打开页面。需要自己打开浏览器并管理自动化流程时，应写独立自动化脚本。
 
-命令导出格式、`run(options)` 参数、完整 `options.openruntime` API 和 GitHub release 示例见 [CLI 命令开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Command Development](docs/cli-extensions.md)。
+扩展声明、异步加载、Hook 和命令运行上下文见 [CLI 扩展开发](docs/cli-extensions.zh-CN.md)。英文文档见 [CLI Extension Development](docs/cli-extensions.md)。
 
 如果要写包含打开浏览器、等待页面和操作页面的独立自动化脚本，见 [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md)。
 
 浏览器如何自动连接 Bridge，以及微前端页面中如何查看和选择多个 Runtime，见 [浏览器连接与多 Runtime 使用指南](docs/runtime-connections.zh-CN.md)。英文文档见 [Browser Connections and Multiple Runtimes](docs/runtime-connections.md)。
 
-命令文件默认从这里读取：
+扩展默认从这里读取：
 
 ```text
-~/.openruntime/commands
+~/.openruntime/extensions
 ```
 
 可以用环境变量改目录：
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
+OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
 ```
 
-也可以关闭外部命令加载：
+也可以关闭外部扩展加载：
 
 ```sh
-OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
+OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
 ```
 
 支持两种文件形式：
 
 ```text
-~/.openruntime/commands/foo.mjs
-~/.openruntime/commands/foo/index.mjs
+~/.openruntime/extensions/foo.mjs
+~/.openruntime/extensions/foo/index.mjs
 ```
 
-外部命令会在 help 里单独展示：
+外部扩展会在 help 里单独展示：
 
 ```text
-External Commands:
+External Extensions:
   openruntime foo ping - Runs Foo.
 ```
 
@@ -213,11 +213,11 @@ External Commands:
 openruntime foo --skill
 ```
 
-如果外部命令和内置命令或内部命令重名，OpenRuntime 会跳过外部命令并打印警告。命令加载失败也不会导致 CLI 崩溃，加载命令时会直接打印失败原因。
+如果扩展或它的命令与已有名称冲突，OpenRuntime 会跳过并打印警告。扩展加载失败不会导致 CLI 崩溃。
 
-在命令文件、测试或 CI 里调用 `defineCommand(...)` 和 `validateCommand(...)`，确保导出的命令格式有效。
+本机扩展、测试或 CI 可以调用 `defineExtension(...)` 和 `validateExtension(...)`。发布入口只做声明，实际实现使用 `await import()` 按需加载。
 
-外部命令会执行本机代码，只加载可信文件。
+外部扩展会执行本机代码，只加载可信文件。
 
 ---
 

@@ -12,12 +12,13 @@ import {
   runStopCommand
 } from "./commands/bridge.js";
 import { createBridgeStateStore } from "./features/bridge/config.js";
-import { runBrowserCliCommand } from "./commands/browser.js";
+import { runBrowserCliCommand, runExtensionCloseHooks } from "./commands/browser.js";
 import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
 import { runRuntimeCliCommand } from "./commands/runtime.js";
+import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
-import { runCommandsCommand } from "./commands/installed.js";
+import { runExtensionsCommand } from "./commands/installed.js";
 import type {
   CliRunOptions,
   OpenRuntimeCliConfig
@@ -52,24 +53,66 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
     }
 
     if (args.command[0] === "stop") {
-      return await runStopCommand(args, stdout, browserRunner, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore, options.bridgeProcessController);
+      const bridgeStateStore = createBridgeStateStore(args, options.bridgeStateDirectory);
+      return await runStopCommand(
+        args,
+        stdout,
+        browserRunner,
+        bridgeStateStore,
+        operationLogStore,
+        options.bridgeProcessController,
+        async () => await runExtensionCloseHooks({
+          args,
+          stderr,
+          fetcher,
+          browserRunner,
+          bridgeStarter,
+          bridgeStateStore,
+          operationLogStore,
+          extensions: config.extensions
+        })
+      );
     }
 
     if (args.command[0] === "auth") {
       return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
     }
 
-    if (args.command[0] === "commands") {
-      return await runCommandsCommand({
+    if (args.command[0] === "extensions") {
+      return await runExtensionsCommand({
         args,
         stdout,
-        ...(options.commandsDirectory === undefined ? {} : { commandsDirectory: options.commandsDirectory }),
-        ...(options.commandPackageDownloader === undefined ? {} : { commandPackageDownloader: options.commandPackageDownloader })
+        ...(options.extensionsDirectory === undefined ? {} : { extensionsDirectory: options.extensionsDirectory }),
+        ...(options.extensionPackageDownloader === undefined ? {} : { extensionPackageDownloader: options.extensionPackageDownloader })
+      });
+    }
+
+    if (args.command[0] === "stack") {
+      return await runStackCommand({
+        args,
+        stdout,
+        stderr,
+        fetcher,
+        browserRunner,
+        bridgeStarter,
+        bridgeStateDirectory: options.bridgeStateDirectory,
+        operationLogStore,
+        extensions: config.extensions
       });
     }
 
     if (isBrowserCommand(args.command[0])) {
-      return await runBrowserCliCommand(args, stdout, stderr, fetcher, browserRunner, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory), operationLogStore);
+      return await runBrowserCliCommand(
+        args,
+        stdout,
+        stderr,
+        fetcher,
+        browserRunner,
+        bridgeStarter,
+        createBridgeStateStore(args, options.bridgeStateDirectory),
+        operationLogStore,
+        config.extensions
+      );
     }
 
     const runtimeExitCode = await runRuntimeCliCommand({
@@ -105,7 +148,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
       bridgeStarter,
       bridgeStateDirectory: options.bridgeStateDirectory,
       operationLogStore,
-      extensionRegistry: config.extensionRegistry
+      commandRegistry: config.commandRegistry
     });
     if (extensionExitCode !== undefined) {
       return extensionExitCode;

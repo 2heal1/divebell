@@ -326,7 +326,7 @@ function runOpenRuntimeVerify(options) {
             businessVerified: false,
             targetClass: "unknown",
             message: stderr.trim() || stdout.trim() || "openruntime verify did not return JSON.",
-            nextStep: "Install @openruntime/cli, run `openruntime commands add @openruntime/command-trobule-shooting`, connect the page runtime, then rerun workflow verify."
+            nextStep: "Install @openruntime/cli, run `openruntime extensions add @openruntime/command-trobule-shooting`, connect the page runtime, then rerun workflow verify."
           }
         }
       }
@@ -525,7 +525,7 @@ function createSnapshotObserveNextAction(pluginSnapshot, url) {
     url: url ?? null,
     commands,
     rules: [
-      "External extension commands are shown in --help under External Commands.",
+      "External extension commands are shown in --help under External Extensions.",
       "When the command section reports an available skill, run openruntime <command> --skill and read the returned SKILL.md before using that command.",
       "Use an extension command only when its usage and description match the task.",
       "Do not run multiple snapshot variants in parallel on first observe.",
@@ -545,7 +545,7 @@ function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
       "pnpm exec openruntime --help"
     ],
     rules: [
-      "External extension commands are shown in --help under External Commands.",
+      "External extension commands are shown in --help under External Extensions.",
       "When the command section reports an available skill, run openruntime <command> --skill and read the returned SKILL.md before using that command.",
       "Use an extension command only when its usage and description match the task."
     ]

@@ -10,7 +10,7 @@
 先安装分析命令：
 
 ```bash
-openruntime commands add @openruntime/command-code-usage
+openruntime extensions add @openruntime/command-code-usage
 ```
 
 ## 整体流程

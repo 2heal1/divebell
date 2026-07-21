@@ -18,10 +18,10 @@ const runtimeManifest = await readRuntimeManifest(skillDirectory);
 const runtimeLayout = resolveRuntimeLayout(runtimeManifest);
 const installDirectory = runtimeLayout.installDirectory;
 const installedCli = runtimeLayout.installedCli;
-const managedCommandsDirectory = join(installDirectory, "commands");
+const managedExtensionsDirectory = join(installDirectory, "extensions");
 const runtimeEnvironment = {
   ...process.env,
-  OPENRUNTIME_COMMANDS_DIR: managedCommandsDirectory
+  OPENRUNTIME_EXTENSIONS_DIR: managedExtensionsDirectory
 };
 const userArgs = process.argv.slice(2);
 
@@ -53,7 +53,7 @@ try {
     formatSpawnText(installResult.stderr),
     formatSpawnText(installResult.stdout),
     installResult.error?.message,
-    commandResult?.status === 0 ? undefined : "Failed to install the recording command package.",
+    commandResult?.status === 0 ? undefined : "Failed to install the recording extension package.",
     formatSpawnText(commandResult?.stderr),
     formatSpawnText(commandResult?.stdout),
     commandResult?.error?.message
@@ -149,11 +149,11 @@ function installReleasedRecordCommand(manifest, packageDirectory) {
     };
   }
   return spawnSync(installedCli, [
-    "commands",
+    "extensions",
     "add",
     join(packageDirectory, commandPackage.file),
-    "--commands-dir",
-    managedCommandsDirectory
+    "--extensions-dir",
+    managedExtensionsDirectory
   ], {
     env: runtimeEnvironment,
     encoding: "utf8"

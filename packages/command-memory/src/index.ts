@@ -1,41 +1,23 @@
 import type {
+  CliExtensionRunOptions,
   CommandErrorKind,
-  OpenRuntimeCommandDefinition,
   ParsedCliArgs
 } from "@openruntime/cli";
 
 import { runMemoryCheck } from "./memory-check.js";
 
-const command: OpenRuntimeCommandDefinition = {
-  schemaVersion: 1,
-  name: "memory",
-  commandReferences: [
-    {
-      category: "Commands",
-      usage: "openruntime memory <metrics|status|sampling start|sampling stop|snapshot|cancel> [path] [options]",
-      description: "Capture memory metrics, allocation profiles, or snapshots from the current page."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]",
-      description: "Run a memory scenario with warmup, repeated operations, metrics, allocation capture, and before-and-after snapshots."
-    }
-  ],
-  run: async (options) => {
-    if (options.args.command[1] === "check") {
-      return await runMemoryCheckCommand(options.args, options.output, options.openruntime.browser);
-    }
-    return await runRawMemoryCommand(options.args, options.stdout, options.stderr, options.openruntime.browser.raw);
+export async function runMemoryCliCommand(options: CliExtensionRunOptions): Promise<number> {
+  if (options.args.command[1] === "check") {
+    return await runMemoryCheckCommand(options.args, options.output, options.openruntime.browser);
   }
-};
-
-export default command;
+  return await runRawMemoryCommand(options.args, options.stdout, options.stderr, options.openruntime.browser.raw);
+}
 export { runMemoryCheck } from "./memory-check.js";
 export type * from "./types.js";
 
 async function runMemoryCheckCommand(
   args: ParsedCliArgs,
-  output: Parameters<OpenRuntimeCommandDefinition["run"]>[0]["output"],
+  output: CliExtensionRunOptions["output"],
   browser: Parameters<typeof runMemoryCheck>[0]["browser"]
 ): Promise<number> {
   if (args.command.length !== 2) {

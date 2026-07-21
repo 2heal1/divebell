@@ -13,7 +13,7 @@ import {
 } from "../../core/dist/index.js";
 import { runCli } from "../dist/index.js";
 
-process.env.OPENRUNTIME_DISABLE_COMMANDS = "1";
+process.env.OPENRUNTIME_DISABLE_EXTENSIONS = "1";
 
 test("runs the stage 2 cli flow against a connected runtime", async () => {
   const previousEventSource = globalThis.EventSource;

@@ -1,17 +1,133 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
-import { createOpenRuntimeCliWithExternalExtensions, createOpenRuntimeCli, runCli, type OpenRuntimeCliExtension } from "../dist/index.js";
+import {
+  createOpenRuntimeCliWithExternalExtensions,
+  createOpenRuntimeCli,
+  runCli,
+  type OpenRuntimeExtensionCommand,
+  type OpenRuntimeExtensionDefinition
+} from "../dist/index.js";
 
 import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
 
-test("installs, loads, lists, and removes a self-contained npm command package", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-package-test-"));
-  const commandsDirectory = join(tempDir, "commands");
+function createCommandExtension(
+  command: OpenRuntimeExtensionCommand,
+  extensionName = command.name
+): OpenRuntimeExtensionDefinition {
+  return {
+    schemaVersion: 1,
+    name: extensionName,
+    commands: [command]
+  };
+}
+
+test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-hooks-"));
+  const calls: string[] = [];
+  let closeCount = 0;
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "modern-detector",
+      hooks: {
+        open: async () => {
+          calls.push("open");
+          return { scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"] };
+        },
+        detectStack: async ({ openruntime }) => {
+          calls.push("detectStack");
+          const detected = await openruntime.browser.eval<boolean>("globalThis._MODERNJS_ROUTE_MANIFEST != null");
+          return detected ? {
+            id: "modernjs",
+            name: "Modern.js",
+            evidence: ["window._MODERNJS_ROUTE_MANIFEST"]
+          } : undefined;
+        },
+        close: async () => {
+          calls.push("close");
+          closeCount += 1;
+        }
+      }
+    }]
+  });
+  const browserCalls: string[][] = [];
+  const browserRunner = createBrowserRunner(async (args) => {
+    browserCalls.push(args);
+    if (args[0] === "open") {
+      const scriptPath = args[3];
+      assert.equal(args[2], "--init-script");
+      assert.equal(typeof scriptPath, "string");
+      assert.match(readFileSync(scriptPath as string, "utf8"), /__OPENRUNTIME_HOOK_TEST__/);
+      return { exitCode: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "eval") {
+      if (args[1] === "globalThis.location.href") {
+        return { exitCode: 0, stdout: JSON.stringify("http://app.test/"), stderr: "" };
+      }
+      return { exitCode: 0, stdout: "true", stderr: "" };
+    }
+    if (args[0] === "close") {
+      return { exitCode: 0, stdout: "closed", stderr: "" };
+    }
+    throw new Error(`Unexpected browser command: ${args.join(" ")}`);
+  });
+
+  try {
+    const openOutput = createOutput();
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(calls, ["open"]);
+
+    const stackOutput = createOutput();
+    assert.equal(await cli.run(["stack"], {
+      stdout: stackOutput.stdout,
+      stderr: stackOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    const stackResult = JSON.parse(stackOutput.text());
+    assert.equal(stackResult.data.detections[0].id, "modernjs");
+    assert.equal(stackResult.data.detections[0].extension, "modern-detector");
+    assert.equal(stackResult.data.cached, false);
+    assert.deepEqual(calls, ["open", "detectStack"]);
+
+    const cachedOutput = createOutput();
+    assert.equal(await cli.run(["stack"], {
+      stdout: cachedOutput.stdout,
+      stderr: cachedOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(JSON.parse(cachedOutput.text()).data.cached, true);
+    assert.deepEqual(calls, ["open", "detectStack"]);
+
+    const closeOutput = createOutput();
+    assert.equal(await cli.run(["close"], {
+      stdout: closeOutput.stdout,
+      stderr: closeOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(closeCount, 1);
+    assert.deepEqual(calls, ["open", "detectStack", "close"]);
+    assert.deepEqual(browserCalls.map((args) => args[0]), ["open", "eval", "eval", "eval", "close"]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("installs, loads, lists, and removes a self-contained npm extension package", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-package-test-"));
+  const extensionsDirectory = join(tempDir, "extensions");
   const packageRoot = join(tempDir, "fixture", "package");
   const archivePath = join(tempDir, "demo-command-1.0.0.tgz");
   const updatedPackageRoot = join(tempDir, "fixture-updated", "package");
@@ -23,15 +139,22 @@ test("installs, loads, lists, and removes a self-contained npm command package",
     type: "module",
     openruntime: {
       schemaVersion: 1,
-      commands: ["./index.mjs"]
+      extensions: ["./index.mjs"]
     }
   }, null, 2)}\n`, "utf8");
   writeFileSync(join(packageRoot, "index.mjs"), `export default {
   schemaVersion: 1,
   name: "hello-installed",
-  commandReferences: [{ category: "Commands", usage: "openruntime hello-installed", description: "Runs installed command." }],
-  async run({ output }) { output.ok({ installed: true }); return 0; }
+  commands: [{
+    name: "hello-installed",
+    commandReferences: [{ category: "Extensions", usage: "openruntime hello-installed", description: "Runs installed command." }],
+    async run(options) { return await (await import("./run.mjs")).run(options); }
+  }]
 };\n`, "utf8");
+  writeFileSync(join(packageRoot, "run.mjs"), `
+globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ = (globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ ?? 0) + 1;
+export async function run({ output }) { output.ok({ installed: true }); return 0; }
+`, "utf8");
   const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
     encoding: "utf8"
   });
@@ -43,14 +166,17 @@ test("installs, loads, lists, and removes a self-contained npm command package",
     type: "module",
     openruntime: {
       schemaVersion: 1,
-      commands: ["./index.mjs"]
+      extensions: ["./index.mjs"]
     }
   }, null, 2)}\n`, "utf8");
   writeFileSync(join(updatedPackageRoot, "index.mjs"), `export default {
   schemaVersion: 1,
   name: "hello-installed",
-  commandReferences: [{ category: "Commands", usage: "openruntime hello-installed", description: "Runs updated command." }],
-  async run({ output }) { output.ok({ installed: true, updated: true }); return 0; }
+  commands: [{
+    name: "hello-installed",
+    commandReferences: [{ category: "Extensions", usage: "openruntime hello-installed", description: "Runs updated command." }],
+    async run({ output }) { output.ok({ installed: true, updated: true }); return 0; }
+  }]
 };\n`, "utf8");
   const updatedTarResult = spawnSync("tar", ["-czf", updatedArchivePath, "-C", join(tempDir, "fixture-updated"), "package"], {
     encoding: "utf8"
@@ -61,14 +187,14 @@ test("installs, loads, lists, and removes a self-contained npm command package",
     const cli = createOpenRuntimeCli();
     const addOutput = createOutput();
     const addExitCode = await cli.run([
-      "commands",
+      "extensions",
       "add",
       "@demo/command-hello"
     ], {
       stdout: addOutput.stdout,
       stderr: addOutput.stderr,
-      commandsDirectory,
-      commandPackageDownloader: {
+      extensionsDirectory,
+      extensionPackageDownloader: {
         download: async () => archivePath
       }
     });
@@ -77,10 +203,11 @@ test("installs, loads, lists, and removes a self-contained npm command package",
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
-      OPENRUNTIME_DISABLE_COMMANDS: "0"
+      OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
+      OPENRUNTIME_DISABLE_EXTENSIONS: "0"
     });
     assert.deepEqual(loaded.cli.extensions.map((item) => item.name), ["hello-installed"]);
+    assert.equal((globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__, undefined);
     const commandOutputBuffer = createOutput();
     assert.equal(await loaded.cli.run(["hello-installed"], {
       stdout: commandOutputBuffer.stdout,
@@ -89,40 +216,45 @@ test("installs, loads, lists, and removes a self-contained npm command package",
     assert.deepEqual(JSON.parse(commandOutputBuffer.text()), commandOutput("hello-installed", {
       installed: true
     }));
+    assert.equal((globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__, 1);
 
     const listOutput = createOutput();
-    assert.equal(await cli.run(["commands", "list"], {
+    assert.equal(await cli.run(["extensions", "list"], {
       stdout: listOutput.stdout,
       stderr: listOutput.stderr,
-      commandsDirectory
+      extensionsDirectory
     }), 0);
-    assert.deepEqual(JSON.parse(listOutput.text()).packages[0].commands, ["hello-installed"]);
+    assert.deepEqual(JSON.parse(listOutput.text()).packages[0].extensions, [{
+      name: "hello-installed",
+      commands: ["hello-installed"],
+      hooks: []
+    }]);
 
     const failedUpdateOutput = createOutput();
-    assert.equal(await cli.run(["commands", "update", "@demo/command-hello"], {
+    assert.equal(await cli.run(["extensions", "update", "@demo/command-hello"], {
       stdout: failedUpdateOutput.stdout,
       stderr: failedUpdateOutput.stderr,
-      commandsDirectory,
-      commandPackageDownloader: {
+      extensionsDirectory,
+      extensionPackageDownloader: {
         download: async () => {
           throw new Error("simulated download failure");
         }
       }
     }), 1);
     const afterFailedUpdateOutput = createOutput();
-    assert.equal(await cli.run(["commands", "list"], {
+    assert.equal(await cli.run(["extensions", "list"], {
       stdout: afterFailedUpdateOutput.stdout,
       stderr: afterFailedUpdateOutput.stderr,
-      commandsDirectory
+      extensionsDirectory
     }), 0);
     assert.equal(JSON.parse(afterFailedUpdateOutput.text()).packages[0].version, "1.0.0");
 
     const updateOutput = createOutput();
-    assert.equal(await cli.run(["commands", "update", "@demo/command-hello"], {
+    assert.equal(await cli.run(["extensions", "update", "@demo/command-hello"], {
       stdout: updateOutput.stdout,
       stderr: updateOutput.stderr,
-      commandsDirectory,
-      commandPackageDownloader: {
+      extensionsDirectory,
+      extensionPackageDownloader: {
         download: async () => updatedArchivePath
       }
     }), 0);
@@ -130,8 +262,8 @@ test("installs, loads, lists, and removes a self-contained npm command package",
 
     const updated = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
-      OPENRUNTIME_DISABLE_COMMANDS: "0"
+      OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
+      OPENRUNTIME_DISABLE_EXTENSIONS: "0"
     });
     const updatedOutput = createOutput();
     assert.equal(await updated.cli.run(["hello-installed"], {
@@ -144,20 +276,21 @@ test("installs, loads, lists, and removes a self-contained npm command package",
     }));
 
     const removeOutput = createOutput();
-    assert.equal(await cli.run(["commands", "remove", "@demo/command-hello"], {
+    assert.equal(await cli.run(["extensions", "remove", "@demo/command-hello"], {
       stdout: removeOutput.stdout,
       stderr: removeOutput.stderr,
-      commandsDirectory
+      extensionsDirectory
     }), 0);
     assert.equal(JSON.parse(removeOutput.text()).status, "removed");
   } finally {
+    delete (globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__;
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
 
-test("rejects npm command packages that declare runtime dependencies", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-package-dependency-test-"));
-  const commandsDirectory = join(tempDir, "commands");
+test("rejects npm extension packages that declare runtime dependencies", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-package-dependency-test-"));
+  const extensionsDirectory = join(tempDir, "extensions");
   const packageRoot = join(tempDir, "fixture", "package");
   const archivePath = join(tempDir, "dependent-command-1.0.0.tgz");
   mkdirSync(packageRoot, { recursive: true });
@@ -170,13 +303,13 @@ test("rejects npm command packages that declare runtime dependencies", async () 
     },
     openruntime: {
       schemaVersion: 1,
-      commands: ["./index.mjs"]
+      extensions: ["./index.mjs"]
     }
   }, null, 2)}\n`, "utf8");
   writeFileSync(join(packageRoot, "index.mjs"), `export default {
   schemaVersion: 1,
   name: "dependent",
-  async run() { return 0; }
+  commands: [{ name: "dependent", async run() { return 0; } }]
 };\n`, "utf8");
   const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
     encoding: "utf8"
@@ -186,14 +319,14 @@ test("rejects npm command packages that declare runtime dependencies", async () 
   try {
     const output = createOutput();
     const exitCode = await createOpenRuntimeCli().run([
-      "commands",
+      "extensions",
       "add",
       "@demo/command-dependent"
     ], {
       stdout: output.stdout,
       stderr: output.stderr,
-      commandsDirectory,
-      commandPackageDownloader: {
+      extensionsDirectory,
+      extensionPackageDownloader: {
         download: async () => archivePath
       }
     });
@@ -202,10 +335,10 @@ test("rejects npm command packages that declare runtime dependencies", async () 
     assert.equal(output.errorText(), "");
 
     const listOutput = createOutput();
-    assert.equal(await createOpenRuntimeCli().run(["commands", "list"], {
+    assert.equal(await createOpenRuntimeCli().run(["extensions", "list"], {
       stdout: listOutput.stdout,
       stderr: listOutput.stderr,
-      commandsDirectory
+      extensionsDirectory
     }), 0);
     assert.deepEqual(JSON.parse(listOutput.text()).packages, []);
   } finally {
@@ -214,11 +347,11 @@ test("rejects npm command packages that declare runtime dependencies", async () 
 });
 
 test("registers a command and merges its help entries", async () => {
-  const extension: OpenRuntimeCliExtension = {
+  const extension = createCommandExtension({
     name: "demo",
     commandReferences: [
       {
-        category: "Commands",
+        category: "Extensions",
         usage: "openruntime demo ping [--url <url>]",
         description: "Runs a demo command."
       }
@@ -240,11 +373,11 @@ test("registers a command and merges its help entries", async () => {
       });
       return 0;
     }
-  };
+  });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
 
   assert.match(cli.createHelpText(), /openruntime demo ping/);
-  assert.deepEqual(cli.getCommandReferences().at(-1), extension.commandReferences?.[0]);
+  assert.deepEqual(cli.getCommandReferences().at(-1), extension.commands?.[0]?.commandReferences?.[0]);
 
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
@@ -342,7 +475,7 @@ test("registers a command and merges its help entries", async () => {
 });
 
 test("exposes memory capture commands to CLI extensions", async () => {
-  const extension: OpenRuntimeCliExtension = {
+  const extension = createCommandExtension({
     name: "memory-demo",
     run: async ({ openruntime, output }) => {
       output.ok({
@@ -365,7 +498,7 @@ test("exposes memory capture commands to CLI extensions", async () => {
       });
       return 0;
     }
-  };
+  });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
   const context = createOpenContextFixture();
   const calls: string[][] = [];
@@ -413,7 +546,7 @@ test("exposes memory capture commands to CLI extensions", async () => {
 });
 
 test("exposes coverage commands to CLI extensions", async () => {
-  const extension: OpenRuntimeCliExtension = {
+  const extension = createCommandExtension({
     name: "coverage-demo",
     run: async ({ openruntime, output }) => {
       output.ok({
@@ -432,7 +565,7 @@ test("exposes coverage commands to CLI extensions", async () => {
       });
       return 0;
     }
-  };
+  });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
   const context = createOpenContextFixture();
   const calls: string[][] = [];
@@ -475,7 +608,7 @@ test("exposes coverage commands to CLI extensions", async () => {
 });
 
 test("shows and resolves command skills without running commands", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-command-skill-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-skill-"));
   const skillPath = join(tempDir, "SKILL.md");
   writeFileSync(skillPath, "# Demo skill\n", "utf8");
   let runCount = 0;
@@ -483,12 +616,12 @@ test("shows and resolves command skills without running commands", async () => {
   try {
     const cli = createOpenRuntimeCli({
       extensions: [
-        {
+        createCommandExtension({
           name: "demo",
           skill: { path: skillPath },
           commandReferences: [
             {
-              category: "Commands",
+              category: "Extensions",
               usage: "openruntime demo ping",
               description: "Runs demo."
             }
@@ -497,12 +630,12 @@ test("shows and resolves command skills without running commands", async () => {
             runCount += 1;
             return 0;
           }
-        },
-        {
+        }),
+        createCommandExtension({
           name: "plain",
           commandReferences: [
             {
-              category: "Commands",
+              category: "Extensions",
               usage: "openruntime plain ping",
               description: "Runs without a skill."
             }
@@ -511,7 +644,7 @@ test("shows and resolves command skills without running commands", async () => {
             runCount += 1;
             return 0;
           }
-        }
+        })
       ]
     });
 
@@ -558,11 +691,11 @@ test("shows and resolves command skills without running commands", async () => {
 });
 
 test("commands can wait for targets in the opened page context", async () => {
-  const extension: OpenRuntimeCliExtension = {
+  const extension = createCommandExtension({
     name: "demo",
     commandReferences: [
       {
-        category: "Commands",
+        category: "Extensions",
         usage: "openruntime demo wait",
         description: "Waits for a demo target."
       }
@@ -576,7 +709,7 @@ test("commands can wait for targets in the opened page context", async () => {
       });
       return 0;
     }
-  };
+  });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
@@ -678,8 +811,8 @@ test("commands can wait for targets in the opened page context", async () => {
   }
 });
 
-test("loads external commands from the configured directory", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-"));
+test("loads external extensions from the configured directory", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-"));
   const context = createOpenContextFixture();
   const skillPath = join(tempDir, "SKILL.md");
   try {
@@ -689,10 +822,12 @@ test("loads external commands from the configured directory", async () => {
       "  schemaVersion: 1,",
       "  name: 'foo',",
       "  displayName: 'Foo',",
-      "  description: 'Foo command',",
+      "  description: 'Foo extension',",
+      "  commands: [{",
+      "  name: 'foo',",
       `  skill: { path: ${JSON.stringify(skillPath)} },`,
       "  commandReferences: [{",
-      "    category: 'Commands',",
+      "    category: 'Extensions',",
       "    usage: 'openruntime foo ping',",
       "    description: 'Runs Foo.'",
       "  }],",
@@ -705,14 +840,15 @@ test("loads external commands from the configured directory", async () => {
       "    stdout.write(`${JSON.stringify({ command: args.command, value })}\\n`);",
       "    return 0;",
       "  }",
+      "  }],",
       "};",
       ""
     ].join("\n"));
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_COMMANDS: "0",
-      OPENRUNTIME_COMMANDS_DIR: tempDir
+      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
+      OPENRUNTIME_EXTENSIONS_DIR: tempDir
     });
 
     assert.deepEqual(loaded.extensionLoadRecords.map((record) => ({
@@ -726,7 +862,7 @@ test("loads external commands from the configured directory", async () => {
         status: "loaded"
       }
     ]);
-    assert.match(loaded.cli.createHelpText(), /External Commands/);
+    assert.match(loaded.cli.createHelpText(), /External Extensions/);
     assert.match(loaded.cli.createHelpText(), /openruntime foo ping - Runs Foo\./);
     assert.doesNotMatch(loaded.cli.createHelpText(), /\[external: foo\]/);
     assert.match(loaded.cli.createHelpText(), /Runs Foo\./);
@@ -775,7 +911,7 @@ test("loads external commands from the configured directory", async () => {
 
     assert.equal(helpExitCode, 0);
     assert.equal(helpOutput.errorText(), "");
-    assert.match(helpOutput.text(), /External Commands:/);
+    assert.match(helpOutput.text(), /External Extensions:/);
     assert.match(helpOutput.text(), /openruntime foo ping - Runs Foo\./);
     assert.match(helpOutput.text(), /Skill: available for foo\./);
     assert.doesNotMatch(helpOutput.text(), /Examples:/);
@@ -788,14 +924,14 @@ test("loads external commands from the configured directory", async () => {
   }
 });
 
-test("skips conflicting or invalid external commands without crashing", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-conflict-"));
+test("skips conflicting or invalid external extensions without crashing", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-conflict-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
-      "  name: 'snapshot',",
-      "  async run() { return 0; }",
+      "  name: 'snapshot-extension',",
+      "  commands: [{ name: 'snapshot', async run() { return 0; } }],",
       "};",
       ""
     ].join("\n"));
@@ -803,8 +939,8 @@ test("skips conflicting or invalid external commands without crashing", async ()
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_COMMANDS: "0",
-      OPENRUNTIME_COMMANDS_DIR: tempDir
+      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
+      OPENRUNTIME_EXTENSIONS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -819,7 +955,7 @@ test("skips conflicting or invalid external commands without crashing", async ()
         status: "failed"
       },
       {
-        name: "snapshot",
+        name: "snapshot-extension",
         source: "external",
         status: "skipped"
       }
@@ -832,22 +968,22 @@ test("skips conflicting or invalid external commands without crashing", async ()
   }
 });
 
-test("honors disabled external commands", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-disabled-"));
+test("honors disabled external extensions", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-disabled-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
       "  name: 'foo',",
-      "  async run() { return 0; }",
+      "  hooks: { async detectStack() {} },",
       "};",
       ""
     ].join("\n"));
 
     const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_COMMANDS: "1",
-      OPENRUNTIME_COMMANDS_DIR: tempDir
+      OPENRUNTIME_DISABLE_EXTENSIONS: "1",
+      OPENRUNTIME_EXTENSIONS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -860,14 +996,14 @@ test("honors disabled external commands", async () => {
   }
 });
 
-test("warns when runCli skips an external command", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-commands-warning-"));
+test("warns when runCli skips an external extension", () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-warning-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
       "  schemaVersion: 1,",
-      "  name: 'snapshot',",
-      "  async run() { return 0; }",
+      "  name: 'snapshot-extension',",
+      "  commands: [{ name: 'snapshot', async run() { return 0; } }],",
       "};",
       ""
     ].join("\n"));
@@ -876,13 +1012,13 @@ test("warns when runCli skips an external command", () => {
       encoding: "utf8",
       env: {
         ...process.env,
-        OPENRUNTIME_DISABLE_COMMANDS: "0",
-        OPENRUNTIME_COMMANDS_DIR: tempDir
+        OPENRUNTIME_DISABLE_EXTENSIONS: "0",
+        OPENRUNTIME_EXTENSIONS_DIR: tempDir
       }
     });
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /Skipped external OpenRuntime command/);
+    assert.match(result.stderr, /Skipped external OpenRuntime extension/);
     assert.match(result.stderr, /conflicts with an existing command/);
   } finally {
     rmSync(tempDir, {
@@ -896,10 +1032,10 @@ test("rejects commands that conflict with built-in commands", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [
-        {
+        createCommandExtension({
           name: "snapshot",
           run: async () => 0
-        }
+        })
       ]
     }),
     /conflicts with a built-in command/
@@ -910,14 +1046,14 @@ test("rejects duplicate command names", () => {
   assert.throws(
     () => createOpenRuntimeCli({
       extensions: [
-        {
+        createCommandExtension({
           name: "demo",
           run: async () => 0
-        },
-        {
+        }, "one"),
+        createCommandExtension({
           name: "demo",
           run: async () => 0
-        }
+        }, "two")
       ]
     }),
     /registered more than once/

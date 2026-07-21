@@ -14,18 +14,18 @@ The package provides both `openruntime` and `opr` binaries. It currently include
 coverage commands required by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE`
 only when using a custom or locally built binary.
 
-Optional workflows are installed as command packages and then appear under the
+Optional workflows are installed as extension packages and then appear under the
 same `openruntime` executable:
 
 ```sh
-openruntime commands add @openruntime/command-code-usage
-openruntime commands add @openruntime/command-trobule-shooting
-openruntime commands add @openruntime/command-imitate
-openruntime commands add @openruntime/command-memory
-openruntime commands list
+openruntime extensions add @openruntime/command-code-usage
+openruntime extensions add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/command-imitate
+openruntime extensions add @openruntime/command-memory
+openruntime extensions list
 ```
 
-Use `commands update <package>` or `commands remove <package>` to manage them.
+Use `extensions update <package>` or `extensions remove <package>` to manage them.
 
 ## Minimal Development Loop
 
@@ -42,11 +42,11 @@ The browser commands also work with pages that do not integrate OpenRuntime. Str
 
 ## Memory analysis
 
-Install the memory command package first. It does not require a framework or
+Install the memory extension package first. It does not require a framework or
 build plugin:
 
 ```sh
-openruntime commands add @openruntime/command-memory
+openruntime extensions add @openruntime/command-memory
 ```
 
 ```sh
@@ -75,10 +75,10 @@ numbers. Use `--no-gc` only when the pre-cleanup instantaneous value is needed.
 
 Deeper chunk, source file, and package usage analysis requires build metadata
 from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`. Install the
-analysis command package first:
+analysis extension package first:
 
 ```sh
-openruntime commands add @openruntime/command-code-usage
+openruntime extensions add @openruntime/command-code-usage
 ```
 
 The command accepts
@@ -95,8 +95,8 @@ openruntime code-usage analyze \
 
 - [Coding-Agent Development Loop](https://github.com/2heal1/openruntime/blob/main/docs/agent-devloop.md)
 - [Browser Auth Profiles](https://github.com/2heal1/openruntime/blob/main/docs/auth-profiles.md)
-- [CLI Command Development](https://github.com/2heal1/openruntime/blob/main/docs/cli-extensions.md)
+- [CLI Extension Development](https://github.com/2heal1/openruntime/blob/main/docs/cli-extensions.md)
 - [Standalone Automation](https://github.com/2heal1/openruntime/blob/main/docs/cli-automation-scripts.md)
 - [Generated CLI Reference](https://github.com/2heal1/openruntime/blob/main/docs/cli-reference.md)
 
-External commands execute local code. Load only command files you trust. Auth profile files contain sensitive information and should stay in trusted environments.
+External extensions execute local code. Load only extensions you trust. Auth profile files contain sensitive information and should stay in trusted environments.

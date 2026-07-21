@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import command from "../dist/index.js";
+import extension from "../dist/extension.js";
 import { createOpenRuntimeCli } from "../../cli/dist/index.js";
 
-const cli = createOpenRuntimeCli({ extensions: [command] });
+const cli = createOpenRuntimeCli({ extensions: [extension] });
 const runCli = cli.run;
 
 function createOutput() {

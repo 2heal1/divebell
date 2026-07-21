@@ -15,7 +15,8 @@ export type {
   CliRunOptions,
   CreateOpenRuntimeCliOptions,
   OpenRuntimeCli,
-  OpenRuntimeCliExtension,
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition,
   OpenRuntimeCliWithExternalExtensions
 } from "./types/cli.js";
 
@@ -66,24 +67,24 @@ export {
 } from "./commands/help.js";
 export type * from "./commands/help.js";
 export type { OpenRuntimeCommandSkill } from "./commands/skill.js";
-export { defineCommand, validateCommand } from "./commands/definition.js";
+export { defineExtension, validateExtension } from "./commands/definition.js";
 export type * from "./commands/definition.js";
 export type { ExtensionLoadRecord } from "./commands/external.js";
 export {
-  OPENRUNTIME_COMMAND_PACKAGE_SCHEMA_VERSION,
-  OPENRUNTIME_COMMANDS_DIRECTORY_ENV,
-  addCommandPackage,
-  createNpmCommandPackageDownloader,
-  getInstalledCommandEntryPaths,
-  readInstalledCommandPackageRegistry,
-  removeCommandPackage,
-  resolveCommandsDirectory
+  OPENRUNTIME_EXTENSION_PACKAGE_SCHEMA_VERSION,
+  OPENRUNTIME_EXTENSIONS_DIRECTORY_ENV,
+  addExtensionPackage,
+  createNpmExtensionPackageDownloader,
+  getInstalledExtensionEntryPaths,
+  readInstalledExtensionPackageRegistry,
+  removeExtensionPackage,
+  resolveExtensionsDirectory
 } from "./commands/installed.js";
 export type {
-  CommandPackageDownloader,
-  InstalledCommandPackage,
-  InstalledCommandPackageRegistry,
-  OpenRuntimeCommandPackageManifest
+  ExtensionPackageDownloader,
+  InstalledExtensionPackage,
+  InstalledExtensionPackageRegistry,
+  OpenRuntimeExtensionPackageManifest
 } from "./commands/installed.js";
 export {
   createCommandOutput,

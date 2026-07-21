@@ -15,7 +15,7 @@ Keep JavaScript source maps in the same build output. Record the target page
 with `openruntime coverage`, then pass the exact build metadata path to the CLI:
 
 ```sh
-openruntime commands add @openruntime/command-code-usage
+openruntime extensions add @openruntime/command-code-usage
 openruntime code-usage analyze \
   --chunk-map /path/to/dist/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \

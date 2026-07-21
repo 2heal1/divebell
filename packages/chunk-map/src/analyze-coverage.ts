@@ -6,6 +6,7 @@ import { matchOpenRuntimeChunk } from "./match.js";
 import type {
   OpenRuntimeCodeUsageAsset,
   OpenRuntimeCodeUsageChunkResult,
+  OpenRuntimeCodeUsageCodeFileResult,
   OpenRuntimeCodeUsageInput,
   OpenRuntimeCodeUsagePackageResult,
   OpenRuntimeCodeUsagePhaseResult,
@@ -36,15 +37,26 @@ export function analyzeOpenRuntimeCodeUsage(
   input: OpenRuntimeCodeUsageInput
 ): OpenRuntimeCodeUsageReport {
   const assets = new Map(input.assets.map((asset) => [asset.file, asset]));
+  const phases = input.checkpoints.map((checkpoint, index) => analyzePhase(
+    input,
+    assets,
+    checkpoint.scripts,
+    checkpoint.label?.trim() || `checkpoint-${index + 1}`
+  ));
+  const observedCodeFiles = new Set(phases.flatMap((phase) =>
+    (phase.codeFiles ?? []).map((file) => file.file)));
   return {
     schemaVersion: 1,
     buildId: input.chunkMap.buildId,
-    phases: input.checkpoints.map((checkpoint, index) => analyzePhase(
-      input,
-      assets,
-      checkpoint.scripts,
-      checkpoint.label?.trim() || `checkpoint-${index + 1}`
-    ))
+    phases,
+    codeFiles: input.assets
+      .filter((asset) => observedCodeFiles.has(asset.file))
+      .map((asset) => ({
+        file: asset.file,
+        code: asset.code,
+        totalBytes: Buffer.byteLength(asset.code, "utf8")
+      }))
+      .sort((left, right) => left.file.localeCompare(right.file))
   };
 }
 
@@ -56,6 +68,7 @@ function analyzePhase(
 ): OpenRuntimeCodeUsagePhaseResult {
   const chunkTotals = new Map<string, OpenRuntimeCodeUsageChunkResult>();
   const sourceTotals = new Map<string, OpenRuntimeCodeUsageSourceResult>();
+  const codeFileTotals = new Map<string, OpenRuntimeCodeUsageCodeFileResult>();
   const unmatchedScriptUrls: string[] = [];
   const matchedScripts = new Map<string, {
     chunk: OpenRuntimeChunkMapChunk;
@@ -97,7 +110,15 @@ function analyzePhase(
     const mappedRanges = createMappedRanges(entry.asset);
     const byteOffsets = createByteOffsets(entry.asset.code);
     addChunkUsage(chunkTotals, entry.chunk, entry.file, mappedRanges, executedRanges, byteOffsets);
-    addSourceUsage(sourceTotals, entry.chunk, mappedRanges, executedRanges, byteOffsets);
+    addSourceUsage(sourceTotals, entry.chunk, entry.file, mappedRanges, executedRanges, byteOffsets);
+    addCodeFileUsage(
+      codeFileTotals,
+      entry.chunk,
+      entry.file,
+      entry.asset.code.length,
+      executedRanges,
+      byteOffsets
+    );
   }
 
   const sources = [...sourceTotals.values()]
@@ -111,8 +132,45 @@ function analyzePhase(
       .map(withChunkRatio)
       .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId)),
     sources,
-    packages: createPackageUsage(sources)
+    packages: createPackageUsage(sources),
+    codeFiles: [...codeFileTotals.values()]
+      .sort((left, right) => right.totalBytes - left.totalBytes || left.file.localeCompare(right.file))
   };
+}
+
+function addCodeFileUsage(
+  totals: Map<string, OpenRuntimeCodeUsageCodeFileResult>,
+  chunk: OpenRuntimeChunkMapChunk,
+  file: string,
+  codeLength: number,
+  executedRanges: OffsetRange[],
+  byteOffsets: number[]
+): void {
+  const existing = totals.get(file);
+  const mergedRanges = mergeRanges([
+    ...(existing?.executedRanges.map((range) => ({
+      start: range.startOffset,
+      end: range.endOffset
+    })) ?? []),
+    ...executedRanges
+  ]);
+  const totalBytes = byteOffsets[codeLength] ?? 0;
+  const usedBytes = intersectionByteSize(
+    { start: 0, end: codeLength },
+    mergedRanges,
+    byteOffsets
+  );
+  totals.set(file, {
+    file,
+    chunkIds: [...new Set([...(existing?.chunkIds ?? []), chunk.id])].sort(),
+    totalBytes,
+    usedBytes,
+    usedRatio: ratio(usedBytes, totalBytes),
+    executedRanges: mergedRanges.map((range) => ({
+      startOffset: range.start,
+      endOffset: range.end
+    }))
+  });
 }
 
 function createMappedRanges(asset: OpenRuntimeCodeUsageAsset): MappedRange[] {
@@ -162,6 +220,13 @@ function addChunkUsage(
       chunkId: chunk.id,
       files: [file],
       initial: chunk.initial,
+      entry: chunk.entry,
+      names: chunk.names,
+      entrypoints: chunk.entrypoints,
+      groups: chunk.groups,
+      parents: chunk.parents,
+      children: chunk.children,
+      splitRule: chunk.splitRule,
       totalBytes,
       usedBytes,
       usedRatio: null
@@ -176,6 +241,7 @@ function addChunkUsage(
 function addSourceUsage(
   totals: Map<string, OpenRuntimeCodeUsageSourceResult>,
   chunk: OpenRuntimeChunkMapChunk,
+  file: string,
   mappedRanges: MappedRange[],
   executedRanges: OffsetRange[],
   byteOffsets: number[]
@@ -189,6 +255,7 @@ function addSourceUsage(
         sourcePath: range.sourcePath,
         owner: module?.owner ?? unknownOwner(),
         chunkIds: [],
+        fileRanges: [],
         totalBytes: 0,
         usedBytes: 0,
         usedRatio: null
@@ -196,6 +263,31 @@ function addSourceUsage(
       totals.set(key, existing);
     }
     if (!existing.chunkIds.includes(chunk.id)) existing.chunkIds.push(chunk.id);
+    let fileRange = existing.fileRanges.find((item) => item.file === file);
+    if (fileRange === undefined) {
+      fileRange = { file, mappedRanges: [], executedRanges: [] };
+      existing.fileRanges.push(fileRange);
+    }
+    fileRange.mappedRanges = mergeRanges([
+      ...fileRange.mappedRanges.map((item) => ({
+        start: item.startOffset,
+        end: item.endOffset
+      })),
+      range
+    ]).map((item) => ({
+      startOffset: item.start,
+      endOffset: item.end
+    }));
+    fileRange.executedRanges = mergeRanges([
+      ...fileRange.executedRanges.map((item) => ({
+        start: item.startOffset,
+        end: item.endOffset
+      })),
+      ...intersectRanges(range, executedRanges)
+    ]).map((item) => ({
+      startOffset: item.start,
+      endOffset: item.end
+    }));
     existing.totalBytes += rangeByteSize(range, byteOffsets);
     existing.usedBytes += intersectionByteSize(range, executedRanges, byteOffsets);
   }
@@ -323,6 +415,18 @@ function intersectionByteSize(
   return total;
 }
 
+function intersectRanges(range: OffsetRange, executedRanges: OffsetRange[]): OffsetRange[] {
+  const result: OffsetRange[] = [];
+  for (const executed of executedRanges) {
+    if (executed.end <= range.start) continue;
+    if (executed.start >= range.end) break;
+    const start = Math.max(range.start, executed.start);
+    const end = Math.min(range.end, executed.end);
+    if (end > start) result.push({ start, end });
+  }
+  return result;
+}
+
 function rangeByteSize(range: OffsetRange, byteOffsets: number[]): number {
   return (byteOffsets[range.end] ?? 0) - (byteOffsets[range.start] ?? 0);
 }
@@ -395,6 +499,15 @@ function withSourceRatio(source: OpenRuntimeCodeUsageSourceResult): OpenRuntimeC
   return {
     ...source,
     chunkIds: source.chunkIds.sort(),
+    fileRanges: source.fileRanges
+      .map((item) => ({
+        ...item,
+        mappedRanges: item.mappedRanges.slice().sort((left, right) =>
+          left.startOffset - right.startOffset || left.endOffset - right.endOffset),
+        executedRanges: item.executedRanges.slice().sort((left, right) =>
+          left.startOffset - right.startOffset || left.endOffset - right.endOffset)
+      }))
+      .sort((left, right) => left.file.localeCompare(right.file)),
     usedRatio: ratio(source.usedBytes, source.totalBytes)
   };
 }

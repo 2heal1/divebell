@@ -6,6 +6,10 @@ import type {
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
+import {
+  startCodeUsageReportServer,
+  waitForCodeUsageReportServer
+} from "./server.js";
 
 export async function runCodeUsageCommand(options: CliExtensionRunOptions): Promise<number> {
   const action = options.args.command[1];
@@ -15,11 +19,14 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   if (action === "report") {
     return await runCodeUsageReportCommand(options.args, options.output);
   }
+  if (action === "serve") {
+    return await runCodeUsageServeCommand(options.args, options.stdout);
+  }
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
     kind: "validation",
-    message: "code-usage requires analyze or report.",
-    hint: "Run `openruntime code-usage analyze ...` or `openruntime code-usage report ...`."
+    message: "code-usage requires analyze, report, or serve.",
+    hint: "Run `openruntime code-usage analyze ...`, `openruntime code-usage report ...`, or `openruntime code-usage serve ...`."
   });
 }
 export { analyzeCodeUsageFiles } from "./code-usage.js";
@@ -28,6 +35,10 @@ export {
   openHtmlReport,
   writeCodeUsageReportHtml
 } from "./report.js";
+export {
+  startCodeUsageReportServer,
+  waitForCodeUsageReportServer
+} from "./server.js";
 export type * from "./types.js";
 
 async function runAnalyze(
@@ -125,6 +136,39 @@ export async function runCodeUsageReportCommand(
   return 0;
 }
 
+export async function runCodeUsageServeCommand(
+  args: ParsedCliArgs,
+  stdout: { write(chunk: string): void }
+): Promise<number> {
+  if (args.command.length !== 3) {
+    throw commandError({
+      code: "CODE_USAGE_SERVE_INPUT_REQUIRED",
+      kind: "validation",
+      message: "A code usage report JSON path is required.",
+      hint: "Run `openruntime code-usage serve <report.json>`."
+    });
+  }
+  const inputPath = args.command[2];
+  if (inputPath === undefined) throw new Error("Missing report input path.");
+  const port = parsePort(getOptionValue(args, "port"));
+  try {
+    const server = await startCodeUsageReportServer({
+      inputPath,
+      ...(port === undefined ? {} : { port })
+    });
+    stdout.write(`页面体验报告已启动：${server.url}\n`);
+    stdout.write("按 Ctrl+C 停止服务。\n");
+    await waitForCodeUsageReportServer(server);
+    return 0;
+  } catch (error) {
+    throw commandError({
+      code: "CODE_USAGE_SERVE_FAILED",
+      kind: "validation",
+      message: errorMessage(error)
+    });
+  }
+}
+
 function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {
   return args.options.get(name)?.at(-1);
 }
@@ -150,6 +194,19 @@ function optionalString<Name extends string>(
   value: string | undefined
 ): Record<Name, string> | Record<string, never> {
   return value === undefined ? {} : { [name]: value } as Record<Name, string>;
+}
+
+function parsePort(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 0 || port > 65_535) {
+    throw commandError({
+      code: "CODE_USAGE_SERVE_PORT_INVALID",
+      kind: "validation",
+      message: `Invalid report server port "${value}".`
+    });
+  }
+  return port;
 }
 
 function commandError(options: {

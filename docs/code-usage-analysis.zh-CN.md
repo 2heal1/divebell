@@ -228,6 +228,14 @@ pnpm exec openruntime code-usage report /tmp/code-usage-report.json
 命令会在 JSON 旁生成 HTML 并打开。只生成文件时使用 `--no-open`，自定义保存位置时
 使用 `--output <report.html>`。
 
+新的分析结果还会保留浏览器实际加载的 JavaScript 和对应的执行位置。生成 HTML 时，
+CLI 会在旁边创建一个 `<报告名>-code` 目录。主报告只展示文件入口；点击“查看”后才
+打开独立的代码页，已执行部分以蓝色高亮。超大文件每 2 MB 自动分段，并且滚动时只
+绘制当前可见的代码，避免把整份构建产物同时塞进主页面。
+
+移动或分享报告时，需要让 HTML 与它旁边的 `-code` 目录保持在一起。旧的分析 JSON
+没有具体执行位置，需要重新运行 `code-usage analyze` 后才能看到代码高亮。
+
 ## 报告怎么看
 
 1. 报告默认展示业务代码，先看首屏中体积大、使用比例低的源码文件。
@@ -249,8 +257,8 @@ pnpm exec openruntime code-usage report /tmp/code-usage-report.json
 - Chunk Map、JavaScript 和 source map 必须来自线上页面正在使用的同一次构建。
 - 报告中“无法匹配的文件”不为零时，先检查构建版本或第三方外部脚本。
 - 不要只根据相同文件名猜测归属，CLI 只接受唯一、准确的构建对应关系。
-- 代码记录会影响浏览器自身优化，因此它只用来判断代码是否执行；时间和内存需要关闭
-  记录后单独测量。
+- 代码记录会影响浏览器自身优化，因此示例会把加载和内存测量、代码执行记录拆成两个
+  独立的冷启动过程，再合并到同一份报告中。
 
 ## 仓库内的完整示例
 
@@ -262,12 +270,30 @@ pnpm --filter @openruntime/demo-modern-basic serve
 保持服务运行，在另一个终端执行：
 
 ```bash
-OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
-pnpm --filter @openruntime/demo-modern-basic verify:code-usage
-
-pnpm exec openruntime code-usage report \
-  demos/modern-basic/.code-usage-artifacts/report.json
+pnpm --filter @openruntime/demo-modern-basic verify:experience
+pnpm --filter @openruntime/demo-modern-basic report:serve
 ```
 
-示例脚本只负责定义“首屏”和“进入 Orders”这两个代表性操作。最终分析仍由
-OpenRuntime CLI 执行。
+报告地址为 `http://127.0.0.1:4173/`。页面内容由本地服务分批发送，概要先显示，
+分块、源码、依赖和代码内容随后逐步补齐。按 `Ctrl+C` 停止服务。
+
+示例默认固定使用项目自带的浏览器，避免终端里遗留的外部浏览器配置拖慢启动。
+需要验证指定的浏览器版本时，显式追加
+`-- --agent-browser /path/to/agent-browser`。检查结束后会生成分析数据，再通过本地服务查看报告。
+
+首屏默认等待 OpenRuntime 中的 `modern:route` 进入 `ready`，不再根据页面元素和固定
+等待时间猜测结束时机。应用声明了自己的 ready target 时，可以把目标 ID 传给脚本：
+
+```bash
+pnpm --filter @openruntime/demo-modern-basic verify:experience -- \
+  --ready-target business:ready:modern-demo
+```
+
+脚本会等待该目标进入 `ready` 后记录首屏。传入的目标需要由应用提前注册和更新。
+
+首页和 Orders 会分别独立冷启动，避免前一个页面的缓存影响后一个页面。报告先展示页面
+可用时间、ready 时 JS 内存、加载峰值和稳定内存，再关联 Chunk
+的首屏/异步关系、父子关系和代码使用情况。无法从现有构建关系完全确认的加载发起方会
+明确标为推断。Chunk 表格还会显示它对应的入口、动态导入或具体
+`optimization.splitChunks.cacheGroups` 配置路径。加载与内存默认各测量 3 次并展示
+中位数；追加 `-- --runs 1` 可以只测一次。

@@ -1,7 +1,8 @@
 // Shared contract between browser coverage, build plugins, and the CLI.
 import type {
   OpenRuntimeChunkMap,
-  OpenRuntimeChunkMapModuleOwner
+  OpenRuntimeChunkMapModuleOwner,
+  OpenRuntimeChunkMapSplitRule
 } from "./types.js";
 
 export interface OpenRuntimeCoverageRange {
@@ -41,6 +42,26 @@ export interface OpenRuntimeCodeUsageAsset {
   sourceMap: OpenRuntimeSourceMap;
 }
 
+export interface OpenRuntimeCodeUsageExecutedRange {
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface OpenRuntimeCodeUsageCodeFile {
+  file: string;
+  code: string;
+  totalBytes: number;
+}
+
+export interface OpenRuntimeCodeUsageCodeFileResult {
+  file: string;
+  chunkIds: string[];
+  totalBytes: number;
+  usedBytes: number;
+  usedRatio: number | null;
+  executedRanges: OpenRuntimeCodeUsageExecutedRange[];
+}
+
 export interface OpenRuntimeCodeUsageInput {
   chunkMap: OpenRuntimeChunkMap;
   checkpoints: OpenRuntimeCoverageCheckpoint[];
@@ -51,6 +72,11 @@ export interface OpenRuntimeCodeUsageSourceResult {
   sourcePath: string;
   owner: OpenRuntimeChunkMapModuleOwner;
   chunkIds: string[];
+  fileRanges: Array<{
+    file: string;
+    mappedRanges: OpenRuntimeCodeUsageExecutedRange[];
+    executedRanges: OpenRuntimeCodeUsageExecutedRange[];
+  }>;
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
@@ -71,6 +97,13 @@ export interface OpenRuntimeCodeUsageChunkResult {
   chunkId: string;
   files: string[];
   initial: boolean;
+  entry?: boolean;
+  names?: string[];
+  entrypoints?: string[];
+  groups?: string[];
+  parents?: string[];
+  children?: string[];
+  splitRule?: OpenRuntimeChunkMapSplitRule;
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
@@ -83,10 +116,12 @@ export interface OpenRuntimeCodeUsagePhaseResult {
   chunks: OpenRuntimeCodeUsageChunkResult[];
   sources: OpenRuntimeCodeUsageSourceResult[];
   packages: OpenRuntimeCodeUsagePackageResult[];
+  codeFiles?: OpenRuntimeCodeUsageCodeFileResult[];
 }
 
 export interface OpenRuntimeCodeUsageReport {
   schemaVersion: 1;
   buildId: string;
   phases: OpenRuntimeCodeUsagePhaseResult[];
+  codeFiles?: OpenRuntimeCodeUsageCodeFile[];
 }

@@ -168,26 +168,41 @@ pnpm --filter @openruntime/demo-modern-basic verify:memory
 pnpm --filter @openruntime/demo-modern-basic verify:memory -- --iterations 20 --artifact-dir /tmp/modern-basic-memory
 ```
 
-## 代码使用检查
+## 页面体验检查
 
 完整的首次接入、操作流程、报告解读和常见问题见
 [分块与代码使用分析](../../docs/code-usage-analysis.zh-CN.md)。
 
-先执行 `verify:chunk-map` 生成生产构建，并保持 demo 服务运行。然后使用包含代码
-记录能力的 agent-browser：
+先执行 `verify:chunk-map` 生成生产构建，并保持 demo 服务运行。检查默认使用项目
+自带的浏览器，避免终端中的外部浏览器配置影响启动速度：
 
 ```bash
-OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
-pnpm --filter @openruntime/demo-modern-basic verify:code-usage
+pnpm --filter @openruntime/demo-modern-basic verify:experience
 ```
 
-检查会分别记录首屏和进入 Orders 页面两个阶段，再把结果还原到业务文件、
-OpenRuntime/Modern.js 工作区包以及 React 等第三方包。完整结果保存在
-`.code-usage-artifacts/report.json`，摘要会列出体积最大的包和首屏低使用候选。
+如需验证指定版本，可执行
+`pnpm --filter @openruntime/demo-modern-basic verify:experience -- --agent-browser /path/to/agent-browser`。
 
-生成并打开可视化报告：
+首屏默认在 `modern:route` 进入 `ready` 后记录。应用提供了自己的 ready target 时，
+可以传入目标 ID：
 
 ```bash
-pnpm exec openruntime extensions add @openruntime/command-code-usage
-pnpm exec openruntime code-usage report demos/modern-basic/.code-usage-artifacts/report.json
+pnpm --filter @openruntime/demo-modern-basic verify:experience -- \
+  --ready-target business:ready:modern-demo
 ```
+
+检查会分别独立冷启动首页和 Orders 页面。每个页面先在不记录代码的情况下测量可用
+时间和 JS 内存，再单独记录代码执行，避免代码记录影响加载耗时。报告首先展示页面
+何时可用、ready 时内存、峰值内存和稳定内存，然后用 Chunk 加载原因与代码使用情况
+帮助定位问题。完整结果保存在 `.page-experience-artifacts/report.json`，可通过下方的本地服务查看。
+
+加载与内存默认各测量 3 次，报告展示中位数。临时快速检查可以追加 `-- --runs 1`。
+
+启动流式报告服务：
+
+```bash
+pnpm --filter @openruntime/demo-modern-basic report:serve
+```
+
+然后打开 `http://127.0.0.1:4173/`。页面会先显示概要，分块、源码、依赖和代码内容
+会在收到后逐步补充。按 `Ctrl+C` 停止报告服务。

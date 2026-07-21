@@ -15,6 +15,11 @@ const extension = {
         category: "Extensions",
         usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
         description: "Generate and open an interactive code-usage report; use --no-open to create the file only."
+      },
+      {
+        category: "Extensions",
+        usage: "openruntime code-usage serve <report.json> [--port <port>]",
+        description: "Start a local streaming report server for page experience and code-usage data."
       }
     ],
     run: async (options) => await (await import("./index.js")).runCodeUsageCommand(options)

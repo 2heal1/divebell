@@ -5,7 +5,10 @@ export { analyzeOpenRuntimeCodeUsage } from "./analyze-coverage.js";
 export { OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION } from "./types.js";
 export type {
   OpenRuntimeCodeUsageAsset,
+  OpenRuntimeCodeUsageCodeFile,
+  OpenRuntimeCodeUsageCodeFileResult,
   OpenRuntimeCodeUsageChunkResult,
+  OpenRuntimeCodeUsageExecutedRange,
   OpenRuntimeCodeUsageInput,
   OpenRuntimeCodeUsagePackageResult,
   OpenRuntimeCodeUsagePhaseResult,
@@ -26,5 +29,7 @@ export type {
   OpenRuntimeChunkMapModuleKind,
   OpenRuntimeChunkMapModuleOwner,
   OpenRuntimeChunkMapPackageSummary,
+  OpenRuntimeChunkMapSplitRule,
+  OpenRuntimeChunkMapSplitRuleKind,
   OpenRuntimeChunkMatchResult
 } from "./types.js";

@@ -16,7 +16,19 @@ test("emits a Rspack Chunk Map without depending on Modern.js", () => {
   const plugin = new OpenRuntimeChunkMapRspackPlugin();
   plugin.apply({
     context: "/repo",
-    options: { target: "web" },
+    options: {
+      target: "web",
+      optimization: {
+        splitChunks: {
+          cacheGroups: {
+            react: {
+              name: "lib-react",
+              test: /node_modules[\\/]react[\\/]/
+            }
+          }
+        }
+      }
+    },
     hooks: {
       thisCompilation: {
         tap(_name: string, handler: (compilation: unknown) => void) {
@@ -49,11 +61,18 @@ test("emits a Rspack Chunk Map without depending on Modern.js", () => {
       toJson: () => ({
         hash: "rspack-build-1",
         publicPath: "/",
-        assets: [],
-        chunks: [],
+        assets: [{ name: "static/js/lib-react.js", size: 1200 }],
+        chunks: [{
+          id: 1,
+          names: ["lib-react"],
+          files: ["static/js/lib-react.js"],
+          initial: true,
+          entry: false,
+          modules: []
+        }],
         modules: [],
         entrypoints: {},
-        namedChunkGroups: {}
+        namedChunkGroups: { index: { chunks: [1] } }
       })
     }),
     getAssets: () => [],
@@ -73,4 +92,10 @@ test("emits a Rspack Chunk Map without depending on Modern.js", () => {
   const chunkMap = JSON.parse(emittedValue ?? "");
   assert.equal(chunkMap.generator, "@openruntime/rspack-plugin");
   assert.equal(chunkMap.buildId, "rspack-build-1");
+  assert.deepEqual(chunkMap.chunks[0].splitRule, {
+    kind: "cache-group",
+    name: "react",
+    configPath: "optimization.splitChunks.cacheGroups.react",
+    inferred: false
+  });
 });

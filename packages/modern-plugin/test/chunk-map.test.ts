@@ -104,7 +104,7 @@ const stats = {
 test("creates a complete and deterministic chunk map", () => {
   const chunkMap = createOpenRuntimeChunkMap(stats, { context: "/repo" });
 
-  assert.equal(chunkMap.schemaVersion, 2);
+  assert.equal(chunkMap.schemaVersion, 3);
   assert.equal(chunkMap.buildId, "build-123");
   assert.equal(chunkMap.publicPath, "/assets/");
   assert.deepEqual(chunkMap.chunks.map((chunk) => chunk.id), ["1", "2"]);
@@ -113,6 +113,12 @@ test("creates a complete and deterministic chunk map", () => {
   assert.ok(main);
   assert.equal(main.initial, true);
   assert.equal(main.entry, true);
+  assert.deepEqual(main.splitRule, {
+    kind: "entry",
+    name: "Entry",
+    configPath: "entry",
+    inferred: false
+  });
   assert.deepEqual(main.entrypoints, ["main"]);
   assert.deepEqual(main.assets, [{
     file: "static/js/main.abc.js",
@@ -138,6 +144,12 @@ test("creates a complete and deterministic chunk map", () => {
   assert.ok(orders);
   assert.equal(orders.initial, false);
   assert.deepEqual(orders.groups, ["orders/page"]);
+  assert.deepEqual(orders.splitRule, {
+    kind: "dynamic-import",
+    name: "orders/page",
+    configPath: null,
+    inferred: true
+  });
   assert.equal(orders.modules[0]?.sourcePath, "/repo/src/routes/orders/page.tsx");
   assert.deepEqual(chunkMap.packages.map((item) => [item.kind, item.packageName]), [
     ["application", "example-app"],
@@ -255,6 +267,8 @@ test("attributes executed bytes to application and third-party sources", () => {
   const phase = report.phases[0];
   assert.ok(phase);
   assert.equal(phase.chunks[0]?.usedRatio, 0.5);
+  assert.equal(phase.chunks[0]?.entry, false);
+  assert.deepEqual(phase.chunks[0]?.groups, []);
   assert.deepEqual(phase.packages.map((item) => [
     item.packageName,
     item.usedBytes,
@@ -263,4 +277,17 @@ test("attributes executed bytes to application and third-party sources", () => {
     ["example-app", 5, 5],
     ["react", 0, 5]
   ]);
+  assert.deepEqual(report.codeFiles, [{
+    file: "static/js/main.js",
+    code: "aaaa\nbbbb\n",
+    totalBytes: 10
+  }]);
+  assert.deepEqual(phase.codeFiles, [{
+    file: "static/js/main.js",
+    chunkIds: ["1"],
+    totalBytes: 10,
+    usedBytes: 5,
+    usedRatio: 0.5,
+    executedRanges: [{ startOffset: 0, endOffset: 5 }]
+  }]);
 });

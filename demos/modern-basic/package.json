@@ -10,7 +10,8 @@
     "serve": "modern serve",
     "verify": "node ./scripts/verify-openruntime.mjs",
     "verify:memory": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/command-memory build && node ./scripts/run-command-package.mjs ../../packages/command-memory memory check --url http://localhost:19081/ --scenario ./scripts/memory-scenario.mjs --artifact-dir ./.memory-artifacts",
-    "verify:code-usage": "pnpm --dir ../../packages/modern-plugin build && pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/command-code-usage build && node ./scripts/verify-code-usage.mjs",
+    "verify:experience": "node ./scripts/verify-experience.mjs",
+    "report:serve": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/command-code-usage build && node ./scripts/run-command-package.mjs ../../packages/command-code-usage code-usage serve ./.page-experience-artifacts/report.json --port 4173",
     "verify:route-component-error": "node ./scripts/verify-route-component-error.mjs"
   },
   "dependencies": {

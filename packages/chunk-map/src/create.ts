@@ -7,7 +7,8 @@ import {
   type OpenRuntimeChunkMapCreateOptions,
   type OpenRuntimeChunkMapModule,
   type OpenRuntimeChunkMapModuleOwner,
-  type OpenRuntimeChunkMapPackageSummary
+  type OpenRuntimeChunkMapPackageSummary,
+  type OpenRuntimeChunkMapSplitRule
 } from "./types.js";
 
 interface StatsAssetLike {
@@ -112,6 +113,10 @@ function createChunk(input: {
     input.context
   );
   const files = uniqueStrings(input.chunk.files).sort();
+  const initial = typeof input.chunk.initial === "boolean"
+    ? input.chunk.initial
+    : entrypoints.length > 0;
+  const entry = input.chunk.entry === true;
 
   return {
     id,
@@ -121,16 +126,44 @@ function createChunk(input: {
       size: null,
       sourceMap: null
     }),
-    initial: typeof input.chunk.initial === "boolean"
-      ? input.chunk.initial
-      : entrypoints.length > 0,
-    entry: input.chunk.entry === true,
+    initial,
+    entry,
     entrypoints,
     groups,
     parents: idList(input.chunk.parents).sort(),
     children: idList(input.chunk.children).sort(),
+    splitRule: createBaseSplitRule({ entry, initial, groups }),
     modules,
     moduleSize: modules.reduce((total, module) => total + module.size, 0)
+  };
+}
+
+function createBaseSplitRule(input: {
+  entry: boolean;
+  initial: boolean;
+  groups: string[];
+}): OpenRuntimeChunkMapSplitRule {
+  if (input.entry) {
+    return {
+      kind: "entry",
+      name: "Entry",
+      configPath: "entry",
+      inferred: false
+    };
+  }
+  if (!input.initial && input.groups.length > 0) {
+    return {
+      kind: "dynamic-import",
+      name: input.groups.join(", "),
+      configPath: null,
+      inferred: true
+    };
+  }
+  return {
+    kind: "unknown",
+    name: "Unknown",
+    configPath: null,
+    inferred: true
   };
 }
 

@@ -1,0 +1,75 @@
+demos/modern-basic/README.md
+  s_9fd13cee690640::t_abd935e394ac9b 171,176-177,180-191,194-197,199-201,204,206-208
+demos/modern-basic/package.json
+  s_e16535c4011c47::t_1bebc317206c5a 13-14
+demos/modern-basic/scripts/verify-chunk-map.mjs
+  s_e16535c4011c47::t_f288f69c4522ab 87-95,128-131
+demos/modern-basic/scripts/verify-experience.mjs
+  s_e16535c4011c47::t_2a92c01b3529ad 2,14-16,18-19,21-26,28-30,32-97,99-102,104-433,467,473-492,499,519-526,529-533,540-547
+docs/chunk-map.zh-CN.md
+  s_e16535c4011c47::t_d103fae916a51a 15,58-59,93-94
+docs/code-usage-analysis.zh-CN.md
+  s_e16535c4011c47::t_9639bfbf0822f3 231-238,260-261,273-278,280-289,292-299
+packages/chunk-map/src/analyze-coverage.ts
+  s_e16535c4011c47::t_0c9912c2631d82 9,40-47,51-59,71,113-121,135-137,141-175,223-229,244,258,266-290,418-429,502-510
+packages/chunk-map/src/coverage-types.ts
+  s_e16535c4011c47::t_b88b47f9047c78 4-5,45-64,75-79,100-106,119,126
+packages/chunk-map/src/create.ts
+  s_e16535c4011c47::t_df14e86eaafd69 10-11,116-119,129-130,135,141-169
+packages/chunk-map/src/index.ts
+  s_e16535c4011c47::t_86ba7e1cc5d6fd 8-9,11,32-33
+packages/chunk-map/src/types.ts
+  s_e16535c4011c47::t_5cc77deeafa035 2,46-60,71
+packages/cli/src/features/auth/connector/extension-assets.ts
+  s_e16535c4011c47::t_88b97ef49dbab9 2,79-80,83,85-86,88,90
+packages/command-code-usage/assets/code-usage-file.html
+  s_e16535c4011c47::t_584232caba0bae 1-831
+packages/command-code-usage/assets/code-usage-report.html
+  s_e16535c4011c47::t_9c0fa421211586 6,27-28,131-137,157,166-287,289-295,325-328,334-355,377,380,391-393,408-409,411,414-480,518,530-534,543,552-558,568-570,583,585-591,609,621-622,626,635-741,743-765,768-842,844,855-859,866-867,870,874-882,884-885,893-914,946-949,955,962,966-976,978-992,995-1000,1017-1029,1032,1038-1170,1178-1182,1194,1202-1203,1206-1221,1234-1301
+packages/command-code-usage/src/extension.ts
+  s_9fd13cee690640::t_c793d49c8ee2f2 18-22
+packages/command-code-usage/src/index.ts
+  s_9fd13cee690640::t_f99633888baa38 9-12,22-24,28-29,38-41,139-171,199-211
+packages/command-code-usage/src/report.ts
+  s_e16535c4011c47::t_e14f1e41d066b9 2,4,8-9,12-68,78-86,88-92,97-100,104-108,110-116,118-137,140-155,157-159,168-433,500-503
+packages/command-code-usage/src/server.ts
+  s_e16535c4011c47::t_c7a55b8ad4090c 1-355
+packages/command-code-usage/src/types.ts
+  s_e16535c4011c47::t_cf4dc48a0d2de2 28-30
+packages/command-code-usage/test/command.test.mjs
+  s_e16535c4011c47::t_1e5aa76fe65d02 2,10-12,34,37-69,73-77,86-97,111-115,129-136,145-154,156-160,165,200-343,514-540
+packages/modern-plugin/src/chunk-map/index.ts
+  s_e16535c4011c47::t_754dd2fed91410 29-30
+packages/modern-plugin/test/chunk-map.test.ts
+  s_e16535c4011c47::t_4cc3c8fd50a266 107,116-121,147-152,270-271,280-292
+packages/rspack-plugin/src/index.ts
+  s_e16535c4011c47::t_3260dfdbf7e020 3,17-23,140,153-224
+packages/rspack-plugin/test/plugin.test.ts
+  s_e16535c4011c47::t_533d1b8ee9d7d0 19-31,64-72,75,95-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b028918266dfdb98d06ff08e3b392eef28386fe4",
+  "prompts": {},
+  "sessions": {
+    "s_9fd13cee690640": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f67-be02-7a41-a460-64a0b5a6d232",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e16535c4011c47": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8374-efc0-7351-8c80-414f35765ccf",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

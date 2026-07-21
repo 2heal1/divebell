@@ -1,0 +1,125 @@
+.changeset/config.json
+  s_b830c00526b422::t_08bb939e9a0797 13-16
+.github/workflows/pkg-pr-new.yml
+  s_b830c00526b422::t_0a2fb7574fc968 56-59
+.github/workflows/prepare-release.yml
+  s_b830c00526b422::t_05e29f725a5afa 87-90
+README.md
+  s_b830c00526b422::t_a6ec0c4ed4d90d 84-102,113-114,118-123,158
+README.zh-CN.md
+  s_b830c00526b422::t_020ff3da9a1451 76,84-102,118-123,152,157
+demos/modern-basic/package.json
+  s_b830c00526b422::t_1707bd88eb4276 12,14
+demos/modern-basic/scripts/run-extension-package.mjs
+  s_b830c00526b422::t_4508c548f63de6 14
+demos/modern-basic/scripts/verify-experience.mjs
+  s_b830c00526b422::t_9f6085e6577919 13-14,23,29,107-108,117,127-128
+docs/auth-profiles.md
+  s_b830c00526b422::t_505cc5802e8afd 3-4
+docs/auth-profiles.zh-CN.md
+  s_b830c00526b422::t_24110b2888f591 3-4
+docs/cli-automation-scripts.md
+  s_b830c00526b422::t_002bb583ed2ee0 25
+docs/cli-automation-scripts.zh-CN.md
+  s_b830c00526b422::t_9c216c085aa670 25
+docs/cli-reference.md
+  s_b830c00526b422::t_fd3753f4e0d870 3-4
+docs/cli-reference.zh-CN.md
+  s_b830c00526b422::t_f4eefe91501143 1-53
+docs/code-usage-analysis.md
+  s_b830c00526b422::t_456cb80e913e3c 1,3,5,7,9,11-13,15,17-25,27,29,31,33,35-37,39-42,44,46,48-49,51-62,64,66-80,82,84-87,89,91,93-99,101,103-109,111,113,115-117,119,121,124,127-129,131,133-138,140,142,144-158,160
+docs/code-usage-analysis.zh-CN.md
+  s_b830c00526b422::t_d148dce653616d 3-4,15
+docs/memory-analysis.md
+  s_b830c00526b422::t_9f5fbf7c1e93d9 1-90
+docs/memory-analysis.zh-CN.md
+  s_b830c00526b422::t_a0bce6600e22d9 3-4,9
+docs/record-browser-workflows.md
+  s_b830c00526b422::t_6af9cb0254661b 3-4,35
+docs/record-browser-workflows.zh-CN.md
+  s_b830c00526b422::t_1c24a56fa39590 3-4,35
+docs/release.md
+  s_b830c00526b422::t_6c1165e61b3129 1,3,5,7-9,11-17,19,21,23,25,27-45,54-57,60-64,67-74,77,79,81,83-86,88,90,92,94-98,100,102,104,107-109,114-118
+docs/release.zh-CN.md
+  s_b830c00526b422::t_fa9b2d139dd1a7 3,5,7,9,11-17,19,21,23-41,43,45,54-57,60-64,67-74,77,79,81,83-86,88,90,92,94-98,100,102,104,107-109,114-118
+docs/temporary-agent-browser-fork.md
+  s_b830c00526b422::t_a2c7001a6e7abe 1-35
+docs/temporary-agent-browser-fork.zh-CN.md
+  s_b830c00526b422::t_6f65b9e90bbae3 3-4,39
+package.json
+  s_b830c00526b422::t_468e84aec09820 14,26
+packages/cli/README.md
+  s_b830c00526b422::t_e90fcff0dc9835 12,44-47,58,73
+packages/extension-code-usage/README.md
+  s_b830c00526b422::t_1f280076a9e83a 1-53
+packages/extension-code-usage/package.json
+  s_b830c00526b422::t_befbff329179b4 2,8
+packages/extension-code-usage/src/report.ts
+  s_b830c00526b422::t_d987a78fc98603 159
+packages/extension-imitate/README.md
+  s_b830c00526b422::t_8c632b0006e3bd 1-57
+packages/extension-imitate/package.json
+  s_b830c00526b422::t_46cc0e0b75e7b5 2,8
+packages/extension-memory/README.md
+  s_b830c00526b422::t_640420a2206895 1-51
+packages/extension-memory/package.json
+  s_b830c00526b422::t_05b797a1caea45 2,8
+packages/extension-troubleshooting/README.md
+  s_b830c00526b422::t_2ae431cd36aa71 1-41
+packages/extension-troubleshooting/package.json
+  s_b830c00526b422::t_310d7bdcc5cca8 2,8
+packages/rspack-plugin/README.md
+  s_b830c00526b422::t_dc2466907e7708 18
+pnpm-lock.yaml
+  s_9fd13cee690640::t_df5319fb1240cf 173-180
+scripts/bump-recording-skill-runtime.mjs
+  s_b830c00526b422::t_9d7c2c7ac79e10 16-19
+scripts/clean.mjs
+  s_b830c00526b422::t_6a9c5722064419 12-15
+scripts/npm-release-utils.mjs
+  s_b830c00526b422::t_c0f76f911c8a3a 1-38
+scripts/npm-release-utils.test.mjs
+  s_b830c00526b422::t_21e67bbffa17e5 1-27
+scripts/npm-release.mjs
+  s_b830c00526b422::t_d7cae14d13a766 6-10,15,17-18,27-30,72-75,170,172-178
+scripts/sync-openruntime-cli-docs.mjs
+  s_b830c00526b422::t_a8fd6b001dd1b5 16-18,20-23,26-35,63-142
+scripts/validate-openruntime-release.mjs
+  s_b830c00526b422::t_a7a4c484bb4a8c 16-19
+skills/openruntime/scripts/workflow.mjs
+  s_b830c00526b422::t_825bc630395563 329
+skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
+  s_b830c00526b422::t_195b602e25d166 38,40-41
+skills/record-openruntime-workflow/references/openruntime-cli.md
+  s_b830c00526b422::t_dc787f50492bb6 90
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_b830c00526b422::t_1984b57191b344 143-144,148,154
+tsconfig.json
+  s_b830c00526b422::t_a1752cf0492f08 10-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9bcd0f7581bb6ce88d2624cbd5c6ef19d1804f07",
+  "prompts": {},
+  "sessions": {
+    "s_9fd13cee690640": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f67-be02-7a41-a460-64a0b5a6d232",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_b830c00526b422": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f840b-d51b-7571-b2c1-21c81ad579ff",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

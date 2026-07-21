@@ -84,6 +84,15 @@ if (!ordersChunk?.modules.some((module) =>
   module.sourcePath?.endsWith("/src/routes/orders/page.tsx"))) {
   throw new Error("Orders chunk was not mapped to its original route module.");
 }
+if (ordersChunk.splitRule?.kind !== "dynamic-import") {
+  throw new Error("Orders chunk was not mapped to its dynamic import rule.");
+}
+for (const [chunkName, ruleName] of [["lib-react", "react"], ["lib-router", "router"]]) {
+  const chunk = chunkMap.chunks.find((item) => item.names.includes(chunkName));
+  if (chunk?.splitRule?.configPath !== `optimization.splitChunks.cacheGroups.${ruleName}`) {
+    throw new Error(`${chunkName} was not mapped to cache group ${ruleName}.`);
+  }
+}
 
 assertPackage("application", "@openruntime/demo-modern-basic", "0.0.0");
 assertPackage("workspace", "@openruntime/core", openRuntimeVersion);
@@ -116,6 +125,10 @@ const usage = analyzeOpenRuntimeCodeUsage({
   assets: coverageAssets
 });
 const usagePackages = usage.phases[0]?.packages ?? [];
+const usageReactChunk = usage.phases[0]?.chunks.find((chunk) => chunk.names?.includes("lib-react"));
+if (usageReactChunk?.splitRule?.configPath !== "optimization.splitChunks.cacheGroups.react") {
+  throw new Error("Code usage report did not preserve the React split rule mapping.");
+}
 for (const packageName of ["@openruntime/demo-modern-basic", "react", "react-dom"]) {
   const packageUsage = usagePackages.find((item) => item.packageName === packageName);
   if (packageUsage === undefined || packageUsage.usedBytes <= 0) {

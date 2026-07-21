@@ -1,5 +1,5 @@
 // Framework-independent format emitted by supported build plugins.
-export const OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION = 2 as const;
+export const OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION = 3 as const;
 
 export type OpenRuntimeChunkMapModuleKind =
   | "application"
@@ -43,6 +43,21 @@ export interface OpenRuntimeChunkMapPackageSummary {
   moduleSize: number;
 }
 
+export type OpenRuntimeChunkMapSplitRuleKind =
+  | "entry"
+  | "runtime"
+  | "cache-group"
+  | "dynamic-import"
+  | "split-chunks"
+  | "unknown";
+
+export interface OpenRuntimeChunkMapSplitRule {
+  kind: OpenRuntimeChunkMapSplitRuleKind;
+  name: string;
+  configPath: string | null;
+  inferred: boolean;
+}
+
 export interface OpenRuntimeChunkMapChunk {
   id: string;
   names: string[];
@@ -53,6 +68,7 @@ export interface OpenRuntimeChunkMapChunk {
   groups: string[];
   parents: string[];
   children: string[];
+  splitRule: OpenRuntimeChunkMapSplitRule;
   modules: OpenRuntimeChunkMapModule[];
   moduleSize: number;
 }

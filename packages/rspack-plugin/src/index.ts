@@ -1,5 +1,6 @@
 import {
   createOpenRuntimeChunkMap,
+  type OpenRuntimeChunkMap,
   type OpenRuntimeChunkMapStats
 } from "@openruntime/chunk-map";
 
@@ -13,7 +14,13 @@ export interface OpenRuntimeChunkMapPluginOptions {
 
 interface CompilerLike {
   context?: string;
-  options: { target?: unknown };
+  options: {
+    target?: unknown;
+    optimization?: {
+      runtimeChunk?: unknown;
+      splitChunks?: unknown;
+    };
+  };
   hooks: {
     thisCompilation: {
       tap(name: string, handler: (compilation: CompilationLike) => void): void;
@@ -130,6 +137,7 @@ export class OpenRuntimeChunkMapRspackPlugin {
               generator: this.#generator
             }
           );
+          addSplitRuleDetails(chunkMap, compiler.options.optimization);
           const source = new runtime.sources.RawSource(`${JSON.stringify(chunkMap, null, 2)}\n`);
           if (compilation.getAsset(this.#filename) === undefined) {
             compilation.emitAsset(this.#filename, source);
@@ -140,6 +148,78 @@ export class OpenRuntimeChunkMapRspackPlugin {
       );
     });
   }
+}
+
+function addSplitRuleDetails(
+  chunkMap: OpenRuntimeChunkMap,
+  optimization: CompilerLike["options"]["optimization"]
+): void {
+  const runtimeName = readRuleName(optimization?.runtimeChunk);
+  const splitChunks = isRecord(optimization?.splitChunks) ? optimization.splitChunks : null;
+  const cacheGroups = splitChunks !== null && isRecord(splitChunks.cacheGroups)
+    ? Object.entries(splitChunks.cacheGroups)
+      .filter((entry): entry is [string, Record<string, unknown>] => isRecord(entry[1]))
+    : [];
+
+  for (const chunk of chunkMap.chunks) {
+    if (chunk.entry) continue;
+    if (runtimeName !== null && chunk.names.includes(runtimeName)) {
+      chunk.splitRule = {
+        kind: "runtime",
+        name: runtimeName,
+        configPath: "optimization.runtimeChunk",
+        inferred: false
+      };
+      continue;
+    }
+
+    const exactRule = cacheGroups.find(([, group]) => {
+      const name = typeof group.name === "string" ? group.name : null;
+      return name !== null && chunk.names.includes(name);
+    });
+    if (exactRule !== undefined) {
+      chunk.splitRule = {
+        kind: "cache-group",
+        name: exactRule[0],
+        configPath: cacheGroupPath(exactRule[0]),
+        inferred: false
+      };
+      continue;
+    }
+
+    const inferredRule = cacheGroups.find(([key, group]) =>
+      group.name === undefined && chunk.names.includes(key));
+    if (inferredRule !== undefined) {
+      chunk.splitRule = {
+        kind: "cache-group",
+        name: inferredRule[0],
+        configPath: cacheGroupPath(inferredRule[0]),
+        inferred: true
+      };
+      continue;
+    }
+
+    if (chunk.initial && splitChunks !== null) {
+      chunk.splitRule = {
+        kind: "split-chunks",
+        name: "splitChunks",
+        configPath: "optimization.splitChunks",
+        inferred: true
+      };
+    }
+  }
+}
+
+function readRuleName(value: unknown): string | null {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (!isRecord(value)) return null;
+  return typeof value.name === "string" && value.name.length > 0 ? value.name : null;
+}
+
+function cacheGroupPath(key: string): string {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)
+    ? `optimization.splitChunks.cacheGroups.${key}`
+    : `optimization.splitChunks.cacheGroups[${JSON.stringify(key)}]`;
 }
 
 function addCompilationDetails(

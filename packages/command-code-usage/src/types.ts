@@ -25,6 +25,9 @@ export interface CodeUsageReportWriteResult {
   inputPath: string;
   htmlPath: string;
   phaseCount: number;
+  codeFileCount: number;
+  codeViewerPageCount: number;
+  codeDirectory?: string;
 }
 
 export type HtmlReportOpener = (htmlPath: string) => Promise<void>;

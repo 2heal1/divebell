@@ -1,150 +1,313 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenRuntime 代码使用分析</title>
+  <title>OpenRuntime Page Experience Report</title>
   <style>
     :root {
-      color-scheme: light dark;
-      --background: #f7f7f5;
-      --foreground: #20201d;
+      color-scheme: light;
+      --background: #f7f8fa;
+      --foreground: #1d2025;
       --card: #ffffff;
-      --card-foreground: #20201d;
-      --muted: #ebeae5;
-      --muted-foreground: #66645e;
-      --primary: #295b4a;
+      --card-foreground: #1d2025;
+      --muted: #f0f2f5;
+      --muted-foreground: #727782;
+      --primary: #3f6fd8;
       --primary-foreground: #ffffff;
-      --accent: #e2eee9;
-      --accent-foreground: #173f32;
-      --border: #d9d7cf;
-      --input: #cfcdc5;
-      --ring: #397a65;
-      --destructive: #b33b32;
-      --series-used: #397a65;
-      --series-unused: #dedcd4;
-      --series-warning: #bf7b28;
-      --shadow: 0 12px 30px rgba(35, 35, 30, 0.08);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --background: #181a18;
-        --foreground: #f0f1ed;
-        --card: #222522;
-        --card-foreground: #f0f1ed;
-        --muted: #30332f;
-        --muted-foreground: #b2b6af;
-        --primary: #9cc9b7;
-        --primary-foreground: #173328;
-        --accent: #283d35;
-        --accent-foreground: #d8eee5;
-        --border: #3d413c;
-        --input: #555a53;
-        --ring: #9cc9b7;
-        --destructive: #ef9188;
-        --series-used: #80bca4;
-        --series-unused: #3b3f3a;
-        --series-warning: #e0a25b;
-        --shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
-      }
+      --accent: #eef3ff;
+      --accent-foreground: #23488f;
+      --border: #e4e7ec;
+      --input: #d8dde5;
+      --ring: #78a0ed;
+      --destructive: #bd4038;
+      --series-used: #5b83df;
+      --series-unused: #e9ecf1;
+      --series-warning: #c9822d;
+      --series-memory: #7594d8;
+      --series-ready: #2f6b57;
+      --shadow: 0 1px 2px rgba(18, 25, 38, 0.025);
     }
 
     * { box-sizing: border-box; }
+    html { min-width: 320px; }
     body {
       margin: 0;
+      min-height: 100vh;
       background: var(--background);
       color: var(--foreground);
       font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
     button, input, select { font: inherit; }
     button:focus-visible, input:focus-visible, select:focus-visible {
-      outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent);
+      outline: 3px solid color-mix(in srgb, var(--ring) 38%, transparent);
       outline-offset: 2px;
     }
     .shell {
       width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 30px 0 48px;
+      padding: 36px 0 52px;
     }
     .heading {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
       gap: 24px;
-      margin-bottom: 22px;
+      margin-bottom: 24px;
     }
     h1, h2, p { margin: 0; }
-    h1 { font-size: clamp(24px, 4vw, 38px); font-weight: 500; letter-spacing: -0.025em; }
-    h2 { font-size: 18px; font-weight: 500; }
+    h1 { font-size: clamp(25px, 4vw, 34px); font-weight: 600; letter-spacing: -0.035em; }
+    h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
     .subtitle, .meta, .hint { color: var(--muted-foreground); }
-    .subtitle { margin-top: 6px; }
-    .meta { max-width: 560px; text-align: right; font-size: 13px; overflow-wrap: anywhere; }
+    .subtitle { margin-top: 5px; font-size: 14px; }
+    .heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+    .meta {
+      max-width: 520px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--muted);
+      text-align: right;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    .language-toggle {
+      flex: 0 0 auto;
+      min-height: 30px;
+      border: 1px solid var(--input);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      padding: 4px 10px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+    .language-toggle:hover { border-color: #c9cfd9; color: var(--foreground); }
+    .view-tabs {
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .segmented { display: flex; gap: 24px; overflow-x: auto; scrollbar-width: none; }
+    .segmented::-webkit-scrollbar { display: none; }
+    .segmented button {
+      position: relative;
+      flex: 0 0 auto;
+      min-height: 42px;
+      border: 0;
+      background: transparent;
+      color: var(--muted-foreground);
+      padding: 8px 0 10px;
+      cursor: pointer;
+      transition: color 160ms ease;
+    }
+    .segmented button::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      border-radius: 999px;
+      background: transparent;
+      transform: scaleX(0.6);
+      transition: background-color 160ms ease, transform 160ms ease;
+    }
+    .segmented button:hover { color: var(--foreground); }
+    .segmented button[aria-pressed="true"] { color: var(--foreground); font-weight: 600; }
+    .segmented button[aria-pressed="true"]::after { background: var(--primary); transform: scaleX(1); }
     .controls {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto minmax(240px, 1fr) auto;
       align-items: end;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
+      gap: 10px;
+      margin-bottom: 16px;
     }
     label { display: grid; gap: 6px; color: var(--muted-foreground); font-size: 13px; }
     select, input {
-      min-height: 40px;
+      min-height: 38px;
       border: 1px solid var(--input);
-      border-radius: 9px;
+      border-radius: 8px;
       background: var(--card);
       color: var(--card-foreground);
-      padding: 8px 11px;
+      padding: 7px 10px;
+      box-shadow: var(--shadow);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
     }
-    input { min-width: min(280px, 100%); }
-    .segmented { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--muted); }
-    .segmented button {
-      min-height: 34px;
-      border: 0;
-      border-radius: 7px;
-      background: transparent;
-      color: var(--muted-foreground);
-      padding: 6px 12px;
-      cursor: pointer;
-    }
-    .segmented button[aria-pressed="true"] {
-      background: var(--primary);
-      color: var(--primary-foreground);
-    }
+    select:hover, input:hover { border-color: #c9cfd9; }
+    input { width: 100%; }
     .stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
+    .experience-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .experience-stat { min-width: 0; padding: 16px 18px; }
     .card {
       background: var(--card);
       color: var(--card-foreground);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 13px;
       box-shadow: var(--shadow);
     }
-    .stat { padding: 16px 18px; }
+    .stat { min-width: 0; padding: 15px 18px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: 0; }
     .stat-label { color: var(--muted-foreground); font-size: 13px; }
-    .stat-value { margin-top: 4px; font-size: clamp(22px, 4vw, 32px); font-weight: 500; }
+    .stat-value { margin-top: 3px; font-size: clamp(22px, 4vw, 29px); font-weight: 600; letter-spacing: -0.025em; }
     .stat-note { margin-top: 2px; color: var(--muted-foreground); font-size: 12px; }
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.75fr);
-      gap: 16px;
+      grid-template-columns: minmax(0, 1.75fr) minmax(260px, 0.72fr);
+      gap: 14px;
       align-items: start;
     }
-    .panel { padding: 18px; }
+    .panel { padding: 19px; }
+    .experience-panel { margin-bottom: 14px; }
     .panel-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
     .panel-head .hint { font-size: 12px; }
-    .rows { display: grid; gap: 8px; }
+    .panel-head > div .hint { margin-top: 2px; }
+    .mode-badge {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--muted);
+      color: var(--muted-foreground);
+      font-size: 12px;
+    }
+    .timeline { min-height: 112px; margin-top: 16px; }
+    .timeline-axis { position: relative; height: 96px; margin: 0 12px; }
+    .axis-line {
+      position: absolute;
+      top: 50px;
+      right: 0;
+      left: 0;
+      height: 1px;
+      background: var(--border);
+    }
+    .axis-tick {
+      position: absolute;
+      top: 50px;
+      height: 42px;
+      border-left: 1px solid var(--border);
+      color: var(--muted-foreground);
+      font-size: 11px;
+    }
+    .axis-tick span { position: absolute; top: 25px; transform: translateX(-50%); white-space: nowrap; }
+    .timeline-marker { position: absolute; top: 12px; bottom: 45px; width: 1px; background: var(--muted-foreground); }
+    .timeline-marker strong {
+      position: absolute;
+      top: -10px;
+      left: 5px;
+      white-space: nowrap;
+      color: var(--foreground);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .timeline-marker.ready { background: var(--series-ready); }
+    .timeline-marker.ready strong { right: 5px; left: auto; }
+    .resource-bar {
+      position: absolute;
+      top: 46px;
+      min-width: 3px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--series-used);
+      opacity: 0.72;
+    }
+    .timeline-legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted-foreground); font-size: 12px; }
+    .timeline-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .timeline-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--muted-foreground); }
+    .resource-dot { background: var(--series-used); }
+    .ready-dot { background: var(--series-ready); }
+    .memory-chart { min-height: 116px; margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .memory-chart svg { display: block; width: 100%; height: 104px; overflow: visible; }
+    .memory-area { fill: color-mix(in srgb, var(--series-memory) 13%, transparent); }
+    .memory-line { fill: none; stroke: var(--series-memory); stroke-width: 2; vector-effect: non-scaling-stroke; }
+    .memory-grid { stroke: var(--border); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    .memory-label { fill: var(--muted-foreground); font: 11px Inter, ui-sans-serif, sans-serif; }
+    .diagnosis-layout {
+      display: grid;
+      grid-template-columns: minmax(250px, 0.72fr) minmax(0, 1.55fr);
+      gap: 14px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+    .findings { display: grid; gap: 2px; }
+    .finding { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; padding: 10px 3px; border-bottom: 1px solid var(--border); }
+    .finding:last-child { border-bottom: 0; }
+    .finding-index { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+    .finding-title { font-size: 13px; font-weight: 500; }
+    .finding-note { margin-top: 2px; color: var(--muted-foreground); font-size: 12px; }
+    .chunk-table-wrap { overflow-x: auto; }
+    .chunk-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .chunk-table th { padding: 0 9px 8px; color: var(--muted-foreground); text-align: left; font-weight: 500; white-space: nowrap; }
+    .chunk-table td { padding: 10px 9px; border-top: 1px solid var(--border); vertical-align: top; }
+    .chunk-table td:first-child { max-width: 170px; overflow-wrap: anywhere; font-weight: 500; }
+    .chunk-table .number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .chunk-reason-note { display: block; margin-top: 2px; color: var(--muted-foreground); font-size: 11px; }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+    .section-title { display: inline-flex; align-items: center; gap: 7px; }
+    .info-tooltip { position: relative; display: inline-flex; }
+    .info-trigger {
+      display: inline-grid;
+      width: 18px;
+      height: 18px;
+      place-items: center;
+      border: 1px solid var(--input);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      padding: 0;
+      font-size: 11px;
+      line-height: 1;
+      cursor: help;
+    }
+    .info-content {
+      position: absolute;
+      z-index: 10;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      width: min(280px, calc(100vw - 32px));
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--foreground);
+      color: var(--card);
+      padding: 8px 10px;
+      box-shadow: 0 8px 24px rgba(18, 25, 38, 0.14);
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.45;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 4px);
+      transition: opacity 140ms ease, transform 140ms ease;
+    }
+    .info-tooltip:hover .info-content,
+    .info-trigger:focus-visible + .info-content {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .rows { display: grid; gap: 2px; }
+    .skeleton-row {
+      height: 53px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, var(--muted) 25%, #f8f9fb 42%, var(--muted) 60%);
+      background-size: 280% 100%;
+      animation: loading-sheen 1.4s ease-in-out infinite;
+    }
     .usage-row {
       width: 100%;
       display: grid;
@@ -152,62 +315,105 @@
       align-items: center;
       gap: 12px;
       border: 0;
-      border-radius: 9px;
+      border-radius: 8px;
       background: transparent;
       color: inherit;
-      padding: 9px;
+      padding: 10px 9px;
       text-align: left;
       cursor: pointer;
+      transition: background-color 160ms ease, color 160ms ease;
     }
-    .usage-row:hover, .usage-row[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); }
+    .usage-row:hover { background: color-mix(in srgb, var(--accent) 58%, transparent); }
+    .usage-row[aria-selected="true"] { background: var(--accent); color: var(--accent-foreground); }
     .row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row-kind { display: block; color: var(--muted-foreground); font-size: 11px; }
     .bar {
-      height: 13px;
+      height: 6px;
       display: flex;
       overflow: hidden;
       border-radius: 999px;
       background: var(--series-unused);
     }
-    .bar-used { height: 100%; background: var(--series-used); min-width: 0; }
+    .bar-used { height: 100%; background: var(--series-used); min-width: 0; border-radius: inherit; transition: width 220ms ease; }
     .row-value { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
     .empty { padding: 36px 12px; color: var(--muted-foreground); text-align: center; }
-    .detail { position: sticky; top: 16px; }
-    .detail-name { margin-top: 8px; overflow-wrap: anywhere; font-size: 18px; font-weight: 500; }
+    @keyframes loading-sheen {
+      from { background-position: 100% 0; }
+      to { background-position: 0 0; }
+    }
+    .detail { position: sticky; top: 16px; background: color-mix(in srgb, var(--card) 92%, var(--background)); }
+    .detail-name { margin-top: 7px; overflow-wrap: anywhere; font-size: 17px; font-weight: 600; }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
-    .detail-value { margin-top: 2px; font-size: 19px; font-variant-numeric: tabular-nums; }
+    .detail-value { margin-top: 2px; font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
     .detail-path { margin-top: 16px; color: var(--muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
+    .detail-code { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .detail-code[hidden] { display: none; }
+    .detail-code-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .detail-code-links { display: grid; gap: 6px; }
+    .code-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--foreground);
+      text-decoration: none;
+      font-size: 12px;
+      transition: border-color 160ms ease, background-color 160ms ease;
+    }
+    .code-link:hover { border-color: #c8ced8; background: var(--accent); }
+    .code-link-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .code-link-meta { flex: 0 0 auto; color: var(--muted-foreground); }
     .candidate {
       margin-top: 16px;
-      padding: 12px;
-      border-left: 3px solid var(--series-warning);
-      background: color-mix(in srgb, var(--series-warning) 10%, transparent);
-      border-radius: 0 8px 8px 0;
+      padding: 11px 12px;
+      border-left: 2px solid var(--series-warning);
+      background: color-mix(in srgb, var(--series-warning) 8%, transparent);
+      border-radius: 0 7px 7px 0;
       font-size: 13px;
     }
-    .legend { display: flex; gap: 14px; margin-top: 14px; color: var(--muted-foreground); font-size: 12px; }
+    .legend { display: flex; gap: 14px; margin-top: 15px; color: var(--muted-foreground); font-size: 12px; }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--series-used); }
     .swatch.unused { background: var(--series-unused); border: 1px solid var(--border); }
-    .phase-note { margin: 16px 0 0; color: var(--muted-foreground); font-size: 12px; }
+    .phase-note { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12px; }
     .error { padding: 24px; color: var(--destructive); }
 
     @media (max-width: 780px) {
       .heading { display: block; }
-      .meta { margin-top: 10px; text-align: left; }
+      .heading-actions { justify-content: flex-start; flex-wrap: wrap; margin-top: 10px; }
+      .meta { width: fit-content; text-align: left; }
+      .controls { grid-template-columns: 1fr 1fr; }
+      .search-control { grid-column: 1 / -1; grid-row: 1; }
       .stats { grid-template-columns: 1fr; }
+      .experience-stats { grid-template-columns: 1fr 1fr; }
+      .stat { border-right: 0; border-bottom: 1px solid var(--border); }
+      .stat:last-child { border-bottom: 0; }
+      .diagnosis-layout { grid-template-columns: 1fr; }
       .layout { grid-template-columns: 1fr; }
       .detail { position: static; }
     }
     @media (max-width: 560px) {
       .shell { width: min(100% - 20px, 1180px); padding-top: 20px; }
-      .controls { align-items: stretch; }
+      .heading { margin-bottom: 18px; }
+      .segmented { gap: 18px; }
+      .controls { grid-template-columns: 1fr; align-items: stretch; }
+      .search-control { grid-column: auto; grid-row: auto; }
       .controls label, .controls select, .controls input { width: 100%; }
-      .segmented { width: 100%; }
-      .segmented button { flex: 1; }
+      .experience-stats { grid-template-columns: 1fr; }
+      .section-heading { display: block; }
+      .section-heading .hint { margin-top: 3px; }
+      .panel { padding: 14px; }
       .usage-row { grid-template-columns: 1fr 72px; gap: 7px; }
       .usage-row .bar { grid-column: 1 / -1; grid-row: 2; }
       .row-value { grid-column: 2; grid-row: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
@@ -215,76 +421,160 @@
   <main id="openruntime-code-usage-report" class="shell">
     <header class="heading">
       <div>
-        <h1>代码使用分析</h1>
-        <p class="subtitle">查看业务源码、依赖包和分块在各阶段的实际执行体积</p>
+        <h1 data-i18n="reportTitle">Page experience report</h1>
+        <p class="subtitle" data-i18n="reportSubtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
       </div>
-      <p id="report-meta" class="meta"></p>
+      <div class="heading-actions">
+        <p id="report-meta" class="meta" data-i18n="loadingReport">Loading report…</p>
+        <button id="language-toggle" class="language-toggle" type="button">中文</button>
+      </div>
     </header>
 
-    <section class="controls" aria-label="分析范围">
-      <label>记录阶段
+    <section class="experience-stats" aria-label="Page experience summary" data-i18n-aria="experienceSummary">
+      <article class="card experience-stat">
+        <div class="stat-label" data-i18n="readyTime">Page ready time</div>
+        <div id="ready-duration" class="stat-value">—</div>
+        <div id="ready-duration-note" class="stat-note" data-i18n="readyTimeDefaultNote">From navigation start until the readiness target reaches ready</div>
+      </article>
+      <article class="card experience-stat">
+        <div class="stat-label" data-i18n="readyMemory">JavaScript heap when ready</div>
+        <div id="ready-memory" class="stat-value">—</div>
+        <div id="stable-memory-note" class="stat-note" data-i18n="stableMemoryDefault">After stabilization —</div>
+      </article>
+      <article class="card experience-stat">
+        <div class="stat-label" data-i18n="peakMemory">Peak JavaScript heap during loading</div>
+        <div id="peak-memory" class="stat-value">—</div>
+        <div id="peak-memory-note" class="stat-note" data-i18n="navigationToReady">Navigation start to ready</div>
+      </article>
+    </section>
+
+    <section class="card panel experience-panel" aria-label="Loading process" data-i18n-aria="loadingProcess">
+      <div class="panel-head">
+        <div>
+          <h2 data-i18n="loadingProcess">Loading process</h2>
+          <p class="hint" data-i18n="loadingProcessDescription">HTML response, JavaScript loading, readiness, and memory changes during navigation</p>
+        </div>
+        <span id="experience-mode" class="mode-badge" data-i18n="isolatedColdStart">Isolated cold start</span>
+      </div>
+      <div id="timeline" class="timeline"></div>
+      <div class="timeline-legend" aria-label="Timeline legend" data-i18n-aria="timelineLegend">
+        <span><i class="timeline-dot html-dot"></i><span data-i18n="htmlResponse">HTML response</span></span>
+        <span><i class="timeline-dot resource-dot"></i>JavaScript</span>
+        <span><i class="timeline-dot ready-dot"></i><span data-i18n="pageReady">Page ready</span></span>
+      </div>
+      <div id="memory-chart" class="memory-chart" aria-label="JavaScript heap changes" data-i18n-aria="memoryChanges"></div>
+    </section>
+
+    <section class="diagnosis-layout">
+      <article class="card panel">
+        <div class="panel-head">
+          <h2 data-i18n="metricSummary">Metric summary</h2>
+          <span class="hint" data-i18n="metricSummaryDescription">Loading, memory, and code usage results</span>
+        </div>
+        <div id="findings" class="findings"></div>
+      </article>
+      <article class="card panel">
+        <div class="panel-head">
+          <h2 data-i18n="chunkLoadingAnalysis">Chunk loading analysis</h2>
+          <span class="hint" data-i18n="chunkLoadingDescription">Initiator source: resource requests and build chunk relationships</span>
+        </div>
+        <div class="chunk-table-wrap">
+          <table class="chunk-table">
+            <thead><tr><th>Chunk</th><th data-i18n="initiator">Initiator</th><th data-i18n="splitRule">Split rule</th><th data-i18n="size">Size</th><th data-i18n="actualUsage">Actual usage</th></tr></thead>
+            <tbody id="chunk-diagnostics"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <div class="section-heading">
+      <div class="section-title">
+        <h2 data-i18n="codeUsageAnalysis">Code usage analysis</h2>
+        <span class="info-tooltip">
+          <button type="button" class="info-trigger" aria-label="About code usage analysis" data-i18n-aria="codeUsageHelpLabel" aria-describedby="code-usage-help">?</button>
+          <span id="code-usage-help" class="info-content" role="tooltip" data-i18n="codeUsageHelp">Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase.</span>
+        </span>
+      </div>
+    </div>
+
+    <section class="view-tabs" aria-label="View dimension" data-i18n-aria="viewDimension">
+      <div class="segmented" role="group" aria-label="View dimension" data-i18n-aria="viewDimension">
+        <button type="button" data-view="application" aria-pressed="true" data-i18n="applicationCode">Application code</button>
+        <button type="button" data-view="packages" aria-pressed="false" data-i18n="dependencies">Dependencies</button>
+        <button type="button" data-view="sources" aria-pressed="false" data-i18n="allFiles">All files</button>
+        <button type="button" data-view="chunks" aria-pressed="false" data-i18n="chunks">Chunks</button>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Analysis scope" data-i18n-aria="analysisScope">
+      <label><span data-i18n="recordedPhase">Recorded phase</span>
         <select id="phase-select"></select>
       </label>
-      <div class="segmented" role="group" aria-label="查看维度">
-        <button type="button" data-view="application" aria-pressed="true">业务代码</button>
-        <button type="button" data-view="packages" aria-pressed="false">依赖包</button>
-        <button type="button" data-view="sources" aria-pressed="false">全部文件</button>
-        <button type="button" data-view="chunks" aria-pressed="false">分块</button>
-      </div>
-      <label>排序
-        <select id="sort-select">
-          <option value="size">体积从大到小</option>
-          <option value="low-use">使用率从低到高</option>
-          <option value="used">已使用体积</option>
-        </select>
+      <label class="search-control"><span data-i18n="search">Search</span>
+        <input id="search-input" type="search" placeholder="Search source, package, or file path" data-i18n-placeholder="searchPlaceholder">
       </label>
-      <label>查找
-        <input id="search-input" type="search" placeholder="搜索源码、包名或文件路径">
+      <label><span data-i18n="sort">Sort</span>
+        <select id="sort-select">
+          <option value="size" data-i18n="sortBySize">Largest size</option>
+          <option value="low-use" data-i18n="sortByUsage">Lowest usage</option>
+          <option value="used" data-i18n="sortByExecuted">Executed size</option>
+        </select>
       </label>
     </section>
 
-    <section class="stats" aria-label="阶段概览">
-      <article class="card stat">
-        <div class="stat-label">已映射体积</div>
+    <section class="stats card" aria-label="Phase summary" data-i18n-aria="phaseSummary">
+      <article class="stat">
+        <div class="stat-label" data-i18n="mappedSize">Mapped size</div>
         <div id="total-size" class="stat-value">—</div>
         <div id="item-count" class="stat-note"></div>
       </article>
-      <article class="card stat">
-        <div class="stat-label">实际执行</div>
+      <article class="stat">
+        <div class="stat-label" data-i18n="actuallyExecuted">Actually executed</div>
         <div id="used-percent" class="stat-value">—</div>
         <div id="used-size" class="stat-note"></div>
       </article>
-      <article class="card stat">
-        <div class="stat-label">低使用候选</div>
+      <article class="stat">
+        <div class="stat-label" data-i18n="lowUsageItems">Low-usage items</div>
         <div id="candidate-count" class="stat-value">—</div>
-        <div class="stat-note">至少 1 KB，使用率低于 10%</div>
+        <div class="stat-note" data-i18n="lowUsageDefinition">At least 1 KB with less than 10% usage</div>
       </article>
     </section>
 
     <section class="layout">
       <article class="card panel">
         <div class="panel-head">
-          <h2 id="list-title">业务代码使用情况</h2>
+          <h2 id="list-title">Application code usage</h2>
           <span id="list-count" class="hint"></span>
         </div>
-        <div id="usage-rows" class="rows"></div>
-        <div class="legend" aria-label="图例">
-          <span><i class="swatch"></i>已执行</span>
-          <span><i class="swatch unused"></i>未执行</span>
+        <div id="usage-rows" class="rows" aria-busy="true">
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
         </div>
-        <p class="phase-note">不同阶段分别计数；后续阶段的 0% 表示该阶段没有再次执行，不代表此前从未使用。</p>
+        <div class="legend" aria-label="Legend" data-i18n-aria="legend">
+          <span><i class="swatch"></i><span data-i18n="executed">Executed</span></span>
+          <span><i class="swatch unused"></i><span data-i18n="notExecuted">Not executed</span></span>
+        </div>
+        <p class="phase-note" data-i18n="phaseNote">Phases are counted independently. A later phase at 0% means no code ran again in that phase, not that it was never used.</p>
       </article>
 
       <aside class="card panel detail" aria-live="polite">
-        <span id="detail-kind" class="hint">选择左侧项目查看详情</span>
+        <span id="detail-kind" class="hint" data-i18n="itemDetails">Item details</span>
         <div id="detail-name" class="detail-name">—</div>
         <div class="detail-grid">
-          <div><div class="hint">总体积</div><div id="detail-total" class="detail-value">—</div></div>
-          <div><div class="hint">已执行</div><div id="detail-used" class="detail-value">—</div></div>
-          <div><div class="hint">未执行</div><div id="detail-unused" class="detail-value">—</div></div>
-          <div><div class="hint">使用率</div><div id="detail-ratio" class="detail-value">—</div></div>
+          <div><div class="hint" data-i18n="totalSize">Total size</div><div id="detail-total" class="detail-value">—</div></div>
+          <div><div class="hint" data-i18n="executed">Executed</div><div id="detail-used" class="detail-value">—</div></div>
+          <div><div class="hint" data-i18n="notExecuted">Not executed</div><div id="detail-unused" class="detail-value">—</div></div>
+          <div><div class="hint" data-i18n="usageRatio">Usage ratio</div><div id="detail-ratio" class="detail-value">—</div></div>
         </div>
         <div id="detail-path" class="detail-path"></div>
+        <div id="detail-code" class="detail-code" hidden>
+          <div class="detail-code-head">
+            <span class="hint" data-i18n="executedCode">Executed code</span>
+            <span id="detail-code-count" class="hint"></span>
+          </div>
+          <div id="detail-code-links" class="detail-code-links"></div>
+        </div>
         <div id="candidate-note" class="candidate" hidden></div>
       </aside>
     </section>
@@ -294,6 +584,99 @@
   <script id="openruntime-report-data" type="application/json">__OPENRUNTIME_REPORT_DATA__</script>
   <script>
     (() => {
+      const chineseMessages = {
+        reportTitle: "页面体验报告",
+        reportSubtitle: "页面可用时间、JavaScript 堆内存、资源加载与代码使用数据",
+        loadingReport: "正在载入报告…",
+        experienceSummary: "页面体验概览",
+        readyTime: "页面可用时间",
+        readyTimeDefaultNote: "从页面访问开始到可用标识进入 ready",
+        readyMemory: "页面可用时 JavaScript 堆内存",
+        stableMemoryDefault: "页面稳定后 —",
+        peakMemory: "加载期间 JavaScript 堆内存峰值",
+        navigationToReady: "页面访问开始至可用状态",
+        loadingProcess: "加载过程",
+        loadingProcessDescription: "页面访问期间的 HTML 响应、JavaScript 加载、可用状态与内存变化",
+        isolatedColdStart: "独立冷启动",
+        timelineLegend: "时间线图例",
+        htmlResponse: "HTML 响应",
+        pageReady: "页面可用",
+        memoryChanges: "JavaScript 堆内存变化",
+        metricSummary: "指标摘要",
+        metricSummaryDescription: "加载、内存与代码使用结果",
+        chunkLoadingAnalysis: "Chunk 加载分析",
+        chunkLoadingDescription: "发起方来源：资源请求记录与构建分块关系",
+        initiator: "加载发起方（Initiator）",
+        splitRule: "分包规则",
+        size: "大小",
+        actualUsage: "实际使用",
+        codeUsageAnalysis: "代码使用分析",
+        codeUsageHelpLabel: "代码使用分析说明",
+        codeUsageHelp: "各阶段 JavaScript 的映射体积、已执行体积、未执行体积和使用率。",
+        viewDimension: "查看维度",
+        applicationCode: "业务代码",
+        dependencies: "依赖包",
+        allFiles: "全部文件",
+        chunks: "分块",
+        analysisScope: "分析范围",
+        recordedPhase: "记录阶段",
+        search: "查找",
+        searchPlaceholder: "搜索源码、包名或文件路径",
+        sort: "排序",
+        sortBySize: "体积从大到小",
+        sortByUsage: "使用率从低到高",
+        sortByExecuted: "已使用体积",
+        phaseSummary: "阶段概览",
+        mappedSize: "已映射体积",
+        actuallyExecuted: "实际执行",
+        lowUsageItems: "低使用项",
+        lowUsageDefinition: "至少 1 KB，使用率低于 10%",
+        legend: "图例",
+        executed: "已执行",
+        notExecuted: "未执行",
+        phaseNote: "不同阶段分别计数；后续阶段的 0% 表示该阶段没有再次执行，不代表此前从未使用。",
+        itemDetails: "项目详情",
+        totalSize: "总体积",
+        usageRatio: "使用率",
+        executedCode: "实际执行代码"
+      };
+      let locale = detectBrowserLocale();
+      const localized = (english, chinese, values = {}) => {
+        const template = locale === "zh" ? chinese : english;
+        return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+      };
+      const applyDocumentLocale = () => {
+        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+        document.title = locale === "zh"
+          ? "OpenRuntime 页面体验报告"
+          : "OpenRuntime Page Experience Report";
+        if (locale !== "zh") return;
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          element.textContent = chineseMessages[element.dataset.i18n] || element.textContent;
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          element.setAttribute("aria-label", chineseMessages[element.dataset.i18nAria] || element.getAttribute("aria-label") || "");
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+          element.setAttribute("placeholder", chineseMessages[element.dataset.i18nPlaceholder] || element.getAttribute("placeholder") || "");
+        });
+      };
+      applyDocumentLocale();
+      const languageToggle = document.getElementById("language-toggle");
+      languageToggle.textContent = locale === "zh" ? "English" : "中文";
+      languageToggle.setAttribute(
+        "aria-label",
+        locale === "zh" ? "切换到英文" : "Switch to Chinese"
+      );
+      languageToggle.addEventListener("click", switchLanguage);
+      window.addEventListener("languagechange", () => {
+        if (new URLSearchParams(location.search).has("lang")) return;
+        if (detectBrowserLocale() !== locale) location.reload();
+      });
+
+      const dataHref = __OPENRUNTIME_REPORT_DATA_HREF__;
+      const dataMode = __OPENRUNTIME_REPORT_DATA_MODE__;
+      const renderReport = (report) => {
       const root = document.getElementById("openruntime-code-usage-report");
       const dataElement = document.getElementById("openruntime-report-data");
       const phaseSelect = document.getElementById("phase-select");
@@ -304,21 +687,30 @@
       let state = { phaseIndex: 0, view: "application", selectedKey: null };
 
       try {
-        const report = JSON.parse(dataElement.textContent || "{}");
         const usage = report.usage && Array.isArray(report.usage.phases) ? report.usage : report;
         if (!usage || !Array.isArray(usage.phases) || usage.phases.length === 0) {
-          throw new Error("报告中没有可展示的阶段数据。请传入代码使用分析生成的 report.json。");
+          throw new Error(localized(
+            "The report has no phase data to display.",
+            "报告中没有可展示的阶段数据。"
+          ));
         }
+        const experience = report.experience && Array.isArray(report.experience.phases)
+          ? report.experience
+          : { mode: "unknown", phases: [] };
+        const codeViewers = Array.isArray(usage.codeViewers) ? usage.codeViewers : [];
+        const codeViewerByFile = new Map(codeViewers
+          .filter((viewer) => viewer && typeof viewer.file === "string" && typeof viewer.href === "string")
+          .map((viewer) => [viewer.file, viewer]));
 
         document.getElementById("report-meta").textContent = [
           report.url || "",
-          usage.buildId ? `构建 ${usage.buildId}` : ""
+          usage.buildId ? localized("Build {id}", "构建 {id}", { id: usage.buildId }) : ""
         ].filter(Boolean).join(" · ");
 
         usage.phases.forEach((phase, index) => {
           const option = document.createElement("option");
           option.value = String(index);
-          option.textContent = phase.label || `阶段 ${index + 1}`;
+          option.textContent = phase.label || localized("Phase {number}", "阶段 {number}", { number: index + 1 });
           phaseSelect.append(option);
         });
 
@@ -326,7 +718,7 @@
           if (state.view === "application") {
             return (phase.sources || [])
               .filter(isBusinessSource)
-              .map((item) => sourceItem(item));
+              .map((item) => sourceItem(item, codeViewers));
           }
           if (state.view === "packages") {
             return (phase.packages || [])
@@ -338,24 +730,288 @@
                 total: item.totalBytes || 0,
                 used: item.usedBytes || 0,
                 ratio: numberOrNull(item.usedRatio),
-                detail: `分块：${(item.chunkIds || []).join(", ") || "—"} · 文件数：${item.sourceCount || 0}`
+                detail: localized(
+                  "Chunks: {chunks} · Files: {count}",
+                  "分块：{chunks} · 文件数：{count}",
+                  { chunks: (item.chunkIds || []).join(", ") || "—", count: item.sourceCount || 0 }
+                ),
+                codeViewers: viewersForChunks(item.chunkIds || [])
               }));
           }
           if (state.view === "sources") {
-            return (phase.sources || []).map((item) => sourceItem(item));
+            return (phase.sources || []).map((item) => sourceItem(item, codeViewers));
           }
           return (phase.chunks || []).map((item) => ({
             key: `chunk:${item.chunkId}`,
-            name: `分块 ${item.chunkId}`,
-            kind: item.initial ? "首屏" : "异步",
+            name: localized("Chunk {id}", "分块 {id}", { id: item.chunkId }),
+            kind: item.initial ? localized("Initial", "首屏") : localized("Async", "异步"),
             total: item.totalBytes || 0,
             used: item.usedBytes || 0,
             ratio: numberOrNull(item.usedRatio),
-            detail: (item.files || []).join(" · ")
+            detail: (item.files || []).join(" · "),
+            codeViewers: (item.files || []).flatMap((file) => {
+              const viewer = codeViewerByFile.get(file);
+              return viewer ? [viewer] : [];
+            })
           }));
         };
 
+        const renderExperience = (phase, phaseExperience) => {
+          const readyDuration = numberOrNull(phaseExperience && phaseExperience.readyDurationMs);
+          const navigation = phaseExperience && phaseExperience.navigation || {};
+          const memory = phaseExperience && phaseExperience.memory || {};
+          document.getElementById("ready-duration").textContent = formatMilliseconds(readyDuration);
+          document.getElementById("ready-memory").textContent = formatBytes(numberOrNull(memory.atReadyBytes));
+          document.getElementById("peak-memory").textContent = formatBytes(numberOrNull(memory.peakBytes));
+          document.getElementById("ready-duration-note").textContent = phaseExperience
+            ? localized(
+              "End condition: {target}=ready{median}",
+              "结束条件：{target}=ready{median}",
+              {
+                target: phaseExperience.readyTarget || localized("readiness target", "可用标识"),
+                median: phaseExperience.runCount > 1
+                  ? localized(" · median of {count} runs", " · {count} 次中位数", { count: phaseExperience.runCount })
+                  : ""
+              }
+            )
+            : localized("Page ready time unavailable", "页面可用时间无数据");
+          document.getElementById("stable-memory-note").textContent = numberOrNull(memory.stableBytes) === null
+            ? localized("Memory after stabilization unavailable", "页面稳定后内存无数据")
+            : localized("After stabilization {memory}", "页面稳定后 {memory}", {
+              memory: formatBytes(memory.stableBytes)
+            });
+          document.getElementById("peak-memory-note").textContent = numberOrNull(memory.peakTimeMs) === null
+            ? localized("Navigation start to ready", "页面访问开始至可用状态")
+            : localized("Peak at {time}", "峰值时间 {time}", {
+              time: formatMilliseconds(memory.peakTimeMs)
+            });
+          document.getElementById("experience-mode").textContent = experience.mode === "cold-median"
+            ? localized(
+              "Isolated cold start · median of {count} runs",
+              "独立冷启动 · {count} 次中位数",
+              { count: experience.runCount || phaseExperience && phaseExperience.runCount || 3 }
+            )
+            : experience.mode === "cold"
+              ? localized("Isolated cold start", "独立冷启动")
+              : localized("Current browser session", "当前浏览器会话");
+          renderTimeline(phaseExperience);
+          renderMemoryChart(phaseExperience);
+          renderFindings(phase, phaseExperience);
+          renderChunkDiagnostics(phase, phaseExperience);
+        };
+
+        const renderTimeline = (phaseExperience) => {
+          const container = document.getElementById("timeline");
+          container.replaceChildren();
+          if (!phaseExperience) {
+            container.append(createEmpty(localized("Loading process unavailable", "加载过程无数据")));
+            return;
+          }
+          const navigation = phaseExperience.navigation || {};
+          const resources = scriptResources(phaseExperience);
+          const values = [
+            phaseExperience.readyDurationMs,
+            navigation.responseStartMs,
+            ...resources.map((resource) => resource.responseEndMs)
+          ].map(numberOrNull).filter((value) => value !== null);
+          const maximum = Math.max(1, ...values);
+          const axis = document.createElement("div");
+          axis.className = "timeline-axis";
+          const line = document.createElement("div");
+          line.className = "axis-line";
+          axis.append(line);
+
+          for (const ratio of [0, 0.25, 0.5, 0.75, 1]) {
+            const tick = document.createElement("div");
+            tick.className = "axis-tick";
+            tick.style.left = `${ratio * 100}%`;
+            const label = document.createElement("span");
+            label.textContent = formatMilliseconds(maximum * ratio);
+            tick.append(label);
+            axis.append(tick);
+          }
+
+          addTimelineMarker(axis, numberOrNull(navigation.responseStartMs), maximum, localized("HTML response", "HTML 响应"), "html");
+          addTimelineMarker(axis, numberOrNull(phaseExperience.readyDurationMs), maximum, localized("Page ready", "页面可用"), "ready");
+          for (const resource of resources.slice(0, 80)) {
+            const start = numberOrNull(resource.startTimeMs);
+            const end = numberOrNull(resource.responseEndMs);
+            if (start === null || end === null) continue;
+            const bar = document.createElement("span");
+            bar.className = "resource-bar";
+            bar.style.left = `${Math.max(0, Math.min(100, start / maximum * 100))}%`;
+            bar.style.width = `${Math.max(0.3, Math.min(100, (end - start) / maximum * 100))}%`;
+            bar.title = `${shortResourceName(resource.url)} · ${formatMilliseconds(end - start)}`;
+            axis.append(bar);
+          }
+          container.append(axis);
+        };
+
+        const renderMemoryChart = (phaseExperience) => {
+          const container = document.getElementById("memory-chart");
+          container.replaceChildren();
+          const samples = phaseExperience && Array.isArray(phaseExperience.memorySamples)
+            ? phaseExperience.memorySamples.filter((sample) =>
+              numberOrNull(sample && sample.timeMs) !== null && numberOrNull(sample && sample.usedBytes) !== null)
+            : [];
+          if (samples.length < 2) {
+            container.append(createEmpty(localized(
+              "Insufficient continuous memory data",
+              "连续内存数据不足"
+            )));
+            return;
+          }
+          const width = 900;
+          const height = 104;
+          const top = 8;
+          const bottom = 21;
+          const namespace = "http://www.w3.org/2000/svg";
+          const svg = document.createElementNS(namespace, "svg");
+          svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+          svg.setAttribute("role", "img");
+          const values = samples.map((sample) => sample.usedBytes);
+          const minimum = Math.min(...values);
+          const maximum = Math.max(...values);
+          const timeMaximum = Math.max(1, ...samples.map((sample) => sample.timeMs));
+          const range = Math.max(1, maximum - minimum);
+          const points = samples.map((sample) => ({
+            x: sample.timeMs / timeMaximum * width,
+            y: top + (1 - (sample.usedBytes - minimum) / range) * (height - top - bottom)
+          }));
+          for (const ratio of [0, 0.5, 1]) {
+            const grid = document.createElementNS(namespace, "line");
+            const y = top + ratio * (height - top - bottom);
+            grid.setAttribute("x1", "0");
+            grid.setAttribute("x2", String(width));
+            grid.setAttribute("y1", String(y));
+            grid.setAttribute("y2", String(y));
+            grid.setAttribute("class", "memory-grid");
+            svg.append(grid);
+          }
+          const linePath = points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+          const area = document.createElementNS(namespace, "path");
+          area.setAttribute("class", "memory-area");
+          area.setAttribute("d", `${linePath} L${width},${height - bottom} L0,${height - bottom} Z`);
+          const line = document.createElementNS(namespace, "path");
+          line.setAttribute("class", "memory-line");
+          line.setAttribute("d", linePath);
+          svg.append(area, line);
+          addSvgLabel(svg, 0, height - 4, "0 ms", "start");
+          addSvgLabel(svg, width, height - 4, formatMilliseconds(timeMaximum), "end");
+          addSvgLabel(svg, width, top + 10, formatBytes(maximum), "end");
+          addSvgLabel(svg, width, height - bottom - 4, formatBytes(minimum), "end");
+          container.append(svg);
+        };
+
+        const renderFindings = (phase, phaseExperience) => {
+          const container = document.getElementById("findings");
+          container.replaceChildren();
+          const total = (phase.chunks || []).reduce((sum, chunk) => sum + (chunk.totalBytes || 0), 0);
+          const used = (phase.chunks || []).reduce((sum, chunk) => sum + (chunk.usedBytes || 0), 0);
+          const unused = Math.max(0, total - used);
+          const ready = numberOrNull(phaseExperience && phaseExperience.readyDurationMs);
+          if (ready !== null) {
+            appendFinding(
+              container,
+              localized("Page ready in {time}", "页面可用时间 {time}", {
+                time: formatMilliseconds(ready)
+              }),
+              localized("Measurement ended at {target}=ready.", "测量结束条件：{target}=ready。", {
+                target: phaseExperience.readyTarget || localized("readiness target", "可用标识")
+              })
+            );
+          } else {
+            appendFinding(
+              container,
+              localized("Page ready time unavailable", "页面可用时间无数据"),
+              localized("This report does not include page ready time.", "本次报告未包含页面可用时间。")
+            );
+          }
+          appendFinding(
+            container,
+            localized(
+              "JavaScript {total}, {unused} not executed",
+              "JavaScript {total}，未执行 {unused}",
+              { total: formatBytes(total), unused: formatBytes(unused) }
+            ),
+            total === 0
+              ? localized("No matching build output was found.", "没有匹配到构建产物。")
+              : localized("{ratio} executed in this phase.", "本阶段执行比例 {ratio}。", {
+                ratio: formatPercent(used / total)
+              })
+          );
+          const memory = phaseExperience && phaseExperience.memory || {};
+          const peak = numberOrNull(memory.peakBytes);
+          const stable = numberOrNull(memory.stableBytes);
+          appendFinding(
+            container,
+            peak === null
+              ? localized("JavaScript heap peak unavailable", "加载期间 JavaScript 堆内存无数据")
+              : localized("Peak JavaScript heap {memory}", "JavaScript 堆内存峰值 {memory}", {
+                memory: formatBytes(peak)
+              }),
+            stable === null
+              ? localized(
+                "This report does not include memory after stabilization.",
+                "本次报告未包含页面稳定后的内存。"
+              )
+              : localized(
+                "JavaScript heap after stabilization {memory}.",
+                "页面稳定后 JavaScript 堆内存 {memory}。",
+                { memory: formatBytes(stable) }
+              )
+          );
+        };
+
+        const renderChunkDiagnostics = (phase, phaseExperience) => {
+          const body = document.getElementById("chunk-diagnostics");
+          body.replaceChildren();
+          const chunks = (phase.chunks || []).slice().sort((left, right) =>
+            (right.totalBytes || 0) - (left.totalBytes || 0));
+          if (chunks.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 5;
+            cell.className = "empty";
+            cell.textContent = localized("No matching chunks", "没有匹配到 Chunk");
+            row.append(cell);
+            body.append(row);
+            return;
+          }
+          const resources = scriptResources(phaseExperience);
+          for (const chunk of chunks.slice(0, 16)) {
+            const resource = findChunkResource(chunk, resources);
+            const reason = chunkInitiator(chunk, phaseExperience, resource);
+            const row = document.createElement("tr");
+            const name = document.createElement("td");
+            name.textContent = chunkDisplayName(chunk);
+            const why = document.createElement("td");
+            why.textContent = reason.title;
+            const timing = document.createElement("span");
+            timing.className = "chunk-reason-note";
+            timing.textContent = resource
+              ? localized("Started at {start}, loaded in {duration}", "{start} 开始，加载 {duration}", {
+                start: formatMilliseconds(resource.startTimeMs),
+                duration: formatMilliseconds(resource.durationMs)
+              })
+              : localized("No individual network record", "未找到单独的网络记录");
+            why.append(timing);
+            const split = document.createElement("td");
+            split.textContent = chunkSplitRuleLabel(chunk);
+            const size = document.createElement("td");
+            size.className = "number";
+            size.textContent = formatBytes(chunk.totalBytes || 0);
+            const usageCell = document.createElement("td");
+            usageCell.className = "number";
+            usageCell.textContent = formatPercent(numberOrNull(chunk.usedRatio));
+            row.append(name, why, split, size, usageCell);
+            body.append(row);
+          }
+        };
+
+        let renderVersion = 0;
         const render = () => {
+          const version = ++renderVersion;
           const phase = usage.phases[state.phaseIndex];
           const query = searchInput.value.trim().toLocaleLowerCase();
           const allItems = getItems(phase);
@@ -366,29 +1022,90 @@
           const used = allItems.reduce((sum, item) => sum + item.used, 0);
           const candidates = allItems.filter(isCandidate);
 
+          renderExperience(
+            phase,
+            experience.phases.find((item) => item && item.label === phase.label) || null
+          );
+
           document.getElementById("total-size").textContent = formatBytes(total);
-          document.getElementById("item-count").textContent = `${allItems.length} 个${viewLabel(state.view)}`;
+          document.getElementById("item-count").textContent = localized(
+            "{count} {items}",
+            "{count} 个{items}",
+            { count: allItems.length, items: viewLabel(state.view) }
+          );
           document.getElementById("used-percent").textContent = formatPercent(total === 0 ? null : used / total);
-          document.getElementById("used-size").textContent = `${formatBytes(used)} 已执行`;
+          document.getElementById("used-size").textContent = localized(
+            "{size} executed",
+            "{size} 已执行",
+            { size: formatBytes(used) }
+          );
           document.getElementById("candidate-count").textContent = String(candidates.length);
-          document.getElementById("list-title").textContent = `${viewLabel(state.view)}使用情况`;
-          document.getElementById("list-count").textContent = `显示 ${Math.min(items.length, 40)} / ${items.length}`;
+          document.getElementById("list-title").textContent = localized(
+            "{items} usage",
+            "{items}使用情况",
+            { items: viewLabel(state.view) }
+          );
+          const visibleItems = items.slice(0, 40);
+          document.getElementById("list-count").textContent = localized(
+            "Preparing 0 / {count}",
+            "准备显示 0 / {count}",
+            { count: visibleItems.length }
+          );
 
           rowsElement.replaceChildren();
-          const visibleItems = items.slice(0, 40);
+          rowsElement.setAttribute("aria-busy", "true");
           if (visibleItems.length === 0) {
             const empty = document.createElement("div");
             empty.className = "empty";
-            empty.textContent = "没有符合条件的结果";
+            const unmatchedCount = Array.isArray(phase.unmatchedScriptUrls)
+              ? phase.unmatchedScriptUrls.length
+              : 0;
+            const hasNoUsageData = (phase.chunks || []).length === 0
+              && (phase.sources || []).length === 0
+              && (phase.packages || []).length === 0;
+            empty.textContent = hasNoUsageData && unmatchedCount > 0
+              ? localized(
+                "Code data was not generated because the current page does not match the analyzed build. {count} files could not be mapped. Regenerate the report from the production page.",
+                "未生成代码数据：当前页面与分析使用的构建不一致，{count} 个文件无法对应。请使用生产页面重新生成报告。",
+                { count: unmatchedCount }
+              )
+              : localized("No matching results", "没有符合条件的结果");
             rowsElement.append(empty);
+            rowsElement.setAttribute("aria-busy", "false");
+            document.getElementById("list-count").textContent = localized("Showing 0 / 0", "显示 0 / 0");
             showDetail(null);
             return;
           }
           if (!visibleItems.some((item) => item.key === state.selectedKey)) {
             state.selectedKey = visibleItems[0].key;
           }
-          visibleItems.forEach((item) => rowsElement.append(createRow(item)));
           showDetail(visibleItems.find((item) => item.key === state.selectedKey) || visibleItems[0]);
+          appendRowsInBatches(visibleItems, version);
+        };
+
+        const appendRowsInBatches = (items, version) => {
+          let index = 0;
+          const appendBatch = () => {
+            if (version !== renderVersion) return;
+            const fragment = document.createDocumentFragment();
+            const end = Math.min(items.length, index + 10);
+            while (index < end) {
+              fragment.append(createRow(items[index]));
+              index += 1;
+            }
+            rowsElement.append(fragment);
+            document.getElementById("list-count").textContent = localized(
+              "Showing {current} / {total}",
+              "显示 {current} / {total}",
+              { current: index, total: items.length }
+            );
+            if (index < items.length) {
+              requestAnimationFrame(appendBatch);
+            } else {
+              rowsElement.setAttribute("aria-busy", "false");
+            }
+          };
+          requestAnimationFrame(appendBatch);
         };
 
         const createRow = (item) => {
@@ -396,7 +1113,11 @@
           button.type = "button";
           button.className = "usage-row";
           button.setAttribute("aria-selected", String(item.key === state.selectedKey));
-          button.setAttribute("aria-label", `${item.name}，使用率 ${formatPercent(item.ratio)}`);
+          button.setAttribute("aria-label", localized(
+            "{name}, usage ratio {ratio}",
+            "{name}，使用率 {ratio}",
+            { name: item.name, ratio: formatPercent(item.ratio) }
+          ));
 
           const name = document.createElement("span");
           name.className = "row-name";
@@ -420,25 +1141,68 @@
           button.append(name, bar, value);
           button.addEventListener("click", () => {
             state.selectedKey = item.key;
-            render();
+            rowsElement.querySelectorAll(".usage-row[aria-selected=\"true\"]")
+              .forEach((row) => row.setAttribute("aria-selected", "false"));
+            button.setAttribute("aria-selected", "true");
+            showDetail(item);
           });
           return button;
         };
 
         const showDetail = (item) => {
-          document.getElementById("detail-kind").textContent = item ? item.kind : "选择左侧项目查看详情";
+          document.getElementById("detail-kind").textContent = item
+            ? item.kind
+            : localized("Item details", "项目详情");
           document.getElementById("detail-name").textContent = item ? item.name : "—";
           document.getElementById("detail-total").textContent = item ? formatBytes(item.total) : "—";
           document.getElementById("detail-used").textContent = item ? formatBytes(item.used) : "—";
           document.getElementById("detail-unused").textContent = item ? formatBytes(Math.max(0, item.total - item.used)) : "—";
           document.getElementById("detail-ratio").textContent = item ? formatPercent(item.ratio) : "—";
           document.getElementById("detail-path").textContent = item ? item.detail : "";
+          showCodeViewers(item && Array.isArray(item.codeViewers) ? item.codeViewers : []);
           const note = document.getElementById("candidate-note");
           note.hidden = !item || !isCandidate(item);
           note.textContent = item && isCandidate(item)
-            ? `该项体积 ${formatBytes(item.total)}，本阶段只执行 ${formatPercent(item.ratio)}。建议检查是否能移出首屏或改为按需加载。`
+            ? localized(
+              "This item is {size} with {ratio} executed in this phase, so it meets the low-usage criteria.",
+              "该项体积 {size}，本阶段执行比例 {ratio}，符合低使用项条件。",
+              { size: formatBytes(item.total), ratio: formatPercent(item.ratio) }
+            )
             : "";
         };
+
+        const showCodeViewers = (viewers) => {
+          const section = document.getElementById("detail-code");
+          const links = document.getElementById("detail-code-links");
+          links.replaceChildren();
+          section.hidden = viewers.length === 0;
+          document.getElementById("detail-code-count").textContent = viewers.length > 1
+            ? localized("{count} files", "{count} 个文件", { count: viewers.length })
+            : "";
+          viewers.forEach((viewer) => {
+            const link = document.createElement("a");
+            link.className = "code-link";
+            link.href = withLanguageContext(viewer.href);
+            link.target = "_blank";
+            link.rel = "noopener";
+            const name = document.createElement("span");
+            name.className = "code-link-name";
+            name.textContent = shortPath(viewer.file);
+            const meta = document.createElement("span");
+            meta.className = "code-link-meta";
+            meta.textContent = viewer.partCount > 1
+              ? localized("{count} sections ↗", "{count} 段 ↗", { count: viewer.partCount })
+              : localized("View ↗", "查看 ↗");
+            link.append(name, meta);
+            links.append(link);
+          });
+        };
+
+        function viewersForChunks(chunkIds) {
+          const expected = new Set(chunkIds.map(String));
+          return codeViewers.filter((viewer) =>
+            Array.isArray(viewer.chunkIds) && viewer.chunkIds.some((chunkId) => expected.has(String(chunkId))));
+        }
 
         phaseSelect.addEventListener("change", () => {
           state.phaseIndex = Number(phaseSelect.value);
@@ -456,14 +1220,182 @@
           ));
           render();
         }));
+        let streamRenderFrame = 0;
+        globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__ = (event) => {
+          const phase = usage.phases[Number(event && event.phaseIndex)];
+          const field = event && event.field;
+          if (!phase || !["chunks", "sources", "packages"].includes(field) || !Array.isArray(event.items)) return;
+          if (!Array.isArray(phase[field])) phase[field] = [];
+          phase[field].push(...event.items);
+          if (Number(event.phaseIndex) !== state.phaseIndex || streamRenderFrame !== 0) return;
+          streamRenderFrame = requestAnimationFrame(() => {
+            streamRenderFrame = 0;
+            render();
+          });
+        };
         render();
       } catch (error) {
-        document.querySelectorAll(".controls, .stats, .layout").forEach((element) => { element.hidden = true; });
+        document.querySelectorAll(".experience-stats, .experience-panel, .diagnosis-layout, .section-heading, .view-tabs, .controls, .stats, .layout").forEach((element) => { element.hidden = true; });
         const errorElement = document.getElementById("report-error");
         errorElement.hidden = false;
         errorElement.textContent = error instanceof Error ? error.message : String(error);
       }
 
+      function createEmpty(message) {
+        const element = document.createElement("div");
+        element.className = "empty";
+        element.textContent = message;
+        return element;
+      }
+      function addTimelineMarker(axis, value, maximum, label, kind) {
+        if (value === null) return;
+        const marker = document.createElement("span");
+        marker.className = `timeline-marker ${kind}`;
+        marker.style.left = `${Math.max(0, Math.min(100, value / maximum * 100))}%`;
+        const text = document.createElement("strong");
+        text.textContent = `${label} ${formatMilliseconds(value)}`;
+        marker.append(text);
+        axis.append(marker);
+      }
+      function addSvgLabel(svg, x, y, value, anchor) {
+        const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        label.setAttribute("class", "memory-label");
+        label.setAttribute("x", String(x));
+        label.setAttribute("y", String(y));
+        label.setAttribute("text-anchor", anchor);
+        label.textContent = value;
+        svg.append(label);
+      }
+      function appendFinding(container, title, note) {
+        const item = document.createElement("div");
+        item.className = "finding";
+        const index = document.createElement("span");
+        index.className = "finding-index";
+        index.textContent = String(container.children.length + 1).padStart(2, "0");
+        const content = document.createElement("div");
+        const heading = document.createElement("div");
+        heading.className = "finding-title";
+        heading.textContent = title;
+        const description = document.createElement("div");
+        description.className = "finding-note";
+        description.textContent = note;
+        content.append(heading, description);
+        item.append(index, content);
+        container.append(item);
+      }
+      function scriptResources(phaseExperience) {
+        return phaseExperience && Array.isArray(phaseExperience.resources)
+          ? phaseExperience.resources.filter((resource) => {
+            const url = String(resource && resource.url || "").split(/[?#]/)[0];
+            return resource && (resource.initiatorType === "script" || /\.m?js$/i.test(url));
+          })
+          : [];
+      }
+      function findChunkResource(chunk, resources) {
+        const files = Array.isArray(chunk.files) ? chunk.files.map(normalizeUrlPath) : [];
+        return resources.find((resource) => {
+          const path = normalizeUrlPath(resource.url);
+          return files.some((file) => path.endsWith(file) || file.endsWith(path));
+        });
+      }
+      function normalizeUrlPath(value) {
+        try {
+          return decodeURIComponent(new URL(String(value), "http://openruntime.local").pathname).replace(/^\/+/, "");
+        } catch {
+          return String(value || "").split(/[?#]/)[0].replace(/^\/+/, "");
+        }
+      }
+      function chunkInitiator(chunk, phaseExperience, resource) {
+        if (chunk.entry) return { title: "HTML Document" };
+        if (chunk.initial) return { title: localized("Entry Chunk (inferred)", "Entry Chunk（推断）") };
+        const pathname = String(phaseExperience && phaseExperience.pathname || "");
+        const routeName = pathname.split("/").filter(Boolean).at(-1) || "home";
+        const groups = Array.isArray(chunk.groups) ? chunk.groups.map(String) : [];
+        const matchesCurrentRoute = groups.some((group) =>
+          group.toLocaleLowerCase().includes(routeName.toLocaleLowerCase()))
+          || (pathname === "/" && groups.some((group) => /(^|\/)page$/i.test(group)));
+        if (matchesCurrentRoute) {
+          return { title: localized("Route Dynamic Import (inferred)", "Route Dynamic Import（推断）") };
+        }
+        if (Array.isArray(chunk.parents) && chunk.parents.length > 0) {
+          return {
+            title: localized(
+              "Parent Chunk: {parents} (inferred)",
+              "Parent Chunk：{parents}（推断）",
+              { parents: chunk.parents.slice(0, 2).join(", ") }
+            )
+          };
+        }
+        if (resource && resource.initiatorType) {
+          return { title: initiatorTypeLabel(resource.initiatorType) };
+        }
+        return { title: "Unknown" };
+      }
+      function initiatorTypeLabel(value) {
+        const labels = {
+          script: "JavaScript",
+          link: "HTML Link",
+          css: "CSS",
+          fetch: "Fetch",
+          xmlhttprequest: "XMLHttpRequest",
+          other: "Other"
+        };
+        return labels[String(value).toLocaleLowerCase()] || String(value);
+      }
+      function chunkSplitRuleLabel(chunk) {
+        const rule = chunk && chunk.splitRule;
+        if (rule && typeof rule === "object") {
+          if (typeof rule.configPath === "string" && rule.configPath.length > 0) {
+            return `${rule.configPath}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+          }
+          if (rule.kind === "dynamic-import") {
+            return `import() · ${rule.name || "async chunk"}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+          }
+          if (typeof rule.name === "string" && rule.name.length > 0) {
+            return `${rule.name}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+          }
+        }
+        if (chunk.entry) return localized("Page entry", "页面入口");
+        const names = Array.isArray(chunk.names) ? chunk.names.filter(Boolean) : [];
+        const namedShared = names.find((name) => /^(lib|vendor|shared)[-_]/i.test(String(name)));
+        if (namedShared) return localized(
+          "Shared dependency split {name}",
+          "公共依赖拆分 {name}",
+          { name: namedShared }
+        );
+        if (chunk.initial) {
+          const entrypoints = Array.isArray(chunk.entrypoints) ? chunk.entrypoints.filter(Boolean) : [];
+          return names.length > 0
+            ? localized("Initial split {names}", "首屏拆分 {names}", {
+              names: names.slice(0, 2).join(", ")
+            })
+            : entrypoints.length > 0
+              ? localized("Initial group {names}", "首屏组 {names}", { names: entrypoints.join(", ") })
+              : localized("Initial shared split", "首屏公共拆分");
+        }
+        const groups = Array.isArray(chunk.groups) ? chunk.groups.filter(Boolean) : [];
+        if (groups.length > 0) return localized(
+          "Route or dynamic split {groups}",
+          "路由或动态拆分 {groups}",
+          { groups: groups.slice(0, 2).join(", ") }
+        );
+        const parents = Array.isArray(chunk.parents) ? chunk.parents.filter(Boolean) : [];
+        return parents.length > 0
+          ? localized("Dynamic split, parent {parents}", "动态拆分，父 {parents}", {
+            parents: parents.slice(0, 2).join(", ")
+          })
+          : localized("Async split", "异步拆分");
+      }
+      function chunkDisplayName(chunk) {
+        const names = Array.isArray(chunk.names) ? chunk.names.filter(Boolean) : [];
+        if (names.length > 0) return names.join(", ");
+        const files = Array.isArray(chunk.files) ? chunk.files.filter(Boolean) : [];
+        return files.length > 0 ? shortResourceName(files[0]) : `Chunk ${chunk.chunkId}`;
+      }
+      function shortResourceName(value) {
+        const path = normalizeUrlPath(value);
+        return path.split("/").at(-1) || path;
+      }
       function sortItems(mode) {
         if (mode === "low-use") return (left, right) => (left.ratio ?? 1) - (right.ratio ?? 1) || right.total - left.total;
         if (mode === "used") return (left, right) => right.used - left.used || right.total - left.total;
@@ -471,6 +1403,11 @@
       }
       function isCandidate(item) { return item.total >= 1024 && item.ratio !== null && item.ratio < 0.1; }
       function numberOrNull(value) { return typeof value === "number" && Number.isFinite(value) ? value : null; }
+      function formatMilliseconds(value) {
+        if (!Number.isFinite(value)) return "—";
+        if (value < 1000) return `${Math.round(value)} ms`;
+        return `${(value / 1000).toFixed(2)} s`;
+      }
       function formatPercent(value) { return value === null ? "—" : `${(value * 100).toFixed(value < 0.1 ? 1 : 0)}%`; }
       function formatBytes(value) {
         if (!Number.isFinite(value)) return "—";
@@ -479,10 +1416,18 @@
         return `${(value / 1024 / 1024).toFixed(2)} MB`;
       }
       function kindLabel(kind) {
-        return ({ application: "业务代码", workspace: "工作区", "third-party": "第三方", runtime: "运行时", unknown: "未知" })[kind] || "未知";
+        const labels = locale === "zh"
+          ? { application: "业务代码", workspace: "工作区", "third-party": "第三方", runtime: "运行时", unknown: "未知" }
+          : { application: "Application", workspace: "Workspace", "third-party": "Third-party", runtime: "Runtime", unknown: "Unknown" };
+        return labels[kind] || labels.unknown;
       }
-      function viewLabel(view) { return ({ application: "业务代码", packages: "依赖包", sources: "文件", chunks: "分块" })[view] || "项目"; }
-      function sourceItem(item) {
+      function viewLabel(view) {
+        const labels = locale === "zh"
+          ? { application: "业务代码", packages: "依赖包", sources: "文件", chunks: "分块" }
+          : { application: "Application code", packages: "Dependencies", sources: "Files", chunks: "Chunks" };
+        return labels[view] || localized("Items", "项目");
+      }
+      function sourceItem(item, availableViewers) {
         return {
           key: item.sourcePath,
           name: shortPath(item.sourcePath),
@@ -490,8 +1435,28 @@
           total: item.totalBytes || 0,
           used: item.usedBytes || 0,
           ratio: numberOrNull(item.usedRatio),
-          detail: `分块：${(item.chunkIds || []).join(", ") || "—"} · ${item.sourcePath}`
+          detail: localized("Chunks: {chunks} · {path}", "分块：{chunks} · {path}", {
+            chunks: (item.chunkIds || []).join(", ") || "—",
+            path: item.sourcePath
+          }),
+          codeViewers: viewersForSource(item, availableViewers)
         };
+      }
+      function viewersForSource(source, availableViewers) {
+        const files = new Set((source.fileRanges || [])
+          .map((item) => item && item.file)
+          .filter((file) => typeof file === "string"));
+        const viewers = files.size > 0
+          ? availableViewers.filter((viewer) => files.has(viewer.file))
+          : availableViewers.filter((viewer) => {
+            const expected = new Set((source.chunkIds || []).map(String));
+            return Array.isArray(viewer.chunkIds)
+              && viewer.chunkIds.some((chunkId) => expected.has(String(chunkId)));
+          });
+        return viewers.map((viewer) => ({
+          ...viewer,
+          href: `${viewer.href}${viewer.href.includes("?") ? "&" : "?"}source=${encodeURIComponent(source.sourcePath)}`
+        }));
       }
       function isBusinessSource(item) {
         if (!item.owner || item.owner.kind !== "application") return false;
@@ -504,6 +1469,104 @@
         if (marker >= 0) return normalized.slice(marker + 14);
         const parts = normalized.split("/");
         return parts.slice(-4).join("/") || normalized;
+      }
+      function withLanguageContext(href) {
+        const explicitLanguage = new URLSearchParams(location.search).get("lang");
+        if (!explicitLanguage || !/^(?:en|zh)(?:$|[-_])/i.test(explicitLanguage)) return href;
+        return `${href}${href.includes("?") ? "&" : "?"}lang=${encodeURIComponent(explicitLanguage)}`;
+      }
+      };
+
+      globalThis.__OPENRUNTIME_RENDER_REPORT__ = renderReport;
+      if (dataHref) {
+        afterFirstPaint(() => dataMode === "stream"
+          ? loadReportStream(dataHref)
+          : loadDeferredData(dataHref));
+      } else {
+        try {
+          renderReport(JSON.parse(document.getElementById("openruntime-report-data").textContent || "{}"));
+        } catch (error) {
+          showLoadError(error);
+        }
+      }
+
+      function afterFirstPaint(callback) {
+        requestAnimationFrame(() => requestAnimationFrame(callback));
+      }
+
+      function detectBrowserLocale() {
+        const explicit = new URLSearchParams(location.search).get("lang");
+        if (explicit && explicit.toLocaleLowerCase().startsWith("zh")) return "zh";
+        if (explicit && explicit.toLocaleLowerCase().startsWith("en")) return "en";
+        const browserLanguage = Array.isArray(navigator.languages) && navigator.languages.length > 0
+          ? navigator.languages[0]
+          : navigator.language;
+        return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
+      function switchLanguage() {
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
+        location.href = nextUrl.href;
+      }
+
+      function loadDeferredData(href) {
+        const script = document.createElement("script");
+        script.src = href;
+        script.async = true;
+        script.onerror = () => showLoadError(new Error(localized(
+          "Report data failed to load. Make sure the report data file and HTML are in the same directory.",
+          "报告数据加载失败。请确认报告数据文件与 HTML 位于同一目录。"
+        )));
+        document.body.append(script);
+      }
+
+      async function loadReportStream(href) {
+        try {
+          const response = await fetch(href, { cache: "no-store" });
+          if (!response.ok || !response.body) {
+            throw new Error(localized(
+              "Report data request failed ({status}).",
+              "报告数据请求失败（{status}）。",
+              { status: response.status }
+            ));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const result = await reader.read();
+            buffer += decoder.decode(result.value || new Uint8Array(), { stream: !result.done });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (!line) continue;
+              const event = JSON.parse(line);
+              if (event.type === "start") renderReport(event.report);
+              else if (event.type === "batch") globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__?.(event);
+              await nextPaint();
+            }
+            if (result.done) break;
+          }
+          if (buffer.trim()) {
+            const event = JSON.parse(buffer);
+            if (event.type === "batch") globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__?.(event);
+          }
+        } catch (error) {
+          showLoadError(error);
+        }
+      }
+
+      function nextPaint() {
+        return new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+
+      function showLoadError(error) {
+        document.querySelectorAll(".experience-stats, .experience-panel, .diagnosis-layout, .section-heading, .view-tabs, .controls, .stats, .layout")
+          .forEach((element) => { element.hidden = true; });
+        const errorElement = document.getElementById("report-error");
+        errorElement.hidden = false;
+        errorElement.textContent = error instanceof Error ? error.message : String(error);
       }
     })();
   </script>

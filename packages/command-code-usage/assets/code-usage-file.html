@@ -1,0 +1,985 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenRuntime Executed Code</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f7f8fa;
+      --foreground: #1d2025;
+      --card: #ffffff;
+      --muted: #f0f2f5;
+      --muted-foreground: #727782;
+      --primary: #3f6fd8;
+      --accent: #e7efff;
+      --accent-foreground: #183a7a;
+      --border: #e4e7ec;
+      --input: #d8dde5;
+      --ring: #78a0ed;
+      --executed: #dce8ff;
+      --executed-strong: #5b83df;
+      --source-executed: #ffedc2;
+      --source-executed-strong: #d58a16;
+      --source-executed-foreground: #68400b;
+      --code-muted: #8a909a;
+      --shadow: 0 1px 2px rgba(18, 25, 38, 0.025);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, select { font: inherit; }
+    a { color: inherit; }
+    button:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--ring) 38%, transparent);
+      outline-offset: 2px;
+    }
+    .shell {
+      width: min(1380px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .back {
+      color: var(--muted-foreground);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 160ms ease;
+    }
+    .back:hover { color: var(--foreground); }
+    h1, p { margin: 0; }
+    h1 {
+      margin-top: 6px;
+      font-size: clamp(20px, 3vw, 30px);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      overflow-wrap: anywhere;
+    }
+    .meta { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+    .topline-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+    .language-toggle {
+      flex: 0 0 auto;
+      min-height: 30px;
+      border: 1px solid var(--input);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      padding: 4px 10px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+    .language-toggle:hover { border-color: #c8ced8; color: var(--foreground); }
+    .toolbar {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    label { display: grid; gap: 5px; color: var(--muted-foreground); font-size: 12px; }
+    select, button, .page-link {
+      min-height: 36px;
+      border: 1px solid var(--input);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--foreground);
+      padding: 7px 10px;
+      box-shadow: var(--shadow);
+    }
+    button { cursor: pointer; }
+    button:hover, .page-link:hover { border-color: #c8ced8; }
+    button:disabled { cursor: default; opacity: 0.45; }
+    .navigation-scope { display: grid; gap: 5px; }
+    .toolbar-caption { color: var(--muted-foreground); font-size: 12px; }
+    .segmented-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      min-height: 36px;
+      padding: 3px;
+      border: 1px solid var(--input);
+      border-radius: 9px;
+      background: var(--muted);
+      box-shadow: var(--shadow);
+    }
+    .segmented-control button {
+      min-height: 28px;
+      padding: 4px 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      box-shadow: none;
+      color: var(--muted-foreground);
+      white-space: nowrap;
+    }
+    .segmented-control button:hover { border-color: transparent; color: var(--foreground); }
+    .segmented-control button[aria-pressed="true"] {
+      background: var(--card);
+      color: var(--foreground);
+      box-shadow: 0 1px 2px rgba(18, 25, 38, 0.08);
+    }
+    .segmented-control button:disabled { color: var(--muted-foreground); }
+    .jump-controls { display: flex; align-items: center; gap: 6px; }
+    .jump-progress {
+      min-width: 54px;
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+    .page-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+    .page-link { display: inline-flex; align-items: center; text-decoration: none; font-size: 13px; }
+    .page-link[hidden] { display: none; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .stats.has-source { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .stat { min-width: 0; padding: 12px 15px; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: 0; }
+    .stat-label { color: var(--muted-foreground); font-size: 12px; }
+    .stat-value { margin-top: 2px; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .viewer {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .viewer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted-foreground);
+      font-size: 12px;
+    }
+    .legends { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .legend { display: flex; align-items: center; gap: 7px; }
+    .legend-mark { width: 12px; height: 12px; border-radius: 3px; background: var(--executed); border-bottom: 2px solid var(--executed-strong); }
+    .source-highlight-control {
+      display: flex;
+      grid-auto-flow: column;
+      align-items: center;
+      gap: 7px;
+      color: var(--foreground);
+      cursor: pointer;
+    }
+    .source-highlight-control[hidden] { display: none; }
+    .source-highlight-control input { margin: 0; accent-color: var(--source-executed-strong); }
+    .source-legend-mark {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: var(--source-executed);
+      border-bottom: 2px solid var(--source-executed-strong);
+    }
+    .code-viewport {
+      position: relative;
+      height: min(68vh, 680px);
+      min-height: 420px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      background: var(--card);
+    }
+    .viewer-loading {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      display: flex;
+      height: 32px;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      color: var(--muted-foreground);
+      font-size: 13px;
+      backdrop-filter: blur(8px);
+    }
+    .viewer-loading::before {
+      content: "";
+      width: 48px;
+      height: 4px;
+      margin-right: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--muted) 20%, var(--executed-strong) 50%, var(--muted) 80%);
+      background-size: 220% 100%;
+      animation: loading-sheen 1.2s ease-in-out infinite;
+    }
+    .viewer-loading[hidden] { display: none; }
+    .code-spacer { position: relative; min-width: max-content; }
+    .code-window { position: absolute; top: 0; left: 0; right: 0; min-width: max-content; }
+    .code-row {
+      display: grid;
+      grid-template-columns: 76px max-content;
+      height: 22px;
+      min-width: 100%;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 22px;
+    }
+    .line-number {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      padding-right: 12px;
+      border-right: 1px solid var(--border);
+      background: var(--card);
+      color: var(--code-muted);
+      text-align: right;
+      user-select: none;
+    }
+    .code-text { min-width: max-content; padding: 0 14px; white-space: pre; tab-size: 2; color: var(--code-muted); }
+    .executed { background: var(--executed); color: var(--accent-foreground); box-shadow: inset 0 -2px var(--executed-strong); }
+    .source-scope {
+      background: var(--source-executed);
+      color: var(--source-executed-foreground);
+      box-shadow: inset 0 -2px var(--source-executed-strong);
+    }
+    .source-scope.executed {
+      box-shadow: inset 0 -2px var(--executed-strong);
+    }
+    .empty { padding: 36px; color: var(--muted-foreground); text-align: center; }
+    .footer-note { margin-top: 10px; color: var(--muted-foreground); font-size: 12px; }
+    @keyframes loading-sheen {
+      from { background-position: 100% 0; }
+      to { background-position: 0 0; }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 20px, 1380px); padding-top: 18px; }
+      .topline { display: block; }
+      .topline-actions { justify-content: flex-start; flex-wrap: wrap; margin-top: 8px; }
+      .meta { white-space: normal; }
+      .toolbar { align-items: stretch; }
+      .toolbar label, .toolbar select { width: 100%; }
+      .navigation-scope { width: 100%; }
+      .segmented-control { width: 100%; }
+      .segmented-control button { flex: 1; }
+      .jump-controls { width: 100%; }
+      .jump-controls button { flex: 1; }
+      .page-nav { width: 100%; margin-left: 0; }
+      .stats { grid-template-columns: 1fr; }
+      .stats.has-source { grid-template-columns: 1fr; }
+      .stat { border-right: 0; border-bottom: 1px solid var(--border); }
+      .stat:last-child { border-bottom: 0; }
+      .code-viewport { min-height: 360px; height: 62vh; }
+      .viewer-head { align-items: flex-start; flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topline">
+      <div>
+        <a id="report-link" class="back" href="#" data-i18n="backToReport">← Back to code usage analysis</a>
+        <h1 id="file-name">Executed code</h1>
+      </div>
+      <div class="topline-actions">
+        <p id="part-meta" class="meta"></p>
+        <button id="language-toggle" class="language-toggle" type="button">中文</button>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Code viewer options" data-i18n-aria="viewerOptions">
+      <label><span data-i18n="recordedPhase">Recorded phase</span>
+        <select id="phase-select"></select>
+      </label>
+      <div class="navigation-scope">
+        <span class="toolbar-caption" data-i18n="navigationScope">Navigation scope</span>
+        <div class="segmented-control" role="group" aria-label="Navigation scope" data-i18n-aria="navigationScope">
+          <button id="source-navigation" type="button" aria-pressed="false" hidden><span data-i18n="currentSource">Current source</span> <span id="source-navigation-count">0</span></button>
+          <button id="executed-navigation" type="button" aria-pressed="true"><span data-i18n="allExecuted">All executed</span> <span id="executed-navigation-count">0</span></button>
+        </div>
+      </div>
+      <div class="jump-controls" aria-label="Code location navigation" data-i18n-aria="locationNavigation">
+        <button id="previous-highlight" type="button" data-i18n="previousLocation">Previous</button>
+        <span id="highlight-progress" class="jump-progress" aria-live="polite">0 / 0</span>
+        <button id="next-highlight" type="button" data-i18n="nextLocation">Next</button>
+      </div>
+      <nav class="page-nav" aria-label="Large file section navigation" data-i18n-aria="sectionNavigation">
+        <a id="previous-part" class="page-link" href="#" data-i18n="previousSection">Previous section</a>
+        <a id="next-part" class="page-link" href="#" data-i18n="nextSection">Next section</a>
+      </nav>
+    </section>
+
+    <section id="file-stats" class="stats" aria-label="File execution summary" data-i18n-aria="fileSummary">
+      <div class="stat"><div class="stat-label" data-i18n="fileSize">File size</div><div id="total-size" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="bundleExecuted">Bundle executed</div><div id="used-ratio" class="stat-value">—</div></div>
+      <div id="source-stat" class="stat" hidden><div class="stat-label" data-i18n="sourceExecuted">Current source executed</div><div id="source-used-ratio" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="bundleRanges">Bundle ranges</div><div id="range-count" class="stat-value">—</div></div>
+    </section>
+
+    <section class="viewer" aria-label="Executed JavaScript" data-i18n-aria="executedJavaScript">
+      <div class="viewer-head">
+        <div class="legends">
+          <span class="legend"><i class="legend-mark"></i><span data-i18n="executedInPhase">Executed in current phase</span></span>
+          <label id="source-highlight-control" class="source-highlight-control" hidden>
+            <input id="source-highlight-toggle" type="checkbox" checked>
+            <i class="source-legend-mark"></i>
+            <span id="source-highlight-label">Code mapped to current source</span>
+          </label>
+        </div>
+        <span id="offset-meta"></span>
+      </div>
+      <div id="code-viewport" class="code-viewport" tabindex="0" aria-label="Code content" data-i18n-aria="codeContent" aria-busy="true">
+        <div id="viewer-loading" class="viewer-loading" data-i18n="preparingCode">Preparing code…</div>
+        <div id="code-spacer" class="code-spacer">
+          <div id="code-window" class="code-window"></div>
+        </div>
+      </div>
+    </section>
+    <p class="footer-note" data-i18n="footerNote">This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.</p>
+  </main>
+
+  <script id="openruntime-code-file-data" type="application/json">__OPENRUNTIME_CODE_FILE_DATA__</script>
+  <script>
+    (() => {
+      const messages = {
+        en: {
+          pageTitle: "OpenRuntime Executed Code",
+          backToReport: "← Back to code usage analysis",
+          viewerOptions: "Code viewer options",
+          recordedPhase: "Recorded phase",
+          navigationScope: "Navigation scope",
+          currentSource: "Current source",
+          allExecuted: "All executed",
+          locationNavigation: "Code location navigation",
+          previousLocation: "Previous",
+          nextLocation: "Next",
+          sectionNavigation: "Large file section navigation",
+          previousSection: "Previous section",
+          nextSection: "Next section",
+          fileSummary: "File execution summary",
+          fileSize: "File size",
+          bundleExecuted: "Bundle executed",
+          sourceExecuted: "Current source executed",
+          bundleRanges: "Bundle ranges",
+          executedJavaScript: "Executed JavaScript",
+          executedInPhase: "Executed in current phase",
+          codeContent: "Code content",
+          preparingCode: "Preparing code…",
+          footerNote: "This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.",
+          executedCode: "Executed code",
+          fullFile: "Full file",
+          partMeta: "Section {current} / {total}",
+          position: "Position {start}–{end}",
+          characterCount: "{count} characters",
+          phase: "Phase {number}",
+          receivingCode: "Receiving code… {percent}%",
+          sourceMappedCode: "Code mapped to {source}",
+          currentSourceCode: "Code mapped to current source",
+          emptyCode: "This file has no code to display",
+          deferredLoadError: "Code data failed to load. Make sure the data file and page are in the same directory.",
+          streamLoadError: "Code data request failed ({status})."
+        },
+        zh: {
+          pageTitle: "OpenRuntime 执行代码",
+          backToReport: "← 返回代码使用分析",
+          viewerOptions: "代码查看选项",
+          recordedPhase: "记录阶段",
+          navigationScope: "定位范围",
+          currentSource: "当前源码",
+          allExecuted: "全部执行",
+          locationNavigation: "代码位置导航",
+          previousLocation: "上一处",
+          nextLocation: "下一处",
+          sectionNavigation: "大文件分段导航",
+          previousSection: "上一段",
+          nextSection: "下一段",
+          fileSummary: "文件执行概览",
+          fileSize: "文件体积",
+          bundleExecuted: "打包文件实际执行",
+          sourceExecuted: "当前源码实际执行",
+          bundleRanges: "打包文件高亮",
+          executedJavaScript: "JavaScript 执行代码",
+          executedInPhase: "当前阶段已执行",
+          codeContent: "代码内容",
+          preparingCode: "正在准备代码…",
+          footerNote: "这里展示的是浏览器实际加载的打包后 JavaScript。超大文件会自动分段，滚动时只绘制当前可见内容。",
+          executedCode: "执行代码",
+          fullFile: "完整文件",
+          partMeta: "第 {current} / {total} 段",
+          position: "位置 {start}–{end}",
+          characterCount: "{count} 个字符",
+          phase: "阶段 {number}",
+          receivingCode: "正在接收代码… {percent}%",
+          sourceMappedCode: "{source} 对应代码",
+          currentSourceCode: "当前源码对应代码",
+          emptyCode: "这个文件没有可展示的代码",
+          deferredLoadError: "代码数据加载失败。请确认数据文件与页面位于同一目录。",
+          streamLoadError: "代码数据请求失败（{status}）。"
+        }
+      };
+      let locale = detectBrowserLocale();
+      const message = (key, values = {}) => {
+        const template = messages[locale][key] || messages.en[key] || key;
+        return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+      };
+      const applyDocumentLocale = () => {
+        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+        document.title = message("pageTitle");
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          element.textContent = message(element.dataset.i18n);
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          element.setAttribute("aria-label", message(element.dataset.i18nAria));
+        });
+      };
+      applyDocumentLocale();
+      const languageToggle = document.getElementById("language-toggle");
+      languageToggle.textContent = locale === "zh" ? "English" : "中文";
+      languageToggle.setAttribute(
+        "aria-label",
+        locale === "zh" ? "切换到英文" : "Switch to Chinese"
+      );
+      languageToggle.addEventListener("click", switchLanguage);
+      window.addEventListener("languagechange", () => {
+        if (new URLSearchParams(location.search).has("lang")) return;
+        if (detectBrowserLocale() !== locale) location.reload();
+      });
+
+      const dataHref = __OPENRUNTIME_CODE_FILE_DATA_HREF__;
+      const dataMode = __OPENRUNTIME_CODE_FILE_DATA_MODE__;
+      const renderCodeFile = async (data, streaming = false) => {
+      const initialCode = typeof data.code === "string" ? data.code : "";
+      let code = "";
+      const phases = Array.isArray(data.phases) ? data.phases : [];
+      const selectedSourcePath = new URLSearchParams(location.search).get("source");
+      const phaseSelect = document.getElementById("phase-select");
+      const sourceHighlightControl = document.getElementById("source-highlight-control");
+      const sourceHighlightToggle = document.getElementById("source-highlight-toggle");
+      const sourceNavigation = document.getElementById("source-navigation");
+      const executedNavigation = document.getElementById("executed-navigation");
+      const previousHighlight = document.getElementById("previous-highlight");
+      const nextHighlight = document.getElementById("next-highlight");
+      const highlightProgress = document.getElementById("highlight-progress");
+      const viewport = document.getElementById("code-viewport");
+      const spacer = document.getElementById("code-spacer");
+      const windowElement = document.getElementById("code-window");
+      const rowHeight = 22;
+      const maxRowLength = 240;
+      const overscan = 18;
+      let rows = [];
+      let phaseIndex = 0;
+      let ranges = [];
+      let sourceRanges = [];
+      let sourceNavigationRanges = [];
+      let showSourceHighlight = true;
+      let navigationMode = selectedSourcePath ? "source" : "executed";
+      let renderFrame = 0;
+      let lastRenderKey = "";
+      let highlightIndex = -1;
+      let indexedOffset = 0;
+      let lineNumber = 1;
+      let lineContinued = false;
+      let finished = false;
+      const expectedLength = Number.isFinite(data.partLength)
+        ? data.partLength
+        : Number.isFinite(data.partEndOffset) && Number.isFinite(data.partStartOffset)
+          ? Math.max(0, data.partEndOffset - data.partStartOffset)
+          : initialCode.length;
+
+      document.getElementById("report-link").href = withLanguageContext(data.reportHref || "#");
+      document.getElementById("file-name").textContent = data.file || message("executedCode");
+      document.getElementById("part-meta").textContent = data.partCount > 1
+        ? message("partMeta", { current: (data.partIndex || 0) + 1, total: data.partCount })
+        : message("fullFile");
+      document.getElementById("offset-meta").textContent = data.partCount > 1
+        ? message("position", {
+          start: formatInteger(data.partStartOffset),
+          end: formatInteger(data.partEndOffset)
+        })
+        : message("characterCount", { count: formatInteger(expectedLength) });
+      document.getElementById("total-size").textContent = formatBytes(data.totalBytes);
+
+      const previousPart = document.getElementById("previous-part");
+      previousPart.hidden = !data.previousHref;
+      if (data.previousHref) previousPart.href = withSourceContext(data.previousHref);
+      const nextPart = document.getElementById("next-part");
+      nextPart.hidden = !data.nextHref;
+      if (data.nextHref) nextPart.href = withSourceContext(data.nextHref);
+
+      phases.forEach((phase, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = phase.label || message("phase", { number: index + 1 });
+        phaseSelect.append(option);
+      });
+      phaseSelect.disabled = phases.length < 2;
+
+      viewport.addEventListener("scroll", scheduleRender, { passive: true });
+      window.addEventListener("resize", scheduleRender, { passive: true });
+      phaseSelect.addEventListener("change", () => {
+        phaseIndex = Number(phaseSelect.value) || 0;
+        applyPhase({ resetNavigation: true, autoLocate: true });
+      });
+      sourceHighlightToggle.addEventListener("change", () => {
+        showSourceHighlight = sourceHighlightToggle.checked;
+        setNavigationMode(showSourceHighlight ? "source" : "executed", showSourceHighlight);
+        lastRenderKey = "";
+        scheduleRender();
+      });
+      sourceNavigation.addEventListener("click", () => setNavigationMode("source", true));
+      executedNavigation.addEventListener("click", () => setNavigationMode("executed", true));
+      previousHighlight.addEventListener("click", () => jumpHighlight(-1));
+      nextHighlight.addEventListener("click", () => jumpHighlight(1));
+
+      applyPhase({ resetNavigation: true });
+      globalThis.__OPENRUNTIME_APPEND_CODE_FILE__ = (value, done = false) => {
+        if (typeof value === "string" && value.length > 0) code += value;
+        indexAvailableRows(done);
+        spacer.style.height = `${Math.max(1, rows.length) * rowHeight}px`;
+        document.getElementById("viewer-loading").textContent = expectedLength === 0
+          ? message("preparingCode")
+          : message("receivingCode", {
+            percent: Math.min(100, Math.round(code.length / expectedLength * 100))
+          });
+        lastRenderKey = "";
+        scheduleRender();
+        if (done) {
+          finished = true;
+          document.getElementById("viewer-loading").hidden = true;
+          viewport.setAttribute("aria-busy", "false");
+          applyPhase({ resetNavigation: true, autoLocate: true });
+        }
+      };
+      if (!streaming) {
+        for (let offset = 0; offset < initialCode.length; offset += 32 * 1024) {
+          globalThis.__OPENRUNTIME_APPEND_CODE_FILE__(initialCode.slice(offset, offset + 32 * 1024), false);
+          await nextPaint();
+        }
+        globalThis.__OPENRUNTIME_APPEND_CODE_FILE__("", true);
+      }
+
+      function applyPhase(options = {}) {
+        const phase = phases[phaseIndex] || null;
+        const source = selectedSourcePath && Array.isArray(phase && phase.sources)
+          ? phase.sources.find((item) => item && item.sourcePath === selectedSourcePath) || null
+          : null;
+        ranges = normalizeRanges(phase && phase.executedRanges, expectedLength);
+        sourceRanges = normalizeRanges(source && source.mappedRanges, expectedLength);
+        sourceNavigationRanges = finished ? groupNavigationRanges(sourceRanges, rows) : [];
+        if (options.resetNavigation) {
+          highlightIndex = -1;
+          if (source && showSourceHighlight && (!finished || sourceNavigationRanges.length > 0)) {
+            navigationMode = "source";
+          }
+        }
+        if (!source || !showSourceHighlight || (finished && sourceNavigationRanges.length === 0)) {
+          navigationMode = "executed";
+        }
+        document.getElementById("used-ratio").textContent = formatPercent(phase && phase.usedRatio);
+        document.getElementById("range-count").textContent = String(ranges.length);
+        document.getElementById("file-stats").classList.toggle("has-source", Boolean(source));
+        document.getElementById("source-stat").hidden = !source;
+        document.getElementById("source-used-ratio").textContent = formatPercent(source && source.usedRatio);
+        sourceHighlightControl.hidden = !source;
+        document.getElementById("source-highlight-label").textContent = source
+          ? message("sourceMappedCode", { source: shortPath(source.sourcePath) })
+          : message("currentSourceCode");
+        sourceNavigation.hidden = !source;
+        sourceNavigation.disabled = !finished || !showSourceHighlight || sourceNavigationRanges.length === 0;
+        document.getElementById("source-navigation-count").textContent = finished
+          ? String(sourceNavigationRanges.length)
+          : "…";
+        document.getElementById("executed-navigation-count").textContent = String(ranges.length);
+        updateNavigationControls();
+        lastRenderKey = "";
+        scheduleRender();
+        if (options.autoLocate && navigationMode === "source" && sourceNavigationRanges.length > 0) {
+          jumpToHighlight(0);
+        }
+      }
+
+      function scheduleRender() {
+        if (renderFrame !== 0) return;
+        renderFrame = requestAnimationFrame(() => {
+          renderFrame = 0;
+          renderRows();
+        });
+      }
+
+      function renderRows() {
+        const startIndex = Math.max(0, Math.floor(viewport.scrollTop / rowHeight) - overscan);
+        const visibleCount = Math.ceil(viewport.clientHeight / rowHeight) + overscan * 2;
+        const endIndex = Math.min(rows.length, startIndex + visibleCount);
+        const key = `${phaseIndex}:${showSourceHighlight}:${startIndex}:${endIndex}`;
+        if (key === lastRenderKey) return;
+        lastRenderKey = key;
+        windowElement.style.transform = `translateY(${startIndex * rowHeight}px)`;
+        windowElement.replaceChildren();
+        if (rows.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = message("emptyCode");
+          windowElement.append(empty);
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        for (let index = startIndex; index < endIndex; index += 1) {
+          const row = rows[index];
+          if (!row) continue;
+          const element = document.createElement("div");
+          element.className = "code-row";
+          const number = document.createElement("span");
+          number.className = "line-number";
+          number.textContent = row.continued ? "↳" : String(row.lineNumber);
+          const text = document.createElement("span");
+          text.className = "code-text";
+          appendHighlightedText(
+            text,
+            row.start,
+            row.end,
+            ranges,
+            showSourceHighlight ? sourceRanges : []
+          );
+          element.append(number, text);
+          fragment.append(element);
+        }
+        windowElement.append(fragment);
+      }
+
+      function jumpHighlight(direction) {
+        const navigationRanges = getNavigationRanges();
+        if (!finished || navigationRanges.length === 0) return;
+        const nextIndex = highlightIndex < 0
+          ? (direction > 0 ? 0 : navigationRanges.length - 1)
+          : Math.max(0, Math.min(navigationRanges.length - 1, highlightIndex + direction));
+        jumpToHighlight(nextIndex);
+      }
+
+      function jumpToHighlight(index) {
+        const navigationRanges = getNavigationRanges();
+        const range = navigationRanges[index];
+        if (!range) return;
+        highlightIndex = index;
+        const rowIndex = findRowForOffset(rows, range.startOffset);
+        viewport.scrollTop = Math.max(0, rowIndex * rowHeight - viewport.clientHeight * 0.25);
+        updateNavigationControls();
+        lastRenderKey = "";
+        scheduleRender();
+      }
+
+      function setNavigationMode(mode, autoLocate = false) {
+        const nextMode = mode === "source" && showSourceHighlight && sourceNavigationRanges.length > 0
+          ? "source"
+          : "executed";
+        navigationMode = nextMode;
+        highlightIndex = -1;
+        updateNavigationControls();
+        if (autoLocate && finished && getNavigationRanges().length > 0) jumpToHighlight(0);
+      }
+
+      function getNavigationRanges() {
+        return navigationMode === "source" ? sourceNavigationRanges : ranges;
+      }
+
+      function updateNavigationControls() {
+        const navigationRanges = getNavigationRanges();
+        const count = navigationRanges.length;
+        const positioned = highlightIndex >= 0 && highlightIndex < count;
+        sourceNavigation.disabled = !finished || !showSourceHighlight || sourceNavigationRanges.length === 0;
+        sourceNavigation.setAttribute("aria-pressed", String(navigationMode === "source"));
+        executedNavigation.setAttribute("aria-pressed", String(navigationMode === "executed"));
+        previousHighlight.disabled = !finished || count === 0 || (positioned && highlightIndex === 0);
+        nextHighlight.disabled = !finished || count === 0 || (positioned && highlightIndex === count - 1);
+        highlightProgress.textContent = `${positioned ? highlightIndex + 1 : 0} / ${count}`;
+      }
+
+      function appendHighlightedText(element, start, end, executedRanges, selectedSourceRanges) {
+        if (end <= start) {
+          element.textContent = " ";
+          return;
+        }
+        const boundaries = [start, end];
+        appendRangeBoundaries(boundaries, executedRanges, start, end);
+        appendRangeBoundaries(boundaries, selectedSourceRanges, start, end);
+        boundaries.sort((left, right) => left - right);
+        const uniqueBoundaries = boundaries.filter((value, index) => index === 0 || value !== boundaries[index - 1]);
+        for (let index = 0; index < uniqueBoundaries.length - 1; index += 1) {
+          const segmentStart = uniqueBoundaries[index];
+          const segmentEnd = uniqueBoundaries[index + 1];
+          if (segmentStart === undefined || segmentEnd === undefined || segmentEnd <= segmentStart) continue;
+          const executed = rangeContainsOffset(executedRanges, segmentStart);
+          const selectedSource = rangeContainsOffset(selectedSourceRanges, segmentStart);
+          if (selectedSource) {
+            appendMark(element, segmentStart, segmentEnd, executed ? "source-scope executed" : "source-scope");
+          } else if (executed) {
+            appendMark(element, segmentStart, segmentEnd, "executed");
+          } else {
+            element.append(document.createTextNode(code.slice(segmentStart, segmentEnd)));
+          }
+        }
+      }
+
+      function appendRangeBoundaries(boundaries, highlightRanges, start, end) {
+        let index = firstIntersectingRange(highlightRanges, start);
+        while (index < highlightRanges.length) {
+          const range = highlightRanges[index];
+          if (!range || range.startOffset >= end) break;
+          boundaries.push(Math.max(start, range.startOffset), Math.min(end, range.endOffset));
+          index += 1;
+        }
+      }
+
+      function rangeContainsOffset(highlightRanges, offset) {
+        const index = firstIntersectingRange(highlightRanges, offset);
+        const range = highlightRanges[index];
+        return Boolean(range && range.startOffset <= offset && range.endOffset > offset);
+      }
+
+      function appendMark(element, start, end, className) {
+        const mark = document.createElement("span");
+        mark.className = className;
+        mark.textContent = code.slice(start, end);
+        element.append(mark);
+      }
+
+      function indexAvailableRows(done) {
+        while (indexedOffset < code.length) {
+          const newline = code.indexOf("\n", indexedOffset);
+          if (newline >= 0) {
+            if (newline === indexedOffset && !lineContinued) {
+              rows.push({ start: indexedOffset, end: indexedOffset, lineNumber, continued: false });
+            }
+            while (indexedOffset < newline) appendIndexedRow(Math.min(newline, indexedOffset + maxRowLength));
+            indexedOffset = newline + 1;
+            lineNumber += 1;
+            lineContinued = false;
+            continue;
+          }
+          while (code.length - indexedOffset >= maxRowLength) {
+            appendIndexedRow(indexedOffset + maxRowLength);
+          }
+          if (done && indexedOffset < code.length) appendIndexedRow(code.length);
+          break;
+        }
+        if (done && (code.length === 0 || code.endsWith("\n"))) {
+          rows.push({ start: code.length, end: code.length, lineNumber, continued: false });
+        }
+      }
+
+      function appendIndexedRow(end) {
+        rows.push({
+          start: indexedOffset,
+          end,
+          lineNumber,
+          continued: lineContinued
+        });
+        indexedOffset = end;
+        lineContinued = true;
+      }
+
+      function groupNavigationRanges(highlightRanges, displayRows) {
+        const grouped = [];
+        for (const range of highlightRanges) {
+          const startRow = displayRows[findRowForOffset(displayRows, range.startOffset)];
+          const endRow = displayRows[findRowForOffset(displayRows, Math.max(range.startOffset, range.endOffset - 1))];
+          const startLine = startRow && Number.isFinite(startRow.lineNumber) ? startRow.lineNumber : 0;
+          const endLine = endRow && Number.isFinite(endRow.lineNumber) ? endRow.lineNumber : startLine;
+          const previous = grouped[grouped.length - 1];
+          if (previous && startLine <= previous.endLine + 1) {
+            previous.endOffset = Math.max(previous.endOffset, range.endOffset);
+            previous.endLine = Math.max(previous.endLine, endLine);
+          } else {
+            grouped.push({
+              startOffset: range.startOffset,
+              endOffset: range.endOffset,
+              endLine
+            });
+          }
+        }
+        return grouped.map(({ startOffset, endOffset }) => ({ startOffset, endOffset }));
+      }
+
+      function normalizeRanges(value, codeLength) {
+        if (!Array.isArray(value)) return [];
+        const normalized = value.flatMap((range) => {
+          const startOffset = Number(range && range.startOffset);
+          const endOffset = Number(range && range.endOffset);
+          if (!Number.isFinite(startOffset) || !Number.isFinite(endOffset)) return [];
+          const start = Math.max(0, Math.min(codeLength, Math.trunc(startOffset)));
+          const end = Math.max(start, Math.min(codeLength, Math.trunc(endOffset)));
+          return end > start ? [{ startOffset: start, endOffset: end }] : [];
+        }).sort((left, right) => left.startOffset - right.startOffset || left.endOffset - right.endOffset);
+        const merged = [];
+        for (const range of normalized) {
+          const previous = merged[merged.length - 1];
+          if (!previous || range.startOffset > previous.endOffset) merged.push({ ...range });
+          else previous.endOffset = Math.max(previous.endOffset, range.endOffset);
+        }
+        return merged;
+      }
+
+      function firstIntersectingRange(executedRanges, offset) {
+        let low = 0;
+        let high = executedRanges.length;
+        while (low < high) {
+          const middle = Math.floor((low + high) / 2);
+          if ((executedRanges[middle] && executedRanges[middle].endOffset) <= offset) low = middle + 1;
+          else high = middle;
+        }
+        return low;
+      }
+
+      function findRowForOffset(displayRows, offset) {
+        let low = 0;
+        let high = displayRows.length;
+        while (low < high) {
+          const middle = Math.floor((low + high) / 2);
+          if ((displayRows[middle] && displayRows[middle].end) <= offset) low = middle + 1;
+          else high = middle;
+        }
+        return Math.max(0, Math.min(displayRows.length - 1, low));
+      }
+
+      function formatPercent(value) {
+        return typeof value === "number" && Number.isFinite(value)
+          ? `${(value * 100).toFixed(value < 0.1 ? 1 : 0)}%`
+          : "—";
+      }
+      function formatBytes(value) {
+        if (!Number.isFinite(value)) return "—";
+        if (value < 1024) return `${Math.round(value)} B`;
+        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+        return `${(value / 1024 / 1024).toFixed(2)} MB`;
+      }
+      function formatInteger(value) {
+        return Number.isFinite(value)
+          ? Math.round(value).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")
+          : "—";
+      }
+      function shortPath(value) {
+        const normalized = String(value || "").replaceAll("\\", "/");
+        const parts = normalized.split("/");
+        return parts.slice(-4).join("/") || normalized;
+      }
+      function withSourceContext(href) {
+        const withLanguage = withLanguageContext(href);
+        if (!selectedSourcePath) return withLanguage;
+        return `${withLanguage}${withLanguage.includes("?") ? "&" : "?"}source=${encodeURIComponent(selectedSourcePath)}`;
+      }
+      function withLanguageContext(href) {
+        const explicitLanguage = new URLSearchParams(location.search).get("lang");
+        if (!explicitLanguage || !/^(?:en|zh)(?:$|[-_])/i.test(explicitLanguage)) return href;
+        return `${href}${href.includes("?") ? "&" : "?"}lang=${encodeURIComponent(explicitLanguage)}`;
+      }
+      };
+
+      globalThis.__OPENRUNTIME_RENDER_CODE_FILE__ = (data) => {
+        renderCodeFile(data, false).catch(showLoadError);
+      };
+      if (dataHref) {
+        afterFirstPaint(() => dataMode === "stream"
+          ? loadCodeStream(dataHref)
+          : loadDeferredData(dataHref));
+      } else {
+        try {
+          globalThis.__OPENRUNTIME_RENDER_CODE_FILE__(JSON.parse(
+            document.getElementById("openruntime-code-file-data").textContent || "{}"
+          ));
+        } catch (error) {
+          showLoadError(error);
+        }
+      }
+
+      function afterFirstPaint(callback) {
+        requestAnimationFrame(() => requestAnimationFrame(callback));
+      }
+
+      function detectBrowserLocale() {
+        const explicit = new URLSearchParams(location.search).get("lang");
+        if (explicit && explicit.toLocaleLowerCase().startsWith("zh")) return "zh";
+        if (explicit && explicit.toLocaleLowerCase().startsWith("en")) return "en";
+        const browserLanguage = Array.isArray(navigator.languages) && navigator.languages.length > 0
+          ? navigator.languages[0]
+          : navigator.language;
+        return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
+      function switchLanguage() {
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
+        location.href = nextUrl.href;
+      }
+
+      function loadDeferredData(href) {
+        const script = document.createElement("script");
+        script.src = href;
+        script.async = true;
+        script.onerror = () => showLoadError(new Error(message("deferredLoadError")));
+        document.body.append(script);
+      }
+
+      async function loadCodeStream(href) {
+        try {
+          const response = await fetch(href, { cache: "no-store" });
+          if (!response.ok || !response.body) {
+            throw new Error(message("streamLoadError", { status: response.status }));
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const result = await reader.read();
+            buffer += decoder.decode(result.value || new Uint8Array(), { stream: !result.done });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (!line) continue;
+              const event = JSON.parse(line);
+              if (event.type === "start") await renderCodeFile(event.data, true);
+              else if (event.type === "code") globalThis.__OPENRUNTIME_APPEND_CODE_FILE__?.(event.value, false);
+              else if (event.type === "done") globalThis.__OPENRUNTIME_APPEND_CODE_FILE__?.("", true);
+              await nextPaint();
+            }
+            if (result.done) break;
+          }
+        } catch (error) {
+          showLoadError(error);
+        }
+      }
+
+      function nextPaint() {
+        return new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+
+      function showLoadError(error) {
+        const loading = document.getElementById("viewer-loading");
+        loading.textContent = error instanceof Error ? error.message : String(error);
+        loading.removeAttribute("hidden");
+        document.getElementById("code-viewport").setAttribute("aria-busy", "false");
+      }
+    })();
+  </script>
+</body>
+</html>

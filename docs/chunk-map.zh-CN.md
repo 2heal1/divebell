@@ -12,6 +12,7 @@ Chunk Map 建立浏览器实际加载文件与构建源码模块之间的可靠�
 - 每个 chunk 包含哪些源码模块。
 - 每个文件的构建体积。
 - chunk 属于哪些入口或路由分组。
+- chunk 对应入口、运行时、动态导入或哪一条 `splitChunks.cacheGroups` 规则。
 - 当前页面加载的 URL 是否能唯一匹配到本次构建。
 
 ## 能力边界
@@ -54,6 +55,8 @@ Chunk Map 包含：
 - `chunks[].initial`：是否随入口首次加载。
 - `chunks[].entrypoints`：所属入口。
 - `chunks[].groups`：构建分组；Modern.js 路由异步 chunk 使用路由模块名。
+- `chunks[].splitRule`：对应的入口、运行时、动态导入或 `splitChunks.cacheGroups`
+  配置路径；无法从构建信息精确确认时会标记为推断。
 - `chunks[].modules`：源码模块、模块类型和构建估算体积。
 - `chunks[].modules[].owner`：模块属于应用、工作区、第三方依赖、构建运行时
   或未知来源。
@@ -87,6 +90,8 @@ Modern.js 生成在 `node_modules/.modern-js` 下的应用入口仍归为应用�
 - 每个 JavaScript chunk 都包含源码模块。
 - 首页和异步 chunk 能正确区分。
 - Orders chunk 能归属到 `src/routes/orders/page.tsx`。
+- Orders chunk 能归属到路由动态导入，`lib-react` 和 `lib-router` 能映射到对应的
+  `splitChunks.cacheGroups` 规则。
 - React、React DOM 和 React Router 能识别为带版本的第三方依赖。
 - Modern.js 和 OpenRuntime 本地包能识别为工作区依赖。
 - Modern.js 自动生成入口不会被误判成第三方依赖。

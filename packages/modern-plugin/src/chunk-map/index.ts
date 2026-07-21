@@ -26,6 +26,8 @@ export type {
   OpenRuntimeChunkMapModuleKind,
   OpenRuntimeChunkMapModuleOwner,
   OpenRuntimeChunkMapPackageSummary,
+  OpenRuntimeChunkMapSplitRule,
+  OpenRuntimeChunkMapSplitRuleKind,
   OpenRuntimeChunkMatchResult
 } from "@openruntime/chunk-map";
 export {

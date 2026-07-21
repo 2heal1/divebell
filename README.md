@@ -132,7 +132,7 @@ release-note.list-latest
 When an Agent retrieves the latest Release Notes, it can follow a stable flow:
 
 ```sh
-openruntime commands add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/command-trobule-shooting
 openruntime start
 
 openruntime open \
@@ -164,45 +164,45 @@ This turns page capabilities into a stable Runtime that Agents can call, rather 
 
 ---
 
-## CLI Commands
+## CLI Extensions
 
-OpenRuntime CLI can load local command files. This is useful when a team wants to add private page operation commands without changing the OpenRuntime source code.
+OpenRuntime CLI loads extensions that may provide commands, stack detection, page-open scripts, cleanup, and Skills.
 
 This section is about page command development: the agent runs `openruntime open <url>` first, and the command operates on the current opened page. Use standalone automation scripts when the workflow needs to open the browser and manage the automation flow itself.
 
-See [CLI Command Development](docs/cli-extensions.md) for the export shape, `run(options)` fields, the full `options.openruntime` API, and a complete GitHub release example. Chinese documentation is available at [CLI 命令开发](docs/cli-extensions.zh-CN.md).
+See [CLI Extension Development](docs/cli-extensions.md) for the declaration shape, lazy loading rules, Hooks, and command context. Chinese documentation is available at [CLI 扩展开发](docs/cli-extensions.zh-CN.md).
 
 For standalone scripts that open the browser, wait for the page, and run page operations, see [Automating with OpenRuntime CLI](docs/cli-automation-scripts.md). Chinese documentation is available at [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md).
 
-Command files are loaded from:
+Extensions are loaded from:
 
 ```text
-~/.openruntime/commands
+~/.openruntime/extensions
 ```
 
 You can override the directory:
 
 ```sh
-OPENRUNTIME_COMMANDS_DIR=/path/to/commands openruntime --help
+OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
 ```
 
-You can disable external command loading:
+You can disable external extension loading:
 
 ```sh
-OPENRUNTIME_DISABLE_COMMANDS=1 openruntime --help
+OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
 ```
 
 Two file layouts are supported:
 
 ```text
-~/.openruntime/commands/foo.mjs
-~/.openruntime/commands/foo/index.mjs
+~/.openruntime/extensions/foo.mjs
+~/.openruntime/extensions/foo/index.mjs
 ```
 
-External commands are shown separately in help:
+External extensions are shown separately in help:
 
 ```text
-External Commands:
+External Extensions:
   openruntime foo ping - Runs Foo.
 ```
 
@@ -212,11 +212,11 @@ Complex commands may declare one local `SKILL.md`. Help lists the commands that 
 openruntime foo --skill
 ```
 
-If an external command conflicts with a built-in command or an internal command, OpenRuntime skips the external command and prints a warning. A broken command also does not crash the CLI; it is reported as a warning while commands are loaded.
+If an extension or its command conflicts with an existing name, OpenRuntime skips it and prints a warning. A broken extension does not crash the CLI.
 
-Use `defineCommand(...)` and `validateCommand(...)` in command files, tests, or CI to keep the exported command shape valid.
+Use `defineExtension(...)` and `validateExtension(...)` in local extension files, tests, or CI. Published entries should contain only declarations and use `await import()` for real implementations.
 
-External commands are local code execution. Only load files you trust.
+External extensions execute local code. Only load files you trust.
 
 ---
 

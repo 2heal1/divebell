@@ -21,7 +21,7 @@ If the page exposes stable Targets or Actions, prefer `snapshot`, `run-action`, 
 Install the verification command before a script uses `verify`:
 
 ```sh
-openruntime commands add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/command-trobule-shooting
 ```
 
 ## Why Use OpenRuntime For Scripts

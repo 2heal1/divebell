@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { test } from "@rstest/core";
 
-import { cliPackageInfo, defineCommand, getCliCommandName, runCli, validateCommand } from "../dist/index.js";
+import { cliPackageInfo, defineExtension, getCliCommandName, runCli, validateExtension } from "../dist/index.js";
 import { isEntryPoint } from "../dist/utils/entry.js";
 import { createCliReferenceMarkdown } from "../dist/commands/help.js";
 
@@ -26,50 +26,47 @@ test("exposes only canonical cli binaries", () => {
   assert.deepEqual(Object.keys(packageJson.bin), ["openruntime", "opr"]);
 });
 
-test("defines and validates command exports", () => {
-  const command = defineCommand({
+test("defines and validates extension exports", () => {
+  const extension = defineExtension({
     schemaVersion: 1,
     name: "demo",
-    commandReferences: [
-      {
-        category: "Commands",
+    commands: [{
+      name: "demo",
+      commandReferences: [{
+        category: "Extensions",
         usage: "openruntime demo ping",
         description: "Runs demo."
-      }
-    ],
-    async run() {
-      return 0;
-    }
+      }],
+      async run() { return 0; }
+    }]
   });
 
-  assert.equal(command.name, "demo");
-  assert.equal(validateCommand(command).name, "demo");
+  assert.equal(extension.name, "demo");
+  assert.equal(validateExtension(extension).name, "demo");
   assert.throws(
-    () => validateCommand({
+    () => validateExtension({
       schemaVersion: 1,
       name: "broken"
     }),
-    /must export a run\(options\) function/
+    /must provide at least one command or hook/
   );
   assert.throws(
-    () => defineCommand({
+    () => defineExtension({
       schemaVersion: 1,
       name: "broken-skill",
-      skill: { path: "SKILL.md" },
-      async run() {
-        return 0;
-      }
+      commands: [{ name: "broken-skill", skill: { path: "SKILL.md" }, async run() { return 0; } }]
     }),
     /skill\.path must be an absolute path to SKILL\.md/
   );
   assert.throws(
-    () => defineCommand({
+    () => defineExtension({
       schemaVersion: 1,
       name: "missing-skill",
-      skill: { path: join(tmpdir(), "openruntime-missing-skill", "SKILL.md") },
-      async run() {
-        return 0;
-      }
+      commands: [{
+        name: "missing-skill",
+        skill: { path: join(tmpdir(), "openruntime-missing-skill", "SKILL.md") },
+        async run() { return 0; }
+      }]
     }),
     /skill does not exist/
   );
@@ -103,7 +100,8 @@ test("prints explicit runtime resource help", async () => {
   assert.match(output.text(), /openruntime wait-for .*--next/);
   assert.match(output.text(), /openruntime snapshot .* - Read the current snapshot state from the selected runtime\./);
   assert.match(output.text(), /openruntime wait-for .* - Wait for a target to reach a status/);
-  assert.match(output.text(), /openruntime commands list/);
+  assert.match(output.text(), /openruntime extensions list/);
+  assert.match(output.text(), /openruntime stack/);
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
@@ -169,7 +167,8 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /openruntime coverage <status\|start\|take\|stop\|cancel>/);
   assert.doesNotMatch(markdown, /openruntime verify /);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /openruntime commands list/);
+  assert.match(markdown, /openruntime extensions list/);
+  assert.match(markdown, /openruntime stack/);
   assert.doesNotMatch(markdown, /openruntime goto /);
   assert.doesNotMatch(markdown, /openruntime close/);
   assert.doesNotMatch(markdown, /\[--open\]/);

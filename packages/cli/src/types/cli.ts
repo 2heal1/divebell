@@ -8,16 +8,18 @@ import type {
   CliCommandReference,
   CliCommandSkillReference,
   ExtensionLoadRecord,
-  OpenRuntimeCliExtension
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition
 } from "./commands.js";
 import type { exportAuthProfileWithConnector } from "../features/auth/connector/index.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
-import type { CommandPackageDownloader } from "../commands/installed.js";
+import type { ExtensionPackageDownloader } from "../commands/installed.js";
 
 export type {
   CliExtensionPageContext,
   CliExtensionRunOptions,
-  OpenRuntimeCliExtension
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition
 } from "./commands.js";
 
 export interface CliRunOptions {
@@ -36,8 +38,8 @@ export interface CliRunOptions {
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   authConnectorExporter?: typeof exportAuthProfileWithConnector;
   authStateApplier?: AuthStateApplier;
-  commandsDirectory?: string;
-  commandPackageDownloader?: CommandPackageDownloader;
+  extensionsDirectory?: string;
+  extensionPackageDownloader?: ExtensionPackageDownloader;
 }
 
 export interface RuntimeCliCommandOptions {
@@ -53,13 +55,13 @@ export interface RuntimeCliCommandOptions {
 
 export interface CreateOpenRuntimeCliOptions {
   packageInfo?: OpenRuntimePackageInfo;
-  extensions?: readonly OpenRuntimeCliExtension[];
+  extensions?: readonly OpenRuntimeExtensionDefinition[];
   extensionLoadRecords?: readonly ExtensionLoadRecord[];
 }
 
 export interface OpenRuntimeCli {
   packageInfo: OpenRuntimePackageInfo;
-  extensions: readonly OpenRuntimeCliExtension[];
+  extensions: readonly OpenRuntimeExtensionDefinition[];
   run(argv?: string[], options?: CliRunOptions): Promise<number>;
   createHelpText(): string;
   getCommandReferences(): CliCommandReference[];
@@ -73,6 +75,10 @@ export interface OpenRuntimeCliWithExternalExtensions {
 export interface OpenRuntimeCliConfig {
   commandReferences: readonly CliCommandReference[];
   commandSkillReferences: readonly CliCommandSkillReference[];
-  extensionRegistry: Map<string, OpenRuntimeCliExtension>;
+  extensions: readonly OpenRuntimeExtensionDefinition[];
+  commandRegistry: Map<string, {
+    extension: OpenRuntimeExtensionDefinition;
+    command: OpenRuntimeExtensionCommand;
+  }>;
   extensionLoadRecords: readonly ExtensionLoadRecord[];
 }

@@ -3,48 +3,43 @@ import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  type CliCommandReference,
-} from "./help.js";
-import type { OpenRuntimeCliExtension } from "../types/commands.js";
-import { validateCommand } from "./definition.js";
-import type { ExtensionLoadRecord } from "../types/commands.js";
-import { getInstalledCommandEntryPaths } from "./installed.js";
+import type {
+  CliCommandReference,
+  ExtensionLoadRecord,
+  ExternalExtensionCandidate,
+  ExternalExtensionLoadResult,
+  ExternalExtensionModule,
+  OpenRuntimeExtensionDefinition
+} from "../types/commands.js";
+import { validateExtension } from "./definition.js";
+import { getInstalledExtensionEntryPaths } from "./installed.js";
 
-export type { ExtensionLoadRecord } from "../types/commands.js";
+export type { ExtensionLoadRecord, ExternalExtensionLoadResult } from "../types/commands.js";
 
-const DEFAULT_EXTERNAL_COMMAND_DIR = join(homedir(), ".openruntime", "commands");
-const EXTERNAL_COMMAND_DIR_ENV = "OPENRUNTIME_COMMANDS_DIR";
-const DISABLE_EXTERNAL_COMMANDS_ENV = "OPENRUNTIME_DISABLE_COMMANDS";
-
-import type { ExternalExtensionLoadResult, ExternalExtensionModule, ExternalExtensionCandidate } from "../types/commands.js";
-export type { ExternalExtensionLoadResult } from "../types/commands.js";
+const DEFAULT_EXTERNAL_EXTENSION_DIR = join(homedir(), ".openruntime", "extensions");
+const EXTERNAL_EXTENSION_DIR_ENV = "OPENRUNTIME_EXTENSIONS_DIR";
+const DISABLE_EXTERNAL_EXTENSIONS_ENV = "OPENRUNTIME_DISABLE_EXTENSIONS";
 
 export async function loadExternalCliExtensions(options: {
-  reservedNames: readonly string[];
+  reservedExtensionNames: readonly string[];
+  reservedCommandNames: readonly string[];
   env?: NodeJS.ProcessEnv;
 }): Promise<ExternalExtensionLoadResult> {
   const env = options.env ?? process.env;
-  if (isExternalCommandLoadingDisabled(env)) {
-    return {
-      extensions: [],
-      records: []
-    };
+  if (env[DISABLE_EXTERNAL_EXTENSIONS_ENV] === "1") {
+    return { extensions: [], records: [] };
   }
 
-  const directory = resolveExternalCommandDirectory(env);
+  const directory = resolve(env[EXTERNAL_EXTENSION_DIR_ENV] ?? DEFAULT_EXTERNAL_EXTENSION_DIR);
   if (!existsSync(directory)) {
-    return {
-      extensions: [],
-      records: []
-    };
+    return { extensions: [], records: [] };
   }
 
   let candidates: ExternalExtensionCandidate[];
   try {
     const [looseCandidates, installedPaths] = await Promise.all([
       findExternalExtensionCandidates(directory),
-      getInstalledCommandEntryPaths(directory)
+      getInstalledExtensionEntryPaths(directory)
     ]);
     candidates = [
       ...installedPaths.map((path) => ({ path })),
@@ -53,37 +48,34 @@ export async function loadExternalCliExtensions(options: {
   } catch (error) {
     return {
       extensions: [],
-      records: [
-        {
-          name: "commands-path",
-          source: "external",
-          status: "failed",
-          path: directory,
-          reason: error instanceof Error ? error.message : String(error)
-        }
-      ]
+      records: [{
+        name: "extensions-path",
+        source: "external",
+        status: "failed",
+        path: directory,
+        reason: error instanceof Error ? error.message : String(error)
+      }]
     };
   }
 
-  const reservedNames = new Set(options.reservedNames);
-  const extensions: OpenRuntimeCliExtension[] = [];
+  const reservedExtensionNames = new Set(options.reservedExtensionNames);
+  const reservedCommandNames = new Set(options.reservedCommandNames);
+  const extensions: OpenRuntimeExtensionDefinition[] = [];
   const records: ExtensionLoadRecord[] = [];
   for (const candidate of candidates) {
-    const loaded = await loadExternalCommand(candidate, reservedNames);
+    const loaded = await loadExternalExtension(candidate, reservedExtensionNames, reservedCommandNames);
     records.push(loaded.record);
-    if (loaded.extension !== undefined) {
-      extensions.push(loaded.extension);
-      reservedNames.add(loaded.extension.name);
-    }
+    if (loaded.extension === undefined) continue;
+    extensions.push(loaded.extension);
+    reservedExtensionNames.add(loaded.extension.name);
+    for (const command of loaded.extension.commands ?? []) reservedCommandNames.add(command.name);
   }
-
-  return {
-    extensions,
-    records
-  };
+  return { extensions, records };
 }
 
-export function createInternalExtensionRecords(extensions: readonly OpenRuntimeCliExtension[]): ExtensionLoadRecord[] {
+export function createInternalExtensionRecords(
+  extensions: readonly OpenRuntimeExtensionDefinition[]
+): ExtensionLoadRecord[] {
   return extensions.map((extension) => ({
     name: extension.name,
     source: "internal",
@@ -91,25 +83,16 @@ export function createInternalExtensionRecords(extensions: readonly OpenRuntimeC
   }));
 }
 
-export function markExternalCommandReferences(
-  references: readonly CliCommandReference[]
-): readonly CliCommandReference[] {
-  return references.map((reference) => ({
-    ...reference,
-    category: "External Commands"
-  }));
-}
-
 async function findExternalExtensionCandidates(directory: string): Promise<ExternalExtensionCandidate[]> {
   const stats = statSync(directory);
   if (stats.isFile()) {
     if (!directory.endsWith(".mjs")) {
-      throw new Error(`Command file must be an .mjs file: ${directory}`);
+      throw new Error(`Extension file must be an .mjs file: ${directory}`);
     }
     return [{ path: directory }];
   }
   if (!stats.isDirectory()) {
-    throw new Error(`Command path must be a file or directory: ${directory}`);
+    throw new Error(`Extension path must be a file or directory: ${directory}`);
   }
 
   const entries = await readdir(directory, { withFileTypes: true });
@@ -118,55 +101,43 @@ async function findExternalExtensionCandidates(directory: string): Promise<Exter
     const entryPath = join(directory, entry.name);
     if (entry.isFile() && entry.name.endsWith(".mjs")) {
       candidates.push({ path: entryPath });
-      continue;
-    }
-    if (entry.isDirectory()) {
+    } else if (entry.isDirectory()) {
       const indexPath = join(entryPath, "index.mjs");
-      if (existsSync(indexPath) && statSync(indexPath).isFile()) {
-        candidates.push({ path: indexPath });
-      }
+      if (existsSync(indexPath) && statSync(indexPath).isFile()) candidates.push({ path: indexPath });
     }
   }
   return candidates.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-async function loadExternalCommand(
+async function loadExternalExtension(
   candidate: ExternalExtensionCandidate,
-  reservedNames: ReadonlySet<string>
-): Promise<{
-  extension?: OpenRuntimeCliExtension;
-  record: ExtensionLoadRecord;
-}> {
+  reservedExtensionNames: ReadonlySet<string>,
+  reservedCommandNames: ReadonlySet<string>
+): Promise<{ extension?: OpenRuntimeExtensionDefinition; record: ExtensionLoadRecord }> {
   try {
     const module = await importExternalModule(candidate.path);
-    const definition = validateCommand(module.default, { path: candidate.path });
-    if (reservedNames.has(definition.name)) {
-      return {
-        record: {
-          name: definition.name,
-          source: "external",
-          status: "skipped",
-          path: candidate.path,
-          reason: `Command "${definition.name}" conflicts with an existing command.`
-        }
-      };
+    const definition = validateExtension(module.default, { path: candidate.path });
+    if (reservedExtensionNames.has(definition.name)) {
+      return skipped(definition.name, candidate.path, `Extension "${definition.name}" conflicts with an existing extension.`);
     }
-
+    const conflictingCommand = (definition.commands ?? []).find((command) => reservedCommandNames.has(command.name));
+    if (conflictingCommand !== undefined) {
+      return skipped(definition.name, candidate.path, `Command "${conflictingCommand.name}" conflicts with an existing command.`);
+    }
+    const extension: OpenRuntimeExtensionDefinition = {
+      ...definition,
+      ...(definition.commands === undefined ? {} : {
+        commands: definition.commands.map((command) => ({
+          ...command,
+          ...(command.commandReferences === undefined ? {} : {
+            commandReferences: markExternalReferences(command.commandReferences)
+          })
+        }))
+      })
+    };
     return {
-      extension: {
-        name: definition.name,
-        ...(definition.skill === undefined ? {} : { skill: definition.skill }),
-        ...(definition.commandReferences === undefined ? {} : {
-          commandReferences: markExternalCommandReferences(definition.commandReferences)
-        }),
-        run: definition.run
-      },
-      record: {
-        name: definition.name,
-        source: "external",
-        status: "loaded",
-        path: candidate.path
-      }
+      extension,
+      record: { name: definition.name, source: "external", status: "loaded", path: candidate.path }
     };
   } catch (error) {
     return {
@@ -181,6 +152,14 @@ async function loadExternalCommand(
   }
 }
 
+function skipped(name: string, path: string, reason: string): { record: ExtensionLoadRecord } {
+  return { record: { name, source: "external", status: "skipped", path, reason } };
+}
+
+function markExternalReferences(references: readonly CliCommandReference[]): readonly CliCommandReference[] {
+  return references.map((reference) => ({ ...reference, category: "External Extensions" }));
+}
+
 async function importExternalModule(modulePath: string): Promise<ExternalExtensionModule> {
   const moduleUrl = pathToFileURL(modulePath);
   moduleUrl.searchParams.set("mtime", String(statSync(modulePath).mtimeMs));
@@ -188,22 +167,7 @@ async function importExternalModule(modulePath: string): Promise<ExternalExtensi
 }
 
 function inferExtensionName(modulePath: string): string {
-  const normalized = modulePath.replaceAll("\\", "/");
-  const segments = normalized.split("/");
+  const segments = modulePath.replaceAll("\\", "/").split("/");
   const filename = segments.at(-1) ?? "unknown";
-  if (filename === "index.mjs") {
-    return segments.at(-2) ?? "unknown";
-  }
-  return filename.replace(/\.mjs$/, "");
-}
-
-function isExternalCommandLoadingDisabled(env: NodeJS.ProcessEnv): boolean {
-  return env[DISABLE_EXTERNAL_COMMANDS_ENV] === "1";
-}
-
-function resolveExternalCommandDirectory(env: NodeJS.ProcessEnv): string {
-  if (env[EXTERNAL_COMMAND_DIR_ENV] !== undefined) {
-    return resolve(env[EXTERNAL_COMMAND_DIR_ENV]);
-  }
-  return DEFAULT_EXTERNAL_COMMAND_DIR;
+  return filename === "index.mjs" ? segments.at(-2) ?? "unknown" : filename.replace(/\.mjs$/, "");
 }

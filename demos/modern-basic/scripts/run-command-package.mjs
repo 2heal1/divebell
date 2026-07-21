@@ -15,19 +15,19 @@ if (packageInput === undefined || commandArgs.length === 0) {
 }
 
 const packageDirectory = resolve(demoDirectory, packageInput);
-const commandsDirectory = await mkdtemp(join(tmpdir(), "openruntime-demo-commands-"));
+const extensionsDirectory = await mkdtemp(join(tmpdir(), "openruntime-demo-extensions-"));
 const environment = {
   ...process.env,
-  OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
-  npm_config_cache: join(commandsDirectory, ".npm-cache")
+  OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
+  npm_config_cache: join(extensionsDirectory, ".npm-cache")
 };
 
 try {
-  runCli(["commands", "add", packageDirectory, "--commands-dir", commandsDirectory], environment, "pipe");
+  runCli(["extensions", "add", packageDirectory, "--extensions-dir", extensionsDirectory], environment, "pipe");
   const result = runCli(commandArgs, environment, "inherit");
   process.exitCode = result.status ?? 1;
 } finally {
-  await rm(commandsDirectory, { recursive: true, force: true });
+  await rm(extensionsDirectory, { recursive: true, force: true });
 }
 
 function runCli(args, env, stdio) {

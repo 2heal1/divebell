@@ -3,24 +3,24 @@ export type { CliCommandReference } from "../types/commands.js";
 
 export const cliCommandReferences: CliCommandReference[] = [
   {
-    category: "Commands",
-    usage: "openruntime commands add <npm-package> [--commands-dir <path>]",
-    description: "Download, validate, and install an OpenRuntime command package with no runtime dependencies."
+    category: "Extensions",
+    usage: "openruntime extensions add <npm-package> [--extensions-dir <path>]",
+    description: "Download, validate, and install an OpenRuntime extension package with no runtime dependencies."
   },
   {
-    category: "Commands",
-    usage: "openruntime commands list [--commands-dir <path>]",
-    description: "List installed OpenRuntime command packages and the commands they provide."
+    category: "Extensions",
+    usage: "openruntime extensions list [--extensions-dir <path>]",
+    description: "List installed OpenRuntime extension packages, commands, and hooks."
   },
   {
-    category: "Commands",
-    usage: "openruntime commands update <package> [--commands-dir <path>]",
-    description: "Download and activate the latest command package version; keep the current version if the update fails."
+    category: "Extensions",
+    usage: "openruntime extensions update <package> [--extensions-dir <path>]",
+    description: "Download and activate the latest extension package version; keep the current version if the update fails."
   },
   {
-    category: "Commands",
-    usage: "openruntime commands remove <package> [--commands-dir <path>]",
-    description: "Uninstall the specified command package."
+    category: "Extensions",
+    usage: "openruntime extensions remove <package> [--extensions-dir <path>]",
+    description: "Uninstall the specified extension package."
   },
   {
     category: "Bridge and Browser",
@@ -56,6 +56,11 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Bridge and Browser",
     usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "Open a page and connect its runtimes through the Bridge by default; use --ui for a visible browser or --no-bridge to skip connection."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime stack [--refresh]",
+    description: "Run stack detectors from installed extensions and summarize matches for the current page."
   },
   {
     category: "Bridge and Browser",
@@ -155,7 +160,7 @@ export type { CliCommandSkillReference, CliReferenceCollection } from "../types/
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const commandSkillReferences = references.commandSkillReferences ?? [];
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const commandLines = categories.flatMap((category) => {
     const commands = commandReferences.filter((command) => command.category === category);
     if (commands.length === 0) return [];
@@ -182,12 +187,12 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Commands", "External Commands"];
+  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge and Browser",
     Runtime: "Runtime",
-    Commands: "Commands",
-    "External Commands": "External Commands"
+    Extensions: "Extensions",
+    "External Extensions": "External Extensions"
   };
   const lines = [
     "# OpenRuntime CLI Reference",

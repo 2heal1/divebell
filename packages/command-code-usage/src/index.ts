@@ -1,45 +1,27 @@
 import type {
+  CliExtensionRunOptions,
   CommandErrorKind,
-  OpenRuntimeCommandDefinition,
   ParsedCliArgs
 } from "@openruntime/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
 
-const command: OpenRuntimeCommandDefinition = {
-  schemaVersion: 1,
-  name: "code-usage",
-  commandReferences: [
-    {
-      category: "Commands",
-      usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
-      description: "Analyze actual chunk, source file, and dependency usage from a Chunk Map, build assets, and page coverage."
-    },
-    {
-      category: "Commands",
-      usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
-      description: "Generate and open an interactive code-usage report; use --no-open to create the file only."
-    }
-  ],
-  run: async (options) => {
-    const action = options.args.command[1];
-    if (action === "analyze") {
-      return await runAnalyze(options.args, options.output);
-    }
-    if (action === "report") {
-      return await runCodeUsageReportCommand(options.args, options.output);
-    }
-    throw commandError({
-      code: "CODE_USAGE_ACTION_INVALID",
-      kind: "validation",
-      message: "code-usage requires analyze or report.",
-      hint: "Run `openruntime code-usage analyze ...` or `openruntime code-usage report ...`."
-    });
+export async function runCodeUsageCommand(options: CliExtensionRunOptions): Promise<number> {
+  const action = options.args.command[1];
+  if (action === "analyze") {
+    return await runAnalyze(options.args, options.output);
   }
-};
-
-export default command;
+  if (action === "report") {
+    return await runCodeUsageReportCommand(options.args, options.output);
+  }
+  throw commandError({
+    code: "CODE_USAGE_ACTION_INVALID",
+    kind: "validation",
+    message: "code-usage requires analyze or report.",
+    hint: "Run `openruntime code-usage analyze ...` or `openruntime code-usage report ...`."
+  });
+}
 export { analyzeCodeUsageFiles } from "./code-usage.js";
 export {
   createCodeUsageReportHtml,
@@ -50,7 +32,7 @@ export type * from "./types.js";
 
 async function runAnalyze(
   args: ParsedCliArgs,
-  output: Parameters<OpenRuntimeCommandDefinition["run"]>[0]["output"]
+  output: CliExtensionRunOptions["output"]
 ): Promise<number> {
   if (args.command.length !== 2) {
     throw commandError({
@@ -97,7 +79,7 @@ async function runAnalyze(
 
 export async function runCodeUsageReportCommand(
   args: ParsedCliArgs,
-  output: Parameters<OpenRuntimeCommandDefinition["run"]>[0]["output"],
+  output: CliExtensionRunOptions["output"],
   opener: (path: string) => Promise<void> = openHtmlReport
 ): Promise<number> {
   if (args.command.length !== 3) {

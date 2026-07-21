@@ -1,0 +1,24 @@
+import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+
+const extension = {
+  schemaVersion: 1,
+  name: "code-usage",
+  commands: [{
+    name: "code-usage",
+    commandReferences: [
+      {
+        category: "Extensions",
+        usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
+        description: "Analyze actual chunk, source file, and dependency usage from a Chunk Map, build assets, and page coverage."
+      },
+      {
+        category: "Extensions",
+        usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
+        description: "Generate and open an interactive code-usage report; use --no-open to create the file only."
+      }
+    ],
+    run: async (options) => await (await import("./index.js")).runCodeUsageCommand(options)
+  }]
+} satisfies OpenRuntimeExtensionDefinition;
+
+export default extension;

@@ -17,7 +17,7 @@ const options = parseOptions(process.argv.slice(2));
 const artifactDirectory = resolve(options.artifactDirectory ?? join(demoDirectory, ".code-usage-artifacts"));
 const profileDirectory = join(tmpdir(), `orcov-${process.pid}`);
 const socketDirectory = join(tmpdir(), `abc-${process.pid}`);
-const commandsDirectory = join(profileDirectory, "commands");
+const extensionsDirectory = join(profileDirectory, "extensions");
 const agentBrowser = process.env.OPENRUNTIME_AGENT_BROWSER_EXECUTABLE ?? defaultAgentBrowser;
 const environment = {
   ...process.env,
@@ -26,7 +26,7 @@ const environment = {
   OPENRUNTIME_AGENT_BROWSER_EXECUTABLE: agentBrowser,
   OPENRUNTIME_AGENT_BROWSER_SESSION: `orc${process.pid}`,
   OPENRUNTIME_BROWSER_PROFILE_DIR: profileDirectory,
-  OPENRUNTIME_COMMANDS_DIR: commandsDirectory
+  OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory
 };
 
 await access(cliPath);
@@ -43,7 +43,7 @@ const reportPath = join(artifactDirectory, "report.json");
 let coverageStarted = false;
 
 try {
-  await runCli(["commands", "add", commandPackageDirectory, "--commands-dir", commandsDirectory]);
+  await runCli(["extensions", "add", commandPackageDirectory, "--extensions-dir", extensionsDirectory]);
   await runCli(["open", "about:blank", "--no-bridge"]);
   await runCli(["coverage", "start"]);
   coverageStarted = true;

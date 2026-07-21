@@ -67,20 +67,20 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
 - 让 `runAction` 只执行动作并记录 action event，不自动把执行结果写入 snapshot。
 - 需要验证动作结果时，继续使用 target 和 `waitFor`，不要把 action 返回值当作最终状态。
 
-## 5. 开发页面命令
+## 5. 开发 CLI 扩展
 
 页面命令只操作最近一次 `openruntime open <url>` 建立的当前页面，不自己打开、跳转、关闭
 或替换浏览器会话，也不自己选择 Bridge 或 Runtime。
 
-如果当前仓库包含 CLI 命令开发文档，优先读取 `docs/cli-extensions.md` 或对应中文版本。
+如果当前仓库包含 CLI 扩展开发文档，优先读取 `docs/cli-extensions.md` 或对应中文版本。
 实现时必须：
 
-- 使用 `defineCommand(...)` 声明命令。
+- 使用扩展入口声明 commands、hooks 和 skills，实际实现通过 `await import()` 按需加载。
 - 提供准确的命令说明和示例，让 `openruntime --help` 可以发现真实用法。
 - 校验当前页面是否存在、URL 是否受支持以及必要输入是否完整。
 - 用统一输出表示成功、需要输入和预期错误；数据类命令不要混入进度文本。
 - 页面已暴露稳定 target/action 时，优先查询或执行声明能力；页面交互只作为必要补充。
-- 只加载可信的外部命令文件。
+- 只加载可信的外部扩展。
 
 复杂命令需要专门的多步说明、领域知识或引用资料时，最多为它提供一个本地 `SKILL.md`：
 
@@ -91,8 +91,8 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
 - 把 `--skill` 保留给 skill 发现，不要复用成业务参数。
 - 保持命令 skill 只描述完成该命令需要的内容，不复制整个 OpenRuntime 排查流程。
 
-默认外部命令目录是 `~/.openruntime/commands`。在项目内开发和测试时，优先通过
-`OPENRUNTIME_COMMANDS_DIR` 指向受版本管理的临时目录，不要直接覆盖用户已有命令。
+默认外部扩展目录是 `~/.openruntime/extensions`。在项目内开发和测试时，优先通过
+`OPENRUNTIME_EXTENSIONS_DIR` 指向受版本管理的临时目录，不要直接覆盖用户已有扩展。
 
 ## 6. 编写自动化脚本
 
@@ -116,7 +116,7 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
   并读取至少一个由新增接入提供的 target 或 snapshot。
 - target/action：查询刚增加的定义和状态；对 action 使用代表性输入执行，并用 target/waitFor
   验证结果。
-- 页面命令：运行定义校验和相关测试，再通过 `OPENRUNTIME_COMMANDS_DIR` 加载命令，确认 help
+- 页面命令：运行定义校验和相关测试，再通过 `OPENRUNTIME_EXTENSIONS_DIR` 加载命令，确认 help
   可发现，并用代表性页面执行一次成功路径和一次输入或页面错误路径。命令声明 skill 时，
   额外确认 `--skill` 返回正确绝对路径且没有执行业务逻辑。
 - 自动化脚本：使用真实或有代表性的 URL 跑完整流程，检查退出码和最终输出。

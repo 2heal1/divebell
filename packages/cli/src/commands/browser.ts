@@ -14,12 +14,16 @@ import { createGetWindowScript, createInteractiveTextClickScript, type BrowserRu
 import { createOptionalNumberProperty, hasOption, requireCommandArgument, writeJson } from "../utils/command.js";
 import { withOpenRuntimeSession } from "../utils/url.js";
 import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
+import { createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, normalizeAgentBrowserTarget, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
 import { ensureSavedAuthStateApplied } from "../features/auth/browser-state.js";
+import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
+import { runCloseHooks, runOpenHooks, type ExtensionHookFailure } from "../features/extension/hooks.js";
+import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -28,7 +32,8 @@ export async function runBrowserCliCommand(
   browserRunner: BrowserRunner,
   bridgeStarter: BridgeStarter,
   bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
-  operationLogStore: CliOperationLogStore
+  operationLogStore: CliOperationLogStore,
+  extensions: readonly OpenRuntimeExtensionDefinition[]
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
@@ -36,6 +41,8 @@ export async function runBrowserCliCommand(
     const sessionId = getOpenCommandSessionId(args);
     const openedUrl = withOpenRuntimeSession(url, sessionId);
     const bridgeUrl = hasOption(args, "no-bridge") ? null : createBridgeUrl(args);
+    const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
+    writeHookFailures(stderr, hookResult.failures);
     await operationLogStore.remove();
     if (browserRunner.authState !== undefined) {
       await ensureSavedAuthStateApplied(browserRunner, browserRunner.authState.profileDirectory);
@@ -49,7 +56,14 @@ export async function runBrowserCliCommand(
         ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
       });
     }
-    const result = await openBrowserPage(browserRunner, args, openedUrl, bridgeUrl, { ui: hasOption(args, "ui") });
+    const result = await openBrowserPage(
+      browserRunner,
+      args,
+      openedUrl,
+      bridgeUrl,
+      hookResult.scripts,
+      { ui: hasOption(args, "ui") }
+    );
     if (result.exitCode !== 0) {
       throw createError({
         code: "PAGE_OPEN_FAILED",
@@ -73,7 +87,8 @@ export async function runBrowserCliCommand(
       bridgeUrl,
       sessionId,
       openedAt,
-      exitCode: result.exitCode
+      exitCode: result.exitCode,
+      activeExtensions: hookResult.activeExtensions
     });
     createCommandOutput(stdout, args.command.join(" ")).ok({
       url,
@@ -87,6 +102,16 @@ export async function runBrowserCliCommand(
   }
 
   if (command === "close") {
+    await runExtensionCloseHooks({
+      args,
+      stderr,
+      fetcher,
+      browserRunner,
+      bridgeStarter,
+      bridgeStateStore,
+      operationLogStore,
+      extensions
+    });
     const exitCode = await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
     await operationLogStore.remove();
     return exitCode;
@@ -130,6 +155,34 @@ export async function runBrowserCliCommand(
   return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(commandArgs), stdout, stderr);
 }
 
+export async function runExtensionCloseHooks(options: {
+  args: ParsedCliArgs;
+  stderr: { write(chunk: string): void };
+  fetcher: Fetcher;
+  browserRunner: BrowserRunner;
+  bridgeStarter: BridgeStarter;
+  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>;
+  operationLogStore: CliOperationLogStore;
+  extensions: readonly OpenRuntimeExtensionDefinition[];
+}): Promise<void> {
+  const openContext = await options.operationLogStore.read();
+  if (openContext === undefined) return;
+  const closeArgs = applyOpenContextDefaultsOrThrow(options.args, openContext, "always");
+  const failures = await runCloseHooks(options.extensions, openContext.activeExtensions, {
+    args: closeArgs,
+    page: createExtensionPageContext(openContext),
+    openruntime: createOpenRuntimeExtensionApi({
+      args: closeArgs,
+      fetcher: options.fetcher,
+      browserRunner: options.browserRunner,
+      bridgeStarter: options.bridgeStarter,
+      bridgeStateStore: options.bridgeStateStore,
+      openContext
+    })
+  });
+  writeHookFailures(options.stderr, failures);
+}
+
 async function runClickCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -162,15 +215,16 @@ async function openBrowserPage(
   args: ParsedCliArgs,
   openedUrl: string,
   bridgeUrl: string | null,
+  hookScripts: readonly string[],
   options: BrowserRunOptions
 ): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
-  if (cookies === undefined && bridgeUrl === null) {
+  if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
     return await browserRunner.run(["open", openedUrl], options);
   }
 
-  if (bridgeUrl !== null) {
-    const scriptPath = await ensureBridgeInitScript(bridgeUrl);
+  if (bridgeUrl !== null || hookScripts.length > 0) {
+    const scriptPath = await ensureBrowserInitScript(bridgeUrl, hookScripts);
     if (cookies === undefined) {
       return await browserRunner.run(["open", openedUrl, "--init-script", scriptPath], options);
     }
@@ -192,12 +246,24 @@ async function openBrowserPage(
   return await browserRunner.run(["goto", openedUrl]);
 }
 
-async function ensureBridgeInitScript(bridgeUrl: string): Promise<string> {
+async function ensureBrowserInitScript(bridgeUrl: string | null, hookScripts: readonly string[]): Promise<string> {
   const directory = join(tmpdir(), "openruntime-bridge-init");
-  const script = createBridgeInitScript(bridgeUrl);
+  const script = [
+    ...hookScripts,
+    ...(bridgeUrl === null ? [] : [createBridgeInitScript(bridgeUrl)])
+  ].join("\n;\n");
   const key = createHash("sha256").update(script).digest("hex").slice(0, 16);
   const scriptPath = join(directory, `bridge-${key}.js`);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await writeFile(scriptPath, script, { encoding: "utf8", mode: 0o600 });
   return scriptPath;
+}
+
+function writeHookFailures(
+  stderr: { write(chunk: string): void },
+  failures: readonly ExtensionHookFailure[]
+): void {
+  for (const failure of failures) {
+    stderr.write(`OpenRuntime extension ${failure.extension} ${failure.hook} hook failed: ${failure.message}\n`);
+  }
 }

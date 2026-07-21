@@ -11,7 +11,7 @@
   "main": "./dist/index.js",
   "openruntime": {
     "schemaVersion": 1,
-    "commands": ["./dist/index.js"]
+    "extensions": ["./dist/extension.js"]
   },
   "files": [
     "dist/**/*.js",

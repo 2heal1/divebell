@@ -1,5 +1,6 @@
 import { createPackageInfo } from "@openruntime/core";
 import { validateCommandSkill } from "./commands/skill.js";
+import { validateExtension } from "./commands/definition.js";
 import { createBuiltInCommandNameSet } from "./commands/names.js";
 import {
   createInternalExtensionRecords,
@@ -16,7 +17,8 @@ import type {
   CliRunOptions,
   CreateOpenRuntimeCliOptions,
   OpenRuntimeCli,
-  OpenRuntimeCliExtension,
+  OpenRuntimeExtensionCommand,
+  OpenRuntimeExtensionDefinition,
   OpenRuntimeCliWithExternalExtensions
 } from "./types/cli.js";
 
@@ -27,17 +29,22 @@ export function getCliCommandName(): "openruntime" {
 }
 
 export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}): OpenRuntimeCli {
-  const extensions = options.extensions ?? [];
-  const extensionRegistry = createExtensionRegistry(extensions);
+  const extensions = (options.extensions ?? []).map((extension) => validateExtension(extension));
+  const commandRegistry = createCommandRegistry(extensions);
   const commandReferences = [
     ...cliCommandReferences,
-    ...extensions.flatMap((extension) => extension.commandReferences ?? [])
+    ...extensions.flatMap((extension) =>
+      (extension.commands ?? []).flatMap((command) => command.commandReferences ?? [])
+    )
   ];
-  const commandSkillReferences = extensions.flatMap(createCommandSkillReferences);
+  const commandSkillReferences = extensions.flatMap((extension) =>
+    (extension.commands ?? []).flatMap(createCommandSkillReferences)
+  );
   const config = {
     commandReferences,
     commandSkillReferences,
-    extensionRegistry,
+    extensions,
+    commandRegistry,
     extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions)
   };
   const packageInfo = options.packageInfo ?? cliPackageInfo;
@@ -76,12 +83,14 @@ export async function createOpenRuntimeCliWithExternalExtensions(
   env: NodeJS.ProcessEnv = process.env
 ): Promise<OpenRuntimeCliWithExternalExtensions> {
   const internalExtensions = options.extensions ?? [];
-  const reservedNames = [
-    ...createBuiltInCommandNameSet(),
-    ...internalExtensions.map((extension) => extension.name)
-  ];
   const external = await loadExternalCliExtensions({
-    reservedNames,
+    reservedExtensionNames: internalExtensions.map((extension) => extension.name),
+    reservedCommandNames: [
+      ...createBuiltInCommandNameSet(),
+      ...internalExtensions.flatMap((extension) =>
+        (extension.commands ?? []).map((command) => command.name)
+      )
+    ],
     env
   });
   const extensionLoadRecords = [
@@ -101,34 +110,45 @@ export async function createOpenRuntimeCliWithExternalExtensions(
   };
 }
 
-function createExtensionRegistry(extensions: readonly OpenRuntimeCliExtension[]): Map<string, OpenRuntimeCliExtension> {
-  const registry = new Map<string, OpenRuntimeCliExtension>();
+function createCommandRegistry(extensions: readonly OpenRuntimeExtensionDefinition[]): Map<string, {
+  extension: OpenRuntimeExtensionDefinition;
+  command: OpenRuntimeExtensionCommand;
+}> {
+  const extensionNames = new Set<string>();
+  const registry = new Map<string, {
+    extension: OpenRuntimeExtensionDefinition;
+    command: OpenRuntimeExtensionCommand;
+  }>();
   const builtInCommandNames = createBuiltInCommandNameSet();
 
   for (const extension of extensions) {
     if (extension.name.length === 0) {
-      throw new Error("CLI command name must not be empty.");
+      throw new Error("Extension name must not be empty.");
     }
-    if (builtInCommandNames.has(extension.name)) {
-      throw new Error(`CLI command "${extension.name}" conflicts with a built-in command.`);
+    if (extensionNames.has(extension.name)) {
+      throw new Error(`Extension "${extension.name}" is registered more than once.`);
     }
-    if (registry.has(extension.name)) {
-      throw new Error(`CLI command "${extension.name}" is registered more than once.`);
+    extensionNames.add(extension.name);
+    for (const command of extension.commands ?? []) {
+      if (builtInCommandNames.has(command.name)) {
+        throw new Error(`Command "${command.name}" conflicts with a built-in command.`);
+      }
+      if (registry.has(command.name)) {
+        throw new Error(`Command "${command.name}" is registered more than once.`);
+      }
+      if (command.skill !== undefined) validateCommandSkill(command.skill, command.name);
+      registry.set(command.name, { extension, command });
     }
-    if (extension.skill !== undefined) {
-      validateCommandSkill(extension.skill, extension.name);
-    }
-    registry.set(extension.name, extension);
   }
 
   return registry;
 }
 
-function createCommandSkillReferences(extension: OpenRuntimeCliExtension): CliCommandSkillReference[] {
-  if (extension.skill === undefined) return [];
+function createCommandSkillReferences(command: OpenRuntimeExtensionCommand): CliCommandSkillReference[] {
+  if (command.skill === undefined) return [];
   let category: CliCommandSkillReference["category"] | undefined;
-  for (const reference of extension.commandReferences ?? []) {
-    if (reference.category === "Commands" || reference.category === "External Commands") {
+  for (const reference of command.commandReferences ?? []) {
+    if (reference.category === "Extensions" || reference.category === "External Extensions") {
       category = reference.category;
       break;
     }
@@ -136,12 +156,12 @@ function createCommandSkillReferences(extension: OpenRuntimeCliExtension): CliCo
   if (category === undefined) return [];
   return [{
     category,
-    command: extension.name
+    command: command.name
   }];
 }
 
 function formatExternalExtensionWarning(record: ExtensionLoadRecord): string {
   const location = record.path === undefined ? record.name : record.path;
   const reason = record.reason ?? "unknown reason";
-  return `Skipped external OpenRuntime command ${location}: ${reason}\n`;
+  return `Skipped external OpenRuntime extension ${location}: ${reason}\n`;
 }

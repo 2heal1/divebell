@@ -21,15 +21,15 @@ export async function runExtensionCliCommand(
     bridgeStarter,
     bridgeStateDirectory,
     operationLogStore,
-    extensionRegistry
+    commandRegistry
   } = options;
   const command = args.command[0];
   if (command === undefined) {
     return undefined;
   }
 
-  const extension = extensionRegistry.get(command);
-  if (extension === undefined) {
+  const registered = commandRegistry.get(command);
+  if (registered === undefined) {
     return undefined;
   }
 
@@ -42,7 +42,7 @@ export async function runExtensionCliCommand(
         hint: `Run \`openruntime ${command} --skill\`.`
       });
     }
-    if (extension.skill === undefined) {
+    if (registered.command.skill === undefined) {
       throw createError({
         code: "CLI_COMMAND_SKILL_UNAVAILABLE",
         kind: "not_found",
@@ -50,7 +50,7 @@ export async function runExtensionCliCommand(
         hint: "Run `openruntime --help` to see commands with available skills."
       });
     }
-    const skill = validateCommandSkill(extension.skill, extension.name);
+    const skill = validateCommandSkill(registered.command.skill, registered.command.name);
     stdout.write(`${skill.path}\n`);
     return 0;
   }
@@ -58,7 +58,7 @@ export async function runExtensionCliCommand(
   const openContext = await operationLogStore.read();
   const extensionArgs = applyOpenContextDefaults(args, openContext);
   const bridgeStateStore = createBridgeStateStore(extensionArgs, bridgeStateDirectory);
-  return await extension.run({
+  return await registered.command.run({
     args: extensionArgs,
     stdout,
     stderr,

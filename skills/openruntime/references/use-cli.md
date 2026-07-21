@@ -24,7 +24,7 @@ pnpm exec openruntime --help
 
 - 从命令描述判断是否匹配当前任务。
 - 从 usage 和描述确认参数及调用顺序；help 额外提供示例时再参考示例。
-- 从 `External Commands` 发现当前机器或项目注入的扩展命令。
+- 从 `External Extensions` 发现当前机器或项目注入的扩展命令。
 - 只在描述明确匹配时使用扩展命令，不根据命令名、文件路径或记忆猜测。
 
 如果命令区域显示 `Skill: available for <command>`，必须先运行：

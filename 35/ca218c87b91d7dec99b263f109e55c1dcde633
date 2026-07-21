@@ -1,0 +1,61 @@
+AGENTS.md
+  s_de9a8d96742e00::t_e4506dc10ea9ae 5-10,16-21,25-26,59-63
+docs/agent-devloop.md
+  s_de9a8d96742e00::t_7691fbd500fa4a 1-145
+docs/agent-devloop.zh-CN.md
+  s_de9a8d96742e00::t_b9f5f5eac25414 1-145
+docs/auth-profiles.md
+  s_de9a8d96742e00::t_dd8fa76e1e4125 5-8,63
+docs/auth-profiles.zh-CN.md
+  s_de9a8d96742e00::t_1d5ecc3c9ab6ab 5-9,64
+docs/cli-automation-scripts.md
+  s_de9a8d96742e00::t_35f1881453320b 13,20,22,46,220-222,242
+docs/cli-automation-scripts.zh-CN.md
+  s_de9a8d96742e00::t_991d22b644c92f 13,20,22,46,220-222,242
+docs/cli-extensions.md
+  s_de9a8d96742e00::t_ffc6f9f73bcbd8 5-16,145-163
+docs/cli-extensions.zh-CN.md
+  s_de9a8d96742e00::t_2ac566213c11ea 5-16,171-187
+docs/runtime-core-api.md
+  s_de9a8d96742e00::t_2da86ec90d6565 1-138
+docs/runtime-core-api.zh-CN.md
+  s_de9a8d96742e00::t_0f92fb83869a74 1-138
+packages/cli/README.md
+  s_de9a8d96742e00::t_75ec52c0ef5d4e 3,12,14-16,19-24,27,29,32-34,37,39,41,44-46,48,51-56,58,66,68,70,82,85,89
+skills/openruntime/SKILL.md
+  s_de9a8d96742e00::t_dd3c50856f28d1 4-9,14-18,27-30,32-33,35,37-39,41-42,44,48-51,53,58-61,66-79,83-85
+skills/openruntime/references/core.md
+  s_de9a8d96742e00::t_99457390a83771 5-7,15-19,30-31,790-791,808,1200,1208-1209,1215-1217,1252
+skills/openruntime/references/integrate.md
+  s_9fd13cee690640::t_e688bfecb3d790 1,8,12,14-15,17-18,76-78,86-87,112
+skills/openruntime/references/troubleshoot.md
+  s_de9a8d96742e00::t_d362e6a8c5fe46 3-4,6-7,9,12-23,26-27,29,31,34,37,39-41,43,45,47,50,53,55-56,58,60,63-65,68-69,71,73-76,78,80,82,84,86,89-92,95-96,98,100,102-104,106-108,110,112,114,116-119,121,123,125-126,128-129,131,133,135,137-140,142-143,145,147-148,150,152,154-157,159-160,162,164-167
+skills/openruntime/references/use-cli.md
+  s_9fd13cee690640::t_9e261d40432214 93-94,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "35ca218c87b91d7dec99b263f109e55c1dcde633",
+  "prompts": {},
+  "sessions": {
+    "s_9fd13cee690640": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6f67-be02-7a41-a460-64a0b5a6d232",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

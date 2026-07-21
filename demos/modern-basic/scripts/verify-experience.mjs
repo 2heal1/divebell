@@ -10,8 +10,8 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const demoDirectory = resolve(scriptDirectory, "..");
 const repositoryRoot = resolve(demoDirectory, "../..");
 const cliPath = join(repositoryRoot, "packages/cli/dist/index.js");
-const commandPackageDirectory = join(repositoryRoot, "packages/command-code-usage");
-const memoryCommandDirectory = join(repositoryRoot, "packages/command-memory");
+const codeUsageExtensionDirectory = join(repositoryRoot, "packages/extension-code-usage");
+const memoryExtensionDirectory = join(repositoryRoot, "packages/extension-memory");
 const modernPluginDirectory = join(repositoryRoot, "packages/modern-plugin");
 const cliDirectory = join(repositoryRoot, "packages/cli");
 const distDirectory = join(demoDirectory, "dist");
@@ -20,13 +20,13 @@ const defaultReadyTarget = "modern:route";
 const options = parseOptions(process.argv.slice(2));
 const artifactDirectory = resolve(options.artifactDirectory ?? join(demoDirectory, ".page-experience-artifacts"));
 const workingDirectory = join(tmpdir(), `openruntime-page-experience-${process.pid}`);
-const commandsDirectory = join(workingDirectory, "commands");
+const extensionsDirectory = join(workingDirectory, "extensions");
 const experienceInitScriptPath = join(workingDirectory, "page-experience-init.js");
 const progress = createProgress(12);
 const baseEnvironment = {
   ...process.env,
   HOME: workingDirectory,
-  OPENRUNTIME_COMMANDS_DIR: commandsDirectory,
+  OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
   npm_config_cache: join(workingDirectory, ".npm-cache")
 };
 delete baseEnvironment.OPENRUNTIME_AGENT_BROWSER_EXECUTABLE;
@@ -104,8 +104,8 @@ await main().catch((error) => {
 async function main() {
   await progress.run("构建页面分析能力", () => buildPackage(modernPluginDirectory));
   await progress.run("构建检查命令", () => buildPackage(cliDirectory));
-  await progress.run("构建报告页面", () => buildPackage(commandPackageDirectory));
-  await progress.run("构建内存采集能力", () => buildPackage(memoryCommandDirectory));
+  await progress.run("构建报告页面", () => buildPackage(codeUsageExtensionDirectory));
+  await progress.run("构建内存采集能力", () => buildPackage(memoryExtensionDirectory));
   await progress.run("确认生产页面与构建一致", () => assertServerMatchesBuild(options.url));
 
   await access(cliPath);
@@ -114,7 +114,7 @@ async function main() {
     await access(options.agentBrowser);
   }
   await mkdir(artifactDirectory, { recursive: true });
-  await mkdir(commandsDirectory, { recursive: true });
+  await mkdir(extensionsDirectory, { recursive: true });
   await writeFile(experienceInitScriptPath, PAGE_EXPERIENCE_INIT_SCRIPT, "utf8");
 
   const firstScreenPath = join(artifactDirectory, "first-screen.coverage.json");
@@ -124,8 +124,8 @@ async function main() {
 
   try {
     await progress.run("加载报告与内存命令", async () => {
-      await runCli(["commands", "add", commandPackageDirectory, "--commands-dir", commandsDirectory]);
-      await runCli(["commands", "add", memoryCommandDirectory, "--commands-dir", commandsDirectory]);
+      await runCli(["extensions", "add", codeUsageExtensionDirectory, "--extensions-dir", extensionsDirectory]);
+      await runCli(["extensions", "add", memoryExtensionDirectory, "--extensions-dir", extensionsDirectory]);
     });
 
     const firstScreen = {

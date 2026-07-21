@@ -13,10 +13,10 @@ const packagePaths = [
   "packages/rspack-plugin/package.json",
   "packages/modern-plugin/package.json",
   "packages/cli/package.json",
-  "packages/command-code-usage/package.json",
-  "packages/command-trobule-shooting/package.json",
-  "packages/command-imitate/package.json",
-  "packages/command-memory/package.json"
+  "packages/extension-code-usage/package.json",
+  "packages/extension-troubleshooting/package.json",
+  "packages/extension-imitate/package.json",
+  "packages/extension-memory/package.json"
 ];
 const allowedFiles = new Set([...packagePaths, manifestPath]);
 const branch = getOption("--branch");

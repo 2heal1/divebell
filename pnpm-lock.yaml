@@ -164,19 +164,19 @@ importers:
         specifier: 0.10.3
         version: 0.10.3
 
-  packages/command-code-usage: {}
-
-  packages/command-imitate: {}
-
-  packages/command-memory: {}
-
-  packages/command-trobule-shooting: {}
-
   packages/core:
     devDependencies:
       '@rstest/core':
         specifier: 0.10.3
         version: 0.10.3
+
+  packages/extension-code-usage: {}
+
+  packages/extension-imitate: {}
+
+  packages/extension-memory: {}
+
+  packages/extension-troubleshooting: {}
 
   packages/modern-plugin:
     dependencies:

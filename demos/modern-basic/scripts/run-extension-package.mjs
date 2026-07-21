@@ -11,7 +11,7 @@ const cliPath = resolve(repositoryRoot, "packages/cli/dist/index.js");
 const [packageInput, ...commandArgs] = process.argv.slice(2);
 
 if (packageInput === undefined || commandArgs.length === 0) {
-  throw new Error("Usage: run-command-package.mjs <package-directory> <command...>");
+  throw new Error("Usage: run-extension-package.mjs <package-directory> <command...>");
 }
 
 const packageDirectory = resolve(demoDirectory, packageInput);

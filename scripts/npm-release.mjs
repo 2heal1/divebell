@@ -3,12 +3,19 @@ import { spawnSync } from "node:child_process";
 import { mkdir, readFile, rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  createNpmPublishArgs,
+  redactCommandArgs,
+  redactSensitiveText
+} from "./npm-release-utils.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mode = process.argv[2];
 if (!["check", "pack", "publish"].includes(mode)) {
-  throw new Error("Usage: node scripts/npm-release.mjs <check|pack|publish> [--output-dir <path>]");
+  throw new Error("Usage: node scripts/npm-release.mjs <check|pack|publish> [--output-dir <path>] [--otp <code>]");
 }
+const otp = getOption("--otp");
+if (otp !== undefined && mode !== "publish") throw new Error("--otp is only supported in publish mode.");
 
 const packageDefinitions = [
   { directory: "packages/core", filePrefix: "openruntime-core" },
@@ -17,10 +24,10 @@ const packageDefinitions = [
   { directory: "packages/rspack-plugin", filePrefix: "openruntime-rspack-plugin" },
   { directory: "packages/modern-plugin", filePrefix: "openruntime-modern-plugin" },
   { directory: "packages/cli", filePrefix: "openruntime-cli" },
-  { directory: "packages/command-code-usage", filePrefix: "openruntime-command-code-usage" },
-  { directory: "packages/command-trobule-shooting", filePrefix: "openruntime-command-trobule-shooting" },
-  { directory: "packages/command-imitate", filePrefix: "openruntime-command-imitate" },
-  { directory: "packages/command-memory", filePrefix: "openruntime-command-memory" }
+  { directory: "packages/extension-code-usage", filePrefix: "openruntime-extension-code-usage" },
+  { directory: "packages/extension-troubleshooting", filePrefix: "openruntime-extension-troubleshooting" },
+  { directory: "packages/extension-imitate", filePrefix: "openruntime-extension-imitate" },
+  { directory: "packages/extension-memory", filePrefix: "openruntime-extension-memory" }
 ];
 const packages = await Promise.all(packageDefinitions.map(async (definition) => ({
   ...definition,
@@ -62,14 +69,10 @@ if (mode === "publish") {
       skipped.push(item.name);
       continue;
     }
-    runOrThrow("npm", [
-      "publish",
-      item.archive,
-      "--access",
-      "public",
-      "--registry",
-      "https://registry.npmjs.org"
-    ], { printOutput: true });
+    runOrThrow("npm", createNpmPublishArgs(item.archive, otp), {
+      printOutput: true,
+      sensitiveValues: otp === undefined ? [] : [otp]
+    });
     published.push(item.name);
   }
   for (const name of published) await waitForPublished(name, version);
@@ -164,11 +167,16 @@ function runOrThrow(command, args, options = {}) {
     encoding: "utf8",
     env: process.env
   });
+  const sensitiveValues = options.sensitiveValues ?? [];
   if (options.printOutput === true) {
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
+    if (result.stdout) process.stdout.write(redactSensitiveText(result.stdout, sensitiveValues));
+    if (result.stderr) process.stderr.write(redactSensitiveText(result.stderr, sensitiveValues));
   }
-  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed.\n${formatResult(result)}`);
+  if (result.status !== 0) {
+    const safeArgs = redactCommandArgs(args);
+    const detail = redactSensitiveText(formatResult(result), sensitiveValues);
+    throw new Error(`${command} ${safeArgs.join(" ")} failed.\n${detail}`);
+  }
 }
 
 function formatResult(result) {

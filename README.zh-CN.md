@@ -73,13 +73,32 @@ Auth Profile 保存已经获得授权的浏览器登录状态，不负责创建�
 
 这些能力适用于普通页面，不依赖 Runtime Core。
 
-[CLI 命令参考](./docs/cli-reference.md)
+[CLI 命令参考](./docs/cli-reference.zh-CN.md)
 
 ### Extensions
 
 Extension 是 OpenRuntime CLI 的安装和加载单位，可以注册命令、`open`、`detectStack`、`close` Hook 和命令 Skill。Agent 通过 CLI 调用扩展命令；扩展实现通过 Extension API 使用当前页面、浏览器诊断、内存、代码执行和可选的 Runtime 信息。
 
 [CLI 扩展开发](./docs/cli-extensions.zh-CN.md)
+
+### 官方扩展
+
+专项能力以可选扩展包发布，需要时再单独安装：
+
+| 扩展包 | 命令 | 用途 | 指南 |
+| --- | --- | --- | --- |
+| `@openruntime/extension-memory` | `openruntime memory` | 重复真实页面流程，检查内存、DOM 节点和监听器是否持续增长。 | [内存分析](./docs/memory-analysis.zh-CN.md) |
+| `@openruntime/extension-code-usage` | `openruntime code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
+| `@openruntime/extension-imitate` | `openruntime record` | 录制一次浏览器操作并生成可以继续检查的脚本草稿。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
+| `@openruntime/extension-troubleshooting` | `openruntime verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime Core API](./docs/runtime-core-api.zh-CN.md) |
+
+安装扩展：
+
+```bash
+openruntime extensions add @openruntime/extension-memory
+```
+
+安装后的扩展命令会出现在 `openruntime --help` 中，并复用同一个 CLI、浏览器会话和登录状态。
 
 ### Runtime Core
 
@@ -95,6 +114,12 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 - [分块与代码使用分析](./docs/code-usage-analysis.zh-CN.md)：把浏览器中的代码执行情况还原到分块、源码文件和依赖包。
 - [录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md)：把一次人工演示转换成可继续检查和验证的脚本草稿。
 - [浏览器连接与多 Runtime](./docs/runtime-connections.zh-CN.md)：在微前端页面中复用会话并选择正确的 Runtime。
+
+## 发版流程
+
+普通功能和修复合并请求不会发布 OpenRuntime。维护者需要手动启动发版准备流程，检查自动创建的发版合并请求，并在 CI 通过后合入。合入后，所有公开包会使用同一个版本发布，同时创建对应的 GitHub Release。
+
+准备、发布、失败重试、本地检查以及临时 OpenRuntime 版 `agent-browser` 的说明见 [OpenRuntime 发版流程](./docs/release.zh-CN.md)。
 
 ## 组成
 
@@ -124,10 +149,11 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 ## 文档
 
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
-- [CLI 命令参考](./docs/cli-reference.md)
+- [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 - [浏览器登录态 Profile](./docs/auth-profiles.zh-CN.md)
 - [CLI 扩展开发](./docs/cli-extensions.zh-CN.md)
 - [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
 - [自动化脚本](./docs/cli-automation-scripts.zh-CN.md)
+- [发版流程](./docs/release.zh-CN.md)
 
 Extensions 会执行本机代码，只安装和加载可信内容。登录状态文件包含敏感信息，应只保存在可信环境中。

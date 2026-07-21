@@ -1,5 +1,7 @@
 # Browser Auth Profiles
 
+Chinese version: [浏览器登录态 Profile](auth-profiles.zh-CN.md)
+
 OpenRuntime can export browser login state to an `.oprprofile` file, then import it into the browser session used by later `openruntime open` commands.
 
 A team can prepare a Profile for an authorized test account so coding agents can enter the real page in later development debugging tasks without asking a person to sign in every time. A Profile reuses access that was already granted; it does not bypass the site's authorization checks.

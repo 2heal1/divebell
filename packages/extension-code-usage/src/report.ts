@@ -156,7 +156,7 @@ async function readAssetTemplate(filename: string): Promise<string> {
   const candidates = [
     fileURLToPath(new URL(`../assets/${filename}`, import.meta.url)),
     resolve(process.cwd(), `assets/${filename}`),
-    resolve(process.cwd(), `packages/command-code-usage/assets/${filename}`)
+    resolve(process.cwd(), `packages/extension-code-usage/assets/${filename}`)
   ];
   for (const path of new Set(candidates)) {
     try {

@@ -13,21 +13,27 @@ if (!noBuild) {
 }
 
 const helpModuleUrl = pathToFileURL(join(repoRoot, "packages/cli/dist/commands/help.js")).href;
-const { createCliReferenceMarkdown } = await import(helpModuleUrl);
-const cliReferenceContent = createCliReferenceMarkdown();
+const { cliCommandReferences, createCliReferenceMarkdown } = await import(helpModuleUrl);
+const cliReferenceContent = addChineseLink(createCliReferenceMarkdown());
+const cliReferenceZhCNContent = createCliReferenceZhCNMarkdown(cliCommandReferences);
 
-const cliReferencePath = join(repoRoot, "docs/cli-reference.md");
+const referenceFiles = [
+  [join(repoRoot, "docs/cli-reference.md"), cliReferenceContent],
+  [join(repoRoot, "docs/cli-reference.zh-CN.md"), cliReferenceZhCNContent]
+];
 
 let hasMismatch = false;
-if (checkOnly) {
-  if (await readExisting(cliReferencePath) !== cliReferenceContent) {
-    hasMismatch = true;
-    console.error(`${relative(repoRoot, cliReferencePath)} is out of date. Run "pnpm run docs:cli".`);
+for (const [referencePath, content] of referenceFiles) {
+  if (checkOnly) {
+    if (await readExisting(referencePath) !== content) {
+      hasMismatch = true;
+      console.error(`${relative(repoRoot, referencePath)} is out of date. Run "pnpm run docs:cli".`);
+    }
+  } else {
+    await mkdir(dirname(referencePath), { recursive: true });
+    await writeFile(referencePath, content, "utf8");
+    console.log(`updated ${relative(repoRoot, referencePath)}`);
   }
-} else {
-  await mkdir(dirname(cliReferencePath), { recursive: true });
-  await writeFile(cliReferencePath, cliReferenceContent, "utf8");
-  console.log(`updated ${relative(repoRoot, cliReferencePath)}`);
 }
 
 if (hasMismatch) {
@@ -53,4 +59,84 @@ async function readExisting(path) {
     }
     throw error;
   }
+}
+
+function addChineseLink(content) {
+  return content.replace(
+    "# OpenRuntime CLI Reference\n",
+    "# OpenRuntime CLI Reference\n\nChinese version: [OpenRuntime CLI 命令参考](cli-reference.zh-CN.md)\n"
+  );
+}
+
+function createCliReferenceZhCNMarkdown(commandReferences) {
+  const categoryLabels = {
+    "Bridge and Browser": "Bridge 与浏览器",
+    Runtime: "Runtime",
+    Extensions: "扩展",
+    "External Extensions": "外部扩展"
+  };
+  const categories = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
+  const descriptions = new Map([
+    ["openruntime extensions add <npm-package> [--extensions-dir <path>]", "下载、检查并安装一个不含运行依赖的 OpenRuntime 扩展包。"],
+    ["openruntime extensions list [--extensions-dir <path>]", "列出已安装的 OpenRuntime 扩展包、命令和 Hook。"],
+    ["openruntime extensions update <package> [--extensions-dir <path>]", "下载并启用扩展包的最新版本；更新失败时保留当前版本。"],
+    ["openruntime extensions remove <package> [--extensions-dir <path>]", "卸载指定扩展包。"],
+    ["openruntime start [--port <port>]", "显式启动或复用 CLI 管理的 Bridge；大多数命令会自动准备它。"],
+    ["openruntime stop [--port <port>]", "关闭浏览器会话，然后停止 CLI 管理的 Bridge。"],
+    ["openruntime auth export <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]", "通过 Chrome Auth Connector 导出网站登录状态；未指定 --output 时创建临时文件。"],
+    ["openruntime auth import <path>", "导入浏览器登录状态，供之后打开的 OpenRuntime 页面使用。"],
+    ["openruntime auth list", "列出已导入当前 OpenRuntime 浏览器 Profile 的网站。"],
+    ["openruntime auth clear [--url <url>]", "清空当前 OpenRuntime 浏览器 Profile，或只清理 --url 匹配的网站。"],
+    ["openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]", "打开页面并默认通过 Bridge 连接 Runtime；使用 --ui 显示浏览器，使用 --no-bridge 跳过连接。"],
+    ["openruntime stack [--refresh]", "运行已安装扩展中的技术栈识别器，并汇总当前页面的结果。"],
+    ["openruntime page-snapshot", "读取当前页面快照，包括可操作元素的引用。"],
+    ["openruntime click <ref|selector|text>", "通过页面引用、选择器或可见文字点击元素。"],
+    ["openruntime fill <ref|selector> <value>", "通过页面引用或选择器填写输入框。"],
+    ["openruntime eval <script>", "在页面中运行脚本，也可以通过 --file <path> 读取脚本文件。"],
+    ["openruntime wait-eval <script> [--timeout <ms>]", "轮询页面表达式，直到它返回 true。"],
+    ["openruntime get-window <path>", "读取 window/globalThis 上的点分路径，例如 gf_data_v1。"],
+    ["openruntime screenshot [name] [--full-page]", "通过 OpenRuntime 浏览器层截图。"],
+    ["openruntime network [--url <query>]", "列出当前页面的网络请求，并可按 URL 文字过滤。"],
+    ["openruntime console [--level <level>] [--query <keyword>] [--limit <n>]", "读取浏览器 Console 日志作为补充；结构化验证和排查优先使用 snapshot --query。"],
+    ["openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]", "分阶段记录当前页面执行过的代码，用于识别已加载但未使用的业务和第三方代码。"],
+    ["openruntime runtimes [--bridge <url>]", "列出连接到 Bridge 的 Runtime；需要时自动启动本机 Bridge。"],
+    ["openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]", "读取所选 Runtime 注册的 Target 定义。"],
+    ["openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]", "读取所选 Runtime 的当前 Snapshot 状态。"],
+    ["openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]", "读取 Runtime 的事件历史。"],
+    ["openruntime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]", "列出页面声明的 Runtime Action。"],
+    ["openruntime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]", "读取 Action 输入项的动态可选值。"],
+    ["openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]", "执行页面声明的 Runtime Action。"],
+    ["openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]", "等待 Target 到达指定状态；--where 的值按 JSON 字面量解析，可匹配数字、布尔值或 null。"]
+  ]);
+  const lines = [
+    "# OpenRuntime CLI 命令参考",
+    "",
+    "English version: [OpenRuntime CLI Reference](cli-reference.md)",
+    "",
+    "<!-- 本文件由 scripts/sync-openruntime-cli-docs.mjs 生成，请勿手工修改。 -->",
+    "",
+    "本文档根据 `packages/cli/src/commands/help.ts` 中的当前命令表生成。",
+    "",
+    "## 可执行命令",
+    "",
+    "- `openruntime`",
+    "- `opr`",
+    "",
+    "## 命令"
+  ];
+
+  for (const category of categories) {
+    const commands = commandReferences.filter((item) => item.category === category);
+    if (commands.length === 0) continue;
+    lines.push("", `### ${categoryLabels[category]}`, "");
+    for (const command of commands) {
+      const description = descriptions.get(command.usage);
+      if (description === undefined) {
+        throw new Error(`Missing Chinese CLI description for: ${command.usage}`);
+      }
+      lines.push(`- \`${command.usage}\` - ${description}`);
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
 }

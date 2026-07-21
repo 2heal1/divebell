@@ -1,5 +1,7 @@
 # 浏览器登录态 Profile
 
+English version: [Browser Auth Profiles](auth-profiles.md)
+
 OpenRuntime 可以把浏览器登录态导出成 `.oprprofile` 文件，再导入到 OpenRuntime 后续打开页面时使用的浏览器会话里。
 
 团队可以为授权的测试账号提前准备 Profile，让 Coding Agent 在后续开发调试任务中直接进入真实页面，

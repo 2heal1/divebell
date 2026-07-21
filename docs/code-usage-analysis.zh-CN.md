@@ -1,5 +1,7 @@
 # 分块与代码使用分析
 
+English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
+
 这是一项可选的深度分析能力。它用来回答：线上页面加载了哪些分块，这些分块里的
 业务文件和第三方依赖实际执行了多少，哪些代码适合延后加载或重新分块。
 
@@ -10,7 +12,7 @@
 先安装分析命令：
 
 ```bash
-openruntime extensions add @openruntime/command-code-usage
+openruntime extensions add @openruntime/extension-code-usage
 ```
 
 ## 整体流程

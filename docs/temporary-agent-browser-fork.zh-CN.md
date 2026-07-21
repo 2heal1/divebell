@@ -1,5 +1,7 @@
 # 临时使用 OpenRuntime 版 agent-browser
 
+English version: [Temporary OpenRuntime agent-browser Build](temporary-agent-browser-fork.md)
+
 ## 当前状态
 
 OpenRuntime CLI 暂时固定使用：
@@ -34,4 +36,4 @@ OpenRuntime 需要固定使用这个临时版本，避免用户另外编译或�
 4. 更新 `packages/cli/src/features/browser/runner.ts` 中随包查找程序的位置。
 5. 更新对应测试中的包路径和版本断言。
 6. 运行 CLI 构建、测试，以及真实页面的内存和代码使用分析验证。
-7. 删除本文档。
+7. 删除中英文两份临时版本说明。

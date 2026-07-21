@@ -326,7 +326,7 @@ function runOpenRuntimeVerify(options) {
             businessVerified: false,
             targetClass: "unknown",
             message: stderr.trim() || stdout.trim() || "openruntime verify did not return JSON.",
-            nextStep: "Install @openruntime/cli, run `openruntime extensions add @openruntime/command-trobule-shooting`, connect the page runtime, then rerun workflow verify."
+            nextStep: "Install @openruntime/cli, run `openruntime extensions add @openruntime/extension-troubleshooting`, connect the page runtime, then rerun workflow verify."
           }
         }
       }

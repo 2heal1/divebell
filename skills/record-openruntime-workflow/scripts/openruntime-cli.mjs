@@ -140,18 +140,18 @@ function runOrExit(invocation, args, env = process.env) {
 }
 
 function installReleasedRecordCommand(manifest, packageDirectory) {
-  const commandPackage = manifest.packages.find((item) => item.name === "@openruntime/command-imitate");
-  if (commandPackage === undefined) {
+  const extensionPackage = manifest.packages.find((item) => item.name === "@openruntime/extension-imitate");
+  if (extensionPackage === undefined) {
     return {
       status: 1,
       stdout: "",
-      stderr: "Recording runtime does not include @openruntime/command-imitate."
+      stderr: "Recording runtime does not include @openruntime/extension-imitate."
     };
   }
   return spawnSync(installedCli, [
     "extensions",
     "add",
-    join(packageDirectory, commandPackage.file),
+    join(packageDirectory, extensionPackage.file),
     "--extensions-dir",
     managedExtensionsDirectory
   ], {

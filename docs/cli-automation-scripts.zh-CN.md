@@ -22,7 +22,7 @@ OpenRuntime CLI 自动化脚本适合把一段完整页面流程写成可重复�
 脚本确实要验证已有 business target 时，先安装提供 `verify` 的扩展包：
 
 ```sh
-openruntime extensions add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/extension-troubleshooting
 ```
 
 ## 为什么用 OpenRuntime 写脚本

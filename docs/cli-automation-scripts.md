@@ -22,7 +22,7 @@ If the page already exposes stable Targets or Actions relevant to the task, a sc
 When a script specifically needs to verify an existing business Target, install the Extension that provides `verify`:
 
 ```sh
-openruntime extensions add @openruntime/command-trobule-shooting
+openruntime extensions add @openruntime/extension-troubleshooting
 ```
 
 ## Why Use OpenRuntime For Scripts

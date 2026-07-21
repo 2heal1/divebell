@@ -1,5 +1,7 @@
 # 录制浏览器操作并生成脚本
 
+English version: [Record Browser Workflows with an Agent](record-browser-workflows.md)
+
 `record-openruntime-workflow` 是一个可以安装到 Agent 的中文 skill。它让用户先在可见浏览器里完成一次真实操作，再由 Agent 根据操作记录、页面状态和可选语音说明，生成可重复运行的 JavaScript 脚本草稿。
 
 这个流程适合“操作过程容易演示，但自动化目标不容易一次说清楚”的任务，例如：
@@ -30,7 +32,7 @@ skills/record-openruntime-workflow
 
 用户不需要预先安装全局 `openruntime` 命令。启动前，Agent 会检查当前环境里是否已有可复用版本；没有时从 GitHub Release 下载固定运行包，校验 SHA-256，并按版本缓存。
 
-统一版本发布方式见 [OpenRuntime 发版流程](./recording-runtime-release.zh-CN.md)。
+统一版本发布方式见 [OpenRuntime 发版流程](./release.zh-CN.md)。
 
 ## 使用
 
@@ -89,5 +91,3 @@ Agent 必须检查脚本是否覆盖用户通过语音说明的最终目标。�
 - 没有实时识别文字时，可以在录制结束后使用转写服务处理 `audio.webm`。
 - 自动生成的脚本仍应由 Agent 实际运行一次，并确认输出符合用户要求。
 - 第一版优先生成脚本；脚本稳定后，再根据用户要求包装成新的 skill。
-
-英文文档见 [Record Browser Workflows with an Agent](./record-browser-workflows.md)。

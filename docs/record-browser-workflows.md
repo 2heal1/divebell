@@ -1,5 +1,7 @@
 # Record Browser Workflows with an Agent
 
+Chinese version: [录制浏览器操作并生成脚本](record-browser-workflows.zh-CN.md)
+
 `record-openruntime-workflow` is an installable Agent skill that turns one manual browser walkthrough into a reusable JavaScript automation draft. The Agent combines browser interactions, page context, OpenRuntime state, and optional spoken instructions instead of treating the final URL as the entire workflow.
 
 Use it when a task is easier to demonstrate than to specify from scratch, such as:
@@ -30,7 +32,7 @@ For Codex, place the complete directory at:
 
 A global `openruntime` installation is not required. Before recording, the Agent checks for a compatible local CLI; otherwise the skill downloads the fixed runtime bundle from GitHub Releases, verifies SHA-256, and caches it by version.
 
-See the [OpenRuntime Release Flow](./recording-runtime-release.md) for coordinated package and runtime releases.
+See the [OpenRuntime Release Process](./release.md) for coordinated package and runtime releases.
 
 ## Use
 
@@ -89,5 +91,3 @@ The Agent must check whether the script covers the user's spoken outcome. If aud
 - When live text is unavailable, `audio.webm` can be transcribed after recording.
 - The Agent should run the generated script and verify its output before presenting it as complete.
 - The first version generates a script; a stable script can later be packaged as a new skill when requested.
-
-Chinese documentation is available at [录制浏览器操作并生成脚本](./record-browser-workflows.zh-CN.md).

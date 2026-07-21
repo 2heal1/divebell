@@ -1,10 +1,12 @@
 # 内存分析指南
 
+English version: [Memory Analysis Guide](memory-analysis.md)
+
 普通内存分析由独立扩展包提供，不依赖 Modern.js、Rspack 或 Chunk Map，也不要求项目
 安装构建插件。任何能由 OpenRuntime 打开的 Chrome 页面都可以使用。先安装一次：
 
 ```bash
-openruntime extensions add @openruntime/command-memory
+openruntime extensions add @openruntime/extension-memory
 ```
 
 ## 推荐方式：一条命令完成检查

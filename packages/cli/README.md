@@ -9,7 +9,7 @@ pnpm add -D @openruntime/cli
 pnpm dlx @openruntime/agent-browser@0.32.0-openruntime.1 install
 ```
 
-The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary.
+The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
 ## Real Development Debugging Flow
 
@@ -41,10 +41,10 @@ Runtime Core is optional. Do not add it merely to start debugging a regular page
 Optional team and focused workflows install as Extension packages and appear under the same `openruntime` executable:
 
 ```sh
-openruntime extensions add @openruntime/command-code-usage
-openruntime extensions add @openruntime/command-trobule-shooting
-openruntime extensions add @openruntime/command-imitate
-openruntime extensions add @openruntime/command-memory
+openruntime extensions add @openruntime/extension-code-usage
+openruntime extensions add @openruntime/extension-troubleshooting
+openruntime extensions add @openruntime/extension-imitate
+openruntime extensions add @openruntime/extension-memory
 openruntime extensions list
 ```
 
@@ -55,7 +55,7 @@ To an agent, an Extension is a CLI command. Extension authors use the exported E
 The memory Extension works without a framework or build plugin:
 
 ```sh
-openruntime extensions add @openruntime/command-memory
+openruntime extensions add @openruntime/extension-memory
 openruntime memory check \
   --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
@@ -70,7 +70,7 @@ The scenario describes only the real page journey. The Extension owns browser li
 Mapping browser execution back to chunks, source files, and packages requires matching build metadata from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`:
 
 ```sh
-openruntime extensions add @openruntime/command-code-usage
+openruntime extensions add @openruntime/extension-code-usage
 openruntime code-usage analyze \
   --chunk-map /path/to/deployed-build/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \

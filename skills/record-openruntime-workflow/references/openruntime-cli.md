@@ -87,7 +87,7 @@ OPENRUNTIME_SKILL_CLI_INSTALL_TIMEOUT_MS=<milliseconds>
 OPENRUNTIME_SKILL_RUNTIME_DOWNLOAD_TIMEOUT_MS=<milliseconds>
 ```
 
-运行包发布流程见仓库文档 `docs/recording-runtime-release.zh-CN.md`。
+统一发布流程见仓库文档 `docs/release.zh-CN.md`。
 
 ## 语音转写
 

@@ -81,6 +81,25 @@ An Extension is the installation and loading unit of OpenRuntime CLI. It may reg
 
 [CLI Extension Development](./docs/cli-extensions.md)
 
+### Official Extensions
+
+Focused capabilities are published as optional Extension packages and installed only when needed:
+
+| Package | Command | Purpose | Guide |
+| --- | --- | --- | --- |
+| `@openruntime/extension-memory` | `openruntime memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
+| `@openruntime/extension-code-usage` | `openruntime code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
+| `@openruntime/extension-imitate` | `openruntime record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
+| `@openruntime/extension-troubleshooting` | `openruntime verify` | Verify that a page-declared business target reaches the expected result. | [Runtime Core API](./docs/runtime-core-api.md) |
+
+Install an Extension with:
+
+```bash
+openruntime extensions add @openruntime/extension-memory
+```
+
+Installed Extension commands appear in `openruntime --help` and run through the same CLI, browser sessions, and login state as the built-in commands.
+
 ### Runtime Core
 
 Runtime Core is an optional page-side API for registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Integrate it only when application-internal facts or stable business signals are needed. It is not a prerequisite for OpenRuntime CLI, Auth Profiles, or Extensions.
@@ -91,10 +110,16 @@ When a script must manage the complete browser flow, see [Automating with OpenRu
 
 ## Focused Debugging Scenarios
 
-- [Memory analysis](./docs/memory-analysis.zh-CN.md): determine whether memory, DOM nodes, and listeners keep growing across a real page journey.
-- [Chunk and code-usage analysis](./docs/code-usage-analysis.zh-CN.md): map browser code execution back to chunks, source files, and packages.
+- [Memory analysis](./docs/memory-analysis.md): determine whether memory, DOM nodes, and listeners keep growing across a real page journey.
+- [Chunk and code-usage analysis](./docs/code-usage-analysis.md): map browser code execution back to chunks, source files, and packages.
 - [Record browser workflows](./docs/record-browser-workflows.md): turn a manual demonstration into a script draft that can be inspected and verified.
 - [Browser connections and multiple Runtimes](./docs/runtime-connections.md): preserve sessions and select the right Runtime in micro-frontend pages.
+
+## Release Process
+
+Ordinary feature and fix pull requests do not publish OpenRuntime. A maintainer starts the release workflow manually, reviews the generated release pull request, and merges it after CI passes. That merge publishes all public packages at one version and creates the matching GitHub Release.
+
+See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing, retries, local checks, and the temporary OpenRuntime `agent-browser` dependency.
 
 ## Components
 
@@ -130,5 +155,6 @@ When a script must manage the complete browser flow, see [Automating with OpenRu
 - [CLI Extension Development](./docs/cli-extensions.md)
 - [Runtime Core API](./docs/runtime-core-api.md)
 - [Standalone Automation](./docs/cli-automation-scripts.md)
+- [Release Process](./docs/release.md)
 
 Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.

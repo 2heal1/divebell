@@ -1,11 +1,11 @@
 {
-  "name": "@openruntime/command-imitate",
+  "name": "@openruntime/extension-imitate",
   "version": "0.1.2",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2heal1/openruntime.git",
-    "directory": "packages/command-imitate"
+    "directory": "packages/extension-imitate"
   },
   "author": "2heal1",
   "main": "./dist/index.js",

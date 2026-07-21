@@ -10,10 +10,10 @@
       "@openruntime/cli",
       "@openruntime/modern-plugin",
       "@openruntime/rspack-plugin",
-      "@openruntime/command-code-usage",
-      "@openruntime/command-trobule-shooting",
-      "@openruntime/command-imitate",
-      "@openruntime/command-memory"
+      "@openruntime/extension-code-usage",
+      "@openruntime/extension-troubleshooting",
+      "@openruntime/extension-imitate",
+      "@openruntime/extension-memory"
     ]
   ],
   "linked": [],

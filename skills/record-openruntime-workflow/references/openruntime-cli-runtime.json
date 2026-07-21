@@ -35,10 +35,10 @@
       "file": "openruntime-cli-0.1.2.tgz"
     },
     {
-      "name": "@openruntime/command-imitate",
+      "name": "@openruntime/extension-imitate",
       "source": "workspace",
-      "directory": "packages/command-imitate",
-      "file": "openruntime-command-imitate-0.1.2.tgz"
+      "directory": "packages/extension-imitate",
+      "file": "openruntime-extension-imitate-0.1.2.tgz"
     }
   ]
 }

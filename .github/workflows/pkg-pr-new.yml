@@ -53,7 +53,7 @@ jobs:
           packages/rspack-plugin
           packages/cli
           packages/modern-plugin
-          packages/command-code-usage
-          packages/command-trobule-shooting
-          packages/command-imitate
-          packages/command-memory
+          packages/extension-code-usage
+          packages/extension-troubleshooting
+          packages/extension-imitate
+          packages/extension-memory

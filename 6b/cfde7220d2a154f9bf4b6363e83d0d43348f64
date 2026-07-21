@@ -1,0 +1,123 @@
+README.md
+  s_c08d3b16d01dc0::t_50adbe73de75ce 135,167,169,173,177,180,186,189,192,198-199,202,205,215,217,219
+README.zh-CN.md
+  s_c08d3b16d01dc0::t_65ec1b27cb589a 134,166,168,172,178,181,187,190,193,199-200,203,206,216,218,220
+demos/modern-basic/scripts/run-command-package.mjs
+  s_c08d3b16d01dc0::t_4b4bb9dc5e8573 18,21-22,26,30
+docs/cli-automation-scripts.md
+  s_c08d3b16d01dc0::t_c07530aeece02a 24
+docs/cli-automation-scripts.zh-CN.md
+  s_c08d3b16d01dc0::t_c3355f6b605948 21,24
+docs/cli-extensions.md
+  s_c08d3b16d01dc0::t_73c940dde099f4 1,3,5,7,9-13,15,17,20-23,26,29-30,33,35,37,41,46,51,53,55,57-58,60,63-66,68-79,81,83,86,88,90,92,94-96,100,102,104,106-118,121,123,125,127,129,131,133,135,137-140
+docs/cli-extensions.zh-CN.md
+  s_c08d3b16d01dc0::t_5f17ec86e59193 1,3,5,7,9-13,15,17,20-23,26,28-29,32,34-36,39,41,43,47,52,57,60-61,64,66,68-69,71,74-78,80-91,93,95,98,100,102,104,106,108-112,116,118,120,122-134,137,139,141,143,145,147,149,151-155,157,159,161,163-167,171,173,175-178
+docs/cli-reference.md
+  s_c08d3b16d01dc0::t_1ba9e9a760db35 23,46,48-51
+docs/memory-analysis.zh-CN.md
+  s_c08d3b16d01dc0::t_4e7bd57653e431 3,7
+packages/cli/README.md
+  s_c08d3b16d01dc0::t_eed4b275a3df54 17,21-25,28,45,49,78,81,98,102
+packages/cli/src/commands/bridge.ts
+  s_c08d3b16d01dc0::t_0f25a375ae6788 46-47,49
+packages/cli/src/commands/browser.ts
+  s_c08d3b16d01dc0::t_9bd3fa82b40bcd 17,23-25,34-35,43-44,55-62,86-87,101-110,154-181,214,218,222-223,245,247-250,257-265
+packages/cli/src/commands/definition.ts
+  s_c08d3b16d01dc0::t_89c33b415e5f25 2-7,9-14,16,18-19,22-27,29-30,32-36,38-52,54-89,91-98,100-104,106-113,116,119-122
+packages/cli/src/commands/extension.ts
+  s_c08d3b16d01dc0::t_84952d0af4d863 24,31-32,45,53,61
+packages/cli/src/commands/external.ts
+  s_c08d3b16d01dc0::t_dbf35c6c6d82eb 6-21,24-25,29-30,33,35,42,51-57,61-63,66,68-71,73,76-78,90,95,104,106,112,114-116,119-121,123-137,139-140,155-162,170,172
+packages/cli/src/commands/help.ts
+  s_c08d3b16d01dc0::t_99e704df87f69d 6-8,11-13,16-18,21-23,60-64,163,190,194-195
+packages/cli/src/commands/installed.ts
+  s_c08d3b16d01dc0::t_f4b912b4ddfc2e 20-21,26-27,32,34-38,40,43,48,52,54,57,61,64-65,68,70-71,75,77,85,87-88,96,103,107,109-110,113,115-116,123,125-126,130,132-133,136,138-140,144-146,148-153,156,161,165-166,169,178,188,194,198,210-211,213-215,219,221,225,236-239,251,254,256,259-261,266-267,274-275,278,301,303,313,316,322-325,328,333-335,337-342,344,347,350,358,368,385,388,393-395,397-398,402,410,417,422,427,429,435,445-465,467-468,474-475,485-487,490,510,530-531,534
+packages/cli/src/commands/names.ts
+  s_c08d3b16d01dc0::t_d50296d7d0623b 33-34
+packages/cli/src/commands/stack.ts
+  s_c08d3b16d01dc0::t_c50007906c93ec 1-87
+packages/cli/src/create.ts
+  s_c08d3b16d01dc0::t_d4863f061372c4 3,20-21,32-33,36-38,40-42,46-47,87-93,113-121,126,128-129,131-140,147-148,150-151,159,166
+packages/cli/src/features/extension/hooks.ts
+  s_c08d3b16d01dc0::t_3753f4adde3830 1-171
+packages/cli/src/index.ts
+  s_c08d3b16d01dc0::t_5439c27c6992fa 18-19,70,74-81,84-87
+packages/cli/src/runner.ts
+  s_c08d3b16d01dc0::t_7288d735ab00f2 15,19,21,56-74,81-82,85-100,105-115,151
+packages/cli/src/types/cli.ts
+  s_c08d3b16d01dc0::t_81b48d53f1d2e6 11-12,16,21-22,41-42,58,64,78-82
+packages/cli/src/types/commands.ts
+  s_c08d3b16d01dc0::t_40dac49dcf7c26 30,37-77,87-90,101,112,126,133
+packages/cli/src/types/shared.ts
+  s_c08d3b16d01dc0::t_f0fa5ffc702613 46,56-64
+packages/cli/src/utils/operation-log.ts
+  s_c08d3b16d01dc0::t_07a29d2cc34de5 31,71,80-95
+packages/cli/test/cli-core.test.ts
+  s_c08d3b16d01dc0::t_c41a0dd194abad 8,29-30,33-36,39-41,44-45,47,51,54,57,62,65-69,101-102,165-166
+packages/cli/test/extensions.test.ts
+  s_c08d3b16d01dc0::t_f8e6ab441d9ac8 2,8-14,18-130,142,148-152,154-157,169,175-179,190,196-197,206-207,210,219,222,225,227-231,234,237-238,245,248,253,256-257,265-266,279,282,286,291-293,306,312,322,328-329,338,341,350,354,376,380,478,501,549,568,611,619,624,633-634,638,647,694,698,712,814-815,825-827,830,843,850-851,865,914,927-928,933-934,942-943,958,971-972,978,985-986,999-1000,1005-1006,1015-1016,1021,1035,1038,1049,1052-1053,1056
+packages/cli/test/helpers.ts
+  s_c08d3b16d01dc0::t_1ff9609404c97a 9,110,119-120
+packages/cli/test/stage2-flow.test.ts
+  s_c08d3b16d01dc0::t_373329bdaa0751 16
+packages/command-code-usage/package.json
+  s_c08d3b16d01dc0::t_a9a655fb180ddf 14-15
+packages/command-imitate/package.json
+  s_c08d3b16d01dc0::t_66dcc01ef2b6e4 14
+packages/command-imitate/src/extension.ts
+  s_c08d3b16d01dc0::t_6732e132ccf650 1-39
+packages/command-imitate/src/index.ts
+  s_c08d3b16d01dc0::t_3f8fd71d6e14df 8,26-27,33-34
+packages/command-imitate/test/record.test.mjs
+  s_c08d3b16d01dc0::t_5587202a65bc22 7,10
+packages/command-memory/package.json
+  s_c08d3b16d01dc0::t_295de6aaac6d60 14
+packages/command-memory/src/extension.ts
+  s_c08d3b16d01dc0::t_f5078ff0e5e3a6 1-24
+packages/command-memory/src/index.ts
+  s_c08d3b16d01dc0::t_b0f4efa2effef6 2,9-11,13-14,20
+packages/command-memory/test/memory-check.test.mjs
+  s_c08d3b16d01dc0::t_2630f0bac4b1bb 7,10
+packages/command-trobule-shooting/package.json
+  s_c08d3b16d01dc0::t_629c975b9d74a2 14
+packages/command-trobule-shooting/src/extension.ts
+  s_c08d3b16d01dc0::t_6acbd0ba40290d 1-17
+packages/command-trobule-shooting/src/index.ts
+  s_c08d3b16d01dc0::t_8c53a19be5331a 2,11-29,31
+packages/command-trobule-shooting/test/verify.test.mjs
+  s_c08d3b16d01dc0::t_9113e4898b759d 4,7
+packages/rspack-plugin/README.md
+  s_c08d3b16d01dc0::t_377099bcf65851 18
+scripts/npm-release.mjs
+  s_c08d3b16d01dc0::t_df500f97d8284c 102-103
+skills/openruntime/SKILL.md
+  s_c08d3b16d01dc0::t_121e98f2b59c27 64,66
+skills/openruntime/references/integrate.md
+  s_c08d3b16d01dc0::t_6bb9feb315139a 70,75,78,83,94-95,119
+skills/openruntime/references/troubleshoot.md
+  s_c08d3b16d01dc0::t_d0764a6f041fb2 96
+skills/openruntime/references/use-cli.md
+  s_c08d3b16d01dc0::t_534fc64ca125c6 27
+skills/openruntime/scripts/workflow.mjs
+  s_c08d3b16d01dc0::t_3d6e0f81d70855 329,528,548
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_c08d3b16d01dc0::t_f4dd758b5a30ab 21,24,56,152,155-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6bcfde7220d2a154f9bf4b6363e83d0d43348f64",
+  "prompts": {},
+  "sessions": {
+    "s_c08d3b16d01dc0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f82c0-2dab-7390-91d3-83cb4a27b94e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

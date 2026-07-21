@@ -2,8 +2,9 @@
 
 本文档承接 `SKILL.md` 中不适合放在入口的细节。按需读取，不要在每个任务里完整加载。
 
-`@openruntime/core` 是页面侧 API 包，用来创建 runtime、连接 Bridge、注册 target、
-更新 snapshot、注册 action。补这些能力时优先看本文件、项目里已有的 OpenRuntime
+`@openruntime/core` 是 OpenRuntime 的可选页面侧 API 包，用来创建 runtime、连接 Bridge、注册 target、
+更新 snapshot、注册 action。普通页面不需要接入 Core 也能使用 OpenRuntime 的登录状态、浏览器调试和
+Extensions。只有任务需要应用内部事实或稳定的长期验证信号时，才补这些能力。接入时优先看本文件、项目里已有的 OpenRuntime
 初始化/连接代码和相邻页面示例。禁止预防性读取 `node_modules/@openruntime/**`
 下的安装包文件；`.d.ts` 也算内部文件。先按本文件和项目相邻写法 patch，再用
 typecheck/build 裁决。只有出现真实错误，且本文件、skill 和项目示例都无法解释时，
@@ -11,9 +12,11 @@ typecheck/build 裁决。只有出现真实错误，且本文件、skill 和项�
 
 ## OpenRuntime 是什么
 
-OpenRuntime 让前端应用把运行时状态、事件、可等待目标和声明动作开放给 Agent。
-目标是让 Agent 在 AI coding 中能自己验证页面、定位问题、执行安全动作并等待结果，
-减少人的中途介入。
+OpenRuntime 是面向 Coding Agent 的 Web 开发调试工具。它帮助 Agent 复用登录状态和真实浏览器上下文，
+完成页面问题的复现、诊断和修改后验证，并通过 Extensions 适配团队自己的账号、环境和专项调试流程。
+
+Runtime Core 是其中的深度增强机制：当前页面需要提供浏览器表面无法稳定获得的内部事实时，应用可以把
+运行状态、事件、可等待目标和声明动作开放给 Agent。它不是所有 OpenRuntime 任务的前置条件。
 
 OpenRuntime 的主要对象：
 
@@ -24,7 +27,8 @@ OpenRuntime 的主要对象：
 - Event：状态变化、错误和 action 历史。它回答“状态怎么变成这样的”。
 - Action：页面声明给 Agent 的安全动作。它回答“Agent 可以让页面做什么”。
 
-OpenRuntime 不是 DOM 猜测、截图判断、console 轮询或 network 抓包的替代包装。它要求页面主动暴露结构化事实。
+Runtime Core 不根据 DOM、截图、Console 或 Network 反推应用内部事实。普通浏览器诊断仍是 OpenRuntime 的正常能力；
+只有标记为 Target、Snapshot、Event 或 Action 的信息，才必须由页面或正式框架插件主动提供。
 
 ## @openruntime/core 公开 API
 
@@ -783,7 +787,8 @@ const result = await runtime.runAction("orders.refreshRiskPanel", {});
 ```
 
 :::warning
-`runAction` 成功不等于业务验收成功。业务成功必须由 business target 的 snapshot / wait-for / verify 证明。
+`runAction` 成功只表示动作处理完成，不等于结果已经满足。继续使用与动作对应的状态验证结果；
+页面已有 business target 时可以使用 snapshot、wait-for 或 verify。
 :::
 
 ### waitFor
@@ -800,7 +805,7 @@ const result = await runtime.runAction("orders.refreshRiskPanel", {});
 
 - 条件成功时返回 `success: true` 和匹配 target。
 - 超时或条件不满足时返回失败原因和当前 snapshot。
-- 最终验收更推荐 Agent 侧使用 CLI `verify`。
+- Agent 侧通常使用 CLI `wait-for`；已有 business target 且安装了对应 Extension 时也可以使用 `verify`。
 
 ```ts
 interface RuntimeCondition {
@@ -1192,7 +1197,7 @@ runtime.registerAction({
 
 执行 action 后，继续通过 snapshot、events、wait-for 或 verify 观察结果。`run-action` 本身不等于验收成功。
 
-## wait-for 和 verify
+## wait-for 和可选的 verify
 
 `wait-for` 等待中间状态，适合导航、加载、action 后状态推进。
 
@@ -1200,13 +1205,16 @@ runtime.registerAction({
 pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-`verify` 做最终验收，适合修改代码后的最后一步。
+`verify` 是 troubleshooting Extension 提供的 business target 验收命令。页面已经有适合当前任务的
+business target 时，可以把它用在修改代码后的最后一步。
 
 ```bash
 pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-业务成功必须由 business target 证明。Modern/MF/Vmok/Garfish target ready 只能证明底层加载链路，不证明业务 UI 成功。
+Modern/MF/Vmok/Garfish target ready 只能证明对应底层加载链路，不应直接解释成业务 UI 成功。
+普通页面没有 business target 时，应在 Runtime Core 之外使用与任务直接对应的页面结果、请求结果或专项
+Extension 验证；不要只为了运行 `verify` 增加没有长期价值的 target。
 
 ## 示例
 
@@ -1241,7 +1249,7 @@ pnpm exec openruntime snapshot --url <url> --query opsConsoleProvider
 pnpm exec openruntime wait-for mf:remote:opsConsoleProvider ready --url <url> --timeout 10000
 ```
 
-remote ready 只证明底层加载链路。最终业务成功仍需要 business target。
+remote ready 只证明底层加载链路。若任务目标是业务 UI，再使用已有 business target 或明确页面结果验证。
 
 ### console 错误转 debug snapshot
 

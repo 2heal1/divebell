@@ -1,20 +1,21 @@
-# 接入和扩展 OpenRuntime
+# 定制和接入 OpenRuntime
 
 只在根 `SKILL.md` 把任务分流到“接入扩展”后读取本文件。目标是让新增能力能够被 CLI
 发现、查询或执行，并通过与改动相匹配的验证。
 
 没有待修复故障时，不运行 troubleshooting 状态机，也不把“证明问题已经修好”当作完成条件。
 
-## 1. 判断接入类型
+## 1. 判断定制类型
 
 先区分用户要增加哪一类能力：
 
-- **项目接入**：让页面 runtime 连接 Bridge，并暴露 Modern.js、MF、Vmok 或 Garfish 状态。
-- **业务能力**：增加 target、snapshot、event、action 或可等待的业务状态。
-- **页面命令**：把当前已打开页面上的查询或动作封装成 `openruntime <command>`。
+- **Extension**：增加测试账号、环境准备、技术栈识别、专项诊断、验证命令或 Skill。
 - **自动化脚本**：由脚本自己打开页面、等待、操作、查询并按需停止浏览器和 Bridge。
+- **项目接入**：让页面 runtime 连接 Bridge，并暴露 Modern.js、MF、Vmok 或 Garfish 状态。
+- **业务能力**：增加 target、snapshot、event、action 或可等待的长期业务状态。
 
-只实现用户需要的类型。不要因为要增加一个外部命令，就顺带改造整个应用的运行时接入。
+只实现用户需要的类型。页面外部能完成的需求优先使用 Extension；只有需要应用内部事实时才做项目或
+业务接入。不要因为要增加一个外部命令，就顺带改造整个应用的运行时接入。
 
 ## 2. 项目接入
 
@@ -72,6 +73,9 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
 页面命令只操作最近一次 `openruntime open <url>` 建立的当前页面，不自己打开、跳转、关闭
 或替换浏览器会话，也不自己选择 Bridge 或 Runtime。
 
+Extension 可以提供测试账号选择、环境准备、技术栈识别、性能/内存/代码使用分析和团队验收流程。
+Agent 通过 CLI 命令使用这些能力；扩展实现通过 `options.openruntime` 使用 Extension API。
+
 如果当前仓库包含 CLI 扩展开发文档，优先读取 `docs/cli-extensions.md` 或对应中文版本。
 实现时必须：
 
@@ -79,7 +83,8 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
 - 提供准确的命令说明和示例，让 `openruntime --help` 可以发现真实用法。
 - 校验当前页面是否存在、URL 是否受支持以及必要输入是否完整。
 - 用统一输出表示成功、需要输入和预期错误；数据类命令不要混入进度文本。
-- 页面已暴露稳定 target/action 时，优先查询或执行声明能力；页面交互只作为必要补充。
+- 页面已暴露与任务相关的稳定 target/action 时优先复用；没有 Runtime 时正常使用浏览器 API，
+  不要求命令为了读取页面而先改造应用。
 - 只加载可信的外部扩展。
 
 复杂命令需要专门的多步说明、领域知识或引用资料时，最多为它提供一个本地 `SKILL.md`：
@@ -104,7 +109,7 @@ observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console �
 1. 接收 URL、session 和 timeout 等输入。
 2. 打开页面并等待可操作状态。
 3. 执行页面操作或声明 action。
-4. 使用 snapshot、wait-for 或 verify 检查结果；结构化能力不可用时再用浏览器检查。
+4. 使用与任务匹配的 Extension、Runtime 状态或明确页面结果检查结果。
 5. 输出单一、稳定的结果对象。
 6. 只有脚本拥有本次浏览器生命周期时才执行 stop。
 

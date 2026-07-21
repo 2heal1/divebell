@@ -1,6 +1,6 @@
 # @openruntime/cli
 
-OpenRuntime CLI is the direct entry point for coding agents. It opens pages, manages the local Bridge and browser, reuses imported login state, reads structured application state, runs declared actions, and waits for business verification.
+OpenRuntime CLI is the main entry point for coding agents using OpenRuntime as a web development debugging tool. It preserves login state and browser sessions, operates real pages, collects debugging evidence, loads team Extensions, and reads Runtime Core information when the application provides it.
 
 ## Install
 
@@ -9,13 +9,36 @@ pnpm add -D @openruntime/cli
 pnpm dlx @openruntime/agent-browser@0.32.0-openruntime.1 install
 ```
 
-The package provides both `openruntime` and `opr` binaries. It currently includes
-`@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code
-coverage commands required by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE`
-only when using a custom or locally built binary.
+The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary.
 
-Optional workflows are installed as extension packages and then appear under the
-same `openruntime` executable:
+## Real Development Debugging Flow
+
+Import a prepared test account once, then reuse it in a named debugging session:
+
+```sh
+openruntime auth import /path/to/test-account.oprprofile
+openruntime open http://localhost:19080/orders --session orders-debug
+openruntime stack
+openruntime console --level error
+openruntime network --url /api/orders
+openruntime page-snapshot
+```
+
+After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
+
+When a page already provides Runtime Core information, the same session can add internal evidence:
+
+```sh
+openruntime snapshot --session orders-debug
+openruntime actions --session orders-debug
+openruntime wait-for --session orders-debug business:orders ready --timeout 5000
+```
+
+Runtime Core is optional. Do not add it merely to start debugging a regular page.
+
+## Extensions
+
+Optional team and focused workflows install as Extension packages and appear under the same `openruntime` executable:
 
 ```sh
 openruntime extensions add @openruntime/command-code-usage
@@ -25,31 +48,14 @@ openruntime extensions add @openruntime/command-memory
 openruntime extensions list
 ```
 
-Use `extensions update <package>` or `extensions remove <package>` to manage them.
+To an agent, an Extension is a CLI command. Extension authors use the exported Extension API to compose the current page, browser diagnostics, memory, coverage, and optional Runtime information. Use `extensions update <package>` or `extensions remove <package>` to manage installed packages.
 
-## Minimal Development Loop
+## Memory Analysis
 
-```sh
-openruntime open http://localhost:19080/ --session orders-demo
-openruntime snapshot --session orders-demo --id business:orders
-openruntime run-action --session orders-demo \
-  demo.refresh-orders --payload '{"amount":2,"source":"cli"}'
-openruntime wait-for --session orders-demo \
-  business:orders ready --timeout 5000
-```
-
-The browser commands also work with pages that do not integrate OpenRuntime. Structured Targets, Snapshots, Events, Actions, and business verification require an application-side integration through `@openruntime/core` or a framework plugin.
-
-## Memory analysis
-
-Install the memory extension package first. It does not require a framework or
-build plugin:
+The memory Extension works without a framework or build plugin:
 
 ```sh
 openruntime extensions add @openruntime/command-memory
-```
-
-```sh
 openruntime memory check \
   --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
@@ -57,34 +63,14 @@ openruntime memory check \
   --iterations 12
 ```
 
-The scenario only describes the page actions. The CLI owns browser lifecycle,
-warmup, metrics, allocation sampling, snapshots, report generation, and cleanup.
-Lower-level commands remain available for interactive diagnostics:
+The scenario describes only the real page journey. The Extension owns browser lifecycle, warmup, metrics, allocation sampling, snapshots, report generation, and cleanup.
 
-```sh
-openruntime memory metrics
-openruntime memory sampling start
-openruntime memory sampling stop /tmp/page.heapprofile --top 20
-openruntime memory snapshot /tmp/page.heapsnapshot
-```
+## Code-Usage Analysis
 
-`memory metrics` automatically clears temporary garbage before reading the
-numbers. Use `--no-gc` only when the pre-cleanup instantaneous value is needed.
-
-## Optional chunk analysis
-
-Deeper chunk, source file, and package usage analysis requires build metadata
-from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`. Install the
-analysis extension package first:
+Mapping browser execution back to chunks, source files, and packages requires matching build metadata from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`:
 
 ```sh
 openruntime extensions add @openruntime/command-code-usage
-```
-
-The command accepts
-the exact local artifact path, including when the recorded page is deployed:
-
-```sh
 openruntime code-usage analyze \
   --chunk-map /path/to/deployed-build/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
@@ -93,10 +79,11 @@ openruntime code-usage analyze \
 
 ## Documentation
 
-- [Coding-Agent Development Loop](https://github.com/2heal1/openruntime/blob/main/docs/agent-devloop.md)
+- [Coding Agent Development Debugging Loop](https://github.com/2heal1/openruntime/blob/main/docs/agent-devloop.md)
 - [Browser Auth Profiles](https://github.com/2heal1/openruntime/blob/main/docs/auth-profiles.md)
 - [CLI Extension Development](https://github.com/2heal1/openruntime/blob/main/docs/cli-extensions.md)
+- [Runtime Core API](https://github.com/2heal1/openruntime/blob/main/docs/runtime-core-api.md)
 - [Standalone Automation](https://github.com/2heal1/openruntime/blob/main/docs/cli-automation-scripts.md)
 - [Generated CLI Reference](https://github.com/2heal1/openruntime/blob/main/docs/cli-reference.md)
 
-External extensions execute local code. Load only extensions you trust. Auth profile files contain sensitive information and should stay in trusted environments.
+Extensions execute local code. Load only trusted content. Login-state files contain sensitive information and must remain in trusted environments.

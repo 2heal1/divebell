@@ -5,249 +5,130 @@
 <h1 align="center">OpenRuntime</h1>
 
 <p align="center">
-<b>Expose your application's runtime to AI Agents.</b>
+<b>Let coding agents debug and verify real web scenarios autonomously.</b>
 <br/>
-Runtime API for AI-powered development.
+A web development debugging tool for coding agents.
 </p>
 
 ---
 
 English | [中文](./README.zh-CN.md)
 
-Agent usage: [OpenRuntime Skill](./skills/openruntime/SKILL.md)
+Agent entry point: [OpenRuntime Skill](./skills/openruntime/SKILL.md)
 
 # OpenRuntime
 
-OpenRuntime is a frontend **Runtime API** for Agents.
+OpenRuntime is a **web development debugging tool** for coding agents.
 
-It defines a unified set of runtime interfaces that allow applications to expose their runtime state, key events, and executable actions to Agents in a structured way, instead of forcing Agents to infer what is happening on the page from the DOM, screenshots, Console, or Network alone.
+It helps agents reproduce, diagnose, and verify problems in real, authorized, and repeatable browser scenarios, reducing the number of times a person has to log in, grant access, demonstrate a flow, or confirm an intermediate result.
 
-OpenRuntime defines five core Runtime APIs:
-
-- **Target** — declares which objects on the page can be referenced, waited for, or observed
-- **Snapshot** — reads the current runtime state of the page
-- **Event** — reads key events produced during runtime
-- **Action** — declares business actions that the page allows Agents to invoke
-- **waitFor** — waits for a specific Target to reach a target state
-
-Together, these APIs form a unified Runtime protocol.
-
-Whether a page is built with React, Modern.js, Module Federation, Garfish, or a regular frontend stack, it can use OpenRuntime to expose its runtime semantics, allowing different Agents to validate, debug, and automate with the same API set.
+OpenRuntime does not replace the coding agent that edits source code, and it is not a backend debugger. It provides the browser context, diagnostic capabilities, and verification evidence needed before and after a code change so the agent can keep working between code and the real page.
 
 ---
 
 ## Why OpenRuntime
 
-Today, most AI Coding Agents can already:
+OpenRuntime addresses four problems:
 
-- modify code
-- start projects
-- open browsers
-- interact with pages
+1. General browser tools must rediscover the page, plan operations, and handle waits each time. Reasoning from scratch gets slower as the page and user journey become more complex.
+2. Users discover problems on the web, while diagnostic tools often live in CLIs. A person usually has to extract page context for the agent and carry CLI results back to the browser. OpenRuntime lets the agent connect both sides in the same page and session.
+3. Working sign-in methods, user journeys, diagnostics, and verification flows can be saved as Auth Profiles, scripts, Extensions, or Skills, then reused by other agents and CI as a growing team asset.
+4. A real scenario needs more than a URL: it also needs a test account, login state, target environment, prepared data, and success criteria. OpenRuntime prepares and reuses these conditions so the agent can move from reproduction and diagnosis through code changes and re-verification.
 
-However, when verifying whether a page has actually been fixed, they still mainly rely on:
+The goal is not to bypass authorization. It is to make authorization, test accounts, and allowed actions explicit, reusable, and inspectable.
 
-- DOM
-- Screenshots
-- Console
-- Network
-- Browser Automation
+## A Real Development Debugging Flow
 
-These signals reflect how the page appears externally, but they struggle to answer the questions that truly matter:
+Consider an orders page that is only available after sign-in:
 
-- What state is the page really in right now?
-- Which step has not completed?
-- Which module is blocking the page?
-- Which actions is the Agent allowed to execute?
-- What should the Agent wait for instead of continuously polling the page?
+1. The team imports a test account's login state, or provides account and environment setup through an Extension.
+2. The agent opens the real page in a named session and reproduces the user journey.
+3. OpenRuntime reads page errors, requests, page state, memory, or code execution. If the page uses Runtime Core, it can also read application-internal state.
+4. The coding agent edits the source based on that evidence.
+5. OpenRuntime reuses the same account, session, and page context to reload and verify the result.
+6. Troubleshooting or verification logic worth keeping can become an Extension, an automation script, or a Runtime Core signal.
 
-As a result, many validation flows are still built on top of "guessing".
+Browser operation is the foundation of this flow, not the product boundary. OpenRuntime focuses on entering real scenarios, preserving development context, applying specialized diagnostics, and verifying changes repeatably.
 
-OpenRuntime aims to expose these business semantics directly, so Agents can make decisions based on Runtime information instead of page appearance.
+See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the complete workflow.
 
----
+## Core Capabilities
 
-## Runtime API + Browser Control
+| Module | Responsibility | Entry point | Page integration required |
+| --- | --- | --- | --- |
+| Auth Profiles | Export, import, and reuse browser login state | `openruntime auth` | No |
+| Browser Session & Diagnostics | Manage page sessions, operate pages, and read Console, Network, screenshots, and code execution | OpenRuntime CLI | No |
+| Extensions | Add account and environment setup, stack detection, focused diagnostics, verification commands, and Skills | CLI commands, Extension API | No |
+| Runtime Core | Expose application-internal state, events, declared actions, and wait conditions | `@openruntime/core`, framework plugins | Yes |
 
-Runtime API is the core capability of OpenRuntime.
+### Auth Profiles
 
-In addition, OpenRuntime provides a CLI and local Bridge, enabling Agents to access these Runtime APIs directly.
+An Auth Profile stores browser login state that has already been authorized. It does not create an account or bypass authorization. `auth export`, `auth import`, `auth list`, and `auth clear` manage login state; later `openruntime open` calls automatically reuse imported state.
 
-The CLI also provides browser control capabilities, including:
+[Browser Auth Profiles](./docs/auth-profiles.md)
 
-- opening pages
-- navigation
-- clicking
-- typing
-- taking screenshots
-- inspecting Network
-- inspecting Console
-- importing and exporting browser login state
+### Browser Session & Diagnostics
 
-Browser capabilities are responsible for entering pages and collecting external information.
+`openruntime open` creates a reusable page context, and `--session` identifies the session. Page and diagnostic commands include `page-snapshot`, `click`, `fill`, `eval`, `wait-eval`, `console`, `network`, `screenshot`, and `coverage`.
 
-Runtime API is responsible for providing the real internal runtime state of the page.
+These capabilities work with regular pages and do not depend on Runtime Core.
 
-For Agents, it is recommended to read Runtime API first and then combine it with browser capabilities for validation, instead of relying entirely on browser automation.
+[CLI Reference](./docs/cli-reference.md)
 
-For browser login state export, import, inspection, and cleanup, see [Browser Auth Profiles](docs/auth-profiles.md). Chinese documentation is available at [浏览器登录态 Profile](docs/auth-profiles.zh-CN.md).
+### Extensions
 
-For CLI-managed Bridge connections and micro-frontend pages with multiple Runtime instances, see [Browser Connections and Multiple Runtimes](docs/runtime-connections.md). Chinese documentation is available at [浏览器连接与多 Runtime 使用指南](docs/runtime-connections.zh-CN.md).
+An Extension is the installation and loading unit of OpenRuntime CLI. It may register commands, `open`, `detectStack`, and `close` hooks, and command Skills. Agents invoke Extension commands through the CLI; implementations use the Extension API to access the current page, browser diagnostics, memory, code execution, and optional Runtime information.
 
----
+[CLI Extension Development](./docs/cli-extensions.md)
 
-## Record a Browser Workflow
+### Runtime Core
 
-OpenRuntime includes an installable Agent skill that turns one manual browser walkthrough into a reusable JavaScript automation draft.
+Runtime Core is an optional page-side API for registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Integrate it only when application-internal facts or stable business signals are needed. It is not a prerequisite for OpenRuntime CLI, Auth Profiles, or Extensions.
 
-After the skill starts a visible browser, the user can navigate, click, type, and optionally describe the intended result by voice. When the user says the workflow is complete, the Agent closes the browser, aligns the recorded actions with page state and speech timestamps, and produces a script that can be reviewed and run again.
+[Runtime Core API](./docs/runtime-core-api.md)
 
-This workflow is useful when the expected automation is easier to demonstrate than to describe from scratch. The first version generates a JavaScript script rather than a new skill, making the result easier to inspect, test, and refine.
+When a script must manage the complete browser flow, see [Automating with OpenRuntime CLI](./docs/cli-automation-scripts.md).
 
-- Skill: [`record-openruntime-workflow`](./skills/record-openruntime-workflow/SKILL.md)
-- Guide: [Record Browser Workflows with an Agent](./docs/record-browser-workflows.md)
+## Focused Debugging Scenarios
 
-**Demo video**
+- [Memory analysis](./docs/memory-analysis.zh-CN.md): determine whether memory, DOM nodes, and listeners keep growing across a real page journey.
+- [Chunk and code-usage analysis](./docs/code-usage-analysis.zh-CN.md): map browser code execution back to chunks, source files, and packages.
+- [Record browser workflows](./docs/record-browser-workflows.md): turn a manual demonstration into a script draft that can be inspected and verified.
+- [Browser connections and multiple Runtimes](./docs/runtime-connections.md): preserve sessions and select the right Runtime in micro-frontend pages.
 
-https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
-
----
-
-## Example
-
-For example, a Release Notes page integrated with OpenRuntime can declare:
-
-Target:
+## Components
 
 ```text
-docs:release-notes
-```
-
-Action:
-
-```text
-release-note.list-latest
-```
-
-When an Agent retrieves the latest Release Notes, it can follow a stable flow:
-
-```sh
-openruntime extensions add @openruntime/command-trobule-shooting
-openruntime start
-
-openruntime open \
-  https://example.com/openruntime/release-notes
-
-openruntime verify \
-  docs:release-notes ready \
-  --url https://example.com/openruntime/release-notes
-
-openruntime run-action \
-  --url https://example.com/openruntime/release-notes \
-  release-note.list-latest \
-  --payload '{"limit":3}'
-```
-
-Both the Target and Action here are declared by the page.
-
-The Agent does not need to analyze the DOM or look for buttons. It only needs to call the unified Runtime API to get the result.
-`verify` is intentionally conservative: it only treats a declared business Target as final validation, and does not turn framework or loading-state Targets into business success.
-Use `wait-for` when the goal is only to wait for a specific Target state; use `verify` when the goal is final validation.
-
-Teams can further wrap these steps into their own commands:
-
-```sh
-openruntime release-note latest --limit 3
-```
-
-This turns page capabilities into a stable Runtime that Agents can call, rather than one-off browser scripts.
-
----
-
-## CLI Extensions
-
-OpenRuntime CLI loads extensions that may provide commands, stack detection, page-open scripts, cleanup, and Skills.
-
-This section is about page command development: the agent runs `openruntime open <url>` first, and the command operates on the current opened page. Use standalone automation scripts when the workflow needs to open the browser and manage the automation flow itself.
-
-See [CLI Extension Development](docs/cli-extensions.md) for the declaration shape, lazy loading rules, Hooks, and command context. Chinese documentation is available at [CLI 扩展开发](docs/cli-extensions.zh-CN.md).
-
-For standalone scripts that open the browser, wait for the page, and run page operations, see [Automating with OpenRuntime CLI](docs/cli-automation-scripts.md). Chinese documentation is available at [使用 OpenRuntime CLI 编写自动化脚本](docs/cli-automation-scripts.zh-CN.md).
-
-Extensions are loaded from:
-
-```text
-~/.openruntime/extensions
-```
-
-You can override the directory:
-
-```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
-```
-
-You can disable external extension loading:
-
-```sh
-OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
-```
-
-Two file layouts are supported:
-
-```text
-~/.openruntime/extensions/foo.mjs
-~/.openruntime/extensions/foo/index.mjs
-```
-
-External extensions are shown separately in help:
-
-```text
-External Extensions:
-  openruntime foo ping - Runs Foo.
-```
-
-Complex commands may declare one local `SKILL.md`. Help lists the commands that provide a skill, and this command prints its absolute path:
-
-```sh
-openruntime foo --skill
-```
-
-If an extension or its command conflicts with an existing name, OpenRuntime skips it and prints a warning. A broken extension does not crash the CLI.
-
-Use `defineExtension(...)` and `validateExtension(...)` in local extension files, tests, or CI. Published entries should contain only declarations and use `await import()` for real implementations.
-
-External extensions execute local code. Only load files you trust.
-
----
-
-## Architecture
-
-```text
-                    Application
-                         │
-                         ▼
-                  OpenRuntime SDK
-                         │
-                         ▼
-                   Runtime Center
+                  Coding Agent
+                       │
+              edits code and plans work
+                       │
+                       ▼
+                OpenRuntime CLI
       ┌──────────────────────────────────┐
-      │ Target                           │
-      │ Snapshot                         │
-      │ Event                            │
-      │ Action                           │
-      │ waitFor                          │
+      │ Login state and persistent       │
+      │ browser sessions                 │
+      │ Page, Console, and Network       │
+      │ Performance, memory, code        │
+      │ execution, Extensions, evidence  │
       └──────────────────────────────────┘
-                         │
-                   Bridge Protocol
-                         │
-                         ▼
-                    OpenRuntime CLI
+                       │
+                Real browser and page
+                       │
+              Optional Runtime Core API
       ┌──────────────────────────────────┐
-      │ Runtime API                      │
-      │ Browser Control                  │
-      │ Screenshot                       │
-      │ Network                          │
-      │ Console                          │
-      │ Browser Profile                  │
+      │ Target / Snapshot / Event        │
+      │ Action / waitFor                 │
       └──────────────────────────────────┘
 ```
+
+## Documentation
+
+- [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
+- [CLI Reference](./docs/cli-reference.md)
+- [Browser Auth Profiles](./docs/auth-profiles.md)
+- [CLI Extension Development](./docs/cli-extensions.md)
+- [Runtime Core API](./docs/runtime-core-api.md)
+- [Standalone Automation](./docs/cli-automation-scripts.md)
+
+Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.

@@ -10,15 +10,16 @@ OpenRuntime CLI 自动化脚本适合把一段完整页面流程写成可重复�
 
 典型场景包括：
 
+- 导入并复用测试账号登录状态，在同一个 session 中运行受保护页面流程。
 - 打开一个本地或线上页面并等待它可用。
 - 对页面做点击、输入、截图、Console、Network 等浏览器检查。
 - 页面已经接入 OpenRuntime Target / Action，需要读取结构化状态或执行业务动作。
 - 在 CI 或本机任务里跑一段稳定的页面验收流程。
 - 把多个 OpenRuntime CLI 命令组合成一个更高层的自动化入口。
 
-如果页面已经暴露稳定的 Target 或 Action，脚本里优先调用 `snapshot`、`run-action`、`wait-for` 或 `verify`。浏览器操作更适合做进入页面、兜底检查和截图取证。
+如果页面已经暴露与任务相关的稳定 Target 或 Action，脚本可以调用 `snapshot`、`run-action`、`wait-for`，或使用 `verify` 检查已有 business target。普通页面可以直接使用明确的页面、请求或 Extension 结果，不需要为了编写脚本先接入 Runtime Core。
 
-脚本使用 `verify` 前，先安装对应扩展包：
+脚本确实要验证已有 business target 时，先安装提供 `verify` 的扩展包：
 
 ```sh
 openruntime extensions add @openruntime/command-trobule-shooting
@@ -42,7 +43,7 @@ openruntime extensions add @openruntime/command-trobule-shooting
 2. 打开页面：`openruntime open <url>`。
 3. 等待页面稳定：`wait-eval` 或 `wait-for`。
 4. 执行操作：`click`、`fill`、`eval` 或 `run-action`。
-5. 验证结果：`snapshot`、`verify`、`screenshot`、`console`、`network`。
+5. 验证结果：选择与任务匹配的 Extension、Runtime 状态、页面结果或请求结果。
 6. 整理输出：脚本最终输出一个 JSON 对象。
 
 每一步都应该有明确的成功条件。不要只写“打开页面后马上点击”，要先等页面或业务状态到达可操作状态。
@@ -216,7 +217,9 @@ openruntime click "Submit"
 openruntime fill "#email" "dev@example.com"
 ```
 
-### Runtime 查询与动作
+### 可选的 Runtime 查询与动作
+
+下面命令只用于已经接入 Runtime Core、并且信号与当前任务相关的页面。普通页面跳过本节，继续使用浏览器或 Extension 验证。
 
 读取当前页面 snapshot：
 
@@ -236,7 +239,7 @@ openruntime wait-for business:home ready --session check-home --timeout 10000
 openruntime run-action release-note.list-latest --session check-home --payload '{"limit":3}'
 ```
 
-做最终验收：
+页面已经有 business target、并且安装了 troubleshooting Extension 时，可以执行：
 
 ```sh
 openruntime verify business:home ready --session check-home --timeout 10000

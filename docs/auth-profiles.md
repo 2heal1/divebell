@@ -2,6 +2,10 @@
 
 OpenRuntime can export browser login state to an `.oprprofile` file, then import it into the browser session used by later `openruntime open` commands.
 
+A team can prepare a Profile for an authorized test account so coding agents can enter the real page in later development debugging tasks without asking a person to sign in every time. A Profile reuses access that was already granted; it does not bypass the site's authorization checks.
+
+An `.oprprofile` contains sensitive login information. Create it only for dedicated test accounts, keep it in a trusted environment, and do not commit it to source control or share it with anyone who lacks access to the site.
+
 ## Export
 
 Use this to export login state from the currently logged-in Chrome session.
@@ -56,7 +60,7 @@ openruntime auth clear --url https://example.com
 
 Clearing one site keeps the other sites signed in. Clearing everything also removes the agent-browser automatic restore record, so removed login state does not return on the next launch.
 
-Use `auth list` to inspect imported auth state.
+Use `auth list` to inspect imported auth state. It confirms sites, not the exact active account or permissions; confirm those in the target page.
 
 ## Multi-Site Flow
 

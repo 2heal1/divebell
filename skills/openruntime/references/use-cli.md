@@ -90,13 +90,13 @@ openruntime <command> --skill
 - 命令已经提供页面或 runtime 故障证据，而且不修复就无法完成用户的最终目标。
 - 用户要求把当前异常修复后做业务级验收。
 
-切换后从 troubleshooting 的 `OPEN_PAGE -> CONNECTED` 开始。不要把功能使用阶段的命令成功
-当作已经完成连接检查或最终验收。
+切换后从 troubleshooting 的访问条件和真实页面准备开始。已有正确登录状态和 open context 时复用，
+不要把功能使用阶段的命令成功当作最终验收。
 
 ## 示例分流
 
-- “用 openruntime 查一下最新三个 release，然后继续整理发布说明”：查看 help，调用匹配的
-  扩展命令，提取结果，继续整理发布说明。
+- “用 openruntime 跑一下当前项目的内存检查，然后继续修复”：查看 help，读取命令 skill，调用匹配的
+  扩展命令，提取结果；如果结果证明存在故障且修复属于目标，再切换到排查流程。
 - “OpenRuntime 现在有哪些账号命令”：查看 help 并说明，不执行导入、导出或清理。
 - “读取当前页面声明的 actions”：执行 `actions` 查询；没有 connected runtime 时报告证据不可用，
   不擅自给页面接入 OpenRuntime。

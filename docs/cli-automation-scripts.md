@@ -10,15 +10,16 @@ OpenRuntime CLI automation scripts are useful when a complete page workflow shou
 
 Typical use cases:
 
+- Import and reuse a test account's login state while running a protected flow in the same session.
 - Open a local or remote page and wait until it is usable.
 - Run browser checks such as click, fill, screenshot, Console, or Network inspection.
 - Read structured state or run business actions from a page that exposes OpenRuntime Targets or Actions.
 - Run stable page validation in CI or local tasks.
 - Compose multiple OpenRuntime CLI commands into a higher-level automation entrypoint.
 
-If the page exposes stable Targets or Actions, prefer `snapshot`, `run-action`, `wait-for`, or `verify` in the script. Browser operations are better for entering the page, fallback checks, and evidence capture.
+If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, `wait-for`, or `verify` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime Core first.
 
-Install the verification command before a script uses `verify`:
+When a script specifically needs to verify an existing business Target, install the Extension that provides `verify`:
 
 ```sh
 openruntime extensions add @openruntime/command-trobule-shooting
@@ -42,7 +43,7 @@ Start by breaking the manual workflow into OpenRuntime CLI steps:
 2. Open the page: `openruntime open <url>`.
 3. Wait for the page to become stable: `wait-eval` or `wait-for`.
 4. Run operations: `click`, `fill`, `eval`, or `run-action`.
-5. Validate the result: `snapshot`, `verify`, `screenshot`, `console`, or `network`.
+5. Validate the result with a matching Extension, Runtime state, page result, or request outcome.
 6. Print one final JSON object.
 
 Every step should have a clear success condition. Do not click immediately after opening a page; wait until the page or business state is ready.
@@ -216,7 +217,9 @@ openruntime click "Submit"
 openruntime fill "#email" "dev@example.com"
 ```
 
-### Query And Run Runtime Actions
+### Optional Runtime Queries and Actions
+
+The commands below apply only when the page uses Runtime Core and the signals are relevant to the task. A regular page can skip this section and verify through browser or Extension evidence.
 
 Read the current page snapshot:
 
@@ -236,7 +239,7 @@ Run a business Action:
 openruntime run-action release-note.list-latest --session check-home --payload '{"limit":3}'
 ```
 
-Final validation:
+When the page already has a business Target and the troubleshooting Extension is installed:
 
 ```sh
 openruntime verify business:home ready --session check-home --timeout 10000

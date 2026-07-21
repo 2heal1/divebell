@@ -2,6 +2,18 @@
 
 English version: [OpenRuntime CLI Extension Development](cli-extensions.md)
 
+Extension 是团队定制 OpenRuntime 开发调试能力的机制。对 Agent 来说，Extension 最终表现为 `openruntime` 下可以发现和调用的 CLI 命令；对扩展开发者来说，OpenRuntime 提供 Extension API，用来复用当前页面、登录状态、浏览器诊断和 Runtime 能力。
+
+Extension 适合处理页面外部可以完成、并且值得团队重复使用的工作，例如：
+
+- 选择测试账号、准备环境或检查访问条件。
+- 识别项目技术栈并推荐对应工具。
+- 封装页面性能、内存、代码使用和框架专项诊断。
+- 在同一个浏览器会话中执行团队特有的验证流程。
+- 为复杂命令提供 Agent 可以按需读取的 Skill。
+
+如果需求必须由应用主动提供内部状态、事件或允许动作，使用 [Runtime Core API](runtime-core-api.zh-CN.md)。如果只是一次性的页面操作，不必为了扩展而扩展。
+
 ## 扩展可以提供什么
 
 OpenRuntime 扩展是统一的安装和加载单位。一个扩展可以同时提供：
@@ -155,6 +167,23 @@ export async function detectStack({ openruntime }) {
 | `options.stdout` / `options.stderr` | 少量需要原始文本或进度日志的场景。 |
 
 页面操作入口包括 `browser.eval`、`browser.evalFile`、`browser.getWindow`、`browser.click`、`browser.fill`、截图、网络和 Console。结构化业务状态优先使用 `snapshot`、`runAction` 和 `waitFor`。
+
+### Extension API
+
+`options.openruntime` 是扩展开发者使用的 Extension API。Agent 不直接编写 API 调用，而是通过扩展注册的 CLI 命令使用它。
+
+| 能力 | API |
+| --- | --- |
+| 选择当前页面、会话、Bridge 或 Runtime | `scope`、`ensureBridge` |
+| 读取应用内部信息 | `targets`、`snapshot`、`events`、`actions` |
+| 执行和等待页面声明能力 | `inputOptions`、`runAction`、`waitFor` |
+| 操作和读取当前页面 | `pageSnapshot`、`click`、`fill`、`eval`、`waitEval`、`getWindow` |
+| 收集浏览器证据 | `screenshot`、`network`、`console` |
+| 专项底层采集 | `browser.memory`、`browser.coverage` |
+
+Extension API 负责浏览器侧和 Runtime 侧的开发调试能力。Coding Agent 仍负责读取和修改项目代码；当前 API 没有统一的代码工作区或开发服务器管理接口。扩展实现可以在明确需要时读取本机文件，但不要把内部文件访问包装成 OpenRuntime 已经提供的通用代码 API。
+
+页面没有接入 Runtime Core 时，浏览器相关 API 仍然可用。只有命令确实需要应用内部状态时，才要求 connected runtime。
 
 ## Skill
 

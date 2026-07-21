@@ -352,12 +352,12 @@ function getCodeFilePhases(
   file: string,
   fallbackTotalBytes: number
 ): CodeFilePhase[] {
-  return phases.flatMap((phase, index) => {
+  return phases.flatMap((phase) => {
     if (!Array.isArray(phase.codeFiles)) return [];
     const result = phase.codeFiles.find((item) => isRecord(item) && item.file === file);
     if (!isRecord(result)) return [];
     return [{
-      label: typeof phase.label === "string" ? phase.label : `阶段 ${index + 1}`,
+      label: typeof phase.label === "string" ? phase.label : "",
       totalBytes: finiteNumber(result.totalBytes) ?? fallbackTotalBytes,
       usedBytes: finiteNumber(result.usedBytes) ?? 0,
       usedRatio: finiteNumber(result.usedRatio),

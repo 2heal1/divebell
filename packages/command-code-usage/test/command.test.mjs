@@ -6,7 +6,9 @@ import { test } from "node:test";
 
 import extension from "../dist/extension.js";
 import {
+  cliText,
   createCodeUsageReportHtml,
+  detectCliLocale,
   runCodeUsageReportCommand,
   startCodeUsageReportServer,
   writeCodeUsageReportHtml
@@ -142,6 +144,11 @@ const report = {
 test("creates a self-contained and safely escaped report", async () => {
   const html = await createCodeUsageReportHtml(report);
 
+  assert.match(html, /<html lang="en">/);
+  assert.match(html, />Page experience report</);
+  assert.match(html, /data-i18n="reportTitle"/);
+  assert.match(html, /addEventListener\("languagechange"/);
+  assert.match(html, /detectBrowserLocale/);
   assert.match(html, /页面体验报告/);
   assert.match(html, /页面可用时间、JavaScript 堆内存、资源加载与代码使用数据/);
   assert.match(html, /页面可用时 JavaScript 堆内存/);
@@ -158,7 +165,7 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.doesNotMatch(html, /代码调优明细/);
   assert.doesNotMatch(html, /先看|再定位|建议检查|可从下方|重新运行页面体验检查/);
   assert.match(html, /readyDurationMs/);
-  assert.match(html, /data-view="application"[^>]*>业务代码/);
+  assert.match(html, /data-view="application"[^>]*>Application code/);
   assert.match(html, /view: "application"/);
   assert.match(html, /filter\(isBusinessSource\)/);
   assert.match(html, /demo/);
@@ -166,6 +173,19 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.doesNotMatch(html, /__OPENRUNTIME_REPORT_DATA__/);
   assert.doesNotMatch(html, /<\/script><script>alert\(1\)<\/script>/);
   assert.match(html, /\\u003c\/script\\u003e/);
+});
+
+test("selects English by default and Chinese for Chinese terminal locales", () => {
+  assert.equal(detectCliLocale({}), "en");
+  assert.equal(detectCliLocale({ LANG: "en_US.UTF-8" }), "en");
+  assert.equal(detectCliLocale({ LC_ALL: "zh_CN.UTF-8" }), "zh");
+  assert.equal(detectCliLocale({ LANG: "zh-TW" }), "zh");
+  assert.equal(
+    detectCliLocale({ OPENRUNTIME_LANG: "en", LANG: "zh_CN.UTF-8" }),
+    "en"
+  );
+  assert.equal(cliText("Report ready", "报告已生成", { LANG: "en_US.UTF-8" }), "Report ready");
+  assert.equal(cliText("Report ready", "报告已生成", { LANG: "zh_CN.UTF-8" }), "报告已生成");
 });
 
 test("code-usage report generates an HTML file without requiring a page session", async () => {
@@ -218,6 +238,9 @@ test("code-usage report generates an HTML file without requiring a page session"
     const viewerData = readFileSync(join(result.data.codeDirectory, viewerDataFile), "utf8");
     assert.doesNotMatch(viewerHtml, /const tag/);
     assert.match(viewerHtml, /正在准备代码/);
+    assert.match(viewerHtml, /<html lang="en">/);
+    assert.match(viewerHtml, />Navigation scope</);
+    assert.match(viewerHtml, /addEventListener\("languagechange"/);
     assert.match(viewerData, /const tag/);
     assert.match(viewerData, /\\u003c\/script/);
     assert.match(viewerHtml, /定位范围/);

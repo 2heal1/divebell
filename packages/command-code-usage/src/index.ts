@@ -5,6 +5,7 @@ import type {
 } from "@openruntime/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
+import { cliText } from "./locale.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
 import {
   startCodeUsageReportServer,
@@ -25,11 +26,15 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
     kind: "validation",
-    message: "code-usage requires analyze, report, or serve.",
-    hint: "Run `openruntime code-usage analyze ...`, `openruntime code-usage report ...`, or `openruntime code-usage serve ...`."
+    message: t("code-usage requires analyze, report, or serve.", "code-usage 需要 analyze、report 或 serve。"),
+    hint: t(
+      "Run `openruntime code-usage analyze ...`, `openruntime code-usage report ...`, or `openruntime code-usage serve ...`.",
+      "请运行 `openruntime code-usage analyze ...`、`openruntime code-usage report ...` 或 `openruntime code-usage serve ...`。"
+    )
   });
 }
 export { analyzeCodeUsageFiles } from "./code-usage.js";
+export { cliText, detectCliLocale } from "./locale.js";
 export {
   createCodeUsageReportHtml,
   openHtmlReport,
@@ -49,8 +54,14 @@ async function runAnalyze(
     throw commandError({
       code: "CODE_USAGE_ANALYZE_USAGE_INVALID",
       kind: "validation",
-      message: "Code usage analysis accepts options instead of positional paths.",
-      hint: "Run `openruntime code-usage analyze --chunk-map <path> --coverage <path>`."
+      message: t(
+        "Code usage analysis accepts options instead of positional paths.",
+        "代码使用分析需要使用选项传入路径。"
+      ),
+      hint: t(
+        "Run `openruntime code-usage analyze --chunk-map <path> --coverage <path>`.",
+        "请运行 `openruntime code-usage analyze --chunk-map <路径> --coverage <路径>`。"
+      )
     });
   }
   const chunkMap = requireOption(args, "chunk-map");
@@ -59,8 +70,11 @@ async function runAnalyze(
     throw commandError({
       code: "CODE_USAGE_COVERAGE_REQUIRED",
       kind: "validation",
-      message: "At least one --coverage path is required.",
-      hint: "Repeat --coverage for each recorded phase."
+      message: t("At least one --coverage path is required.", "至少需要一个 --coverage 路径。"),
+      hint: t(
+        "Repeat --coverage for each recorded phase.",
+        "每个记录阶段都需要重复传入 --coverage。"
+      )
     });
   }
 
@@ -77,7 +91,7 @@ async function runAnalyze(
       assets: result.assets,
       output: result.output,
       phaseCount: result.phaseCount
-    }, "Code usage analysis created.");
+    }, t("Code usage analysis created.", "代码使用分析已生成。"));
     return 0;
   } catch (error) {
     throw commandError({
@@ -97,12 +111,17 @@ export async function runCodeUsageReportCommand(
     throw commandError({
       code: "ANALYSIS_REPORT_INPUT_REQUIRED",
       kind: "validation",
-      message: "A code usage report JSON path is required.",
-      hint: "Run `openruntime code-usage report <report.json>`."
+      message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
+      hint: t(
+        "Run `openruntime code-usage report <report.json>`.",
+        "请运行 `openruntime code-usage report <report.json>`。"
+      )
     });
   }
   const inputPath = args.command[2];
-  if (inputPath === undefined) throw new Error("Missing report input path.");
+  if (inputPath === undefined) {
+    throw new Error(t("Missing report input path.", "缺少报告输入路径。"));
+  }
   let report;
   try {
     report = await writeCodeUsageReportHtml({
@@ -124,15 +143,20 @@ export async function runCodeUsageReportCommand(
       throw commandError({
         code: "ANALYSIS_REPORT_OPEN_FAILED",
         kind: "internal",
-        message: `The report was created but could not be opened: ${errorMessage(error)}`,
-        hint: `Open ${report.htmlPath} manually.`
+        message: t(
+          `The report was created but could not be opened: ${errorMessage(error)}`,
+          `报告已生成，但无法自动打开：${errorMessage(error)}`
+        ),
+        hint: t(`Open ${report.htmlPath} manually.`, `请手动打开 ${report.htmlPath}。`)
       });
     }
   }
   output.ok({
     ...report,
     opened
-  }, opened ? "Analysis report created and opened." : "Analysis report created.");
+  }, opened
+    ? t("Analysis report created and opened.", "分析报告已生成并打开。")
+    : t("Analysis report created.", "分析报告已生成。"));
   return 0;
 }
 
@@ -144,20 +168,28 @@ export async function runCodeUsageServeCommand(
     throw commandError({
       code: "CODE_USAGE_SERVE_INPUT_REQUIRED",
       kind: "validation",
-      message: "A code usage report JSON path is required.",
-      hint: "Run `openruntime code-usage serve <report.json>`."
+      message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
+      hint: t(
+        "Run `openruntime code-usage serve <report.json>`.",
+        "请运行 `openruntime code-usage serve <report.json>`。"
+      )
     });
   }
   const inputPath = args.command[2];
-  if (inputPath === undefined) throw new Error("Missing report input path.");
+  if (inputPath === undefined) {
+    throw new Error(t("Missing report input path.", "缺少报告输入路径。"));
+  }
   const port = parsePort(getOptionValue(args, "port"));
   try {
     const server = await startCodeUsageReportServer({
       inputPath,
       ...(port === undefined ? {} : { port })
     });
-    stdout.write(`页面体验报告已启动：${server.url}\n`);
-    stdout.write("按 Ctrl+C 停止服务。\n");
+    stdout.write(t(
+      `Page experience report started: ${server.url}\n`,
+      `页面体验报告已启动：${server.url}\n`
+    ));
+    stdout.write(t("Press Ctrl+C to stop the server.\n", "按 Ctrl+C 停止服务。\n"));
     await waitForCodeUsageReportServer(server);
     return 0;
   } catch (error) {
@@ -183,7 +215,10 @@ function requireOption(args: ParsedCliArgs, name: string): string {
     throw commandError({
       code: "CLI_REQUIRED_OPTION_MISSING",
       kind: "validation",
-      message: `Missing required option "--${name}".`
+      message: t(
+        `Missing required option "--${name}".`,
+        `缺少必需选项“--${name}”。`
+      )
     });
   }
   return value;
@@ -203,7 +238,10 @@ function parsePort(value: string | undefined): number | undefined {
     throw commandError({
       code: "CODE_USAGE_SERVE_PORT_INVALID",
       kind: "validation",
-      message: `Invalid report server port "${value}".`
+      message: t(
+        `Invalid report server port "${value}".`,
+        `报告服务端口“${value}”无效。`
+      )
     });
   }
   return port;
@@ -226,4 +264,8 @@ function commandError(options: {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function t(english: string, chinese: string): string {
+  return cliText(english, chinese);
 }

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenRuntime 执行代码</title>
+  <title>OpenRuntime Executed Code</title>
   <style>
     :root {
       color-scheme: light;
@@ -284,66 +284,163 @@
   <main class="shell">
     <header class="topline">
       <div>
-        <a id="report-link" class="back" href="#">← 返回代码使用分析</a>
-        <h1 id="file-name">执行代码</h1>
+        <a id="report-link" class="back" href="#" data-i18n="backToReport">← Back to code usage analysis</a>
+        <h1 id="file-name">Executed code</h1>
       </div>
       <p id="part-meta" class="meta"></p>
     </header>
 
-    <section class="toolbar" aria-label="代码查看选项">
-      <label>记录阶段
+    <section class="toolbar" aria-label="Code viewer options" data-i18n-aria="viewerOptions">
+      <label><span data-i18n="recordedPhase">Recorded phase</span>
         <select id="phase-select"></select>
       </label>
       <div class="navigation-scope">
-        <span class="toolbar-caption">定位范围</span>
-        <div class="segmented-control" role="group" aria-label="定位范围">
-          <button id="source-navigation" type="button" aria-pressed="false" hidden>当前源码 <span id="source-navigation-count">0</span></button>
-          <button id="executed-navigation" type="button" aria-pressed="true">全部执行 <span id="executed-navigation-count">0</span></button>
+        <span class="toolbar-caption" data-i18n="navigationScope">Navigation scope</span>
+        <div class="segmented-control" role="group" aria-label="Navigation scope" data-i18n-aria="navigationScope">
+          <button id="source-navigation" type="button" aria-pressed="false" hidden><span data-i18n="currentSource">Current source</span> <span id="source-navigation-count">0</span></button>
+          <button id="executed-navigation" type="button" aria-pressed="true"><span data-i18n="allExecuted">All executed</span> <span id="executed-navigation-count">0</span></button>
         </div>
       </div>
-      <div class="jump-controls" aria-label="代码位置导航">
-        <button id="previous-highlight" type="button">上一处</button>
+      <div class="jump-controls" aria-label="Code location navigation" data-i18n-aria="locationNavigation">
+        <button id="previous-highlight" type="button" data-i18n="previousLocation">Previous</button>
         <span id="highlight-progress" class="jump-progress" aria-live="polite">0 / 0</span>
-        <button id="next-highlight" type="button">下一处</button>
+        <button id="next-highlight" type="button" data-i18n="nextLocation">Next</button>
       </div>
-      <nav class="page-nav" aria-label="大文件分段导航">
-        <a id="previous-part" class="page-link" href="#">上一段</a>
-        <a id="next-part" class="page-link" href="#">下一段</a>
+      <nav class="page-nav" aria-label="Large file section navigation" data-i18n-aria="sectionNavigation">
+        <a id="previous-part" class="page-link" href="#" data-i18n="previousSection">Previous section</a>
+        <a id="next-part" class="page-link" href="#" data-i18n="nextSection">Next section</a>
       </nav>
     </section>
 
-    <section id="file-stats" class="stats" aria-label="文件执行概览">
-      <div class="stat"><div class="stat-label">文件体积</div><div id="total-size" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">打包文件实际执行</div><div id="used-ratio" class="stat-value">—</div></div>
-      <div id="source-stat" class="stat" hidden><div class="stat-label">当前源码实际执行</div><div id="source-used-ratio" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label">打包文件高亮</div><div id="range-count" class="stat-value">—</div></div>
+    <section id="file-stats" class="stats" aria-label="File execution summary" data-i18n-aria="fileSummary">
+      <div class="stat"><div class="stat-label" data-i18n="fileSize">File size</div><div id="total-size" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="bundleExecuted">Bundle executed</div><div id="used-ratio" class="stat-value">—</div></div>
+      <div id="source-stat" class="stat" hidden><div class="stat-label" data-i18n="sourceExecuted">Current source executed</div><div id="source-used-ratio" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label" data-i18n="bundleRanges">Bundle ranges</div><div id="range-count" class="stat-value">—</div></div>
     </section>
 
-    <section class="viewer" aria-label="JavaScript 执行代码">
+    <section class="viewer" aria-label="Executed JavaScript" data-i18n-aria="executedJavaScript">
       <div class="viewer-head">
         <div class="legends">
-          <span class="legend"><i class="legend-mark"></i>当前阶段已执行</span>
+          <span class="legend"><i class="legend-mark"></i><span data-i18n="executedInPhase">Executed in current phase</span></span>
           <label id="source-highlight-control" class="source-highlight-control" hidden>
             <input id="source-highlight-toggle" type="checkbox" checked>
             <i class="source-legend-mark"></i>
-            <span id="source-highlight-label">当前源码对应代码</span>
+            <span id="source-highlight-label">Code mapped to current source</span>
           </label>
         </div>
         <span id="offset-meta"></span>
       </div>
-      <div id="code-viewport" class="code-viewport" tabindex="0" aria-label="代码内容" aria-busy="true">
-        <div id="viewer-loading" class="viewer-loading">正在准备代码…</div>
+      <div id="code-viewport" class="code-viewport" tabindex="0" aria-label="Code content" data-i18n-aria="codeContent" aria-busy="true">
+        <div id="viewer-loading" class="viewer-loading" data-i18n="preparingCode">Preparing code…</div>
         <div id="code-spacer" class="code-spacer">
           <div id="code-window" class="code-window"></div>
         </div>
       </div>
     </section>
-    <p class="footer-note">这里展示的是浏览器实际加载的打包后 JavaScript。超大文件会自动分段，滚动时只绘制当前可见内容。</p>
+    <p class="footer-note" data-i18n="footerNote">This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.</p>
   </main>
 
   <script id="openruntime-code-file-data" type="application/json">__OPENRUNTIME_CODE_FILE_DATA__</script>
   <script>
     (() => {
+      const messages = {
+        en: {
+          pageTitle: "OpenRuntime Executed Code",
+          backToReport: "← Back to code usage analysis",
+          viewerOptions: "Code viewer options",
+          recordedPhase: "Recorded phase",
+          navigationScope: "Navigation scope",
+          currentSource: "Current source",
+          allExecuted: "All executed",
+          locationNavigation: "Code location navigation",
+          previousLocation: "Previous",
+          nextLocation: "Next",
+          sectionNavigation: "Large file section navigation",
+          previousSection: "Previous section",
+          nextSection: "Next section",
+          fileSummary: "File execution summary",
+          fileSize: "File size",
+          bundleExecuted: "Bundle executed",
+          sourceExecuted: "Current source executed",
+          bundleRanges: "Bundle ranges",
+          executedJavaScript: "Executed JavaScript",
+          executedInPhase: "Executed in current phase",
+          codeContent: "Code content",
+          preparingCode: "Preparing code…",
+          footerNote: "This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.",
+          executedCode: "Executed code",
+          fullFile: "Full file",
+          partMeta: "Section {current} / {total}",
+          position: "Position {start}–{end}",
+          characterCount: "{count} characters",
+          phase: "Phase {number}",
+          receivingCode: "Receiving code… {percent}%",
+          sourceMappedCode: "Code mapped to {source}",
+          currentSourceCode: "Code mapped to current source",
+          emptyCode: "This file has no code to display",
+          deferredLoadError: "Code data failed to load. Make sure the data file and page are in the same directory.",
+          streamLoadError: "Code data request failed ({status})."
+        },
+        zh: {
+          pageTitle: "OpenRuntime 执行代码",
+          backToReport: "← 返回代码使用分析",
+          viewerOptions: "代码查看选项",
+          recordedPhase: "记录阶段",
+          navigationScope: "定位范围",
+          currentSource: "当前源码",
+          allExecuted: "全部执行",
+          locationNavigation: "代码位置导航",
+          previousLocation: "上一处",
+          nextLocation: "下一处",
+          sectionNavigation: "大文件分段导航",
+          previousSection: "上一段",
+          nextSection: "下一段",
+          fileSummary: "文件执行概览",
+          fileSize: "文件体积",
+          bundleExecuted: "打包文件实际执行",
+          sourceExecuted: "当前源码实际执行",
+          bundleRanges: "打包文件高亮",
+          executedJavaScript: "JavaScript 执行代码",
+          executedInPhase: "当前阶段已执行",
+          codeContent: "代码内容",
+          preparingCode: "正在准备代码…",
+          footerNote: "这里展示的是浏览器实际加载的打包后 JavaScript。超大文件会自动分段，滚动时只绘制当前可见内容。",
+          executedCode: "执行代码",
+          fullFile: "完整文件",
+          partMeta: "第 {current} / {total} 段",
+          position: "位置 {start}–{end}",
+          characterCount: "{count} 个字符",
+          phase: "阶段 {number}",
+          receivingCode: "正在接收代码… {percent}%",
+          sourceMappedCode: "{source} 对应代码",
+          currentSourceCode: "当前源码对应代码",
+          emptyCode: "这个文件没有可展示的代码",
+          deferredLoadError: "代码数据加载失败。请确认数据文件与页面位于同一目录。",
+          streamLoadError: "代码数据请求失败（{status}）。"
+        }
+      };
+      let locale = detectBrowserLocale();
+      const message = (key, values = {}) => {
+        const template = messages[locale][key] || messages.en[key] || key;
+        return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
+      };
+      const applyDocumentLocale = () => {
+        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+        document.title = message("pageTitle");
+        document.querySelectorAll("[data-i18n]").forEach((element) => {
+          element.textContent = message(element.dataset.i18n);
+        });
+        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
+          element.setAttribute("aria-label", message(element.dataset.i18nAria));
+        });
+      };
+      applyDocumentLocale();
+      window.addEventListener("languagechange", () => {
+        if (new URLSearchParams(location.search).has("lang")) return;
+        if (detectBrowserLocale() !== locale) location.reload();
+      });
+
       const dataHref = __OPENRUNTIME_CODE_FILE_DATA_HREF__;
       const dataMode = __OPENRUNTIME_CODE_FILE_DATA_MODE__;
       const renderCodeFile = async (data, streaming = false) => {
@@ -385,14 +482,17 @@
           ? Math.max(0, data.partEndOffset - data.partStartOffset)
           : initialCode.length;
 
-      document.getElementById("report-link").href = data.reportHref || "#";
-      document.getElementById("file-name").textContent = data.file || "执行代码";
+      document.getElementById("report-link").href = withLanguageContext(data.reportHref || "#");
+      document.getElementById("file-name").textContent = data.file || message("executedCode");
       document.getElementById("part-meta").textContent = data.partCount > 1
-        ? `第 ${(data.partIndex || 0) + 1} / ${data.partCount} 段`
-        : "完整文件";
+        ? message("partMeta", { current: (data.partIndex || 0) + 1, total: data.partCount })
+        : message("fullFile");
       document.getElementById("offset-meta").textContent = data.partCount > 1
-        ? `位置 ${formatInteger(data.partStartOffset)}–${formatInteger(data.partEndOffset)}`
-        : `${formatInteger(expectedLength)} 个字符`;
+        ? message("position", {
+          start: formatInteger(data.partStartOffset),
+          end: formatInteger(data.partEndOffset)
+        })
+        : message("characterCount", { count: formatInteger(expectedLength) });
       document.getElementById("total-size").textContent = formatBytes(data.totalBytes);
 
       const previousPart = document.getElementById("previous-part");
@@ -405,7 +505,7 @@
       phases.forEach((phase, index) => {
         const option = document.createElement("option");
         option.value = String(index);
-        option.textContent = phase.label || `阶段 ${index + 1}`;
+        option.textContent = phase.label || message("phase", { number: index + 1 });
         phaseSelect.append(option);
       });
       phaseSelect.disabled = phases.length < 2;
@@ -433,8 +533,10 @@
         indexAvailableRows(done);
         spacer.style.height = `${Math.max(1, rows.length) * rowHeight}px`;
         document.getElementById("viewer-loading").textContent = expectedLength === 0
-          ? "正在准备代码…"
-          : `正在接收代码… ${Math.min(100, Math.round(code.length / expectedLength * 100))}%`;
+          ? message("preparingCode")
+          : message("receivingCode", {
+            percent: Math.min(100, Math.round(code.length / expectedLength * 100))
+          });
         lastRenderKey = "";
         scheduleRender();
         if (done) {
@@ -476,8 +578,8 @@
         document.getElementById("source-used-ratio").textContent = formatPercent(source && source.usedRatio);
         sourceHighlightControl.hidden = !source;
         document.getElementById("source-highlight-label").textContent = source
-          ? `${shortPath(source.sourcePath)} 对应代码`
-          : "当前源码对应代码";
+          ? message("sourceMappedCode", { source: shortPath(source.sourcePath) })
+          : message("currentSourceCode");
         sourceNavigation.hidden = !source;
         sourceNavigation.disabled = !finished || !showSourceHighlight || sourceNavigationRanges.length === 0;
         document.getElementById("source-navigation-count").textContent = finished
@@ -512,7 +614,7 @@
         if (rows.length === 0) {
           const empty = document.createElement("div");
           empty.className = "empty";
-          empty.textContent = "这个文件没有可展示的代码";
+          empty.textContent = message("emptyCode");
           windowElement.append(empty);
           return;
         }
@@ -746,7 +848,9 @@
         return `${(value / 1024 / 1024).toFixed(2)} MB`;
       }
       function formatInteger(value) {
-        return Number.isFinite(value) ? Math.round(value).toLocaleString("zh-CN") : "—";
+        return Number.isFinite(value)
+          ? Math.round(value).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")
+          : "—";
       }
       function shortPath(value) {
         const normalized = String(value || "").replaceAll("\\", "/");
@@ -754,8 +858,14 @@
         return parts.slice(-4).join("/") || normalized;
       }
       function withSourceContext(href) {
-        if (!selectedSourcePath) return href;
-        return `${href}${href.includes("?") ? "&" : "?"}source=${encodeURIComponent(selectedSourcePath)}`;
+        const withLanguage = withLanguageContext(href);
+        if (!selectedSourcePath) return withLanguage;
+        return `${withLanguage}${withLanguage.includes("?") ? "&" : "?"}source=${encodeURIComponent(selectedSourcePath)}`;
+      }
+      function withLanguageContext(href) {
+        const explicitLanguage = new URLSearchParams(location.search).get("lang");
+        if (!explicitLanguage || !/^(?:en|zh)(?:$|[-_])/i.test(explicitLanguage)) return href;
+        return `${href}${href.includes("?") ? "&" : "?"}lang=${encodeURIComponent(explicitLanguage)}`;
       }
       };
 
@@ -780,18 +890,30 @@
         requestAnimationFrame(() => requestAnimationFrame(callback));
       }
 
+      function detectBrowserLocale() {
+        const explicit = new URLSearchParams(location.search).get("lang");
+        if (explicit && explicit.toLocaleLowerCase().startsWith("zh")) return "zh";
+        if (explicit && explicit.toLocaleLowerCase().startsWith("en")) return "en";
+        const browserLanguage = Array.isArray(navigator.languages) && navigator.languages.length > 0
+          ? navigator.languages[0]
+          : navigator.language;
+        return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
       function loadDeferredData(href) {
         const script = document.createElement("script");
         script.src = href;
         script.async = true;
-        script.onerror = () => showLoadError(new Error("代码数据加载失败。请确认数据文件与页面位于同一目录。"));
+        script.onerror = () => showLoadError(new Error(message("deferredLoadError")));
         document.body.append(script);
       }
 
       async function loadCodeStream(href) {
         try {
           const response = await fetch(href, { cache: "no-store" });
-          if (!response.ok || !response.body) throw new Error(`代码数据请求失败（${response.status}）。`);
+          if (!response.ok || !response.body) {
+            throw new Error(message("streamLoadError", { status: response.status }));
+          }
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let buffer = "";

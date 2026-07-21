@@ -199,12 +199,12 @@ async function streamCode(
   source: CodeFileSource
 ): Promise<void> {
   startStream(response);
-  const phases = getPhases(usage).flatMap((phase, index) => {
+  const phases = getPhases(usage).flatMap((phase) => {
     const codeFiles = getArray(phase.codeFiles);
     const result = codeFiles.find((item) => isRecord(item) && item.file === source.file);
     if (!isRecord(result)) return [];
     return [{
-      label: typeof phase.label === "string" ? phase.label : `阶段 ${index + 1}`,
+      label: typeof phase.label === "string" ? phase.label : "",
       totalBytes: finiteNumber(result.totalBytes) ?? source.totalBytes,
       usedBytes: finiteNumber(result.usedBytes) ?? 0,
       usedRatio: finiteNumber(result.usedRatio),

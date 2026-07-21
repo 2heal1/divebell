@@ -72,6 +72,21 @@
       overflow-wrap: anywhere;
     }
     .meta { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+    .topline-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
+    .language-toggle {
+      flex: 0 0 auto;
+      min-height: 30px;
+      border: 1px solid var(--input);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      padding: 4px 10px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+    .language-toggle:hover { border-color: #c8ced8; color: var(--foreground); }
     .toolbar {
       display: flex;
       align-items: end;
@@ -259,7 +274,8 @@
     @media (max-width: 640px) {
       .shell { width: min(100% - 20px, 1380px); padding-top: 18px; }
       .topline { display: block; }
-      .meta { margin-top: 8px; white-space: normal; }
+      .topline-actions { justify-content: flex-start; flex-wrap: wrap; margin-top: 8px; }
+      .meta { white-space: normal; }
       .toolbar { align-items: stretch; }
       .toolbar label, .toolbar select { width: 100%; }
       .navigation-scope { width: 100%; }
@@ -287,7 +303,10 @@
         <a id="report-link" class="back" href="#" data-i18n="backToReport">← Back to code usage analysis</a>
         <h1 id="file-name">Executed code</h1>
       </div>
-      <p id="part-meta" class="meta"></p>
+      <div class="topline-actions">
+        <p id="part-meta" class="meta"></p>
+        <button id="language-toggle" class="language-toggle" type="button">中文</button>
+      </div>
     </header>
 
     <section class="toolbar" aria-label="Code viewer options" data-i18n-aria="viewerOptions">
@@ -436,6 +455,13 @@
         });
       };
       applyDocumentLocale();
+      const languageToggle = document.getElementById("language-toggle");
+      languageToggle.textContent = locale === "zh" ? "English" : "中文";
+      languageToggle.setAttribute(
+        "aria-label",
+        locale === "zh" ? "切换到英文" : "Switch to Chinese"
+      );
+      languageToggle.addEventListener("click", switchLanguage);
       window.addEventListener("languagechange", () => {
         if (new URLSearchParams(location.search).has("lang")) return;
         if (detectBrowserLocale() !== locale) location.reload();
@@ -898,6 +924,12 @@
           ? navigator.languages[0]
           : navigator.language;
         return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
+      function switchLanguage() {
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
+        location.href = nextUrl.href;
       }
 
       function loadDeferredData(href) {

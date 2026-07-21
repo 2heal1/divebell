@@ -62,6 +62,7 @@
     h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
     .subtitle, .meta, .hint { color: var(--muted-foreground); }
     .subtitle { margin-top: 5px; font-size: 14px; }
+    .heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
     .meta {
       max-width: 520px;
       padding: 5px 9px;
@@ -71,6 +72,20 @@
       font-size: 12px;
       overflow-wrap: anywhere;
     }
+    .language-toggle {
+      flex: 0 0 auto;
+      min-height: 30px;
+      border: 1px solid var(--input);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--muted-foreground);
+      padding: 4px 10px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+    .language-toggle:hover { border-color: #c9cfd9; color: var(--foreground); }
     .view-tabs {
       margin-bottom: 14px;
       border-bottom: 1px solid var(--border);
@@ -370,7 +385,8 @@
 
     @media (max-width: 780px) {
       .heading { display: block; }
-      .meta { width: fit-content; margin-top: 10px; text-align: left; }
+      .heading-actions { justify-content: flex-start; flex-wrap: wrap; margin-top: 10px; }
+      .meta { width: fit-content; text-align: left; }
       .controls { grid-template-columns: 1fr 1fr; }
       .search-control { grid-column: 1 / -1; grid-row: 1; }
       .stats { grid-template-columns: 1fr; }
@@ -408,7 +424,10 @@
         <h1 data-i18n="reportTitle">Page experience report</h1>
         <p class="subtitle" data-i18n="reportSubtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
       </div>
-      <p id="report-meta" class="meta" data-i18n="loadingReport">Loading report…</p>
+      <div class="heading-actions">
+        <p id="report-meta" class="meta" data-i18n="loadingReport">Loading report…</p>
+        <button id="language-toggle" class="language-toggle" type="button">中文</button>
+      </div>
     </header>
 
     <section class="experience-stats" aria-label="Page experience summary" data-i18n-aria="experienceSummary">
@@ -643,6 +662,13 @@
         });
       };
       applyDocumentLocale();
+      const languageToggle = document.getElementById("language-toggle");
+      languageToggle.textContent = locale === "zh" ? "English" : "中文";
+      languageToggle.setAttribute(
+        "aria-label",
+        locale === "zh" ? "切换到英文" : "Switch to Chinese"
+      );
+      languageToggle.addEventListener("click", switchLanguage);
       window.addEventListener("languagechange", () => {
         if (new URLSearchParams(location.search).has("lang")) return;
         if (detectBrowserLocale() !== locale) location.reload();
@@ -1476,6 +1502,12 @@
           ? navigator.languages[0]
           : navigator.language;
         return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
+      }
+
+      function switchLanguage() {
+        const nextUrl = new URL(location.href);
+        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
+        location.href = nextUrl.href;
       }
 
       function loadDeferredData(href) {

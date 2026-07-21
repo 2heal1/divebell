@@ -149,6 +149,10 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.match(html, /data-i18n="reportTitle"/);
   assert.match(html, /addEventListener\("languagechange"/);
   assert.match(html, /detectBrowserLocale/);
+  assert.match(html, /id="language-toggle"/);
+  assert.match(html, /Switch to Chinese/);
+  assert.match(html, /切换到英文/);
+  assert.match(html, /function switchLanguage/);
   assert.match(html, /页面体验报告/);
   assert.match(html, /页面可用时间、JavaScript 堆内存、资源加载与代码使用数据/);
   assert.match(html, /页面可用时 JavaScript 堆内存/);
@@ -241,6 +245,8 @@ test("code-usage report generates an HTML file without requiring a page session"
     assert.match(viewerHtml, /<html lang="en">/);
     assert.match(viewerHtml, />Navigation scope</);
     assert.match(viewerHtml, /addEventListener\("languagechange"/);
+    assert.match(viewerHtml, /id="language-toggle"/);
+    assert.match(viewerHtml, /function switchLanguage/);
     assert.match(viewerData, /const tag/);
     assert.match(viewerData, /\\u003c\/script/);
     assert.match(viewerHtml, /定位范围/);

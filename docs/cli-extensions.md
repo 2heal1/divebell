@@ -2,6 +2,18 @@
 
 Chinese version: [OpenRuntime CLI 扩展开发指南](cli-extensions.zh-CN.md)
 
+An Extension is how a team adapts OpenRuntime to its own development debugging needs. To an agent, an Extension appears as discoverable CLI commands under `openruntime`. To an extension author, OpenRuntime provides an Extension API that reuses the current page, login state, browser diagnostics, and Runtime capabilities.
+
+Extensions are useful for work that can be handled outside the page and deserves to be reused by the team, such as:
+
+- selecting a test account, preparing an environment, or checking access;
+- detecting the project stack and recommending matching tools;
+- packaging page-performance, memory, code-usage, or framework-specific diagnosis;
+- running team-specific verification in the same browser session; and
+- shipping an on-demand Agent Skill for a complex command.
+
+Use the [Runtime Core API](runtime-core-api.md) when the application itself must expose internal state, events, or allowed actions. Do not create an Extension for a one-off page operation with no reuse value.
+
 ## What an extension provides
 
 An OpenRuntime extension is the unit of installation and loading. One extension may provide:
@@ -129,6 +141,25 @@ The latest result is reused for the same page and detector set. Run `openruntime
 ## Command context
 
 `run(options)` receives parsed arguments, the latest page context, structured output helpers, and `options.openruntime`. Browser operations include evaluation, window reads, click, fill, screenshots, network, and Console. Prefer `snapshot`, `runAction`, and `waitFor` for structured application state.
+
+### Extension API
+
+`options.openruntime` is the Extension API used by extension authors. Agents do not write API calls directly; they invoke the CLI commands registered by the Extension.
+
+| Capability | API |
+| --- | --- |
+| Select a page, session, Bridge, or Runtime | `scope`, `ensureBridge` |
+| Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
+| Execute and await page-declared capabilities | `inputOptions`, `runAction`, `waitFor` |
+| Operate and inspect the current page | `pageSnapshot`, `click`, `fill`, `eval`, `waitEval`, `getWindow` |
+| Collect browser evidence | `screenshot`, `network`, `console` |
+| Run focused low-level capture | `browser.memory`, `browser.coverage` |
+
+The Extension API covers browser-side and Runtime-side development debugging. The coding agent still reads and changes project source code; the current API does not provide a standardized code-workspace or development-server interface. An extension implementation may read local files when explicitly needed, but should not present internal file access as a general OpenRuntime code API.
+
+Browser APIs remain available when the page does not use Runtime Core. Require a connected Runtime only when the command truly needs application-internal state.
+
+## Skill
 
 A command may point `skill.path` at an existing absolute `SKILL.md`. `openruntime foo --skill` prints that path without running the command.
 

@@ -78,7 +78,7 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(outputDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(outputDirectory, "openruntime-extension-mf-0.1.3.tgz");
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
@@ -154,7 +154,7 @@ test("packed archive supports real package-name imports for public API and exten
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(packDirectory, "openruntime-extension-mf-0.1.3.tgz");
     const installed = spawnSync("npm", [
       "install",
       "--ignore-scripts",
@@ -199,7 +199,7 @@ test("packed archive installs and loads through the external extension mechanism
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(packDirectory, "openruntime-extension-mf-0.1.3.tgz");
     let stdout = "";
     let stderr = "";
     const cli = createOpenRuntimeCli();

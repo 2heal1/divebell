@@ -1,0 +1,69 @@
+demos/bridge-readonly/README.md
+  s_334f9a01d7a3b8::t_f4a786d1ff0c67 3
+docs/cli-extensions.md
+  s_acb8fe04693968::t_682ba9f50b3284 153
+docs/cli-extensions.zh-CN.md
+  s_acb8fe04693968::t_636bd114854896 179
+docs/runtime-core-api.md
+  s_334f9a01d7a3b8::t_3173feae4ee944 99
+docs/runtime-core-api.zh-CN.md
+  s_334f9a01d7a3b8::t_25974d69a6b5a4 99
+packages/bridge/test/server.test.ts
+  s_acb8fe04693968::t_1f40c48729fd86 489,507,514,545,559
+packages/core/src/action/registry.ts
+  s_334f9a01d7a3b8::t_b1529ce1bfcf56 8
+packages/core/src/runtime/center.ts
+  s_87e39dea9e1ea0::t_f758c2fd7d92bd 6
+packages/core/src/runtime/types.ts
+  s_87e39dea9e1ea0::t_8977870e240b26 5
+packages/extension-imitate/test/record.test.mjs
+  s_334f9a01d7a3b8::t_c14824acc9e0b9 115,890
+packages/modern-plugin/README.md
+  s_a4f159622576df::t_e6f8da7d49ceb4 150
+skills/openruntime/references/integrate.md
+  s_a4f159622576df::t_3f296b9ee31a26 64,67
+skills/openruntime/references/use-cli.md
+  s_87e39dea9e1ea0::t_7df1a946636402 53,72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6c56bb7a3a4022a4d99005da7bd07343221b0e4f",
+  "prompts": {},
+  "sessions": {
+    "s_334f9a01d7a3b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8973-8d68-74d1-9029-9fdacf28e15d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_87e39dea9e1ea0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8976-b8be-78e0-92ab-9710cdbaf85f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a4f159622576df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8972-1963-7e92-8e4b-316f88626185",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_acb8fe04693968": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8971-e86e-7962-bde7-4bc89c5fac72",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -6,7 +6,7 @@ import {
   selectConsumer,
   selectRemote,
   selectStatusInstances
-} from "../dist/index.js";
+} from "../dist/public.js";
 import { instance, runtimeState } from "./fixtures.mjs";
 
 const consumer = instance({
@@ -38,14 +38,17 @@ test("unique name returns detail", () => {
   assert.equal(selected.value.instances[0].instanceRef, "mf-1");
 });
 
-test("duplicate names return copyable instance candidates", () => {
+test("duplicate names return structured candidates without CLI command text", () => {
   const duplicate = instance({ instanceRef: "mf-5", name: "host", role: "consumer" });
   const selected = selectStatusInstances(runtimeState({ instances: [consumer, duplicate] }), {
     name: "host"
   });
   assert.equal(selected.ok, false);
   assert.equal(selected.issue.code, "MF_INSTANCE_NAME_AMBIGUOUS");
-  assert.match(selected.issue.candidates[0].command, /--instance "mf-1"/);
+  assert.equal(selected.issue.candidates[0].instanceRef, "mf-1");
+  assert.equal(selected.issue.kind, "needs_input");
+  assert.equal(selected.issue.recommendedActions[0].type, "select-instance");
+  assert.doesNotMatch(JSON.stringify(selected.issue), /openruntime mf|command/);
 });
 
 test("role filters include mixed instances and preserve unknown evidence", () => {

@@ -1,27 +1,32 @@
-import type { CommandErrorKind } from "@openruntime/cli";
+import type {
+  InstanceCandidate,
+  MfIssueKind,
+  MfRecommendedAction
+} from "./types.js";
 
-export class MfCommandError extends Error {
+export interface MfCoreIssue {
+  code: string;
+  kind: MfIssueKind;
+  message: string;
+  facts: Record<string, unknown>;
+  candidates: InstanceCandidate[];
+  recommendedActions: MfRecommendedAction[];
+}
+
+export class MfCoreError extends Error {
   readonly code: string;
-  readonly kind: CommandErrorKind;
-  readonly retryable = false;
-  readonly hint?: string;
-  readonly details?: Record<string, unknown>;
-  readonly data?: unknown;
+  readonly kind: MfIssueKind;
+  readonly facts: Record<string, unknown>;
+  readonly candidates: InstanceCandidate[];
+  readonly recommendedActions: MfRecommendedAction[];
 
-  constructor(options: {
-    code: string;
-    kind: CommandErrorKind;
-    message: string;
-    hint?: string;
-    details?: Record<string, unknown>;
-    data?: unknown;
-  }) {
-    super(options.message);
-    this.name = "CommandError";
-    this.code = options.code;
-    this.kind = options.kind;
-    if (options.hint !== undefined) this.hint = options.hint;
-    if (options.details !== undefined) this.details = options.details;
-    if (options.data !== undefined) this.data = options.data;
+  constructor(readonly issue: MfCoreIssue) {
+    super(issue.message);
+    this.name = "MfCoreError";
+    this.code = issue.code;
+    this.kind = issue.kind;
+    this.facts = issue.facts;
+    this.candidates = issue.candidates;
+    this.recommendedActions = issue.recommendedActions;
   }
 }

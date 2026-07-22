@@ -24,6 +24,30 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.match(entrySource, /import\("\.\/index\.js"\)/);
   assert.match(entrySource, /import\("\.\/open\.js"\)/);
   assert.doesNotMatch(entrySource, /getRuntimeState|readFile/);
+  const commandReferences = validated.commands[0].commandReferences;
+  assert.deepEqual(commandReferences.map((reference) => reference.usage), [
+    "openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]",
+    "openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]"
+  ]);
+  assert.doesNotMatch(JSON.stringify(commandReferences), /remote check|shared|bridge|preload|mf trace/);
+});
+
+test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
+  const publicFiles = [
+    "public.js",
+    "reader.js",
+    "selection.js",
+    "results.js",
+    "errors.js",
+    "types.js"
+  ];
+  const sources = publicFiles.map((file) =>
+    readFileSync(resolve(packageRoot, "dist", file), "utf8")
+  );
+  for (const source of sources) {
+    assert.doesNotMatch(source, /(?:from|import\()\s*["'](?!\.)/);
+  }
+  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info)/);
 });
 
 test("packed npm archive is self-contained and has no runtime dependencies", () => {
@@ -38,14 +62,62 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
+    assert.match(listed.stdout, /package\/dist\/package\.js/);
+    assert.match(listed.stdout, /package\/dist\/package\.d\.ts/);
+    assert.match(listed.stdout, /package\/dist\/public\.js/);
+    assert.match(listed.stdout, /package\/dist\/public\.d\.ts/);
+    assert.match(listed.stdout, /package\/dist\/extension\.d\.ts/);
     assert.match(listed.stdout, /package\/dist\/observability-chrome-devtool\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/install-observability\.js/);
     assert.match(listed.stdout, /package\/README\.md/);
     const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     assert.equal(packageJson.dependencies, undefined);
     assert.equal(packageJson.openruntime.extensions[0], "./dist/extension.js");
+    assert.equal(packageJson.exports["."].import, "./dist/package.js");
+    assert.equal(packageJson.exports["./core"].import, "./dist/public.js");
+    assert.deepEqual(Object.keys(packageJson.exports), [".", "./core"]);
   } finally {
     rmSync(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test("packed archive supports real package-name imports for public API and extension", () => {
+  const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-public-import-"));
+  const packDirectory = join(tempDirectory, "pack");
+  try {
+    mkdirSync(packDirectory, { recursive: true });
+    const packed = spawnSync("pnpm", ["pack", "--pack-destination", packDirectory], {
+      cwd: packageRoot,
+      encoding: "utf8"
+    });
+    assert.equal(packed.status, 0, packed.stderr);
+    const archive = join(packDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const installed = spawnSync("npm", [
+      "install",
+      "--ignore-scripts",
+      "--no-package-lock",
+      archive
+    ], {
+      cwd: tempDirectory,
+      encoding: "utf8"
+    });
+    assert.equal(installed.status, 0, installed.stderr);
+    const imported = spawnSync(process.execPath, [
+      "--input-type=module",
+      "-e",
+      `const extension = await import("@openruntime/extension-mf");
+       const api = await import("@openruntime/extension-mf/core");
+       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances"];
+       if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
+       if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
+       if (extension.default?.name !== "mf") process.exit(3);`
+    ], {
+      cwd: tempDirectory,
+      encoding: "utf8"
+    });
+    assert.equal(imported.status, 0, imported.stderr);
+  } finally {
+    rmSync(tempDirectory, { recursive: true, force: true });
   }
 });
 

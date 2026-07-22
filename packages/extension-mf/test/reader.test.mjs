@@ -6,7 +6,7 @@ import {
   MF_BROWSER_READ_SCRIPT,
   parseBrowserReadResult,
   parseRuntimeState
-} from "../dist/index.js";
+} from "../dist/reader.js";
 import { browserRead, runtimeState } from "./fixtures.mjs";
 
 test("injected mode accepts the MF-Obs-00 runtime-state schema", () => {

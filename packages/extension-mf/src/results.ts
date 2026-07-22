@@ -1,4 +1,4 @@
-import { MfCommandError } from "./errors.js";
+import { MfCoreError } from "./errors.js";
 import {
   remotesMatch,
   selectConsumer,
@@ -27,20 +27,20 @@ export function createStatusResult(
 ): StatusResult {
   assertInstanceState(snapshot);
   if (snapshot.state.instances.length === 0) {
-    throw new MfCommandError({
+    throw new MfCoreError({
       code: "MF_PAGE_NOT_FEDERATED",
       kind: "not_found",
       message: "The reader is available, but no Module Federation instance is present in the current page state.",
-      hint: "Confirm that the opened page uses Module Federation. If it initializes later, wait and run the command again.",
-      data: {
+      facts: {
         observabilityMode: snapshot.observabilityMode,
         scope: snapshot.state.scope
-      }
+      },
+      candidates: [],
+      recommendedActions: [{ type: "reopen-page" }]
     });
   }
   const selected = selectStatusInstances(snapshot.state, selectors);
   if (!selected.ok) throw selectionError(selected.issue);
-  const selectedRefs = new Set(selected.value.instances.map((instance) => instance.instanceRef));
   return {
     schemaVersion: 1,
     command: "mf status",
@@ -52,15 +52,26 @@ export function createStatusResult(
       ...(selectors.instanceRef === undefined ? {} : { instanceRef: selectors.instanceRef })
     },
     instances: selected.value.instances,
-    relationships: snapshot.state.relationships.filter((relationship) =>
-      selectedRefs.has(relationship.consumerInstanceRef) ||
-      (relationship.producerInstanceRef !== undefined &&
-        selectedRefs.has(relationship.producerInstanceRef)) ||
-      relationship.candidateProducerInstanceRefs?.some((instanceRef) =>
-        selectedRefs.has(instanceRef)
-      ) === true
+    relationships: filterRelationshipsForInstances(
+      snapshot.state.relationships,
+      selected.value.instances.map((instance) => instance.instanceRef)
     )
   };
+}
+
+export function filterRelationshipsForInstances(
+  relationships: readonly RuntimeRelationship[],
+  instanceRefs: readonly string[]
+): RuntimeRelationship[] {
+  const selectedRefs = new Set(instanceRefs);
+  return relationships.filter((relationship) =>
+    selectedRefs.has(relationship.consumerInstanceRef) ||
+    (relationship.producerInstanceRef !== undefined &&
+      selectedRefs.has(relationship.producerInstanceRef)) ||
+    relationship.candidateProducerInstanceRefs?.some((instanceRef) =>
+      selectedRefs.has(instanceRef)
+    ) === true
+  );
 }
 
 export function createModuleInfoResult(
@@ -233,28 +244,26 @@ export function createCompatibilitySummary(
 function assertInstanceState(snapshot: BrowserObservabilitySnapshot): void {
   const capability = snapshot.state.capabilities.instanceState;
   if (!capability.available) {
-    throw new MfCommandError({
+    throw new MfCoreError({
       code: "MF_INSTANCE_STATE_UNAVAILABLE",
       kind: "runtime",
       message: "The observability reader cannot provide safe instance state.",
-      hint: "Upgrade or configure the MF Observability Plugin, then reopen the page with `openruntime open <url>`.",
-      data: {
+      facts: {
         capability,
         observabilityMode: snapshot.observabilityMode,
         currentState: snapshot.state.completeness.currentState
-      }
+      },
+      candidates: [],
+      recommendedActions: [
+        { type: "configure-observability", capability: "instanceState" },
+        { type: "reopen-page" }
+      ]
     });
   }
 }
 
-function selectionError(issue: SelectionIssue): MfCommandError {
-  return new MfCommandError({
-    code: issue.code,
-    kind: issue.code.includes("AMBIGUOUS") ? "needs_input" : "not_found",
-    message: issue.message,
-    hint: issue.hint,
-    data: { candidates: issue.candidates }
-  });
+function selectionError(issue: SelectionIssue): MfCoreError {
+  return new MfCoreError(issue);
 }
 
 function matchingRelationships(

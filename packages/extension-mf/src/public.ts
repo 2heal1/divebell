@@ -24,4 +24,11 @@ export {
   type StatusSelection,
   type StatusSelectors
 } from "./selection.js";
+export {
+  collectBridgeOperations,
+  listBridgeCurrentStates
+} from "./bridge/aggregate.js";
+export { selectBridgeTrace, operationCandidates } from "./bridge/selection.js";
+export { createBridgeTraceResult } from "./bridge/result.js";
+export type * from "./bridge/types.js";
 export type * from "./types.js";

@@ -33,3 +33,19 @@ test("Bridge candidate commands quote every reusable selector", () => {
     'openruntime mf bridge trace "shop alias" --instance "mf-1" --bridge "bridge-1" --operation "op-1"'
   );
 });
+
+test("remote presenter creates directly copyable disambiguation commands", () => {
+  const presenter = createCommandPresenter(["openruntime", "mf"]);
+  assert.equal(
+    presenter.trace({ target: "shop/Button", instanceRef: "mf-1", traceId: "trace-1" }),
+    'openruntime mf trace "shop/Button" --instance "mf-1" --trace-id "trace-1"'
+  );
+  assert.equal(
+    presenter.remoteCheck({ remote: "shop", instanceRef: "mf-1" }),
+    'openruntime mf remote check "shop" --instance "mf-1"'
+  );
+  assert.equal(
+    presenter.preloadTrace({ remote: "shop", instanceRef: "mf-1", traceId: "preload-1" }),
+    'openruntime mf preload trace "shop" --instance "mf-1" --trace-id "preload-1"'
+  );
+});

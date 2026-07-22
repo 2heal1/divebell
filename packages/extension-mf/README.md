@@ -1,6 +1,6 @@
 # @openruntime/extension-mf
 
-Read safe Module Federation multi-instance state from the MF Observability Plugin in the page. The extension provides `mf status` and `mf module-info`; it does not read Module Federation private globals or add built-in CLI commands.
+Read safe Module Federation multi-instance state from the MF Observability Plugin in the page. The extension provides `mf status`, `mf module-info`, and `mf bridge trace`; it does not read Module Federation private globals or add built-in CLI commands.
 
 ## Install
 
@@ -74,6 +74,24 @@ The command first selects a confirmed consumer. It automatically selects only wh
 
 Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, first observed loading time, capabilities, completeness, and warnings. Missing historical evidence remains unknown rather than being inferred from array order.
 
+## `mf bridge trace`
+
+```sh
+openruntime mf bridge trace
+openruntime mf bridge trace catalog
+openruntime mf bridge trace shop --instance mf-1
+openruntime mf bridge trace catalog --instance mf-1 --bridge bridge-1 --operation bridge-op-1
+openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1 --json
+```
+
+Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
+
+Operations are correlated by operationId within one MF instance. Consumer and producer evidence can share one operation while retaining their side. Missing operationId values are never correlated across reports or sides; those records remain independent and are marked as incomplete associations.
+
+The output distinguishes an operation call, render invocation, operation return, and framework commit. A successful render return does not imply that commit was observed. Even a commit does not establish that the page is rendered for the user, business data is ready, or the application is interactive. Route-sync output uses only the already-sanitized route summary and does not claim final navigation success.
+
+`bridgeTrace` capability controls historical output. `partial` returns available operations with a missing-history warning. `unavailable` returns a structured unsupported result instead of claiming that the page does not use Bridge. If current Bridge state exists, it is still shown while historical operations remain unavailable. Reopen the page before reproducing the operation when observation was installed late.
+
 ## Collection modes and compatibility
 
 - `injected`: this extension installed its bundled collector before MF runtime startup.
@@ -89,16 +107,21 @@ Other extensions can reuse the safe reader, selection rules, and result builders
 ```ts
 import {
   MfCoreError,
+  collectBridgeOperations,
   createCompatibilitySummary,
+  createBridgeTraceResult,
   createModuleInfoResult,
   createStatusResult,
   filterRelationshipsForInstances,
+  listBridgeCurrentStates,
   listRemoteCandidates,
   readMfObservability,
   selectConsumer,
+  selectBridgeTrace,
   selectRemote,
   selectStatusInstances,
   type BrowserObservabilitySnapshot,
+  type BridgeTraceResult,
   type ConsumerSelectors,
   type StatusSelectors
 } from "@openruntime/extension-mf/core";
@@ -106,7 +129,7 @@ import {
 
 The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `openruntime mf` commands. A Vmok extension can therefore use the same facts and render its own `openruntime vmok` guidance.
 
-The public report types also preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Future Remote, Shared, and Bridge commands should consume `BrowserObservabilitySnapshot`, `RuntimeReport`, `RuntimeReportEvent`, `RuntimeResource`, `RuntimeShared`, `RuntimeBridgeInfo`, and `RuntimeBridgeState` from this entry instead of adding another browser reader.
+The public report types also preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. The Bridge command and future Remote or Shared commands consume `BrowserObservabilitySnapshot`, `RuntimeReport`, `RuntimeReportEvent`, `RuntimeResource`, `RuntimeShared`, `RuntimeBridgeInfo`, and `RuntimeBridgeState` from this entry instead of adding another browser reader.
 
 The reader intentionally omits response headers and bodies, cookies, tokens, factories, containers, props, routers, arbitrary metadata, and raw runtime objects. The current public report also does not provide Remote response contents, Shared factory identity, Bridge props/router objects, or business-data readiness. Bridge commit and route-sync evidence is available, but application readiness still needs an explicit business signal. Missing facts should remain unknown rather than being inferred by commands.
 

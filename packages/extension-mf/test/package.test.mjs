@@ -27,9 +27,10 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   const commandReferences = validated.commands[0].commandReferences;
   assert.deepEqual(commandReferences.map((reference) => reference.usage), [
     "openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]",
-    "openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]"
+    "openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]",
+    "openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]"
   ]);
-  assert.doesNotMatch(JSON.stringify(commandReferences), /remote check|shared|bridge|preload|mf trace/);
+  assert.doesNotMatch(JSON.stringify(commandReferences), /remote check|shared|preload|mf trace/);
 });
 
 test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
@@ -39,7 +40,11 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     "selection.js",
     "results.js",
     "errors.js",
-    "types.js"
+    "types.js",
+    "bridge/aggregate.js",
+    "bridge/selection.js",
+    "bridge/result.js",
+    "bridge/types.js"
   ];
   const sources = publicFiles.map((file) =>
     readFileSync(resolve(packageRoot, "dist", file), "utf8")
@@ -154,7 +159,7 @@ test("packed archive supports real package-name imports for public API and exten
       "-e",
       `const extension = await import("@openruntime/extension-mf");
        const api = await import("@openruntime/extension-mf/core");
-       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances"];
+       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
        if (extension.default?.name !== "mf") process.exit(3);`

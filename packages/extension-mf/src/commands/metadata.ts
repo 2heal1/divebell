@@ -19,7 +19,15 @@ export const moduleInfoCommandMetadata = {
   description: "Inspect a declared or loaded remote in an unambiguous consumer context."
 } as const satisfies MfCommandMetadata;
 
+export const bridgeTraceCommandMetadata = {
+  path: ["bridge", "trace"],
+  usage: "openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]",
+  summaryUsage: "openruntime mf bridge trace [remote]",
+  description: "Explain observed Module Federation Bridge lifecycle operations without inferring application readiness."
+} as const satisfies MfCommandMetadata;
+
 export const implementedMfCommandMetadata = [
   statusCommandMetadata,
-  moduleInfoCommandMetadata
+  moduleInfoCommandMetadata,
+  bridgeTraceCommandMetadata
 ] as const;

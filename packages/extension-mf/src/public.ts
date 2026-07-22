@@ -49,4 +49,17 @@ export {
   type RemoteTraceSelection
 } from "./remote/selection.js";
 export type * from "./remote/types.js";
+export {
+  createSharedStatusResult
+} from "./shared/status.js";
+export {
+  createSharedTraceResult,
+  groupSharedTraceOperations
+} from "./shared/trace.js";
+export {
+  matchingSharedInstances,
+  selectSharedInstances,
+  visibleMfName
+} from "./shared/selection.js";
+export type * from "./shared/types.js";
 export type * from "./types.js";

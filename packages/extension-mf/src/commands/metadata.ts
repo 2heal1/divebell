@@ -47,11 +47,27 @@ export const preloadTraceCommandMetadata = {
   description: "Inspect captured preloadRemote chains without mixing ordinary remote loads."
 } as const satisfies MfCommandMetadata;
 
+export const sharedStatusCommandMetadata = {
+  path: ["shared", "status"],
+  usage: "openruntime mf shared status [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--json]",
+  summaryUsage: "openruntime mf shared status [package]",
+  description: "Inspect current shared dependency state across every matching MF instance and share scope."
+} as const satisfies MfCommandMetadata;
+
+export const sharedTraceCommandMetadata = {
+  path: ["shared", "trace"],
+  usage: "openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>] [--json]",
+  summaryUsage: "openruntime mf shared trace [package]",
+  description: "Explain an observed shared registration, selection, or loading operation."
+} as const satisfies MfCommandMetadata;
+
 export const implementedMfCommandMetadata = [
   statusCommandMetadata,
   moduleInfoCommandMetadata,
   bridgeTraceCommandMetadata,
   traceCommandMetadata,
   remoteCheckCommandMetadata,
-  preloadTraceCommandMetadata
+  preloadTraceCommandMetadata,
+  sharedStatusCommandMetadata,
+  sharedTraceCommandMetadata
 ] as const;

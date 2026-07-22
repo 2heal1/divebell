@@ -26,8 +26,32 @@ export const bridgeTraceCommandMetadata = {
   description: "Explain observed Module Federation Bridge lifecycle operations without inferring application readiness."
 } as const satisfies MfCommandMetadata;
 
+export const traceCommandMetadata = {
+  path: ["trace"],
+  usage: "openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]",
+  summaryUsage: "openruntime mf trace [remote/expose]",
+  description: "Inspect one captured remote loading chain or list captured chains."
+} as const satisfies MfCommandMetadata;
+
+export const remoteCheckCommandMetadata = {
+  path: ["remote", "check"],
+  usage: "openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]",
+  summaryUsage: "openruntime mf remote check <remote>",
+  description: "Check a remote using only evidence already observed in the current page."
+} as const satisfies MfCommandMetadata;
+
+export const preloadTraceCommandMetadata = {
+  path: ["preload", "trace"],
+  usage: "openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]",
+  summaryUsage: "openruntime mf preload trace [remote]",
+  description: "Inspect captured preloadRemote chains without mixing ordinary remote loads."
+} as const satisfies MfCommandMetadata;
+
 export const implementedMfCommandMetadata = [
   statusCommandMetadata,
   moduleInfoCommandMetadata,
-  bridgeTraceCommandMetadata
+  bridgeTraceCommandMetadata,
+  traceCommandMetadata,
+  remoteCheckCommandMetadata,
+  preloadTraceCommandMetadata
 ] as const;

@@ -49,21 +49,26 @@ export async function dispatchMfCommand(
   options: CliExtensionRunOptions,
   registrations: readonly MfCommandRegistration[]
 ): Promise<number> {
-  const match = matchMfCommand(registrations, options.args.command.slice(1));
-  if (match === undefined) throw unknownCommandError(registrations);
+  const segments = options.args.command.slice(1);
+  const match = matchMfCommand(registrations, segments);
+  if (match === undefined) throw commandRouteError(registrations, segments);
   const definition = await match.registration.load();
   return definition.run({ options, positionals: match.positionals });
 }
 
-function unknownCommandError(
-  registrations: readonly MfCommandRegistration[]
+function commandRouteError(
+  registrations: readonly MfCommandRegistration[],
+  segments: readonly string[]
 ): MfCommandError {
   const names = registrations.map((registration) => registration.path.join(" "));
   const usages = registrations.map((registration) => `\`${registration.summaryUsage}\``);
+  const available = joinWithOr(names);
   return new MfCommandError({
-    code: "MF_COMMAND_INVALID",
+    code: segments.length === 0 ? "MF_COMMAND_REQUIRED" : "MF_COMMAND_INVALID",
     kind: "validation",
-    message: `mf requires ${joinWithOr(names)}.`,
+    message: segments.length === 0
+      ? `mf requires a subcommand. Available commands: ${available}.`
+      : `Unknown mf subcommand \`${segments.join(" ")}\`. Available commands: ${available}.`,
     hint: `Run ${joinWithOr(usages)}.`
   });
 }

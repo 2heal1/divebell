@@ -51,13 +51,24 @@ test("unknown MF commands return the compatible unified help error", async () =>
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "mf requires status, module-info, bridge trace, trace, remote check, preload trace, shared status or shared trace." &&
+      error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, trace, remote check, preload trace, shared status, shared trace or bridge trace." &&
       /openruntime mf status/.test(error.hint) &&
       /openruntime mf module-info/.test(error.hint) &&
       /openruntime mf bridge trace/.test(error.hint) &&
       /openruntime mf remote check/.test(error.hint) &&
       /openruntime mf shared status/.test(error.hint) &&
       /openruntime mf shared trace/.test(error.hint)
+  );
+});
+
+test("mf without a subcommand lists the same eight commands without adding help", async () => {
+  const run = createOptions(["mf"], new Map(), undefined);
+  await assert.rejects(
+    () => runMfCommand(run.options),
+    (error) => error.code === "MF_COMMAND_REQUIRED" &&
+      /mf requires a subcommand/.test(error.message) &&
+      /status, module-info, trace, remote check, preload trace, shared status, shared trace or bridge trace/.test(error.message) &&
+      !/mf help/.test(`${error.message} ${error.hint}`)
   );
 });
 

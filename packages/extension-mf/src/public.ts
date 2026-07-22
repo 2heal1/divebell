@@ -32,7 +32,6 @@ export { selectBridgeTrace, operationCandidates } from "./bridge/selection.js";
 export { createBridgeTraceResult } from "./bridge/result.js";
 export type * from "./bridge/types.js";
 export { RemoteCoreError } from "./remote/errors.js";
-export { formatRemoteCheck, formatRemoteTrace } from "./remote/format.js";
 export {
   buildRemoteTrace,
   createRemoteCheckResult,

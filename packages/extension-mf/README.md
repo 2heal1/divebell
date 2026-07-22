@@ -1,6 +1,6 @@
 # @openruntime/extension-mf
 
-Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides `mf status`, `mf module-info`, `mf bridge trace`, `mf trace`, `mf remote check`, and `mf preload trace`; it does not read Module Federation private globals or add built-in CLI commands.
+Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides `mf status`, `mf module-info`, `mf bridge trace`, `mf trace`, `mf remote check`, `mf preload trace`, `mf shared status`, and `mf shared trace`; it does not read Module Federation private globals or add built-in CLI commands.
 
 ## Install
 
@@ -111,6 +111,25 @@ Remote names and aliases are accepted. For `remote/expose`, the full remote name
 
 See [docs/remote.md](docs/remote.md) for the result fields, evidence boundaries, and complete compatibility behavior.
 
+## Shared state and loading chains
+
+```sh
+openruntime mf shared status
+openruntime mf shared status react --mf host --scope default
+openruntime mf shared status react --instance mf-1 --json
+
+openruntime mf shared trace
+openruntime mf shared trace react --instance mf-1
+openruntime mf shared trace react --instance mf-1 --operation loadShare-42
+openruntime mf shared trace react --trace-id mf-trace-42 --json
+```
+
+`mf shared status` reads only the current `shareScopes` state and keeps every matching instance separate, including duplicate MF names. It groups packages by instance and share scope, and reports available and loaded versions, providers, loading flags, strategy, and conflicts that current versions still confirm.
+
+`mf shared trace` explains registration, selection, and loading history. It correlates by `operationId` first and falls back to `traceId` or `requestId`; it never combines concurrent loads merely because they use the same package name. When a package matches several operations, the result contains instance, package, scope, operation, and a copyable command for each candidate.
+
+See [docs/shared.md](docs/shared.md) for capability, version, ambiguity, and partial-history behavior.
+
 ## Collection modes and compatibility
 
 - `injected`: this extension installed its bundled collector before MF runtime startup.
@@ -132,8 +151,11 @@ import {
   createModuleInfoResult,
   createRemoteCheckResult,
   createRemoteTraceResult,
+  createSharedStatusResult,
+  createSharedTraceResult,
   createStatusResult,
   filterRelationshipsForInstances,
+  groupSharedTraceOperations,
   listBridgeCurrentStates,
   listRemoteCandidates,
   readMfObservability,
@@ -142,6 +164,7 @@ import {
   selectRemote,
   selectRemoteCheck,
   selectRemoteTrace,
+  selectSharedInstances,
   selectStatusInstances,
   type BrowserObservabilitySnapshot,
   type BridgeTraceResult,
@@ -152,7 +175,7 @@ import {
 
 The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `openruntime mf` commands. A Vmok extension can therefore use the same facts and render its own `openruntime vmok` guidance.
 
-The public report types preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Bridge and Remote commands consume `BrowserObservabilitySnapshot`, `RuntimeReport`, `RuntimeReportEvent`, `RuntimeResource`, `RuntimeShared`, `RuntimeBridgeInfo`, and `RuntimeBridgeState` from this entry, so other extensions can reuse the same facts without invoking the CLI. Future Shared commands should use the corresponding public types instead of adding another browser reader.
+The public report types preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Bridge, Remote, and Shared commands consume the same `BrowserObservabilitySnapshot`, report, resource, Shared, and Bridge facts from this entry, so other extensions can reuse the result builders, grouping, and selection rules without invoking the CLI or adding another browser reader.
 
 The reader intentionally omits response headers and bodies, cookies, tokens, factories, containers, props, routers, arbitrary metadata, and raw runtime objects. The current public report also does not provide Remote response contents, Shared factory identity, Bridge props/router objects, or business-data readiness. Bridge commit and route-sync evidence is available, but application readiness still needs an explicit business signal. Missing facts should remain unknown rather than being inferred by commands.
 

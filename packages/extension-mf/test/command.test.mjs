@@ -51,11 +51,13 @@ test("unknown MF commands return the compatible unified help error", async () =>
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "mf requires status, module-info, bridge trace, trace, remote check or preload trace." &&
+      error.message === "mf requires status, module-info, bridge trace, trace, remote check, preload trace, shared status or shared trace." &&
       /openruntime mf status/.test(error.hint) &&
       /openruntime mf module-info/.test(error.hint) &&
       /openruntime mf bridge trace/.test(error.hint) &&
-      /openruntime mf remote check/.test(error.hint)
+      /openruntime mf remote check/.test(error.hint) &&
+      /openruntime mf shared status/.test(error.hint) &&
+      /openruntime mf shared trace/.test(error.hint)
   );
 });
 

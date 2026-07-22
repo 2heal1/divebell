@@ -32,7 +32,8 @@
     "dist/**/*.d.ts",
     "dist/**/*.d.ts.map",
     "dist/**/*.js",
-    "dist/**/*.js.map"
+    "dist/**/*.js.map",
+    "dist/observability-build.json"
   ],
   "publishConfig": {
     "access": "public"

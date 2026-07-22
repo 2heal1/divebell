@@ -13,10 +13,21 @@ import extension from "../dist/extension.js";
 
 const packageRoot = new URL("..", import.meta.url);
 
-test("navigation injection sources are unchanged by the command refactor", () => {
-  assert.equal(sourceHash("assets/install-observability.js"), "a086beb71229d293da166c223aa7b2bc08f41e6ab932fd0f40dda5e51c019edf");
-  assert.equal(sourceHash("assets/observability-chrome-devtool.iife.js"), "4444aae2dbbfdce1b0084d6387d95c6bab6373c73f65fb96cc8913be864da177");
-  assert.equal(sourceHash("src/open.ts"), "221aca9bfcd3bdecc25aedffe70d50c4b863fc98b5bc43e541972236ecc904ed");
+test("generated injection assets agree with their source metadata", () => {
+  const bundle = readFileSync(new URL(
+    "assets/observability-chrome-devtool.iife.js",
+    packageRoot
+  ), "utf8");
+  const installer = readFileSync(new URL("assets/install-observability.js", packageRoot), "utf8");
+  const metadata = JSON.parse(readFileSync(new URL(
+    "assets/observability-build.json",
+    packageRoot
+  ), "utf8"));
+  assert.equal(createHash("sha256").update(bundle).digest("hex"), metadata.bundleSha256);
+  assert.match(installer, new RegExp(`PLUGIN_VERSION = ${JSON.stringify(metadata.packageVersion)}`));
+  assert.match(metadata.sourceRevision, /^[0-9a-f]{40}$/);
+  assert.equal(metadata.packageName, "@module-federation/observability-plugin");
+  assert.doesNotMatch(`${bundle}\n${installer}\n${JSON.stringify(metadata)}`, /\/Users\/|outter\/core/);
 });
 
 test("open hook returns one self-contained script built from the public chrome-devtool entry", async () => {
@@ -30,12 +41,6 @@ test("open hook returns one self-contained script built from the public chrome-d
   assert.doesNotMatch(source, /\bimport\s*\(/);
   assert.doesNotMatch(source, /<script|cdn\.jsdelivr|unpkg\.com/i);
 });
-
-function sourceHash(relativePath) {
-  return createHash("sha256")
-    .update(readFileSync(new URL(relativePath, packageRoot)))
-    .digest("hex");
-}
 
 test("injection runs before business setup and observes more than one later MF instance", async () => {
   const [{ scripts }] = await Promise.all([openMfObservability()]);

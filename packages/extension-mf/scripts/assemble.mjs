@@ -14,5 +14,9 @@ await Promise.all([
   copyFile(
     resolve(packageRoot, "assets/install-observability.js"),
     resolve(distDirectory, "install-observability.js")
+  ),
+  copyFile(
+    resolve(packageRoot, "assets/observability-build.json"),
+    resolve(distDirectory, "observability-build.json")
   )
 ]);

@@ -24,6 +24,130 @@ export interface SharedVersion {
   loaded?: boolean;
   singleton?: boolean;
   eager?: boolean;
+  strategy?: string;
+}
+
+export interface SharedCandidate {
+  scope: string;
+  version: string;
+  provider?: string;
+  loaded: boolean;
+  loading: boolean;
+  singleton: boolean;
+  eager: boolean;
+  strategy?: string;
+  compatible?: boolean;
+  rejectionReason?: string;
+}
+
+export interface SharedRegistration {
+  registrationId: string;
+  action: "registered" | "replaced" | "reused" | "ignored";
+  reason: string;
+  trigger: string;
+  scope: string;
+  candidate: SharedCandidate;
+  effective?: SharedCandidate;
+}
+
+export interface SharedConflict {
+  reason: "singleton-multiple-versions";
+  scope: string;
+  currentVersion?: string;
+  currentFrom?: string;
+  versions: string[];
+  existingVersions: Array<{
+    version: string;
+    from?: string;
+    singleton?: boolean;
+    loaded?: boolean;
+  }>;
+}
+
+export interface RuntimeShared {
+  name: string;
+  shareScope?: string[];
+  version?: string;
+  requiredVersion?: string | false;
+  selectedVersion?: string;
+  availableVersions?: string[];
+  provider?: string;
+  useIn?: string[];
+  singleton?: boolean;
+  strictVersion?: boolean;
+  eager?: boolean;
+  strategy?: string;
+  loaded?: boolean;
+  loading?: boolean;
+  reason?: string;
+  definedBy?: "bundler-runtime";
+  conflict?: SharedConflict;
+  candidates?: SharedCandidate[];
+  selectionReason?: string;
+  failureReason?: string;
+  loadType?: "sync" | "async";
+  trigger?: string;
+  moduleId?: string | number;
+  chunkId?: string | number;
+  remote?: string;
+  expose?: string;
+  requestId?: string;
+  operationId?: string;
+  fallback?: boolean;
+  recovered?: boolean;
+  registration?: SharedRegistration;
+}
+
+export interface BridgeRouteSummary {
+  action: string;
+  from?: string;
+  to?: string;
+  basename?: string;
+  mechanism?: "popstate";
+}
+
+export interface RuntimeBridgeInfo {
+  operationId: string;
+  bridgeId: string;
+  side: "consumer" | "producer";
+  framework: "react" | "vue";
+  operation: "render" | "update" | "destroy" | "route-sync";
+  moduleName?: string;
+  remote?: string;
+  expose?: string;
+  route?: BridgeRouteSummary;
+  reason?: string;
+  startedAt: number;
+  endedAt?: number;
+  duration?: number;
+  outcome?: "success" | "error" | "skipped";
+  error?: {
+    name?: string;
+    message?: string;
+  };
+}
+
+export type BridgeStatus =
+  | "idle"
+  | "rendering"
+  | "rendered"
+  | "destroying"
+  | "destroyed"
+  | "error";
+
+export interface RuntimeBridgeState {
+  bridgeId: string;
+  side: "consumer" | "producer";
+  framework: "react" | "vue";
+  moduleName?: string;
+  remote?: string;
+  expose?: string;
+  status: BridgeStatus;
+  lastOperation?: RuntimeBridgeInfo["operation"];
+  lastOperationId?: string;
+  lastOperationAt?: number;
+  commitObserved: boolean;
+  routeSyncObserved: boolean;
 }
 
 export interface ShareScope {
@@ -53,6 +177,15 @@ export interface RuntimeInstance {
   bridge?: {
     available: boolean;
     lifecycleCount?: number;
+    framework?: "react" | "vue";
+    moduleName?: string;
+    remote?: string;
+    expose?: string;
+    status?: BridgeStatus;
+    lastOperationAt?: number;
+    commitObserved?: boolean;
+    routeSyncObserved?: boolean;
+    states?: RuntimeBridgeState[];
   };
   active: boolean;
 }
@@ -111,38 +244,131 @@ export interface ReportModuleInfoEntry {
   globalName?: string;
 }
 
+export interface RuntimeResource {
+  type: string;
+  initiator: "loadRemote" | "preloadRemote";
+  outcome?: "success" | "error" | "timeout" | "cached" | "recovered";
+  url?: string;
+  startedAt: number;
+  endedAt?: number;
+  duration?: number;
+  httpStatus?: number;
+  mimeType?: string;
+  redirected?: boolean;
+  cacheSource?: string;
+  errorType?: string;
+}
+
+export interface RuntimeReportEvent {
+  traceId?: string;
+  instanceRef?: string;
+  timestamp: number;
+  phase: string;
+  status: "start" | "success" | "error" | "complete";
+  requestId?: string;
+  requestAlias?: string;
+  hostName?: string;
+  runtimeVersion?: string;
+  remote?: RuntimeRemote;
+  resource?: RuntimeResource;
+  shared?: RuntimeShared;
+  expose?: string;
+  sanitizedUrl?: string;
+  message?: string;
+  errorCode?: string;
+  errorName?: string;
+  errorMessage?: string;
+  ownerHint?: "host" | "remote" | "shared" | "network" | "runtime" | "unknown";
+  retryable?: boolean;
+  duration?: number;
+  lifecycle?: string;
+  eventName?: string;
+  source?: "runtime" | "business" | "react";
+  recovered?: boolean;
+  cached?: boolean;
+  componentName?: string;
+  bridge?: RuntimeBridgeInfo;
+}
+
 export interface RuntimeReport {
   traceId: string;
   instanceRef?: string;
   status: "pending" | "success" | "error";
+  requestId?: string;
+  requestAlias?: string;
+  hostName?: string;
+  runtimeVersion?: string;
   remote?: RuntimeRemote;
+  shared?: RuntimeShared;
   expose?: string;
   sanitizedUrl?: string;
   startedAt: number;
   updatedAt: number;
   duration: number;
+  failedPhase?: string;
+  errorCode?: string;
+  errorName?: string;
+  errorMessage?: string;
+  ownerHint?: RuntimeReportEvent["ownerHint"];
+  retryable?: boolean;
+  bridge?: RuntimeBridgeInfo;
   moduleInfo?: {
     reason: string;
     entries: ReportModuleInfoEntry[];
   };
-  events: Array<{
-    phase: string;
-    status: string;
-    timestamp: number;
-    sanitizedUrl?: string;
-    message?: string;
-    cached?: boolean;
-  }>;
+  events: RuntimeReportEvent[];
   summary: {
+    eventCount?: number;
+    recovered?: boolean;
+    loadCompleted?: boolean;
+    runtimeLoaded?: boolean;
+    sharedResolved?: boolean;
+    sharedRegistered?: boolean;
+    preloaded?: boolean;
+    componentLoaded?: boolean;
+    outcome?: string;
+    lastPhase?: string;
+    phases?: Record<string, {
+      status: RuntimeReportEvent["status"];
+      duration?: number;
+      cached?: boolean;
+      recovered?: boolean;
+      lifecycle?: string;
+    }>;
+    shared?: {
+      name: string;
+      provider?: string;
+      selectedVersion?: string;
+      shareScope?: string[];
+    };
     flags: {
       cached: boolean;
       fallback: boolean;
       recovered: boolean;
     };
+    error?: {
+      errorCode?: string;
+      errorName?: string;
+      errorMessage?: string;
+      failedPhase?: string;
+      lifecycle?: string;
+      ownerHint?: RuntimeReportEvent["ownerHint"];
+      retryable?: boolean;
+    };
   };
   diagnosis?: {
+    title?: string;
+    outcome?: string;
+    status?: "pending" | "success" | "error";
+    ownerHint?: RuntimeReportEvent["ownerHint"];
+    failedPhase?: string;
+    errorCode?: string;
+    errorName?: string;
+    errorMessage?: string;
     warnings?: string[];
     actions: Array<{
+      id?: string;
+      ownerHint?: RuntimeReportEvent["ownerHint"];
       title: string;
       detail?: string;
     }>;

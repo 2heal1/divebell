@@ -23,6 +23,8 @@
     "version:packages": "changeset version",
     "release:npm:check": "node ./scripts/npm-release.mjs check",
     "release:npm:pack": "node ./scripts/npm-release.mjs pack",
+    "sync:mf-observability": "node ./packages/extension-mf/scripts/sync-observability.mjs sync",
+    "check:mf-observability": "node ./packages/extension-mf/scripts/sync-observability.mjs check",
     "test:release-script": "node --test ./scripts/npm-release-utils.test.mjs",
     "publish:packages": "node ./scripts/npm-release.mjs publish",
     "version:check": "node ./scripts/check-package-versions.mjs",
@@ -32,6 +34,7 @@
     "@changesets/cli": "2.31.0",
     "@openruntime/cli": "workspace:^",
     "@types/node": "24.13.1",
+    "esbuild": "0.28.1",
     "pkg-pr-new": "0.0.75",
     "typescript": "5.9.3"
   },

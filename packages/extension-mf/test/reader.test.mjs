@@ -7,7 +7,7 @@ import {
   parseBrowserReadResult,
   parseRuntimeState
 } from "../dist/reader.js";
-import { browserRead, runtimeState } from "./fixtures.mjs";
+import { browserRead, report, runtimeState } from "./fixtures.mjs";
 
 test("injected mode accepts the MF-Obs-00 runtime-state schema", () => {
   const result = parseBrowserReadResult(browserRead(runtimeState()));
@@ -84,6 +84,247 @@ test("multiple application readers are not silently reduced to the first", () =>
 test("arbitrary page globals fail structural validation", () => {
   assert.throws(() => parseRuntimeState({ schemaVersion: 1, instances: {} }), /scope/);
   assert.throws(() => parseBrowserReadResult({ ok: true, state: { schemaVersion: 99 } }));
+});
+
+test("schemaVersion 1 reports without newer optional fields remain readable", () => {
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [report()]));
+  assert.equal(result.ok, true);
+  assert.equal(result.snapshot.reports[0].remote.name, "catalog");
+  assert.equal(result.snapshot.reports[0].events[0].phase, "manifest");
+});
+
+test("reader preserves public Remote resource results and strips unsafe input", () => {
+  const remoteReport = report({
+    requestId: "catalog/App",
+    requestAlias: "shop/App",
+    hostName: "host",
+    runtimeVersion: "2.5.4",
+    events: [{
+      traceId: "trace-remote",
+      instanceRef: "mf-1",
+      phase: "remoteEntry",
+      status: "success",
+      timestamp: 125,
+      requestId: "catalog/App",
+      remote: {
+        name: "catalog",
+        entry: "https://cdn.test/remoteEntry.js?token=must-not-leak"
+      },
+      expose: "./App",
+      duration: 25,
+      recovered: false,
+      cached: true,
+      resource: {
+        type: "remoteEntry",
+        initiator: "loadRemote",
+        outcome: "cached",
+        url: "https://cdn.test/remoteEntry.js?token=must-not-leak#private",
+        startedAt: 100,
+        endedAt: 125,
+        duration: 25,
+        httpStatus: 200,
+        mimeType: "text/javascript",
+        redirected: false,
+        cacheSource: "memory",
+        errorType: "network",
+        headers: { authorization: "Bearer secret" }
+      },
+      response: { headers: { cookie: "secret" } }
+    }]
+  });
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [remoteReport]));
+  assert.equal(result.ok, true);
+  const parsed = result.snapshot.reports[0];
+  assert.equal(parsed.requestId, "catalog/App");
+  assert.equal(parsed.events[0].resource.outcome, "cached");
+  assert.equal(parsed.events[0].resource.httpStatus, 200);
+  assert.equal(parsed.events[0].resource.url, "https://cdn.test/remoteEntry.js");
+  assert.equal(parsed.events[0].remote.entry, "https://cdn.test/remoteEntry.js");
+  assert.doesNotMatch(JSON.stringify(parsed), /authorization|cookie|must-not-leak|headers/);
+});
+
+test("reader preserves public Shared selection and registration fields", () => {
+  const candidate = {
+    scope: "default",
+    version: "18.3.1",
+    provider: "host",
+    loaded: true,
+    loading: false,
+    singleton: true,
+    eager: false,
+    strategy: "loaded-first",
+    compatible: true
+  };
+  const shared = {
+    name: "react",
+    shareScope: ["default"],
+    version: "18.3.1",
+    requiredVersion: "^18.0.0",
+    selectedVersion: "18.3.1",
+    availableVersions: ["17.0.2", "18.3.1"],
+    provider: "host",
+    useIn: ["catalog"],
+    singleton: true,
+    strictVersion: false,
+    eager: false,
+    strategy: "loaded-first",
+    loaded: true,
+    loading: false,
+    selectionReason: "singleton-existing",
+    loadType: "async",
+    trigger: "build",
+    moduleId: 42,
+    chunkId: "shared-chunk",
+    remote: "catalog",
+    expose: "./App",
+    requestId: "consume-request",
+    operationId: "loadShare-42",
+    fallback: false,
+    recovered: true,
+    candidates: [candidate],
+    registration: {
+      registrationId: "shared-register-1",
+      action: "registered",
+      reason: "container-share-registered",
+      trigger: "container-init",
+      scope: "default",
+      candidate,
+      effective: candidate
+    },
+    factory: () => "unsafe",
+    token: "must-not-leak"
+  };
+  const sharedReport = report({
+    remote: undefined,
+    shared,
+    events: [{
+      phase: "shared",
+      status: "success",
+      timestamp: 200,
+      requestId: "loadShare-42",
+      shared
+    }]
+  });
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [sharedReport]));
+  assert.equal(result.ok, true);
+  const parsed = result.snapshot.reports[0].shared;
+  assert.equal(parsed.selectedVersion, "18.3.1");
+  assert.equal(parsed.candidates[0].provider, "host");
+  assert.equal(parsed.registration.action, "registered");
+  assert.equal(parsed.operationId, "loadShare-42");
+  assert.doesNotMatch(JSON.stringify(parsed), /factory|token|must-not-leak/);
+});
+
+test("reader preserves public Bridge lifecycle and current-state fields", () => {
+  const bridge = {
+    operationId: "bridge-op-1",
+    bridgeId: "catalog-bridge",
+    side: "consumer",
+    framework: "react",
+    operation: "route-sync",
+    moduleName: "CatalogApp",
+    remote: "catalog",
+    expose: "./App",
+    route: {
+      action: "host-to-remote",
+      from: "/before?token=must-not-leak",
+      to: "/after#private",
+      basename: "/catalog",
+      mechanism: "popstate"
+    },
+    startedAt: 300,
+    endedAt: 315,
+    duration: 15,
+    outcome: "success"
+  };
+  const state = runtimeState({
+    instances: [{
+      instanceRef: "mf-1",
+      name: "host",
+      optionsName: "host",
+      optionsVersion: "1.0.0",
+      runtimeVersion: "2.5.4",
+      role: "consumer",
+      roleEvidence: { consumer: ["options.remotes"], producer: [] },
+      remotes: [],
+      loadedProducers: [],
+      shareScopes: [],
+      bridge: {
+        available: true,
+        lifecycleCount: 4,
+        framework: "react",
+        moduleName: "CatalogApp",
+        remote: "catalog",
+        expose: "./App",
+        status: "rendered",
+        lastOperationAt: 315,
+        commitObserved: true,
+        routeSyncObserved: true,
+        states: [{
+          bridgeId: "catalog-bridge",
+          side: "consumer",
+          framework: "react",
+          moduleName: "CatalogApp",
+          remote: "catalog",
+          expose: "./App",
+          status: "rendered",
+          lastOperation: "route-sync",
+          lastOperationId: "bridge-op-1",
+          lastOperationAt: 315,
+          commitObserved: true,
+          routeSyncObserved: true,
+          props: { token: "must-not-leak" },
+          router: { private: true }
+        }]
+      },
+      active: true
+    }]
+  });
+  const bridgeReport = report({
+    bridge,
+    events: [{
+      phase: "bridge-route",
+      status: "success",
+      timestamp: 315,
+      duration: 15,
+      lifecycle: "afterBridgeOperation",
+      message: "bridge:route-sync-success",
+      bridge
+    }]
+  });
+  const result = parseBrowserReadResult(browserRead(state, [bridgeReport]));
+  assert.equal(result.ok, true);
+  const snapshot = result.snapshot;
+  assert.equal(snapshot.state.instances[0].bridge.states[0].lastOperation, "route-sync");
+  assert.equal(snapshot.reports[0].bridge.operationId, "bridge-op-1");
+  assert.equal(snapshot.reports[0].bridge.route.from, "/before");
+  assert.doesNotMatch(JSON.stringify(snapshot), /props|router|must-not-leak/);
+});
+
+test("reader rejects invalid types in newly recognized report fields", () => {
+  const invalidResource = report({
+    events: [{
+      phase: "manifest",
+      status: "success",
+      timestamp: 10,
+      resource: {
+        type: "manifest",
+        initiator: "loadRemote",
+        startedAt: 1,
+        httpStatus: "200"
+      }
+    }]
+  });
+  assert.throws(
+    () => parseBrowserReadResult(browserRead(runtimeState(), [invalidResource])),
+    /resource httpStatus/
+  );
+
+  const invalidShared = report({ shared: { name: "react", singleton: "yes" } });
+  assert.throws(
+    () => parseBrowserReadResult(browserRead(runtimeState(), [invalidShared])),
+    /shared singleton/
+  );
 });
 
 test("browser adapter only names the public reader and extension marker", () => {

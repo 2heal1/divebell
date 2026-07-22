@@ -18,6 +18,28 @@ openruntime open https://example.com
 
 The published package contains the browser collector and has no runtime npm dependencies. The target project does not need to install the MF Observability Plugin for injected mode. If the application already exposes a compatible Observability reader, that application reader is used instead.
 
+## Sync the browser collector
+
+The bundled IIFE is generated from the Observability Plugin package's public `./chrome-devtool` export. Pass the root of a local `@module-federation/observability-plugin` package explicitly:
+
+```sh
+pnpm run sync:mf-observability -- \
+  --package-root /path/to/module-federation/packages/observability-plugin
+```
+
+The sync command resolves the public JavaScript entry from `package.json`, bundles it into a self-contained browser IIFE, updates the installer version from that same package manifest, and records the package version, source commit, public entry, and bundle hash. It does not read a private source entry.
+
+Use check mode in CI or before publishing. It regenerates everything in memory and fails when any checked-in asset is stale without modifying the repository:
+
+```sh
+pnpm run check:mf-observability -- \
+  --package-root /path/to/module-federation/packages/observability-plugin
+```
+
+The generated collector and build metadata are included in the published extension. The extension still has no runtime npm dependencies and the target page does not resolve packages or request a CDN at runtime.
+
+The injected collector must match the Module Federation Runtime and Bridge code used by the page. Updating only this IIFE cannot add resource, Shared, or Bridge hooks to an older Runtime.
+
 ## `mf status`
 
 ```sh
@@ -83,5 +105,9 @@ import {
 ```
 
 The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `openruntime mf` commands. A Vmok extension can therefore use the same facts and render its own `openruntime vmok` guidance.
+
+The public report types also preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Future Remote, Shared, and Bridge commands should consume `BrowserObservabilitySnapshot`, `RuntimeReport`, `RuntimeReportEvent`, `RuntimeResource`, `RuntimeShared`, `RuntimeBridgeInfo`, and `RuntimeBridgeState` from this entry instead of adding another browser reader.
+
+The reader intentionally omits response headers and bodies, cookies, tokens, factories, containers, props, routers, arbitrary metadata, and raw runtime objects. The current public report also does not provide Remote response contents, Shared factory identity, Bridge props/router objects, or business-data readiness. Bridge commit and route-sync evidence is available, but application readiness still needs an explicit business signal. Missing facts should remain unknown rather than being inferred by commands.
 
 The package root remains the default OpenRuntime extension entry and keeps the existing named public exports for compatibility. New integrations should use `@openruntime/extension-mf/core` for reusable capabilities and types. Command routing, formatting, and output adapters are intentionally private.

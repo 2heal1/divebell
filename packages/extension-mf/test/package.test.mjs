@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -69,17 +69,60 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(listed.stdout, /package\/dist\/extension\.d\.ts/);
     assert.match(listed.stdout, /package\/dist\/observability-chrome-devtool\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/install-observability\.js/);
+    assert.match(listed.stdout, /package\/dist\/observability-build\.json/);
     assert.match(listed.stdout, /package\/README\.md/);
+    const metadata = spawnSync("tar", [
+      "-xOf",
+      archive,
+      "package/dist/observability-build.json"
+    ], { encoding: "utf8" });
+    assert.equal(metadata.status, 0, metadata.stderr);
+    assert.doesNotMatch(metadata.stdout, /\/Users\/|outter\/core|registry|token/i);
+    const publicTypes = spawnSync("tar", [
+      "-xOf",
+      archive,
+      "package/dist/public.d.ts"
+    ], { encoding: "utf8" });
+    assert.equal(publicTypes.status, 0, publicTypes.stderr);
+    assert.match(publicTypes.stdout, /types\.js/);
+    const reportTypes = readFileSync(resolve(packageRoot, "dist", "types.d.ts"), "utf8");
+    assert.match(reportTypes, /interface RuntimeResource/);
+    assert.match(reportTypes, /interface RuntimeShared/);
+    assert.match(reportTypes, /interface RuntimeBridgeInfo/);
     const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     assert.equal(packageJson.dependencies, undefined);
     assert.equal(packageJson.openruntime.extensions[0], "./dist/extension.js");
     assert.equal(packageJson.exports["."].import, "./dist/package.js");
     assert.equal(packageJson.exports["./core"].import, "./dist/public.js");
     assert.deepEqual(Object.keys(packageJson.exports), [".", "./core"]);
+
+    const extracted = join(outputDirectory, "extracted");
+    mkdirSync(extracted);
+    const unpacked = spawnSync("tar", ["-xzf", archive, "-C", extracted], {
+      encoding: "utf8"
+    });
+    assert.equal(unpacked.status, 0, unpacked.stderr);
+    const publishedSource = listFiles(extracted)
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+    assert.doesNotMatch(publishedSource, /\/Users\/|outter\/core/);
+    assert.doesNotMatch(publishedSource, /(?:"|')(?:file|link):/);
+    const publishedBundle = readFileSync(
+      join(extracted, "package", "dist", "observability-chrome-devtool.iife.js"),
+      "utf8"
+    );
+    assert.doesNotMatch(publishedBundle, /\brequire\s*\(|\bimport\s*\(|\bimport\s+[\w{*]/);
   } finally {
     rmSync(outputDirectory, { recursive: true, force: true });
   }
 });
+
+function listFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? listFiles(path) : statSync(path).isFile() ? [path] : [];
+  });
+}
 
 test("packed archive supports real package-name imports for public API and extension", () => {
   const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-public-import-"));
@@ -99,7 +142,11 @@ test("packed archive supports real package-name imports for public API and exten
       archive
     ], {
       cwd: tempDirectory,
-      encoding: "utf8"
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        npm_config_cache: join(tempDirectory, "npm-cache")
+      }
     });
     assert.equal(installed.status, 0, installed.stderr);
     const imported = spawnSync(process.execPath, [

@@ -4,6 +4,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __typeError = (msg) => {
+    throw TypeError(msg);
+  };
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
@@ -17,15 +20,20 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return to;
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+  var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+  var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read from private field"), getter ? getter.call(obj) : member.get(obj));
+  var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+  var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
+  var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
-  // packages/observability-plugin/src/chrome-devtool.ts
+  // dist/esm/chrome-devtool.js
   var chrome_devtool_exports = {};
   __export(chrome_devtool_exports, {
     ChromeObservabilityPlugin: () => ChromeObservabilityPlugin,
-    default: () => chrome_devtool_default
+    default: () => ChromeObservabilityPlugin
   });
 
-  // packages/sdk/dist/constant.js
+  // ../sdk/dist/constant.js
   var BROWSER_LOG_KEY = "FEDERATION_DEBUG";
   var NameTransformSymbol = {
     AT: "@",
@@ -43,7 +51,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     [NameTransformMap[NameTransformSymbol.SLASH]]: NameTransformSymbol.SLASH
   };
 
-  // packages/sdk/dist/env.js
+  // ../sdk/dist/env.js
   var isBrowserEnvValue = typeof ENV_TARGET !== "undefined" ? ENV_TARGET === "web" : typeof window !== "undefined" && typeof window.document !== "undefined";
   function isBrowserEnv() {
     return isBrowserEnvValue;
@@ -62,7 +70,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return isBrowserDebug();
   }
 
-  // packages/sdk/dist/logger.js
+  // ../sdk/dist/logger.js
   var PREFIX = "[ Module Federation ]";
   var DEFAULT_DELEGATE = console;
   var LOGGER_STACK_SKIP_TOKENS = [
@@ -178,7 +186,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   var logger = createLogger(PREFIX);
   var infrastructureLogger = createInfrastructureLogger(PREFIX);
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/shared/query.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/shared/query.js
   function matchesValue(value, query) {
     if (query === void 0) {
       return true;
@@ -204,33 +212,34 @@ ${filtered.slice(0, 5).join("\n")}`;
     return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/registry.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/registry.js
   var defaultActionSource = "business";
   var defaultActionRisk = "state-changing";
+  var _clock, _actions;
   var ActionRegistry = class {
-    #clock;
-    #actions = /* @__PURE__ */ new Map();
     constructor(clock) {
-      this.#clock = clock;
+      __privateAdd(this, _clock);
+      __privateAdd(this, _actions, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock, clock);
     }
     register(input) {
-      const now = this.#clock.now();
-      const existing = this.#actions.get(input.name);
+      const now = __privateGet(this, _clock).now();
+      const existing = __privateGet(this, _actions).get(input.name);
       const action = normalizeAction(input, existing?.registeredAt ?? now, now);
-      this.#actions.set(action.name, action);
+      __privateGet(this, _actions).set(action.name, action);
     }
     unregister(actionName) {
-      return this.#actions.delete(actionName);
+      return __privateGet(this, _actions).delete(actionName);
     }
     get(actionName) {
-      const action = this.#actions.get(actionName);
+      const action = __privateGet(this, _actions).get(actionName);
       return action === void 0 ? void 0 : cloneRegisteredAction(action);
     }
     list(query, snapshot) {
-      return Array.from(this.#actions.values()).map((action) => toDescriptor(action, getAvailability(action.availableWhen, snapshot))).filter((action) => matchesAction(action, query)).map(cloneActionDescriptor);
+      return Array.from(__privateGet(this, _actions).values()).map((action) => toDescriptor(action, getAvailability(action.availableWhen, snapshot))).filter((action) => matchesAction(action, query)).map(cloneActionDescriptor);
     }
     async getInputOptions(actionName, inputName, currentPayload, context) {
-      const action = this.#actions.get(actionName);
+      const action = __privateGet(this, _actions).get(actionName);
       if (action?.getInputOptions === void 0) {
         return [];
       }
@@ -242,6 +251,8 @@ ${filtered.slice(0, 5).join("\n")}`;
       return options.map((option) => ({ ...option }));
     }
   };
+  _clock = new WeakMap();
+  _actions = new WeakMap();
   function getAvailability(availableWhen, snapshot) {
     if (availableWhen === void 0) {
       return { enabled: true };
@@ -348,7 +359,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return value;
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/validation.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/validation.js
   function validateActionPayload(schema, payload) {
     if (schema === void 0) {
       return void 0;
@@ -439,7 +450,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/command.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/command.js
   async function executeBridgeRuntimeRequest(runtime, request) {
     switch (request.method) {
       case "getTargets":
@@ -469,10 +480,10 @@ ${filtered.slice(0, 5).join("\n")}`;
     return value;
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/types.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/types.js
   var OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/connect.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/connect.js
   var reconnectDelays = [1e3, 2e3, 4e3, 8e3, 1e4];
   function connectBridge(runtime, options = {}) {
     if (getGlobalBridgeConnection() !== void 0) {
@@ -683,26 +694,27 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/event/log.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/event/log.js
   var DEFAULT_EVENT_LIMIT = 100;
+  var _clock2, _events, _nextEventId;
   var EventLog = class {
-    #clock;
-    #events = [];
-    #nextEventId = 1;
     constructor(clock) {
-      this.#clock = clock;
+      __privateAdd(this, _clock2);
+      __privateAdd(this, _events, []);
+      __privateAdd(this, _nextEventId, 1);
+      __privateSet(this, _clock2, clock);
     }
     append(input) {
-      const event = normalizeEvent(input, this.#nextEventId, this.#clock.now());
-      this.#nextEventId += 1;
-      this.#events.push(event);
+      const event = normalizeEvent(input, __privateGet(this, _nextEventId), __privateGet(this, _clock2).now());
+      __privateSet(this, _nextEventId, __privateGet(this, _nextEventId) + 1);
+      __privateGet(this, _events).push(event);
       return cloneEvent(event);
     }
     latestEventId() {
-      return this.#nextEventId - 1;
+      return __privateGet(this, _nextEventId) - 1;
     }
     get(query) {
-      const filtered = this.#events.filter((event) => matchesEvent(event, query));
+      const filtered = __privateGet(this, _events).filter((event) => matchesEvent(event, query));
       const limit = normalizeLimit(query?.limit);
       const truncated = filtered.length > limit;
       const events = truncated ? filtered.slice(filtered.length - limit) : filtered;
@@ -713,6 +725,9 @@ ${filtered.slice(0, 5).join("\n")}`;
       };
     }
   };
+  _clock2 = new WeakMap();
+  _events = new WeakMap();
+  _nextEventId = new WeakMap();
   function normalizeEvent(input, id, timestamp) {
     const event = {
       id,
@@ -770,15 +785,16 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Math.floor(limit);
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/snapshot/store.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/snapshot/store.js
+  var _clock3, _targets;
   var SnapshotStore = class {
-    #clock;
-    #targets = /* @__PURE__ */ new Map();
     constructor(clock) {
-      this.#clock = clock;
+      __privateAdd(this, _clock3);
+      __privateAdd(this, _targets, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock3, clock);
     }
     update(target, input) {
-      const updatedAt = this.#clock.now();
+      const updatedAt = __privateGet(this, _clock3).now();
       const next = {
         id: target.id,
         type: target.type,
@@ -797,15 +813,15 @@ ${filtered.slice(0, 5).join("\n")}`;
         next.error = { ...input.error };
       if (input.dependsOn !== void 0)
         next.dependsOn = [...input.dependsOn];
-      this.#targets.set(next.id, next);
+      __privateGet(this, _targets).set(next.id, next);
       return cloneSnapshotTarget(next);
     }
     remove(targetId) {
-      this.#targets.delete(targetId);
+      __privateGet(this, _targets).delete(targetId);
     }
     get(query, latestEventId) {
       const targets = {};
-      for (const target of this.#targets.values()) {
+      for (const target of __privateGet(this, _targets).values()) {
         if (matchesSnapshotTarget(target, query)) {
           targets[target.id] = cloneSnapshotTarget(target);
         }
@@ -813,10 +829,12 @@ ${filtered.slice(0, 5).join("\n")}`;
       return {
         targets,
         latestEventId,
-        capturedAt: this.#clock.now()
+        capturedAt: __privateGet(this, _clock3).now()
       };
     }
   };
+  _clock3 = new WeakMap();
+  _targets = new WeakMap();
   function matchesSnapshotTarget(target, query) {
     if (query === void 0) {
       return true;
@@ -843,31 +861,34 @@ ${filtered.slice(0, 5).join("\n")}`;
     return clone;
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/target/registry.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/target/registry.js
+  var _clock4, _targets2;
   var TargetRegistry = class {
-    #clock;
-    #targets = /* @__PURE__ */ new Map();
     constructor(clock) {
-      this.#clock = clock;
+      __privateAdd(this, _clock4);
+      __privateAdd(this, _targets2, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock4, clock);
     }
     register(input) {
-      const now = this.#clock.now();
-      const existing = this.#targets.get(input.id);
+      const now = __privateGet(this, _clock4).now();
+      const existing = __privateGet(this, _targets2).get(input.id);
       const descriptor = normalizeTarget(input, existing?.registeredAt ?? now, now);
-      this.#targets.set(descriptor.id, descriptor);
+      __privateGet(this, _targets2).set(descriptor.id, descriptor);
     }
     unregister(targetId) {
-      return this.#targets.delete(targetId);
+      return __privateGet(this, _targets2).delete(targetId);
     }
     get(targetId) {
-      const descriptor = this.#targets.get(targetId);
+      const descriptor = __privateGet(this, _targets2).get(targetId);
       return descriptor === void 0 ? void 0 : cloneTarget(descriptor);
     }
     list(query) {
-      const descriptors = Array.from(this.#targets.values());
+      const descriptors = Array.from(__privateGet(this, _targets2).values());
       return descriptors.filter((target) => matchesTarget(target, query)).map(cloneTarget);
     }
   };
+  _clock4 = new WeakMap();
+  _targets2 = new WeakMap();
   function normalizeTarget(input, registeredAt, updatedAt) {
     const id = assertNonEmptyString2(input.id, "target id");
     const type = assertNonEmptyString2(input.type, "target type");
@@ -931,7 +952,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesAnyValue(target.statuses, query.status) && matchesText([target.id, target.label, target.description], query.query);
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/condition.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/condition.js
   function matchesRuntimeCondition(target, condition) {
     return target?.status === condition.status && matchesDataConditions(target.data, condition.where);
   }
@@ -979,19 +1000,23 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Object.is(value, expected);
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/manager.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/manager.js
+  var _waits, _nextWaitId, _WaitManager_instances, failWait_fn, clear_fn;
   var WaitManager = class {
-    #waits = /* @__PURE__ */ new Map();
-    #nextWaitId = 1;
+    constructor() {
+      __privateAdd(this, _WaitManager_instances);
+      __privateAdd(this, _waits, /* @__PURE__ */ new Map());
+      __privateAdd(this, _nextWaitId, 1);
+    }
     waitFor(condition, options, getSnapshot) {
       return new Promise((resolve) => {
-        const waitId = this.#nextWaitId;
-        this.#nextWaitId += 1;
+        const waitId = __privateGet(this, _nextWaitId);
+        __privateSet(this, _nextWaitId, __privateGet(this, _nextWaitId) + 1);
         const timeout = normalizeTimeout(options?.timeout);
         const timer = setTimeout(() => {
-          this.#failWait(waitId, getSnapshot, "Timed out waiting for target status.");
+          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, waitId, getSnapshot, "Timed out waiting for target status.");
         }, timeout);
-        this.#waits.set(waitId, {
+        __privateGet(this, _waits).set(waitId, {
           id: waitId,
           condition: { ...condition },
           resolve,
@@ -1000,41 +1025,44 @@ ${filtered.slice(0, 5).join("\n")}`;
       });
     }
     resolveForTarget(targetId, getSnapshot) {
-      for (const wait of this.#waits.values()) {
+      for (const wait of __privateGet(this, _waits).values()) {
         if (wait.condition.id === targetId) {
           const snapshot = getSnapshot();
           const target = snapshot.targets[wait.condition.id];
           if (matchesRuntimeCondition(target, wait.condition)) {
-            this.#clear(wait);
+            __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
             wait.resolve(createSuccessResult(wait.condition, snapshot, target));
           }
         }
       }
     }
     rejectForTarget(targetId, getSnapshot) {
-      for (const wait of this.#waits.values()) {
+      for (const wait of __privateGet(this, _waits).values()) {
         if (wait.condition.id === targetId) {
-          this.#failWait(wait.id, getSnapshot, "Target was unregistered.");
+          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, wait.id, getSnapshot, "Target was unregistered.");
         }
       }
     }
-    #failWait(waitId, getSnapshot, reason) {
-      const wait = this.#waits.get(waitId);
-      if (wait === void 0) {
-        return;
-      }
-      this.#clear(wait);
-      wait.resolve({
-        success: false,
-        condition: wait.condition,
-        snapshot: getSnapshot(),
-        reason
-      });
+  };
+  _waits = new WeakMap();
+  _nextWaitId = new WeakMap();
+  _WaitManager_instances = new WeakSet();
+  failWait_fn = function(waitId, getSnapshot, reason) {
+    const wait = __privateGet(this, _waits).get(waitId);
+    if (wait === void 0) {
+      return;
     }
-    #clear(wait) {
-      clearTimeout(wait.timer);
-      this.#waits.delete(wait.id);
-    }
+    __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
+    wait.resolve({
+      success: false,
+      condition: wait.condition,
+      snapshot: getSnapshot(),
+      reason
+    });
+  };
+  clear_fn = function(wait) {
+    clearTimeout(wait.timer);
+    __privateGet(this, _waits).delete(wait.id);
   };
   var defaultWaitTimeout = 5e3;
   function normalizeTimeout(timeout) {
@@ -1052,120 +1080,122 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/center.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/center.js
   var systemSource = "openruntime";
+  var _targets3, _snapshot, _events2, _actions2, _waits2, _bridgeConnected, _RuntimeCenter_instances, recordRejectedUpdate_fn, recordActionFailure_fn, createActionContext_fn;
   var RuntimeCenter = class {
-    #targets;
-    #snapshot;
-    #events;
-    #actions;
-    #waits = new WaitManager();
-    #bridgeConnected = false;
     constructor(options = {}) {
+      __privateAdd(this, _RuntimeCenter_instances);
+      __privateAdd(this, _targets3);
+      __privateAdd(this, _snapshot);
+      __privateAdd(this, _events2);
+      __privateAdd(this, _actions2);
+      __privateAdd(this, _waits2, new WaitManager());
+      __privateAdd(this, _bridgeConnected, false);
       const clock = options.clock ?? systemClock;
-      this.#targets = new TargetRegistry(clock);
-      this.#snapshot = new SnapshotStore(clock);
-      this.#events = new EventLog(clock);
-      this.#actions = new ActionRegistry(clock);
+      __privateSet(this, _targets3, new TargetRegistry(clock));
+      __privateSet(this, _snapshot, new SnapshotStore(clock));
+      __privateSet(this, _events2, new EventLog(clock));
+      __privateSet(this, _actions2, new ActionRegistry(clock));
     }
     connectBridge(options) {
-      if (this.#bridgeConnected) {
+      if (__privateGet(this, _bridgeConnected)) {
         return;
       }
       connectBridge(this, options);
-      this.#bridgeConnected = true;
+      __privateSet(this, _bridgeConnected, true);
     }
     registerTarget(target) {
-      this.#targets.register(target);
+      __privateGet(this, _targets3).register(target);
     }
     unregisterTarget(targetId) {
-      this.#targets.unregister(targetId);
-      this.#snapshot.remove(targetId);
-      this.#waits.rejectForTarget(targetId, () => this.getSnapshot());
+      __privateGet(this, _targets3).unregister(targetId);
+      __privateGet(this, _snapshot).remove(targetId);
+      __privateGet(this, _waits2).rejectForTarget(targetId, () => this.getSnapshot());
     }
     getTargets(query) {
-      return this.#targets.list(query);
+      return __privateGet(this, _targets3).list(query);
     }
     updateSnapshot(input) {
-      const target = this.#targets.get(input.id);
+      const target = __privateGet(this, _targets3).get(input.id);
       if (target === void 0) {
-        this.#recordRejectedUpdate(input, {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
           message: `Cannot update unregistered target "${input.id}".`,
           code: "target_not_registered"
         });
         return;
       }
       if (input.type !== void 0 && input.type !== target.type) {
-        this.#recordRejectedUpdate(input, {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
           message: `Snapshot type "${input.type}" does not match registered target type "${target.type}".`,
           code: "target_type_mismatch"
         }, target);
         return;
       }
       if (!target.statuses.includes(input.status)) {
-        this.#recordRejectedUpdate(input, {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
           message: `Status "${input.status}" is not declared for target "${input.id}".`,
           code: "target_status_not_declared"
         }, target);
         return;
       }
-      this.#snapshot.update(target, input);
-      this.#events.append({
+      __privateGet(this, _snapshot).update(target, input);
+      __privateGet(this, _events2).append({
         type: "snapshot.updated",
         source: input.source ?? target.source,
         targetId: input.id,
         status: input.status,
         payload: normalizeAcceptedUpdate(input, target)
       });
-      this.#waits.resolveForTarget(input.id, () => this.getSnapshot());
+      __privateGet(this, _waits2).resolveForTarget(input.id, () => this.getSnapshot());
     }
     getSnapshot(query) {
-      return this.#snapshot.get(query, this.#events.latestEventId());
+      return __privateGet(this, _snapshot).get(query, __privateGet(this, _events2).latestEventId());
     }
     getEvents(query) {
-      return this.#events.get(query);
+      return __privateGet(this, _events2).get(query);
     }
     registerAction(action) {
-      this.#actions.register(action);
+      __privateGet(this, _actions2).register(action);
     }
     unregisterAction(actionName) {
-      this.#actions.unregister(actionName);
+      __privateGet(this, _actions2).unregister(actionName);
     }
     getActions(query) {
-      return this.#actions.list(query, this.getSnapshot());
+      return __privateGet(this, _actions2).list(query, this.getSnapshot());
     }
     async getInputOptions(actionName, inputName, currentPayload, options) {
-      const inputOptions = this.#actions.getInputOptions(actionName, inputName, currentPayload, this.#createActionContext(actionName));
+      const inputOptions = __privateGet(this, _actions2).getInputOptions(actionName, inputName, currentPayload, __privateMethod(this, _RuntimeCenter_instances, createActionContext_fn).call(this, actionName));
       return withTimeout(inputOptions, options?.timeout, "Timed out while reading input options.");
     }
     async runAction(actionName, payload) {
-      const action = this.#actions.get(actionName);
+      const action = __privateGet(this, _actions2).get(actionName);
       if (action === void 0) {
-        return this.#recordActionFailure(actionName, payload, {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
           message: `Action "${actionName}" is not registered.`,
           code: "action_not_registered"
         });
       }
       const availability = getAvailability(action.availableWhen, this.getSnapshot());
       if (!availability.enabled) {
-        return this.#recordActionFailure(actionName, payload, {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
           message: availability.reason ?? `Action "${actionName}" is not available.`,
           code: "action_not_available"
         }, action.source);
       }
       const validationError = validateActionPayload(action.inputSchema, payload);
       if (validationError !== void 0) {
-        return this.#recordActionFailure(actionName, payload, validationError, action.source);
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, validationError, action.source);
       }
-      this.#events.append({
+      __privateGet(this, _events2).append({
         type: "action.started",
         source: action.source,
         actionName,
         payload
       });
       try {
-        const result = await action.handler(payload ?? {}, this.#createActionContext(actionName));
-        this.#events.append({
+        const result = await action.handler(payload ?? {}, __privateMethod(this, _RuntimeCenter_instances, createActionContext_fn).call(this, actionName));
+        __privateGet(this, _events2).append({
           type: "action.success",
           source: action.source,
           actionName,
@@ -1177,7 +1207,7 @@ ${filtered.slice(0, 5).join("\n")}`;
           result
         };
       } catch (error) {
-        return this.#recordActionFailure(actionName, payload, toRuntimeError2(error), action.source);
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, toRuntimeError2(error), action.source);
       }
     }
     waitFor(condition, options) {
@@ -1191,7 +1221,7 @@ ${filtered.slice(0, 5).join("\n")}`;
           target
         });
       }
-      if (target === void 0 && this.#targets.get(condition.id) === void 0) {
+      if (target === void 0 && __privateGet(this, _targets3).get(condition.id) === void 0) {
         return Promise.resolve({
           success: false,
           condition,
@@ -1199,40 +1229,47 @@ ${filtered.slice(0, 5).join("\n")}`;
           reason: "Target is not registered."
         });
       }
-      return this.#waits.waitFor(condition, options, () => this.getSnapshot());
+      return __privateGet(this, _waits2).waitFor(condition, options, () => this.getSnapshot());
     }
-    #recordRejectedUpdate(input, error, target) {
-      this.#events.append({
-        type: "snapshot.update.rejected",
-        source: input.source ?? target?.source ?? systemSource,
-        targetId: input.id,
-        status: input.status,
-        payload: input,
-        error
-      });
-    }
-    #recordActionFailure(actionName, payload, error, source = systemSource) {
-      this.#events.append({
-        type: "action.error",
-        source,
-        actionName,
-        payload,
-        error
-      });
-      return {
-        success: false,
-        actionName,
-        error
-      };
-    }
-    #createActionContext(actionName) {
-      return {
-        actionName,
-        getSnapshot: () => this.getSnapshot(),
-        updateSnapshot: (input) => this.updateSnapshot(input),
-        waitFor: (condition, options) => this.waitFor(condition, options)
-      };
-    }
+  };
+  _targets3 = new WeakMap();
+  _snapshot = new WeakMap();
+  _events2 = new WeakMap();
+  _actions2 = new WeakMap();
+  _waits2 = new WeakMap();
+  _bridgeConnected = new WeakMap();
+  _RuntimeCenter_instances = new WeakSet();
+  recordRejectedUpdate_fn = function(input, error, target) {
+    __privateGet(this, _events2).append({
+      type: "snapshot.update.rejected",
+      source: input.source ?? target?.source ?? systemSource,
+      targetId: input.id,
+      status: input.status,
+      payload: input,
+      error
+    });
+  };
+  recordActionFailure_fn = function(actionName, payload, error, source = systemSource) {
+    __privateGet(this, _events2).append({
+      type: "action.error",
+      source,
+      actionName,
+      payload,
+      error
+    });
+    return {
+      success: false,
+      actionName,
+      error
+    };
+  };
+  createActionContext_fn = function(actionName) {
+    return {
+      actionName,
+      getSnapshot: () => this.getSnapshot(),
+      updateSnapshot: (input) => this.updateSnapshot(input),
+      waitFor: (condition, options) => this.waitFor(condition, options)
+    };
   };
   function createOpenRuntime(options) {
     return new RuntimeCenter(options);
@@ -1289,7 +1326,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
   }
 
-  // node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/window.js
+  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/window.js
   function installOpenRuntimeOnWindow(runtime = createOpenRuntime(), host = getDefaultWindowHost()) {
     if (host === void 0) {
       return runtime;
@@ -1307,7 +1344,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return window;
   }
 
-  // packages/observability-plugin/src/openruntime-actions.ts
+  // dist/esm/core-D09kJ17n.js
   var reportStatuses = [
     "pending",
     "success",
@@ -1323,9 +1360,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     "recovered"
   ];
   function registerOpenRuntimeActions(runtime, source, reportReader, registeredActionRuntimes) {
-    if (registeredActionRuntimes.has(runtime)) {
-      return;
-    }
+    if (registeredActionRuntimes.has(runtime)) return;
     if (reportReader) {
       runtime.registerAction({
         name: "mf:get-runtime-state",
@@ -1404,12 +1439,10 @@ ${filtered.slice(0, 5).join("\n")}`;
           type: "object",
           additionalProperties: false,
           required: ["traceId"],
-          properties: {
-            traceId: {
-              type: "string",
-              description: "Report trace id."
-            }
-          }
+          properties: { traceId: {
+            type: "string",
+            description: "Report trace id."
+          } }
         },
         getInputOptions: (inputName) => getReportInputOptions(inputName, reportReader),
         handler: (payload) => {
@@ -1430,12 +1463,10 @@ ${filtered.slice(0, 5).join("\n")}`;
         inputSchema: {
           type: "object",
           additionalProperties: false,
-          properties: {
-            traceId: {
-              type: "string",
-              description: "Report trace id. When omitted, exports latest report."
-            }
-          }
+          properties: { traceId: {
+            type: "string",
+            description: "Report trace id. When omitted, exports latest report."
+          } }
         },
         getInputOptions: (inputName) => getReportInputOptions(inputName, reportReader),
         handler: (payload) => {
@@ -1483,14 +1514,8 @@ ${filtered.slice(0, 5).join("\n")}`;
           }
         }
       },
-      getInputOptions: (inputName) => getFederationModuleInfoInputOptions(
-        inputName,
-        reportReader.getRuntimeState()
-      ),
-      handler: (payload) => getFederationModuleInfoActionResult(
-        payload,
-        reportReader.getRuntimeState()
-      )
+      getInputOptions: (inputName) => getFederationModuleInfoInputOptions(inputName, reportReader.getRuntimeState()),
+      handler: (payload) => getFederationModuleInfoActionResult(payload, reportReader.getRuntimeState())
     });
     runtime.registerAction({
       name: "mf:list-federation-instances",
@@ -1528,14 +1553,8 @@ ${filtered.slice(0, 5).join("\n")}`;
           }
         }
       },
-      getInputOptions: (inputName) => getFederationInstanceInputOptions(
-        inputName,
-        reportReader.getRuntimeState()
-      ),
-      handler: (payload) => getFederationInstanceConfigActionResult(
-        payload,
-        reportReader.getRuntimeState()
-      )
+      getInputOptions: (inputName) => getFederationInstanceInputOptions(inputName, reportReader.getRuntimeState()),
+      handler: (payload) => getFederationInstanceConfigActionResult(payload, reportReader.getRuntimeState())
     });
     registeredActionRuntimes.add(runtime);
   }
@@ -1557,37 +1576,21 @@ ${filtered.slice(0, 5).join("\n")}`;
     const shared = getPayloadString(payload, "shared");
     const status = getPayloadReportStatus(payload, "status");
     const outcome = getPayloadReportOutcome(payload, "outcome");
-    if (limit !== void 0) {
-      query.limit = limit;
-    }
-    if (traceId !== void 0) {
-      query.traceId = traceId;
-    }
-    if (instanceRef !== void 0) {
-      query.instanceRef = instanceRef;
-    }
-    if (remote !== void 0) {
-      query.remote = remote;
-    }
-    if (expose !== void 0) {
-      query.expose = expose;
-    }
-    if (shared !== void 0) {
-      query.shared = shared;
-    }
-    if (status !== void 0) {
-      query.status = status;
-    }
-    if (outcome !== void 0) {
-      query.outcome = outcome;
-    }
+    if (limit !== void 0) query.limit = limit;
+    if (traceId !== void 0) query.traceId = traceId;
+    if (instanceRef !== void 0) query.instanceRef = instanceRef;
+    if (remote !== void 0) query.remote = remote;
+    if (expose !== void 0) query.expose = expose;
+    if (shared !== void 0) query.shared = shared;
+    if (status !== void 0) query.status = status;
+    if (outcome !== void 0) query.outcome = outcome;
     return query;
   }
   function hasReportQueryFilter(query) {
     return query.traceId !== void 0 || query.instanceRef !== void 0 || query.remote !== void 0 || query.expose !== void 0 || query.shared !== void 0 || query.status !== void 0 || query.outcome !== void 0;
   }
   function createReportSummary(report) {
-    return compactObject({
+    return compactObject$1({
       traceId: report.traceId,
       instanceRef: report.instanceRef,
       status: report.status,
@@ -1610,9 +1613,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
   }
   function getReportInputOptions(inputName, reportReader) {
-    if (inputName !== "traceId") {
-      return [];
-    }
+    if (inputName !== "traceId") return [];
     return reportReader.getReports({ limit: 20 }).map((report) => ({
       value: report.traceId,
       description: report.remote?.name || report.shared?.name || report.requestAlias || report.requestId || report.summary.outcome
@@ -1636,74 +1637,52 @@ ${filtered.slice(0, 5).join("\n")}`;
   function getFederationModuleInfoActionResult(payload, runtimeState) {
     const key = getPayloadString(payload, "key") || getPayloadString(payload, "name");
     const instanceRef = getPayloadString(payload, "instanceRef");
-    const instance = instanceRef ? runtimeState.instances.find(
-      (candidate) => candidate.instanceRef === instanceRef
-    ) : void 0;
-    if (instanceRef && !instance) {
-      return {
-        available: true,
-        found: false,
-        instanceRef,
-        instances: runtimeState.instances.map(createInstanceCandidate)
-      };
-    }
-    const matched = key ? runtimeState.moduleInfo.find(
-      (entry) => entry.key === key || entry.name === key
-    ) : void 0;
-    return key ? compactObject({
+    const instance = instanceRef ? runtimeState.instances.find((candidate) => candidate.instanceRef === instanceRef) : void 0;
+    if (instanceRef && !instance) return {
+      available: true,
+      found: false,
+      instanceRef,
+      instances: runtimeState.instances.map(createInstanceCandidate)
+    };
+    const matched = key ? runtimeState.moduleInfo.find((entry) => entry.key === key || entry.name === key) : void 0;
+    return key ? compactObject$1({
       available: true,
       found: matched !== void 0,
       key,
       instance: instance ? createInstanceCandidate(instance) : void 0,
-      relationships: instance ? runtimeState.relationships.filter(
-        (relationship) => relationship.consumerInstanceRef === instance.instanceRef
-      ) : void 0,
+      relationships: instance ? runtimeState.relationships.filter((relationship) => relationship.consumerInstanceRef === instance.instanceRef) : void 0,
       moduleInfo: matched
-    }) : compactObject({
+    }) : compactObject$1({
       available: true,
       keys: runtimeState.moduleInfo.map((entry) => entry.key),
       instance: instance ? createInstanceCandidate(instance) : void 0,
-      relationships: instance ? runtimeState.relationships.filter(
-        (relationship) => relationship.consumerInstanceRef === instance.instanceRef
-      ) : void 0,
+      relationships: instance ? runtimeState.relationships.filter((relationship) => relationship.consumerInstanceRef === instance.instanceRef) : void 0,
       moduleInfo: runtimeState.moduleInfo
     });
   }
   function getFederationModuleInfoInputOptions(inputName, runtimeState) {
-    if (inputName !== "key" && inputName !== "name" && inputName !== "instanceRef") {
-      return [];
-    }
-    if (inputName === "instanceRef") {
-      return runtimeState.instances.map((instance) => ({
-        value: instance.instanceRef,
-        description: instance.optionsName || instance.name || instance.instanceRef
-      }));
-    }
-    return runtimeState.moduleInfo.map((entry) => ({
-      value: entry.key
+    if (inputName !== "key" && inputName !== "name" && inputName !== "instanceRef") return [];
+    if (inputName === "instanceRef") return runtimeState.instances.map((instance) => ({
+      value: instance.instanceRef,
+      description: instance.optionsName || instance.name || instance.instanceRef
     }));
+    return runtimeState.moduleInfo.map((entry) => ({ value: entry.key }));
   }
   function getFederationInstanceConfigActionResult(payload, runtimeState) {
     const instanceRef = getPayloadString(payload, "instanceRef");
     const name = getPayloadString(payload, "name");
     const index = getPayloadNumber(payload, "index");
-    const nameMatches = name ? runtimeState.instances.filter(
-      (instance2) => instance2.name === name || instance2.optionsName === name
-    ) : [];
-    const instance = instanceRef ? runtimeState.instances.find(
-      (candidate) => candidate.instanceRef === instanceRef
-    ) : nameMatches.length === 1 ? nameMatches[0] : index !== void 0 ? runtimeState.instances[index] : void 0;
-    if (!instance) {
-      return {
-        found: false,
-        instanceRef,
-        name,
-        index,
-        unstableIndex: index !== void 0 || void 0,
-        candidates: nameMatches.length > 1 ? nameMatches.map(createInstanceCandidate) : void 0,
-        instances: runtimeState.instances.map(createInstanceCandidate)
-      };
-    }
+    const nameMatches = name ? runtimeState.instances.filter((instance2) => instance2.name === name || instance2.optionsName === name) : [];
+    const instance = instanceRef ? runtimeState.instances.find((candidate) => candidate.instanceRef === instanceRef) : nameMatches.length === 1 ? nameMatches[0] : index !== void 0 ? runtimeState.instances[index] : void 0;
+    if (!instance) return {
+      found: false,
+      instanceRef,
+      name,
+      index,
+      unstableIndex: index !== void 0 || void 0,
+      candidates: nameMatches.length > 1 ? nameMatches.map(createInstanceCandidate) : void 0,
+      instances: runtimeState.instances.map(createInstanceCandidate)
+    };
     return {
       found: true,
       unstableIndex: index !== void 0 || void 0,
@@ -1711,16 +1690,14 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
   function getFederationInstanceInputOptions(inputName, runtimeState) {
-    if (inputName !== "name" && inputName !== "index" && inputName !== "instanceRef") {
-      return [];
-    }
+    if (inputName !== "name" && inputName !== "index" && inputName !== "instanceRef") return [];
     return runtimeState.instances.map((instance, index) => ({
       value: inputName === "instanceRef" ? instance.instanceRef : inputName === "index" ? index : instance.optionsName || instance.name || instance.instanceRef,
       description: `${instance.optionsName || instance.name || "unnamed"} (${instance.instanceRef})`
     }));
   }
   function createInstanceCandidate(instance) {
-    return compactObject({
+    return compactObject$1({
       instanceRef: instance.instanceRef,
       name: instance.name,
       optionsName: instance.optionsName,
@@ -1753,25 +1730,19 @@ ${filtered.slice(0, 5).join("\n")}`;
     return reportOutcomes.includes(value);
   }
   function asRecord(value) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      return void 0;
-    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
     return value;
   }
   function getRecordProperty(record, key) {
     return record ? record[key] : void 0;
   }
-  function compactObject(input) {
+  function compactObject$1(input) {
     const output = {};
     Object.entries(input).forEach(([key, value]) => {
-      if (value !== void 0) {
-        output[key] = value;
-      }
+      if (value !== void 0) output[key] = value;
     });
     return output;
   }
-
-  // packages/observability-plugin/src/openruntime.ts
   var openRuntimeSource = "module-federation";
   var loadingStatuses = [
     "registered",
@@ -1804,25 +1775,17 @@ ${filtered.slice(0, 5).join("\n")}`;
     "loadRemote"
   ]);
   function createOpenRuntimeObservabilityAdapter(input, reportReader) {
-    if (!input) {
-      return void 0;
-    }
+    if (!input) return;
     const options = input === true ? {} : input;
-    if (options.enabled === false) {
-      return void 0;
-    }
+    if (options.enabled === false) return;
     const connectedRuntimes = /* @__PURE__ */ new WeakSet();
     const registeredActionRuntimes = /* @__PURE__ */ new WeakSet();
     let createdRuntime;
     const getRuntime = () => {
-      if (options.runtime) {
-        return options.runtime;
-      }
+      if (options.runtime) return options.runtime;
       const host = options.host || getDefaultHost();
       const runtime = getOpenRuntimeFromWindow(host);
-      if (runtime) {
-        return runtime;
-      }
+      if (runtime) return runtime;
       if (!createdRuntime) {
         const nextRuntime = createOpenRuntime();
         createdRuntime = host ? installOpenRuntimeOnWindow(nextRuntime, host) : nextRuntime;
@@ -1832,14 +1795,12 @@ ${filtered.slice(0, 5).join("\n")}`;
     const prepareRuntime = () => {
       const runtime = getRuntime();
       const source = options.source || openRuntimeSource;
-      registerOpenRuntimeActions(
-        runtime,
-        source,
-        reportReader,
-        registeredActionRuntimes
-      );
+      registerOpenRuntimeActions(runtime, source, reportReader, registeredActionRuntimes);
       connectRuntimeBridge(runtime, options.bridge, connectedRuntimes);
-      return { runtime, source };
+      return {
+        runtime,
+        source
+      };
     };
     return {
       register() {
@@ -1858,9 +1819,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
   function connectRuntimeBridge(runtime, bridge, connectedRuntimes) {
-    if (bridge === void 0 || bridge === false || connectedRuntimes.has(runtime)) {
-      return;
-    }
+    if (bridge === void 0 || bridge === false || connectedRuntimes.has(runtime)) return;
     runtime.connectBridge(bridge);
     connectedRuntimes.add(runtime);
   }
@@ -1876,9 +1835,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function syncRemote(runtime, source, report, reportReader) {
     const remote = report.remote;
-    if (!remote?.name) {
-      return;
-    }
+    if (!remote?.name) return;
     const targetId = targetIds.remote(report.instanceRef, remote.name);
     const remoteReports = getRemoteReports(report, remote, reportReader);
     const remoteStatus = getRemoteStatus(remoteReports);
@@ -1902,25 +1859,11 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function syncRemoteModule(runtime, source, report, reportReader) {
     const remote = report.remote;
-    if (!remote?.name || !report.expose) {
-      return;
-    }
-    const targetId = targetIds.remoteModule(
-      report.instanceRef,
-      remote.name,
-      report.expose
-    );
-    const remoteModuleReports = getRemoteModuleReports(
-      report,
-      remote,
-      report.expose,
-      reportReader
-    );
+    if (!remote?.name || !report.expose) return;
+    const targetId = targetIds.remoteModule(report.instanceRef, remote.name, report.expose);
+    const remoteModuleReports = getRemoteModuleReports(report, remote, report.expose, reportReader);
     const latestReport = remoteModuleReports[0] || report;
-    const remoteModuleData = getRemoteModuleTargetData(
-      latestReport,
-      remoteModuleReports
-    );
+    const remoteModuleData = getRemoteModuleTargetData(latestReport, remoteModuleReports);
     runtime.registerTarget({
       id: targetId,
       type: targetTypes.remoteModule,
@@ -1941,9 +1884,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function syncShared(runtime, source, report) {
     const shared = report.shared;
-    if (!shared?.name) {
-      return;
-    }
+    if (!shared?.name) return;
     const targetId = targetIds.shared(report.instanceRef, shared);
     runtime.registerTarget({
       id: targetId,
@@ -1964,9 +1905,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function syncSharedConflict(runtime, source, report) {
     const shared = report.shared;
-    if (!shared?.name || shared.reason !== "singleton-multiple-versions") {
-      return;
-    }
+    if (!shared?.name || shared.reason !== "singleton-multiple-versions") return;
     const targetId = targetIds.sharedConflict(report.instanceRef, shared);
     const data = getSharedConflictTargetData(report, shared);
     runtime.registerTarget({
@@ -1988,7 +1927,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   function getRemoteTargetData(remote, reports) {
     const latestReport = reports[0];
     const exposes = getRemoteExposeData(remote.name, reports);
-    return compactObject2({
+    return compactObject({
       instanceRef: latestReport?.instanceRef,
       hostName: getReportHostNames(reports),
       runtimeVersion: latestReport?.runtimeVersion,
@@ -1999,7 +1938,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function getRemoteModuleTargetData(report, reports) {
     const hostNames = getReportHostNames(reports, report.expose);
-    return compactObject2({
+    return compactObject({
       instanceRef: report.instanceRef,
       traceId: report.traceId,
       requestId: report.requestId,
@@ -2013,7 +1952,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
   }
   function getSharedTargetData(report, shared) {
-    return compactObject2({
+    return compactObject({
       instanceRef: report.instanceRef,
       traceId: report.traceId,
       requestId: report.requestId,
@@ -2026,7 +1965,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function getSharedConflictTargetData(report, shared) {
     const conflict = shared.conflict;
-    return compactObject2({
+    return compactObject({
       instanceRef: report.instanceRef,
       traceId: report.traceId,
       requestId: report.requestId,
@@ -2044,7 +1983,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
   }
   function getSharedSnapshotData(shared) {
-    return compactObject2({
+    return compactObject({
       name: shared.name,
       shareScope: shared.shareScope,
       version: getSharedTargetVersion(shared),
@@ -2063,17 +2002,11 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function getRemoteStatus(reports) {
     const phaseRecord = getLatestRemotePhaseRecord(reports);
-    if (!phaseRecord) {
-      return "loading";
-    }
+    if (!phaseRecord) return "loading";
     const failedPhase = getFailedPhase(phaseRecord.report);
-    if (failedPhase && remoteFailurePhases.has(failedPhase) && failedPhase === phaseRecord.phaseName) {
-      return phaseRecord.report.summary.recovered ? "recovered" : "error";
-    }
+    if (failedPhase && remoteFailurePhases.has(failedPhase) && failedPhase === phaseRecord.phaseName) return phaseRecord.report.summary.recovered ? "recovered" : "error";
     const phase = phaseRecord.report.summary.phases[phaseRecord.phaseName];
-    if (phase) {
-      return mapPhaseStatus(phase);
-    }
+    if (phase) return mapPhaseStatus(phase);
     return mapEventStatus(phaseRecord.event.status);
   }
   function getRemoteExposeData(remoteName, reports) {
@@ -2081,101 +2014,50 @@ ${filtered.slice(0, 5).join("\n")}`;
     reports.forEach((report) => {
       const expose = getReportExpose(report);
       const exposeKey = expose ? normalizeExpose(expose) : "";
-      if (!expose || reportsByExpose.has(exposeKey)) {
-        return;
-      }
+      if (!expose || reportsByExpose.has(exposeKey)) return;
       reportsByExpose.set(exposeKey, report);
     });
-    return Array.from(reportsByExpose.values()).map(
-      (report) => compactObject2({
-        targetId: targetIds.remoteModule(
-          report.instanceRef,
-          remoteName,
-          getReportExpose(report) || ""
-        )
-      })
-    ).filter((item) => item["targetId"] !== void 0).sort(
-      (left, right) => String(left["targetId"] || "").localeCompare(
-        String(right["targetId"] || "")
-      )
-    );
+    return Array.from(reportsByExpose.values()).map((report) => compactObject({ targetId: targetIds.remoteModule(report.instanceRef, remoteName, getReportExpose(report) || "") })).filter((item) => item["targetId"] !== void 0).sort((left, right) => String(left["targetId"] || "").localeCompare(String(right["targetId"] || "")));
   }
   function getRemoteModuleStatus(report) {
-    if (report.status === "error") {
-      return "error";
-    }
-    if (report.summary.recovered) {
-      return "recovered";
-    }
-    if (report.summary.componentLoaded || report.summary.runtimeLoaded) {
-      return "ready";
-    }
-    const exposePhaseStatus = getPhaseTargetStatus(report, "moduleFactory") || getPhaseTargetStatus(report, "expose");
-    return exposePhaseStatus || "loading";
+    if (report.status === "error") return "error";
+    if (report.summary.recovered) return "recovered";
+    if (report.summary.componentLoaded || report.summary.runtimeLoaded) return "ready";
+    return getPhaseTargetStatus(report, "moduleFactory") || getPhaseTargetStatus(report, "expose") || "loading";
   }
   function getSharedStatus(report) {
     const sharedPhaseStatus = report.summary.phases["shared"]?.status;
-    if (report.status === "error" || sharedPhaseStatus === "error") {
-      return "error";
-    }
-    if (report.summary.recovered) {
-      return "recovered";
-    }
-    if (report.shared?.loaded || report.summary.sharedResolved) {
-      return "loaded";
-    }
-    if (report.shared?.loading) {
-      return "loading";
-    }
-    if (sharedPhaseStatus === "start") {
-      return "loading";
-    }
+    if (report.status === "error" || sharedPhaseStatus === "error") return "error";
+    if (report.summary.recovered) return "recovered";
+    if (report.shared?.loaded || report.summary.sharedResolved) return "loaded";
+    if (report.shared?.loading) return "loading";
+    if (sharedPhaseStatus === "start") return "loading";
     return "unloaded";
   }
   function getPhaseTargetStatus(report, phase) {
     const summary = report.summary.phases[phase];
-    if (!summary) {
-      return void 0;
-    }
-    if (summary.recovered) {
-      return "recovered";
-    }
+    if (!summary) return;
+    if (summary.recovered) return "recovered";
     return mapPhaseStatus(summary);
   }
   function mapPhaseStatus(summary) {
-    if (summary.status === "start") {
-      return "loading";
-    }
-    if (summary.status === "error") {
-      return "error";
-    }
-    if (summary.status === "success" || summary.status === "complete") {
-      return "ready";
-    }
+    if (summary.status === "start") return "loading";
+    if (summary.status === "error") return "error";
+    if (summary.status === "success" || summary.status === "complete") return "ready";
     return "registered";
   }
   function mapEventStatus(status) {
-    if (status === "start") {
-      return "loading";
-    }
-    if (status === "error") {
-      return "error";
-    }
-    if (status === "success" || status === "complete") {
-      return "ready";
-    }
+    if (status === "start") return "loading";
+    if (status === "error") return "error";
+    if (status === "success" || status === "complete") return "ready";
     return "registered";
   }
   function getReportError(report) {
     const error = report.summary.error;
-    if (!error && report.status !== "error") {
-      return void 0;
-    }
-    const runtimeError = {
-      message: error?.errorMessage || report.errorMessage || "MF loading failed."
-    };
+    if (!error && report.status !== "error") return;
+    const runtimeError = { message: error?.errorMessage || report.errorMessage || "MF loading failed." };
     const code = error?.errorCode || report.errorCode;
-    const data = compactObject2({
+    const data = compactObject({
       traceId: report.traceId,
       failedPhase: error?.failedPhase || report.failedPhase,
       lifecycle: error?.lifecycle,
@@ -2183,21 +2065,13 @@ ${filtered.slice(0, 5).join("\n")}`;
       retryable: error?.retryable,
       context: error?.context || report.errorContext
     });
-    if (code) {
-      runtimeError.code = code;
-    }
-    if (report.errorStack) {
-      runtimeError.stack = report.errorStack;
-    }
-    if (Object.keys(data).length > 0) {
-      runtimeError.data = data;
-    }
+    if (code) runtimeError.code = code;
+    if (report.errorStack) runtimeError.stack = report.errorStack;
+    if (Object.keys(data).length > 0) runtimeError.data = data;
     return runtimeError;
   }
   function getRemoteError(reports, status) {
-    if (status !== "error") {
-      return void 0;
-    }
+    if (status !== "error") return;
     const failedReport = reports.find((report) => isRemoteFailureReport(report));
     return failedReport ? getReportError(failedReport) : void 0;
   }
@@ -2205,91 +2079,66 @@ ${filtered.slice(0, 5).join("\n")}`;
     return [targetIds.remote(instanceRef, remoteName)];
   }
   function getRemoteReports(currentReport, remote, reportReader) {
-    const reports = reportReader ? reportReader.getReports().filter(
-      (report) => report.instanceRef === currentReport.instanceRef && isSameRemoteReport(report, remote)
-    ) : [];
-    if (!reports.some((report) => report.traceId === currentReport.traceId)) {
-      reports.unshift(currentReport);
-    }
-    return Array.from(
-      new Map(reports.map((report) => [report.traceId, report])).values()
-    ).sort(compareReportsByTime);
+    const reports = reportReader ? reportReader.getReports().filter((report) => report.instanceRef === currentReport.instanceRef && isSameRemoteReport(report, remote)) : [];
+    if (!reports.some((report) => report.traceId === currentReport.traceId)) reports.unshift(currentReport);
+    return Array.from(new Map(reports.map((report) => [report.traceId, report])).values()).sort(compareReportsByTime);
   }
   function getRemoteModuleReports(currentReport, remote, expose, reportReader) {
-    const reports = getRemoteReports(currentReport, remote, reportReader).filter(
-      (report) => isSameExposeReport(report, expose)
-    );
-    if (!reports.some((report) => report.traceId === currentReport.traceId)) {
-      reports.unshift(currentReport);
-    }
-    return Array.from(
-      new Map(reports.map((report) => [report.traceId, report])).values()
-    ).sort(compareReportsByTime);
+    const reports = getRemoteReports(currentReport, remote, reportReader).filter((report) => isSameExposeReport(report, expose));
+    if (!reports.some((report) => report.traceId === currentReport.traceId)) reports.unshift(currentReport);
+    return Array.from(new Map(reports.map((report) => [report.traceId, report])).values()).sort(compareReportsByTime);
   }
   function getLatestRemoteInfo(fallback, reports) {
     return reports.find((report) => report.remote)?.remote || fallback;
   }
   function isSameRemoteReport(report, remote) {
-    if (!report.remote) {
-      return false;
-    }
-    const expected = new Set(
-      [remote.name, remote.alias, remote.entry].filter(
-        (value) => value !== void 0
-      )
-    );
-    const actual = [report.remote.name, report.remote.alias, report.remote.entry];
-    return actual.some((value) => value !== void 0 && expected.has(value));
+    if (!report.remote) return false;
+    const expected = new Set([
+      remote.name,
+      remote.alias,
+      remote.entry
+    ].filter((value) => value !== void 0));
+    return [
+      report.remote.name,
+      report.remote.alias,
+      report.remote.entry
+    ].some((value) => value !== void 0 && expected.has(value));
   }
   function isSameExposeReport(report, expose) {
     const reportExpose = getReportExpose(report);
-    if (!reportExpose) {
-      return false;
-    }
+    if (!reportExpose) return false;
     return normalizeExpose(reportExpose) === normalizeExpose(expose);
   }
   function getReportHostNames(reports, expose) {
     const hostNames = [];
     const seen = /* @__PURE__ */ new Set();
     const addHostName = (hostName) => {
-      if (!isNonEmptyString(hostName) || seen.has(hostName)) {
-        return;
-      }
+      if (!isNonEmptyString(hostName) || seen.has(hostName)) return;
       seen.add(hostName);
       hostNames.push(hostName);
     };
     reports.forEach((report) => {
       addHostName(report.hostName);
       report.loadedBefore?.consumers.forEach((consumer) => {
-        if (expose && !hasLoadedExpose(consumer.exposes, expose)) {
-          return;
-        }
+        if (expose && !hasLoadedExpose(consumer.exposes, expose)) return;
         addHostName(consumer.name);
       });
     });
     return hostNames.length > 0 ? hostNames : void 0;
   }
   function hasLoadedExpose(loadedExposes, expose) {
-    return Boolean(
-      loadedExposes?.some(
-        (loadedExpose) => normalizeExpose(loadedExpose) === normalizeExpose(expose)
-      )
-    );
+    return Boolean(loadedExposes?.some((loadedExpose) => normalizeExpose(loadedExpose) === normalizeExpose(expose)));
   }
   function compareReportsByTime(left, right) {
-    if (right.updatedAt !== left.updatedAt) {
-      return right.updatedAt - left.updatedAt;
-    }
+    if (right.updatedAt !== left.updatedAt) return right.updatedAt - left.updatedAt;
     return right.startedAt - left.startedAt;
   }
   function getLatestRemotePhaseRecord(reports) {
-    return reports.flatMap(
-      (report) => report.events.filter((event) => remoteLifecyclePhases.has(event.phase)).map((event) => ({
-        report,
-        event,
-        phaseName: event.phase
-      }))
-    ).sort((left, right) => right.event.timestamp - left.event.timestamp)[0];
+    return reports.flatMap((report) => report.events.filter((event) => remoteLifecyclePhases.has(event.phase)).map((event) => ({
+      report,
+      event,
+      phaseName: event.phase
+    }))).sort((left, right) => right.event.timestamp - left.event.timestamp)[0];
   }
   function isRemoteFailureReport(report) {
     const failedPhase = getFailedPhase(report);
@@ -2299,24 +2148,18 @@ ${filtered.slice(0, 5).join("\n")}`;
     return report.summary.error?.failedPhase || report.failedPhase;
   }
   function getExposeFromRequestId(requestId) {
-    if (!requestId) {
-      return void 0;
-    }
+    if (!requestId) return;
     const separatorIndex = requestId.indexOf("/");
-    if (separatorIndex < 0 || separatorIndex === requestId.length - 1) {
-      return void 0;
-    }
+    if (separatorIndex < 0 || separatorIndex === requestId.length - 1) return;
     return requestId.slice(separatorIndex + 1);
   }
   function getReportExpose(report) {
     return report.expose || getExposeFromRequestId(report.requestId);
   }
-  function compactObject2(input) {
+  function compactObject(input) {
     const output = {};
     Object.entries(input).forEach(([key, value]) => {
-      if (value !== void 0) {
-        output[key] = value;
-      }
+      if (value !== void 0) output[key] = value;
     });
     return output;
   }
@@ -2324,14 +2167,11 @@ ${filtered.slice(0, 5).join("\n")}`;
     return typeof value === "string" && value.trim().length > 0;
   }
   function getDefaultHost() {
-    if (typeof window === "undefined") {
-      return void 0;
-    }
+    if (typeof window === "undefined") return;
     return window;
   }
   function normalizeSegment(value) {
-    const normalized = value.trim().replace(/\s+/g, "_");
-    return normalized || "unknown";
+    return value.trim().replace(/\s+/g, "_") || "unknown";
   }
   function normalizeExpose(value) {
     return normalizeSegment(value.replace(/^\.\//, ""));
@@ -2344,26 +2184,16 @@ ${filtered.slice(0, 5).join("\n")}`;
   };
   var targetIds = {
     remote(instanceRef, remoteName) {
-      return `mf:instance:${normalizeSegment(
-        instanceRef || "legacy"
-      )}:remote:${normalizeSegment(remoteName)}`;
+      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:remote:${normalizeSegment(remoteName)}`;
     },
     remoteModule(instanceRef, remoteName, expose) {
       return `${targetIds.remote(instanceRef, remoteName)}:expose:${normalizeExpose(expose)}`;
     },
     shared(instanceRef, shared) {
-      return `mf:instance:${normalizeSegment(
-        instanceRef || "legacy"
-      )}:shared:${normalizeSegment(shared.name)}:${normalizeSegment(
-        getSharedTargetVersion(shared)
-      )}:${normalizeSegment(getSharedTargetScope(shared))}`;
+      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:shared:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetVersion(shared))}:${normalizeSegment(getSharedTargetScope(shared))}`;
     },
     sharedConflict(instanceRef, shared) {
-      return `mf:instance:${normalizeSegment(
-        instanceRef || "legacy"
-      )}:shared-conflict:${normalizeSegment(
-        shared.name
-      )}:${normalizeSegment(getSharedTargetScope(shared))}`;
+      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:shared-conflict:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetScope(shared))}`;
     }
   };
   function getSharedTargetVersion(shared) {
@@ -2373,10 +2203,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   function getSharedTargetScope(shared) {
     return shared.shareScope?.length ? shared.shareScope.join("_") : "default";
   }
-
-  // packages/observability-plugin/src/core.ts
   function continuePreloadAssetsGeneration() {
-    return void 0;
   }
   var DEFAULT_MAX_EVENTS = 100;
   var HARD_MAX_EVENTS = 1e3;
@@ -2401,49 +2228,35 @@ ${filtered.slice(0, 5).join("\n")}`;
     return typeof value === "object" && value !== null;
   }
   function normalizeMaxEvents(value, fallback) {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return fallback;
-    }
+    if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
     return Math.max(1, Math.min(HARD_MAX_EVENTS, Math.floor(value)));
   }
   function normalizeQueryLimit(value) {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return void 0;
-    }
+    if (typeof value !== "number" || !Number.isFinite(value)) return;
     return Math.max(1, Math.min(HARD_MAX_REPORT_QUERY_LIMIT, Math.floor(value)));
   }
   function normalizeCollectorPort(value) {
-    if (!Number.isFinite(value) || !value) {
-      return DEFAULT_COLLECTOR_PORT;
-    }
+    if (!Number.isFinite(value) || !value) return DEFAULT_COLLECTOR_PORT;
     const port = Math.floor(value);
     return port > 0 && port <= 65535 ? port : DEFAULT_COLLECTOR_PORT;
   }
   function normalizeCollectorOptions(value) {
-    if (value === true) {
-      return {
-        enabled: true,
-        port: DEFAULT_COLLECTOR_PORT
-      };
-    }
-    if (!value || value.enabled === false) {
-      return void 0;
-    }
+    if (value === true) return {
+      enabled: true,
+      port: DEFAULT_COLLECTOR_PORT
+    };
+    if (!value || value.enabled === false) return;
     return {
       enabled: true,
       port: normalizeCollectorPort(value.port)
     };
   }
   function normalizeDevtoolsOptions(value) {
-    if (value === true) {
-      return {
-        enabled: true,
-        source: DEFAULT_DEVTOOLS_SOURCE
-      };
-    }
-    if (!value || value.enabled === false) {
-      return void 0;
-    }
+    if (value === true) return {
+      enabled: true,
+      source: DEFAULT_DEVTOOLS_SOURCE
+    };
+    if (!value || value.enabled === false) return;
     return {
       enabled: true,
       source: sanitizeText(value.source, 160) || DEFAULT_DEVTOOLS_SOURCE
@@ -2453,101 +2266,70 @@ ${filtered.slice(0, 5).join("\n")}`;
     return `http://127.0.0.1:${port}${COLLECTOR_PATH}`;
   }
   function sanitizeText(value, maxLength = 800) {
-    if (value === void 0 || value === null) {
-      return void 0;
-    }
+    if (value === void 0 || value === null) return;
     const sanitized = String(value).replace(URL_PATTERN, (url) => sanitizeUrl(url) || "[redacted-url]").replace(SENSITIVE_PAIR_PATTERN, "[redacted]");
     return sanitized.length > maxLength ? `${sanitized.slice(0, maxLength)}...` : sanitized;
   }
   function getRawText(value) {
-    if (value === void 0 || value === null) {
-      return void 0;
-    }
+    if (value === void 0 || value === null) return;
     return String(value);
   }
   function clipText(value, maxLength = 320) {
-    if (value === void 0 || value === null) {
-      return void 0;
-    }
+    if (value === void 0 || value === null) return;
     const sanitized = String(value);
     return sanitized.length > maxLength ? `${sanitized.slice(0, maxLength)}...` : sanitized;
   }
   function clipObservabilityMetadata(metadata, maxKeys = MAX_METADATA_KEYS) {
-    if (!metadata || typeof metadata !== "object") {
-      return void 0;
-    }
+    if (!metadata || typeof metadata !== "object") return;
     const clipped = {};
     Object.entries(metadata).slice(0, maxKeys).forEach(([rawKey, rawValue]) => {
       const key = clipText(rawKey, 80);
-      if (!key || rawValue === void 0 || rawValue === null) {
-        return;
-      }
+      if (!key || rawValue === void 0 || rawValue === null) return;
       if (typeof rawValue === "boolean") {
         clipped[key] = rawValue;
         return;
       }
       if (typeof rawValue === "number") {
-        if (Number.isFinite(rawValue)) {
-          clipped[key] = rawValue;
-        }
+        if (Number.isFinite(rawValue)) clipped[key] = rawValue;
         return;
       }
       const value = clipText(rawValue, 240);
-      if (value) {
-        clipped[key] = value;
-      }
+      if (value) clipped[key] = value;
     });
     return Object.keys(clipped).length ? clipped : void 0;
   }
   function clipMetadata(metadata, maxKeys = MAX_METADATA_KEYS) {
-    if (!metadata || typeof metadata !== "object") {
-      return void 0;
-    }
+    if (!metadata || typeof metadata !== "object") return;
     const clipped = {};
     Object.entries(metadata).slice(0, maxKeys).forEach(([rawKey, rawValue]) => {
       const key = sanitizeText(rawKey, 80);
-      if (!key || rawValue === void 0 || rawValue === null) {
-        return;
-      }
+      if (!key || rawValue === void 0 || rawValue === null) return;
       if (typeof rawValue === "boolean") {
         clipped[key] = rawValue;
         return;
       }
       if (typeof rawValue === "number") {
-        if (Number.isFinite(rawValue)) {
-          clipped[key] = rawValue;
-        }
+        if (Number.isFinite(rawValue)) clipped[key] = rawValue;
         return;
       }
       const value = clipText(rawValue, 240);
-      if (value) {
-        clipped[key] = value;
-      }
+      if (value) clipped[key] = value;
     });
     return Object.keys(clipped).length ? clipped : void 0;
   }
   function sanitizeStack(stack, options) {
-    if (!stack || options?.enabled === false) {
-      return void 0;
-    }
+    if (!stack || options?.enabled === false) return;
     return stack;
   }
   function getRawStack(error) {
-    if (error instanceof Error) {
-      return error.stack || error.message;
-    }
-    return void 0;
+    if (error instanceof Error) return error.stack || error.message;
   }
   function sanitizeRequestId(value) {
-    if (!value) {
-      return void 0;
-    }
+    if (!value) return;
     return clipText(value, 240);
   }
   function sanitizeUrl(value) {
-    if (!value) {
-      return void 0;
-    }
+    if (!value) return;
     try {
       const base = typeof window !== "undefined" && window.location ? window.location.origin : "http://localhost";
       const parsedUrl = new URL(value, base);
@@ -2560,9 +2342,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     }
   }
   function sanitizeRemote(remote) {
-    if (!remote || !remote.name) {
-      return void 0;
-    }
+    if (!remote || !remote.name) return;
     return {
       name: remote.name,
       alias: sanitizeText(remote.alias, 120),
@@ -2571,10 +2351,57 @@ ${filtered.slice(0, 5).join("\n")}`;
       type: sanitizeText(remote.type, 80)
     };
   }
+  function normalizeBridgeInfo(bridge) {
+    if (!bridge?.operationId || !bridge.bridgeId) return;
+    const result = bridge;
+    return omitUndefinedFields({
+      operationId: sanitizeText(bridge.operationId, 120) || bridge.operationId,
+      bridgeId: sanitizeText(bridge.bridgeId, 120) || bridge.bridgeId,
+      side: bridge.side,
+      framework: bridge.framework,
+      operation: bridge.operation,
+      moduleName: sanitizeText(bridge.moduleName, 160),
+      remote: sanitizeText(bridge.remote, 120),
+      expose: sanitizeText(bridge.expose, 240),
+      route: bridge.route ? {
+        action: sanitizeText(bridge.route.action, 80) || "route-update",
+        from: sanitizeUrl(bridge.route.from),
+        to: sanitizeUrl(bridge.route.to),
+        basename: sanitizeUrl(bridge.route.basename),
+        mechanism: bridge.route.mechanism
+      } : void 0,
+      reason: sanitizeText(bridge.reason, 80),
+      startedAt: Number.isFinite(bridge.startedAt) ? bridge.startedAt : Date.now(),
+      endedAt: Number.isFinite(result.endedAt) ? result.endedAt : void 0,
+      duration: Number.isFinite(result.duration) ? Math.max(0, result.duration) : void 0,
+      outcome: result.outcome,
+      error: result.error ? {
+        name: sanitizeText(result.error.name, 80),
+        message: sanitizeText(result.error.message, 240)
+      } : void 0
+    });
+  }
+  function sanitizeResource(resource) {
+    if (!resource) return;
+    const type = sanitizeText(resource.type, 80);
+    if (!type) return;
+    return omitUndefinedFields({
+      type,
+      initiator: resource.initiator,
+      outcome: resource.outcome,
+      url: sanitizeUrl(resource.url),
+      startedAt: Number.isFinite(resource.startedAt) ? resource.startedAt : Date.now(),
+      endedAt: resource.endedAt !== void 0 && Number.isFinite(resource.endedAt) ? resource.endedAt : void 0,
+      duration: resource.duration !== void 0 && Number.isFinite(resource.duration) ? Math.max(0, resource.duration) : void 0,
+      httpStatus: resource.httpStatus !== void 0 && Number.isFinite(resource.httpStatus) ? resource.httpStatus : void 0,
+      mimeType: sanitizeText(resource.mimeType, 160),
+      redirected: typeof resource.redirected === "boolean" ? resource.redirected : void 0,
+      cacheSource: sanitizeText(resource.cacheSource, 80),
+      errorType: sanitizeText(resource.errorType, 80)
+    });
+  }
   function createRemoteInfo(remote) {
-    if (!remote?.name) {
-      return void 0;
-    }
+    if (!remote?.name) return;
     return {
       name: remote.name,
       alias: remote.alias,
@@ -2588,9 +2415,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Boolean(sanitized && /manifest.*\.json$/i.test(sanitized));
   }
   function normalizeSharedScope(value) {
-    if (!value) {
-      return [];
-    }
+    if (!value) return [];
     return (Array.isArray(value) ? value : [value]).map((scope) => sanitizeText(scope, 120)).filter((scope) => Boolean(scope));
   }
   function getSharedScopes(shareInfo) {
@@ -2600,11 +2425,9 @@ ${filtered.slice(0, 5).join("\n")}`;
     const versions = /* @__PURE__ */ new Set();
     const shareScopeMap = args.shareScopeMap || {};
     getSharedScopes(args.shareInfo).forEach((scope) => {
-      Object.keys(shareScopeMap[scope]?.[args.pkgName] || {}).forEach(
-        (version) => {
-          versions.add(version);
-        }
-      );
+      Object.keys(shareScopeMap[scope]?.[args.pkgName] || {}).forEach((version) => {
+        versions.add(version);
+      });
     });
     return Array.from(versions);
   }
@@ -2627,29 +2450,13 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function createSharedSingletonConflict(args) {
     const currentVersion = getSharedVersion(args.shared);
-    if (!currentVersion) {
-      return void 0;
-    }
+    if (!currentVersion) return;
     const existingVersionMap = args.shareScopeMap[args.scope]?.[args.pkgName] || {};
-    const existingVersions = Object.entries(existingVersionMap).map(
-      ([version, shared]) => createSharedConflictVersion(
-        sanitizeText(version, 120) || version,
-        shared
-      )
-    ).filter((item) => item.version && item.version !== currentVersion);
-    if (!existingVersions.length) {
-      return void 0;
-    }
-    const hasSingleton = isSingletonShared(args.shared) || existingVersions.some((item) => item.singleton === true);
-    if (!hasSingleton) {
-      return void 0;
-    }
-    const versions = Array.from(
-      /* @__PURE__ */ new Set([currentVersion, ...existingVersions.map((item) => item.version)])
-    ).sort();
-    if (versions.length <= 1) {
-      return void 0;
-    }
+    const existingVersions = Object.entries(existingVersionMap).map(([version, shared]) => createSharedConflictVersion(sanitizeText(version, 120) || version, shared)).filter((item) => item.version && item.version !== currentVersion);
+    if (!existingVersions.length) return;
+    if (!(isSingletonShared(args.shared) || existingVersions.some((item) => item.singleton === true))) return;
+    const versions = Array.from(/* @__PURE__ */ new Set([currentVersion, ...existingVersions.map((item) => item.version)])).sort();
+    if (versions.length <= 1) return;
     return {
       reason: SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON,
       scope: args.scope,
@@ -2696,36 +2503,20 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Array.from(new Set(useIn));
   }
   function getSharedMissReason(args) {
-    if (!args.shareInfo) {
-      return "missing-config";
-    }
+    if (!args.shareInfo) return "missing-config";
     return getAvailableSharedVersions(args).length ? "version-mismatch" : "missing-provider";
   }
   function getSharedErrorReason(args) {
-    if (args.recovered) {
-      return getSharedMissReason(args);
-    }
-    const errorInfo = getErrorInfo(args.error, { enabled: false });
-    const errorMessage = errorInfo.errorMessage || "";
-    if (!args.shareInfo || /Cannot find shared/i.test(errorMessage)) {
-      return "missing-config";
-    }
-    if (args.lifecycle === "loadShareSync" && typeof args.shareInfo.get === "function" && /RUNTIME-00[56]/.test(errorMessage)) {
-      return "sync-async-boundary";
-    }
-    if (args.lifecycle === "loadShareSync" && !args.shareInfo.get && /RUNTIME-006/.test(errorMessage)) {
-      return getSharedMissReason(args);
-    }
-    if (args.error) {
-      return "load-error";
-    }
-    return void 0;
+    if (args.recovered) return getSharedMissReason(args);
+    const errorMessage = getErrorInfo(args.error, { enabled: false }).errorMessage || "";
+    if (!args.shareInfo || /Cannot find shared/i.test(errorMessage)) return "missing-config";
+    if (args.lifecycle === "loadShareSync" && typeof args.shareInfo.get === "function" && /RUNTIME-00[56]/.test(errorMessage)) return "sync-async-boundary";
+    if (args.lifecycle === "loadShareSync" && !args.shareInfo.get && /RUNTIME-006/.test(errorMessage)) return getSharedMissReason(args);
+    if (args.error) return "load-error";
   }
   function parseStableVersion(version) {
     const matched = version?.match(/^(\d+)\.(\d+)\.(\d+)(?:\+[\w.-]+)?$/);
-    if (!matched) {
-      return void 0;
-    }
+    if (!matched) return;
     return {
       major: Number(matched[1]),
       minor: Number(matched[2]),
@@ -2733,52 +2524,143 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
   function isVersionAtLeast(version, target) {
-    if (version.major !== target.major) {
-      return version.major > target.major;
-    }
-    if (version.minor !== target.minor) {
-      return version.minor > target.minor;
-    }
+    if (version.major !== target.major) return version.major > target.major;
+    if (version.minor !== target.minor) return version.minor > target.minor;
     return version.patch >= target.patch;
   }
   function supportsRuntimeObservability(origin) {
     const version = parseStableVersion(origin?.version);
-    if (!version) {
-      return false;
-    }
+    if (!version) return false;
     return isVersionAtLeast(version, {
       major: 2,
       minor: 5,
       patch: 0
     });
   }
+  function createSharedCandidate(candidate) {
+    return {
+      scope: candidate.scope,
+      version: candidate.version,
+      provider: candidate.provider,
+      loaded: candidate.loaded === true,
+      loading: candidate.loading === true,
+      singleton: candidate.singleton === true,
+      eager: candidate.eager === true,
+      strategy: candidate.strategy,
+      compatible: candidate.compatible,
+      rejectionReason: candidate.rejectionReason
+    };
+  }
   function createSharedInfo(args, reason) {
     const shareConfig = args.shareInfo?.shareConfig;
+    const selection = args.selectionResult;
+    const selected = selection?.selected;
+    const context = selection?.context || args.loadContext;
     const handledBundlerRuntimeShared = reason === "custom-share-info-unmatched";
-    const loaded = args.selectedShared?.loaded;
+    const loaded = selected?.loaded ?? args.selectedShared?.loaded;
+    const candidates = selection?.candidates?.map(createSharedCandidate);
     return {
       name: args.pkgName,
-      shareScope: getSharedScopes(args.shareInfo),
-      version: args.selectedShared?.version || args.shareInfo?.version,
-      requiredVersion: shareConfig?.requiredVersion,
-      selectedVersion: args.selectedShared?.version,
-      availableVersions: getAvailableSharedVersions(args),
-      provider: args.selectedShared?.from,
+      shareScope: selection?.scope ? [selection.scope] : getSharedScopes(args.shareInfo),
+      version: selection?.requestedVersion || args.selectedShared?.version || args.shareInfo?.version,
+      requiredVersion: selection?.requiredVersion ?? shareConfig?.requiredVersion,
+      selectedVersion: selected?.version || args.selectedShared?.version,
+      availableVersions: candidates?.length ? Array.from(new Set(candidates.map((candidate) => candidate.version))) : getAvailableSharedVersions(args),
+      provider: selected?.provider || args.selectedShared?.from,
       useIn: getSharedUseIn(args),
-      singleton: shareConfig?.singleton,
-      strictVersion: shareConfig?.strictVersion,
-      eager: shareConfig?.eager,
-      strategy: args.shareInfo?.strategy,
+      singleton: selection?.singleton ?? shareConfig?.singleton,
+      strictVersion: selection?.strictVersion ?? shareConfig?.strictVersion,
+      eager: selection?.eager ?? shareConfig?.eager,
+      strategy: selection?.strategy || args.shareInfo?.strategy,
       loaded,
-      loading: loaded ? void 0 : Boolean(args.selectedShared?.loading) || void 0,
+      loading: loaded ? void 0 : selected?.loading || Boolean(args.selectedShared?.loading) || void 0,
       reason,
+      selectionReason: selection?.reason,
+      failureReason: selection?.failureReason,
+      candidates,
+      loadType: selection?.loadType,
+      trigger: context?.trigger,
+      moduleId: context?.moduleId,
+      chunkId: context?.chunkId,
+      remote: context?.remote,
+      expose: context?.expose,
+      requestId: context?.requestId,
+      operationId: context?.operationId,
+      fallback: selection?.fallback,
+      recovered: selection?.recovered ?? args.recovered,
       definedBy: handledBundlerRuntimeShared ? "bundler-runtime" : void 0
     };
   }
+  function createSharedRegistrationInfo(args) {
+    const registration = args.registration;
+    const candidate = createSharedCandidate(registration.candidate);
+    const effective = registration.effective ? createSharedCandidate(registration.effective) : void 0;
+    return {
+      name: args.pkgName,
+      shareScope: [registration.scope],
+      version: candidate.version,
+      selectedVersion: effective?.version,
+      availableVersions: Array.from(new Set(registration.candidates.map((item) => item.version))),
+      provider: effective?.provider,
+      singleton: candidate.singleton,
+      eager: candidate.eager,
+      strategy: candidate.strategy,
+      loaded: effective?.loaded,
+      loading: effective?.loading || void 0,
+      candidates: registration.candidates.map(createSharedCandidate),
+      trigger: registration.trigger,
+      registration: {
+        registrationId: registration.registrationId,
+        action: registration.action,
+        reason: registration.reason,
+        trigger: registration.trigger,
+        scope: registration.scope,
+        candidate,
+        effective
+      }
+    };
+  }
+  function getSharedOperationId(args) {
+    return args.selectionResult?.context?.operationId || args.loadContext?.operationId || `shared:${args.pkgName}`;
+  }
+  function sanitizeSharedCandidate(candidate) {
+    const scope = sanitizeText(candidate.scope, 120);
+    const version = sanitizeText(candidate.version, 120);
+    if (!scope || !version) return;
+    return {
+      scope,
+      version,
+      provider: sanitizeText(candidate.provider, 160),
+      loaded: candidate.loaded === true,
+      loading: candidate.loading === true,
+      singleton: candidate.singleton === true,
+      eager: candidate.eager === true,
+      strategy: sanitizeText(candidate.strategy, 80),
+      compatible: candidate.compatible,
+      rejectionReason: sanitizeText(candidate.rejectionReason, 120)
+    };
+  }
+  function sanitizeSharedRegistration(registration) {
+    if (!registration) return;
+    const candidate = sanitizeSharedCandidate(registration.candidate);
+    const effective = registration.effective ? sanitizeSharedCandidate(registration.effective) : void 0;
+    const registrationId = sanitizeText(registration.registrationId, 120);
+    const scope = sanitizeText(registration.scope, 120);
+    const trigger = sanitizeText(registration.trigger, 80);
+    const reason = sanitizeText(registration.reason, 120);
+    if (!candidate || !registrationId || !scope || !trigger || !reason) return;
+    return {
+      registrationId,
+      action: registration.action,
+      reason,
+      trigger,
+      scope,
+      candidate,
+      effective
+    };
+  }
   function sanitizeShared(shared) {
-    if (!shared || !shared.name) {
-      return void 0;
-    }
+    if (!shared || !shared.name) return;
     return {
       name: sanitizeText(shared.name, 160) || "unknown",
       shareScope: normalizeSharedScope(shared.shareScope),
@@ -2796,13 +2678,25 @@ ${filtered.slice(0, 5).join("\n")}`;
       loading: shared.loading,
       reason: sanitizeText(shared.reason, 120),
       definedBy: shared.definedBy === "bundler-runtime" ? "bundler-runtime" : void 0,
-      conflict: sanitizeSharedConflict(shared.conflict)
+      conflict: sanitizeSharedConflict(shared.conflict),
+      candidates: (shared.candidates || []).map(sanitizeSharedCandidate).filter((candidate) => candidate !== void 0).slice(0, 20),
+      selectionReason: sanitizeText(shared.selectionReason, 120),
+      failureReason: sanitizeText(shared.failureReason, 120),
+      loadType: shared.loadType === "sync" || shared.loadType === "async" ? shared.loadType : void 0,
+      trigger: sanitizeText(shared.trigger, 80),
+      moduleId: typeof shared.moduleId === "number" ? shared.moduleId : sanitizeText(shared.moduleId, 160),
+      chunkId: typeof shared.chunkId === "number" ? shared.chunkId : sanitizeText(shared.chunkId, 160),
+      remote: sanitizeText(shared.remote, 160),
+      expose: sanitizeText(shared.expose, 240),
+      requestId: sanitizeText(shared.requestId, 240),
+      operationId: sanitizeText(shared.operationId, 160),
+      fallback: shared.fallback === true || void 0,
+      recovered: shared.recovered === true || void 0,
+      registration: sanitizeSharedRegistration(shared.registration)
     };
   }
   function sanitizeSharedConflict(conflict) {
-    if (!conflict) {
-      return void 0;
-    }
+    if (!conflict) return;
     const scope = sanitizeText(conflict.scope, 120) || "default";
     const versions = (conflict.versions || []).map((version) => sanitizeText(version, 120)).filter((version) => Boolean(version)).slice(0, 20);
     const existingVersions = (conflict.existingVersions || []).map((item) => ({
@@ -2810,9 +2704,7 @@ ${filtered.slice(0, 5).join("\n")}`;
       from: sanitizeText(item.from, 160),
       singleton: item.singleton === true || void 0,
       loaded: item.loaded === true || void 0
-    })).filter(
-      (item) => typeof item.version === "string" && item.version.length > 0
-    ).slice(0, 20);
+    })).filter((item) => typeof item.version === "string" && item.version.length > 0).slice(0, 20);
     return {
       reason: SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON,
       scope,
@@ -2826,35 +2718,21 @@ ${filtered.slice(0, 5).join("\n")}`;
     return value[key];
   }
   function isReactLike(value) {
-    if (!isRecord2(value)) {
-      return false;
-    }
+    if (!isRecord2(value)) return false;
     return typeof getObjectValue(value, "createElement") === "function";
   }
   function resolveReactLike(value) {
-    if (isReactLike(value)) {
-      return value;
-    }
+    if (isReactLike(value)) return value;
     if (isRecord2(value)) {
       const defaultExport = getObjectValue(value, "default");
-      if (isReactLike(defaultExport)) {
-        return defaultExport;
-      }
+      if (isReactLike(defaultExport)) return defaultExport;
     }
-    return void 0;
   }
   function getReactComponentName(component, fallback) {
-    if (typeof component === "function") {
-      const displayName2 = component.displayName;
-      return displayName2 || component.name || fallback;
-    }
-    if (!isRecord2(component)) {
-      return fallback;
-    }
+    if (typeof component === "function") return component.displayName || component.name || fallback;
+    if (!isRecord2(component)) return fallback;
     const displayName = getObjectValue(component, "displayName");
-    if (typeof displayName === "string" && displayName) {
-      return displayName;
-    }
+    if (typeof displayName === "string" && displayName) return displayName;
     const render = getObjectValue(component, "render");
     if (typeof render === "function") {
       const renderFunction = render;
@@ -2863,19 +2741,11 @@ ${filtered.slice(0, 5).join("\n")}`;
     return fallback;
   }
   function isLikelyReactFunctionComponent(component, allowAnonymousComponent = false) {
-    if (typeof component !== "function") {
-      return false;
-    }
+    if (typeof component !== "function") return false;
     const name = component.displayName || component.name || "";
-    if (/^use[A-Z0-9]/.test(name)) {
-      return false;
-    }
-    if (allowAnonymousComponent) {
-      return true;
-    }
-    if (!name) {
-      return false;
-    }
+    if (/^use[A-Z0-9]/.test(name)) return false;
+    if (allowAnonymousComponent) return true;
+    if (!name) return false;
     return /^[A-Z]/.test(name);
   }
   function copyComponentStatics(target, source) {
@@ -2888,13 +2758,9 @@ ${filtered.slice(0, 5).join("\n")}`;
       "displayName"
     ]);
     Object.getOwnPropertyNames(source).forEach((key) => {
-      if (reserved.has(key)) {
-        return;
-      }
+      if (reserved.has(key)) return;
       const descriptor = Object.getOwnPropertyDescriptor(source, key);
-      if (!descriptor || !descriptor.configurable) {
-        return;
-      }
+      if (!descriptor || !descriptor.configurable) return;
       try {
         Object.defineProperty(target, key, descriptor);
       } catch {
@@ -2903,32 +2769,22 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function cloneModuleWithDefaultExport(moduleExports, defaultExport) {
     const descriptors = Object.getOwnPropertyDescriptors(moduleExports);
-    const defaultDescriptor = descriptors["default"];
     descriptors["default"] = {
       configurable: true,
-      enumerable: defaultDescriptor?.enumerable ?? true,
+      enumerable: descriptors["default"]?.enumerable ?? true,
       writable: true,
       value: defaultExport
     };
-    return Object.defineProperties(
-      Object.create(Object.getPrototypeOf(moduleExports)),
-      descriptors
-    );
+    return Object.defineProperties(Object.create(Object.getPrototypeOf(moduleExports)), descriptors);
   }
   function resolveReactComponentTarget(component, defaultExportMode = "preserve", allowAnonymousComponent = false) {
-    if (isLikelyReactFunctionComponent(component, allowAnonymousComponent)) {
-      return {
-        component,
-        createResult: (wrappedComponent) => wrappedComponent
-      };
-    }
-    if (!isRecord2(component)) {
-      return void 0;
-    }
+    if (isLikelyReactFunctionComponent(component, allowAnonymousComponent)) return {
+      component,
+      createResult: (wrappedComponent) => wrappedComponent
+    };
+    if (!isRecord2(component)) return;
     const defaultExport = getObjectValue(component, "default");
-    if (!isLikelyReactFunctionComponent(defaultExport, allowAnonymousComponent)) {
-      return void 0;
-    }
+    if (!isLikelyReactFunctionComponent(defaultExport, allowAnonymousComponent)) return;
     return {
       component: defaultExport,
       createResult: (wrappedComponent) => {
@@ -2949,9 +2805,7 @@ ${filtered.slice(0, 5).join("\n")}`;
           }
         } catch {
         }
-        if (defaultExportMode === "component") {
-          return wrappedComponent;
-        }
+        if (defaultExportMode === "component") return wrappedComponent;
         return defaultExportReplaced ? void 0 : cloneModuleWithDefaultExport(component, wrappedComponent);
       }
     };
@@ -2964,38 +2818,31 @@ ${filtered.slice(0, 5).join("\n")}`;
     return matched ? sanitizeText(matched, 40) : void 0;
   }
   function getErrorInfo(error, stackTraceOptions) {
-    if (!error) {
-      return {};
-    }
-    if (error instanceof Error) {
-      return {
-        errorCode: extractErrorCode(
-          `${error.name}
+    if (!error) return {};
+    if (error instanceof Error) return {
+      errorCode: extractErrorCode(`${error.name}
 ${error.message}
-${error.stack || ""}`
-        ),
-        errorName: getRawText(error.name),
-        errorMessage: getRawText(error.message),
-        errorStack: sanitizeStack(error.stack, stackTraceOptions)
-      };
-    }
+${error.stack || ""}`),
+      errorName: getRawText(error.name),
+      errorMessage: getRawText(error.message),
+      errorStack: sanitizeStack(error.stack, stackTraceOptions)
+    };
+    if (isRecord2(error) && typeof error.message === "string") return {
+      errorCode: extractErrorCode(error.message),
+      errorName: typeof error.name === "string" ? getRawText(error.name) : void 0,
+      errorMessage: getRawText(error.message)
+    };
     return {
       errorCode: extractErrorCode(error),
       errorMessage: getRawText(error)
     };
   }
   function omitUndefinedFields(value) {
-    if (Array.isArray(value)) {
-      return value.map((item) => omitUndefinedFields(item));
-    }
-    if (!value || typeof value !== "object") {
-      return value;
-    }
+    if (Array.isArray(value)) return value.map((item) => omitUndefinedFields(item));
+    if (!value || typeof value !== "object") return value;
     const cleanValue = {};
     Object.entries(value).forEach(([key, item]) => {
-      if (item === void 0) {
-        return;
-      }
+      if (item === void 0) return;
       cleanValue[key] = omitUndefinedFields(item);
     });
     return cleanValue;
@@ -3004,6 +2851,7 @@ ${error.stack || ""}`
     return omitUndefinedFields({
       ...event,
       remote: event.remote ? { ...event.remote } : void 0,
+      resource: event.resource ? { ...event.resource } : void 0,
       shared: event.shared ? {
         ...event.shared,
         shareScope: event.shared.shareScope ? [...event.shared.shareScope] : void 0,
@@ -3012,13 +2860,20 @@ ${error.stack || ""}`
       } : void 0,
       errorContext: event.errorContext ? { ...event.errorContext } : void 0,
       metadata: event.metadata ? { ...event.metadata } : void 0,
-      loadedBefore: copyLoadedBeforeInfo(event.loadedBefore)
+      loadedBefore: copyLoadedBeforeInfo(event.loadedBefore),
+      bridge: copyBridgeInfo(event.bridge)
+    });
+  }
+  function copyBridgeInfo(bridge) {
+    if (!bridge) return;
+    return omitUndefinedFields({
+      ...bridge,
+      route: bridge.route ? { ...bridge.route } : void 0,
+      error: bridge.error ? { ...bridge.error } : void 0
     });
   }
   function copySharedConflict(conflict) {
-    if (!conflict) {
-      return void 0;
-    }
+    if (!conflict) return;
     return {
       ...conflict,
       versions: [...conflict.versions],
@@ -3044,9 +2899,7 @@ ${error.stack || ""}`
     };
   }
   function copyFactReport(diagnosis) {
-    if (!diagnosis) {
-      return void 0;
-    }
+    if (!diagnosis) return;
     return {
       ...diagnosis,
       facts: { ...diagnosis.facts },
@@ -3057,9 +2910,7 @@ ${error.stack || ""}`
     };
   }
   function copyModuleInfoSummary(moduleInfo) {
-    if (!moduleInfo) {
-      return void 0;
-    }
+    if (!moduleInfo) return;
     return {
       ...moduleInfo,
       entries: moduleInfo.entries.map((entry) => ({ ...entry })),
@@ -3067,9 +2918,7 @@ ${error.stack || ""}`
     };
   }
   function copyLoadedBeforeInfo(loadedBefore) {
-    if (!loadedBefore) {
-      return void 0;
-    }
+    if (!loadedBefore) return;
     return {
       producer: loadedBefore.producer,
       expose: loadedBefore.expose,
@@ -3092,6 +2941,7 @@ ${error.stack || ""}`
       errorContext: report.errorContext ? { ...report.errorContext } : void 0,
       moduleInfo: copyModuleInfoSummary(report.moduleInfo),
       loadedBefore: copyLoadedBeforeInfo(report.loadedBefore),
+      bridge: copyBridgeInfo(report.bridge),
       events: report.events.map(copyEvent),
       summary: copySummary(report.summary),
       diagnosis: copyFactReport(report.diagnosis)
@@ -3102,62 +2952,33 @@ ${error.stack || ""}`
   }
   function normalizeExposeName(value) {
     const sanitized = sanitizeText(value, 240);
-    if (!sanitized) {
-      return void 0;
-    }
+    if (!sanitized) return;
     return sanitized.replace(/^\.\//, "");
   }
   function getModuleCacheEntries(moduleCache) {
-    if (!moduleCache) {
-      return [];
-    }
-    if (moduleCache instanceof Map) {
-      return Array.from(moduleCache.values());
-    }
-    const entries = typeof moduleCache.entries === "function" ? Array.from(
-      moduleCache.entries.call(moduleCache)
-    ) : void 0;
-    if (entries) {
-      return entries.map(([, value]) => value);
-    }
-    if (isRecord2(moduleCache)) {
-      return Object.values(moduleCache);
-    }
+    if (!moduleCache) return [];
+    if (moduleCache instanceof Map) return Array.from(moduleCache.values());
+    const entries = typeof moduleCache.entries === "function" ? Array.from(moduleCache.entries.call(moduleCache)) : void 0;
+    if (entries) return entries.map(([, value]) => value);
+    if (isRecord2(moduleCache)) return Object.values(moduleCache);
     return [];
   }
   function getLoadedExposesForRemote(instance, remoteName) {
-    if (!remoteName) {
-      return [];
-    }
-    return Array.from(
-      new Set(
-        Object.values(instance.remoteHandler?.idToRemoteMap || {}).filter((item) => item?.name === remoteName).map((item) => sanitizeText(item.expose, 240)).filter((expose) => Boolean(expose))
-      )
-    );
+    if (!remoteName) return [];
+    return Array.from(new Set(Object.values(instance.remoteHandler?.idToRemoteMap || {}).filter((item) => item?.name === remoteName).map((item) => sanitizeText(item.expose, 240)).filter((expose) => Boolean(expose))));
   }
   function collectLoadedBeforeInfo(remote, expose, origin) {
     const entryGlobalName = remote?.entryGlobalName;
-    if (!entryGlobalName) {
-      return void 0;
-    }
+    if (!entryGlobalName) return;
     const federation = getFederationGlobal();
     const instances = Array.isArray(federation?.__INSTANCES__) ? federation.__INSTANCES__ : [];
     const targetExpose = normalizeExposeName(expose);
     const consumers = [];
     instances.forEach((instance) => {
-      if (instance === origin) {
-        return;
-      }
-      const matchedModule = getModuleCacheEntries(instance.moduleCache).find(
-        (item) => isRuntimeModuleWithEntryGlobalName(item, entryGlobalName)
-      );
-      if (!matchedModule) {
-        return;
-      }
-      const exposes = getLoadedExposesForRemote(
-        instance,
-        matchedModule.remoteInfo?.name
-      );
+      if (instance === origin) return;
+      const matchedModule = getModuleCacheEntries(instance.moduleCache).find((item) => isRuntimeModuleWithEntryGlobalName(item, entryGlobalName));
+      if (!matchedModule) return;
+      const exposes = getLoadedExposesForRemote(instance, matchedModule.remoteInfo?.name);
       const consumer = {
         name: sanitizeText(instance.options?.name, 120) || sanitizeText(instance.name, 120),
         remoteEntryExports: Boolean(matchedModule.remoteEntryExports),
@@ -3166,48 +2987,29 @@ ${error.stack || ""}`
       };
       consumers.push(omitUndefinedFields(consumer));
     });
-    if (!consumers.length) {
-      return void 0;
-    }
-    const exposeLoadedBefore = targetExpose ? consumers.some(
-      (consumer) => (consumer.exposes || []).some(
-        (loadedExpose) => normalizeExposeName(loadedExpose) === targetExpose
-      )
-    ) : false;
+    if (!consumers.length) return;
     return {
       producer: true,
-      expose: exposeLoadedBefore,
+      expose: targetExpose ? consumers.some((consumer) => (consumer.exposes || []).some((loadedExpose) => normalizeExposeName(loadedExpose) === targetExpose)) : false,
       consumers
     };
   }
   function isRuntimeModuleWithEntryGlobalName(value, entryGlobalName) {
-    if (!isRecord2(value)) {
-      return false;
-    }
+    if (!isRecord2(value)) return false;
     const remoteInfo = getObjectValue(value, "remoteInfo");
     return isRecord2(remoteInfo) && getObjectValue(remoteInfo, "entryGlobalName") === entryGlobalName;
   }
   function normalizeScope(value) {
-    const sanitized = sanitizeText(value, 120);
-    const normalized = sanitized?.replace(/[^\w:@.-]+/g, "-");
-    return normalized || "default";
+    return sanitizeText(value, 120)?.replace(/[^\w:@.-]+/g, "-") || "default";
   }
   function shouldRecordEvent(level, event) {
-    if (level === "verbose") {
-      return true;
-    }
-    if (level === "summary") {
-      return event.status !== "start";
-    }
+    if (level === "verbose") return true;
+    if (level === "summary") return event.status !== "start";
     return event.status === "error" || Boolean(event.error);
   }
   function createTraceId(event) {
     traceCounter += 1;
-    const owner = event.remote?.name || event.phase || "runtime";
-    const normalizedOwner = owner.replace(/[^a-z0-9]+/gi, "-").slice(0, 80);
-    return `mf-${normalizedOwner}-${Date.now().toString(36)}-${traceCounter.toString(
-      36
-    )}`;
+    return `mf-${(event.remote?.name || event.phase || "runtime").replace(/[^a-z0-9]+/gi, "-").slice(0, 80)}-${Date.now().toString(36)}-${traceCounter.toString(36)}`;
   }
   function getPhaseDurationKey(event) {
     const exposeKey = event.phase === "expose" || event.phase === "moduleFactory" ? event.expose || "" : "";
@@ -3219,68 +3021,47 @@ ${error.stack || ""}`
     ].join("|");
   }
   function getRemoteEntryKey(remote) {
-    if (!remote?.name) {
-      return void 0;
-    }
-    return [remote.name, remote.entryGlobalName || "", remote.entry || ""].join(
-      "|"
-    );
+    if (!remote?.name) return;
+    return [
+      remote.name,
+      remote.entryGlobalName || "",
+      remote.entry || ""
+    ].join("|");
   }
   function getHostRemotesSummary(options) {
     const remotes = (options?.remotes || []).map((remote) => clipText(remote.alias || remote.name || remote.entry, 120)).filter((remote) => Boolean(remote)).slice(0, 20);
     return remotes.length ? remotes.join(",") : void 0;
   }
   function resolveRemoteFromRequestId(id, options) {
-    if (!id) {
-      return void 0;
-    }
+    if (!id) return;
     const matchedRemote = (options?.remotes || []).filter((remote) => {
-      const keys = [remote.alias, remote.name].filter(
-        (key) => Boolean(key)
-      );
-      return keys.some((key) => id === key || id.startsWith(`${key}/`));
+      return [remote.alias, remote.name].filter((key) => Boolean(key)).some((key) => id === key || id.startsWith(`${key}/`));
     }).sort((left, right) => {
       const leftKey = left.alias || left.name || "";
-      const rightKey = right.alias || right.name || "";
-      return rightKey.length - leftKey.length;
+      return (right.alias || right.name || "").length - leftKey.length;
     })[0];
     return createRemoteInfo(matchedRemote);
   }
   function resolveAliasRequestId(requestId, remote) {
-    if (!requestId || !remote?.alias || remote.alias === remote.name) {
-      return void 0;
-    }
-    if (requestId === remote.name) {
-      return remote.alias;
-    }
-    if (requestId.startsWith(`${remote.name}/`)) {
-      return `${remote.alias}/${requestId.slice(remote.name.length + 1)}`;
-    }
-    return void 0;
+    if (!requestId || !remote?.alias || remote.alias === remote.name) return;
+    if (requestId === remote.name) return remote.alias;
+    if (requestId.startsWith(`${remote.name}/`)) return `${remote.alias}/${requestId.slice(remote.name.length + 1)}`;
   }
   function sanitizeModuleInfoPath(value) {
-    if (typeof value !== "string") {
-      return void 0;
-    }
+    if (typeof value !== "string") return;
     return clipText(value, 320);
   }
   function sanitizeModuleInfoGetPublicPath(value) {
-    if (typeof value !== "string") {
-      return void 0;
-    }
+    if (typeof value !== "string") return;
     return clipText(value, 500);
   }
   function sanitizeModuleInfoRemoteEntry(value) {
-    if (typeof value !== "string") {
-      return void 0;
-    }
+    if (typeof value !== "string") return;
     return clipText(value, 320);
   }
   function createClippedModuleInfoEntry(rawName, rawValue) {
     const name = clipText(rawName, 240);
-    if (!name) {
-      return void 0;
-    }
+    if (!name) return;
     const value = isRecord2(rawValue) ? rawValue : {};
     return {
       name,
@@ -3291,46 +3072,34 @@ ${error.stack || ""}`
     };
   }
   function normalizeModuleInfoLookupValue(value) {
-    if (typeof value !== "string" || !value) {
-      return void 0;
-    }
-    const sanitized = /^https?:\/\//i.test(value) || value.startsWith("/") ? sanitizeUrl(value) : sanitizeText(value, 240);
-    return sanitized?.toLowerCase();
+    if (typeof value !== "string" || !value) return;
+    return (/^https?:\/\//i.test(value) || value.startsWith("/") ? sanitizeUrl(value) : sanitizeText(value, 240))?.toLowerCase();
   }
   function getModuleInfoLookupValues(report) {
-    return new Set(
-      [
-        report.requestId?.split("/")[0],
-        report.remote?.name,
-        report.remote?.alias,
-        report.remote?.entry,
-        report.remote?.entryGlobalName,
-        report.sanitizedUrl,
-        report.errorContext?.["remoteName"],
-        report.errorContext?.["remoteAlias"],
-        report.errorContext?.["url"],
-        report.summary.error?.context?.["remoteName"],
-        report.summary.error?.context?.["remoteAlias"],
-        report.summary.error?.context?.["url"]
-      ].map(normalizeModuleInfoLookupValue).filter((value) => Boolean(value))
-    );
+    return new Set([
+      report.requestId?.split("/")[0],
+      report.remote?.name,
+      report.remote?.alias,
+      report.remote?.entry,
+      report.remote?.entryGlobalName,
+      report.sanitizedUrl,
+      report.errorContext?.["remoteName"],
+      report.errorContext?.["remoteAlias"],
+      report.errorContext?.["url"],
+      report.summary.error?.context?.["remoteName"],
+      report.summary.error?.context?.["remoteAlias"],
+      report.summary.error?.context?.["url"]
+    ].map(normalizeModuleInfoLookupValue).filter((value) => Boolean(value)));
   }
   function matchesModuleInfoLookup(entry, lookupValues) {
-    if (!lookupValues.size) {
-      return false;
-    }
-    const entryValues = [
+    if (!lookupValues.size) return false;
+    return [
       entry.name,
       entry.publicPath,
       entry.getPublicPath,
       entry.remoteEntry,
       entry.globalName
-    ].map(normalizeModuleInfoLookupValue).filter((value) => Boolean(value));
-    return entryValues.some(
-      (entryValue) => Array.from(lookupValues).some(
-        (lookupValue) => entryValue === lookupValue || entryValue.startsWith(`${lookupValue}:`) || entryValue.includes(`:${lookupValue}`) || lookupValue.startsWith("http") && entryValue.includes(lookupValue)
-      )
-    );
+    ].map(normalizeModuleInfoLookupValue).filter((value) => Boolean(value)).some((entryValue) => Array.from(lookupValues).some((lookupValue) => entryValue === lookupValue || entryValue.startsWith(`${lookupValue}:`) || entryValue.includes(`:${lookupValue}`) || lookupValue.startsWith("http") && entryValue.includes(lookupValue)));
   }
   function getModuleInfoCaptureReason(report) {
     const text = [
@@ -3348,32 +3117,19 @@ ${error.stack || ""}`
         event.lifecycle
       ])
     ].join("\n");
-    if (/RUNTIME-007/.test(text)) {
-      return "remote-snapshot";
-    }
-    if (/RUNTIME-011/.test(text)) {
-      return "remote-entry-missing-in-snapshot";
-    }
-    if (/moduleInfo|module info/i.test(text)) {
-      return "module-info";
-    }
-    if (/remote snapshot|global snapshot|snapshot/i.test(text)) {
-      return "remote-snapshot";
-    }
-    return void 0;
+    if (/RUNTIME-007/.test(text)) return "remote-snapshot";
+    if (/RUNTIME-011/.test(text)) return "remote-entry-missing-in-snapshot";
+    if (/moduleInfo|module info/i.test(text)) return "module-info";
+    if (/remote snapshot|global snapshot|snapshot/i.test(text)) return "remote-snapshot";
   }
   function createModuleInfoSummary(report) {
     const reason = getModuleInfoCaptureReason(report);
-    if (!reason) {
-      return void 0;
-    }
+    if (!reason) return;
     const moduleInfo = getFederationGlobal()?.moduleInfo;
     const rawEntries = isRecord2(moduleInfo) ? Object.entries(moduleInfo) : [];
     const clippedEntries = rawEntries.map(([name, value]) => createClippedModuleInfoEntry(name, value)).filter((entry) => Boolean(entry));
     const lookupValues = getModuleInfoLookupValues(report);
-    const matchedEntries = clippedEntries.filter(
-      (entry) => matchesModuleInfoLookup(entry, lookupValues)
-    );
+    const matchedEntries = clippedEntries.filter((entry) => matchesModuleInfoLookup(entry, lookupValues));
     return {
       reason,
       clipped: true,
@@ -3384,26 +3140,21 @@ ${error.stack || ""}`
     };
   }
   function getResourceErrorType(event) {
+    if (event.resource?.errorType) return event.resource.errorType;
     const text = `${event.errorMessage || ""}
 ${event.message || ""}`;
-    if (!event.errorCode && !text) {
-      return void 0;
-    }
-    if (/ScriptExecutionError/i.test(text)) {
-      return "script-execution";
-    }
-    if (/timeout|timed out/i.test(text)) {
-      return "timeout";
-    }
-    if (/ScriptNetworkError|NetworkError|Failed to fetch|Request failed|ERR_|404|CORS/i.test(
-      text
-    )) {
-      return "network";
-    }
+    if (!event.errorCode && !text) return;
+    if (/ScriptExecutionError/i.test(text)) return "script-execution";
+    if (/timeout|timed out/i.test(text)) return "timeout";
+    if (/ScriptNetworkError|NetworkError|Failed to fetch|Request failed|ERR_|404|CORS/i.test(text)) return "network";
     return event.errorCode === "RUNTIME-008" ? "unknown" : void 0;
   }
   function getOwnerHint(event) {
     const resourceErrorType = getResourceErrorType(event);
+    if (event.resource?.errorType) {
+      if (resourceErrorType === "network" || resourceErrorType === "timeout" || resourceErrorType === "http") return "network";
+      if (resourceErrorType === "execution" || resourceErrorType === "content") return "remote";
+    }
     switch (event.errorCode) {
       case "RUNTIME-001":
       case "RUNTIME-002":
@@ -3423,29 +3174,21 @@ ${event.message || ""}`;
       case "RUNTIME-008":
         return resourceErrorType === "network" || resourceErrorType === "timeout" ? "network" : "remote";
       default:
-        if (event.shared) {
-          return "shared";
-        }
-        if (event.remote) {
-          return "remote";
-        }
-        if (event.phase === "manifest" || event.phase === "matchRemote") {
-          return "host";
-        }
+        if (event.shared) return "shared";
+        if (event.remote) return "remote";
+        if (event.phase === "manifest" || event.phase === "matchRemote") return "host";
         return event.errorCode ? "runtime" : void 0;
     }
   }
   function getRetryable(event) {
     const resourceErrorType = getResourceErrorType(event);
-    if (event.errorCode === "RUNTIME-008") {
-      return resourceErrorType === "network" || resourceErrorType === "timeout";
-    }
+    if (resourceErrorType === "network" || resourceErrorType === "timeout") return true;
+    if (resourceErrorType === "execution" || resourceErrorType === "content") return false;
+    if (event.errorCode === "RUNTIME-008") return resourceErrorType === "network" || resourceErrorType === "timeout";
     if (event.errorCode === "RUNTIME-003") {
       const text = `${event.errorMessage || ""}
 ${event.message || ""}`;
-      return /NetworkError|Failed to fetch|Request failed|timeout|timed out/i.test(
-        text
-      );
+      return /NetworkError|Failed to fetch|Request failed|timeout|timed out/i.test(text);
     }
     if (event.errorCode && [
       "RUNTIME-001",
@@ -3458,58 +3201,25 @@ ${event.message || ""}`;
       "RUNTIME-013",
       "RUNTIME-014",
       "RUNTIME-015"
-    ].includes(event.errorCode)) {
-      return false;
-    }
-    return void 0;
+    ].includes(event.errorCode)) return false;
   }
   function createErrorContext(event, inputContext) {
-    const context = {
-      ...inputContext
-    };
-    if (event.lifecycle) {
-      context["lifecycle"] = event.lifecycle;
-    }
-    if (event.requestId) {
-      context["requestId"] = event.requestId;
-    }
-    if (event.requestAlias) {
-      context["requestAlias"] = event.requestAlias;
-    }
-    if (event.remote?.name) {
-      context["remoteName"] = event.remote.name;
-    }
-    if (event.remote?.alias) {
-      context["remoteAlias"] = event.remote.alias;
-    }
-    if (event.remote?.type) {
-      context["remoteType"] = event.remote.type;
-    }
-    if (event.remote?.entryGlobalName) {
-      context["entryGlobalName"] = event.remote.entryGlobalName;
-    }
-    if (event.sanitizedUrl) {
-      context["url"] = event.sanitizedUrl;
-    }
-    if (event.expose) {
-      context["expose"] = event.expose;
-    }
-    if (event.shared?.name) {
-      context["shareName"] = event.shared.name;
-    }
-    if (event.shared?.requiredVersion) {
-      context["requiredVersion"] = event.shared.requiredVersion;
-    }
-    if (event.shared?.selectedVersion) {
-      context["selectedVersion"] = event.shared.selectedVersion;
-    }
-    if (event.shared?.provider) {
-      context["provider"] = event.shared.provider;
-    }
+    const context = { ...inputContext };
+    if (event.lifecycle) context["lifecycle"] = event.lifecycle;
+    if (event.requestId) context["requestId"] = event.requestId;
+    if (event.requestAlias) context["requestAlias"] = event.requestAlias;
+    if (event.remote?.name) context["remoteName"] = event.remote.name;
+    if (event.remote?.alias) context["remoteAlias"] = event.remote.alias;
+    if (event.remote?.type) context["remoteType"] = event.remote.type;
+    if (event.remote?.entryGlobalName) context["entryGlobalName"] = event.remote.entryGlobalName;
+    if (event.sanitizedUrl) context["url"] = event.sanitizedUrl;
+    if (event.expose) context["expose"] = event.expose;
+    if (event.shared?.name) context["shareName"] = event.shared.name;
+    if (event.shared?.requiredVersion) context["requiredVersion"] = event.shared.requiredVersion;
+    if (event.shared?.selectedVersion) context["selectedVersion"] = event.shared.selectedVersion;
+    if (event.shared?.provider) context["provider"] = event.shared.provider;
     const resourceErrorType = getResourceErrorType(event);
-    if (resourceErrorType) {
-      context["resourceErrorType"] = resourceErrorType;
-    }
+    if (resourceErrorType) context["resourceErrorType"] = resourceErrorType;
     return clipObservabilityMetadata(context);
   }
   function createObservability(rawOptions = {}, adapterOptions = {}) {
@@ -3534,22 +3244,22 @@ ${event.message || ""}`;
     const shouldForceDevelopmentChannels = adapterOptions.forceDevelopmentChannels === true;
     const returnHookArgs = (args) => shouldReturnHookArgs ? args : void 0;
     const level = options.level || "summary";
-    const configuredMaxEvents = normalizeMaxEvents(
-      options.maxEvents,
-      DEFAULT_MAX_EVENTS
-    );
+    const configuredMaxEvents = normalizeMaxEvents(options.maxEvents, DEFAULT_MAX_EVENTS);
     const events = [];
     const reports = /* @__PURE__ */ new Map();
     const latestTraceByInstance = /* @__PURE__ */ new Map();
     const traceByRequest = /* @__PURE__ */ new Map();
     const traceByRemote = /* @__PURE__ */ new Map();
+    const traceByBridgeOperation = /* @__PURE__ */ new Map();
     const instanceRefs = /* @__PURE__ */ new WeakMap();
     const instancesByRef = /* @__PURE__ */ new Map();
+    const bridgeStatesByInstance = /* @__PURE__ */ new Map();
     const lateBoundInstanceRefs = /* @__PURE__ */ new Set();
     const boundInstanceRefs = /* @__PURE__ */ new Set();
     const attachedInstanceApis = /* @__PURE__ */ new WeakMap();
     const phaseStartTimes = /* @__PURE__ */ new Map();
     const reportedSharedConflictKeys = /* @__PURE__ */ new Set();
+    const reportedBridgeProviderKeys = /* @__PURE__ */ new Set();
     const collectorOptions = normalizeCollectorOptions(options.collector);
     const devtoolsOptions = normalizeDevtoolsOptions(options.devtools);
     const seenManifestUrls = /* @__PURE__ */ new Set();
@@ -3572,75 +3282,56 @@ ${event.message || ""}`;
     };
     const registerRuntimeInstance = (origin, lateBound) => {
       const existingRef = instanceRefs.get(origin);
-      if (existingRef) {
-        return existingRef;
-      }
+      if (existingRef) return existingRef;
       instanceRefCounter += 1;
       const instanceRef = `mf-${instanceRefCounter}`;
       instanceRefs.set(origin, instanceRef);
       instancesByRef.set(instanceRef, origin);
-      if (lateBound ?? getActiveRuntimeInstances().some((instance) => instance === origin)) {
-        lateBoundInstanceRefs.add(instanceRef);
-      }
+      if (lateBound ?? getActiveRuntimeInstances().some((instance) => instance === origin)) lateBoundInstanceRefs.add(instanceRef);
       return instanceRef;
     };
     const getInstanceRef = (origin) => origin ? registerRuntimeInstance(origin) : void 0;
     const getTraceMapKey = (instanceRef, value) => `${instanceRef || "legacy"}\0${value}`;
     const isEnabled = () => {
-      if (options.enabled === false) {
-        return false;
-      }
+      if (options.enabled === false) return false;
       runtimeObservabilityEnabled = true;
       return true;
     };
     const resolveTraceId = (event) => {
       const sanitizedRequestId = sanitizeRequestId(event.requestId);
       const instanceRef = sanitizeText(event.instanceRef, 80);
-      if (event.traceId && reports.has(event.traceId)) {
-        return event.traceId;
-      }
+      if (event.traceId && reports.has(event.traceId)) return event.traceId;
       if (event.status === "start" && event.phase === "loadRemote") {
         const traceId = event.traceId || createTraceId(event);
-        if (sanitizedRequestId) {
-          traceByRequest.set(
-            getTraceMapKey(instanceRef, sanitizedRequestId),
-            traceId
-          );
-        }
-        if (event.remote?.name) {
-          traceByRemote.set(
-            getTraceMapKey(instanceRef, event.remote.name),
-            traceId
-          );
-        }
+        if (sanitizedRequestId) traceByRequest.set(getTraceMapKey(instanceRef, sanitizedRequestId), traceId);
+        if (event.remote?.name) traceByRemote.set(getTraceMapKey(instanceRef, event.remote.name), traceId);
         return traceId;
       }
       if (sanitizedRequestId) {
-        const traceId = traceByRequest.get(
-          getTraceMapKey(instanceRef, sanitizedRequestId)
-        );
-        if (traceId) {
-          return traceId;
-        }
+        const traceId = traceByRequest.get(getTraceMapKey(instanceRef, sanitizedRequestId));
+        if (traceId) return traceId;
+      }
+      if (event.bridge?.operationId) {
+        const traceId = traceByBridgeOperation.get(getTraceMapKey(instanceRef, event.bridge.operationId));
+        if (traceId) return traceId;
       }
       if (event.remote?.name) {
-        const traceId = traceByRemote.get(
-          getTraceMapKey(instanceRef, event.remote.name)
-        );
-        if (traceId) {
-          return traceId;
-        }
+        const traceId = traceByRemote.get(getTraceMapKey(instanceRef, event.remote.name));
+        if (traceId) return traceId;
       }
       return event.traceId || createTraceId(event);
     };
     const normalizeEvent2 = (event, traceId, origin) => {
       const errorInfo = getErrorInfo(event.error, options.stackTrace);
       const sanitizedRemote = sanitizeRemote(event.remote);
+      const sanitizedResource = sanitizeResource(event.resource);
       const sanitizedShared = sanitizeShared(event.shared);
       const requestAlias = sanitizeRequestId(event.requestAlias) || resolveAliasRequestId(event.requestId, sanitizedRemote);
       const hostName = sanitizeText(event.hostName, 120) || sanitizeText(origin?.options?.name, 120);
       const runtimeVersion = sanitizeText(origin?.version, 80) || appliedRuntimeVersion;
-      const message = getRawText(event.message) || errorInfo.errorMessage;
+      const message = sanitizedResource ? sanitizeText(event.message) || sanitizeText(errorInfo.errorMessage) : getRawText(event.message) || errorInfo.errorMessage;
+      const normalizedErrorMessage = sanitizedResource ? sanitizeText(errorInfo.errorMessage) : errorInfo.errorMessage;
+      const normalizedErrorStack = sanitizedResource ? sanitizeText(errorInfo.errorStack, 4e3) : errorInfo.errorStack;
       const normalizedEvent = {
         traceId,
         instanceRef: event.instanceRef || getInstanceRef(origin),
@@ -3652,14 +3343,15 @@ ${event.message || ""}`;
         hostName,
         runtimeVersion,
         remote: sanitizedRemote,
+        resource: sanitizedResource,
         shared: sanitizedShared,
         expose: sanitizeText(event.expose, 240),
-        sanitizedUrl: clipText(event.url || event.remote?.entry, 320),
+        sanitizedUrl: sanitizedResource?.url || clipText(event.url || event.remote?.entry, 320),
         message,
         errorCode: errorInfo.errorCode,
         errorName: errorInfo.errorName,
-        errorMessage: errorInfo.errorMessage,
-        errorStack: errorInfo.errorStack,
+        errorMessage: normalizedErrorMessage,
+        errorStack: normalizedErrorStack,
         duration: typeof event.duration === "number" && Number.isFinite(event.duration) ? Math.max(0, event.duration) : void 0,
         lifecycle: sanitizeText(event.lifecycle, 120),
         eventName: sanitizeText(event.eventName, 160),
@@ -3668,15 +3360,13 @@ ${event.message || ""}`;
         cached: event.cached === true || void 0,
         componentName: sanitizeText(event.componentName, 160),
         metadata: clipObservabilityMetadata(event.metadata),
-        loadedBefore: copyLoadedBeforeInfo(event.loadedBefore)
+        loadedBefore: copyLoadedBeforeInfo(event.loadedBefore),
+        bridge: copyBridgeInfo(event.bridge)
       };
       if (normalizedEvent.status === "error" || event.error) {
         normalizedEvent.ownerHint = getOwnerHint(normalizedEvent);
         normalizedEvent.retryable = getRetryable(normalizedEvent);
-        normalizedEvent.errorContext = createErrorContext(
-          normalizedEvent,
-          event.errorContext
-        );
+        normalizedEvent.errorContext = createErrorContext(normalizedEvent, event.errorContext);
       }
       return normalizedEvent;
     };
@@ -3685,73 +3375,45 @@ ${event.message || ""}`;
       version: sanitizeText(origin?.version, 80) || appliedRuntimeVersion || origin?.version
     });
     const shouldSkipRuntimeHook = (origin) => shouldGuardRuntimeHooksByRuntimeVersion && !supportsRuntimeHookObservability(origin);
+    const supportsResourceLifecycle = (origin) => Boolean(origin?.loaderHook?.lifecycle?.beforeLoadResource && origin.loaderHook.lifecycle.afterLoadResource);
     const applyPhaseDuration = (event) => {
       const key = getPhaseDurationKey(event);
       if (event.status === "start") {
         phaseStartTimes.set(key, event.timestamp);
         return;
       }
-      if (event.duration !== void 0) {
-        return;
-      }
+      if (event.duration !== void 0) return;
       const startedAt = phaseStartTimes.get(key);
-      if (startedAt === void 0) {
-        return;
-      }
+      if (startedAt === void 0) return;
       event.duration = Math.max(0, event.timestamp - startedAt);
       phaseStartTimes.delete(key);
     };
     const updateTraceMaps = (event) => {
-      if (event.requestId) {
-        traceByRequest.set(
-          getTraceMapKey(event.instanceRef, event.requestId),
-          event.traceId
-        );
-      }
-      if (event.remote?.name) {
-        traceByRemote.set(
-          getTraceMapKey(event.instanceRef, event.remote.name),
-          event.traceId
-        );
-      }
+      if (event.requestId) traceByRequest.set(getTraceMapKey(event.instanceRef, event.requestId), event.traceId);
+      if (event.remote?.name) traceByRemote.set(getTraceMapKey(event.instanceRef, event.remote.name), event.traceId);
+      if (event.bridge?.operationId) traceByBridgeOperation.set(getTraceMapKey(event.instanceRef, event.bridge.operationId), event.traceId);
     };
     const trimEvents = (report) => {
-      while (events.length > effectiveMaxEvents) {
-        events.shift();
-      }
-      while (report.events.length > effectiveMaxEvents) {
-        report.events.shift();
-      }
+      while (events.length > effectiveMaxEvents) events.shift();
+      while (report.events.length > effectiveMaxEvents) report.events.shift();
     };
     const getEventOutcome = (event) => {
-      if (event.status === "success") {
-        return "success";
-      }
-      if (event.status === "error") {
-        return "error";
-      }
+      if (event.status === "success") return "success";
+      if (event.status === "error") return "error";
       if (event.status === "complete") {
-        if (event.recovered) {
-          return "recovered";
-        }
-        if (event.errorName || event.errorMessage) {
-          return "error";
-        }
+        if (event.recovered) return "recovered";
+        if (event.errorName || event.errorMessage) return "error";
       }
-      return void 0;
     };
     const isLoadRemoteCompleteEvent = (event) => event.phase === "loadRemote" && event.status === "complete";
     const isRuntimeLoadedEvent = (event) => event.phase === "loadRemote" && (event.status === "success" || event.status === "complete" && event.recovered);
     const isSharedResolvedEvent = (event) => event.phase === "shared" && (event.status === "success" || event.status === "complete" && event.recovered);
+    const isSharedRegisteredEvent = (event) => event.phase === "shared-registration" && event.status === "success";
     const isPreloadedEvent = (event) => event.phase === "preload" && event.status === "success";
     const isComponentLoadedEvent = (event) => event.status === "success" && (event.eventName === COMPONENT_BUSINESS_LOADED_EVENT || event.phase === "component" && event.message === COMPONENT_BUSINESS_LOADED_EVENT);
     const shouldReplaceFailedPhase = (report, event) => {
-      if (isLoadRemoteCompleteEvent(event) && report.failedPhase) {
-        return false;
-      }
-      if (!report.failedPhase) {
-        return true;
-      }
+      if (isLoadRemoteCompleteEvent(event) && report.failedPhase) return false;
+      if (!report.failedPhase) return true;
       return report.failedPhase === "loadRemote" && event.phase !== "loadRemote";
     };
     const createEmptyPhaseCollection = () => ({
@@ -3766,15 +3428,9 @@ ${event.message || ""}`;
       const collection = createEmptyPhaseCollection();
       eventsForReport.forEach((event) => {
         const phase = event.phase;
-        const phaseSummary = collection.phases[phase] || {
-          status: event.status
-        };
-        if (event.status !== "start") {
-          phaseSummary.status = event.status;
-        }
-        if (event.duration !== void 0) {
-          phaseSummary.duration = event.duration;
-        }
+        const phaseSummary = collection.phases[phase] || { status: event.status };
+        if (event.status !== "start") phaseSummary.status = event.status;
+        if (event.duration !== void 0) phaseSummary.duration = event.duration;
         if (event.cached) {
           phaseSummary.cached = true;
           collection.flags.cached = true;
@@ -3783,33 +3439,22 @@ ${event.message || ""}`;
           phaseSummary.recovered = true;
           collection.flags.recovered = true;
         }
-        if (event.lifecycle) {
-          phaseSummary.lifecycle = event.lifecycle;
-        }
+        if (event.lifecycle) phaseSummary.lifecycle = event.lifecycle;
         collection.phases[phase] = phaseSummary;
-        if (event.phase === "loadRemote" && event.status === "complete" && event.recovered) {
-          collection.flags.fallback = true;
-        }
-        if (event.shared?.selectedVersion || event.shared?.provider) {
-          collection.shared = {
-            name: event.shared.name,
-            provider: event.shared.provider,
-            selectedVersion: event.shared.selectedVersion,
-            shareScope: event.shared.shareScope ? [...event.shared.shareScope] : void 0
-          };
-        }
+        if (event.phase === "loadRemote" && event.status === "complete" && event.recovered) collection.flags.fallback = true;
+        if (event.shared?.fallback) collection.flags.fallback = true;
+        if (event.shared?.selectedVersion || event.shared?.provider) collection.shared = {
+          name: event.shared.name,
+          provider: event.shared.provider,
+          selectedVersion: event.shared.selectedVersion,
+          shareScope: event.shared.shareScope ? [...event.shared.shareScope] : void 0
+        };
       });
       return collection;
     };
     const createErrorSummary = (eventsForReport, failedPhase) => {
-      const errorEvent = eventsForReport.find(
-        (event) => event.status === "error" && event.phase === failedPhase
-      ) || eventsForReport.find((event) => event.status === "error") || eventsForReport.find(
-        (event) => event.status === "complete" && event.errorMessage
-      );
-      if (!errorEvent) {
-        return void 0;
-      }
+      const errorEvent = eventsForReport.find((event) => event.status === "error" && event.phase === failedPhase) || eventsForReport.find((event) => event.status === "error") || eventsForReport.find((event) => event.status === "complete" && event.errorMessage);
+      if (!errorEvent) return;
       return {
         errorCode: errorEvent.errorCode,
         errorName: errorEvent.errorName,
@@ -3825,24 +3470,19 @@ ${event.message || ""}`;
       const loadCompleted = report.events.some(isLoadRemoteCompleteEvent);
       const runtimeLoaded = report.events.some(isRuntimeLoadedEvent);
       const sharedResolved = report.events.some(isSharedResolvedEvent);
+      const sharedRegistered = report.events.some(isSharedRegisteredEvent);
       const preloaded = report.events.some(isPreloadedEvent);
       const recovered = report.events.some((item) => item.recovered);
       const componentLoaded = report.events.some(isComponentLoadedEvent);
       const lastEvent = report.events[report.events.length - 1];
       let outcome = "pending";
-      if (recovered) {
-        outcome = "recovered";
-      } else if (componentLoaded) {
-        outcome = "component-loaded";
-      } else if (report.status === "error") {
-        outcome = "failed";
-      } else if (runtimeLoaded) {
-        outcome = "runtime-loaded";
-      } else if (sharedResolved) {
-        outcome = "shared-resolved";
-      } else if (preloaded) {
-        outcome = "preloaded";
-      }
+      if (recovered) outcome = "recovered";
+      else if (componentLoaded) outcome = "component-loaded";
+      else if (report.status === "error") outcome = "failed";
+      else if (runtimeLoaded) outcome = "runtime-loaded";
+      else if (sharedResolved) outcome = "shared-resolved";
+      else if (sharedRegistered) outcome = "shared-registered";
+      else if (preloaded) outcome = "preloaded";
       const phaseCollection = createPhaseCollection(report.events);
       return {
         eventCount: report.events.length,
@@ -3850,6 +3490,7 @@ ${event.message || ""}`;
         loadCompleted,
         runtimeLoaded,
         sharedResolved,
+        sharedRegistered,
         preloaded,
         componentLoaded,
         outcome,
@@ -3862,9 +3503,7 @@ ${event.message || ""}`;
     };
     const refreshModuleInfoSummary = (report) => {
       const moduleInfo = createModuleInfoSummary(report);
-      if (moduleInfo) {
-        report.moduleInfo = moduleInfo;
-      }
+      if (moduleInfo) report.moduleInfo = moduleInfo;
     };
     const getReportContext = (report) => report.summary.error?.context || report.errorContext;
     const getContextText = (context, key) => {
@@ -3879,7 +3518,7 @@ ${event.message || ""}`;
       lifecycle: report.summary.error?.lifecycle
     });
     const getDiagnosisDocLink = (report) => {
-      const text = [
+      const matched = [
         report.errorMessage,
         report.errorStack,
         ...report.events.flatMap((event) => [
@@ -3887,34 +3526,21 @@ ${event.message || ""}`;
           event.errorStack,
           event.message
         ])
-      ].filter((item) => Boolean(item)).join("\n");
-      const matched = text.match(DIAGNOSTIC_DOC_LINK_PATTERN)?.[0];
+      ].filter((item) => Boolean(item)).join("\n").match(DIAGNOSTIC_DOC_LINK_PATTERN)?.[0];
       const docLink = sanitizeText(matched, 240);
-      if (docLink) {
-        return docLink;
-      }
+      if (docLink) return docLink;
       return report.errorCode?.startsWith("RUNTIME-") ? RUNTIME_DOC_LINK : void 0;
     };
     const getDiagnosisTitle = (report) => {
       if (report.status !== "error") {
         if (report.shared) {
-          if (report.shared.reason === SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON) {
-            return "Singleton shared dependency version conflict detected";
-          }
-          if (report.summary.sharedResolved) {
-            return "Shared dependency resolved successfully";
-          }
+          if (report.shared.reason === SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON) return "Singleton shared dependency version conflict detected";
+          if (report.summary.sharedResolved) return "Shared dependency resolved successfully";
           return "Shared dependency loading is pending";
         }
-        if (report.summary.componentLoaded) {
-          return "Business component loaded";
-        }
-        if (report.summary.runtimeLoaded) {
-          return "Remote loaded successfully";
-        }
-        if (report.summary.preloaded) {
-          return "Remote preloaded successfully";
-        }
+        if (report.summary.componentLoaded) return "Business component loaded";
+        if (report.summary.runtimeLoaded) return "Remote loaded successfully";
+        if (report.summary.preloaded) return "Remote preloaded successfully";
         return "Remote loading is pending";
       }
       switch (report.errorCode) {
@@ -3937,31 +3563,17 @@ ${event.message || ""}`;
           return "Shared dependency could not be resolved";
         case "RUNTIME-008": {
           const resourceErrorType = getDiagnosisResourceErrorType(report);
-          if (resourceErrorType === "network") {
-            return "Remote entry failed because of a network error";
-          }
-          if (resourceErrorType === "timeout") {
-            return "Remote entry request timed out";
-          }
-          if (resourceErrorType === "script-execution") {
-            return "Remote entry loaded but failed during execution";
-          }
+          if (resourceErrorType === "network") return "Remote entry failed because of a network error";
+          if (resourceErrorType === "timeout") return "Remote entry request timed out";
+          if (resourceErrorType === "script-execution") return "Remote entry loaded but failed during execution";
           return "Remote entry resource could not be loaded";
         }
         default:
-          if (report.failedPhase === "shared" || report.shared) {
-            return "Shared dependency could not be resolved";
-          }
+          if (report.failedPhase === "shared" || report.shared) return "Shared dependency could not be resolved";
           return report.failedPhase ? `Module Federation failed at ${report.failedPhase}` : "Module Federation loading failed";
       }
     };
-    const getCompletedPhases = (report) => Array.from(
-      new Set(
-        report.events.filter(
-          (event) => event.status === "success" || event.status === "complete"
-        ).map((event) => event.phase)
-      )
-    );
+    const getCompletedPhases = (report) => Array.from(new Set(report.events.filter((event) => event.status === "success" || event.status === "complete").map((event) => event.phase)));
     const getPendingPhases = (report) => {
       const started = /* @__PURE__ */ new Set();
       const ended = /* @__PURE__ */ new Set();
@@ -3978,27 +3590,19 @@ ${event.message || ""}`;
       const context = getReportContext(report);
       const facts = {};
       const addFact = (key, value) => {
-        if (value === void 0 || value === null || value === "") {
-          return;
-        }
+        if (value === void 0 || value === null || value === "") return;
         facts[key] = Array.isArray(value) ? value.join(",") : value;
       };
       addFact("traceId", report.traceId);
       addFact("status", report.status);
       addFact("outcome", report.summary.outcome);
       addFact("errorCode", report.errorCode || report.summary.error?.errorCode);
-      addFact(
-        "failedPhase",
-        report.failedPhase || report.summary.error?.failedPhase
-      );
+      addFact("failedPhase", report.failedPhase || report.summary.error?.failedPhase);
       addFact("lifecycle", report.summary.error?.lifecycle);
       addFact("ownerHint", ownerHint);
       addFact("retryable", report.retryable ?? report.summary.error?.retryable);
       addFact("requestId", report.requestId);
-      addFact(
-        "requestAlias",
-        report.requestAlias || report.summary.error?.context?.["requestAlias"]
-      );
+      addFact("requestAlias", report.requestAlias || report.summary.error?.context?.["requestAlias"]);
       addFact("hostName", report.hostName);
       addFact("remoteName", report.remote?.name);
       addFact("remoteAlias", report.remote?.alias);
@@ -4022,17 +3626,11 @@ ${event.message || ""}`;
       addFact("strictVersion", report.shared?.strictVersion);
       addFact("eager", report.shared?.eager);
       addFact("sharedReason", report.shared?.reason);
-      addFact(
-        "componentName",
-        report.events.find(isComponentLoadedEvent)?.componentName
-      );
+      addFact("componentName", report.events.find(isComponentLoadedEvent)?.componentName);
       addFact("moduleInfoReason", report.moduleInfo?.reason);
       addFact("moduleInfoTotalCount", report.moduleInfo?.totalCount);
       addFact("moduleInfoMatchedCount", report.moduleInfo?.matchedCount);
-      addFact(
-        "moduleInfoNames",
-        report.moduleInfo?.entries.length ? report.moduleInfo.entries.map((entry) => entry.name) : report.moduleInfo?.availableNames
-      );
+      addFact("moduleInfoNames", report.moduleInfo?.entries.length ? report.moduleInfo.entries.map((entry) => entry.name) : report.moduleInfo?.availableNames);
       addFact("cached", report.summary.flags.cached);
       addFact("fallback", report.summary.flags.fallback);
       addFact("recovered", report.summary.recovered);
@@ -4043,25 +3641,11 @@ ${event.message || ""}`;
     };
     const createDiagnosisWarnings = (report) => {
       const warnings = [];
-      if (report.status === "error" && !report.errorCode) {
-        warnings.push("No known Module Federation error code was captured");
-      }
-      if (report.summary.flags.fallback) {
-        warnings.push("Remote loading completed through fallback recovery");
-      }
-      if (report.summary.runtimeLoaded && !report.summary.componentLoaded) {
-        warnings.push("Business component readiness signal was not recorded");
-      }
-      if (report.moduleInfo && report.moduleInfo.matchedCount === 0) {
-        warnings.push(
-          "No matching clipped moduleInfo entry was found for the failed remote"
-        );
-      }
-      if (report.shared?.reason === SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON) {
-        warnings.push(
-          "Singleton shared dependency has multiple versions in the same share scope"
-        );
-      }
+      if (report.status === "error" && !report.errorCode) warnings.push("No known Module Federation error code was captured");
+      if (report.summary.flags.fallback) warnings.push("Remote loading completed through fallback recovery");
+      if (report.summary.runtimeLoaded && !report.summary.componentLoaded) warnings.push("Business component readiness signal was not recorded");
+      if (report.moduleInfo && report.moduleInfo.matchedCount === 0) warnings.push("No matching clipped moduleInfo entry was found for the failed remote");
+      if (report.shared?.reason === SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON) warnings.push("Singleton shared dependency has multiple versions in the same share scope");
       return warnings;
     };
     const createDiagnosisActions = (report, ownerHint) => {
@@ -4075,185 +3659,61 @@ ${event.message || ""}`;
         });
       };
       if (report.shared?.reason === SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON) {
-        pushAction(
-          "check-shared-version",
-          "Align singleton shared dependency versions in the same share scope",
-          "shared"
-        );
-        pushAction(
-          "check-shared-provider",
-          "Check which host or remote registered each shared version",
-          "shared"
-        );
+        pushAction("check-shared-version", "Align singleton shared dependency versions in the same share scope", "shared");
+        pushAction("check-shared-provider", "Check which host or remote registered each shared version", "shared");
         return actions;
       }
-      if (report.status !== "error" && !report.summary.error) {
-        return actions;
-      }
+      if (report.status !== "error" && !report.summary.error) return actions;
       switch (report.errorCode) {
         case "RUNTIME-001":
-          pushAction(
-            "check-remote-global",
-            "Check the remote global name against the remoteEntry build output",
-            "remote"
-          );
-          pushAction(
-            "check-remote-entry",
-            "Check that remoteEntry registers the expected container",
-            "remote"
-          );
+          pushAction("check-remote-global", "Check the remote global name against the remoteEntry build output", "remote");
+          pushAction("check-remote-entry", "Check that remoteEntry registers the expected container", "remote");
           break;
         case "RUNTIME-003":
-          pushAction(
-            "check-manifest-url",
-            "Check the manifest URL and manifest JSON response",
-            "host"
-          );
-          pushAction(
-            "check-network",
-            "Check network availability, CORS, and timeout for the manifest",
-            "network"
-          );
+          pushAction("check-manifest-url", "Check the manifest URL and manifest JSON response", "host");
+          pushAction("check-network", "Check network availability, CORS, and timeout for the manifest", "network");
           break;
         case "RUNTIME-013":
-          pushAction(
-            "check-manifest-url",
-            "Check that the manifest response is valid Module Federation JSON",
-            "remote"
-          );
+          pushAction("check-manifest-url", "Check that the manifest response is valid Module Federation JSON", "remote");
           break;
         case "RUNTIME-004":
-          pushAction(
-            "check-host-remotes",
-            "Check that the requested remote exists in host remotes",
-            "host"
-          );
+          pushAction("check-host-remotes", "Check that the requested remote exists in host remotes", "host");
           break;
         case "RUNTIME-007":
-          pushAction(
-            "check-module-info",
-            "Check deployment-provided __FEDERATION__.moduleInfo for the requested remote",
-            "host"
-          );
-          pushAction(
-            "check-host-remotes",
-            "Check that the runtime remote name or alias matches moduleInfo",
-            "host"
-          );
+          pushAction("check-module-info", "Check deployment-provided __FEDERATION__.moduleInfo for the requested remote", "host");
+          pushAction("check-host-remotes", "Check that the runtime remote name or alias matches moduleInfo", "host");
           break;
         case "RUNTIME-014":
-          pushAction(
-            "check-expose",
-            "Check that the requested expose exists in the remote build output",
-            "remote"
-          );
+          pushAction("check-expose", "Check that the requested expose exists in the remote build output", "remote");
           break;
         case "RUNTIME-015":
-          pushAction(
-            "check-remote-entry",
-            "Check the error thrown during remoteEntry init",
-            "remote"
-          );
-          pushAction(
-            "check-shared-provider",
-            "Check share scope initialization data passed to the remote",
-            "shared"
-          );
+          pushAction("check-remote-entry", "Check the error thrown during remoteEntry init", "remote");
+          pushAction("check-shared-provider", "Check share scope initialization data passed to the remote", "shared");
           break;
         case "RUNTIME-005":
         case "RUNTIME-006":
-          pushAction(
-            "check-shared-provider",
-            "Check that a compatible shared provider is available",
-            "shared"
-          );
-          pushAction(
-            "check-shared-version",
-            "Compare requested shared version with available versions",
-            "shared"
-          );
-          if (report.summary.error?.lifecycle === "loadShareSync" || report.shared?.reason === "sync-async-boundary" || report.shared?.eager === false) {
-            pushAction(
-              "check-eager-config",
-              "Check eager configuration or add an async boundary before sync shared consumption",
-              "shared"
-            );
-          }
+          pushAction("check-shared-provider", "Check that a compatible shared provider is available", "shared");
+          pushAction("check-shared-version", "Compare requested shared version with available versions", "shared");
+          if (report.summary.error?.lifecycle === "loadShareSync" || report.shared?.reason === "sync-async-boundary" || report.shared?.eager === false) pushAction("check-eager-config", "Check eager configuration or add an async boundary before sync shared consumption", "shared");
           break;
         case "RUNTIME-008": {
           const resourceErrorType = getDiagnosisResourceErrorType(report);
-          if (resourceErrorType === "network" || resourceErrorType === "timeout") {
-            pushAction(
-              "check-network",
-              "Check remoteEntry URL, CORS, status code, and timeout",
-              "network"
-            );
-          }
-          pushAction(
-            "check-remote-entry",
-            resourceErrorType === "script-execution" ? "Check remoteEntry execution errors in the remote build output" : "Check that remoteEntry is reachable and serves JavaScript",
-            resourceErrorType === "network" || resourceErrorType === "timeout" ? "network" : "remote"
-          );
+          if (resourceErrorType === "network" || resourceErrorType === "timeout") pushAction("check-network", "Check remoteEntry URL, CORS, status code, and timeout", "network");
+          pushAction("check-remote-entry", resourceErrorType === "script-execution" ? "Check remoteEntry execution errors in the remote build output" : "Check that remoteEntry is reachable and serves JavaScript", resourceErrorType === "network" || resourceErrorType === "timeout" ? "network" : "remote");
           break;
         }
         default:
-          if (report.failedPhase === "manifest") {
-            pushAction(
-              "check-manifest-url",
-              "Check manifest loading and parsing",
-              "host"
-            );
-          }
-          if (report.failedPhase === "remoteEntry") {
-            pushAction(
-              "check-remote-entry",
-              "Check remoteEntry loading and initialization",
-              "remote"
-            );
-          }
-          if (report.failedPhase === "expose") {
-            pushAction(
-              "check-expose",
-              "Check that the requested expose exists in the remote",
-              "remote"
-            );
-          }
+          if (report.failedPhase === "manifest") pushAction("check-manifest-url", "Check manifest loading and parsing", "host");
+          if (report.failedPhase === "remoteEntry") pushAction("check-remote-entry", "Check remoteEntry loading and initialization", "remote");
+          if (report.failedPhase === "expose") pushAction("check-expose", "Check that the requested expose exists in the remote", "remote");
           if (report.failedPhase === "shared") {
-            pushAction(
-              "check-shared-provider",
-              "Check shared dependency resolution",
-              "shared"
-            );
-            if (report.shared?.requiredVersion !== void 0 || report.shared?.availableVersions?.length || report.shared?.reason === "version-mismatch") {
-              pushAction(
-                "check-shared-version",
-                "Compare requested shared version with available versions",
-                "shared"
-              );
-            }
-            if (report.summary.error?.lifecycle === "loadShareSync" || report.shared?.reason === "sync-async-boundary" || report.shared?.eager === false) {
-              pushAction(
-                "check-eager-config",
-                "Check eager configuration or add an async boundary before sync shared consumption",
-                "shared"
-              );
-            }
+            pushAction("check-shared-provider", "Check shared dependency resolution", "shared");
+            if (report.shared?.requiredVersion !== void 0 || report.shared?.availableVersions?.length || report.shared?.reason === "version-mismatch") pushAction("check-shared-version", "Compare requested shared version with available versions", "shared");
+            if (report.summary.error?.lifecycle === "loadShareSync" || report.shared?.reason === "sync-async-boundary" || report.shared?.eager === false) pushAction("check-eager-config", "Check eager configuration or add an async boundary before sync shared consumption", "shared");
           }
       }
-      if (report.moduleInfo && !actions.some((action) => action.id === "check-module-info")) {
-        pushAction(
-          "check-module-info",
-          "Check deployment-provided __FEDERATION__.moduleInfo for the requested remote",
-          "host"
-        );
-      }
-      if (!actions.length) {
-        pushAction(
-          "inspect-runtime-events",
-          "Inspect the ordered observability events for the failed phase",
-          ownerHint
-        );
-      }
+      if (report.moduleInfo && !actions.some((action) => action.id === "check-module-info")) pushAction("check-module-info", "Check deployment-provided __FEDERATION__.moduleInfo for the requested remote", "host");
+      if (!actions.length) pushAction("inspect-runtime-events", "Inspect the ordered observability events for the failed phase", ownerHint);
       return actions;
     };
     const createFactReport = (report) => {
@@ -4308,6 +3768,7 @@ ${event.message || ""}`;
           retryable: event.retryable,
           errorContext: event.errorContext ? { ...event.errorContext } : void 0,
           loadedBefore: copyLoadedBeforeInfo(event.loadedBefore),
+          bridge: copyBridgeInfo(event.bridge),
           events: [],
           summary: {
             eventCount: 0,
@@ -4315,6 +3776,7 @@ ${event.message || ""}`;
             loadCompleted: false,
             runtimeLoaded: false,
             sharedResolved: false,
+            sharedRegistered: false,
             preloaded: false,
             componentLoaded: false,
             outcome: "pending",
@@ -4327,76 +3789,36 @@ ${event.message || ""}`;
         };
         reports.set(event.traceId, report);
       }
-      if (event.instanceRef) {
-        report.instanceRef = event.instanceRef;
-      }
-      if (event.requestId) {
-        report.requestId = event.requestId;
-      }
-      if (event.requestAlias) {
-        report.requestAlias = event.requestAlias;
-      }
-      if (event.hostName) {
-        report.hostName = event.hostName;
-      }
-      if (event.runtimeVersion) {
-        report.runtimeVersion = event.runtimeVersion;
-      }
-      if (event.remote) {
-        report.remote = { ...event.remote };
-      }
-      if (event.shared) {
-        report.shared = copyEvent(event).shared;
-      }
-      if (event.expose) {
-        report.expose = event.expose;
-      }
-      if (event.sanitizedUrl) {
-        report.sanitizedUrl = event.sanitizedUrl;
-      }
-      if (event.errorStack) {
-        report.errorStack = event.errorStack;
-      }
-      if (event.errorCode) {
-        report.errorCode = event.errorCode;
-      }
-      if (event.errorName) {
-        report.errorName = event.errorName;
-      }
-      if (event.errorMessage) {
-        report.errorMessage = event.errorMessage;
-      }
-      if (event.ownerHint) {
-        report.ownerHint = event.ownerHint;
-      }
-      if (event.retryable !== void 0) {
-        report.retryable = event.retryable;
-      }
-      if (event.errorContext) {
-        report.errorContext = { ...event.errorContext };
-      }
-      if (event.loadedBefore) {
-        report.loadedBefore = copyLoadedBeforeInfo(event.loadedBefore);
-      }
+      if (event.instanceRef) report.instanceRef = event.instanceRef;
+      if (event.requestId) report.requestId = event.requestId;
+      if (event.requestAlias) report.requestAlias = event.requestAlias;
+      if (event.hostName) report.hostName = event.hostName;
+      if (event.runtimeVersion) report.runtimeVersion = event.runtimeVersion;
+      if (event.remote) report.remote = { ...event.remote };
+      if (event.shared) report.shared = copyEvent(event).shared;
+      if (event.expose) report.expose = event.expose;
+      if (event.sanitizedUrl) report.sanitizedUrl = event.sanitizedUrl;
+      if (event.errorStack) report.errorStack = event.errorStack;
+      if (event.errorCode) report.errorCode = event.errorCode;
+      if (event.errorName) report.errorName = event.errorName;
+      if (event.errorMessage) report.errorMessage = event.errorMessage;
+      if (event.ownerHint) report.ownerHint = event.ownerHint;
+      if (event.retryable !== void 0) report.retryable = event.retryable;
+      if (event.errorContext) report.errorContext = { ...event.errorContext };
+      if (event.loadedBefore) report.loadedBefore = copyLoadedBeforeInfo(event.loadedBefore);
+      if (event.bridge) report.bridge = copyBridgeInfo(event.bridge);
       report.events.push(event);
       report.updatedAt = event.timestamp;
       report.duration = Math.max(0, report.updatedAt - report.startedAt);
       const eventOutcome = getEventOutcome(event);
       if (eventOutcome === "error") {
         report.status = "error";
-        if (shouldReplaceFailedPhase(report, event)) {
-          report.failedPhase = event.phase;
-        }
-      } else if (eventOutcome === "recovered") {
-        report.status = "success";
-      } else if (eventOutcome === "success" && report.status !== "error") {
-        report.status = "success";
-      }
+        if (shouldReplaceFailedPhase(report, event)) report.failedPhase = event.phase;
+      } else if (eventOutcome === "recovered") report.status = "success";
+      else if (eventOutcome === "success" && report.status !== "error") report.status = "success";
       refreshReportDerivedFields(report);
       latestTraceId = event.traceId;
-      if (event.instanceRef) {
-        latestTraceByInstance.set(event.instanceRef, event.traceId);
-      }
+      if (event.instanceRef) latestTraceByInstance.set(event.instanceRef, event.traceId);
       trimEvents(report);
       return report;
     };
@@ -4410,9 +3832,7 @@ ${event.message || ""}`;
       }
     };
     const notifyReport = (report, origin) => {
-      if (report.events[report.events.length - 1]?.status === "start") {
-        return;
-      }
+      if (report.events[report.events.length - 1]?.status === "start") return;
       try {
         options.onReport?.(copyReport(report), {
           origin,
@@ -4422,9 +3842,7 @@ ${event.message || ""}`;
       }
     };
     const notifyRawError = (errorValue, event, report, origin) => {
-      if (!errorValue || !options.onRawError) {
-        return;
-      }
+      if (!errorValue || !options.onRawError) return;
       try {
         options.onRawError(errorValue, {
           origin,
@@ -4436,13 +3854,9 @@ ${event.message || ""}`;
       }
     };
     const notifyCollector = (event, report) => {
-      if (!collectorOptions) {
-        return;
-      }
+      if (!collectorOptions) return;
       const fetcher = globalThis.fetch;
-      if (typeof fetcher !== "function") {
-        return;
-      }
+      if (typeof fetcher !== "function") return;
       try {
         const body = JSON.stringify({
           schemaVersion: 1,
@@ -4452,11 +3866,9 @@ ${event.message || ""}`;
           event: copyEvent(event),
           report: copyReport(report)
         });
-        void fetcher(getCollectorUrl(collectorOptions.port), {
+        fetcher(getCollectorUrl(collectorOptions.port), {
           method: "POST",
-          headers: {
-            "content-type": "application/json"
-          },
+          headers: { "content-type": "application/json" },
           body,
           keepalive: body.length <= 64 * 1024,
           credentials: "omit",
@@ -4469,103 +3881,118 @@ ${event.message || ""}`;
       }
     };
     const notifyDevtools = (event, report) => {
-      if (!devtoolsOptions) {
-        return;
-      }
+      if (!devtoolsOptions) return;
       const poster = globalThis.postMessage;
-      if (typeof poster !== "function") {
-        return;
-      }
+      if (typeof poster !== "function") return;
       try {
-        poster.call(
-          globalThis,
-          {
-            schemaVersion: 1,
-            source: devtoolsOptions.source,
-            kind: "event",
-            createdAt: Date.now(),
-            scope: browserGlobalScope || report.hostName,
-            event: copyEvent(event),
-            report: copyReport(report)
-          },
-          "*"
-        );
+        poster.call(globalThis, {
+          schemaVersion: 1,
+          source: devtoolsOptions.source,
+          kind: "event",
+          createdAt: Date.now(),
+          scope: browserGlobalScope || report.hostName,
+          event: copyEvent(event),
+          report: copyReport(report)
+        }, "*");
       } catch {
       }
     };
     const createStateRemote = (value, fallbackName) => {
-      if (typeof value === "string") {
-        return {
-          name: fallbackName || sanitizeText(value, 120) || "unknown",
-          entry: sanitizeUrl(value)
-        };
-      }
-      if (!isRecord2(value)) {
-        return fallbackName ? { name: fallbackName } : void 0;
-      }
+      if (typeof value === "string") return {
+        name: fallbackName || sanitizeText(value, 120) || "unknown",
+        entry: sanitizeUrl(value)
+      };
+      if (!isRecord2(value)) return fallbackName ? { name: fallbackName } : void 0;
       const name = sanitizeText(getObjectValue(value, "name"), 120) || sanitizeText(fallbackName, 120);
-      if (!name) {
-        return void 0;
-      }
+      if (!name) return;
       return omitUndefinedFields({
         name,
         alias: sanitizeText(getObjectValue(value, "alias"), 120),
         version: sanitizeText(getObjectValue(value, "version"), 120),
-        entry: sanitizeUrl(
-          sanitizeText(
-            getObjectValue(value, "entry") || getObjectValue(value, "remoteEntry") || getObjectValue(value, "manifestUrl"),
-            320
-          )
-        ),
-        entryGlobalName: sanitizeText(
-          getObjectValue(value, "entryGlobalName") || getObjectValue(value, "globalName"),
-          120
-        ),
+        entry: sanitizeUrl(sanitizeText(getObjectValue(value, "entry") || getObjectValue(value, "remoteEntry") || getObjectValue(value, "manifestUrl"), 320)),
+        entryGlobalName: sanitizeText(getObjectValue(value, "entryGlobalName") || getObjectValue(value, "globalName"), 120),
         type: sanitizeText(getObjectValue(value, "type"), 80)
       });
     };
     const getDeclaredRemotes = (origin) => {
       const remotes = origin.options?.remotes;
-      const values = Array.isArray(remotes) ? remotes.map((value) => [void 0, value]) : isRecord2(remotes) ? Object.entries(remotes) : [];
-      return values.map(([name, value]) => createStateRemote(value, name)).filter(
-        (remote) => remote !== void 0
-      );
+      return (Array.isArray(remotes) ? remotes.map((value) => [void 0, value]) : isRecord2(remotes) ? Object.entries(remotes) : []).map(([name, value]) => createStateRemote(value, name)).filter((remote) => remote !== void 0);
     };
-    const getLoadedProducerRemotes = (origin) => getModuleCacheEntries(origin.moduleCache).map(
-      (module) => createStateRemote(
-        isRecord2(module) ? getObjectValue(module, "remoteInfo") : void 0
-      )
-    ).filter(
-      (remote) => remote !== void 0
-    );
+    const getLoadedProducerRemotes = (origin) => getModuleCacheEntries(origin.moduleCache).map((module) => createStateRemote(isRecord2(module) ? getObjectValue(module, "remoteInfo") : void 0)).filter((remote) => remote !== void 0);
     const getShareScopeSummaries = (origin) => Object.entries(getOriginShareScopeMap(origin)).map(([name, scope]) => {
-      const sharedNames = Object.keys(scope || {}).sort();
+      const rawSharedNames = Object.keys(scope || {}).sort();
+      const sharedEntries = rawSharedNames.slice(0, 100).map((rawName) => ({
+        rawName,
+        name: sanitizeText(rawName, 160) || "unknown"
+      }));
       return {
         name: sanitizeText(name, 120) || "default",
-        sharedCount: sharedNames.length,
-        sharedNames,
-        shared: sharedNames.map((sharedName) => ({
-          name: sharedName,
-          versions: Object.entries(scope?.[sharedName] || {}).map(
-            ([version, shared]) => omitUndefinedFields({
-              version: sanitizeText(version, 120) || version,
-              provider: sanitizeText(shared.from, 160),
-              loaded: shared.loaded === true || void 0,
-              singleton: shared.shareConfig?.singleton || void 0,
-              eager: shared.shareConfig?.eager || void 0
-            })
-          )
+        sharedCount: rawSharedNames.length,
+        sharedNames: sharedEntries.map((entry) => entry.name),
+        shared: sharedEntries.map((entry) => ({
+          name: entry.name,
+          versions: Object.entries(scope?.[entry.rawName] || {}).slice(0, 20).map(([version, shared]) => omitUndefinedFields({
+            version: sanitizeText(version, 120) || version,
+            provider: sanitizeText(shared.from, 160),
+            loaded: shared.loaded === true || void 0,
+            singleton: shared.shareConfig?.singleton || void 0,
+            eager: shared.shareConfig?.eager || void 0,
+            strategy: sanitizeText(shared.strategy, 80)
+          }))
         }))
       };
     });
-    const getBridgeSummary = (origin) => {
-      if (!isRecord2(origin.bridgeHook)) {
-        return void 0;
+    const updateBridgeState = (origin, bridge, signal) => {
+      const instanceRef = getInstanceRef(origin);
+      if (!instanceRef) return;
+      let states = bridgeStatesByInstance.get(instanceRef);
+      if (!states) {
+        states = /* @__PURE__ */ new Map();
+        bridgeStatesByInstance.set(instanceRef, states);
       }
+      const key = `${bridge.bridgeId}\0${bridge.side}`;
+      const previous = states.get(key);
+      let status = previous?.status || "idle";
+      if (signal === "start") {
+        if (bridge.operation === "destroy") status = "destroying";
+        else if (bridge.operation === "render" || bridge.operation === "update") status = "rendering";
+      } else if (signal === "result") {
+        if (bridge.outcome === "error") status = "error";
+        else if (bridge.operation === "destroy") status = "destroyed";
+        else if (bridge.operation === "render" || bridge.operation === "update") status = "rendered";
+      } else if (signal === "commit") status = "rendered";
+      states.set(key, {
+        bridgeId: bridge.bridgeId,
+        side: bridge.side,
+        framework: bridge.framework,
+        moduleName: bridge.moduleName || previous?.moduleName,
+        remote: bridge.remote || previous?.remote,
+        expose: bridge.expose || previous?.expose,
+        status,
+        lastOperation: bridge.operation,
+        lastOperationId: bridge.operationId,
+        lastOperationAt: bridge.endedAt || bridge.startedAt,
+        commitObserved: signal === "commit" || previous?.commitObserved === true,
+        routeSyncObserved: bridge.operation === "route-sync" || previous?.routeSyncObserved === true
+      });
+    };
+    const getBridgeSummary = (origin, instanceRef) => {
+      if (!isRecord2(origin.bridgeHook)) return;
       const lifecycle = getObjectValue(origin.bridgeHook, "lifecycle");
+      const states = Array.from(bridgeStatesByInstance.get(instanceRef)?.values() || []).sort((left, right) => (right.lastOperationAt || 0) - (left.lastOperationAt || 0)).map((state) => ({ ...state }));
+      const latest = states[0];
       return {
         available: true,
-        lifecycleCount: isRecord2(lifecycle) ? Object.keys(lifecycle).length : void 0
+        lifecycleCount: isRecord2(lifecycle) ? Object.keys(lifecycle).length : void 0,
+        framework: latest?.framework,
+        moduleName: latest?.moduleName,
+        remote: latest?.remote,
+        expose: latest?.expose,
+        status: latest?.status || "idle",
+        lastOperationAt: latest?.lastOperationAt,
+        commitObserved: states.some((state) => state.commitObserved),
+        routeSyncObserved: states.some((state) => state.routeSyncObserved),
+        states
       };
     };
     const getRuntimeModuleInfo = () => {
@@ -4573,23 +4000,12 @@ ${event.message || ""}`;
       return Object.entries(moduleInfo).map(([key, value]) => {
         const record = isRecord2(value) ? value : {};
         const rawRemotes = getObjectValue(record, "remotes");
-        const remoteValues = Array.isArray(rawRemotes) ? rawRemotes.map((remote) => [void 0, remote]) : isRecord2(rawRemotes) ? Object.entries(rawRemotes) : [];
-        const remotes = remoteValues.map(([name, remote]) => createStateRemote(remote, name)).filter(
-          (remote) => remote !== void 0
-        );
+        const remotes = (Array.isArray(rawRemotes) ? rawRemotes.map((remote) => [void 0, remote]) : isRecord2(rawRemotes) ? Object.entries(rawRemotes) : []).map(([name, remote]) => createStateRemote(remote, name)).filter((remote) => remote !== void 0);
         return omitUndefinedFields({
           key: sanitizeText(key, 160) || key,
           name: sanitizeText(getObjectValue(record, "name"), 120),
-          version: sanitizeText(
-            getObjectValue(record, "version") || getObjectValue(record, "buildVersion"),
-            120
-          ),
-          entry: sanitizeUrl(
-            sanitizeText(
-              getObjectValue(record, "entry") || getObjectValue(record, "remoteEntry") || getObjectValue(record, "manifestUrl"),
-              320
-            )
-          ),
+          version: sanitizeText(getObjectValue(record, "version") || getObjectValue(record, "buildVersion"), 120),
+          entry: sanitizeUrl(sanitizeText(getObjectValue(record, "entry") || getObjectValue(record, "remoteEntry") || getObjectValue(record, "manifestUrl"), 320)),
           tag: sanitizeText(getObjectValue(record, "tag"), 120),
           remotes: remotes.length ? remotes : void 0
         });
@@ -4606,8 +4022,7 @@ ${event.message || ""}`;
       const activeInstances = getActiveRuntimeInstances();
       activeInstances.forEach((instance) => registerRuntimeInstance(instance));
       const moduleInfo = getRuntimeModuleInfo();
-      const instanceOrigins = Array.from(instancesByRef.entries());
-      const instanceDrafts = instanceOrigins.map(([instanceRef, origin]) => ({
+      const instanceDrafts = Array.from(instancesByRef.entries()).map(([instanceRef, origin]) => ({
         instanceRef,
         origin,
         name: sanitizeText(origin.name, 120) || sanitizeText(origin.options?.name, 120),
@@ -4621,104 +4036,76 @@ ${event.message || ""}`;
       }));
       instanceDrafts.forEach((draft) => {
         const matchingModuleInfo = moduleInfo.filter((info) => {
-          const names = [draft.name, draft.optionsName].filter(
-            (name) => Boolean(name)
-          );
-          return names.some(
-            (name) => info.name === name || info.key === name || info.key.includes(name) && (!draft.optionsVersion || info.version === draft.optionsVersion || info.key.includes(draft.optionsVersion))
-          );
+          return [draft.name, draft.optionsName].filter((name) => Boolean(name)).some((name) => info.name === name || info.key === name || info.key.includes(name) && (!draft.optionsVersion || info.version === draft.optionsVersion || info.key.includes(draft.optionsVersion)));
         });
-        if (draft.remotes.length) {
-          draft.consumerEvidence.push("options.remotes");
-        }
-        if (draft.loadedProducers.length) {
-          draft.consumerEvidence.push("moduleCache.remoteInfo");
-        }
-        if (matchingModuleInfo.some((info) => info.remotes?.length)) {
-          draft.consumerEvidence.push("moduleInfo.remotes");
-        }
-        if (matchingModuleInfo.length) {
-          draft.producerEvidence.push("moduleInfo");
-        }
+        if (draft.remotes.length) draft.consumerEvidence.push("options.remotes");
+        if (draft.loadedProducers.length) draft.consumerEvidence.push("moduleCache.remoteInfo");
+        if (matchingModuleInfo.some((info) => info.remotes?.length)) draft.consumerEvidence.push("moduleInfo.remotes");
+        if (matchingModuleInfo.length) draft.producerEvidence.push("moduleInfo");
       });
       const relationships = [];
       instanceDrafts.forEach((consumer) => {
         consumer.loadedProducers.forEach((remote) => {
-          const matchingModuleInfo = moduleInfo.filter(
-            (info) => info.name === remote.name || info.key === remote.name || Boolean(remote.entry && info.entry === remote.entry) || Boolean(remote.version && info.version === remote.version)
-          );
+          const matchingModuleInfo = moduleInfo.filter((info) => info.name === remote.name || info.key === remote.name || Boolean(remote.entry && info.entry === remote.entry) || Boolean(remote.version && info.version === remote.version));
           const candidates = instanceDrafts.filter((producer) => {
-            if (producer.instanceRef === consumer.instanceRef) {
-              return false;
-            }
-            const names = new Set(
-              [producer.name, producer.optionsName].filter(
-                (name) => Boolean(name)
-              )
-            );
+            if (producer.instanceRef === consumer.instanceRef) return false;
+            const names = new Set([producer.name, producer.optionsName].filter((name) => Boolean(name)));
             const directNameMatches = names.has(remote.name) || Boolean(remote.alias && names.has(remote.alias));
-            const moduleInfoMatches = matchingModuleInfo.some(
-              (info) => Boolean(info.name && names.has(info.name)) || names.has(info.key) || Boolean(info.version && producer.optionsVersion === info.version)
-            );
+            const moduleInfoMatches = matchingModuleInfo.some((info) => Boolean(info.name && names.has(info.name)) || names.has(info.key) || Boolean(info.version && producer.optionsVersion === info.version));
             const versionMatches = !remote.version || !producer.optionsVersion || producer.optionsVersion === remote.version;
             return (directNameMatches || moduleInfoMatches) && versionMatches;
           });
           const status = candidates.length === 1 ? "resolved" : candidates.length > 1 ? "ambiguous" : "unresolved";
           candidates.forEach((candidate) => {
-            if (!candidate.producerEvidence.includes("consumer.moduleCache")) {
-              candidate.producerEvidence.push("consumer.moduleCache");
-            }
+            if (!candidate.producerEvidence.includes("consumer.moduleCache")) candidate.producerEvidence.push("consumer.moduleCache");
           });
-          relationships.push(
-            omitUndefinedFields({
-              consumerInstanceRef: consumer.instanceRef,
-              producerInstanceRef: candidates.length === 1 ? candidates[0].instanceRef : void 0,
-              candidateProducerInstanceRefs: candidates.length > 1 ? candidates.map((candidate) => candidate.instanceRef) : void 0,
-              remote,
-              evidence: ["moduleCache.remoteInfo"],
-              status
-            })
-          );
+          relationships.push(omitUndefinedFields({
+            consumerInstanceRef: consumer.instanceRef,
+            producerInstanceRef: candidates.length === 1 ? candidates[0].instanceRef : void 0,
+            candidateProducerInstanceRefs: candidates.length > 1 ? candidates.map((candidate) => candidate.instanceRef) : void 0,
+            remote,
+            evidence: ["moduleCache.remoteInfo"],
+            status
+          }));
         });
       });
-      const instances = instanceDrafts.map(
-        (draft) => {
-          const isConsumer = draft.consumerEvidence.length > 0;
-          const isProducer = draft.producerEvidence.length > 0;
-          const role = isConsumer && isProducer ? "mixed" : isConsumer ? "consumer" : isProducer ? "producer" : "unknown";
-          return omitUndefinedFields({
-            instanceRef: draft.instanceRef,
-            name: draft.name,
-            optionsName: draft.optionsName,
-            optionsVersion: draft.optionsVersion,
-            runtimeVersion: draft.runtimeVersion,
-            role,
-            roleEvidence: {
-              consumer: [...draft.consumerEvidence],
-              producer: [...draft.producerEvidence]
-            },
-            remotes: draft.remotes,
-            loadedProducers: draft.loadedProducers,
-            shareScopes: getShareScopeSummaries(draft.origin),
-            bridge: getBridgeSummary(draft.origin),
-            active: activeInstances.includes(
-              draft.origin
-            )
-          });
-        }
-      );
-      const hasLateBinding = lateBoundInstanceRefs.size > 0;
-      const hasIncompleteHistory = hasLateBinding || historyCleared;
-      const hasStableSharedRuntime = instanceDrafts.some(
-        (draft) => supportsRuntimeObservability(draft.origin)
-      );
-      const hasSharedState = instances.some(
-        (instance) => instance.shareScopes.length > 0
-      );
+      const instances = instanceDrafts.map((draft) => {
+        const isConsumer = draft.consumerEvidence.length > 0;
+        const isProducer = draft.producerEvidence.length > 0;
+        const role = isConsumer && isProducer ? "mixed" : isConsumer ? "consumer" : isProducer ? "producer" : "unknown";
+        return omitUndefinedFields({
+          instanceRef: draft.instanceRef,
+          name: draft.name,
+          optionsName: draft.optionsName,
+          optionsVersion: draft.optionsVersion,
+          runtimeVersion: draft.runtimeVersion,
+          role,
+          roleEvidence: {
+            consumer: [...draft.consumerEvidence],
+            producer: [...draft.producerEvidence]
+          },
+          remotes: draft.remotes,
+          loadedProducers: draft.loadedProducers,
+          shareScopes: getShareScopeSummaries(draft.origin),
+          bridge: getBridgeSummary(draft.origin, draft.instanceRef),
+          active: activeInstances.includes(draft.origin)
+        });
+      });
+      const hasIncompleteHistory = lateBoundInstanceRefs.size > 0 || historyCleared;
+      const hasStableSharedRuntime = instanceDrafts.some((draft) => supportsRuntimeObservability(draft.origin));
+      const hasSharedState = instances.some((instance) => instance.shareScopes.length > 0);
       const hasRemoteSignals = events.some((event) => Boolean(event.remote));
       const hasSharedSignals = events.some((event) => Boolean(event.shared));
+      const hasDetailedSharedSignals = events.some((event) => Boolean(event.shared?.selectionReason) || Boolean(event.shared?.registration));
+      const hasDetailedSharedHooks = instanceDrafts.some((draft) => Boolean(draft.origin.sharedHandler?.hooks?.lifecycle?.["afterRegisterShare"]));
       const hasBridge = instances.some((instance) => instance.bridge?.available);
+      const bridgeEvents = events.filter((event) => Boolean(event.bridge));
+      const hasBridgeSignals = bridgeEvents.length > 0;
+      const hasBridgeCommit = bridgeEvents.some((event) => event.phase === "bridge-commit");
+      const hasBridgeRoute = bridgeEvents.some((event) => event.bridge?.operation === "route-sync");
       const traceCompleteness = hasIncompleteHistory ? "partial" : "complete";
+      const hasResourceLifecycle = instanceDrafts.some((draft) => supportsResourceLifecycle(draft.origin));
+      const remoteTraceCompleteness = hasIncompleteHistory || !hasResourceLifecycle ? "partial" : "complete";
       return omitUndefinedFields({
         schemaVersion: 1,
         observedAt: Date.now(),
@@ -4741,8 +4128,8 @@ ${event.message || ""}`;
           },
           remoteTrace: {
             available: hasRemoteSignals || boundInstanceRefs.size > 0,
-            completeness: traceCompleteness,
-            reason: hasRemoteSignals ? void 0 : "No remote lifecycle signal has been observed yet."
+            completeness: remoteTraceCompleteness,
+            reason: !hasResourceLifecycle ? "Runtime resource completion hooks are unavailable; remote resource history may be incomplete." : hasRemoteSignals ? void 0 : "No remote lifecycle signal has been observed yet."
           },
           sharedState: {
             available: hasSharedState,
@@ -4750,13 +4137,17 @@ ${event.message || ""}`;
           },
           sharedTrace: {
             available: hasStableSharedRuntime && hasSharedSignals,
-            completeness: hasStableSharedRuntime && hasSharedSignals ? traceCompleteness : "unavailable",
-            reason: hasStableSharedRuntime ? hasSharedSignals ? void 0 : "No shared lifecycle signal has been observed yet." : "Shared tracing requires a stable runtime version of 2.5.0 or newer."
+            completeness: hasStableSharedRuntime && hasSharedSignals ? hasDetailedSharedHooks && hasDetailedSharedSignals ? traceCompleteness : "partial" : "unavailable",
+            reason: hasStableSharedRuntime ? hasSharedSignals ? hasDetailedSharedHooks && hasDetailedSharedSignals ? void 0 : "Shared history is available, but detailed registration or selection results are missing." : "No shared lifecycle signal has been observed yet." : "Shared tracing requires a stable runtime version of 2.5.0 or newer."
           },
           bridgeTrace: {
-            available: false,
-            completeness: "unavailable",
-            reason: hasBridge ? "Bridge is present, but no complete Bridge trace signal is available." : "Bridge is not present on an observed instance."
+            available: hasBridgeSignals,
+            completeness: !hasBridgeSignals ? "unavailable" : hasIncompleteHistory || !hasBridgeCommit || !hasBridgeRoute ? "partial" : "complete",
+            reason: !hasBridgeSignals ? hasBridge ? "Bridge is present, but no Bridge lifecycle signal has been observed." : "Bridge is not present on an observed instance." : [
+              hasIncompleteHistory ? "runtime history is incomplete" : "",
+              !hasBridgeCommit ? "no framework commit signal was observed" : "",
+              !hasBridgeRoute ? "no route sync signal was observed" : ""
+            ].filter(Boolean).join("; ") || void 0
           }
         },
         instances,
@@ -4767,32 +4158,20 @@ ${event.message || ""}`;
     const getEventsSnapshot = () => events.map(copyEvent);
     const getTraceIdsSnapshot = () => Array.from(reports.keys());
     const getReportTimeline = () => Array.from(reports.values()).sort((left, right) => {
-      if (right.updatedAt !== left.updatedAt) {
-        return right.updatedAt - left.updatedAt;
-      }
+      if (right.updatedAt !== left.updatedAt) return right.updatedAt - left.updatedAt;
       return right.startedAt - left.startedAt;
     });
     const matchesReportValue = (value, expected) => {
-      if (!value || !expected) {
-        return false;
-      }
+      if (!value || !expected) return false;
       const normalizedValue = value.toLowerCase();
       const normalizedExpected = expected.toLowerCase();
       return normalizedValue === normalizedExpected || normalizedValue.includes(normalizedExpected);
     };
     const matchesReportQuery = (report, query) => {
-      if (query.traceId && report.traceId !== query.traceId) {
-        return false;
-      }
-      if (query.instanceRef && report.instanceRef !== query.instanceRef) {
-        return false;
-      }
-      if (query.status && report.status !== query.status) {
-        return false;
-      }
-      if (query.outcome && report.summary.outcome !== query.outcome) {
-        return false;
-      }
+      if (query.traceId && report.traceId !== query.traceId) return false;
+      if (query.instanceRef && report.instanceRef !== query.instanceRef) return false;
+      if (query.status && report.status !== query.status) return false;
+      if (query.outcome && report.summary.outcome !== query.outcome) return false;
       if (query.remote && ![
         report.remote?.name,
         report.remote?.alias,
@@ -4800,19 +4179,9 @@ ${event.message || ""}`;
         report.requestId,
         report.requestAlias,
         report.sanitizedUrl
-      ].some((value) => matchesReportValue(value, query.remote))) {
-        return false;
-      }
-      if (query.expose && ![report.expose, report.requestId].some(
-        (value) => matchesReportValue(value, query.expose)
-      )) {
-        return false;
-      }
-      if (query.shared && ![report.shared?.name].some(
-        (value) => matchesReportValue(value, query.shared)
-      )) {
-        return false;
-      }
+      ].some((value) => matchesReportValue(value, query.remote))) return false;
+      if (query.expose && ![report.expose, report.requestId].some((value) => matchesReportValue(value, query.expose))) return false;
+      if (query.shared && ![report.shared?.name].some((value) => matchesReportValue(value, query.shared))) return false;
       return true;
     };
     const getReportsSnapshot = (options2 = {}) => {
@@ -4822,17 +4191,11 @@ ${event.message || ""}`;
     };
     const findReportsSnapshot = (query = {}) => {
       const limit = normalizeQueryLimit(query.limit);
-      const matchedReports = getReportTimeline().filter(
-        (report) => matchesReportQuery(report, query)
-      );
-      return (limit ? matchedReports.slice(0, limit) : matchedReports).map(
-        copyReport
-      );
+      const matchedReports = getReportTimeline().filter((report) => matchesReportQuery(report, query));
+      return (limit ? matchedReports.slice(0, limit) : matchedReports).map(copyReport);
     };
     const getLatestReportSnapshot = () => {
-      if (!latestTraceId) {
-        return void 0;
-      }
+      if (!latestTraceId) return;
       const report = reports.get(latestTraceId);
       return report ? copyReport(report) : void 0;
     };
@@ -4841,17 +4204,14 @@ ${event.message || ""}`;
       return report ? copyReport(report) : void 0;
     };
     const exportReportSnapshot = (traceId) => traceId ? getReportSnapshot(traceId) : getLatestReportSnapshot();
-    const openRuntimeAdapter = createOpenRuntimeObservabilityAdapter(
-      options.openRuntime,
-      {
-        getReports: getReportsSnapshot,
-        findReports: findReportsSnapshot,
-        getLatestReport: getLatestReportSnapshot,
-        getReport: getReportSnapshot,
-        exportReport: exportReportSnapshot,
-        getRuntimeState: getRuntimeStateSnapshot
-      }
-    );
+    const openRuntimeAdapter = createOpenRuntimeObservabilityAdapter(options.openRuntime, {
+      getReports: getReportsSnapshot,
+      findReports: findReportsSnapshot,
+      getLatestReport: getLatestReportSnapshot,
+      getReport: getReportSnapshot,
+      exportReport: exportReportSnapshot,
+      getRuntimeState: getRuntimeStateSnapshot
+    });
     const createBrowserReader = () => ({
       getEvents: getEventsSnapshot,
       getTraceIds: getTraceIdsSnapshot,
@@ -4864,16 +4224,10 @@ ${event.message || ""}`;
     });
     const shouldExposeBrowserGlobal = () => options.browser?.enabled === true;
     const ensureBrowserGlobal = (origin) => {
-      if (!shouldExposeBrowserGlobal()) {
-        return;
-      }
+      if (!shouldExposeBrowserGlobal()) return;
       const federationGlobal = getFederationGlobal();
-      if (!federationGlobal) {
-        return;
-      }
-      const scope = normalizeScope(
-        options.browser?.scope || origin?.options?.name || "default"
-      );
+      if (!federationGlobal) return;
+      const scope = normalizeScope(options.browser?.scope || origin?.options?.name || "default");
       const reader = createBrowserReader();
       const readers = federationGlobal.__OBSERVABILITY__ || {};
       federationGlobal.__OBSERVABILITY__ = readers;
@@ -4890,15 +4244,9 @@ ${event.message || ""}`;
     };
     const shouldUseConsole = () => options.console !== false;
     const shouldUseDevelopmentChannels = () => {
-      if (shouldUseMinimalBrowserConsole()) {
-        return false;
-      }
-      if (shouldForceDevelopmentChannels) {
-        return true;
-      }
-      if (typeof process === "undefined" || !process.env) {
-        return true;
-      }
+      if (shouldUseMinimalBrowserConsole()) return false;
+      if (shouldForceDevelopmentChannels) return true;
+      if (typeof process === "undefined" || !process.env) return true;
       return true;
     };
     const shouldNotifyCollector = () => Boolean(collectorOptions);
@@ -4909,26 +4257,15 @@ ${event.message || ""}`;
     const shouldRecordStartTrace = (input) => shouldUseStartTrace() && input.status === "start" && (input.phase === "loadRemote" || input.phase === "shared");
     const shouldCollectLoadedBefore = (error) => Boolean(error) || level === "verbose" && !shouldUseMinimalBrowserConsole();
     const getBrowserReadCommand = (traceId) => {
-      if (!browserGlobalScope) {
-        return void 0;
-      }
-      return `window.__FEDERATION__.__OBSERVABILITY__[${JSON.stringify(
-        browserGlobalScope
-      )}].getReport(${JSON.stringify(traceId)})`;
+      if (!browserGlobalScope) return;
+      return `window.__FEDERATION__.__OBSERVABILITY__[${JSON.stringify(browserGlobalScope)}].getReport(${JSON.stringify(traceId)})`;
     };
     const emitConsoleHint = (event, report, rawError) => {
-      if (getEventOutcome(event) !== "error" || !shouldUseConsole() || consoleReportedTraceIds.has(report.traceId)) {
-        return;
-      }
+      if (getEventOutcome(event) !== "error" || !shouldUseConsole() || consoleReportedTraceIds.has(report.traceId)) return;
       consoleReportedTraceIds.add(report.traceId);
       if (shouldUseMinimalBrowserConsole()) {
-        const lines2 = [
-          "[Module Federation] Observability report generated",
-          `traceId: ${report.traceId}`
-        ];
-        if (report.errorCode) {
-          lines2.push(`errorCode: ${report.errorCode}`);
-        }
+        const lines2 = ["[Module Federation] Observability report generated", `traceId: ${report.traceId}`];
+        if (report.errorCode) lines2.push(`errorCode: ${report.errorCode}`);
         try {
           console.error(lines2.join("\n"));
         } catch {
@@ -4940,75 +4277,43 @@ ${event.message || ""}`;
         `traceId: ${report.traceId}`,
         `phase: ${report.failedPhase || event.phase}`
       ];
-      if (report.requestId) {
-        lines.push(`requestId: ${report.requestId}`);
-      }
-      if (report.requestAlias) {
-        lines.push(`requestAlias: ${report.requestAlias}`);
-      }
-      if (report.errorCode) {
-        lines.push(`errorCode: ${report.errorCode}`);
-      }
-      if (report.shared?.name) {
-        lines.push(`shared: ${report.shared.name}`);
-      }
+      if (report.requestId) lines.push(`requestId: ${report.requestId}`);
+      if (report.requestAlias) lines.push(`requestAlias: ${report.requestAlias}`);
+      if (report.errorCode) lines.push(`errorCode: ${report.errorCode}`);
+      if (report.shared?.name) lines.push(`shared: ${report.shared.name}`);
       const browserReadCommand = getBrowserReadCommand(report.traceId);
-      if (browserReadCommand) {
-        lines.push(`read: ${browserReadCommand}`);
-      } else {
-        lines.push("read: enable browser output or use onReport(report)");
-      }
+      if (browserReadCommand) lines.push(`read: ${browserReadCommand}`);
+      else lines.push("read: enable browser output or use onReport(report)");
       const rawStack = getRawStack(rawError);
-      if (options.printRawStack === true && rawStack) {
-        lines.push("rawStack:", rawStack);
-      }
+      if (options.printRawStack === true && rawStack) lines.push("rawStack:", rawStack);
       try {
         console.error(lines.join("\n"));
       } catch {
       }
     };
     const emitStartConsoleHint = (event, report) => {
-      if (!shouldPrintStartConsole(event)) {
-        return;
-      }
+      if (!shouldPrintStartConsole(event)) return;
       const startKey = [
         event.traceId,
         event.phase,
         event.requestId || event.shared?.name || event.remote?.name || "",
         event.lifecycle || ""
       ].join("|");
-      if (consoleReportedStartKeys.has(startKey)) {
-        return;
-      }
+      if (consoleReportedStartKeys.has(startKey)) return;
       consoleReportedStartKeys.add(startKey);
       const lines = [
         "[Module Federation] Observability trace started",
         `traceId: ${report.traceId}`,
         `phase: ${event.phase}`
       ];
-      if (event.requestId) {
-        lines.push(`requestId: ${event.requestId}`);
-      }
-      if (event.requestAlias) {
-        lines.push(`requestAlias: ${event.requestAlias}`);
-      }
-      if (event.remote?.name) {
-        lines.push(`remote: ${event.remote.name}`);
-      }
-      if (event.shared?.name) {
-        lines.push(`shared: ${event.shared.name}`);
-      }
-      if (event.lifecycle) {
-        lines.push(`lifecycle: ${event.lifecycle}`);
-      }
+      if (event.requestId) lines.push(`requestId: ${event.requestId}`);
+      if (event.requestAlias) lines.push(`requestAlias: ${event.requestAlias}`);
+      if (event.remote?.name) lines.push(`remote: ${event.remote.name}`);
+      if (event.shared?.name) lines.push(`shared: ${event.shared.name}`);
+      if (event.lifecycle) lines.push(`lifecycle: ${event.lifecycle}`);
       const browserReadCommand = getBrowserReadCommand(report.traceId);
-      if (browserReadCommand) {
-        lines.push(`read: ${browserReadCommand}`);
-      } else {
-        lines.push(
-          "read: enable browser output or use getReports({ limit: 10 })"
-        );
-      }
+      if (browserReadCommand) lines.push(`read: ${browserReadCommand}`);
+      else lines.push("read: enable browser output or use getReports({ limit: 10 })");
       try {
         console.info(lines.join("\n"));
       } catch {
@@ -5019,29 +4324,22 @@ ${event.message || ""}`;
       ensureBrowserGlobal(origin);
     };
     const prepareRuntimeOrigin = (origin) => {
-      if (!isEnabled()) {
-        return false;
-      }
+      if (!isEnabled()) return false;
       lastRuntimeOrigin = origin;
       registerRuntimeInstance(origin);
       prepareOutputChannels(origin);
       return true;
     };
     const recordEvent = (input, origin) => {
-      if (suppressRuntimeEvents) {
-        return void 0;
-      }
+      if (suppressRuntimeEvents) return;
       const effectiveInput = {
         ...input,
         instanceRef: input.instanceRef || getInstanceRef(origin)
       };
-      const traceId = resolveTraceId(effectiveInput);
-      const event = normalizeEvent2(effectiveInput, traceId, origin);
+      const event = normalizeEvent2(effectiveInput, resolveTraceId(effectiveInput), origin);
       applyPhaseDuration(event);
       updateTraceMaps(event);
-      if (!shouldRecordEvent(level, effectiveInput) && !shouldRecordStartTrace(effectiveInput)) {
-        return void 0;
-      }
+      if (!shouldRecordEvent(level, effectiveInput) && !shouldRecordStartTrace(effectiveInput)) return;
       events.push(event);
       const report = updateReport(event);
       openRuntimeAdapter?.syncReport(report, {
@@ -5050,47 +4348,32 @@ ${event.message || ""}`;
       });
       emitStartConsoleHint(event, report);
       emitConsoleHint(event, report, input.error);
-      if (shouldNotifyCollector()) {
-        notifyCollector(event, report);
-      }
-      if (shouldNotifyDevtools()) {
-        notifyDevtools(event, report);
-      }
+      if (shouldNotifyCollector()) notifyCollector(event, report);
+      if (shouldNotifyDevtools()) notifyDevtools(event, report);
       notifyRawError(effectiveInput.error, event, report, origin);
       notifyEvent(event, report, origin);
       notifyReport(report, origin);
       return event;
     };
     const markComponentLoadedFor = (markOptions = {}, origin) => {
-      if (options.enabled === false || !runtimeObservabilityEnabled) {
-        return void 0;
-      }
+      if (options.enabled === false || !runtimeObservabilityEnabled) return;
       const instanceRef = getInstanceRef(origin);
-      const traceId = markOptions.traceId || (markOptions.requestId ? traceByRequest.get(
-        getTraceMapKey(
-          instanceRef,
-          sanitizeRequestId(markOptions.requestId) || ""
-        )
-      ) : void 0) || (instanceRef ? latestTraceByInstance.get(instanceRef) : latestTraceId) || createTraceId({
-        phase: "component",
-        status: "success",
-        requestId: markOptions.requestId
-      });
-      return recordEvent(
-        {
-          traceId,
-          instanceRef,
+      return recordEvent({
+        traceId: markOptions.traceId || (markOptions.requestId ? traceByRequest.get(getTraceMapKey(instanceRef, sanitizeRequestId(markOptions.requestId) || "")) : void 0) || (instanceRef ? latestTraceByInstance.get(instanceRef) : latestTraceId) || createTraceId({
           phase: "component",
           status: "success",
-          requestId: markOptions.requestId,
-          componentName: markOptions.componentName,
-          metadata: markOptions.metadata,
-          eventName: COMPONENT_BUSINESS_LOADED_EVENT,
-          message: COMPONENT_BUSINESS_LOADED_EVENT,
-          source: "business"
-        },
-        origin
-      );
+          requestId: markOptions.requestId
+        }),
+        instanceRef,
+        phase: "component",
+        status: "success",
+        requestId: markOptions.requestId,
+        componentName: markOptions.componentName,
+        metadata: markOptions.metadata,
+        eventName: COMPONENT_BUSINESS_LOADED_EVENT,
+        message: COMPONENT_BUSINESS_LOADED_EVENT,
+        source: "business"
+      }, origin);
     };
     const markComponentLoaded = (markOptions = {}) => markComponentLoadedFor(markOptions, lastRuntimeOrigin);
     const getReactForOrigin = async (origin) => {
@@ -5103,43 +4386,29 @@ ${event.message || ""}`;
         } catch {
           reactFactory = void 0;
         }
-        if (typeof reactFactory !== "function") {
-          reactFactory = await origin.loadShare?.("react");
-        }
-        if (typeof reactFactory !== "function") {
-          return void 0;
-        }
+        if (typeof reactFactory !== "function") reactFactory = await origin.loadShare?.("react");
+        if (typeof reactFactory !== "function") return;
         return resolveReactLike(reactFactory());
       } catch {
-        return void 0;
+        return;
       } finally {
         suppressRuntimeEvents = previousSuppressRuntimeEvents;
       }
     };
     const getReactWrapPolicy = (loadArgs) => {
-      if (options.react?.enabled === false || options.react?.injectLoadedCallback !== true) {
-        return void 0;
-      }
+      if (options.react?.enabled === false || options.react?.injectLoadedCallback !== true) return;
       const remoteIds = options.react.remoteIds || [];
-      if (!remoteIds.length) {
-        return {
-          allowAnonymousComponent: false
-        };
-      }
+      if (!remoteIds.length) return { allowAnonymousComponent: false };
       const normalizeRemoteId = (value) => value.replace(/\/\.\//g, "/").replace(/^\.\//, "");
       const expectedRemoteIds = new Set(remoteIds.map(normalizeRemoteId));
       const candidates = /* @__PURE__ */ new Set();
       const addCandidate = (value) => {
-        if (!value) {
-          return;
-        }
+        if (!value) return;
         candidates.add(value);
         candidates.add(normalizeRemoteId(value));
       };
       const exposeValues = [loadArgs.expose];
-      if (loadArgs.expose?.startsWith("./")) {
-        exposeValues.push(loadArgs.expose.slice(2));
-      }
+      if (loadArgs.expose?.startsWith("./")) exposeValues.push(loadArgs.expose.slice(2));
       const remoteNames = [
         loadArgs.pkgNameOrAlias,
         loadArgs.remote?.alias,
@@ -5152,158 +4421,233 @@ ${event.message || ""}`;
           addCandidate(remoteName && expose ? `${remoteName}/${expose}` : "");
         });
       });
-      const matched = Array.from(candidates).some(
-        (candidate) => expectedRemoteIds.has(candidate)
-      );
-      return matched ? {
-        allowAnonymousComponent: true
-      } : void 0;
+      return Array.from(candidates).some((candidate) => expectedRemoteIds.has(candidate)) ? { allowAnonymousComponent: true } : void 0;
     };
     const createReactComponentWrapper = (component, loadArgs, wrapPolicy, react) => {
-      const target = resolveReactComponentTarget(
-        component,
-        options.react?.defaultExportMode || (wrapPolicy.allowAnonymousComponent ? "component" : "preserve"),
-        wrapPolicy.allowAnonymousComponent
-      );
-      if (!target) {
-        return void 0;
-      }
-      const componentName = getReactComponentName(
-        target.component,
-        loadArgs.expose || loadArgs.id
-      );
+      const target = resolveReactComponentTarget(component, options.react?.defaultExportMode || (wrapPolicy.allowAnonymousComponent ? "component" : "preserve"), wrapPolicy.allowAnonymousComponent);
+      if (!target) return;
+      const componentName = getReactComponentName(target.component, loadArgs.expose || loadArgs.id);
       const originalComponent = target.component;
       const ObservedRemoteComponent = (props) => {
         const incomingProps = isRecord2(props) ? props : {};
-        const originalLoadedCallback = getObjectValue(
-          incomingProps,
-          ON_MF_REMOTE_LOADED_PROP
-        );
+        const originalLoadedCallback = getObjectValue(incomingProps, ON_MF_REMOTE_LOADED_PROP);
         const onMFRemoteLoaded = (loadedOptions = {}) => {
-          markComponentLoadedFor(
-            {
-              requestId: loadArgs.id,
-              componentName: loadedOptions.componentName || componentName,
-              metadata: loadedOptions.metadata
-            },
-            loadArgs.origin
-          );
-          if (typeof originalLoadedCallback === "function") {
-            originalLoadedCallback(loadedOptions);
-          }
+          markComponentLoadedFor({
+            requestId: loadArgs.id,
+            componentName: loadedOptions.componentName || componentName,
+            metadata: loadedOptions.metadata
+          }, loadArgs.origin);
+          if (typeof originalLoadedCallback === "function") originalLoadedCallback(loadedOptions);
         };
         const nextProps = {
           ...incomingProps,
           [ON_MF_REMOTE_LOADED_PROP]: onMFRemoteLoaded
         };
-        if (react) {
-          return react.createElement(originalComponent, nextProps);
-        }
+        if (react) return react.createElement(originalComponent, nextProps);
         return originalComponent(nextProps);
       };
       ObservedRemoteComponent.displayName = `ObservedRemote(${componentName})`;
-      copyComponentStatics(
-        ObservedRemoteComponent,
-        originalComponent
-      );
+      copyComponentStatics(ObservedRemoteComponent, originalComponent);
       return target.createResult(ObservedRemoteComponent);
     };
     const wrapReactComponent = async (component, loadArgs) => {
       const wrapPolicy = getReactWrapPolicy(loadArgs);
-      if (!wrapPolicy) {
-        return void 0;
-      }
-      return createReactComponentWrapper(
-        component,
-        loadArgs,
-        wrapPolicy,
-        await getReactForOrigin(loadArgs.origin)
-      );
+      if (!wrapPolicy) return;
+      return createReactComponentWrapper(component, loadArgs, wrapPolicy, await getReactForOrigin(loadArgs.origin));
     };
     const wrapReactComponentFactory = async (factory, loadArgs) => {
       const wrapPolicy = getReactWrapPolicy(loadArgs);
-      if (!wrapPolicy || typeof factory !== "function") {
-        return void 0;
-      }
+      if (!wrapPolicy || typeof factory !== "function") return;
       const react = await getReactForOrigin(loadArgs.origin);
       const originalFactory = factory;
       return (...factoryArgs) => {
         const moduleOrPromise = originalFactory(...factoryArgs);
-        if (moduleOrPromise && typeof moduleOrPromise.then === "function") {
-          return moduleOrPromise.then((module) => {
-            return createReactComponentWrapper(module, loadArgs, wrapPolicy, react) || module;
-          });
-        }
-        return createReactComponentWrapper(
-          moduleOrPromise,
-          loadArgs,
-          wrapPolicy,
-          react
-        ) || moduleOrPromise;
+        if (moduleOrPromise && typeof moduleOrPromise.then === "function") return moduleOrPromise.then((module) => {
+          return createReactComponentWrapper(module, loadArgs, wrapPolicy, react) || module;
+        });
+        return createReactComponentWrapper(moduleOrPromise, loadArgs, wrapPolicy, react) || moduleOrPromise;
       };
     };
+    const recordBridgeSignal = (args, signal) => {
+      const origin = args.origin || lastRuntimeOrigin;
+      if (!origin || !prepareRuntimeOrigin(origin)) return;
+      const bridge = normalizeBridgeInfo(args);
+      if (!bridge) return;
+      updateBridgeState(origin, bridge, signal);
+      const remote = bridge.remote ? { name: bridge.remote } : void 0;
+      const status = signal === "start" ? "start" : bridge.outcome === "error" ? "error" : bridge.outcome === "skipped" ? "complete" : "success";
+      const phase = signal === "commit" ? "bridge-commit" : bridge.operation === "destroy" ? "bridge-destroy" : bridge.operation === "route-sync" ? "bridge-route" : "bridge-render";
+      const operationLabel = bridge.operation === "update" ? "update" : bridge.operation;
+      const message = signal === "start" ? `bridge:${operationLabel}-start` : signal === "invoked" ? `bridge:${operationLabel}-invoked` : signal === "commit" ? "bridge:render-committed" : `bridge:${operationLabel}-${bridge.outcome || "success"}`;
+      const instanceRef = getInstanceRef(origin);
+      if (signal === "start" && bridge.side === "consumer" && bridge.operation === "render" && instanceRef) {
+        const providerKey = `${instanceRef}\0${bridge.bridgeId}`;
+        if (!reportedBridgeProviderKeys.has(providerKey)) {
+          reportedBridgeProviderKeys.add(providerKey);
+          recordEvent({
+            phase: "bridge-provider",
+            status: "success",
+            remote,
+            expose: bridge.expose,
+            bridge,
+            lifecycle: "beforeBridgeOperation",
+            message: "bridge:provider-acquired",
+            source: "runtime"
+          }, origin);
+        }
+      }
+      recordEvent({
+        phase,
+        status,
+        remote,
+        expose: bridge.expose,
+        bridge,
+        duration: bridge.duration,
+        lifecycle: signal === "start" ? "beforeBridgeOperation" : signal === "invoked" ? "bridgeRenderInvoked" : signal === "commit" ? "afterBridgeCommit" : "afterBridgeOperation",
+        message,
+        error: bridge.outcome === "error" ? bridge.error?.message : void 0,
+        errorContext: bridge.outcome === "error" ? {
+          operationId: bridge.operationId,
+          bridgeId: bridge.bridgeId,
+          side: bridge.side,
+          framework: bridge.framework,
+          errorName: bridge.error?.name
+        } : void 0,
+        source: "runtime"
+      }, origin);
+    };
     const legacyHooks = {
+      beforeBridgeOperation(args) {
+        recordBridgeSignal(args, "start");
+      },
+      bridgeRenderInvoked(args) {
+        recordBridgeSignal(args, "invoked");
+      },
+      afterBridgeOperation(args) {
+        recordBridgeSignal(args, "result");
+      },
+      afterBridgeCommit(args) {
+        recordBridgeSignal(args, "commit");
+      },
+      beforeLoadResource(args) {
+        const resourceArgs = args;
+        if (!prepareRuntimeOrigin(resourceArgs.origin)) return;
+        const remote = createRemoteInfo(resourceArgs.remote);
+        recordEvent({
+          phase: resourceArgs.resourceType === "manifest" || resourceArgs.resourceType === "remoteEntry" ? resourceArgs.resourceType : "preload",
+          status: "start",
+          requestId: resourceArgs.id,
+          remote,
+          expose: resourceArgs.expose,
+          url: resourceArgs.url,
+          timestamp: resourceArgs.startedAt,
+          lifecycle: "beforeLoadResource",
+          message: `resource:${resourceArgs.resourceType}:load-start`,
+          resource: {
+            type: resourceArgs.resourceType,
+            initiator: resourceArgs.initiator,
+            url: resourceArgs.url,
+            startedAt: resourceArgs.startedAt
+          }
+        }, resourceArgs.origin);
+      },
+      afterLoadResource(args) {
+        const resourceArgs = args;
+        if (!prepareRuntimeOrigin(resourceArgs.origin)) return;
+        const remote = createRemoteInfo(resourceArgs.remote);
+        const phase = resourceArgs.resourceType === "manifest" || resourceArgs.resourceType === "remoteEntry" ? resourceArgs.resourceType : "preload";
+        const isError = resourceArgs.outcome === "error" || resourceArgs.outcome === "timeout";
+        const status = resourceArgs.outcome === "recovered" ? "complete" : isError ? "error" : "success";
+        const resource = {
+          type: resourceArgs.resourceType,
+          initiator: resourceArgs.initiator,
+          outcome: resourceArgs.outcome,
+          url: resourceArgs.url,
+          startedAt: resourceArgs.startedAt,
+          endedAt: resourceArgs.endedAt,
+          duration: resourceArgs.duration,
+          httpStatus: resourceArgs.httpStatus,
+          mimeType: resourceArgs.mimeType,
+          redirected: resourceArgs.redirected,
+          cacheSource: resourceArgs.cacheSource,
+          errorType: resourceArgs.errorType
+        };
+        recordEvent({
+          phase,
+          status,
+          requestId: resourceArgs.id,
+          remote,
+          expose: resourceArgs.expose,
+          url: resourceArgs.url,
+          timestamp: resourceArgs.endedAt,
+          duration: resourceArgs.duration,
+          lifecycle: "afterLoadResource",
+          message: `resource:${resourceArgs.resourceType}:${resourceArgs.outcome}`,
+          error: isError || resourceArgs.outcome === "recovered" ? resourceArgs.error : void 0,
+          recovered: resourceArgs.outcome === "recovered",
+          cached: resourceArgs.outcome === "cached",
+          resource,
+          errorContext: isError || resourceArgs.outcome === "recovered" ? {
+            resourceType: resourceArgs.resourceType,
+            initiator: resourceArgs.initiator,
+            outcome: resourceArgs.outcome,
+            errorType: resourceArgs.errorType,
+            httpStatus: resourceArgs.httpStatus
+          } : void 0,
+          metadata: clipObservabilityMetadata({
+            resourceType: resourceArgs.resourceType,
+            initiator: resourceArgs.initiator,
+            outcome: resourceArgs.outcome,
+            httpStatus: resourceArgs.httpStatus,
+            mimeType: resourceArgs.mimeType,
+            redirected: resourceArgs.redirected,
+            cacheSource: resourceArgs.cacheSource,
+            errorType: resourceArgs.errorType
+          })
+        }, resourceArgs.origin);
+      },
       beforeRequest(args) {
         const requestArgs = args;
-        if (!prepareRuntimeOrigin(requestArgs.origin)) {
-          return returnHookArgs(args);
-        }
-        const remote = resolveRemoteFromRequestId(
-          requestArgs.id,
-          requestArgs.options
-        );
-        recordEvent(
-          {
-            phase: "loadRemote",
-            status: "start",
-            requestId: requestArgs.id,
-            remote,
-            lifecycle: "beforeRequest",
-            message: "remote:load-start"
-          },
-          requestArgs.origin
-        );
+        if (!prepareRuntimeOrigin(requestArgs.origin)) return returnHookArgs(args);
+        const remote = resolveRemoteFromRequestId(requestArgs.id, requestArgs.options);
+        recordEvent({
+          phase: "loadRemote",
+          status: "start",
+          requestId: requestArgs.id,
+          remote,
+          lifecycle: "beforeRequest",
+          message: "remote:load-start"
+        }, requestArgs.origin);
         return returnHookArgs(args);
       },
       afterMatchRemote(args) {
         const matchArgs = args;
-        if (!prepareRuntimeOrigin(matchArgs.origin)) {
-          return;
-        }
+        if (!prepareRuntimeOrigin(matchArgs.origin)) return;
         const remote = createRemoteInfo(matchArgs.remoteInfo || matchArgs.remote);
         const hostRemotes = getHostRemotesSummary(matchArgs.options);
-        recordEvent(
-          {
-            phase: "matchRemote",
-            status: matchArgs.error ? "error" : "success",
-            requestId: matchArgs.id,
-            lifecycle: "afterMatchRemote",
-            expose: matchArgs.expose,
-            remote,
-            message: matchArgs.error ? "remote:match-failed" : "remote:matched",
-            error: matchArgs.error,
-            errorContext: hostRemotes ? {
-              hostRemotes
-            } : void 0
-          },
-          matchArgs.origin
-        );
+        recordEvent({
+          phase: "matchRemote",
+          status: matchArgs.error ? "error" : "success",
+          requestId: matchArgs.id,
+          lifecycle: "afterMatchRemote",
+          expose: matchArgs.expose,
+          remote,
+          message: matchArgs.error ? "remote:match-failed" : "remote:matched",
+          error: matchArgs.error,
+          errorContext: hostRemotes ? { hostRemotes } : void 0
+        }, matchArgs.origin);
       },
       beforeLoadRemoteSnapshot(args) {
-        const snapshotArgs = args;
-        prepareRuntimeOrigin(snapshotArgs.origin);
+        prepareRuntimeOrigin(args.origin);
       },
       loadSnapshot(args) {
-        if (!isEnabled()) {
-          return returnHookArgs(args);
-        }
+        if (!isEnabled()) return returnHookArgs(args);
         const snapshotArgs = args;
+        if (supportsResourceLifecycle(lastRuntimeOrigin)) return returnHookArgs(args);
         const moduleRemote = createRemoteInfo(snapshotArgs.moduleInfo);
         const snapshotRemoteEntry = snapshotArgs.remoteSnapshot?.remoteEntry || snapshotArgs.remoteSnapshot?.entry;
         const manifestUrl = isManifestUrl(moduleRemote?.entry) ? moduleRemote?.entry : isManifestUrl(snapshotRemoteEntry) ? snapshotRemoteEntry : void 0;
-        if (!manifestUrl) {
-          return returnHookArgs(args);
-        }
+        if (!manifestUrl) return returnHookArgs(args);
         const remote = createRemoteInfo({
           name: moduleRemote?.name || sanitizeText(snapshotArgs.remoteSnapshot?.name, 120),
           alias: moduleRemote?.alias,
@@ -5312,66 +4656,50 @@ ${event.message || ""}`;
           type: moduleRemote?.type || sanitizeText(snapshotArgs.remoteSnapshot?.type, 80)
         });
         if (seenManifestUrls.has(manifestUrl)) {
-          recordEvent(
-            {
-              phase: "manifest",
-              status: "success",
-              requestId: manifestUrl,
-              remote,
-              url: manifestUrl,
-              lifecycle: "loadSnapshot",
-              message: "manifest:cached",
-              cached: true
-            },
-            lastRuntimeOrigin
-          );
-          return returnHookArgs(args);
-        }
-        if (loadingManifestUrls.has(manifestUrl)) {
-          return returnHookArgs(args);
-        }
-        loadingManifestUrls.add(manifestUrl);
-        recordEvent(
-          {
-            phase: "manifest",
-            status: "start",
-            requestId: manifestUrl,
-            remote,
-            url: manifestUrl,
-            lifecycle: "loadSnapshot",
-            message: "manifest:load-start"
-          },
-          lastRuntimeOrigin
-        );
-        return returnHookArgs(args);
-      },
-      loadRemoteSnapshot(args) {
-        if (options.enabled === false) {
-          return returnHookArgs(args);
-        }
-        const snapshotArgs = args;
-        if (snapshotArgs.from !== "manifest") {
-          return returnHookArgs(args);
-        }
-        const manifestUrl = sanitizeUrl(snapshotArgs.manifestUrl) || sanitizeUrl(snapshotArgs.moduleInfo?.entry);
-        const remote = createRemoteInfo({
-          ...snapshotArgs.moduleInfo,
-          entry: manifestUrl || snapshotArgs.moduleInfo?.entry
-        });
-        const cached = Boolean(manifestUrl && seenManifestUrls.has(manifestUrl));
-        recordEvent(
-          {
+          recordEvent({
             phase: "manifest",
             status: "success",
             requestId: manifestUrl,
             remote,
             url: manifestUrl,
-            lifecycle: "loadRemoteSnapshot",
-            message: "manifest:resolved",
-            cached
-          },
-          lastRuntimeOrigin
-        );
+            lifecycle: "loadSnapshot",
+            message: "manifest:cached",
+            cached: true
+          }, lastRuntimeOrigin);
+          return returnHookArgs(args);
+        }
+        if (loadingManifestUrls.has(manifestUrl)) return returnHookArgs(args);
+        loadingManifestUrls.add(manifestUrl);
+        recordEvent({
+          phase: "manifest",
+          status: "start",
+          requestId: manifestUrl,
+          remote,
+          url: manifestUrl,
+          lifecycle: "loadSnapshot",
+          message: "manifest:load-start"
+        }, lastRuntimeOrigin);
+        return returnHookArgs(args);
+      },
+      loadRemoteSnapshot(args) {
+        if (options.enabled === false) return returnHookArgs(args);
+        const snapshotArgs = args;
+        if (supportsResourceLifecycle(lastRuntimeOrigin)) return returnHookArgs(args);
+        if (snapshotArgs.from !== "manifest") return returnHookArgs(args);
+        const manifestUrl = sanitizeUrl(snapshotArgs.manifestUrl) || sanitizeUrl(snapshotArgs.moduleInfo?.entry);
+        recordEvent({
+          phase: "manifest",
+          status: "success",
+          requestId: manifestUrl,
+          remote: createRemoteInfo({
+            ...snapshotArgs.moduleInfo,
+            entry: manifestUrl || snapshotArgs.moduleInfo?.entry
+          }),
+          url: manifestUrl,
+          lifecycle: "loadRemoteSnapshot",
+          message: "manifest:resolved",
+          cached: Boolean(manifestUrl && seenManifestUrls.has(manifestUrl))
+        }, lastRuntimeOrigin);
         if (manifestUrl) {
           loadingManifestUrls.delete(manifestUrl);
           seenManifestUrls.add(manifestUrl);
@@ -5380,275 +4708,186 @@ ${event.message || ""}`;
       },
       afterResolve(args) {
         const resolveArgs = args;
-        if (!prepareRuntimeOrigin(resolveArgs.origin)) {
-          return returnHookArgs(args);
-        }
-        const remote = createRemoteInfo(
-          resolveArgs.remoteInfo || resolveArgs.remote
-        );
-        if (!isManifestUrl(remote?.entry)) {
-          return returnHookArgs(args);
-        }
+        if (!prepareRuntimeOrigin(resolveArgs.origin)) return returnHookArgs(args);
+        if (!isManifestUrl(createRemoteInfo(resolveArgs.remoteInfo || resolveArgs.remote)?.entry)) return returnHookArgs(args);
         return returnHookArgs(args);
       },
       async onLoad(args) {
         const loadArgs = args;
-        if (!prepareRuntimeOrigin(loadArgs.origin)) {
-          return;
-        }
-        const wrappedComponent = typeof loadArgs.exposeModuleFactory === "function" ? await wrapReactComponentFactory(
-          loadArgs.exposeModuleFactory,
-          loadArgs
-        ) : await wrapReactComponent(loadArgs.exposeModule, loadArgs);
+        if (!prepareRuntimeOrigin(loadArgs.origin)) return;
+        const wrappedComponent = typeof loadArgs.exposeModuleFactory === "function" ? await wrapReactComponentFactory(loadArgs.exposeModuleFactory, loadArgs) : await wrapReactComponent(loadArgs.exposeModule, loadArgs);
         const remote = createRemoteInfo(loadArgs.remote);
-        recordEvent(
-          {
-            phase: "loadRemote",
-            status: "success",
-            requestId: loadArgs.id,
-            lifecycle: "onLoad",
-            expose: loadArgs.expose,
-            remote,
-            message: "remote:loaded",
-            loadedBefore: shouldCollectLoadedBefore() ? collectLoadedBeforeInfo(remote, loadArgs.expose, loadArgs.origin) : void 0
-          },
-          loadArgs.origin
-        );
-        if (wrappedComponent) {
-          return wrappedComponent;
-        }
-        return void 0;
+        recordEvent({
+          phase: "loadRemote",
+          status: "success",
+          requestId: loadArgs.id,
+          lifecycle: "onLoad",
+          expose: loadArgs.expose,
+          remote,
+          message: "remote:loaded",
+          loadedBefore: shouldCollectLoadedBefore() ? collectLoadedBeforeInfo(remote, loadArgs.expose, loadArgs.origin) : void 0
+        }, loadArgs.origin);
+        if (wrappedComponent) return wrappedComponent;
       },
       errorLoadRemote(args) {
         const errorArgs = args;
-        if (!prepareRuntimeOrigin(errorArgs.origin) || errorArgs.lifecycle !== "onLoad" && errorArgs.lifecycle !== "beforeRequest" && errorArgs.lifecycle !== "afterResolve") {
-          return void 0;
-        }
+        if (!prepareRuntimeOrigin(errorArgs.origin) || errorArgs.lifecycle !== "onLoad" && errorArgs.lifecycle !== "beforeRequest" && errorArgs.lifecycle !== "afterResolve") return;
         const isManifestError = errorArgs.lifecycle === "afterResolve";
-        if (isManifestError && errorArgs.id) {
-          loadingManifestUrls.delete(errorArgs.id);
-        }
+        if (isManifestError && errorArgs.id) loadingManifestUrls.delete(errorArgs.id);
         const remote = createRemoteInfo(errorArgs.remote);
-        recordEvent(
-          {
-            phase: isManifestError ? "manifest" : "loadRemote",
-            status: "error",
-            requestId: errorArgs.id,
-            lifecycle: errorArgs.lifecycle,
-            expose: errorArgs.expose,
-            remote,
-            url: isManifestError ? errorArgs.id : void 0,
-            message: isManifestError ? "manifest:failed" : errorArgs.lifecycle ? `remote:${errorArgs.lifecycle}:failed` : "remote:failed",
-            error: errorArgs.error,
-            loadedBefore: collectLoadedBeforeInfo(
-              remote,
-              errorArgs.expose,
-              errorArgs.origin
-            )
-          },
-          errorArgs.origin
-        );
-        return void 0;
+        recordEvent({
+          phase: isManifestError ? "manifest" : "loadRemote",
+          status: "error",
+          requestId: errorArgs.id,
+          lifecycle: errorArgs.lifecycle,
+          expose: errorArgs.expose,
+          remote,
+          url: isManifestError ? errorArgs.id : void 0,
+          message: isManifestError ? "manifest:failed" : errorArgs.lifecycle ? `remote:${errorArgs.lifecycle}:failed` : "remote:failed",
+          error: errorArgs.error,
+          loadedBefore: collectLoadedBeforeInfo(remote, errorArgs.expose, errorArgs.origin)
+        }, errorArgs.origin);
       },
       afterLoadRemote(args) {
         const loadArgs = args;
-        if (!prepareRuntimeOrigin(loadArgs.origin)) {
-          return;
-        }
+        if (!prepareRuntimeOrigin(loadArgs.origin)) return;
         const remote = createRemoteInfo(loadArgs.remote);
-        recordEvent(
-          {
-            phase: "loadRemote",
-            status: "complete",
-            requestId: loadArgs.id,
-            lifecycle: "afterLoadRemote",
-            expose: loadArgs.expose,
-            remote,
-            message: loadArgs.recovered ? "remote:load-recovered" : loadArgs.error ? "remote:load-failed" : "remote:load-complete",
-            error: loadArgs.error,
-            recovered: loadArgs.recovered,
-            loadedBefore: shouldCollectLoadedBefore(loadArgs.error) ? collectLoadedBeforeInfo(remote, loadArgs.expose, loadArgs.origin) : void 0
-          },
-          loadArgs.origin
-        );
+        recordEvent({
+          phase: "loadRemote",
+          status: "complete",
+          requestId: loadArgs.id,
+          lifecycle: "afterLoadRemote",
+          expose: loadArgs.expose,
+          remote,
+          message: loadArgs.recovered ? "remote:load-recovered" : loadArgs.error ? "remote:load-failed" : "remote:load-complete",
+          error: loadArgs.error,
+          recovered: loadArgs.recovered,
+          loadedBefore: shouldCollectLoadedBefore(loadArgs.error) ? collectLoadedBeforeInfo(remote, loadArgs.expose, loadArgs.origin) : void 0
+        }, loadArgs.origin);
       },
       loadEntry(args) {
         const entryArgs = args;
-        if (shouldSkipRuntimeHook(entryArgs.origin) || !prepareRuntimeOrigin(entryArgs.origin)) {
-          return;
-        }
+        if (supportsResourceLifecycle(entryArgs.origin) || shouldSkipRuntimeHook(entryArgs.origin) || !prepareRuntimeOrigin(entryArgs.origin)) return;
         const remote = createRemoteInfo(entryArgs.remoteInfo);
-        recordEvent(
-          {
-            phase: "remoteEntry",
-            status: "start",
-            requestId: remote?.name,
-            remote,
-            url: remote?.entry,
-            lifecycle: "loadEntry",
-            message: "remoteEntry:load-start"
-          },
-          entryArgs.origin
-        );
+        recordEvent({
+          phase: "remoteEntry",
+          status: "start",
+          requestId: remote?.name,
+          remote,
+          url: remote?.entry,
+          lifecycle: "loadEntry",
+          message: "remoteEntry:load-start"
+        }, entryArgs.origin);
       },
       afterLoadEntry(args) {
         const entryArgs = args;
-        if (shouldSkipRuntimeHook(entryArgs.origin) || !prepareRuntimeOrigin(entryArgs.origin)) {
-          return;
-        }
+        if (supportsResourceLifecycle(entryArgs.origin) && !entryArgs.recovered || shouldSkipRuntimeHook(entryArgs.origin) || !prepareRuntimeOrigin(entryArgs.origin)) return;
         const remote = createRemoteInfo(entryArgs.remoteInfo);
         const remoteEntryKey = getRemoteEntryKey(sanitizeRemote(remote));
         const cached = entryArgs.cached === true || Boolean(remoteEntryKey && seenRemoteEntryKeys.has(remoteEntryKey));
-        recordEvent(
-          {
-            phase: "remoteEntry",
-            status: entryArgs.error ? "error" : "success",
-            requestId: remote?.name,
-            remote,
-            url: remote?.entry,
-            lifecycle: "afterLoadEntry",
-            message: entryArgs.error ? "remoteEntry:load-failed" : entryArgs.recovered ? "remoteEntry:load-recovered" : "remoteEntry:loaded",
-            error: entryArgs.error,
-            recovered: entryArgs.recovered,
-            cached
-          },
-          entryArgs.origin
-        );
-        if (!entryArgs.error && remoteEntryKey) {
-          seenRemoteEntryKeys.add(remoteEntryKey);
-        }
+        recordEvent({
+          phase: "remoteEntry",
+          status: entryArgs.error ? "error" : "success",
+          requestId: remote?.name,
+          remote,
+          url: remote?.entry,
+          lifecycle: "afterLoadEntry",
+          message: entryArgs.error ? "remoteEntry:load-failed" : entryArgs.recovered ? "remoteEntry:load-recovered" : "remoteEntry:loaded",
+          error: entryArgs.error,
+          recovered: entryArgs.recovered,
+          cached
+        }, entryArgs.origin);
+        if (!entryArgs.error && remoteEntryKey) seenRemoteEntryKeys.add(remoteEntryKey);
       },
       beforeInitRemote(args) {
         const initArgs = args;
-        if (shouldSkipRuntimeHook(initArgs.origin) || !prepareRuntimeOrigin(initArgs.origin)) {
-          return;
-        }
+        if (shouldSkipRuntimeHook(initArgs.origin) || !prepareRuntimeOrigin(initArgs.origin)) return;
         const remote = createRemoteInfo(initArgs.remoteInfo);
-        recordEvent(
-          {
-            phase: "remoteEntryInit",
-            status: "start",
-            requestId: initArgs.id || remote?.name,
-            remote,
-            lifecycle: "beforeInitRemote",
-            message: "remoteEntry:init-start"
-          },
-          initArgs.origin
-        );
+        recordEvent({
+          phase: "remoteEntryInit",
+          status: "start",
+          requestId: initArgs.id || remote?.name,
+          remote,
+          lifecycle: "beforeInitRemote",
+          message: "remoteEntry:init-start"
+        }, initArgs.origin);
       },
       afterInitRemote(args) {
         const initArgs = args;
-        if (shouldSkipRuntimeHook(initArgs.origin) || !prepareRuntimeOrigin(initArgs.origin)) {
-          return;
-        }
+        if (shouldSkipRuntimeHook(initArgs.origin) || !prepareRuntimeOrigin(initArgs.origin)) return;
         const remote = createRemoteInfo(initArgs.remoteInfo);
-        recordEvent(
-          {
-            phase: "remoteEntryInit",
-            status: initArgs.error ? "error" : "success",
-            requestId: initArgs.id || remote?.name,
-            remote,
-            lifecycle: "afterInitRemote",
-            message: initArgs.error ? "remoteEntry:init-failed" : initArgs.cached ? "remoteEntry:init-reused" : "remoteEntry:initialized",
-            error: initArgs.error,
-            cached: initArgs.cached
-          },
-          initArgs.origin
-        );
+        recordEvent({
+          phase: "remoteEntryInit",
+          status: initArgs.error ? "error" : "success",
+          requestId: initArgs.id || remote?.name,
+          remote,
+          lifecycle: "afterInitRemote",
+          message: initArgs.error ? "remoteEntry:init-failed" : initArgs.cached ? "remoteEntry:init-reused" : "remoteEntry:initialized",
+          error: initArgs.error,
+          cached: initArgs.cached
+        }, initArgs.origin);
       },
       beforeGetExpose(args) {
         const exposeArgs = args;
-        if (shouldSkipRuntimeHook(exposeArgs.origin) || !prepareRuntimeOrigin(exposeArgs.origin)) {
-          return;
-        }
-        recordEvent(
-          {
-            phase: "expose",
-            status: "start",
-            requestId: exposeArgs.id,
-            expose: exposeArgs.expose,
-            remote: createRemoteInfo(exposeArgs.moduleInfo),
-            lifecycle: "beforeGetExpose",
-            message: "expose:get-start"
-          },
-          exposeArgs.origin
-        );
+        if (shouldSkipRuntimeHook(exposeArgs.origin) || !prepareRuntimeOrigin(exposeArgs.origin)) return;
+        recordEvent({
+          phase: "expose",
+          status: "start",
+          requestId: exposeArgs.id,
+          expose: exposeArgs.expose,
+          remote: createRemoteInfo(exposeArgs.moduleInfo),
+          lifecycle: "beforeGetExpose",
+          message: "expose:get-start"
+        }, exposeArgs.origin);
       },
       afterGetExpose(args) {
         const exposeArgs = args;
-        if (shouldSkipRuntimeHook(exposeArgs.origin) || !prepareRuntimeOrigin(exposeArgs.origin)) {
-          return;
-        }
+        if (shouldSkipRuntimeHook(exposeArgs.origin) || !prepareRuntimeOrigin(exposeArgs.origin)) return;
         const remote = createRemoteInfo(exposeArgs.moduleInfo);
-        recordEvent(
-          {
-            phase: "expose",
-            status: exposeArgs.error ? "error" : "success",
-            requestId: exposeArgs.id,
-            expose: exposeArgs.expose,
-            remote,
-            lifecycle: "afterGetExpose",
-            message: exposeArgs.error ? "expose:get-failed" : "expose:resolved",
-            error: exposeArgs.error,
-            loadedBefore: shouldCollectLoadedBefore(exposeArgs.error) ? collectLoadedBeforeInfo(
-              remote,
-              exposeArgs.expose,
-              exposeArgs.origin
-            ) : void 0
-          },
-          exposeArgs.origin
-        );
+        recordEvent({
+          phase: "expose",
+          status: exposeArgs.error ? "error" : "success",
+          requestId: exposeArgs.id,
+          expose: exposeArgs.expose,
+          remote,
+          lifecycle: "afterGetExpose",
+          message: exposeArgs.error ? "expose:get-failed" : "expose:resolved",
+          error: exposeArgs.error,
+          loadedBefore: shouldCollectLoadedBefore(exposeArgs.error) ? collectLoadedBeforeInfo(remote, exposeArgs.expose, exposeArgs.origin) : void 0
+        }, exposeArgs.origin);
       },
       beforeExecuteFactory(args) {
         const factoryArgs = args;
-        if (shouldSkipRuntimeHook(factoryArgs.origin) || !prepareRuntimeOrigin(factoryArgs.origin)) {
-          return;
-        }
-        recordEvent(
-          {
-            phase: "moduleFactory",
-            status: "start",
-            requestId: factoryArgs.id,
-            expose: factoryArgs.expose,
-            remote: createRemoteInfo(factoryArgs.moduleInfo),
-            lifecycle: "beforeExecuteFactory",
-            message: "moduleFactory:execute-start"
-          },
-          factoryArgs.origin
-        );
+        if (shouldSkipRuntimeHook(factoryArgs.origin) || !prepareRuntimeOrigin(factoryArgs.origin)) return;
+        recordEvent({
+          phase: "moduleFactory",
+          status: "start",
+          requestId: factoryArgs.id,
+          expose: factoryArgs.expose,
+          remote: createRemoteInfo(factoryArgs.moduleInfo),
+          lifecycle: "beforeExecuteFactory",
+          message: "moduleFactory:execute-start"
+        }, factoryArgs.origin);
       },
       afterExecuteFactory(args) {
         const factoryArgs = args;
-        if (shouldSkipRuntimeHook(factoryArgs.origin) || !prepareRuntimeOrigin(factoryArgs.origin)) {
-          return;
-        }
+        if (shouldSkipRuntimeHook(factoryArgs.origin) || !prepareRuntimeOrigin(factoryArgs.origin)) return;
         const remote = createRemoteInfo(factoryArgs.moduleInfo);
-        recordEvent(
-          {
-            phase: "moduleFactory",
-            status: factoryArgs.error ? "error" : "success",
-            requestId: factoryArgs.id,
-            expose: factoryArgs.expose,
-            remote,
-            lifecycle: "afterExecuteFactory",
-            message: factoryArgs.error ? "moduleFactory:execute-failed" : "moduleFactory:executed",
-            error: factoryArgs.error,
-            loadedBefore: shouldCollectLoadedBefore(factoryArgs.error) ? collectLoadedBeforeInfo(
-              remote,
-              factoryArgs.expose,
-              factoryArgs.origin
-            ) : void 0
-          },
-          factoryArgs.origin
-        );
+        recordEvent({
+          phase: "moduleFactory",
+          status: factoryArgs.error ? "error" : "success",
+          requestId: factoryArgs.id,
+          expose: factoryArgs.expose,
+          remote,
+          lifecycle: "afterExecuteFactory",
+          message: factoryArgs.error ? "moduleFactory:execute-failed" : "moduleFactory:executed",
+          error: factoryArgs.error,
+          loadedBefore: shouldCollectLoadedBefore(factoryArgs.error) ? collectLoadedBeforeInfo(remote, factoryArgs.expose, factoryArgs.origin) : void 0
+        }, factoryArgs.origin);
       },
       beforeRegisterShare(args) {
-        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) {
-          return returnHookArgs(args);
-        }
-        if (!prepareRuntimeOrigin(args.origin)) {
-          return returnHookArgs(args);
-        }
+        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) return returnHookArgs(args);
+        if (!prepareRuntimeOrigin(args.origin)) return returnHookArgs(args);
         const shareScopeMap = getOriginShareScopeMap(args.origin);
         const hostName = sanitizeText(args.origin.options?.name, 120) || sanitizeText(args.origin.name, 120);
         getSharedScopes(args.shared).forEach((scope) => {
@@ -5658,254 +4897,228 @@ ${event.message || ""}`;
             scope,
             shareScopeMap
           });
-          if (!conflict) {
-            return;
-          }
+          if (!conflict) return;
           const conflictKey = getSharedConflictKey({
             hostName,
             pkgName: args.pkgName,
             conflict
           });
-          if (reportedSharedConflictKeys.has(conflictKey)) {
-            return;
-          }
+          if (reportedSharedConflictKeys.has(conflictKey)) return;
           reportedSharedConflictKeys.add(conflictKey);
-          recordEvent(
-            {
-              phase: "shared-conflict",
-              status: "complete",
-              requestId: `shared:${args.pkgName}`,
-              lifecycle: "beforeRegisterShare",
-              shared: createSharedConflictInfo({
-                pkgName: args.pkgName,
-                shared: args.shared,
-                conflict
-              }),
-              message: `shared:${SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON}`,
-              metadata: {
-                scope,
-                currentVersion: conflict.currentVersion || "",
-                versions: conflict.versions.join(","),
-                existingVersions: conflict.existingVersions.map((item) => item.version).join(",")
-              }
-            },
-            args.origin
-          );
+          recordEvent({
+            phase: "shared-conflict",
+            status: "complete",
+            requestId: `shared:${args.pkgName}`,
+            lifecycle: "beforeRegisterShare",
+            shared: createSharedConflictInfo({
+              pkgName: args.pkgName,
+              shared: args.shared,
+              conflict
+            }),
+            message: `shared:${SHARED_SINGLETON_MULTIPLE_VERSIONS_REASON}`,
+            metadata: {
+              scope,
+              currentVersion: conflict.currentVersion || "",
+              versions: conflict.versions.join(","),
+              existingVersions: conflict.existingVersions.map((item) => item.version).join(",")
+            }
+          }, args.origin);
         });
         return returnHookArgs(args);
       },
+      afterRegisterShare(args) {
+        const registrationArgs = args;
+        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(registrationArgs.origin)) return returnHookArgs(args);
+        if (!prepareRuntimeOrigin(registrationArgs.origin)) return returnHookArgs(args);
+        recordEvent({
+          phase: "shared-registration",
+          status: "success",
+          requestId: registrationArgs.registration.registrationId,
+          lifecycle: "afterRegisterShare",
+          shared: createSharedRegistrationInfo(registrationArgs),
+          message: `shared:registration-${registrationArgs.registration.action}`,
+          metadata: {
+            scope: registrationArgs.registration.scope,
+            action: registrationArgs.registration.action,
+            reason: registrationArgs.registration.reason,
+            trigger: registrationArgs.registration.trigger
+          }
+        }, registrationArgs.origin);
+        return returnHookArgs(args);
+      },
       beforeLoadShare(args) {
-        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) {
-          return returnHookArgs(args);
-        }
-        if (!prepareRuntimeOrigin(args.origin)) {
-          return returnHookArgs(args);
-        }
-        recordEvent(
-          {
-            phase: "shared",
-            status: "start",
-            requestId: `shared:${args.pkgName}`,
-            lifecycle: "loadShare",
-            shared: createSharedInfo(args),
-            message: "shared:load-start"
-          },
-          args.origin
-        );
+        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) return returnHookArgs(args);
+        if (!prepareRuntimeOrigin(args.origin)) return returnHookArgs(args);
+        recordEvent({
+          phase: "shared",
+          status: "start",
+          requestId: getSharedOperationId(args),
+          lifecycle: "loadShare",
+          shared: createSharedInfo(args),
+          message: "shared:load-start"
+        }, args.origin);
         return returnHookArgs(args);
       },
       afterLoadShare(args) {
-        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) {
-          return returnHookArgs(args);
-        }
-        if (!prepareRuntimeOrigin(args.origin)) {
-          return returnHookArgs(args);
-        }
-        recordEvent(
-          {
-            phase: "shared",
-            status: "success",
-            requestId: `shared:${args.pkgName}`,
-            lifecycle: args.lifecycle,
-            shared: createSharedInfo(args),
-            message: args.lifecycle === "loadShareSync" ? "shared:resolved-sync" : "shared:resolved"
-          },
-          args.origin
-        );
+        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) return returnHookArgs(args);
+        if (!prepareRuntimeOrigin(args.origin)) return returnHookArgs(args);
+        recordEvent({
+          phase: "shared",
+          status: "success",
+          requestId: getSharedOperationId(args),
+          lifecycle: args.lifecycle,
+          shared: createSharedInfo(args),
+          message: args.lifecycle === "loadShareSync" ? "shared:resolved-sync" : "shared:resolved"
+        }, args.origin);
         return returnHookArgs(args);
       },
       errorLoadShare(args) {
-        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) {
-          return returnHookArgs(args);
-        }
-        if (!prepareRuntimeOrigin(args.origin)) {
-          return returnHookArgs(args);
-        }
+        if (shouldGuardSharedHooksByRuntimeVersion && !supportsRuntimeHookObservability(args.origin)) return returnHookArgs(args);
+        if (!prepareRuntimeOrigin(args.origin)) return returnHookArgs(args);
         const handledCustomShareMiss = args.recovered === true && !args.error;
         const reason = handledCustomShareMiss ? "custom-share-info-unmatched" : getSharedErrorReason(args);
-        recordEvent(
-          {
-            phase: "shared",
-            status: handledCustomShareMiss ? "complete" : "error",
-            requestId: `shared:${args.pkgName}`,
-            lifecycle: args.lifecycle,
-            shared: createSharedInfo(args, reason),
-            message: reason ? `shared:${reason}` : void 0,
-            error: handledCustomShareMiss ? void 0 : args.error,
-            recovered: args.recovered
-          },
-          args.origin
-        );
+        recordEvent({
+          phase: "shared",
+          status: handledCustomShareMiss ? "complete" : "error",
+          requestId: getSharedOperationId(args),
+          lifecycle: args.lifecycle,
+          shared: createSharedInfo(args, reason),
+          message: reason ? `shared:${reason}` : void 0,
+          error: handledCustomShareMiss ? void 0 : args.error,
+          recovered: args.recovered
+        }, args.origin);
         return returnHookArgs(args);
       }
     };
     if (!shouldDisablePreloadHooks) {
       legacyHooks.generatePreloadAssets = async (args) => {
         const preloadArgs = args;
-        if (!prepareRuntimeOrigin(preloadArgs.origin)) {
-          return continuePreloadAssetsGeneration();
-        }
-        const remote = createRemoteInfo(
-          preloadArgs.remoteInfo || preloadArgs.remote
-        );
+        if (!prepareRuntimeOrigin(preloadArgs.origin)) return continuePreloadAssetsGeneration();
+        const remote = createRemoteInfo(preloadArgs.remoteInfo || preloadArgs.remote);
         const preloadConfig = preloadArgs.preloadOptions?.preloadConfig;
-        recordEvent(
-          {
-            phase: "preload",
-            status: "start",
-            requestId: remote?.name || sanitizeText(preloadConfig?.nameOrAlias, 160),
-            remote,
-            lifecycle: "generatePreloadAssets",
-            message: "preload:assets-ready",
-            metadata: clipObservabilityMetadata({
-              nameOrAlias: preloadConfig?.nameOrAlias,
-              exposes: preloadConfig?.exposes?.join(","),
-              resourceCategory: preloadConfig?.resourceCategory,
-              share: preloadConfig?.share,
-              depsRemote: Array.isArray(preloadConfig?.depsRemote) ? "custom" : preloadConfig?.depsRemote
-            })
-          },
-          preloadArgs.origin
-        );
+        recordEvent({
+          phase: "preload",
+          status: "start",
+          requestId: remote?.name || sanitizeText(preloadConfig?.nameOrAlias, 160),
+          remote,
+          lifecycle: "generatePreloadAssets",
+          message: "preload:assets-ready",
+          metadata: clipObservabilityMetadata({
+            nameOrAlias: preloadConfig?.nameOrAlias,
+            exposes: preloadConfig?.exposes?.join(","),
+            resourceCategory: preloadConfig?.resourceCategory,
+            share: preloadConfig?.share,
+            depsRemote: Array.isArray(preloadConfig?.depsRemote) ? "custom" : preloadConfig?.depsRemote
+          })
+        }, preloadArgs.origin);
         return continuePreloadAssetsGeneration();
       };
       legacyHooks.afterPreloadRemote = (args) => {
         const preloadArgs = args;
-        if (!prepareRuntimeOrigin(preloadArgs.origin)) {
-          return void 0;
-        }
+        if (!prepareRuntimeOrigin(preloadArgs.origin)) return;
         const results = preloadArgs.results || [];
         if (results.length === 0 && preloadArgs.error) {
-          recordEvent(
-            {
-              phase: "preload",
-              status: "error",
-              requestId: "preloadRemote",
-              lifecycle: "afterPreloadRemote",
-              message: "preload:failed",
-              error: preloadArgs.error
-            },
-            preloadArgs.origin
-          );
-          return void 0;
+          recordEvent({
+            phase: "preload",
+            status: "error",
+            requestId: "preloadRemote",
+            lifecycle: "afterPreloadRemote",
+            message: "preload:failed",
+            error: preloadArgs.error
+          }, preloadArgs.origin);
+          return;
         }
         results.forEach((preloadResult) => {
-          const remote = createRemoteInfo(
-            preloadResult.remoteInfo || preloadResult.remote
-          );
+          const remote = createRemoteInfo(preloadResult.remoteInfo || preloadResult.remote);
           const requestId = sanitizeRequestId(preloadResult.id) || remote?.name || sanitizeText(preloadResult.preloadConfig?.nameOrAlias, 160);
+          if (supportsResourceLifecycle(preloadArgs.origin)) {
+            const failedResource = preloadResult.results?.find((assetResult) => assetResult.status === "error" || assetResult.status === "timeout");
+            recordEvent({
+              phase: "preload",
+              status: "complete",
+              requestId,
+              remote,
+              lifecycle: "afterPreloadRemote",
+              message: failedResource ? "preload:completed-with-errors" : "preload:complete",
+              error: failedResource?.error,
+              metadata: clipObservabilityMetadata({
+                resourceCount: preloadResult.results?.length || 0,
+                failedResourceCount: preloadResult.results?.filter((assetResult) => assetResult.status === "error" || assetResult.status === "timeout").length || 0,
+                preloadNameOrAlias: preloadResult.preloadConfig?.nameOrAlias
+              })
+            }, preloadArgs.origin);
+            return;
+          }
           preloadResult.results?.forEach((assetResult) => {
             const isError = assetResult.status === "error" || assetResult.status === "timeout";
-            recordEvent(
-              {
-                phase: "preload",
-                status: isError ? "error" : "success",
-                requestId,
-                remote,
-                url: assetResult.url,
-                cached: assetResult.status === "cached",
-                lifecycle: "afterPreloadRemote",
-                message: `preload:${assetResult.resourceType || "resource"}:${assetResult.status || "complete"}`,
-                error: isError ? assetResult.error : void 0,
-                errorContext: isError ? {
-                  resourceType: assetResult.resourceType,
-                  initiator: assetResult.initiator,
-                  status: assetResult.status,
-                  id: assetResult.id
-                } : void 0,
-                metadata: clipObservabilityMetadata({
-                  resourceType: assetResult.resourceType,
-                  initiator: assetResult.initiator,
-                  status: assetResult.status,
-                  id: assetResult.id,
-                  preloadNameOrAlias: preloadResult.preloadConfig?.nameOrAlias
-                })
-              },
-              preloadArgs.origin
-            );
+            recordEvent({
+              phase: "preload",
+              status: isError ? "error" : "success",
+              requestId,
+              remote,
+              url: assetResult.url,
+              cached: assetResult.status === "cached",
+              lifecycle: "afterPreloadRemote",
+              message: `preload:${assetResult.resourceType || "resource"}:${assetResult.status || "complete"}`,
+              error: isError ? assetResult.error : void 0,
+              errorContext: isError ? {
+                resourceType: assetResult.resourceType,
+                initiator: assetResult.initiator,
+                status: assetResult.status,
+                id: assetResult.id
+              } : void 0,
+              metadata: clipObservabilityMetadata({
+                resourceType: assetResult.resourceType,
+                initiator: assetResult.initiator,
+                status: assetResult.status,
+                id: assetResult.id,
+                preloadNameOrAlias: preloadResult.preloadConfig?.nameOrAlias
+              })
+            }, preloadArgs.origin);
           });
         });
-        return void 0;
       };
     }
     const createRuntimeHooks = (boundInstance) => {
-      if (!boundInstance) {
-        return legacyHooks;
-      }
+      if (!boundInstance) return legacyHooks;
       const boundHooks = {};
-      Object.entries(legacyHooks).forEach(
-        ([lifecycle, handler]) => {
-          if (typeof handler !== "function") {
-            return;
-          }
-          boundHooks[lifecycle] = (...handlerArgs) => {
-            const origin = boundInstance;
-            prepareRuntimeOrigin(origin);
-            const [firstArg, ...remainingArgs] = handlerArgs;
-            const boundFirstArg = isRecord2(firstArg) ? {
-              ...firstArg,
-              origin
-            } : firstArg;
-            return handler(
-              boundFirstArg,
-              ...remainingArgs
-            );
-          };
-        }
-      );
+      Object.entries(legacyHooks).forEach(([lifecycle, handler]) => {
+        if (typeof handler !== "function") return;
+        boundHooks[lifecycle] = (...handlerArgs) => {
+          const origin = boundInstance;
+          prepareRuntimeOrigin(origin);
+          const [firstArg, ...remainingArgs] = handlerArgs;
+          return handler(isRecord2(firstArg) ? {
+            ...firstArg,
+            origin
+          } : firstArg, ...remainingArgs);
+        };
+      });
       return boundHooks;
     };
-    const plugin = {
-      name: pluginName,
-      apply(instance) {
-        const origin = instance;
-        registerRuntimeInstance(
-          origin,
-          getActiveRuntimeInstances().some((item) => item === instance)
-        );
-        const instanceRef = getInstanceRef(origin);
-        if (instanceRef) {
-          boundInstanceRefs.add(instanceRef);
-        }
-        appliedRuntimeVersion = sanitizeText(instance.version, 80) || appliedRuntimeVersion;
-        if (shouldAttachInstanceApi) {
-          let instanceApi = attachedInstanceApis.get(instance);
-          if (!instanceApi) {
-            instanceApi = {
-              markComponentLoaded: (markOptions) => markComponentLoadedFor(markOptions, origin)
-            };
-            attachedInstanceApis.set(instance, instanceApi);
-          }
-          instance.markComponentLoaded = instanceApi.markComponentLoaded;
-        }
-        prepareOutputChannels(origin);
-        openRuntimeAdapter?.register();
-        return createRuntimeHooks(instance);
-      },
-      ...legacyHooks
-    };
     return {
-      plugin,
+      plugin: {
+        name: pluginName,
+        apply(instance) {
+          const origin = instance;
+          registerRuntimeInstance(origin, getActiveRuntimeInstances().some((item) => item === instance));
+          const instanceRef = getInstanceRef(origin);
+          if (instanceRef) boundInstanceRefs.add(instanceRef);
+          appliedRuntimeVersion = sanitizeText(instance.version, 80) || appliedRuntimeVersion;
+          if (shouldAttachInstanceApi) {
+            let instanceApi = attachedInstanceApis.get(instance);
+            if (!instanceApi) {
+              instanceApi = { markComponentLoaded: (markOptions) => markComponentLoadedFor(markOptions, origin) };
+              attachedInstanceApis.set(instance, instanceApi);
+            }
+            instance.markComponentLoaded = instanceApi.markComponentLoaded;
+          }
+          prepareOutputChannels(origin);
+          openRuntimeAdapter?.register();
+          return createRuntimeHooks(instance);
+        },
+        ...legacyHooks
+      },
       getEvents() {
         return getEventsSnapshot();
       },
@@ -5935,10 +5148,12 @@ ${event.message || ""}`;
         reports.clear();
         traceByRequest.clear();
         traceByRemote.clear();
+        traceByBridgeOperation.clear();
         latestTraceByInstance.clear();
         phaseStartTimes.clear();
         seenManifestUrls.clear();
         seenRemoteEntryKeys.clear();
+        reportedBridgeProviderKeys.clear();
         consoleReportedTraceIds.clear();
         consoleReportedStartKeys.clear();
         latestTraceId = void 0;
@@ -5952,7 +5167,7 @@ ${event.message || ""}`;
     };
   }
 
-  // packages/observability-plugin/src/chrome-devtool.ts
+  // dist/esm/chrome-devtool.js
   function ChromeObservabilityPlugin(options = {}) {
     return createObservability(options, {
       pluginName: "observability-plugin:chrome-extension",
@@ -5965,6 +5180,5 @@ ${event.message || ""}`;
       forceDevelopmentChannels: true
     }).plugin;
   }
-  var chrome_devtool_default = ChromeObservabilityPlugin;
   return __toCommonJS(chrome_devtool_exports);
 })();

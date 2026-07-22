@@ -1,16 +1,25 @@
 import type {
   BrowserObservabilitySnapshot,
   BrowserReadResult,
+  BridgeRouteSummary,
   Capability,
   CapabilityName,
   InjectionMarker,
+  RuntimeBridgeInfo,
+  RuntimeBridgeState,
   RuntimeInstance,
   RuntimeModuleInfo,
+  RuntimeReportEvent,
+  RuntimeResource,
   RuntimeRelationship,
   RuntimeRemote,
   RuntimeReport,
+  RuntimeShared,
   RuntimeState,
   ShareScope,
+  SharedCandidate,
+  SharedConflict,
+  SharedRegistration,
   SharedVersion
 } from "./types.js";
 
@@ -219,7 +228,7 @@ function parseRemote(value: unknown, label = "remote"): RuntimeRemote {
     name: requiredString(record.name, `${label} name`),
     alias: optionalString(record.alias),
     version: optionalString(record.version),
-    entry: optionalString(record.entry),
+    entry: optionalSafeUrl(record.entry, `${label} entry`),
     entryGlobalName: optionalString(record.entryGlobalName),
     type: optionalString(record.type)
   }) as RuntimeRemote;
@@ -239,7 +248,25 @@ function parseInstance(value: unknown): RuntimeInstance {
     ? undefined
     : compact({
         available: requiredBoolean(bridgeRecord.available, "bridge available"),
-        lifecycleCount: optionalNumber(bridgeRecord.lifecycleCount)
+        lifecycleCount: optionalNumber(bridgeRecord.lifecycleCount, "bridge lifecycleCount"),
+        framework: optionalEnum(bridgeRecord.framework, ["react", "vue"], "bridge framework"),
+        moduleName: optionalString(bridgeRecord.moduleName, "bridge moduleName"),
+        remote: optionalString(bridgeRecord.remote, "bridge remote"),
+        expose: optionalString(bridgeRecord.expose, "bridge expose"),
+        status: optionalEnum(
+          bridgeRecord.status,
+          ["idle", "rendering", "rendered", "destroying", "destroyed", "error"],
+          "bridge status"
+        ),
+        lastOperationAt: optionalNumber(bridgeRecord.lastOperationAt, "bridge lastOperationAt"),
+        commitObserved: optionalBoolean(bridgeRecord.commitObserved, "bridge commitObserved"),
+        routeSyncObserved: optionalBoolean(
+          bridgeRecord.routeSyncObserved,
+          "bridge routeSyncObserved"
+        ),
+        states: bridgeRecord.states === undefined
+          ? undefined
+          : array(bridgeRecord.states, "bridge states").map(parseBridgeState)
       });
   return compact({
     instanceRef: requiredString(record.instanceRef, "instanceRef"),
@@ -277,7 +304,8 @@ function parseShareScope(value: unknown): ShareScope {
             provider: optionalString(item.provider),
             loaded: optionalBoolean(item.loaded),
             singleton: optionalBoolean(item.singleton),
-            eager: optionalBoolean(item.eager)
+            eager: optionalBoolean(item.eager),
+            strategy: optionalString(item.strategy, "shared strategy")
           }) as SharedVersion;
         })
       };
@@ -310,7 +338,7 @@ function parseModuleInfo(value: unknown): RuntimeModuleInfo {
     key: requiredString(record.key, "moduleInfo key"),
     name: optionalString(record.name),
     version: optionalString(record.version),
-    entry: optionalString(record.entry),
+    entry: optionalSafeUrl(record.entry, "moduleInfo entry"),
     tag: optionalString(record.tag),
     remotes
   }) as RuntimeModuleInfo;
@@ -318,28 +346,35 @@ function parseModuleInfo(value: unknown): RuntimeModuleInfo {
 
 function parseReport(value: unknown): RuntimeReport {
   const record = asRecord(value, "report");
-  const status = requiredString(record.status, "report status");
-  if (!["pending", "success", "error"].includes(status)) {
-    throw new Error(`Unsupported report status: ${status}`);
-  }
+  const status = requiredEnum(record.status, ["pending", "success", "error"], "report status");
   const summary = asRecord(record.summary, "report summary");
   const flags = asRecord(summary.flags, "report flags");
-  const moduleInfoRecord = record.moduleInfo === undefined
-    ? undefined
-    : asRecord(record.moduleInfo, "report moduleInfo");
-  const diagnosisRecord = record.diagnosis === undefined
-    ? undefined
-    : asRecord(record.diagnosis, "report diagnosis");
+  const moduleInfoRecord = optionalRecord(record.moduleInfo, "report moduleInfo");
+  const diagnosisRecord = optionalRecord(record.diagnosis, "report diagnosis");
+  const summaryShared = optionalRecord(summary.shared, "report summary shared");
+  const summaryError = optionalRecord(summary.error, "report summary error");
   return compact({
     traceId: requiredString(record.traceId, "traceId"),
-    instanceRef: optionalString(record.instanceRef),
-    status: status as RuntimeReport["status"],
+    instanceRef: optionalString(record.instanceRef, "report instanceRef"),
+    status,
+    requestId: optionalString(record.requestId, "report requestId"),
+    requestAlias: optionalString(record.requestAlias, "report requestAlias"),
+    hostName: optionalString(record.hostName, "report hostName"),
+    runtimeVersion: optionalString(record.runtimeVersion, "report runtimeVersion"),
     remote: record.remote === undefined ? undefined : parseRemote(record.remote),
-    expose: optionalString(record.expose),
-    sanitizedUrl: optionalString(record.sanitizedUrl),
+    shared: record.shared === undefined ? undefined : parseShared(record.shared),
+    expose: optionalString(record.expose, "report expose"),
+    sanitizedUrl: optionalSafeUrl(record.sanitizedUrl, "report sanitizedUrl"),
     startedAt: requiredNumber(record.startedAt, "report startedAt"),
     updatedAt: requiredNumber(record.updatedAt, "report updatedAt"),
     duration: requiredNumber(record.duration, "report duration"),
+    failedPhase: optionalString(record.failedPhase, "report failedPhase"),
+    errorCode: optionalString(record.errorCode, "report errorCode"),
+    errorName: optionalString(record.errorName, "report errorName"),
+    errorMessage: optionalString(record.errorMessage, "report errorMessage"),
+    ownerHint: optionalOwnerHint(record.ownerHint, "report ownerHint"),
+    retryable: optionalBoolean(record.retryable, "report retryable"),
+    bridge: record.bridge === undefined ? undefined : parseBridgeInfo(record.bridge),
     moduleInfo: moduleInfoRecord === undefined
       ? undefined
       : {
@@ -348,46 +383,374 @@ function parseReport(value: unknown): RuntimeReport {
             const item = asRecord(entry, "moduleInfo report entry");
             return compact({
               name: requiredString(item.name, "moduleInfo report name"),
-              publicPath: optionalString(item.publicPath),
-              getPublicPath: optionalString(item.getPublicPath),
-              remoteEntry: optionalString(item.remoteEntry),
-              globalName: optionalString(item.globalName)
+              publicPath: optionalSafeUrl(item.publicPath, "moduleInfo publicPath"),
+              getPublicPath: optionalSafeUrl(item.getPublicPath, "moduleInfo getPublicPath"),
+              remoteEntry: optionalSafeUrl(item.remoteEntry, "moduleInfo remoteEntry"),
+              globalName: optionalString(item.globalName, "moduleInfo globalName")
             });
           })
         },
-    events: array(record.events, "report events").map((event) => {
-      const item = asRecord(event, "report event");
-      return compact({
-        phase: requiredString(item.phase, "event phase"),
-        status: requiredString(item.status, "event status"),
-        timestamp: requiredNumber(item.timestamp, "event timestamp"),
-        sanitizedUrl: optionalString(item.sanitizedUrl),
-        message: optionalString(item.message),
-        cached: optionalBoolean(item.cached)
-      });
-    }),
-    summary: {
+    events: array(record.events, "report events").map(parseReportEvent),
+    summary: compact({
+      eventCount: optionalNumber(summary.eventCount, "report summary eventCount"),
+      recovered: optionalBoolean(summary.recovered, "report summary recovered"),
+      loadCompleted: optionalBoolean(summary.loadCompleted, "report summary loadCompleted"),
+      runtimeLoaded: optionalBoolean(summary.runtimeLoaded, "report summary runtimeLoaded"),
+      sharedResolved: optionalBoolean(summary.sharedResolved, "report summary sharedResolved"),
+      sharedRegistered: optionalBoolean(
+        summary.sharedRegistered,
+        "report summary sharedRegistered"
+      ),
+      preloaded: optionalBoolean(summary.preloaded, "report summary preloaded"),
+      componentLoaded: optionalBoolean(
+        summary.componentLoaded,
+        "report summary componentLoaded"
+      ),
+      outcome: optionalString(summary.outcome, "report summary outcome"),
+      lastPhase: optionalString(summary.lastPhase, "report summary lastPhase"),
+      phases: summary.phases === undefined ? undefined : parsePhases(summary.phases),
+      shared: summaryShared === undefined
+        ? undefined
+        : compact({
+            name: requiredString(summaryShared.name, "report summary shared name"),
+            provider: optionalString(summaryShared.provider, "report summary shared provider"),
+            selectedVersion: optionalString(
+              summaryShared.selectedVersion,
+              "report summary shared selectedVersion"
+            ),
+            shareScope: optionalStringArrayStrict(
+              summaryShared.shareScope,
+              "report summary shared shareScope"
+            )
+          }),
       flags: {
         cached: requiredBoolean(flags.cached, "report cached flag"),
         fallback: requiredBoolean(flags.fallback, "report fallback flag"),
         recovered: requiredBoolean(flags.recovered, "report recovered flag")
-      }
-    },
+      },
+      error: summaryError === undefined ? undefined : parseErrorSummary(summaryError)
+    }),
     diagnosis: diagnosisRecord === undefined
       ? undefined
-      : {
+      : compact({
+          title: optionalString(diagnosisRecord.title, "diagnosis title"),
+          outcome: optionalString(diagnosisRecord.outcome, "diagnosis outcome"),
+          status: optionalEnum(
+            diagnosisRecord.status,
+            ["pending", "success", "error"],
+            "diagnosis status"
+          ),
+          ownerHint: optionalOwnerHint(diagnosisRecord.ownerHint, "diagnosis ownerHint"),
+          failedPhase: optionalString(diagnosisRecord.failedPhase, "diagnosis failedPhase"),
+          errorCode: optionalString(diagnosisRecord.errorCode, "diagnosis errorCode"),
+          errorName: optionalString(diagnosisRecord.errorName, "diagnosis errorName"),
+          errorMessage: optionalString(
+            diagnosisRecord.errorMessage,
+            "diagnosis errorMessage"
+          ),
           warnings: diagnosisRecord.warnings === undefined
             ? undefined
             : stringArray(diagnosisRecord.warnings, "diagnosis warnings"),
           actions: array(diagnosisRecord.actions, "diagnosis actions").map((action) => {
             const item = asRecord(action, "diagnosis action");
             return compact({
+              id: optionalString(item.id, "diagnosis action id"),
+              ownerHint: optionalOwnerHint(item.ownerHint, "diagnosis action ownerHint"),
               title: requiredString(item.title, "diagnosis action title"),
-              detail: optionalString(item.detail)
+              detail: optionalString(item.detail, "diagnosis action detail")
             });
           })
-        }
+        })
   }) as RuntimeReport;
+}
+
+function parseReportEvent(value: unknown): RuntimeReportEvent {
+  const record = asRecord(value, "report event");
+  return compact({
+    traceId: optionalString(record.traceId, "event traceId"),
+    instanceRef: optionalString(record.instanceRef, "event instanceRef"),
+    phase: requiredString(record.phase, "event phase"),
+    status: requiredEnum(
+      record.status,
+      ["start", "success", "error", "complete"],
+      "event status"
+    ),
+    timestamp: requiredNumber(record.timestamp, "event timestamp"),
+    requestId: optionalString(record.requestId, "event requestId"),
+    requestAlias: optionalString(record.requestAlias, "event requestAlias"),
+    hostName: optionalString(record.hostName, "event hostName"),
+    runtimeVersion: optionalString(record.runtimeVersion, "event runtimeVersion"),
+    remote: record.remote === undefined ? undefined : parseRemote(record.remote, "event remote"),
+    resource: record.resource === undefined ? undefined : parseResource(record.resource),
+    shared: record.shared === undefined ? undefined : parseShared(record.shared),
+    expose: optionalString(record.expose, "event expose"),
+    sanitizedUrl: optionalSafeUrl(record.sanitizedUrl, "event sanitizedUrl"),
+    message: optionalString(record.message, "event message"),
+    errorCode: optionalString(record.errorCode, "event errorCode"),
+    errorName: optionalString(record.errorName, "event errorName"),
+    errorMessage: optionalString(record.errorMessage, "event errorMessage"),
+    ownerHint: optionalOwnerHint(record.ownerHint, "event ownerHint"),
+    retryable: optionalBoolean(record.retryable, "event retryable"),
+    duration: optionalNumber(record.duration, "event duration"),
+    lifecycle: optionalString(record.lifecycle, "event lifecycle"),
+    eventName: optionalString(record.eventName, "event eventName"),
+    source: optionalEnum(record.source, ["runtime", "business", "react"], "event source"),
+    recovered: optionalBoolean(record.recovered, "event recovered"),
+    cached: optionalBoolean(record.cached, "event cached"),
+    componentName: optionalString(record.componentName, "event componentName"),
+    bridge: record.bridge === undefined ? undefined : parseBridgeInfo(record.bridge)
+  }) as RuntimeReportEvent;
+}
+
+function parseResource(value: unknown): RuntimeResource {
+  const record = asRecord(value, "resource");
+  return compact({
+    type: requiredString(record.type, "resource type"),
+    initiator: requiredEnum(
+      record.initiator,
+      ["loadRemote", "preloadRemote"],
+      "resource initiator"
+    ),
+    outcome: optionalEnum(
+      record.outcome,
+      ["success", "error", "timeout", "cached", "recovered"],
+      "resource outcome"
+    ),
+    url: optionalSafeUrl(record.url, "resource url"),
+    startedAt: requiredNumber(record.startedAt, "resource startedAt"),
+    endedAt: optionalNumber(record.endedAt, "resource endedAt"),
+    duration: optionalNumber(record.duration, "resource duration"),
+    httpStatus: optionalNumber(record.httpStatus, "resource httpStatus"),
+    mimeType: optionalString(record.mimeType, "resource mimeType"),
+    redirected: optionalBoolean(record.redirected, "resource redirected"),
+    cacheSource: optionalString(record.cacheSource, "resource cacheSource"),
+    errorType: optionalString(record.errorType, "resource errorType")
+  }) as RuntimeResource;
+}
+
+function parseShared(value: unknown): RuntimeShared {
+  const record = asRecord(value, "shared report");
+  const requiredVersion = record.requiredVersion === undefined
+    ? undefined
+    : record.requiredVersion === false
+      ? false
+      : requiredString(record.requiredVersion, "shared requiredVersion");
+  const moduleId = optionalStringOrNumber(record.moduleId, "shared moduleId");
+  const chunkId = optionalStringOrNumber(record.chunkId, "shared chunkId");
+  return compact({
+    name: requiredString(record.name, "shared name"),
+    shareScope: optionalStringArrayStrict(record.shareScope, "shared shareScope"),
+    version: optionalString(record.version, "shared version"),
+    requiredVersion,
+    selectedVersion: optionalString(record.selectedVersion, "shared selectedVersion"),
+    availableVersions: optionalStringArrayStrict(
+      record.availableVersions,
+      "shared availableVersions"
+    ),
+    provider: optionalString(record.provider, "shared provider"),
+    useIn: optionalStringArrayStrict(record.useIn, "shared useIn"),
+    singleton: optionalBoolean(record.singleton, "shared singleton"),
+    strictVersion: optionalBoolean(record.strictVersion, "shared strictVersion"),
+    eager: optionalBoolean(record.eager, "shared eager"),
+    strategy: optionalString(record.strategy, "shared strategy"),
+    loaded: optionalBoolean(record.loaded, "shared loaded"),
+    loading: optionalBoolean(record.loading, "shared loading"),
+    reason: optionalString(record.reason, "shared reason"),
+    definedBy: optionalEnum(record.definedBy, ["bundler-runtime"], "shared definedBy"),
+    conflict: record.conflict === undefined ? undefined : parseSharedConflict(record.conflict),
+    candidates: record.candidates === undefined
+      ? undefined
+      : array(record.candidates, "shared candidates").map(parseSharedCandidate),
+    selectionReason: optionalString(record.selectionReason, "shared selectionReason"),
+    failureReason: optionalString(record.failureReason, "shared failureReason"),
+    loadType: optionalEnum(record.loadType, ["sync", "async"], "shared loadType"),
+    trigger: optionalString(record.trigger, "shared trigger"),
+    moduleId,
+    chunkId,
+    remote: optionalString(record.remote, "shared remote"),
+    expose: optionalString(record.expose, "shared expose"),
+    requestId: optionalString(record.requestId, "shared requestId"),
+    operationId: optionalString(record.operationId, "shared operationId"),
+    fallback: optionalBoolean(record.fallback, "shared fallback"),
+    recovered: optionalBoolean(record.recovered, "shared recovered"),
+    registration: record.registration === undefined
+      ? undefined
+      : parseSharedRegistration(record.registration)
+  }) as RuntimeShared;
+}
+
+function parseSharedCandidate(value: unknown): SharedCandidate {
+  const record = asRecord(value, "shared candidate");
+  return compact({
+    scope: requiredString(record.scope, "shared candidate scope"),
+    version: requiredString(record.version, "shared candidate version"),
+    provider: optionalString(record.provider, "shared candidate provider"),
+    loaded: requiredBoolean(record.loaded, "shared candidate loaded"),
+    loading: requiredBoolean(record.loading, "shared candidate loading"),
+    singleton: requiredBoolean(record.singleton, "shared candidate singleton"),
+    eager: requiredBoolean(record.eager, "shared candidate eager"),
+    strategy: optionalString(record.strategy, "shared candidate strategy"),
+    compatible: optionalBoolean(record.compatible, "shared candidate compatible"),
+    rejectionReason: optionalString(
+      record.rejectionReason,
+      "shared candidate rejectionReason"
+    )
+  }) as SharedCandidate;
+}
+
+function parseSharedRegistration(value: unknown): SharedRegistration {
+  const record = asRecord(value, "shared registration");
+  return compact({
+    registrationId: requiredString(record.registrationId, "shared registration id"),
+    action: requiredEnum(
+      record.action,
+      ["registered", "replaced", "reused", "ignored"],
+      "shared registration action"
+    ),
+    reason: requiredString(record.reason, "shared registration reason"),
+    trigger: requiredString(record.trigger, "shared registration trigger"),
+    scope: requiredString(record.scope, "shared registration scope"),
+    candidate: parseSharedCandidate(record.candidate),
+    effective: record.effective === undefined
+      ? undefined
+      : parseSharedCandidate(record.effective)
+  }) as SharedRegistration;
+}
+
+function parseSharedConflict(value: unknown): SharedConflict {
+  const record = asRecord(value, "shared conflict");
+  return compact({
+    reason: requiredEnum(
+      record.reason,
+      ["singleton-multiple-versions"],
+      "shared conflict reason"
+    ),
+    scope: requiredString(record.scope, "shared conflict scope"),
+    currentVersion: optionalString(record.currentVersion, "shared conflict currentVersion"),
+    currentFrom: optionalString(record.currentFrom, "shared conflict currentFrom"),
+    versions: stringArray(record.versions, "shared conflict versions"),
+    existingVersions: array(
+      record.existingVersions,
+      "shared conflict existingVersions"
+    ).map((value) => {
+      const item = asRecord(value, "shared conflict version");
+      return compact({
+        version: requiredString(item.version, "shared conflict version"),
+        from: optionalString(item.from, "shared conflict provider"),
+        singleton: optionalBoolean(item.singleton, "shared conflict singleton"),
+        loaded: optionalBoolean(item.loaded, "shared conflict loaded")
+      });
+    })
+  }) as SharedConflict;
+}
+
+function parseBridgeInfo(value: unknown): RuntimeBridgeInfo {
+  const record = asRecord(value, "bridge report");
+  const error = optionalRecord(record.error, "bridge error");
+  return compact({
+    operationId: requiredString(record.operationId, "bridge operationId"),
+    bridgeId: requiredString(record.bridgeId, "bridge bridgeId"),
+    side: requiredEnum(record.side, ["consumer", "producer"], "bridge side"),
+    framework: requiredEnum(record.framework, ["react", "vue"], "bridge framework"),
+    operation: requiredEnum(
+      record.operation,
+      ["render", "update", "destroy", "route-sync"],
+      "bridge operation"
+    ),
+    moduleName: optionalString(record.moduleName, "bridge moduleName"),
+    remote: optionalString(record.remote, "bridge remote"),
+    expose: optionalString(record.expose, "bridge expose"),
+    route: record.route === undefined ? undefined : parseBridgeRoute(record.route),
+    reason: optionalString(record.reason, "bridge reason"),
+    startedAt: requiredNumber(record.startedAt, "bridge startedAt"),
+    endedAt: optionalNumber(record.endedAt, "bridge endedAt"),
+    duration: optionalNumber(record.duration, "bridge duration"),
+    outcome: optionalEnum(
+      record.outcome,
+      ["success", "error", "skipped"],
+      "bridge outcome"
+    ),
+    error: error === undefined
+      ? undefined
+      : compact({
+          name: optionalString(error.name, "bridge error name"),
+          message: optionalString(error.message, "bridge error message")
+        })
+  }) as RuntimeBridgeInfo;
+}
+
+function parseBridgeRoute(value: unknown): BridgeRouteSummary {
+  const record = asRecord(value, "bridge route");
+  return compact({
+    action: requiredString(record.action, "bridge route action"),
+    from: optionalSafeUrl(record.from, "bridge route origin"),
+    to: optionalSafeUrl(record.to, "bridge route to"),
+    basename: optionalSafeUrl(record.basename, "bridge route basename"),
+    mechanism: optionalEnum(record.mechanism, ["popstate"], "bridge route mechanism")
+  }) as BridgeRouteSummary;
+}
+
+function parseBridgeState(value: unknown): RuntimeBridgeState {
+  const record = asRecord(value, "bridge state");
+  return compact({
+    bridgeId: requiredString(record.bridgeId, "bridge state bridgeId"),
+    side: requiredEnum(record.side, ["consumer", "producer"], "bridge state side"),
+    framework: requiredEnum(
+      record.framework,
+      ["react", "vue"],
+      "bridge state framework"
+    ),
+    moduleName: optionalString(record.moduleName, "bridge state moduleName"),
+    remote: optionalString(record.remote, "bridge state remote"),
+    expose: optionalString(record.expose, "bridge state expose"),
+    status: requiredEnum(
+      record.status,
+      ["idle", "rendering", "rendered", "destroying", "destroyed", "error"],
+      "bridge state status"
+    ),
+    lastOperation: optionalEnum(
+      record.lastOperation,
+      ["render", "update", "destroy", "route-sync"],
+      "bridge state lastOperation"
+    ),
+    lastOperationId: optionalString(record.lastOperationId, "bridge state lastOperationId"),
+    lastOperationAt: optionalNumber(record.lastOperationAt, "bridge state lastOperationAt"),
+    commitObserved: requiredBoolean(record.commitObserved, "bridge state commitObserved"),
+    routeSyncObserved: requiredBoolean(
+      record.routeSyncObserved,
+      "bridge state routeSyncObserved"
+    )
+  }) as RuntimeBridgeState;
+}
+
+function parsePhases(value: unknown): RuntimeReport["summary"]["phases"] {
+  const record = asRecord(value, "report summary phases");
+  return Object.fromEntries(Object.entries(record).map(([phase, rawValue]) => {
+    const item = asRecord(rawValue, `report phase ${phase}`);
+    return [phase, compact({
+      status: requiredEnum(
+        item.status,
+        ["start", "success", "error", "complete"],
+        `report phase ${phase} status`
+      ),
+      duration: optionalNumber(item.duration, `report phase ${phase} duration`),
+      cached: optionalBoolean(item.cached, `report phase ${phase} cached`),
+      recovered: optionalBoolean(item.recovered, `report phase ${phase} recovered`),
+      lifecycle: optionalString(item.lifecycle, `report phase ${phase} lifecycle`)
+    })];
+  })) as NonNullable<RuntimeReport["summary"]["phases"]>;
+}
+
+function parseErrorSummary(record: Record<string, unknown>) {
+  return compact({
+    errorCode: optionalString(record.errorCode, "summary errorCode"),
+    errorName: optionalString(record.errorName, "summary errorName"),
+    errorMessage: optionalString(record.errorMessage, "summary errorMessage"),
+    failedPhase: optionalString(record.failedPhase, "summary failedPhase"),
+    lifecycle: optionalString(record.lifecycle, "summary lifecycle"),
+    ownerHint: optionalOwnerHint(record.ownerHint, "summary ownerHint"),
+    retryable: optionalBoolean(record.retryable, "summary retryable")
+  });
 }
 
 function optionalInjection(value: unknown): InjectionMarker | undefined {
@@ -419,6 +782,13 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function optionalRecord(
+  value: unknown,
+  label: string
+): Record<string, unknown> | undefined {
+  return value === undefined ? undefined : asRecord(value, label);
+}
+
 function array(value: unknown, label: string): unknown[] {
   if (!Array.isArray(value)) throw new Error(`${label} must be an array.`);
   return value;
@@ -436,6 +806,10 @@ function optionalStringArray(value: unknown): string[] | undefined {
   return value === undefined ? undefined : stringArray(value, "string array");
 }
 
+function optionalStringArrayStrict(value: unknown, label: string): string[] | undefined {
+  return value === undefined ? undefined : stringArray(value, label);
+}
+
 function requiredString(value: unknown, label: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`${label} must be a non-empty string.`);
@@ -443,8 +817,23 @@ function requiredString(value: unknown, label: string): string {
   return value;
 }
 
-function optionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
+function optionalString(value: unknown, label = "optional string"): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${label} must be a non-empty string when provided.`);
+  }
+  return value;
+}
+
+function optionalSafeUrl(value: unknown, label: string): string | undefined {
+  const url = optionalString(value, label);
+  if (url === undefined) return undefined;
+  const queryIndex = url.indexOf("?");
+  const hashIndex = url.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), url.length);
+  return url.slice(0, end);
 }
 
 function requiredNumber(value: unknown, label: string): number {
@@ -454,8 +843,12 @@ function requiredNumber(value: unknown, label: string): number {
   return value;
 }
 
-function optionalNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+function optionalNumber(value: unknown, label = "optional number"): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number when provided.`);
+  }
+  return value;
 }
 
 function requiredBoolean(value: unknown, label: string): boolean {
@@ -463,8 +856,57 @@ function requiredBoolean(value: unknown, label: string): boolean {
   return value;
 }
 
-function optionalBoolean(value: unknown): boolean | undefined {
-  return typeof value === "boolean" ? value : undefined;
+function optionalBoolean(value: unknown, label = "optional boolean"): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be a boolean when provided.`);
+  }
+  return value;
+}
+
+function optionalStringOrNumber(
+  value: unknown,
+  label: string
+): string | number | undefined {
+  if (value === undefined) return undefined;
+  if (
+    (typeof value !== "string" || value.length === 0) &&
+    (typeof value !== "number" || !Number.isFinite(value))
+  ) {
+    throw new Error(`${label} must be a non-empty string or finite number when provided.`);
+  }
+  return value as string | number;
+}
+
+function requiredEnum<const T extends readonly string[]>(
+  value: unknown,
+  values: T,
+  label: string
+): T[number] {
+  const parsed = requiredString(value, label);
+  if (!values.includes(parsed)) {
+    throw new Error(`${label} has an unsupported value: ${parsed}.`);
+  }
+  return parsed as T[number];
+}
+
+function optionalEnum<const T extends readonly string[]>(
+  value: unknown,
+  values: T,
+  label: string
+): T[number] | undefined {
+  return value === undefined ? undefined : requiredEnum(value, values, label);
+}
+
+function optionalOwnerHint(
+  value: unknown,
+  label: string
+): RuntimeReportEvent["ownerHint"] | undefined {
+  return optionalEnum(
+    value,
+    ["host", "remote", "shared", "network", "runtime", "unknown"],
+    label
+  );
 }
 
 function requiredLiteral<T extends string>(value: unknown, literal: T, label: string): T {

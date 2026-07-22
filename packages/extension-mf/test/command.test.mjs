@@ -51,9 +51,10 @@ test("unknown MF commands return the compatible unified help error", async () =>
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "mf requires status or module-info." &&
+      error.message === "mf requires status, module-info or bridge trace." &&
       /openruntime mf status/.test(error.hint) &&
-      /openruntime mf module-info/.test(error.hint)
+      /openruntime mf module-info/.test(error.hint) &&
+      /openruntime mf bridge trace/.test(error.hint)
   );
 });
 

@@ -20,3 +20,16 @@ test("the same public candidate can be rendered for MF and Vmok without replacem
   assert.equal(mf.status(candidate), 'openruntime mf status --instance "mf-1"');
   assert.equal(vmok.status(candidate), 'openruntime vmok status --instance "mf-1"');
 });
+
+test("Bridge candidate commands quote every reusable selector", () => {
+  const mf = createCommandPresenter(["openruntime", "mf"]);
+  assert.equal(
+    mf.bridgeTrace({
+      remote: "shop alias",
+      instanceRef: "mf-1",
+      bridgeId: "bridge-1",
+      operationId: "op-1"
+    }),
+    'openruntime mf bridge trace "shop alias" --instance "mf-1" --bridge "bridge-1" --operation "op-1"'
+  );
+});

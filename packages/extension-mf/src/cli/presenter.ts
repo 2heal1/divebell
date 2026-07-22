@@ -8,6 +8,14 @@ export interface CommandPresenter {
     remote?: string;
     instanceRef?: string;
   }): string;
+  bridgeTrace(options?: {
+    remote?: string;
+    name?: string;
+    instanceRef?: string;
+    bridgeId?: string;
+    operationId?: string;
+    json?: boolean;
+  }): string;
 }
 
 export function createCommandPresenter(prefix: readonly string[]): CommandPresenter {
@@ -32,6 +40,24 @@ export function createCommandPresenter(prefix: readonly string[]): CommandPresen
         options.instanceRef === undefined
           ? undefined
           : `--instance ${quote(options.instanceRef)}`
+      ].filter((value): value is string => value !== undefined).join(" ");
+    },
+    bridgeTrace(options = {}) {
+      return [
+        commandPrefix,
+        "bridge trace",
+        options.remote === undefined ? undefined : quote(options.remote),
+        options.name === undefined ? undefined : `--mf ${quote(options.name)}`,
+        options.instanceRef === undefined
+          ? undefined
+          : `--instance ${quote(options.instanceRef)}`,
+        options.bridgeId === undefined
+          ? undefined
+          : `--bridge ${quote(options.bridgeId)}`,
+        options.operationId === undefined
+          ? undefined
+          : `--operation ${quote(options.operationId)}`,
+        options.json === true ? "--json" : undefined
       ].filter((value): value is string => value !== undefined).join(" ");
     }
   };

@@ -13,7 +13,8 @@
       "@openruntime/extension-code-usage",
       "@openruntime/extension-troubleshooting",
       "@openruntime/extension-imitate",
-      "@openruntime/extension-memory"
+      "@openruntime/extension-memory",
+      "@openruntime/extension-mf"
     ]
   ],
   "linked": [],

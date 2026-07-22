@@ -10,6 +10,7 @@
     { "path": "./packages/extension-code-usage" },
     { "path": "./packages/extension-troubleshooting" },
     { "path": "./packages/extension-imitate" },
-    { "path": "./packages/extension-memory" }
+    { "path": "./packages/extension-memory" },
+    { "path": "./packages/extension-mf" }
   ]
 }

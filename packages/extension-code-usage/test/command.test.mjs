@@ -14,7 +14,6 @@ import {
   writeCodeUsageReportHtml
 } from "../dist/index.js";
 import {
-  createCommandOutput,
   createOpenRuntimeCli,
   parseCliArgs
 } from "../../cli/dist/index.js";
@@ -380,19 +379,16 @@ test("code-usage report opens the generated file by default", async () => {
   const inputPath = join(directory, "report.json");
   writeFileSync(inputPath, JSON.stringify(report), "utf8");
   const opened = [];
-  const output = createOutput();
 
   try {
     const args = parseCliArgs(["code-usage", "report", inputPath]);
-    const exitCode = await runCodeUsageReportCommand(
+    const result = await runCodeUsageReportCommand(
       args,
-      createCommandOutput(output.stdout, args.command.join(" ")),
       async (path) => { opened.push(path); }
     );
 
-    assert.equal(exitCode, 0);
     assert.deepEqual(opened, [join(directory, "report.html")]);
-    assert.equal(JSON.parse(output.text()).data.opened, true);
+    assert.equal(result.opened, true);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

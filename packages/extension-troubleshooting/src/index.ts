@@ -3,31 +3,29 @@ import type {
   ParsedCliArgs
 } from "@openruntime/cli";
 
-import {
-  createVerifyCommandFailure,
-  runVerifyCommand
-} from "./verify.js";
+import { runVerifyCommand } from "./verify.js";
 
-export async function runVerifyCliCommand(options: CliExtensionRunOptions): Promise<number> {
+export async function runVerifyCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
   const targetId = requireArgument(options.args, 1, "target id");
   const status = requireArgument(options.args, 2, "status");
   const where = parseWhereOptions(options.args);
-  try {
-    const result = await runVerifyCommand(
-      options.openruntime,
-      targetId,
-      status,
-      where,
-      getNumberOption(options.args, "timeout")
-    );
-    writeJson(options.stdout, result);
-    return result.result.success ? 0 : 1;
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    writeJson(options.stdout, createVerifyCommandFailure(targetId, status, where, reason));
-    options.stderr.write(`${reason}\n`);
-    return 1;
+  const result = await runVerifyCommand(
+    options.openruntime,
+    targetId,
+    status,
+    where,
+    getNumberOption(options.args, "timeout")
+  );
+  if (!result.result.success) {
+    throw Object.assign(new Error(result.result.evidence.message), {
+      name: "CommandError",
+      code: "VERIFY_FAILED",
+      kind: "runtime",
+      retryable: false,
+      data: result
+    });
   }
+  return result;
 }
 export { createVerifyCommandFailure, runVerifyCommand } from "./verify.js";
 export type * from "./types.js";
@@ -70,8 +68,4 @@ function parseValue(raw: string): unknown {
   } catch {
     return value;
   }
-}
-
-function writeJson(stdout: { write(chunk: string): void }, value: unknown): void {
-  stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }

@@ -37,7 +37,7 @@ interface OpenRuntimeExtensionCommand {
   name: string;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
-  run(options: CliExtensionRunOptions): Promise<number>;
+  run(options: CliExtensionRunOptions): Promise<unknown>;
 }
 
 interface CliCommandReference {
@@ -54,19 +54,16 @@ interface CliCommandReference {
 - `name` is the command name mounted under `openruntime`.
 - `commandReferences` controls the usage and description shown by `openruntime --help`.
 - `skill.path` must be an absolute path to an existing `SKILL.md`.
-- `run` returns `0` on success and a non-zero value when the command did not complete.
+- `run` returns the result directly on success and throws an error on failure.
 
 ### `CliExtensionRunOptions`
 
 ```ts
 interface CliExtensionRunOptions {
   args: ParsedCliArgs;
-  stdout: { write(chunk: string): void };
-  stderr: { write(chunk: string): void };
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;
-  output: CommandOutput;
 }
 ```
 
@@ -74,10 +71,7 @@ interface CliExtensionRunOptions {
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | Parsed arguments for the current command. `command` contains the command name and positional arguments; `options` is a `Map<string, string[]>`, so the same option may appear more than once. |
 | `options.page` | `CliExtensionPageContext \| undefined` | Page context saved after the latest successful `openruntime open`. Commands that do not need a page should not require it; commands that do must handle `undefined` first. |
-| `options.output` | `CommandOutput` | Produces a result that agents can parse reliably. Use `ok` for success, `needsInput` when another choice is required, and `error` or a thrown error for failure. |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
-| `options.stdout` | `{ write(chunk: string): void }` | Raw standard output. Reserve it for progress or content that must remain plain text; return the final result through `output`. |
-| `options.stderr` | `{ write(chunk: string): void }` | Raw standard error. Use it only for diagnostic logs, not as a substitute for a structured failure result. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by OpenRuntime. Normally avoid calling it directly; use `options.openruntime` for Bridge and Runtime access. |
 
 ### `options.args`
@@ -138,26 +132,15 @@ interface CliExtensionPageContext {
 - `bridgeUrl` and `sessionId` may be null. Their presence must not be used to assume that a page uses Runtime Core.
 - This object is historical context for the latest opened page. Continue through `options.openruntime.browser` when current page state must be confirmed.
 
-### `options.output`
+### Command results and errors
+
+Return the result directly when a Command succeeds. The CLI places it in the `data` field of the standard successful output. If the Command has no explicit return value, `data` is `null`.
 
 ```ts
-interface CommandOutput {
-  ok<T>(data: T, message?: string): void;
-  needsInput(message: string, choices: readonly unknown[], data?: unknown): void;
-  error(error: unknown): void;
-}
+return { count: 3 };
 ```
 
-```ts
-options.output.ok({ count: 3 }, "Check complete");
-
-options.output.needsInput(
-  "Choose an environment to inspect",
-  [{ id: "staging", label: "Staging" }]
-);
-```
-
-A Command should write exactly one final result. On success, write `ok` and return `0`. When more input is required or the command fails, write the matching result and return a non-zero value. Errors thrown by a Command are converted into the standard CLI error result.
+Throw an error when a Command fails. The CLI converts it into the standard error output and returns a non-zero exit code.
 
 ## Skills
 

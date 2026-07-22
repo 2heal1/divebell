@@ -11,7 +11,6 @@ interface BridgeRuntimeInfo {
 
 export interface RecordCommandOptions {
   args: ParsedCliArgs;
-  stdout: { write(chunk: string): void };
   fetcher: typeof fetch;
   page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;

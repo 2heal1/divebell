@@ -149,7 +149,6 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
     const extensionExitCode = await runExtensionCliCommand({
       args,
       stdout,
-      stderr,
       fetcher,
       browserRunner,
       bridgeStarter,

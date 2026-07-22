@@ -22,17 +22,16 @@ const RECORDING_FORMAT = "openruntime-recording";
 const RECORDING_VERSION = 1;
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
 
-export async function runRecordCliCommand(options: CliExtensionRunOptions): Promise<number> {
+export async function runRecordCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
   return await runRecordCommand({
     args: options.args,
-    stdout: options.stdout,
     fetcher: options.fetcher,
     ...(options.page === undefined ? {} : { page: options.page }),
     openruntime: options.openruntime
   });
 }
 
-export async function runRecordCommand(options: RecordCommandOptions): Promise<number> {
+export async function runRecordCommand(options: RecordCommandOptions): Promise<unknown> {
   const subcommand = options.args.command[1];
   if (subcommand === "start") {
     return await runRecordStartCommand(options);
@@ -52,7 +51,7 @@ export async function runRecordCommand(options: RecordCommandOptions): Promise<n
   throw new Error(`Unknown record subcommand "${subcommand}".`);
 }
 
-async function runRecordStartCommand(options: RecordCommandOptions): Promise<number> {
+async function runRecordStartCommand(options: RecordCommandOptions): Promise<unknown> {
   requireNoCurrentPage(options);
   assertNoLegacyPageLifecycleOptions(options.args);
   assertNoPageSelectionOptions(options.args);
@@ -99,17 +98,15 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<num
   );
   await appendJsonLine(join(outputDirectory, files.operations), controlOperation);
 
-  writeJson(options.stdout, {
-    ok: true,
+  return {
     status: "prepared",
     output: outputDirectory,
     manifest: join(outputDirectory, files.manifest),
     next: "openruntime open <url> --ui"
-  });
-  return 0;
+  };
 }
 
-async function runRecordStopCommand(options: RecordCommandOptions): Promise<number> {
+async function runRecordStopCommand(options: RecordCommandOptions): Promise<unknown> {
   const page = requireCurrentPage(options);
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const recording = await readRecordingData(outputDirectory);
@@ -185,18 +182,16 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
   };
   await writeJsonFile(join(outputDirectory, recording.manifest.files.manifest), manifest);
 
-  writeJson(options.stdout, {
-    ok: true,
+  return {
     status: "completed",
     output: outputDirectory,
     manifest: join(outputDirectory, recording.manifest.files.manifest),
     script: generatedScript?.path,
     counts: manifest.counts
-  });
-  return 0;
+  };
 }
 
-async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Promise<number> {
+async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Promise<unknown> {
   const inputDirectory = resolve(requireOption(options.args, "input"));
   const recording = await readRecordingData(inputDirectory);
   const generatedScript = await writeGeneratedScript(inputDirectory, recording, getOptionValue(options.args, "out"));
@@ -220,15 +215,13 @@ async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Pr
     counts
   });
 
-  writeJson(options.stdout, {
-    ok: true,
+  return {
     input: inputDirectory,
     script: generatedScript.path
-  });
-  return 0;
+  };
 }
 
-async function runRecordTranscribeCommand(options: RecordCommandOptions): Promise<number> {
+async function runRecordTranscribeCommand(options: RecordCommandOptions): Promise<unknown> {
   const inputDirectory = resolve(requireOption(options.args, "input"));
   const recording = await readRecordingData(inputDirectory);
   const model = getOptionValue(options.args, "model") ?? DEFAULT_TRANSCRIPTION_MODEL;
@@ -280,18 +273,16 @@ async function runRecordTranscribeCommand(options: RecordCommandOptions): Promis
   };
   await writeJsonFile(join(inputDirectory, recording.manifest.files.manifest), manifest);
 
-  writeJson(options.stdout, {
-    ok: true,
+  return {
     input: inputDirectory,
     transcript: join(inputDirectory, recording.manifest.files.transcript),
     model,
     segmentCount: transcript.segments.length,
     wordCount: transcript.words.length
-  });
-  return 0;
+  };
 }
 
-async function runRecordFixedDurationCommand(options: RecordCommandOptions): Promise<number> {
+async function runRecordFixedDurationCommand(options: RecordCommandOptions): Promise<unknown> {
   const page = requireCurrentPage(options);
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const durationMs = getPositiveNumberOption(options.args, "duration") ?? DEFAULT_RECORD_DURATION_MS;
@@ -356,14 +347,12 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
 
   await writeRecordingFiles(outputDirectory, manifest, runtimeSamples, pageSnapshots, domSnapshots, interactions, operations);
 
-  writeJson(options.stdout, {
-    ok: true,
+  return {
     output: outputDirectory,
     manifest: join(outputDirectory, files.manifest),
     counts: manifest.counts,
     media: manifest.capture
-  });
-  return 0;
+  };
 }
 
 function createRecordingManifest(input: {
@@ -634,10 +623,6 @@ function withOpenRuntimeSession(input: string, sessionId: string | undefined): s
   } catch {
     return input;
   }
-}
-
-function writeJson(stdout: { write(chunk: string): void }, value: unknown): void {
-  stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
 function createOptionalNumberProperty<Name extends string>(

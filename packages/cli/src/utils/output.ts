@@ -79,7 +79,7 @@ export function writeOkOutput<T>(
   writeOutput(stdout, {
     status: "ok",
     ...(message === undefined ? {} : { message }),
-    data,
+    data: data === undefined ? null : data,
     meta: createMeta(command)
   });
 }

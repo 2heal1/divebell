@@ -30,7 +30,6 @@ export interface ConsumerSelectors {
 export interface RemoteCandidate {
   remote: RuntimeRemote;
   status: "declared" | "loaded";
-  command: string;
 }
 
 export function selectStatusInstances(
@@ -46,9 +45,11 @@ export function selectStatusInstances(
         ok: false,
         issue: {
           code: "MF_INSTANCE_REF_NOT_FOUND",
+          kind: "not_found",
           message: `Instance reference ${selectors.instanceRef} is not present in the current page session.`,
-          hint: "Run `openruntime mf status --json` and choose a current instanceRef.",
-          candidates: state.instances.map((instance) => statusCandidate(instance))
+          facts: { instanceRef: selectors.instanceRef },
+          candidates: state.instances.map(statusCandidate),
+          recommendedActions: [{ type: "inspect-status" }]
         }
       };
     }
@@ -72,9 +73,15 @@ export function selectStatusInstances(
       ok: false,
       issue: {
         code: "MF_INSTANCE_NAME_AMBIGUOUS",
+        kind: "needs_input",
         message: `More than one current instance uses the name ${selectors.name}.`,
-        hint: "Repeat the command with one of the candidate --instance values.",
-        candidates: matched.map((instance) => statusCandidate(instance))
+        facts: { name: selectors.name, matchCount: matched.length },
+        candidates: matched.map(statusCandidate),
+        recommendedActions: matched.map((instance) => ({
+          type: "select-instance" as const,
+          target: "status" as const,
+          instanceRef: instance.instanceRef
+        }))
       }
     };
   }
@@ -102,9 +109,11 @@ export function selectConsumer(
         ok: false,
         issue: {
           code: "MF_INSTANCE_REF_NOT_FOUND",
+          kind: "not_found",
           message: `Instance reference ${selectors.instanceRef} is not present in the current page session.`,
-          hint: "Run `openruntime mf status --role consumer --json` and choose a current instanceRef.",
-          candidates: consumers.map(moduleInfoCandidate)
+          facts: { instanceRef: selectors.instanceRef, requiredRole: "consumer" },
+          candidates: consumers.map(moduleInfoCandidate),
+          recommendedActions: [{ type: "inspect-status", role: "consumer" }]
         }
       };
     }
@@ -113,9 +122,19 @@ export function selectConsumer(
         ok: false,
         issue: {
           code: "MF_INSTANCE_NOT_CONSUMER",
+          kind: "not_found",
           message: `Instance ${selectors.instanceRef} is not known to be a consumer.`,
-          hint: "Choose a consumer candidate. Unknown role evidence is not treated as consumer proof.",
-          candidates: consumers.map(moduleInfoCandidate)
+          facts: {
+            instanceRef: selectors.instanceRef,
+            observedRole: selected.role,
+            requiredRole: "consumer"
+          },
+          candidates: consumers.map(moduleInfoCandidate),
+          recommendedActions: consumers.map((instance) => ({
+            type: "select-instance" as const,
+            target: "module-info" as const,
+            instanceRef: instance.instanceRef
+          }))
         }
       };
     }
@@ -134,11 +153,20 @@ export function selectConsumer(
     ok: false,
     issue: {
       code: "MF_CONSUMER_AMBIGUOUS",
+      kind: "needs_input",
       message: selectors.name === undefined
         ? "More than one consumer is present in the current page."
         : `More than one consumer uses the name ${selectors.name}.`,
-      hint: "Repeat the command with one of the candidate --instance values.",
-      candidates: matched.map(moduleInfoCandidate)
+      facts: {
+        ...(selectors.name === undefined ? {} : { name: selectors.name }),
+        matchCount: matched.length
+      },
+      candidates: matched.map(moduleInfoCandidate),
+      recommendedActions: matched.map((instance) => ({
+        type: "select-instance" as const,
+        target: "module-info" as const,
+        instanceRef: instance.instanceRef
+      }))
     }
   };
 }
@@ -149,11 +177,11 @@ export function listRemoteCandidates(
 ): RemoteCandidate[] {
   const byKey = new Map<string, RemoteCandidate>();
   for (const remote of consumer.remotes) {
-    const candidate = createRemoteCandidate(consumer, remote, "declared");
+    const candidate = createRemoteCandidate(remote, "declared");
     byKey.set(remoteKey(remote), candidate);
   }
   for (const remote of consumer.loadedProducers) {
-    const loaded = createRemoteCandidate(consumer, remote, "loaded");
+    const loaded = createRemoteCandidate(remote, "loaded");
     const matchingDeclared = Array.from(byKey.entries()).find(([, candidate]) =>
       remotesMatch(candidate.remote, remote)
     );
@@ -185,11 +213,16 @@ export function selectRemote(
       ok: false,
       issue: {
         code: "MF_REMOTE_NOT_FOUND",
+        kind: "not_found",
         message: remoteName === undefined
           ? `Consumer ${consumer.instanceRef} has no observable remotes.`
           : `Remote ${remoteName} is not declared or loaded by consumer ${consumer.instanceRef}.`,
-        hint: "Run `openruntime mf status --json` to inspect the consumer's declared and loaded remotes.",
-        candidates: allCandidates.map((candidate) => remoteAsInstanceCandidate(consumer, candidate))
+        facts: {
+          consumerInstanceRef: consumer.instanceRef,
+          ...(remoteName === undefined ? {} : { remoteName })
+        },
+        candidates: allCandidates.map((candidate) => remoteAsInstanceCandidate(consumer, candidate)),
+        recommendedActions: [{ type: "inspect-status" }]
       }
     };
   }
@@ -197,11 +230,21 @@ export function selectRemote(
     ok: false,
     issue: {
       code: "MF_REMOTE_AMBIGUOUS",
+      kind: "needs_input",
       message: remoteName === undefined
         ? `Consumer ${consumer.instanceRef} has more than one remote.`
         : `Remote selector ${remoteName} matches more than one remote.`,
-      hint: "Repeat the command with one of the candidate remote names and the same --instance value.",
-      candidates: candidates.map((candidate) => remoteAsInstanceCandidate(consumer, candidate))
+      facts: {
+        consumerInstanceRef: consumer.instanceRef,
+        ...(remoteName === undefined ? {} : { remoteName }),
+        matchCount: candidates.length
+      },
+      candidates: candidates.map((candidate) => remoteAsInstanceCandidate(consumer, candidate)),
+      recommendedActions: candidates.map((candidate) => ({
+        type: "select-remote" as const,
+        remote: candidate.remote.name,
+        instanceRef: consumer.instanceRef
+      }))
     }
   };
 }
@@ -226,26 +269,19 @@ function matchesInstanceName(instance: RuntimeInstance, name: string): boolean {
 }
 
 function statusCandidate(instance: RuntimeInstance): InstanceCandidate {
-  return instanceCandidate(
-    instance,
-    `openruntime mf status --instance ${quote(instance.instanceRef)}`
-  );
+  return instanceCandidate(instance);
 }
 
 function moduleInfoCandidate(instance: RuntimeInstance): InstanceCandidate {
-  return instanceCandidate(
-    instance,
-    `openruntime mf module-info --instance ${quote(instance.instanceRef)}`
-  );
+  return instanceCandidate(instance);
 }
 
-function instanceCandidate(instance: RuntimeInstance, command: string): InstanceCandidate {
+function instanceCandidate(instance: RuntimeInstance): InstanceCandidate {
   return {
     instanceRef: instance.instanceRef,
     name: visibleInstanceName(instance),
     ...(instance.optionsVersion === undefined ? {} : { version: instance.optionsVersion }),
-    roles: instance.role === "mixed" ? ["consumer", "producer"] : [instance.role],
-    command
+    roles: instance.role === "mixed" ? ["consumer", "producer"] : [instance.role]
   };
 }
 
@@ -257,20 +293,17 @@ function remoteAsInstanceCandidate(
     instanceRef: consumer.instanceRef,
     name: candidate.remote.name,
     ...(candidate.remote.version === undefined ? {} : { version: candidate.remote.version }),
-    roles: ["consumer"],
-    command: `${candidate.command} --instance ${quote(consumer.instanceRef)}`
+    roles: ["consumer"]
   };
 }
 
 function createRemoteCandidate(
-  consumer: RuntimeInstance,
   remote: RuntimeRemote,
   status: RemoteCandidate["status"]
 ): RemoteCandidate {
   return {
     remote,
-    status,
-    command: `openruntime mf module-info ${quote(remote.name)}`
+    status
   };
 }
 
@@ -298,9 +331,11 @@ function noMatchingStatus(
     ok: false,
     issue: {
       code: "MF_INSTANCE_NOT_FOUND",
+      kind: "not_found",
       message: "No current Module Federation instance matches the supplied selectors.",
-      hint: "Run `openruntime mf status --json` to inspect the current candidates.",
-      candidates: state.instances.map(statusCandidate)
+      facts: { selectors },
+      candidates: state.instances.map(statusCandidate),
+      recommendedActions: [{ type: "inspect-status" }]
     }
   };
 }
@@ -313,15 +348,16 @@ function noMatchingConsumer(
     ok: false,
     issue: {
       code: "MF_CONSUMER_NOT_FOUND",
+      kind: "not_found",
       message: name === undefined
         ? "No consumer is confirmed in the current observability state."
         : `No confirmed consumer uses the name ${name}.`,
-      hint: "Run `openruntime mf status --json` and inspect roles and role evidence.",
-      candidates: consumers.map(moduleInfoCandidate)
+      facts: {
+        requiredRole: "consumer",
+        ...(name === undefined ? {} : { name })
+      },
+      candidates: consumers.map(moduleInfoCandidate),
+      recommendedActions: [{ type: "inspect-status", role: "consumer" }]
     }
   };
-}
-
-function quote(value: string): string {
-  return JSON.stringify(value);
 }

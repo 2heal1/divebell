@@ -59,3 +59,29 @@ Output distinguishes `declared` from `loaded` and reports only what the public r
 - `unavailable`: no compatible public reader is present. Reopen the page with `openruntime open <url>` or configure the MF Observability Plugin in the application.
 
 Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, share scopes, `options.id`, or other private runtime objects.
+
+## Public API for other extensions
+
+Other extensions can reuse the safe reader, selection rules, and result builders from the package's public `core` entry. They do not need to invoke the MF command or import a file under `dist`.
+
+```ts
+import {
+  MfCoreError,
+  createCompatibilitySummary,
+  createModuleInfoResult,
+  createStatusResult,
+  filterRelationshipsForInstances,
+  listRemoteCandidates,
+  readMfObservability,
+  selectConsumer,
+  selectRemote,
+  selectStatusInstances,
+  type BrowserObservabilitySnapshot,
+  type ConsumerSelectors,
+  type StatusSelectors
+} from "@openruntime/extension-mf/core";
+```
+
+The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `openruntime mf` commands. A Vmok extension can therefore use the same facts and render its own `openruntime vmok` guidance.
+
+The package root remains the default OpenRuntime extension entry and keeps the existing named public exports for compatibility. New integrations should use `@openruntime/extension-mf/core` for reusable capabilities and types. Command routing, formatting, and output adapters are intentionally private.

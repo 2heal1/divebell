@@ -8,8 +8,20 @@
     "directory": "packages/extension-mf"
   },
   "author": "2heal1",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/package.js",
+  "types": "./dist/package.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/package.d.ts",
+      "import": "./dist/package.js",
+      "default": "./dist/package.js"
+    },
+    "./core": {
+      "types": "./dist/public.d.ts",
+      "import": "./dist/public.js",
+      "default": "./dist/public.js"
+    }
+  },
   "openruntime": {
     "schemaVersion": 1,
     "extensions": [

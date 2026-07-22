@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  MfCoreError,
   createModuleInfoResult,
   createStatusResult,
+  filterRelationshipsForInstances,
   parseBrowserReadResult
-} from "../dist/index.js";
+} from "../dist/public.js";
 import { browserRead, capability, instance, report, runtimeState } from "./fixtures.mjs";
 
 function multiInstanceFixture() {
@@ -136,7 +138,34 @@ test("missing instanceState capability fails before selection", () => {
   const parsed = parseBrowserReadResult(browserRead(state));
   assert.throws(
     () => createStatusResult(parsed.snapshot, {}),
-    (error) => error.code === "MF_INSTANCE_STATE_UNAVAILABLE"
+    (error) => error instanceof MfCoreError &&
+      error.code === "MF_INSTANCE_STATE_UNAVAILABLE" &&
+      error.facts.capability.available === false &&
+      error.recommendedActions[0].type === "configure-observability" &&
+      !JSON.stringify(error.issue).includes("openruntime mf")
+  );
+});
+
+test("public relationship filtering includes consumer, producer, and candidate links", () => {
+  const relationships = [
+    {
+      consumerInstanceRef: "mf-1",
+      producerInstanceRef: "mf-2",
+      remote: { name: "catalog" },
+      evidence: [],
+      status: "resolved"
+    },
+    {
+      consumerInstanceRef: "mf-3",
+      candidateProducerInstanceRefs: ["mf-4"],
+      remote: { name: "checkout" },
+      evidence: [],
+      status: "ambiguous"
+    }
+  ];
+  assert.deepEqual(
+    filterRelationshipsForInstances(relationships, ["mf-2", "mf-4"]),
+    relationships
   );
 });
 

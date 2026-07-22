@@ -202,8 +202,32 @@ export interface InstanceCandidate {
   name: string;
   version?: string;
   roles: InstanceRole[];
-  command: string;
 }
+
+export type MfIssueKind = "not_found" | "needs_input" | "runtime";
+
+export type MfRecommendedAction =
+  | {
+      type: "inspect-status";
+      role?: RoleFilter;
+    }
+  | {
+      type: "select-instance";
+      target: "status" | "module-info";
+      instanceRef: string;
+    }
+  | {
+      type: "select-remote";
+      remote: string;
+      instanceRef: string;
+    }
+  | {
+      type: "reopen-page";
+    }
+  | {
+      type: "configure-observability";
+      capability?: CapabilityName;
+    };
 
 export interface StatusResult {
   schemaVersion: 1;
@@ -253,7 +277,9 @@ export interface ModuleInfoResult {
 
 export interface SelectionIssue {
   code: string;
+  kind: MfIssueKind;
   message: string;
-  hint: string;
+  facts: Record<string, unknown>;
   candidates: InstanceCandidate[];
+  recommendedActions: MfRecommendedAction[];
 }

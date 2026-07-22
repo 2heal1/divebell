@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,9 +7,17 @@ import vm from "node:vm";
 import test from "node:test";
 
 import { createOpenRuntimeCli } from "@openruntime/cli";
-import { MF_BROWSER_READ_SCRIPT } from "../dist/index.js";
+import { MF_BROWSER_READ_SCRIPT } from "../dist/reader.js";
 import { openMfObservability } from "../dist/open.js";
 import extension from "../dist/extension.js";
+
+const packageRoot = new URL("..", import.meta.url);
+
+test("navigation injection sources are unchanged by the command refactor", () => {
+  assert.equal(sourceHash("assets/install-observability.js"), "a086beb71229d293da166c223aa7b2bc08f41e6ab932fd0f40dda5e51c019edf");
+  assert.equal(sourceHash("assets/observability-chrome-devtool.iife.js"), "4444aae2dbbfdce1b0084d6387d95c6bab6373c73f65fb96cc8913be864da177");
+  assert.equal(sourceHash("src/open.ts"), "221aca9bfcd3bdecc25aedffe70d50c4b863fc98b5bc43e541972236ecc904ed");
+});
 
 test("open hook returns one self-contained script built from the public chrome-devtool entry", async () => {
   const result = await openMfObservability();
@@ -21,6 +30,12 @@ test("open hook returns one self-contained script built from the public chrome-d
   assert.doesNotMatch(source, /\bimport\s*\(/);
   assert.doesNotMatch(source, /<script|cdn\.jsdelivr|unpkg\.com/i);
 });
+
+function sourceHash(relativePath) {
+  return createHash("sha256")
+    .update(readFileSync(new URL(relativePath, packageRoot)))
+    .digest("hex");
+}
 
 test("injection runs before business setup and observes more than one later MF instance", async () => {
   const [{ scripts }] = await Promise.all([openMfObservability()]);

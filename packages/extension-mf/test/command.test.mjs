@@ -47,14 +47,15 @@ test("missing OpenRuntime page context has a dedicated recovery message", async 
 });
 
 test("unknown MF commands return the compatible unified help error", async () => {
-  const run = createOptions(["mf", "remote", "check"], new Map(), undefined);
+  const run = createOptions(["mf", "shared", "check"], new Map(), undefined);
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "mf requires status, module-info or bridge trace." &&
+      error.message === "mf requires status, module-info, bridge trace, trace, remote check or preload trace." &&
       /openruntime mf status/.test(error.hint) &&
       /openruntime mf module-info/.test(error.hint) &&
-      /openruntime mf bridge trace/.test(error.hint)
+      /openruntime mf bridge trace/.test(error.hint) &&
+      /openruntime mf remote check/.test(error.hint)
   );
 });
 

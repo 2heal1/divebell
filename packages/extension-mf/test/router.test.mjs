@@ -4,7 +4,7 @@ import test from "node:test";
 import { matchMfCommand } from "../dist/cli/router.js";
 import { mfCommandRegistry } from "../dist/commands/registry.js";
 
-test("real status, module-info, and bridge trace routes match their own command modules", () => {
+test("real MF routes match their own command modules", () => {
   assert.deepEqual(matchMfCommand(mfCommandRegistry, ["status", "host"]), {
     registration: mfCommandRegistry[0],
     positionals: ["host"]
@@ -17,13 +17,17 @@ test("real status, module-info, and bridge trace routes match their own command 
     registration: mfCommandRegistry[2],
     positionals: ["catalog"]
   });
-});
-
-test("a fake multi-segment remote check route matches completely", () => {
-  const remoteCheck = registration(["remote", "check"]);
-  const match = matchMfCommand([remoteCheck], ["remote", "check", "catalog"]);
-  assert.equal(match.registration, remoteCheck);
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["trace", "catalog/Button"]), {
+    registration: mfCommandRegistry[3],
+    positionals: ["catalog/Button"]
+  });
+  const match = matchMfCommand(mfCommandRegistry, ["remote", "check", "catalog"]);
+  assert.equal(match.registration, mfCommandRegistry[4]);
   assert.deepEqual(match.positionals, ["catalog"]);
+  assert.equal(
+    matchMfCommand(mfCommandRegistry, ["preload", "trace", "catalog"]).registration,
+    mfCommandRegistry[5]
+  );
 });
 
 test("longest matching route wins and a short input never matches a longer route", () => {
@@ -36,10 +40,10 @@ test("longest matching route wins and a short input never matches a longer route
   assert.equal(matchMfCommand([remoteCheck], ["remote"]), undefined);
 });
 
-test("the real registry exposes no unimplemented future commands", () => {
+test("the real registry exposes exactly the implemented commands", () => {
   assert.deepEqual(
     mfCommandRegistry.map((entry) => entry.path.join(" ")),
-    ["status", "module-info", "bridge trace"]
+    ["status", "module-info", "bridge trace", "trace", "remote check", "preload trace"]
   );
 });
 

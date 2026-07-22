@@ -28,9 +28,12 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.deepEqual(commandReferences.map((reference) => reference.usage), [
     "openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]",
     "openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]",
-    "openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]"
+    "openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]",
+    "openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]",
+    "openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]",
+    "openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]"
   ]);
-  assert.doesNotMatch(JSON.stringify(commandReferences), /remote check|shared|preload|mf trace/);
+  assert.doesNotMatch(JSON.stringify(commandReferences), /shared/);
 });
 
 test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
@@ -44,15 +47,20 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     "bridge/aggregate.js",
     "bridge/selection.js",
     "bridge/result.js",
-    "bridge/types.js"
+    "bridge/types.js",
+    "remote/errors.js",
+    "remote/selection.js",
+    "remote/results.js",
+    "remote/format.js",
+    "remote/types.js"
   ];
   const sources = publicFiles.map((file) =>
     readFileSync(resolve(packageRoot, "dist", file), "utf8")
   );
   for (const source of sources) {
-    assert.doesNotMatch(source, /(?:from|import\()\s*["'](?!\.)/);
+    assert.doesNotMatch(source, /(?:from|import\()\s*["'](?!\.\.?\/)/);
   }
-  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info)/);
+  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info|bridge trace|trace|remote check|preload trace)/);
 });
 
 test("packed npm archive is self-contained and has no runtime dependencies", () => {
@@ -159,7 +167,7 @@ test("packed archive supports real package-name imports for public API and exten
       "-e",
       `const extension = await import("@openruntime/extension-mf");
        const api = await import("@openruntime/extension-mf/core");
-       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult"];
+       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteCheck", "createRemoteTraceResult", "createRemoteCheckResult", "buildRemoteTrace", "formatRemoteTrace", "formatRemoteCheck"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
        if (extension.default?.name !== "mf") process.exit(3);`

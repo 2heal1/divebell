@@ -5,6 +5,8 @@ import {
   preloadTraceCommandMetadata,
   remoteCheckCommandMetadata,
   traceCommandMetadata,
+  sharedStatusCommandMetadata,
+  sharedTraceCommandMetadata,
   statusCommandMetadata
 } from "./metadata.js";
 
@@ -32,5 +34,13 @@ export const mfCommandRegistry: readonly MfCommandRegistration[] = [
   {
     ...preloadTraceCommandMetadata,
     load: async () => (await import("./preload-trace.js")).preloadTraceCommand
+  },
+  {
+    ...sharedStatusCommandMetadata,
+    load: async () => (await import("./shared-status.js")).sharedStatusCommand
+  },
+  {
+    ...sharedTraceCommandMetadata,
+    load: async () => (await import("./shared-trace.js")).sharedTraceCommand
   }
 ];

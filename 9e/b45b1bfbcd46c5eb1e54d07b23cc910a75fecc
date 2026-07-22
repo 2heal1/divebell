@@ -1,0 +1,53 @@
+packages/extension-mf/README.md
+  s_a7803e6ce4b5e2::t_75e956c12d9ee9 3-20,78,132-151
+packages/extension-mf/src/cli/router.ts
+  s_a4f159622576df::t_c57cf7d889b58d 52-54,59-61,65,67,69-71
+packages/extension-mf/src/commands/metadata.ts
+  s_a7803e6ce4b5e2::t_b5e22fe8549f48 71-72
+packages/extension-mf/src/commands/registry.ts
+  s_a4f159622576df::t_953d0aaf1e33c5 41-44
+packages/extension-mf/test/command.test.mjs
+  s_1ae0750a1f806c::t_a8dfc4190a18bd 54,64-74
+packages/extension-mf/test/integration.test.mjs
+  s_a4f159622576df::t_1009c62c852e17 1-237
+packages/extension-mf/test/package.test.mjs
+  s_a4f159622576df::t_f78c1747c4c38a 14,29-40,149-152,183,186,236-248
+packages/extension-mf/test/remote.test.mjs
+  s_a7803e6ce4b5e2::t_349d5e034a92f7 10
+packages/extension-mf/test/router.test.mjs
+  s_1ae0750a1f806c::t_ec0e3bfd8b3411 17,21,23,27,30-33,37,68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9eb45b1bfbcd46c5eb1e54d07b23cc910a75fecc",
+  "prompts": {},
+  "sessions": {
+    "s_1ae0750a1f806c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-1e50-7ad0-8067-6f08ca86ef0e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a4f159622576df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8972-1963-7e92-8e4b-316f88626185",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a7803e6ce4b5e2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8978-2d16-78c2-ba1a-18fe95c34d3d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

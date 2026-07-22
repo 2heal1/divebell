@@ -562,9 +562,6 @@ test("runs execution commands against the selected runtime", async () => {
     if (textUrl.endsWith("/runtimes")) {
       return jsonResponse({ runtimes });
     }
-    if (textUrl.includes("/actions/route.pick/options")) {
-      return jsonResponse([{ value: "hangzhou" }]);
-    }
     if (textUrl.includes("/actions/route.pick/run")) {
       return jsonResponse({ success: true, actionName: "route.pick" });
     }
@@ -585,26 +582,6 @@ test("runs execution commands against the selected runtime", async () => {
 
     return jsonResponse({});
   };
-
-  assert.equal(await runCli([
-    "input-options",
-    "--bridge",
-    "http://bridge.test",
-    "--url",
-    "http://app.test/",
-    "--action",
-    "route.pick",
-    "--input",
-    "city",
-    "--payload",
-    "{\"region\":\"zhejiang\"}",
-    "--timeout",
-    "20"
-  ], {
-    stdout: createOutput().stdout,
-    stderr: createOutput().stderr,
-    fetcher
-  }), 0);
 
   assert.equal(await runCli([
     "run-action",
@@ -647,12 +624,6 @@ test("runs execution commands against the selected runtime", async () => {
   }), 0);
 
   assert.deepEqual(calls, [
-    {
-      url: "http://bridge.test/runtimes"
-    },
-    {
-      url: "http://bridge.test/runtimes/runtime-1/actions/route.pick/options?input=city&payload=%7B%22region%22%3A%22zhejiang%22%7D&timeout=20"
-    },
     {
       url: "http://bridge.test/runtimes"
     },

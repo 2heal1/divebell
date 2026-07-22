@@ -183,7 +183,6 @@ export function createBridgeInitScript(bridgeUrl: string): string {
       "getSnapshot",
       "getEvents",
       "getActions",
-      "getInputOptions",
       "runAction",
       "waitFor"
     ].includes(request.method)) return undefined;
@@ -207,13 +206,6 @@ export function createBridgeInitScript(bridgeUrl: string): string {
         return runtime.getEvents(request.query);
       case "getActions":
         return runtime.getActions(request.query);
-      case "getInputOptions":
-        return runtime.getInputOptions(
-          requireString(request.actionName, "actionName"),
-          requireString(request.inputName, "inputName"),
-          request.payload,
-          request.options
-        );
       case "runAction":
         return runtime.runAction(requireString(request.actionName, "actionName"), request.payload);
       case "waitFor":

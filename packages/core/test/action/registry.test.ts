@@ -22,7 +22,6 @@ test("registers actions and reports availability from current snapshot", () => {
       source: "business",
       risk: "state-changing",
       availableWhen: { id: "route:/home", status: "ready" },
-      hasInputOptions: false,
       enabled: false,
       reason: "Waiting for route:/home to reach ready.",
       registeredAt: 1002,
@@ -37,4 +36,3 @@ test("registers actions and reports availability from current snapshot", () => {
     "route.submit"
   ]);
 });
-

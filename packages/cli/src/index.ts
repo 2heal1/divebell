@@ -45,7 +45,6 @@ export {
 } from "./features/browser/runner.js";
 export type * from "./features/browser/runner.js";
 export {
-  fetchInputOptions,
   fetchRuntimeResource,
   fetchRuntimes,
   normalizeBridgeUrl,

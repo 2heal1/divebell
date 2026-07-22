@@ -1,7 +1,5 @@
-import { getNumberOption } from "../utils/args.js";
 import { createBridgeStateStore } from "../features/bridge/config.js";
 import {
-  fetchInputOptions,
   fetchRuntimeResource,
   fetchRuntimes,
   runRuntimeAction,
@@ -12,7 +10,6 @@ import {
   parsePayloadOption,
   parseWhereOptions,
   requireCommandArgument,
-  requireOption,
   writeJson
 } from "../utils/command.js";
 import { applyOpenContextDefaults, applyOpenContextDefaultsOrThrow } from "../open-context.js";
@@ -77,36 +74,6 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
       runtime,
       resourceCommand,
       createQuery(commandArgs, resourceCommand)
-    );
-    writeJson(stdout, result);
-    return 0;
-  }
-
-  if (args.command[0] === "input-options") {
-    const actionName = requireOption(args, "action");
-    const inputName = requireOption(args, "input");
-    const payload = parsePayloadOption(args);
-    const commandArgs = applyOpenContextDefaultsOrThrow(
-      args,
-      await operationLogStore.read(),
-      "unless-selector"
-    );
-    const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(
-      commandArgs,
-      fetcher,
-      bridgeStarter,
-      createBridgeStateStore(commandArgs, bridgeStateDirectory)
-    );
-    const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
-    const result = await fetchInputOptions(
-      fetcher,
-      bridgeUrl,
-      runtime,
-      actionName,
-      inputName,
-      payload,
-      getNumberOption(args, "timeout")
     );
     writeJson(stdout, result);
     return 0;

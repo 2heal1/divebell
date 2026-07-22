@@ -2,7 +2,6 @@ import type {
   DivebellCore,
   DivebellWindowHost,
   RuntimeError,
-  RuntimeInputOption,
   RuntimeStatus
 } from "@divebell/core";
 import {
@@ -320,13 +319,6 @@ export class ModernPluginRuntimeState {
           required: ["to"],
           additionalProperties: false
         },
-        getInputOptions: (inputName) => {
-          if (inputName !== "to") {
-            return [];
-          }
-
-          return this.#getRouteNavigateOptions();
-        },
         handler: async (payload) => this.#navigateRoute(payload)
       });
       this.#routeNavigateActionRuntimes.add(runtime);
@@ -335,25 +327,6 @@ export class ModernPluginRuntimeState {
 
   #getRouteManifestEntries(): RouteManifestEntry[] {
     return [...this.#routes.values()].map(getRouteManifestEntry);
-  }
-
-  #getRouteNavigateOptions(): RuntimeInputOption[] {
-    const seen = new Set<string>();
-    const options: RuntimeInputOption[] = [];
-
-    for (const route of this.#getRouteManifestEntries()) {
-      if (!isNavigableRouteManifestEntry(route) || seen.has(route.pathname)) {
-        continue;
-      }
-
-      seen.add(route.pathname);
-      options.push({
-        value: route.pathname,
-        description: getRouteOptionDescription(route)
-      });
-    }
-
-    return options;
   }
 
   async #navigateRoute(payload: unknown): Promise<Record<string, unknown>> {
@@ -591,14 +564,6 @@ function dedupeRouteMatches(matches: RouteRuntimeMatch[]): RouteRuntimeMatch[] {
   }
 
   return deduped;
-}
-
-function getRouteOptionDescription(route: RouteManifestEntry): string {
-  if (route.modernRouteId !== undefined && route.modernRouteId !== route.pathname) {
-    return route.modernRouteId;
-  }
-
-  return route.routeId;
 }
 
 function isNavigableRouteManifestEntry(route: RouteManifestEntry): route is NavigableRouteManifestEntry {

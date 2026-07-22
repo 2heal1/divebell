@@ -134,17 +134,6 @@ class NodeBridgeServer implements BridgeServer {
       }
 
       if (
-        request.method === "GET" &&
-        segments.length === 5 &&
-        segments[0] === "runtimes" &&
-        segments[2] === "actions" &&
-        segments[4] === "options"
-      ) {
-        await this.#handleInputOptions(segments[1] ?? "", segments[3] ?? "", url, response);
-        return;
-      }
-
-      if (
         request.method === "POST" &&
         segments.length === 5 &&
         segments[0] === "runtimes" &&
@@ -303,30 +292,6 @@ class NodeBridgeServer implements BridgeServer {
     const result = await this.#store.request(runtimeId, method, query === undefined ? {} : { query });
     this.#store.cacheResult(runtimeId, method, result);
     writeJson(response, 200, this.#getCachedRuntimeResult(runtimeId, method, query) ?? result);
-  }
-
-  async #handleInputOptions(
-    runtimeId: string,
-    actionName: string,
-    url: URL,
-    response: ServerResponse
-  ): Promise<void> {
-    const inputName = url.searchParams.get("input");
-    if (inputName === null || inputName.length === 0) {
-      throw new BridgeHttpError(400, "missing_input_name", "Input options request must include an input query.");
-    }
-
-    const payload = parsePayloadQuery(url.searchParams.get("payload"));
-    const options = parseTimeoutOptions(url.searchParams);
-    const requestInput: Omit<BridgeRuntimeRequest, "requestId" | "method"> = {
-      actionName,
-      inputName
-    };
-    if (payload !== undefined) requestInput.payload = payload;
-    if (options !== undefined) requestInput.options = options;
-
-    const result = await this.#requestConnectedRuntime(runtimeId, "getInputOptions", requestInput);
-    writeJson(response, 200, result);
   }
 
   async #handleRunAction(
@@ -551,22 +516,6 @@ function isBridgeRuntimeResponse(value: unknown): value is BridgeRuntimeResponse
   return typeof response.success === "boolean";
 }
 
-function parsePayloadQuery(value: string | null): Record<string, unknown> | undefined {
-  if (value === null || value.length === 0) return undefined;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    throw new BridgeHttpError(400, "invalid_payload", "payload query must be valid JSON.");
-  }
-
-  if (!isRecord(parsed)) {
-    throw new BridgeHttpError(400, "invalid_payload", "payload must be a JSON object.");
-  }
-  return parsed;
-}
-
 function getPayload(body: unknown): Record<string, unknown> | undefined {
   if (body === undefined) return undefined;
   if (!isRecord(body)) {
@@ -585,14 +534,6 @@ function getPayload(body: unknown): Record<string, unknown> | undefined {
   return body;
 }
 
-function parseTimeoutOptions(searchParams: URLSearchParams): { timeout: number } | undefined {
-  const value = searchParams.get("timeout");
-  if (value === null) return undefined;
-  return {
-    timeout: parseTimeout(value)
-  };
-}
-
 function parseTimeoutBody(body: Record<string, unknown>): { timeout: number } | undefined {
   const timeout = body.timeout;
   if (timeout === undefined) return undefined;
@@ -602,10 +543,6 @@ function parseTimeoutBody(body: Record<string, unknown>): { timeout: number } | 
   return {
     timeout: normalizeTimeout(timeout)
   };
-}
-
-function parseTimeout(value: string): number {
-  return normalizeTimeout(Number(value));
 }
 
 function normalizeTimeout(value: number): number {

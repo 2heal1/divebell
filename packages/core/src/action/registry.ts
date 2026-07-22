@@ -5,13 +5,11 @@ import type { RuntimeCondition } from "../wait/types.js";
 import type {
   GetActionsQuery,
   RegisterActionInput,
-  RuntimeActionDescriptor,
-  RuntimeInputOption
+  RuntimeActionDescriptor
 } from "./types.js";
 
 export interface RegisteredAction extends RuntimeActionDescriptor {
   handler: RegisterActionInput["handler"];
-  getInputOptions?: RegisterActionInput["getInputOptions"];
 }
 
 export interface ActionAvailability {
@@ -55,26 +53,6 @@ export class ActionRegistry {
       .filter((action) => matchesAction(action, query))
       .map(cloneActionDescriptor);
   }
-
-  async getInputOptions(
-    actionName: string,
-    inputName: string,
-    currentPayload: Record<string, unknown> | undefined,
-    context: Parameters<NonNullable<RegisterActionInput["getInputOptions"]>>[2]
-  ): Promise<RuntimeInputOption[]> {
-    const action = this.#actions.get(actionName);
-    if (action?.getInputOptions === undefined) {
-      return [];
-    }
-
-    const properties = action.inputSchema?.properties;
-    if (properties !== undefined && !(inputName in properties)) {
-      return [];
-    }
-
-    const options = await action.getInputOptions(inputName, currentPayload, context);
-    return options.map((option) => ({ ...option }));
-  }
 }
 
 export function getAvailability(
@@ -113,7 +91,6 @@ function normalizeAction(
     name,
     source: input.source ?? defaultActionSource,
     risk: input.risk ?? defaultActionRisk,
-    hasInputOptions: input.getInputOptions !== undefined,
     enabled: true,
     registeredAt,
     updatedAt,
@@ -121,9 +98,6 @@ function normalizeAction(
   };
 
   assignOptionalActionFields(action, input);
-  if (input.getInputOptions !== undefined) {
-    action.getInputOptions = input.getInputOptions;
-  }
 
   return action;
 }
@@ -136,7 +110,6 @@ function toDescriptor(
     name: action.name,
     source: action.source,
     risk: action.risk,
-    hasInputOptions: action.hasInputOptions,
     enabled: availability.enabled,
     registeredAt: action.registeredAt,
     updatedAt: action.updatedAt
@@ -156,10 +129,6 @@ function cloneRegisteredAction(action: RegisteredAction): RegisteredAction {
     handler: action.handler
   };
 
-  if (action.getInputOptions !== undefined) {
-    clone.getInputOptions = action.getInputOptions;
-  }
-
   return clone;
 }
 
@@ -168,7 +137,6 @@ function cloneActionDescriptor(action: RuntimeActionDescriptor): RuntimeActionDe
     name: action.name,
     source: action.source,
     risk: action.risk,
-    hasInputOptions: action.hasInputOptions,
     enabled: action.enabled,
     registeredAt: action.registeredAt,
     updatedAt: action.updatedAt

@@ -3,9 +3,7 @@ import type {
   GetActionsQuery,
   RegisterActionInput,
   RuntimeActionContext,
-  RuntimeActionResult,
-  RuntimeInputOption,
-  RuntimeInputOptionsOptions
+  RuntimeActionResult
 } from "../action/types.js";
 import { validateActionPayload } from "../action/validation.js";
 import { EventLog } from "../event/log.js";
@@ -114,22 +112,6 @@ export class RuntimeCenter implements DivebellCore {
 
   getActions(query?: GetActionsQuery): ReturnType<DivebellCore["getActions"]> {
     return this.#actions.list(query, this.getSnapshot());
-  }
-
-  async getInputOptions(
-    actionName: string,
-    inputName: string,
-    currentPayload?: Record<string, unknown>,
-    options?: RuntimeInputOptionsOptions
-  ): Promise<RuntimeInputOption[]> {
-    const inputOptions = this.#actions.getInputOptions(
-      actionName,
-      inputName,
-      currentPayload,
-      this.#createActionContext(actionName)
-    );
-
-    return withTimeout(inputOptions, options?.timeout, "Timed out while reading input options.");
   }
 
   async runAction(
@@ -296,27 +278,4 @@ function toRuntimeError(error: unknown): RuntimeError {
   return {
     message: String(error)
   };
-}
-
-function withTimeout<T>(promise: Promise<T>, timeout: number | undefined, message: string): Promise<T> {
-  if (timeout === undefined || !Number.isFinite(timeout) || timeout < 0) {
-    return promise;
-  }
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(message));
-    }, Math.floor(timeout));
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
 }

@@ -156,8 +156,7 @@ divebell run-action modern.route.list
 Enabled by `injectRouteNavigateAction`.
 
 This state-changing action navigates through the Modern.js router. The `to`
-input only accepts routes known by the current `modern:route` route manifest.
-Use input options to read the current candidate route pathnames:
+input only accepts routes known by the current `modern:route` route manifest:
 
 ```sh
 divebell input-options --action modern.route.navigate --input to

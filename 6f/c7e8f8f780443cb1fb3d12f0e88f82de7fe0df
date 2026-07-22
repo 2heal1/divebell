@@ -1,0 +1,95 @@
+.changeset/mf-shared-command.md
+  s_4a71b0edaa4178::t_a61e558405cd19 1-5
+packages/extension-mf/README.md
+  s_4a71b0edaa4178::t_c754782fa8a6de 3,77-95,113-114,117,122,132
+packages/extension-mf/docs/shared.md
+  s_4a71b0edaa4178::t_87c8deed2945ee 1-48
+packages/extension-mf/src/cli/shared.ts
+  s_4a71b0edaa4178::t_855e0a81e333dc 1-93
+packages/extension-mf/src/commands/metadata.ts
+  s_4a71b0edaa4178::t_350d0c78428d35 22-35,38-40
+packages/extension-mf/src/commands/registry.ts
+  s_4a71b0edaa4178::t_b9719848e13f0e 4-5,17-24
+packages/extension-mf/src/commands/shared-status.ts
+  s_b3aff06b530419::t_b1091cecfd857e 1-48
+packages/extension-mf/src/commands/shared-trace.ts
+  s_b3aff06b530419::t_3ce64563104e70 1-73
+packages/extension-mf/src/public.ts
+  s_bc5a8ad070d053::t_71cb20489e0ce3 27-39
+packages/extension-mf/src/shared/capability.ts
+  s_e9eee38fb7dc87::t_47345aadbfe422 1-94
+packages/extension-mf/src/shared/format.ts
+  s_b3aff06b530419::t_676186155874eb 1-151
+packages/extension-mf/src/shared/selection.ts
+  s_bc5a8ad070d053::t_51cc970e848bea 1-50
+packages/extension-mf/src/shared/status.ts
+  s_bc5a8ad070d053::t_8291b3d4f33359 1-150
+packages/extension-mf/src/shared/trace.ts
+  s_bc5a8ad070d053::t_e5579b4759ab15 1-313
+packages/extension-mf/src/shared/types.ts
+  s_4a71b0edaa4178::t_59abc3c914b774 1-141
+packages/extension-mf/test/command.test.mjs
+  s_e9eee38fb7dc87::t_e3030b512caf4f 54,56-58
+packages/extension-mf/test/package.test.mjs
+  s_4a71b0edaa4178::t_493e5cfc6eb264 30-32,34,44-49,164
+packages/extension-mf/test/router.test.mjs
+  s_e9eee38fb7dc87::t_b1ddaf06620a43 7,16-23,43,46
+packages/extension-mf/test/shared-command.test.mjs
+  s_bc5a8ad070d053::t_cab06a9563a126 1-178
+packages/extension-mf/test/shared-fixtures.mjs
+  s_4a71b0edaa4178::t_16e138b72fa132 1-125
+packages/extension-mf/test/shared-status.test.mjs
+  s_026b0e00f3ac84::t_c0f263827ff1d3 1-158
+packages/extension-mf/test/shared-trace.test.mjs
+  s_026b0e00f3ac84::t_aacd559446f87e 1-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6fc7e8f8f780443cb1fb3d12f0e88f82de7fe0df",
+  "prompts": {},
+  "sessions": {
+    "s_026b0e00f3ac84": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d4-0235-7863-9f28-569106a7d808",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_4a71b0edaa4178": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d3-b3a9-7282-bf62-6c3983346478",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_b3aff06b530419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d2-3826-7660-b7e8-565e6a6c4cfd",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_bc5a8ad070d053": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d2-c895-7981-b466-b1a5ddaab288",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e9eee38fb7dc87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d2-a010-7361-be01-1b667c88a6bb",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

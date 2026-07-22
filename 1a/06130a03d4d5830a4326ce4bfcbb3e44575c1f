@@ -1,0 +1,23 @@
+packages/extension-mf/package.json
+  s_e9eee38fb7dc87::t_cd6701fbadeb4d 3
+packages/extension-mf/test/package.test.mjs
+  s_e9eee38fb7dc87::t_31aa7c63b23f7d 81,157,202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1a06130a03d4d5830a4326ce4bfcbb3e44575c1f",
+  "prompts": {},
+  "sessions": {
+    "s_e9eee38fb7dc87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f88d2-a010-7361-be01-1b667c88a6bb",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

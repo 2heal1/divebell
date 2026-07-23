@@ -1,0 +1,75 @@
+.changeset/inject-mf-debug-runtime.md
+  s_710d8f9c183ff0::t_31cd4f8a0fc7ce 1-5
+package.json
+  s_de9a8d96742e00::t_cab5918090261e 26-27
+packages/extension-mf/README.md
+  s_710d8f9c183ff0::t_b7cea6ee6298b1 30,36-42,46,49,51-52,55,61-62,67
+packages/extension-mf/assets/install-runtime-debug.js
+  s_de9a8d96742e00::t_7bbd8dd53f8160 1-4642
+packages/extension-mf/assets/observability-build.json
+  s_de9a8d96742e00::t_5471ee9a753924 4
+packages/extension-mf/assets/runtime-debug-build.json
+  s_de9a8d96742e00::t_945d88634ac4b5 1-7
+packages/extension-mf/package.json
+  s_de9a8d96742e00::t_172e94ddd860c3 36-37
+packages/extension-mf/scripts/assemble.mjs
+  s_de9a8d96742e00::t_6cf11375032f31 21-28
+packages/extension-mf/scripts/install-runtime-debug.template.js
+  s_de9a8d96742e00::t_10e823aa13a305 1-74
+packages/extension-mf/scripts/sync-mf-debug.mjs
+  s_710d8f9c183ff0::t_95a0cebb76594b 1-288
+packages/extension-mf/src/extension.ts
+  s_710d8f9c183ff0::t_19d66e0ae41d2f 20-21
+packages/extension-mf/src/open.ts
+  s_710d8f9c183ff0::t_290836d58600e8 2,9,11-26,31
+packages/extension-mf/test/open.test.mjs
+  s_710d8f9c183ff0::t_eb0edc6078d60d 22,26-60,63,67-68,73,77,92-105,130-191,212,216-233,263-264,280-308
+packages/extension-mf/test/package.test.mjs
+  s_e84425219326c8::t_b020ce0df3cdb4 95-96,105-111,140
+packages/extension-mf/test/sync-mf-debug.test.mjs
+  s_710d8f9c183ff0::t_512730fb4b39bc 1-197
+pnpm-lock.yaml
+  s_db14ff3b5246a4::t_d080a230bf1851 182-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2fd356e2fa6d3fec51b6dc308559eb58e3464329",
+  "prompts": {},
+  "sessions": {
+    "s_710d8f9c183ff0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e3c-2051-7642-88d7-de258bf9cdfc",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_db14ff3b5246a4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e3c-8fe3-7812-bb54-02916fdc3e31",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

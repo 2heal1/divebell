@@ -17,10 +17,10 @@ description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器
 - 如果 CLI 启动、安装或缓存有问题，读取 `references/openruntime-cli.md`，按其中说明处理 `OPENRUNTIME_CLI` 或缓存目录。
 - skill 不在 Git 仓库中携带依赖 `.tgz`。自带入口会按 `references/openruntime-cli-runtime.json` 下载固定版本的 GitHub Release 运行包，校验 SHA-256，并按版本缓存。
 - 首次使用 Release 运行包需要网络。离线环境按 `references/openruntime-cli.md` 设置 `OPENRUNTIME_SKILL_RUNTIME_ARCHIVE`，或提供可用的 `OPENRUNTIME_CLI`。
-- 默认直接打开可见浏览器，让用户实际操作页面。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
+- 默认先运行 `record start` 准备录制，再通过 `openruntime open about:blank --ui` 打开可见页面。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
 - 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
 - 用户说“结束”“完成”“done”后，再调用 stop。
-- `record stop` 默认会关闭浏览器，并生成 `generated-script.mjs`。
+- `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `openruntime close`。
 - 第一版录制包会保存鼠标点击、输入、键盘事件、事件相对录制开始的时间、页面快照、DOM 摘要、OpenRuntime 结构化状态和可选麦克风音频。连续视频还不是可靠产物。
 - 使用 `--mic` 时，浏览器会申请麦克风权限，并把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`。如果权限被拒绝，必须读取 `audio-events.jsonl` 和 manifest 里的失败原因。
 - 页面跳转、搜索或打开新页面后，中间的点击和输入也应该保留在 `interactions.jsonl`。不要只按最后停留的 URL 判断录制结果。
@@ -43,24 +43,29 @@ node <skill-dir>/scripts/probe-openruntime-cli.mjs
 
 ## 启动录制
 
-1. 如项目需要指定 Bridge，带上 `--bridge <url>` 或 `--port <port>`。
-2. 用户没有主动给 URL 时，直接运行：
+1. 确认当前没有 OpenRuntime 页面仍在打开。如果有，先运行 `close`。然后准备录制：
 
 ```bash
 node <skill-dir>/scripts/openruntime-cli.mjs record start --mic
 ```
 
-这会打开空白浏览器，并默认把录制包放到当前项目的 `recordings/` 下。读取命令返回的 JSON，把 `output` 字段记下来，后续 stop 必须使用这个路径。
+录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。如果不需要录音，去掉 `--mic`。
 
-用户已经主动给 URL 时，才加 `--url`：
+2. 用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record start --url <url> --mic
+node <skill-dir>/scripts/openruntime-cli.mjs open about:blank --ui
 ```
 
-如果不需要记录用户是否请求麦克风，去掉 `--mic`。默认会打开可见浏览器；不要额外加 `--headless`，除非用户明确要求。
+用户已经主动给 URL 时，直接把它作为 `open` 的地址：
 
-3. 命令返回 JSON 后立即读取 `status`、`output`、`manifest` 和 `next`。`status` 为 `recording` 时，告诉用户浏览器已经打开，可以开始操作；操作完成后直接说“结束”或“完成”。
+```bash
+node <skill-dir>/scripts/openruntime-cli.mjs open <url> --ui
+```
+
+`open` 会在同一次页面启动中注入 Bridge 和录制脚本。不要把 URL、Bridge 或页面显示参数传给 `record start`。
+
+3. `open` 成功后，读取录制包的 `manifest.json`，确认 `status` 已变为 `recording`。然后告诉用户浏览器已经打开，可以开始操作；操作完成后直接说“结束”或“完成”。
 4. 在用户结束前，不要关闭浏览器，也不要提前生成脚本。
 
 ## 用户说结束后
@@ -71,7 +76,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs record start --url <url> --mic
 node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-path>
 ```
 
-这个命令会采集结束时的 OpenRuntime 状态和页面快照，默认调用浏览器 close，并在录制包里生成：
+这个命令会采集结束时的 OpenRuntime 状态和页面快照，并在录制包里生成：
 
 - `manifest.json`
 - `runtime.jsonl`
@@ -84,6 +89,14 @@ node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-pat
 - `operations.jsonl`
 - `transcript.json`
 - `generated-script.mjs`
+
+stop 成功后，再通过标准页面流程关闭浏览器：
+
+```bash
+node <skill-dir>/scripts/openruntime-cli.mjs close
+```
+
+如果 stop 提示当前页面和录制页面不一致，不要强行继续或混入新页面数据；回到开始录制时的项目和页面后重试。
 
 结束后读取 `manifest.json`、`interactions.jsonl`、`transcript.json` 和 `generated-script.mjs`。确认 manifest 的 `status` 是 `completed`，并检查脚本中是否出现了录到的 `click`、`fill` 或键盘步骤。不要只因为页面没有 OpenRuntime target 就说“没有录到操作”；先看 `interactions.jsonl`。
 

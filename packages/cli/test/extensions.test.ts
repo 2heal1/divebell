@@ -365,6 +365,7 @@ test("registers a command and merges its help entries", async () => {
         hasBridgeUrlOption: "bridgeUrl" in options,
         hasRuntimeSelectorOption: "runtimeSelector" in options,
         hasEnsureBridgeApi: "ensureBridge" in openruntime,
+        hasScopeApi: "scope" in openruntime,
         hasRuntimesApi: "runtimes" in openruntime,
         hasSelectRuntimeApi: "selectRuntime" in openruntime,
         page,
@@ -444,7 +445,8 @@ test("registers a command and merges its help entries", async () => {
       command: ["demo", "ping"],
       hasBridgeUrlOption: false,
       hasRuntimeSelectorOption: false,
-      hasEnsureBridgeApi: true,
+      hasEnsureBridgeApi: false,
+      hasScopeApi: false,
       hasRuntimesApi: false,
       hasSelectRuntimeApi: false,
       page: {

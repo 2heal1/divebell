@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionApi, ParsedCliArgs } from "@openruntime/cli";
+import type { CliExtensionPageContext, OpenRuntimeExtensionApi, ParsedCliArgs } from "@openruntime/cli";
 
 interface BridgeRuntimeInfo {
   runtimeId: string;
@@ -13,8 +13,8 @@ export interface RecordCommandOptions {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
   fetcher: typeof fetch;
+  page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;
-  bridgeUrl: string;
 }
 
 export interface RecordingFiles {
@@ -33,10 +33,10 @@ export interface RecordingFiles {
 export interface RecordingManifest {
   format: string;
   version: number;
-  status?: "recording" | "completed";
-  url: string;
-  openedUrl: string;
-  bridgeUrl: string;
+  status?: "prepared" | "recording" | "completed";
+  url?: string;
+  openedUrl?: string;
+  bridgeUrl?: string | null;
   sessionId?: string;
   startedAt: string;
   endedAt?: string;
@@ -63,6 +63,12 @@ export interface RecordingManifest {
   generated?: {
     script?: string;
     generatedAt?: string;
+  };
+  invalidated?: {
+    reason: string;
+    url: string;
+    openedUrl: string;
+    invalidatedAt: string;
   };
 }
 

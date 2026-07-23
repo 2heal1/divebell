@@ -265,7 +265,6 @@ A Command accesses OpenRuntime capabilities through `options.openruntime`:
 | Collect screenshot, Network, Console, memory, and code-execution evidence | The matching capability under `openruntime.browser` |
 | Read internal state declared by the application | `targets`, `snapshot`, `events`, `actions` |
 | Execute a page-declared action and wait for its result | `runAction`, `waitFor` |
-| Select a specific Bridge, Runtime, session, or page | `scope` |
 
 Browser capabilities remain available when the page does not use Runtime Core. Require a connected Runtime only when the Command truly needs application-internal facts.
 

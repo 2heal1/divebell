@@ -1,11 +1,11 @@
 import { mkdir } from "node:fs/promises";
-import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime, setRecordingInstrumentation } from "./capture.js";
+import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime } from "./capture.js";
 import { collectAudioCapture, transcribeAudioFile } from "./audio.js";
-import { clearRecordingControlFile, closeRecordingBrowser, createSkippedBrowserOpenOperation, ensureRecordBridge, openRecordingBrowser, resetRecordingBrowser, tryEnsureRecordBridge, writeRecordingControlFile } from "./session.js";
+import { clearRecordingControlFile, writeRecordingControlFile } from "./session.js";
 import { createManifestPath, writeGeneratedScript } from "./script.js";
 import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
 import { join, resolve } from "node:path";
-import type { CliExtensionRunOptions, ParsedCliArgs } from "@openruntime/cli";
+import type { CliExtensionPageContext, CliExtensionRunOptions, ParsedCliArgs } from "@openruntime/cli";
 
 import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "./types.js";
 export type * from "./types.js";
@@ -18,7 +18,6 @@ interface RuntimeSelector {
 }
 const DEFAULT_RECORD_DURATION_MS = 10_000;
 const DEFAULT_RECORD_INTERVAL_MS = 1_000;
-const DEFAULT_RECORD_START_URL = "about:blank";
 const RECORDING_FORMAT = "openruntime-recording";
 const RECORDING_VERSION = 1;
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
@@ -28,8 +27,8 @@ export async function runRecordCliCommand(options: CliExtensionRunOptions): Prom
     args: options.args,
     stdout: options.stdout,
     fetcher: options.fetcher,
-    openruntime: options.openruntime,
-    bridgeUrl: createBridgeUrl(options.args)
+    ...(options.page === undefined ? {} : { page: options.page }),
+    openruntime: options.openruntime
   });
 }
 
@@ -47,23 +46,23 @@ export async function runRecordCommand(options: RecordCommandOptions): Promise<n
   if (subcommand === "transcribe") {
     return await runRecordTranscribeCommand(options);
   }
-
-  return await runRecordFixedDurationCommand(options);
+  if (subcommand === undefined) {
+    return await runRecordFixedDurationCommand(options);
+  }
+  throw new Error(`Unknown record subcommand "${subcommand}".`);
 }
 
 async function runRecordStartCommand(options: RecordCommandOptions): Promise<number> {
-  const requestedUrl = getRecordUrl(options.args, "start");
-  const url = requestedUrl ?? DEFAULT_RECORD_START_URL;
+  requireNoCurrentPage(options);
+  assertNoLegacyPageLifecycleOptions(options.args);
+  assertNoPageSelectionOptions(options.args);
   const startedAt = new Date();
   const outputDirectory = resolveRecordStartOutputDirectory(options.args, startedAt);
   const intervalMs = getPositiveNumberOption(options.args, "interval") ?? DEFAULT_RECORD_INTERVAL_MS;
-  const sessionId = getOptionValue(options.args, "session");
-  const runtimeSelector = createRecordRuntimeSelector(requestedUrl, sessionId, getOptionValue(options.args, "runtime"));
-  const openedUrl = withOpenRuntimeSession(url, sessionId);
   const files = createRecordingFiles();
   const operations: OperationEntry[] = [
     {
-      type: "record.start",
+      type: "record.prepare",
       startedAt: startedAt.toISOString()
     }
   ];
@@ -73,36 +72,12 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<num
   const interactions: InteractionEvent[] = [];
 
   await mkdir(outputDirectory, { recursive: true });
-  operations.push(await writeRecordingControlFile(outputDirectory, files, startedAt, hasOption(options.args, "mic")));
-  operations.push(await resetRecordingBrowser(options.openruntime.browser));
-  await ensureRecordBridge(options, options.bridgeUrl);
-
-  if (!hasOption(options.args, "no-open")) {
-    operations.push(await openRecordingBrowser(options, openedUrl));
-  } else {
-    operations.push(createSkippedBrowserOpenOperation(openedUrl));
-  }
-  operations.push(await setRecordingInstrumentation(options.openruntime.browser, outputDirectory, startedAt));
-
-  const sampledAt = new Date();
-  const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-    sampleRuntime(options.openruntime, runtimeSelector, sampledAt),
-    samplePageSnapshot(options.openruntime.browser, sampledAt),
-    sampleDomSnapshot(options.openruntime.browser, sampledAt)
-  ]);
-  runtimeSamples.push(runtimeSample);
-  pageSnapshots.push(pageSnapshot);
-  domSnapshots.push(domSnapshot);
 
   const manifest = createRecordingManifest({
     args: options.args,
-    url,
-    openedUrl,
-    bridgeUrl: options.bridgeUrl,
-    sessionId,
     startedAt,
     intervalMs,
-    status: "recording",
+    status: "prepared",
     files,
     counts: {
       runtimeSamples: runtimeSamples.length,
@@ -111,46 +86,53 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<num
       interactions: interactions.length,
       audioChunks: 0,
       transcriptSegments: 0,
-      operations: operations.length
+      operations: operations.length + 1
     }
   });
 
   await writeRecordingFiles(outputDirectory, manifest, runtimeSamples, pageSnapshots, domSnapshots, interactions, operations);
+  const controlOperation = await writeRecordingControlFile(
+    outputDirectory,
+    files,
+    startedAt,
+    hasOption(options.args, "mic")
+  );
+  await appendJsonLine(join(outputDirectory, files.operations), controlOperation);
 
   writeJson(options.stdout, {
     ok: true,
-    status: "recording",
+    status: "prepared",
     output: outputDirectory,
     manifest: join(outputDirectory, files.manifest),
-    next: `open-runtime record stop --out ${outputDirectory}`
+    next: "openruntime open <url> --ui"
   });
   return 0;
 }
 
 async function runRecordStopCommand(options: RecordCommandOptions): Promise<number> {
+  const page = requireCurrentPage(options);
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const recording = await readRecordingData(outputDirectory);
-  const bridgeUrl = resolveRecordingBridgeUrl(options.args, options.bridgeUrl, recording.manifest);
-  const sessionId = getOptionValue(options.args, "session") ?? recording.manifest.sessionId;
+  if (recording.manifest.status !== "recording") {
+    throw new Error("This recording has not been attached to a page. Run `openruntime open <url>` after `record start`.");
+  }
+  if (recording.manifest.invalidated !== undefined) {
+    throw new Error(recording.manifest.invalidated.reason);
+  }
+  assertRecordingPageMatches(page, recording.manifest);
+  const sessionId = page.sessionId ?? undefined;
   const runtimeSelector = createRecordRuntimeSelector(
     recording.manifest.url,
     sessionId,
     getOptionValue(options.args, "runtime")
   );
-  const scopedOpenRuntime = options.openruntime.scope({
-    bridge: bridgeUrl,
-    ...(recording.manifest.url === DEFAULT_RECORD_START_URL ? {} : { url: recording.manifest.url }),
-    ...(sessionId === undefined ? {} : { session: sessionId })
-  });
   const stopStartedAt = new Date();
-
-  const bridge = await tryEnsureRecordBridge(options, bridgeUrl);
 
   const sampledAt = new Date();
   const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-    sampleRuntime(scopedOpenRuntime, runtimeSelector, sampledAt),
-    samplePageSnapshot(scopedOpenRuntime.browser, sampledAt),
-    sampleDomSnapshot(scopedOpenRuntime.browser, sampledAt)
+    sampleRuntimeForPage(options.openruntime, runtimeSelector, page, sampledAt),
+    samplePageSnapshot(options.openruntime.browser, sampledAt),
+    sampleDomSnapshot(options.openruntime.browser, sampledAt)
   ]);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.runtime), runtimeSample);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.pageSnapshots), pageSnapshot);
@@ -170,19 +152,6 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
   };
   await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), stopOperation);
 
-  let closeOperation: OperationEntry | undefined;
-  if (!hasOption(options.args, "no-close")) {
-    closeOperation = await closeRecordingBrowser(options.openruntime.browser);
-    await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), closeOperation);
-  } else {
-    closeOperation = {
-      type: "browser.close",
-      startedAt: new Date().toISOString(),
-      skipped: true,
-      reason: "--no-close was set"
-    };
-    await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), closeOperation);
-  }
   await clearRecordingControlFile();
 
   const refreshedRecording = await readRecordingData(outputDirectory);
@@ -204,7 +173,6 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
   const counts = await readRecordingCounts(outputDirectory, recording.manifest.files);
   const manifest: RecordingManifest = {
     ...recording.manifest,
-    bridgeUrl,
     status: "completed",
     endedAt: completedAt.toISOString(),
     durationMs: completedAt.getTime() - Date.parse(recording.manifest.startedAt),
@@ -223,8 +191,6 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<numb
     output: outputDirectory,
     manifest: join(outputDirectory, recording.manifest.files.manifest),
     script: generatedScript?.path,
-    bridge,
-    close: closeOperation,
     counts: manifest.counts
   });
   return 0;
@@ -326,35 +292,34 @@ async function runRecordTranscribeCommand(options: RecordCommandOptions): Promis
 }
 
 async function runRecordFixedDurationCommand(options: RecordCommandOptions): Promise<number> {
-  const url = requireRecordUrl(options.args);
+  const page = requireCurrentPage(options);
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const durationMs = getPositiveNumberOption(options.args, "duration") ?? DEFAULT_RECORD_DURATION_MS;
   const intervalMs = getPositiveNumberOption(options.args, "interval") ?? DEFAULT_RECORD_INTERVAL_MS;
-  const sessionId = getOptionValue(options.args, "session");
-  const runtimeSelector = createRecordRuntimeSelector(url, sessionId, getOptionValue(options.args, "runtime"));
-  const openedUrl = withOpenRuntimeSession(url, sessionId);
+  const sessionId = page.sessionId ?? undefined;
+  const runtimeSelector = createRecordRuntimeSelector(page.url, sessionId, getOptionValue(options.args, "runtime"));
   const startedAt = new Date();
   const files = createRecordingFiles();
-  const operations: OperationEntry[] = [];
+  const operations: OperationEntry[] = [{
+    type: "record.start",
+    startedAt: startedAt.toISOString(),
+    url: page.url,
+    openedUrl: page.openedUrl,
+    bridgeUrl: page.bridgeUrl,
+    sessionId: page.sessionId
+  }];
   const runtimeSamples: RuntimeSample[] = [];
   const pageSnapshots: PageSnapshotSample[] = [];
   const domSnapshots: DomSnapshotSample[] = [];
   const interactions: InteractionEvent[] = [];
 
   await mkdir(outputDirectory, { recursive: true });
-  await ensureRecordBridge(options, options.bridgeUrl);
-
-  if (!hasOption(options.args, "no-open")) {
-    operations.push(await openRecordingBrowser(options, openedUrl));
-  } else {
-    operations.push(createSkippedBrowserOpenOperation(openedUrl));
-  }
 
   const deadline = Date.now() + durationMs;
   do {
     const sampledAt = new Date();
     const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-      sampleRuntime(options.openruntime, runtimeSelector, sampledAt),
+      sampleRuntimeForPage(options.openruntime, runtimeSelector, page, sampledAt),
       samplePageSnapshot(options.openruntime.browser, sampledAt),
       sampleDomSnapshot(options.openruntime.browser, sampledAt)
     ]);
@@ -370,10 +335,8 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
   const endedAt = new Date();
   const manifest = createRecordingManifest({
     args: options.args,
-    url,
-    openedUrl,
-    bridgeUrl: options.bridgeUrl,
-    sessionId,
+    page,
+    ...createOptionalStringProperty("sessionId", sessionId),
     startedAt,
     intervalMs,
     status: "completed",
@@ -405,13 +368,11 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
 
 function createRecordingManifest(input: {
   args: ParsedCliArgs;
-  url: string;
-  openedUrl: string;
-  bridgeUrl: string;
-  sessionId: string | undefined;
+  page?: CliExtensionPageContext;
+  sessionId?: string;
   startedAt: Date;
   intervalMs: number;
-  status: "recording" | "completed";
+  status: "prepared" | "recording" | "completed";
   files: RecordingFiles;
   counts: RecordingManifest["counts"];
   requestedDurationMs?: number;
@@ -421,9 +382,13 @@ function createRecordingManifest(input: {
     format: RECORDING_FORMAT,
     version: RECORDING_VERSION,
     status: input.status,
-    url: input.url,
-    openedUrl: input.openedUrl,
-    bridgeUrl: input.bridgeUrl,
+    ...(input.page === undefined
+      ? {}
+      : {
+        url: input.page.url,
+        openedUrl: input.page.openedUrl,
+        bridgeUrl: input.page.bridgeUrl
+      }),
     ...createOptionalStringProperty("sessionId", input.sessionId),
     startedAt: input.startedAt.toISOString(),
     ...createOptionalEndedAtProperties(input.startedAt, input.endedAt),
@@ -466,7 +431,7 @@ function createOptionalGeneratedProperty(generatedScript: GeneratedScriptResult 
 function createInitialAudioCapture(
   args: ParsedCliArgs,
   files: RecordingFiles,
-  status: "recording" | "completed"
+  status: "prepared" | "recording" | "completed"
 ): RecordingCaptureStatus {
   if (!hasOption(args, "mic")) {
     return {
@@ -524,24 +489,6 @@ function createCompletedAudioCapture(files: RecordingFiles, summary: AudioCaptur
   };
 }
 
-function resolveRecordingBridgeUrl(args: ParsedCliArgs, defaultBridgeUrl: string, manifest: RecordingManifest): string {
-  return getOptionValue(args, "bridge") === undefined ? manifest.bridgeUrl : defaultBridgeUrl;
-}
-
-function getRecordUrl(args: ParsedCliArgs, subcommand?: "start"): string | undefined {
-  const optionUrl = getOptionValue(args, "url");
-  const commandUrl = args.command[subcommand === "start" ? 2 : 1];
-  return optionUrl ?? commandUrl;
-}
-
-function requireRecordUrl(args: ParsedCliArgs): string {
-  const url = getRecordUrl(args);
-  if (url === undefined || url.length === 0) {
-    throw new Error("Missing required URL. Use open-runtime record --url <url> --out <path>.");
-  }
-  return url;
-}
-
 function resolveRecordStartOutputDirectory(args: ParsedCliArgs, startedAt: Date): string {
   const output = getOptionValue(args, "out");
   if (output !== undefined && output.length > 0) return resolve(output);
@@ -578,10 +525,95 @@ function createRecordRuntimeSelector(
   return {
     ...createOptionalStringProperty("runtimeId", runtimeId),
     ...createOptionalStringProperty("sessionId", sessionId),
-    ...createOptionalStringProperty("url", url === undefined || url === DEFAULT_RECORD_START_URL
+    ...createOptionalStringProperty("url", sessionId !== undefined || url === undefined
       ? undefined
       : withOpenRuntimeSession(url, sessionId))
   };
+}
+
+function sampleRuntimeForPage(
+  openruntime: RecordCommandOptions["openruntime"],
+  selector: RuntimeSelector,
+  page: CliExtensionPageContext,
+  sampledAt: Date
+): Promise<RuntimeSample> {
+  if (page.bridgeUrl === null) {
+    return Promise.resolve({
+      sampledAt: sampledAt.toISOString(),
+      ok: false,
+      error: "The current page was opened without a Bridge."
+    });
+  }
+  return sampleRuntime(openruntime, selector, sampledAt);
+}
+
+function requireCurrentPage(options: RecordCommandOptions): CliExtensionPageContext {
+  if (options.page === undefined) {
+    throw new Error("No current OpenRuntime page is available. Run `openruntime open <url>` before recording.");
+  }
+  assertNoLegacyPageLifecycleOptions(options.args);
+  assertCommandPageMatches(options.args, options.page);
+  return options.page;
+}
+
+function requireNoCurrentPage(options: RecordCommandOptions): void {
+  if (options.page === undefined) return;
+  throw new Error("A current OpenRuntime page is already open. Run `openruntime close`, then prepare the recording before opening the page again.");
+}
+
+function assertNoLegacyPageLifecycleOptions(args: ParsedCliArgs): void {
+  for (const option of ["headless", "no-open", "no-close", "port"]) {
+    if (hasOption(args, option)) {
+      throw new Error(
+        `Recording no longer accepts --${option}. Configure and open the page with \`openruntime open <url>\`, then run record.`
+      );
+    }
+  }
+}
+
+function assertNoPageSelectionOptions(args: ParsedCliArgs): void {
+  for (const option of ["url", "bridge", "session", "runtime"]) {
+    if (hasOption(args, option)) {
+      throw new Error(
+        `Recording no longer accepts --${option}. Put page and Bridge options on the following \`openruntime open <url>\` command.`
+      );
+    }
+  }
+}
+
+function assertCommandPageMatches(args: ParsedCliArgs, page: CliExtensionPageContext): void {
+  const selectedUrl = getOptionValue(args, "url");
+  const selectedSession = getOptionValue(args, "session");
+  const selectedBridge = getOptionValue(args, "bridge");
+  if (
+    (selectedUrl !== undefined && selectedUrl !== page.url) ||
+    (selectedSession !== undefined && selectedSession !== page.sessionId) ||
+    normalizeOptionalUrl(selectedBridge) !== normalizeOptionalUrl(page.bridgeUrl)
+  ) {
+    throw new Error(
+      "Recording only operates on the current OpenRuntime page. Put URL, session, and Bridge options on `openruntime open`, not on record."
+    );
+  }
+}
+
+function assertRecordingPageMatches(page: CliExtensionPageContext, manifest: RecordingManifest): void {
+  const expectedSessionId = manifest.sessionId ?? null;
+  if (
+    page.url === manifest.url &&
+    page.openedUrl === manifest.openedUrl &&
+    page.bridgeUrl === manifest.bridgeUrl &&
+    page.sessionId === expectedSessionId
+  ) {
+    return;
+  }
+  throw new Error(
+    "The current OpenRuntime page does not match this recording. Return to the project and page used by `record start`, then retry."
+  );
+}
+
+function normalizeOptionalUrl(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null;
+  return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
 function hasOption(args: ParsedCliArgs, name: string): boolean {
@@ -590,13 +622,6 @@ function hasOption(args: ParsedCliArgs, name: string): boolean {
 
 function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {
   return args.options.get(name)?.at(-1);
-}
-
-function createBridgeUrl(args: ParsedCliArgs): string {
-  const bridge = getOptionValue(args, "bridge");
-  if (bridge !== undefined) return bridge.replace(/\/$/, "");
-  const port = getOptionValue(args, "port") ?? "17321";
-  return `http://localhost:${port}`;
 }
 
 function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {

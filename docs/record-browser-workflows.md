@@ -42,14 +42,16 @@ After installation, ask the Agent:
 Use record-openruntime-workflow and start recording my browser workflow.
 ```
 
-The Agent opens a visible blank browser and saves the recording under `recordings/` in the current project. The user does not need to provide a URL or output path first.
+The Agent first runs `openruntime record start` to prepare recording files, cross-page interaction capture, and optional microphone audio. It then runs `openruntime open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
 
 Then:
 
 1. Navigate, click, type, and move through the target workflow normally.
 2. Use the microphone to describe the intended result when additional context is useful.
 3. Tell the Agent “done” when the walkthrough is complete.
-4. The Agent closes the browser, reads the recorded evidence and transcript, then generates and checks a script.
+4. The Agent stops recording, closes the current page through `openruntime close`, reads the recorded evidence and transcript, then generates and checks a script.
+
+The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `openruntime open`. Recording refuses to mix evidence if another `openruntime open` replaces that page before `record stop`.
 
 For example, while working on a GitHub Issues page, say:
 

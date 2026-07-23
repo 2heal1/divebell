@@ -265,7 +265,6 @@ Command 通过 `options.openruntime` 访问 OpenRuntime 能力：
 | 收集截图、Network、Console、内存和代码执行证据 | `openruntime.browser` 下的对应能力 |
 | 读取应用主动声明的内部状态 | `targets`、`snapshot`、`events`、`actions` |
 | 执行页面声明的动作并等待结果 | `runAction`、`waitFor` |
-| 选择明确的 Bridge、Runtime、会话或页面 | `scope` |
 
 页面没有接入 Runtime Core 时，浏览器相关能力仍然可用。只有 Command 确实需要应用内部事实时，才要求 connected runtime。
 

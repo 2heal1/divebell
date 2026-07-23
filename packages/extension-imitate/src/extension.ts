@@ -8,18 +8,18 @@ const extension = {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "openruntime record --url <url> --out <path> [--duration <ms>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-        description: "Open a page for a fixed duration and create an .orrec package with page snapshots, DOM, interactions, OpenRuntime state, and optional microphone audio."
+        usage: "openruntime record --out <path> [--duration <ms>] [--interval <ms>]",
+        description: "Record the current OpenRuntime page for a fixed duration and create an .orrec package."
       },
       {
         category: "Extensions",
-        usage: "openruntime record start [--url <url>] [--out <path>] [--interval <ms>] [--mic] [--headless] [--no-open]",
-        description: "Start a manual recording; open a blank page when URL is omitted and write under ./recordings when out is omitted."
+        usage: "openruntime record start [--out <path>] [--interval <ms>] [--mic]",
+        description: "Prepare a manual recording before the next openruntime open; write under ./recordings when out is omitted."
       },
       {
         category: "Extensions",
-        usage: "openruntime record stop --out <path> [--script-out <path>] [--no-close] [--no-script]",
-        description: "Stop a manual recording, capture final interactions and state, then close the browser and draft a script by default."
+        usage: "openruntime record stop --out <path> [--script-out <path>] [--no-script]",
+        description: "Stop a manual recording on the current page, capture final evidence, and draft a script by default."
       },
       {
         category: "Extensions",
@@ -33,7 +33,10 @@ const extension = {
       }
     ],
     run: async (options) => await (await import("./index.js")).runRecordCliCommand(options)
-  }]
+  }],
+  hooks: {
+    open: async (options) => await (await import("./open.js")).runRecordingOpenHook(options)
+  }
 } satisfies OpenRuntimeExtensionDefinition;
 
 export default extension;

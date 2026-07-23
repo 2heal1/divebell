@@ -1,50 +1,33 @@
-import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { OpenRuntimeBrowserApi, OpenRuntimeExtensionApi } from "@openruntime/cli";
 import { readJsonLinesIfExists } from "./storage.js";
 import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
 
 const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
-export async function setRecordingInstrumentation(
-  browser: OpenRuntimeBrowserApi,
-  outputDirectory: string,
-  startedAt: Date
-): Promise<OperationEntry> {
-  const started = new Date();
-  const scriptPath = join(outputDirectory, "recording-instrumentation.js");
-  await writeFile(scriptPath, createInteractionRecorderScript(startedAt.getTime()), "utf8");
-  const result = await browser.raw(["instrumentation", "set", scriptPath]);
-  return {
-    type: "browser.instrumentation.set",
-    path: scriptPath,
-    startedAt: started.toISOString(),
-    endedAt: new Date().toISOString(),
-    exitCode: result.exitCode,
-    stdout: result.stdout.trim(),
-    stderr: result.stderr.trim()
-  };
-}
-
 export async function collectInteractionEvents(outputDirectory: string, browser: OpenRuntimeBrowserApi): Promise<{
   operation: OperationEntry;
   interactions: InteractionEvent[];
 }> {
   const started = new Date();
-  const result = await browser.raw(["browser-logs"]);
   const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(join(outputDirectory, "interaction-events.raw.jsonl"));
-  const browserLogInteractions = result.exitCode === 0 ? parseInteractionEventsFromBrowserLogs(result.stdout) : [];
-  const interactions = mergeInteractionEvents(persistedInteractions, browserLogInteractions);
+  let consoleInteractions: InteractionEvent[] = [];
+  let consoleError: string | undefined;
+  try {
+    const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+    consoleInteractions = parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args));
+  } catch (error) {
+    consoleError = error instanceof Error ? error.message : String(error);
+  }
+  const interactions = mergeInteractionEvents(persistedInteractions, consoleInteractions);
   return {
     operation: {
       type: "interactions.collect",
       startedAt: started.toISOString(),
       endedAt: new Date().toISOString(),
-      exitCode: result.exitCode,
       count: interactions.length,
       persistedCount: persistedInteractions.length,
-      browserLogCount: browserLogInteractions.length,
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
+      consoleCount: consoleInteractions.length,
+      ...(consoleError === undefined ? {} : { consoleError })
     },
     interactions
   };
@@ -165,7 +148,7 @@ function createDomSnapshotScript(): string {
   ].join("\n");
 }
 
-function createInteractionRecorderScript(recordingStartedAtMs: number): string {
+export function createInteractionRecorderScript(recordingStartedAtMs: number): string {
   return [
     "(() => {",
     "  const marker = " + JSON.stringify(RECORD_EVENT_CONSOLE_MARKER) + ";",
@@ -249,13 +232,13 @@ function createInteractionRecorderScript(recordingStartedAtMs: number): string {
   ].join("\n");
 }
 
-function parseInteractionEventsFromBrowserLogs(stdout: string): InteractionEvent[] {
+function parseInteractionEventsFromConsole(entries: string[]): InteractionEvent[] {
   const events: InteractionEvent[] = [];
   const seen = new Set<string>();
-  for (const line of stdout.split(/\r?\n/u)) {
-    const markerIndex = line.indexOf(RECORD_EVENT_CONSOLE_MARKER);
+  for (const entry of entries) {
+    const markerIndex = entry.indexOf(RECORD_EVENT_CONSOLE_MARKER);
     if (markerIndex < 0) continue;
-    const payload = line.slice(markerIndex + RECORD_EVENT_CONSOLE_MARKER.length).trim();
+    const payload = entry.slice(markerIndex + RECORD_EVENT_CONSOLE_MARKER.length).trim();
     if (payload.length === 0 || seen.has(payload)) continue;
     try {
       const parsed = JSON.parse(payload) as InteractionEvent;

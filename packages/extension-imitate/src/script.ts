@@ -25,9 +25,11 @@ function createGeneratedScriptContent(recording: RecordingData): string {
   const actionNames = findActionNames(recording.runtimeSamples);
   const pageTitle = findLatestPageTitle(recording.pageSnapshots);
   const recordedUrl = findLatestRuntimeUrl(recording.runtimeSamples);
-  const scriptUrl = manifest.url === DEFAULT_RECORD_START_URL
-    ? recordedUrl ?? (manifest.openedUrl || manifest.url)
-    : manifest.openedUrl || manifest.url;
+  const manifestUrl = manifest.url ?? DEFAULT_RECORD_START_URL;
+  const manifestOpenedUrl = manifest.openedUrl ?? manifestUrl;
+  const scriptUrl = manifestUrl === DEFAULT_RECORD_START_URL
+    ? recordedUrl ?? manifestOpenedUrl
+    : manifestOpenedUrl;
   const waitTargetLiteral = waitTarget === undefined ? "undefined" : JSON.stringify(waitTarget, null, 2);
   const actionsComment = actionNames.length === 0
     ? "No runtime actions were discovered in the recording."
@@ -45,7 +47,8 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const cli = process.env.OPENRUNTIME_CLI ?? "openruntime";
-const bridgeUrl = ${JSON.stringify(manifest.bridgeUrl)};
+const bridgeUrl = ${JSON.stringify(manifest.bridgeUrl ?? null)};
+const bridgeArgs = bridgeUrl === null ? [] : ["--bridge", bridgeUrl];
 const url = ${JSON.stringify(scriptUrl)};
 const waitTarget = ${waitTargetLiteral};
 
@@ -64,15 +67,14 @@ async function run(args) {
 }
 
 async function main() {
-  await run(["open", url, "--bridge", bridgeUrl, "--ui"]);
+  await run(["open", url, ...bridgeArgs, "--ui"]);
 
 ${interactionSteps.length === 0 ? "  // TODO: no click/input events were captured for this recording." : interactionSteps.map((step) => `  ${step}`).join("\n")}
 
   if (waitTarget !== undefined) {
     await run([
       "wait-for",
-      "--bridge",
-      bridgeUrl,
+      ...bridgeArgs,
       "--url",
       url,
       waitTarget.targetId,
@@ -82,8 +84,8 @@ ${interactionSteps.length === 0 ? "  // TODO: no click/input events were capture
     ]);
   }
 
-  await run(["snapshot", "--bridge", bridgeUrl, "--url", url]);
-  await run(["events", "--bridge", bridgeUrl, "--url", url, "--limit", "50"]);
+  await run(["snapshot", ...bridgeArgs, "--url", url]);
+  await run(["events", ...bridgeArgs, "--url", url, "--limit", "50"]);
 }
 
 main().catch((error) => {

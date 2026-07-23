@@ -1,11 +1,10 @@
 import { parseCliArgs } from "./utils/args.js";
-import { exportAuthProfileWithConnector } from "./features/auth/connector/index.js";
 import { createDefaultBrowserRunner } from "./features/browser/runner.js";
 import { createDetachedBridgeStarter } from "./features/bridge/process.js";
 import { createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
 import { createError, writeErrorOutput } from "./utils/output.js";
-import { runAuthCommand } from "./commands/auth.js";
+import { runAgentBrowserAuthCommand, runAgentBrowserProfilesCommand, runAgentBrowserStateCommand } from "./commands/browser-auth.js";
 import {
   runBridgeServerCommand,
   runStartCommand,
@@ -74,8 +73,16 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
       );
     }
 
+    if (args.command[0] === "profiles") {
+      return await runAgentBrowserProfilesCommand(args, stdout, stderr, browserRunner);
+    }
+
+    if (args.command[0] === "state") {
+      return await runAgentBrowserStateCommand(args, stdout, stderr, browserRunner);
+    }
+
     if (args.command[0] === "auth") {
-      return await runAuthCommand(args, stdout, browserRunner, options.authConnectorExporter ?? exportAuthProfileWithConnector, options.authStateApplier);
+      return await runAgentBrowserAuthCommand(args, stdout, stderr, options.stdin ?? process.stdin, browserRunner);
     }
 
     if (args.command[0] === "extensions") {

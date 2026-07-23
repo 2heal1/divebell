@@ -32,7 +32,7 @@ OpenRuntime 主要解决四个问题：
 
 1. 通用浏览器工具每次都要重新识别页面、规划操作和处理等待。页面越复杂、链路越长，这种从头推理的方式就越慢。
 2. 用户从网页发现问题，诊断工具却往往在 CLI 中，通常需要人提取网页信息、交给 Agent，再把 CLI 结果带回网页。OpenRuntime 让 Agent 在同一个页面和会话中完成这段串联。
-3. 已经跑通的登录方式、用户路径、诊断和验收流程可以保存成 Auth Profile、脚本、Extension 或 Skill，供其他 Agent 和 CI 继续复用，形成长期积累。
+3. 已经跑通的浏览器登录状态、用户路径、诊断和验收流程可以通过 agent-browser state、脚本、Extension 或 Skill 保存，供其他 Agent 和 CI 继续复用，形成长期积累。
 4. 真实场景不只有 URL，还需要测试账号、登录状态、目标环境、准备数据和成功标准。OpenRuntime 可以提前准备并复用这些条件，让 Agent 从复现、诊断、修改一直走到复验。
 
 这里的目标不是绕过授权，而是让授权、测试账号和可执行动作的边界能够被提前配置、重复使用和清楚检查。
@@ -41,7 +41,7 @@ OpenRuntime 主要解决四个问题：
 
 以一个只有登录后才能访问的订单页面为例：
 
-1. 团队提前导入测试账号的登录状态，或者用 Extension 提供测试账号和环境准备能力。
+1. 团队提前准备测试账号的 Chrome Profile、浏览器 state 或登录凭据，或者用 Extension 提供账号和环境准备能力。
 2. Agent 使用固定会话打开真实页面，复现用户操作。
 3. OpenRuntime 读取页面报错、请求、页面状态、内存或代码执行情况；页面已经接入 Runtime Core 时，还可以读取应用内部状态。
 4. Coding Agent 根据证据修改源码。
@@ -56,16 +56,16 @@ OpenRuntime 主要解决四个问题：
 
 | 模块 | 职责 | 使用入口 | 是否需要页面接入 |
 | --- | --- | --- | --- |
-| Auth Profiles | 导出、导入和复用浏览器登录状态 | `openruntime auth` | 否 |
+| Browser Authentication | 复用 Chrome Profile、保存/载入浏览器 state、管理加密登录凭据 | `openruntime profiles`、`state`、`auth` | 否 |
 | Browser Session & Diagnostics | 管理页面会话，执行页面操作，读取 Console、Network、截图和代码执行情况 | OpenRuntime CLI | 否 |
 | Extensions | 增加账号与环境准备、技术栈识别、专项诊断、验证命令和 Skill | CLI 命令、Extension API | 否 |
 | Runtime Core | 提供应用内部状态、事件、声明动作和等待条件 | `@openruntime/core`、框架插件 | 是 |
 
-### Auth Profiles
+### Browser Authentication
 
-Auth Profile 保存已经获得授权的浏览器登录状态，不负责创建账号或绕过授权。`auth export`、`auth import`、`auth list` 和 `auth clear` 用于管理登录状态；后续 `openruntime open` 会自动复用已导入的状态。
+OpenRuntime 组合使用 agent-browser 的三组能力：Profile 复用完整 Chrome 配置，state 保存可迁移的 Cookie 和网页存储，auth 加密保存登录凭据并填写登录页。
 
-[浏览器登录态 Profile](./docs/auth-profiles.zh-CN.md)
+[浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
 
 ### Browser Session & Diagnostics
 
@@ -102,7 +102,7 @@ openruntime extensions add @openruntime/extension-memory
 
 ### Runtime Core
 
-Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。它只在需要应用内部事实或稳定业务信号时接入，不是使用 OpenRuntime CLI、Auth Profiles 或 Extensions 的前置条件。
+Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。它只在需要应用内部事实或稳定业务信号时接入，不是使用 OpenRuntime CLI、浏览器登录能力或 Extensions 的前置条件。
 
 [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
 
@@ -150,7 +150,7 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
 - [CLI 命令参考](./docs/cli-reference.zh-CN.md)
-- [浏览器登录态 Profile](./docs/auth-profiles.zh-CN.md)
+- [浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
 - [Extension 使用指南](./docs/extensions.zh-CN.md)
 - [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md)
 - [Extension API 参考](./docs/extension-api.zh-CN.md)

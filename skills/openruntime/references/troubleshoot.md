@@ -28,15 +28,16 @@ VERIFY
 
 ## 2. PREPARE_ACCESS
 
-先确认目标 URL、运行环境和是否需要登录。受保护页面优先查看已经导入的登录状态：
+先确认目标 URL、运行环境和是否需要登录。受保护页面优先查看当前会话和可用的 Chrome Profile：
 
 ```bash
-pnpm exec openruntime auth list
+pnpm exec openruntime profiles
 ```
 
 目标站点已经存在登录状态时先复用，并在页面中确认账号和权限符合任务。没有可用状态时：
 
-- 用户已提供 `.oprprofile` 时执行 `auth import`。
+- 用户已提供 agent-browser state 时通过 `open --state` 载入。
+- 用户允许使用本机 Chrome Profile 时通过 `open --profile` 复用。
 - 已安装的 Extension 明确提供测试账号或环境准备命令时，先读取 help 和命令 skill，再按说明执行。
 - 都没有时，只请求完成当前任务所需的最小授权或账号输入；不要扩大访问范围。
 
@@ -70,7 +71,7 @@ pnpm exec openruntime stack
 
 只选择与当前问题直接匹配的能力：
 
-- 登录或环境问题：Auth Profile 或账号/环境 Extension。
+- 登录或环境问题：agent-browser Profile/state/auth 或账号/环境 Extension。
 - 页面交互、报错或请求：page-snapshot、console、network、eval、wait-eval。
 - 内存、性能、代码使用或框架专项问题：对应 Extension。
 - 页面已经暴露相关内部状态：snapshot、events、actions 和 wait-for。

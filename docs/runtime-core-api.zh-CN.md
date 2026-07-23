@@ -117,7 +117,7 @@ openruntime wait-for business:orders:list ready --session orders-debug
 
 | 需求 | 使用方式 |
 | --- | --- |
-| 测试账号、登录态和环境准备 | Extension 或 Auth Profile |
+| 测试账号、登录态和环境准备 | Extension 或 agent-browser Profile/state/auth |
 | Console、Network、截图、内存、代码执行分析 | CLI 或 Extension |
 | 团队专项诊断和验证命令 | Extension |
 | 页面内部业务状态和阻塞关系 | Runtime Core |

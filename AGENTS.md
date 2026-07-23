@@ -22,7 +22,7 @@ Coding Agent 负责阅读和修改代码；OpenRuntime 负责提供和复用测�
 
 ## 当前核心设计
 
-- Runtime Core 是可选增强，不是使用 OpenRuntime CLI、浏览器调试、Auth Profile 或 Extensions 的前置条件。
+- Runtime Core 是可选增强，不是使用 OpenRuntime CLI、浏览器调试、agent-browser 登录能力或 Extensions 的前置条件。
 - Extension 在页面外部组织账号、环境、专项诊断和验证；Runtime Core 在页面内部提供事实和声明动作。
 - OpenRuntime Core 不内置固定的 target type 或 status。每个 target 的 `type` 和 `statuses` 由 `registerTarget` 声明。
 - Target Registry 回答“页面里有什么可以被引用或等待”。

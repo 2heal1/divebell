@@ -24,18 +24,19 @@ Keep only reusable debugging capabilities
 
 ## 1. Prepare Access
 
-Protected pages should not require a person to sign in again for every task. A team can export a test account's login state and import it into OpenRuntime:
+Protected pages should not require a person to sign in again for every task. A team can reuse a test account's Chrome Profile directly or load a prepared agent-browser state:
 
 ```sh
-openruntime auth import /path/to/test-account.oprprofile
-openruntime auth list
+openruntime open https://example.com/orders --profile "Test Account" --ui
+# or
+openruntime open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
-Later `openruntime open` calls reuse this login state. Multiple sites can be imported independently for flows that cross an identity provider, business application, and internal service. `auth list` confirms which sites were imported; confirm the actual account and permissions in the target page.
+Later `openruntime open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
 
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
-See [Browser Auth Profiles](auth-profiles.md) for details.
+See [Browser Authentication and State](browser-auth.md) for details.
 
 ## 2. Open the Real Page and Preserve Context
 

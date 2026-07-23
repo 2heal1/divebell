@@ -13,11 +13,11 @@ The package provides both `openruntime` and `opr` binaries. It currently include
 
 ## Real Development Debugging Flow
 
-Import a prepared test account once, then reuse it in a named debugging session:
+Reuse a prepared Chrome Profile or agent-browser state in a named debugging session:
 
 ```sh
-openruntime auth import /path/to/test-account.oprprofile
-openruntime open http://localhost:19080/orders --session orders-debug
+openruntime open http://localhost:19080/orders --profile "Test Account" --session orders-debug
+# Or: openruntime open http://localhost:19080/orders --state /path/to/test-account.json --session orders-debug
 openruntime stack
 openruntime console --level error
 openruntime network --url /api/orders
@@ -80,7 +80,7 @@ openruntime code-usage analyze \
 ## Documentation
 
 - [Coding Agent Development Debugging Loop](https://github.com/2heal1/openruntime/blob/main/docs/agent-devloop.md)
-- [Browser Auth Profiles](https://github.com/2heal1/openruntime/blob/main/docs/auth-profiles.md)
+- [Browser Authentication and State](https://github.com/2heal1/openruntime/blob/main/docs/browser-auth.md)
 - [CLI Extension Development](https://github.com/2heal1/openruntime/blob/main/docs/cli-extensions.md)
 - [Runtime Core API](https://github.com/2heal1/openruntime/blob/main/docs/runtime-core-api.md)
 - [Standalone Automation](https://github.com/2heal1/openruntime/blob/main/docs/cli-automation-scripts.md)

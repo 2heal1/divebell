@@ -6,14 +6,13 @@ export interface BrowserRunResult {
 
 export interface BrowserRunOptions {
   ui?: boolean;
+  input?: string;
+  disableRestore?: boolean;
+  unencryptedStateOutput?: boolean;
 }
 
 export interface BrowserRunner {
   run(args: string[], options?: BrowserRunOptions): Promise<BrowserRunResult>;
-  authState?: {
-    profileDirectory: string;
-    restoreName: string;
-  };
 }
 
 export interface AgentBrowserJsonResponse {

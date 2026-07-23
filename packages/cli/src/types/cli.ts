@@ -1,6 +1,5 @@
 import type { BridgeServer } from "@openruntime/bridge";
 import type { OpenRuntimePackageInfo } from "@openruntime/core";
-import type { AuthStateApplier } from "../features/auth/profile.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import type { BridgeProcessController, BridgeStarter } from "../features/bridge/process.js";
 import type { Fetcher } from "../features/runtime/client.js";
@@ -11,7 +10,6 @@ import type {
   OpenRuntimeExtensionCommand,
   OpenRuntimeExtensionDefinition
 } from "./commands.js";
-import type { exportAuthProfileWithConnector } from "../features/auth/connector/index.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
 import type { ExtensionPackageDownloader } from "../commands/installed.js";
 
@@ -29,6 +27,7 @@ export interface CliRunOptions {
   stderr?: {
     write(chunk: string): void;
   };
+  stdin?: AsyncIterable<string | Uint8Array>;
   fetcher?: Fetcher;
   browserRunner?: BrowserRunner;
   bridgeStarter?: BridgeStarter;
@@ -36,8 +35,6 @@ export interface CliRunOptions {
   bridgeStateDirectory?: string;
   operationLogDirectory?: string;
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
-  authConnectorExporter?: typeof exportAuthProfileWithConnector;
-  authStateApplier?: AuthStateApplier;
   extensionsDirectory?: string;
   extensionPackageDownloader?: ExtensionPackageDownloader;
 }

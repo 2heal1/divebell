@@ -17,11 +17,14 @@ English version: [OpenRuntime CLI Reference](cli-reference.md)
 
 - `openruntime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；大多数命令会自动准备它。
 - `openruntime stop [--port <port>]` - 关闭浏览器会话，然后停止 CLI 管理的 Bridge。
-- `openruntime auth export <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]` - 通过 Chrome Auth Connector 导出网站登录状态；未指定 --output 时创建临时文件。
-- `openruntime auth import <path>` - 导入浏览器登录状态，供之后打开的 OpenRuntime 页面使用。
-- `openruntime auth list` - 列出已导入当前 OpenRuntime 浏览器 Profile 的网站。
-- `openruntime auth clear [--url <url>]` - 清空当前 OpenRuntime 浏览器 Profile，或只清理 --url 匹配的网站。
-- `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面并默认通过 Bridge 连接 Runtime；使用 --ui 显示浏览器，使用 --no-bridge 跳过连接。
+- `openruntime profiles` - 列出 agent-browser 可以使用的本机 Chrome Profile。
+- `openruntime state save <path> [--url <url>]` - 保存 agent-browser state；指定 --url 时，只保留该网址会用到的 Cookie 和网页存储。
+- `openruntime state load <path>` - 把 agent-browser state 文件载入当前浏览器会话。
+- `openruntime state <list|show|rename|clear|clean> [args]` - 查看和管理 agent-browser 保存的 state。
+- `openruntime auth save <name> --url <url> --username <user> --password-stdin` - 把登录凭据加密保存在 agent-browser 的凭据库中。
+- `openruntime auth login <name>` - 打开保存的登录页，让 agent-browser 填写并提交匹配的登录表单。
+- `openruntime auth <list|show|delete> [name]` - 查看或删除 agent-browser 的凭据条目；不会显示密码。
+- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，可从 Chrome Profile 或 state 文件启动，并默认通过 Bridge 连接 Runtime。
 - `openruntime stack [--refresh]` - 运行已安装扩展中的技术栈识别器，并汇总当前页面的结果。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素的引用。
 - `openruntime click <ref|selector|text>` - 通过页面引用、选择器或可见文字点击元素。

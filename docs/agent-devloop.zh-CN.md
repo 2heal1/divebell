@@ -24,18 +24,19 @@ Coding Agent 修改代码
 
 ## 1. 准备访问条件
 
-受保护页面不应每次都要求人重新登录。团队可以先导出测试账号的登录状态，再导入 OpenRuntime：
+受保护页面不应每次都要求人重新登录。团队可以直接复用测试账号的 Chrome Profile，或载入准备好的 agent-browser state：
 
 ```sh
-openruntime auth import /path/to/test-account.oprprofile
-openruntime auth list
+openruntime open https://example.com/orders --profile "Test Account" --ui
+# 或
+openruntime open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
-后续 `openruntime open` 会复用这份登录状态。多个站点可以逐个导入，适合需要同时访问登录中心、业务站点和内部服务的流程。`auth list` 只能确认已经导入的站点；具体账号和权限仍应在目标页面中确认。
+后续 `openruntime open` 会自动恢复同一项目的浏览器状态。需要生成可迁移文件或只保留一个网址时，使用 `state save`；具体账号和权限仍应在目标页面中确认。
 
 如果团队需要动态选择测试账号、切换环境、获取临时凭证或执行内部准备步骤，可以把它们封装成 Extension。Extension 应只提供授权范围内的账号和环境，不应绕过权限检查或输出敏感值。
 
-详细用法见 [浏览器登录态 Profile](auth-profiles.zh-CN.md)。
+详细用法见 [浏览器登录与状态复用](browser-auth.zh-CN.md)。
 
 ## 2. 打开真实页面并保持上下文
 

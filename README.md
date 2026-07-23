@@ -32,7 +32,7 @@ OpenRuntime addresses four problems:
 
 1. General browser tools must rediscover the page, plan operations, and handle waits each time. Reasoning from scratch gets slower as the page and user journey become more complex.
 2. Users discover problems on the web, while diagnostic tools often live in CLIs. A person usually has to extract page context for the agent and carry CLI results back to the browser. OpenRuntime lets the agent connect both sides in the same page and session.
-3. Working sign-in methods, user journeys, diagnostics, and verification flows can be saved as Auth Profiles, scripts, Extensions, or Skills, then reused by other agents and CI as a growing team asset.
+3. Working browser login state, user journeys, diagnostics, and verification flows can be saved through agent-browser state, scripts, Extensions, or Skills, then reused by other agents and CI as a growing team asset.
 4. A real scenario needs more than a URL: it also needs a test account, login state, target environment, prepared data, and success criteria. OpenRuntime prepares and reuses these conditions so the agent can move from reproduction and diagnosis through code changes and re-verification.
 
 The goal is not to bypass authorization. It is to make authorization, test accounts, and allowed actions explicit, reusable, and inspectable.
@@ -41,7 +41,7 @@ The goal is not to bypass authorization. It is to make authorization, test accou
 
 Consider an orders page that is only available after sign-in:
 
-1. The team imports a test account's login state, or provides account and environment setup through an Extension.
+1. The team prepares a test account's Chrome profile, browser state, or login credentials, or provides account and environment setup through an Extension.
 2. The agent opens the real page in a named session and reproduces the user journey.
 3. OpenRuntime reads page errors, requests, page state, memory, or code execution. If the page uses Runtime Core, it can also read application-internal state.
 4. The coding agent edits the source based on that evidence.
@@ -56,16 +56,16 @@ See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the c
 
 | Module | Responsibility | Entry point | Page integration required |
 | --- | --- | --- | --- |
-| Auth Profiles | Export, import, and reuse browser login state | `openruntime auth` | No |
+| Browser Authentication | Reuse Chrome profiles, save/load browser state, and manage encrypted login credentials | `openruntime profiles`, `state`, `auth` | No |
 | Browser Session & Diagnostics | Manage page sessions, operate pages, and read Console, Network, screenshots, and code execution | OpenRuntime CLI | No |
 | Extensions | Add account and environment setup, stack detection, focused diagnostics, verification commands, and Skills | CLI commands, Extension API | No |
 | Runtime Core | Expose application-internal state, events, declared actions, and wait conditions | `@openruntime/core`, framework plugins | Yes |
 
-### Auth Profiles
+### Browser Authentication
 
-An Auth Profile stores browser login state that has already been authorized. It does not create an account or bypass authorization. `auth export`, `auth import`, `auth list`, and `auth clear` manage login state; later `openruntime open` calls automatically reuse imported state.
+OpenRuntime composes three agent-browser capabilities: profiles reuse a complete Chrome configuration, state files carry portable cookies and web storage, and auth stores encrypted login credentials and fills login pages.
 
-[Browser Auth Profiles](./docs/auth-profiles.md)
+[Browser Authentication and State](./docs/browser-auth.md)
 
 ### Browser Session & Diagnostics
 
@@ -102,7 +102,7 @@ Installed Extension commands appear in `openruntime --help` and run through the 
 
 ### Runtime Core
 
-Runtime Core is an optional page-side API for registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Integrate it only when application-internal facts or stable business signals are needed. It is not a prerequisite for OpenRuntime CLI, Auth Profiles, or Extensions.
+Runtime Core is an optional page-side API for registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Integrate it only when application-internal facts or stable business signals are needed. It is not a prerequisite for OpenRuntime CLI, browser authentication, or Extensions.
 
 [Runtime Core API](./docs/runtime-core-api.md)
 
@@ -151,7 +151,7 @@ See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing
 
 - [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
 - [CLI Reference](./docs/cli-reference.md)
-- [Browser Auth Profiles](./docs/auth-profiles.md)
+- [Browser Authentication and State](./docs/browser-auth.md)
 - [Using Extensions](./docs/extensions.md)
 - [CLI Extension Development](./docs/cli-extensions.md)
 - [Extension API Reference](./docs/extension-api.md)

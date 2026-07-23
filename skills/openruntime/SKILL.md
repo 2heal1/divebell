@@ -67,7 +67,7 @@ OpenRuntime 就预防性读取所有参考资料，也不要为了使用 OpenRun
 - 扩展命令出现在 help 的 `Extensions` 或 `External Extensions`。只在命令描述明确匹配任务时使用。
 - 如果 help 显示某个命令有可用 skill，先运行 `openruntime <command> --skill` 获取路径，完整读取
   并遵循后再执行该命令。命令 skill 只约束这段子任务。
-- 受保护页面优先查看已有 `auth list` 和当前 open context。已有正确账号、页面和会话时直接复用，
+- 受保护页面优先查看当前 open context 和可用的 agent-browser Profile/state。已有正确账号、页面和会话时直接复用，
   不要求用户再次授权。缺少授权时只请求完成任务所需的最小访问条件。
 - 页面已经暴露相关 target/action 时，优先使用结构化状态和声明动作；没有 Runtime 时正常使用
   页面结果、Console、Network、截图和专项 Extension，不修改应用来制造证据。

@@ -20,7 +20,6 @@ import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
-import { ensureSavedAuthStateApplied } from "../features/auth/browser-state.js";
 import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
 import { runCloseHooks, runOpenHooks, type ExtensionHookFailure } from "../features/extension/hooks.js";
 import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
@@ -44,9 +43,6 @@ export async function runBrowserCliCommand(
     const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
     writeHookFailures(stderr, hookResult.failures);
     await operationLogStore.remove();
-    if (browserRunner.authState !== undefined) {
-      await ensureSavedAuthStateApplied(browserRunner, browserRunner.authState.profileDirectory);
-    }
     if (!hasOption(args, "no-bridge")) {
       await ensureBridge({
         fetcher,
@@ -62,7 +58,12 @@ export async function runBrowserCliCommand(
       openedUrl,
       bridgeUrl,
       hookResult.scripts,
-      { ui: hasOption(args, "ui") }
+      {
+        ui: hasOption(args, "ui"),
+        ...(hasOption(args, "profile") || hasOption(args, "state")
+          ? { disableRestore: true }
+          : {})
+      }
     );
     if (result.exitCode !== 0) {
       throw createError({
@@ -220,16 +221,16 @@ async function openBrowserPage(
 ): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
-    return await browserRunner.run(["open", openedUrl], options);
+    return await browserRunner.run(createBrowserLaunchArgs(args, ["open", openedUrl]), options);
   }
 
   if (bridgeUrl !== null || hookScripts.length > 0) {
     const scriptPath = await ensureBrowserInitScript(bridgeUrl, hookScripts);
     if (cookies === undefined) {
-      return await browserRunner.run(["open", openedUrl, "--init-script", scriptPath], options);
+      return await browserRunner.run(createBrowserLaunchArgs(args, ["open", openedUrl, "--init-script", scriptPath]), options);
     }
 
-    const launch = await browserRunner.run(["open", "--init-script", scriptPath], options);
+    const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open", "--init-script", scriptPath]), options);
     if (launch.exitCode !== 0) return launch;
     const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
     if (applyCookies.exitCode !== 0) return applyCookies;
@@ -239,11 +240,25 @@ async function openBrowserPage(
   if (cookies === undefined) {
     return await browserRunner.run(["open", openedUrl], options);
   }
-  const launch = await browserRunner.run(["open"], options);
+  const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open"]), options);
   if (launch.exitCode !== 0) return launch;
   const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
   if (applyCookies.exitCode !== 0) return applyCookies;
   return await browserRunner.run(["goto", openedUrl]);
+}
+
+function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string[] {
+  const launchArgs: string[] = [];
+  appendLaunchOption(launchArgs, args, "profile");
+  appendLaunchOption(launchArgs, args, "state");
+  return [...launchArgs, ...command];
+}
+
+function appendLaunchOption(browserArgs: string[], args: ParsedCliArgs, name: string): void {
+  const value = getOptionValue(args, name);
+  if (value !== undefined && value !== "true") {
+    browserArgs.push(`--${name}`, value);
+  }
 }
 
 async function ensureBrowserInitScript(bridgeUrl: string | null, hookScripts: readonly string[]): Promise<string> {

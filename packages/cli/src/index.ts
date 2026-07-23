@@ -30,14 +30,6 @@ export type { ParsedCliArgs } from "./utils/args.js";
 export { createOpenRuntimeExtensionApi } from "./features/extension/api.js";
 export type * from "./features/extension/api.js";
 export {
-  convertAuthConnectorPayloadToStorageState,
-  exportAuthProfileWithConnector,
-  getDefaultAuthConnectorExtensionDirectory,
-  openAuthConnectorSetupPage,
-  writeAuthConnectorExtension
-} from "./features/auth/connector/index.js";
-export type * from "./features/auth/connector/index.js";
-export {
   OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV,
   OPENRUNTIME_AGENT_BROWSER_SESSION_ENV,
   OPENRUNTIME_BROWSER_PROFILE_ENV,

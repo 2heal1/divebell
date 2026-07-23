@@ -10,7 +10,7 @@ OpenRuntime CLI automation scripts are useful when a complete page workflow shou
 
 Typical use cases:
 
-- Import and reuse a test account's login state while running a protected flow in the same session.
+- Reuse a test account through an agent-browser Profile, state file, or auth entry while running a protected flow in the same session.
 - Open a local or remote page and wait until it is usable.
 - Run browser checks such as click, fill, screenshot, Console, or Network inspection.
 - Read structured state or run business actions from a page that exposes OpenRuntime Targets or Actions.

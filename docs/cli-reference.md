@@ -17,11 +17,14 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 - `openruntime start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `openruntime stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
-- `openruntime auth export <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]` - Export login state for a site to a file through the Chrome Auth Connector; create a temporary file when --output is omitted.
-- `openruntime auth import <path>` - Import browser login state from a file for later OpenRuntime pages.
-- `openruntime auth list` - List sites imported into the current OpenRuntime browser profile.
-- `openruntime auth clear [--url <url>]` - Clear the current OpenRuntime browser profile, or only the site matched by --url.
-- `openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a page and connect its runtimes through the Bridge by default; use --ui for a visible browser or --no-bridge to skip connection.
+- `openruntime profiles` - List Chrome profiles available to agent-browser.
+- `openruntime state save <path> [--url <url>]` - Save agent-browser state; with --url, keep only cookies and web storage that apply to that URL.
+- `openruntime state load <path>` - Load an agent-browser state file into the current browser session.
+- `openruntime state <list|show|rename|clear|clean> [args]` - Inspect and manage agent-browser saved states.
+- `openruntime auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
+- `openruntime auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
+- `openruntime auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
+- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a page, optionally starting from a Chrome profile or state file, and connect its runtimes through the Bridge by default.
 - `openruntime stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
 - `openruntime page-snapshot` - Read the current page snapshot, including actionable element references.
 - `openruntime click <ref|selector|text>` - Click an element by page reference, selector, or visible text.

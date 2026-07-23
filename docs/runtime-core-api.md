@@ -117,7 +117,7 @@ Without Runtime Core, these commands do not provide application-internal informa
 
 | Need | Mechanism |
 | --- | --- |
-| Test accounts, login state, and environment preparation | Extension or Auth Profile |
+| Test accounts, login state, and environment preparation | Extension or agent-browser profile/state/auth |
 | Console, Network, screenshots, memory, and code execution | CLI or Extension |
 | Team-specific diagnostic and verification commands | Extension |
 | Internal business state and blocking relationships | Runtime Core |

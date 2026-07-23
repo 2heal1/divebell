@@ -30,6 +30,8 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "start",
     "stop",
     "auth",
+    "profiles",
+    "state",
     "extensions",
     "stack",
     "runtimes",

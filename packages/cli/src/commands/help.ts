@@ -34,28 +34,43 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth export <url> [--output <path>] [--timeout <ms>] [--extension-dir <path>] [--extension-install-url <url>]",
-    description: "Export login state for a site to a file through the Chrome Auth Connector; create a temporary file when --output is omitted."
+    usage: "openruntime profiles",
+    description: "List Chrome profiles available to agent-browser."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth import <path>",
-    description: "Import browser login state from a file for later OpenRuntime pages."
+    usage: "openruntime state save <path> [--url <url>]",
+    description: "Save agent-browser state; with --url, keep only cookies and web storage that apply to that URL."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth list",
-    description: "List sites imported into the current OpenRuntime browser profile."
+    usage: "openruntime state load <path>",
+    description: "Load an agent-browser state file into the current browser session."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth clear [--url <url>]",
-    description: "Clear the current OpenRuntime browser profile, or only the site matched by --url."
+    usage: "openruntime state <list|show|rename|clear|clean> [args]",
+    description: "Inspect and manage agent-browser saved states."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime open <url> [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "Open a page and connect its runtimes through the Bridge by default; use --ui for a visible browser or --no-bridge to skip connection."
+    usage: "openruntime auth save <name> --url <url> --username <user> --password-stdin",
+    description: "Save encrypted login credentials in the agent-browser auth vault."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime auth login <name>",
+    description: "Open the saved login page and let agent-browser fill and submit the matching login form."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime auth <list|show|delete> [name]",
+    description: "Inspect or delete agent-browser auth vault entries; passwords are never shown."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
+    description: "Open a page, optionally starting from a Chrome profile or state file, and connect its runtimes through the Bridge by default."
   },
   {
     category: "Bridge and Browser",

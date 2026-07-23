@@ -10,7 +10,7 @@ OpenRuntime CLI 自动化脚本适合把一段完整页面流程写成可重复�
 
 典型场景包括：
 
-- 导入并复用测试账号登录状态，在同一个 session 中运行受保护页面流程。
+- 通过 agent-browser Profile、state 文件或 auth 条目复用测试账号，在同一个 session 中运行受保护页面流程。
 - 打开一个本地或线上页面并等待它可用。
 - 对页面做点击、输入、截图、Console、Network 等浏览器检查。
 - 页面已经接入 OpenRuntime Target / Action，需要读取结构化状态或执行业务动作。

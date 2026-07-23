@@ -3,9 +3,6 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { promisify } from "node:util";
-
-const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
 
 import type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserJsonResponse, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
@@ -14,11 +11,10 @@ export type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserRu
 export const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
 export const OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV = "OPENRUNTIME_AGENT_BROWSER_EXECUTABLE";
 export const OPENRUNTIME_AGENT_BROWSER_SESSION_ENV = "OPENRUNTIME_AGENT_BROWSER_SESSION";
-const AGENT_BROWSER_PROFILE_ENV = "AGENT_BROWSER_PROFILE";
 const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
-const AGENT_BROWSER_STATE_ENV = "AGENT_BROWSER_STATE";
 const AGENT_BROWSER_RESTORE_ENV = "AGENT_BROWSER_RESTORE";
+const AGENT_BROWSER_ENCRYPTION_KEY_ENV = "AGENT_BROWSER_ENCRYPTION_KEY";
 
 export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions = {}): BrowserRunner {
   const env = options.env ?? process.env;
@@ -45,21 +41,18 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
   ];
 
   return {
-    authState: {
-      profileDirectory,
-      restoreName
-    },
     run: async (args, runOptions = {}) => {
       try {
-        const result = await execFileAsync(executablePath, [...prefixArgs, ...args], {
-          cwd: options.cwd,
+        const result = await executeAgentBrowser(executablePath, [...prefixArgs, ...args], {
+          ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
           env: createAgentBrowserEnvironment(
             baseEnv,
             profileDirectory,
             restoreName,
             runOptions
           ),
-          maxBuffer: 1024 * 1024 * 10
+          maxBuffer: 1024 * 1024 * 10,
+          ...(runOptions.input === undefined ? {} : { input: runOptions.input })
         });
         return normalizeAgentBrowserRunResult({
           exitCode: 0,
@@ -145,15 +138,49 @@ export function createAgentBrowserEnvironment(
     [AGENT_BROWSER_SESSION_ENV]: resolvedSession,
     [AGENT_BROWSER_RESTORE_ENV]: resolvedSession
   };
-  delete env[AGENT_BROWSER_PROFILE_ENV];
-  delete env[AGENT_BROWSER_STATE_ENV];
+  if (options.disableRestore === true) {
+    delete env[AGENT_BROWSER_RESTORE_ENV];
+  }
 
   if (options.ui === true) {
     env[AGENT_BROWSER_HEADED_ENV] = "1";
   } else {
     delete env[AGENT_BROWSER_HEADED_ENV];
   }
+  if (options.unencryptedStateOutput === true) {
+    delete env[AGENT_BROWSER_ENCRYPTION_KEY_ENV];
+  }
   return env;
+}
+
+function executeAgentBrowser(
+  executablePath: string,
+  args: string[],
+  options: {
+    cwd?: string;
+    env: NodeJS.ProcessEnv;
+    maxBuffer: number;
+    input?: string;
+  }
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(executablePath, args, {
+      cwd: options.cwd,
+      env: options.env,
+      maxBuffer: options.maxBuffer,
+      encoding: "utf8"
+    }, (error, stdout, stderr) => {
+      if (error !== null) {
+        Object.assign(error, { stdout, stderr });
+        reject(error);
+        return;
+      }
+      resolve({ stdout, stderr });
+    });
+    if (options.input !== undefined) {
+      child.stdin?.end(options.input);
+    }
+  });
 }
 
 export function resolveAgentBrowserSession(

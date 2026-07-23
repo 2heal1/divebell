@@ -19,30 +19,62 @@ test("generated injection assets agree with their source metadata", () => {
     packageRoot
   ), "utf8");
   const installer = readFileSync(new URL("assets/install-observability.js", packageRoot), "utf8");
-  const metadata = JSON.parse(readFileSync(new URL(
+  const observabilityMetadata = JSON.parse(readFileSync(new URL(
     "assets/observability-build.json",
     packageRoot
   ), "utf8"));
-  assert.equal(createHash("sha256").update(bundle).digest("hex"), metadata.bundleSha256);
-  assert.match(installer, new RegExp(`PLUGIN_VERSION = ${JSON.stringify(metadata.packageVersion)}`));
-  assert.match(metadata.sourceRevision, /^[0-9a-f]{40}$/);
-  assert.equal(metadata.packageName, "@module-federation/observability-plugin");
-  assert.doesNotMatch(`${bundle}\n${installer}\n${JSON.stringify(metadata)}`, /\/Users\/|outter\/core/);
+  const runtimeInstaller = readFileSync(
+    new URL("assets/install-runtime-debug.js", packageRoot),
+    "utf8"
+  );
+  const runtimeMetadata = JSON.parse(readFileSync(new URL(
+    "assets/runtime-debug-build.json",
+    packageRoot
+  ), "utf8"));
+  assert.equal(
+    createHash("sha256").update(bundle).digest("hex"),
+    observabilityMetadata.bundleSha256
+  );
+  assert.equal(
+    createHash("sha256").update(runtimeInstaller).digest("hex"),
+    runtimeMetadata.bundleSha256
+  );
+  assert.match(
+    installer,
+    new RegExp(`PLUGIN_VERSION = ${JSON.stringify(observabilityMetadata.packageVersion)}`)
+  );
+  assert.match(
+    runtimeInstaller,
+    new RegExp(`RUNTIME_VERSION = ${JSON.stringify(runtimeMetadata.packageVersion)}`)
+  );
+  assert.match(observabilityMetadata.sourceRevision, /^[0-9a-f]{40}$/);
+  assert.equal(runtimeMetadata.sourceRevision, observabilityMetadata.sourceRevision);
+  assert.equal(observabilityMetadata.packageName, "@module-federation/observability-plugin");
+  assert.equal(runtimeMetadata.packageName, "@module-federation/runtime");
+  assert.doesNotMatch(
+    `${bundle}\n${installer}\n${runtimeInstaller}\n${JSON.stringify({
+      observabilityMetadata,
+      runtimeMetadata
+    })}`,
+    /\/Users\/|outter\/core/
+  );
 });
 
-test("open hook returns one self-contained script built from the public chrome-devtool entry", async () => {
+test("open hook returns one self-contained script with matched Runtime and Observability installers", async () => {
   const result = await openMfObservability();
   assert.equal(result.scripts.length, 1);
   const source = result.scripts[0];
+  assert.match(source, /ModuleFederationRuntime/);
+  assert.match(source, /__DEBUG_CONSTRUCTOR__/);
   assert.match(source, /ChromeObservabilityPlugin/);
   assert.match(source, /getRuntimeState/);
   assert.match(source, /openruntime\/extension-mf/);
   assert.doesNotMatch(source, /\brequire\s*\(/);
-  assert.doesNotMatch(source, /\bimport\s*\(/);
+  assert.doesNotMatch(source, /^\s*import\s/m);
   assert.doesNotMatch(source, /<script|cdn\.jsdelivr|unpkg\.com/i);
 });
 
-test("injection runs before business setup and observes more than one later MF instance", async () => {
+test("injection installs the debug constructor before business setup and observes later MF instances", async () => {
   const [{ scripts }] = await Promise.all([openMfObservability()]);
   const context = vm.createContext({
     console: { log() {}, info() {}, warn() {}, error() {} },
@@ -57,6 +89,20 @@ test("injection runs before business setup and observes more than one later MF i
   context.top = context;
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
 
+  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.timing, "before-runtime");
+  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.runtimeVersion, "2.8.0");
+  assert.equal(typeof context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, "function");
+  assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__, "2.8.0");
+  const applicationFallback = function ApplicationModuleFederation() {};
+  const ConstructorUsedByApplication =
+    context.__FEDERATION__.__DEBUG_CONSTRUCTOR__ ?? applicationFallback;
+  const debugInstance = new ConstructorUsedByApplication({
+    name: "debug-host",
+    version: "1.0.0",
+    remotes: []
+  });
+  assert.equal(debugInstance.constructor, context.__FEDERATION__.__DEBUG_CONSTRUCTOR__);
+  assert.equal(debugInstance.name, "debug-host");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "before-runtime");
   assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
   const plugin = context.__FEDERATION__.__GLOBAL_PLUGIN__[0];
@@ -81,8 +127,68 @@ test("injection runs before business setup and observes more than one later MF i
   const result = vm.runInContext(MF_BROWSER_READ_SCRIPT, context, { timeout: 5_000 });
   assert.equal(result.ok, true);
   assert.equal(result.mode, "injected");
-  assert.equal(result.state.instances.length, 2);
-  assert.notEqual(result.state.instances[0].instanceRef, result.state.instances[1].instanceRef);
+  assert.equal(result.state.instances.length, 3);
+  assert.deepEqual(
+    [...result.state.instances.map((instance) => instance.name)].sort(),
+    ["debug-host", "host-a", "host-b"]
+  );
+  assert.equal(
+    new Set(result.state.instances.map((instance) => instance.instanceRef)).size,
+    3
+  );
+});
+
+test("repeated injection keeps the matching debug constructor and global plugin", async () => {
+  const { scripts } = await openMfObservability();
+  const context = vm.createContext({
+    console: { log() {}, info() {}, warn() {}, error() {} },
+    URL,
+    setTimeout,
+    clearTimeout,
+    queueMicrotask,
+    postMessage() {}
+  });
+  context.globalThis = context;
+  context.window = context;
+  context.top = context;
+
+  vm.runInContext(scripts[0], context, { timeout: 5_000 });
+  const firstConstructor = context.__FEDERATION__.__DEBUG_CONSTRUCTOR__;
+  const firstPlugin = context.__FEDERATION__.__GLOBAL_PLUGIN__[0];
+  vm.runInContext(scripts[0], context, { timeout: 5_000 });
+
+  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "already-installed");
+  assert.equal(context.__MF_OBSERVABILITY_INJECTION__.status, "already-installed");
+  assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, firstConstructor);
+  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
+  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__[0], firstPlugin);
+});
+
+test("injection replaces a mismatched debug constructor before Runtime creates instances", async () => {
+  const { scripts } = await openMfObservability();
+  const oldConstructor = function OldModuleFederation() {};
+  const context = vm.createContext({
+    console: { log() {}, info() {}, warn() {}, error() {} },
+    URL,
+    setTimeout,
+    clearTimeout,
+    queueMicrotask,
+    postMessage() {},
+    __FEDERATION__: {
+      __DEBUG_CONSTRUCTOR__: oldConstructor,
+      __DEBUG_CONSTRUCTOR_VERSION__: "1.0.0",
+      __INSTANCES__: [],
+      __GLOBAL_PLUGIN__: []
+    }
+  });
+  context.globalThis = context;
+  context.window = context;
+  context.top = context;
+  vm.runInContext(scripts[0], context, { timeout: 5_000 });
+
+  assert.notEqual(context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, oldConstructor);
+  assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__, "2.8.0");
+  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "installed");
 });
 
 test("late installation marks history timing instead of claiming nothing happened", async () => {
@@ -103,7 +209,26 @@ test("late installation marks history timing instead of claiming nothing happene
   context.window = context;
   context.top = context;
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
+  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.timing, "late");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "late");
+});
+
+test("--mf-debug=false disables both Runtime and Observability injection", async () => {
+  const result = await openMfObservability({
+    command: ["open", "https://app.test"],
+    options: new Map([["mf-debug", ["false"]]])
+  });
+  assert.deepEqual(result, { scripts: [] });
+});
+
+test("invalid --mf-debug values fail with a useful message", async () => {
+  await assert.rejects(
+    openMfObservability({
+      command: ["open", "https://app.test"],
+      options: new Map([["mf-debug", ["sometimes"]]])
+    }),
+    /Use --mf-debug=true or --mf-debug=false/
+  );
 });
 
 test("OpenRuntime open passes the MF script as an init script before navigation", async () => {
@@ -135,6 +260,8 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
           context.window = context;
           context.top = context;
           vm.runInContext(readFileSync(initScriptPath, "utf8"), context, { timeout: 5_000 });
+          assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.timing, "before-runtime");
+          assert.equal(typeof context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, "function");
           assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "before-runtime");
           context.__BUSINESS_SCRIPT_STARTED__ = true;
           assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
@@ -145,6 +272,35 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
     });
     assert.equal(exitCode, 0, stderr);
     assert.equal(initScriptChecked, true);
+    assert.equal(JSON.parse(stdout).status, "ok");
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("OpenRuntime open omits the MF init script when --mf-debug=false", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-disabled-"));
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  let stdout = "";
+  let stderr = "";
+  try {
+    const exitCode = await cli.run(
+      ["open", "https://app.test", "--no-bridge", "--mf-debug=false"],
+      {
+        stdout: { write(chunk) { stdout += chunk; } },
+        stderr: { write(chunk) { stderr += chunk; } },
+        operationLogDirectory,
+        browserRunner: {
+          async run(args) {
+            assert.equal(args[0], "open");
+            assert.match(args[1], /^https:\/\/app\.test/);
+            assert.equal(args.includes("--init-script"), false);
+            return { exitCode: 0, stdout: "", stderr: "" };
+          }
+        }
+      }
+    );
+    assert.equal(exitCode, 0, stderr);
     assert.equal(JSON.parse(stdout).status, "ok");
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });

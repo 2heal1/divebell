@@ -27,35 +27,44 @@ openruntime extensions add @openruntime/extension-mf
 
 The current CLI uses the plural `extensions` command. The older singular form `openruntime extension add @openruntime/extension-mf` is not supported by this repository version.
 
-After installing or updating the extension, reopen the page with `openruntime open`. The extension installs its bundled observability collector before navigation; a page that was already open cannot have complete earlier loading history.
+After installing or updating the extension, reopen the page with `openruntime open`. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
 
 ```sh
 openruntime open https://example.com
 ```
 
-The published package contains the browser collector and has no runtime npm dependencies. The target project does not need to install the MF Observability Plugin for injected mode. If the application already exposes a compatible Observability reader, that application reader is used instead.
+This behavior is enabled by default. Disable the whole MF debug injection for one open command with:
+
+```sh
+openruntime open https://example.com --mf-debug=false
+```
+
+The published package contains both browser bundles and has no runtime npm dependencies. The target project does not need to install the MF Runtime or Observability Plugin for injected mode. If the application already exposes a compatible Observability reader, that application reader is used instead. If the same debug Runtime version or global Observability Plugin is already present, the extension keeps it instead of adding a duplicate.
 
 ## Sync the browser collector
 
-The bundled IIFE is generated from the Observability Plugin package's public `./chrome-devtool` export. Pass the root of a local `@module-federation/observability-plugin` package explicitly:
+The Observability IIFE is generated from the plugin package's public `./chrome-devtool` export. The matching debug Runtime comes from the official output of the Runtime package's `build-debug` script. Build the Runtime debug output first, then pass both local package roots:
 
 ```sh
+pnpm --dir /path/to/module-federation/packages/runtime run build-debug
 pnpm run sync:mf-observability -- \
-  --package-root /path/to/module-federation/packages/observability-plugin
+  --package-root /path/to/module-federation/packages/observability-plugin \
+  --runtime-package-root /path/to/module-federation/packages/runtime
 ```
 
-The sync command resolves the public JavaScript entry from `package.json`, bundles it into a self-contained browser IIFE, updates the installer version from that same package manifest, and records the package version, source commit, public entry, and bundle hash. It does not read a private source entry.
+The sync command requires both packages to come from the same repository commit. It resolves the public Observability entry, includes the official debug Runtime output, updates both installer versions from their package manifests, and records the package versions, source commit, entries, and bundle hashes. It does not read a private source entry.
 
 Use check mode in CI or before publishing. It regenerates everything in memory and fails when any checked-in asset is stale without modifying the repository:
 
 ```sh
 pnpm run check:mf-observability -- \
-  --package-root /path/to/module-federation/packages/observability-plugin
+  --package-root /path/to/module-federation/packages/observability-plugin \
+  --runtime-package-root /path/to/module-federation/packages/runtime
 ```
 
 The generated collector and build metadata are included in the published extension. The extension still has no runtime npm dependencies and the target page does not resolve packages or request a CDN at runtime.
 
-The injected collector must match the Module Federation Runtime and Bridge code used by the page. Updating only this IIFE cannot add resource, Shared, or Bridge hooks to an older Runtime.
+The injected debug Runtime and Observability Plugin are one matched pair. Do not update only one bundle.
 
 ## `mf status`
 

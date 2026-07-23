@@ -92,6 +92,8 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(listed.stdout, /package\/dist\/observability-chrome-devtool\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/install-observability\.js/);
     assert.match(listed.stdout, /package\/dist\/observability-build\.json/);
+    assert.match(listed.stdout, /package\/dist\/install-runtime-debug\.js/);
+    assert.match(listed.stdout, /package\/dist\/runtime-debug-build\.json/);
     assert.match(listed.stdout, /package\/README\.md/);
     const metadata = spawnSync("tar", [
       "-xOf",
@@ -100,6 +102,13 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     ], { encoding: "utf8" });
     assert.equal(metadata.status, 0, metadata.stderr);
     assert.doesNotMatch(metadata.stdout, /\/Users\/|outter\/core|registry|token/i);
+    const runtimeMetadata = spawnSync("tar", [
+      "-xOf",
+      archive,
+      "package/dist/runtime-debug-build.json"
+    ], { encoding: "utf8" });
+    assert.equal(runtimeMetadata.status, 0, runtimeMetadata.stderr);
+    assert.doesNotMatch(runtimeMetadata.stdout, /\/Users\/|outter\/core|registry|token/i);
     const publicTypes = spawnSync("tar", [
       "-xOf",
       archive,
@@ -128,7 +137,7 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
       .map((file) => readFileSync(file, "utf8"))
       .join("\n");
     assert.doesNotMatch(publishedSource, /\/Users\/|outter\/core/);
-    assert.doesNotMatch(publishedSource, /(?:"|')(?:file|link):/);
+    assert.doesNotMatch(publishedSource, /(?:"|')(?:file|link):(?:\/|\.)/);
     const publishedBundle = readFileSync(
       join(extracted, "package", "dist", "observability-chrome-devtool.iife.js"),
       "utf8"

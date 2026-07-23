@@ -17,7 +17,8 @@ const extension = {
     run: async (options) => await (await import("./index.js")).runMfCommand(options)
   }],
   hooks: {
-    open: async () => await (await import("./open.js")).openMfObservability()
+    open: async ({ args }) =>
+      await (await import("./open.js")).openMfObservability(args)
   }
 } satisfies OpenRuntimeExtensionDefinition;
 

@@ -128,15 +128,16 @@ function probeCandidate(candidate, timeout) {
   });
   const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
   const supportsRecordStart = hasRecordStartCommand(output);
+  const supportsCurrentPageRecord = output.includes("record start [--out <path>]");
   return {
     ...candidate,
     available: true,
-    usable: result.status === 0 && supportsRecordStart,
+    usable: result.status === 0 && supportsRecordStart && supportsCurrentPageRecord,
     elapsedMs: Date.now() - startedAt,
     exitCode: result.status,
     timedOut: Boolean(result.error && result.error.name === "Error" && result.error.message.includes("ETIMEDOUT")),
     supportsRecordStart,
-    supportsDefaultRecordStart: output.includes("record start [--url <url>] [--out <path>]"),
+    supportsCurrentPageRecord,
     error: result.error?.message
   };
 }

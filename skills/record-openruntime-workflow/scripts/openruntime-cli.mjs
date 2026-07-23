@@ -124,7 +124,7 @@ function supportsRecordCommand(invocation, env) {
     env,
     encoding: "utf8"
   });
-  return result.status === 0 && result.stdout.includes("openruntime record start");
+  return result.status === 0 && result.stdout.includes("openruntime record start [--out <path>]");
 }
 
 function runOrExit(invocation, args, env = process.env) {

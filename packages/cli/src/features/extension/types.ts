@@ -258,13 +258,6 @@ export interface OpenRuntimeBrowserApi {
 }
 
 export interface OpenRuntimeExtensionApi {
-  scope(options: {
-    bridge?: string;
-    runtime?: string;
-    session?: string;
-    url?: string;
-  }): OpenRuntimeExtensionApi;
-  ensureBridge(options?: { port?: number; timeout?: number }): Promise<unknown>;
   targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   events<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;

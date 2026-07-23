@@ -42,14 +42,16 @@ skills/record-openruntime-workflow
 使用 record-openruntime-workflow，开始录制浏览器操作。
 ```
 
-Agent 会直接打开一个可见的空白浏览器，并把录制结果默认保存到当前项目的 `recordings/` 目录。用户不需要提前提供网址或保存位置。
+Agent 会先运行 `openruntime record start` 准备录制文件、跨页面操作采集和可选麦克风录音，再通过 `openruntime open about:blank --ui` 打开可见空白页面。CLI 自动准备并注入 Bridge，录制扩展在同一次页面打开中注入录制脚本。录制结果默认保存到当前项目的 `recordings/` 目录，用户不需要提前提供网址或保存位置。
 
 接下来正常操作浏览器即可：
 
 1. 打开目标网页并完成点击、输入和页面跳转。
 2. 需要补充目标时，直接通过麦克风说明最终结果。
 3. 操作完成后，对 Agent 说“结束”或“完成”。
-4. Agent 关闭浏览器，读取录制结果和语音文字，再生成并检查脚本。
+4. Agent 停止录制，随后通过 `openruntime close` 关闭当前页面，读取录制结果和语音文字，再生成并检查脚本。
+
+录制命令本身不会重新打开、重置或关闭浏览器。开始准备录制前需要先关闭已有页面；准备完成后必须通过 `openruntime open` 打开要录制的页面。如果录制期间被另一次 `openruntime open` 替换了页面，停止录制会拒绝混入新页面的数据。
 
 例如，在 GitHub Issues 页面操作时可以说：
 

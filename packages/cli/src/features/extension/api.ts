@@ -95,11 +95,6 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
   };
 
   return {
-    scope: (scopeOptions) => createOpenRuntimeExtensionApi({
-      ...options,
-      args: withStringOptions(options.args, scopeOptions)
-    }),
-    ensureBridge: ensureLocalBridge,
     targets: async (query, selector) => await fetchResource("targets", query, selector),
     snapshot: async (query, selector) => await fetchResource("snapshot", query, selector),
     events: async (query, selector) => await fetchResource("events", query, selector),
@@ -139,21 +134,6 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
       allowWithoutOpenContext: hasRuntimeSelectorValue(runtimeSelector),
       ...(options.openContext === undefined ? {} : { openContext: options.openContext })
     })
-  };
-}
-
-function withStringOptions(
-  args: ParsedCliArgs,
-  values: Record<string, string | undefined>
-): ParsedCliArgs {
-  const options = new Map(args.options);
-  for (const [name, value] of Object.entries(values)) {
-    if (value === undefined) continue;
-    options.set(name, [value]);
-  }
-  return {
-    command: [...args.command],
-    options
   };
 }
 

@@ -240,7 +240,6 @@ Commands and page hooks use `options.openruntime` as the primary entry point to 
 
 | Capability | API |
 | --- | --- |
-| Select a page, session, Bridge, or Runtime | `scope`, `ensureBridge` |
 | Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
 | Execute and await page-declared capabilities | `inputOptions`, `runAction`, `waitFor` |
 | Operate and inspect the current page | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.getWindow` |

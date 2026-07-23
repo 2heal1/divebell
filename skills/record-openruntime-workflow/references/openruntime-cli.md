@@ -26,7 +26,9 @@ node <skill-dir>/scripts/openruntime-cli.mjs <openruntime-args>
 
 ```bash
 node <skill-dir>/scripts/openruntime-cli.mjs record start --mic
+node <skill-dir>/scripts/openruntime-cli.mjs open about:blank --ui
 node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-path>
+node <skill-dir>/scripts/openruntime-cli.mjs close
 node <skill-dir>/scripts/openruntime-cli.mjs record transcribe --input <start-output-path>
 ```
 

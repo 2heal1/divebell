@@ -10,19 +10,31 @@ openruntime extensions add @openruntime/extension-imitate
 
 ## Record a manual walkthrough
 
-Start a visible browser and save the recording under `./recordings`:
+Prepare the recording first so browser interaction and optional microphone capture are active from page startup. The output defaults to `./recordings`:
 
 ```bash
 openruntime record start --mic
 ```
 
-The URL and output path are optional. When the walkthrough is finished, stop the recording with the output path returned by `start`:
+Then open the page through OpenRuntime. The CLI starts and injects the Bridge while the recording Extension injects its page capture script into the same browser launch:
+
+```bash
+openruntime open https://example.com/ --ui
+```
+
+The guided workflow can use `about:blank` when no URL is provided, and the output path is optional. When the walkthrough is finished, stop the recording with the output path returned by `start`:
 
 ```bash
 openruntime record stop --out ./recordings/openruntime-<timestamp>.orrec
 ```
 
-Stopping captures final state, closes the browser, and writes `generated-script.mjs` by default. Use `--no-close` or `--no-script` only when another workflow owns those steps.
+Stopping captures final state and writes `generated-script.mjs` by default. It leaves the current page open; close it through the normal page lifecycle when the workflow is complete:
+
+```bash
+openruntime close
+```
+
+Recording preparation refuses to replace an already open page. Close the current page first, prepare the recording, and then open the page to record. Stopping refuses to mix evidence if another `openruntime open` replaced the recorded page.
 
 ## Regenerate or transcribe
 
@@ -48,10 +60,11 @@ The default transcription model is `whisper-1`; use `--model` to select another 
 For an unattended time-bounded recording:
 
 ```bash
+openruntime open https://example.com/ --ui
 openruntime record \
-  --url https://example.com/ \
   --out ./recordings/example.orrec \
   --duration 30000
+openruntime close
 ```
 
 For an Agent-guided installation and workflow, see the [English guide](../../docs/record-browser-workflows.md) or [中文指南](../../docs/record-browser-workflows.zh-CN.md).

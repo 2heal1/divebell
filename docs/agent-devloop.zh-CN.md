@@ -2,7 +2,9 @@
 
 English version: [Coding Agent Development Debugging Loop](agent-devloop.md)
 
-OpenRuntime 用来帮助 Coding Agent 在真实 Web 场景中完成问题复现、诊断和验证。Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的浏览器上下文、提供调试能力并保存验证依据。
+OpenRuntime 用来把团队的领域能力接入 Coding Agent 的开发调试闭环。Coding Agent 负责阅读和修改代码；OpenRuntime 负责从真实页面识别开发上下文，调用已有的 SDK、OpenAPI、CLI 或内部平台，并保存修改前后的验证依据。
+
+浏览器是当前默认的真实场景入口，但不是产品边界。只需要通用浏览器操作时可以直接使用 agent-browser；需要连接团队领域知识、已有服务和验证流程时，再使用 OpenRuntime Extension。
 
 这条闭环的目标是减少人的中途介入。它不是绕过授权，而是让团队提前准备测试账号、登录状态、可访问环境和允许执行的动作，让 Agent 在明确边界内持续工作。
 
@@ -13,7 +15,9 @@ OpenRuntime 用来帮助 Coding Agent 在真实 Web 场景中完成问题复现�
       ↓
 打开真实页面并保持会话
       ↓
-复现问题并收集证据
+识别应用、环境和相关资源
+      ↓
+调用已有服务并收集证据
       ↓
 Coding Agent 修改代码
       ↓
@@ -65,6 +69,8 @@ openruntime stack
 团队常见的 Extension 可以包括：
 
 - 测试账号和环境准备
+- 从当前页面识别应用、环境、部署和其他领域资源
+- 调用已有 SDK、OpenAPI、CLI 或内部平台
 - 框架或微前端状态检查
 - 页面性能、内存和代码使用分析
 - 业务专项诊断和验收
@@ -126,6 +132,7 @@ Coding Agent 根据诊断证据修改源码。OpenRuntime 不负责替代代码�
 
 | 需求 | 建议形式 |
 | --- | --- |
+| 从当前页面识别领域资源并调用已有服务 | Extension 命令或 Hook |
 | 操作当前已打开页面并输出诊断结果 | Extension 命令 |
 | 准备账号、环境或页面初始化条件 | Extension Hook 或命令 |
 | 管理完整浏览器生命周期并重复用户路径 | 自动化脚本 |

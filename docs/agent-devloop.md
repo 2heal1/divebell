@@ -2,7 +2,9 @@
 
 Chinese version: [Coding Agent 开发调试闭环](agent-devloop.zh-CN.md)
 
-OpenRuntime helps coding agents reproduce, diagnose, and verify problems in real web scenarios. The coding agent reads and changes source code; OpenRuntime prepares reusable browser context, provides diagnostics, and preserves verification evidence.
+OpenRuntime connects a team's domain capabilities to the coding agent's development debugging loop. The coding agent reads and changes source code; OpenRuntime identifies development context from the real page, calls existing SDKs, OpenAPIs, CLIs, or internal platforms, and preserves verification evidence from before and after the change.
+
+The browser is the default entry point for real scenarios today, but it is not the product boundary. Use agent-browser directly for general browser operation. Use an OpenRuntime Extension when the workflow needs team domain knowledge, existing services, and verification methods.
 
 The goal is to reduce human intervention during development. This does not bypass authorization. Teams prepare test accounts, login state, accessible environments, and allowed actions in advance so an agent can continue working within explicit boundaries.
 
@@ -13,7 +15,9 @@ Prepare account and environment
               ↓
 Open the real page and keep the session
               ↓
-Reproduce and collect evidence
+Identify the app, environment, and resources
+              ↓
+Call existing services and collect evidence
               ↓
 Coding agent changes source code
               ↓
@@ -65,6 +69,8 @@ openruntime stack
 Common team Extensions may provide:
 
 - test accounts and environment preparation
+- application, environment, deployment, and resource recognition from the current page
+- access to existing SDKs, OpenAPIs, CLIs, or internal platforms
 - framework or micro-frontend state checks
 - page performance, memory, and code-usage analysis
 - domain-specific diagnosis and verification
@@ -126,6 +132,7 @@ An isolated problem does not require permanent integration. Keep the appropriate
 
 | Need | Recommended form |
 | --- | --- |
+| Resolve domain resources from the current page and call existing services | Extension command or hook |
 | Diagnose the currently opened page | Extension command |
 | Prepare accounts, environments, or page initialization | Extension hook or command |
 | Own the whole browser lifecycle and replay a journey | Automation script |

@@ -4,9 +4,19 @@ Chinese version: [OpenRuntime CLI Extension 开发指南](cli-extensions.zh-CN.m
 
 This guide is for Extension developers. It follows the workflow for creating an Extension, registering capabilities, developing locally, publishing, and verification. For installing and managing existing Extensions, see [Using Extensions](extensions.md). For complete fields and types, see the [Extension API Reference](extension-api.md).
 
+Extensions connect a team's domain knowledge and existing development capabilities to OpenRuntime. They can reuse the current page and browser diagnostics while calling existing SDKs, OpenAPIs, CLIs, and internal platforms.
+
 ## Extension development model
 
-An Extension packages reusable account and environment preparation, stack detection, focused diagnostics, and verification workflows as capabilities that agents can discover and invoke through OpenRuntime CLI.
+An Extension packages reusable account and environment preparation, context recognition, stack detection, focused diagnostics, and verification workflows as capabilities that agents can discover and invoke through OpenRuntime CLI. Common examples include:
+
+- selecting a test account, preparing an environment, or checking access;
+- identifying the application, environment, deployment ID, and other domain resources from the current page;
+- using those resources with an existing SDK, OpenAPI, CLI, or internal platform;
+- detecting the project stack and recommending matching tools;
+- packaging page-performance, memory, code-usage, or framework-specific diagnosis;
+- running team-specific verification in the same browser session; and
+- shipping an on-demand Agent Skill for a complex command.
 
 An Extension consists of:
 
@@ -14,6 +24,8 @@ An Extension consists of:
 - a lightweight Extension entry that declares Commands, Hooks, and Skills;
 - implementation code and required assets loaded on demand; and
 - access to the current page, browser diagnostics, and optional Runtime information.
+
+An Extension does not require the team to rebuild a service capability that already exists. It may only resolve the context required by an existing tool, pass the right parameters to that tool, and bring its result back into the same development debugging workflow.
 
 Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
 

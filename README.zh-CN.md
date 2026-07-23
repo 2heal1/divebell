@@ -77,9 +77,9 @@ Auth Profile 保存已经获得授权的浏览器登录状态，不负责创建�
 
 ### Extensions
 
-Extension 是 OpenRuntime CLI 的安装和加载单位，可以注册命令、`open`、`detectStack`、`close` Hook 和命令 Skill。Agent 通过 CLI 调用扩展命令；扩展实现通过 Extension API 使用当前页面、浏览器诊断、内存、代码执行和可选的 Runtime 信息。
+Extension 是 OpenRuntime CLI 的扩展机制，用于为 Agent 增加账号与环境准备、技术栈识别、专项诊断和可重复验证能力。一个 Extension 可以提供 CLI 命令、页面打开与识别阶段的 Hook，以及 Agent 可读取的 Skill。
 
-[CLI 扩展开发](./docs/cli-extensions.zh-CN.md)
+[Extension 使用指南](./docs/extensions.zh-CN.md) · [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md) · [Extension API 参考](./docs/extension-api.zh-CN.md)
 
 ### 官方扩展
 
@@ -151,7 +151,9 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
 - [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 - [浏览器登录态 Profile](./docs/auth-profiles.zh-CN.md)
-- [CLI 扩展开发](./docs/cli-extensions.zh-CN.md)
+- [Extension 使用指南](./docs/extensions.zh-CN.md)
+- [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md)
+- [Extension API 参考](./docs/extension-api.zh-CN.md)
 - [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
 - [自动化脚本](./docs/cli-automation-scripts.zh-CN.md)
 - [发版流程](./docs/release.zh-CN.md)

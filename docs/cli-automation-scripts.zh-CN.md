@@ -2,7 +2,7 @@
 
 English version: [Automating with OpenRuntime CLI](cli-automation-scripts.md)
 
-这份文档讲的是独立自动化脚本：脚本自己负责打开页面、等待页面、操作页面、读取 Runtime 信息，并在需要时停止 CLI 管理的浏览器和 Bridge。和 [`OpenRuntime CLI 命令开发指南`](cli-extensions.zh-CN.md) 里的页面命令不同，自动化脚本可以管理浏览器生命周期。
+这份文档讲的是独立自动化脚本：脚本自己负责打开页面、等待页面、操作页面、读取 Runtime 信息，并在需要时停止 CLI 管理的浏览器和 Bridge。和 [`OpenRuntime CLI Extension 开发指南`](cli-extensions.zh-CN.md) 里的页面 Command 不同，自动化脚本可以管理浏览器生命周期。
 
 ## 适用场景
 

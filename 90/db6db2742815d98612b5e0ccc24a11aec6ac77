@@ -1,0 +1,45 @@
+.changeset/scope-cli-help.md
+  s_bd2cd8fb3040d2::t_805d869c709406 1-5
+docs/cli-extensions.md
+  s_bd2cd8fb3040d2::t_8f3f1e55acd59f 299-301,306,348,355
+docs/cli-extensions.zh-CN.md
+  s_bd2cd8fb3040d2::t_ccd821f43ec99c 291-293,298,340,347
+docs/extension-api.md
+  s_bd2cd8fb3040d2::t_c5d487a5c7d44b 55
+docs/extension-api.zh-CN.md
+  s_bd2cd8fb3040d2::t_b4bf9be061e598 55
+docs/extensions.md
+  s_bd2cd8fb3040d2::t_d8d12c6ba7ce1a 69
+docs/extensions.zh-CN.md
+  s_bd2cd8fb3040d2::t_af00f5b7a63dfb 69
+packages/cli/src/commands/help.ts
+  s_bd2cd8fb3040d2::t_bb46a682c6fb79 175-188,192,195,202-204,213-238,241-247,274,285-355
+packages/cli/src/runner.ts
+  s_bd2cd8fb3040d2::t_95cedc183143ea 4,38,46-62
+packages/cli/test/cli-core.test.ts
+  s_bd2cd8fb3040d2::t_18b95f9cd87ee4 75,84-97,115-145,176-177,182-194
+packages/cli/test/extensions.test.ts
+  s_bd2cd8fb3040d2::t_2b9e2dc6c253bf 382-383,386-393,695-698,703-712,919-920,969-970,973-983
+skills/openruntime/SKILL.md
+  s_bd2cd8fb3040d2::t_cc094ff1868ec9 65-67
+skills/openruntime/references/use-cli.md
+  s_bd2cd8fb3040d2::t_a8133324bd5f30 23,25-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "90db6db2742815d98612b5e0ccc24a11aec6ac77",
+  "prompts": {},
+  "sessions": {
+    "s_bd2cd8fb3040d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ee9-cb3b-7223-960b-6e3db61df87c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

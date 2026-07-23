@@ -1,0 +1,37 @@
+docs/cli-reference.md
+  s_0c8c5e652755ce::t_9be97d6b62085a 53
+docs/cli-reference.zh-CN.md
+  s_0c8c5e652755ce::t_b1913e831d6b2a 53
+docs/extensions.md
+  s_0c8c5e652755ce::t_1646b07721913c 21-22,31-42,58-60
+docs/extensions.zh-CN.md
+  s_0c8c5e652755ce::t_13b3b321206f82 21-22,31-42,58-60
+packages/cli/src/commands/help.ts
+  s_0c8c5e652755ce::t_44d4061bd2757b 7-8
+packages/cli/src/commands/installed.ts
+  s_0c8c5e652755ce::t_d4758a010bf0a7 84,126
+packages/cli/test/cli-core.test.ts
+  s_0c8c5e652755ce::t_570e03b69f0039 104-105,174-175
+packages/cli/test/extensions.test.ts
+  s_0c8c5e652755ce::t_e5a682b72d04bf 239-240,259-262
+scripts/sync-openruntime-cli-docs.mjs
+  s_0c8c5e652755ce::t_14d3cbf55cf7db 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b1a8b0e72f0009e91109908ffdc7581542748789",
+  "prompts": {},
+  "sessions": {
+    "s_0c8c5e652755ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ec3-7432-75f2-8976-2c36c0a30088",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

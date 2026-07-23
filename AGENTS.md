@@ -2,13 +2,13 @@
 
 ## 项目目标
 
-OpenRuntime 是面向 Coding Agent 的可扩展开发调试工具。它提供开箱即用的真实场景调试流程，
+OpenRuntime 是面向 Coding Agent 的可扩展 Web 开发调试工具。它提供开箱即用的真实 Web 场景调试流程，
 并允许团队通过 Extensions 接入自己的账号、环境、内部平台、诊断方法和验证标准。
 
 Coding Agent 负责阅读和修改代码；OpenRuntime 负责把用户入口与团队已有的领域能力连接起来。
 Extension 可以从当前页面识别应用、环境和部署等资源，调用已有 SDK、OpenAPI、CLI 或内部平台，
-再回到相同账号、环境和用户路径验证修改。浏览器是当前默认的真实场景入口，但不是产品边界；
-需要应用内部事实时，再通过 Runtime Core API 暴露状态、事件、声明动作和等待条件。
+再回到相同账号、环境和用户路径验证修改。需要应用内部事实时，再通过 Runtime Core API 暴露
+状态、事件、声明动作和等待条件。
 
 ## 当前可信文档
 
@@ -57,7 +57,7 @@ OpenRuntime 的 Module Federation 接入后续应在 MF 仓库的 observability 
 ## 工作规则
 
 - 不要把 `Agent Runtime` 旧命名当成当前产品名；当前统一叫 OpenRuntime。
-- 不要把 OpenRuntime 定义成 Agent Runtime、Runtime API、浏览器自动化工具或开发运行环境；产品定位是面向 Coding Agent 的可扩展开发调试工具。
+- 不要把 OpenRuntime 定义成 Agent Runtime、Runtime API、浏览器自动化工具或开发运行环境；产品定位是面向 Coding Agent 的可扩展 Web 开发调试工具。
 - 团队已有的账号、环境、资源识别、SDK、OpenAPI、CLI、内部平台、诊断方法和验收标准应优先通过 Extension 接入。
 - 受保护页面优先复用已经准备好的登录状态和 session。测试账号和授权应提前配置、范围明确、可重复使用，不能绕过权限边界。
 - 普通页面没有 Runtime Core 时，正常使用页面结果、Console、Network、截图和专项 Extension 排查，不要为了开始调试强制修改应用接入 Runtime。

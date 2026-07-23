@@ -2,9 +2,9 @@
 
 English version: [Coding Agent Development Debugging Loop](agent-devloop.md)
 
-OpenRuntime 用来把团队的领域能力接入 Coding Agent 的开发调试闭环。Coding Agent 负责阅读和修改代码；OpenRuntime 负责从真实页面识别开发上下文，调用已有的 SDK、OpenAPI、CLI 或内部平台，并保存修改前后的验证依据。
+OpenRuntime 用来帮助 Coding Agent 在真实 Web 场景中完成问题复现、诊断和验证。Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的浏览器上下文，并把页面操作、浏览器诊断和结果验证封装成 Agent 可以像调用普通开发工具一样直接使用的能力。团队还可以通过 Extension 将领域知识和已有服务接入这条开发闭环。
 
-浏览器是当前默认的真实场景入口，但不是产品边界。需要连接团队领域知识、已有服务和验证流程时，可以通过 OpenRuntime Extension 接入。
+团队可以通过 Extension 从当前页面识别开发上下文，调用已有的 SDK、OpenAPI、CLI 或内部平台。
 
 这条闭环的目标是减少人的中途介入。它不是绕过授权，而是让团队提前准备测试账号、登录状态、可访问环境和允许执行的动作，让 Agent 在明确边界内持续工作。
 

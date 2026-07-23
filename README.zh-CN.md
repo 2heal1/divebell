@@ -7,7 +7,7 @@
 <p align="center">
 <b>让 Coding Agent 在真实 Web 场景中自主调试和验证。</b>
 <br/>
-面向 Coding Agent 的 Web 开发调试工具。
+面向 Coding Agent 的可扩展 Web 开发调试工具。
 </p>
 
 ---
@@ -18,11 +18,13 @@ Agent 使用入口：[OpenRuntime Skill](./skills/openruntime/SKILL.md)
 
 # OpenRuntime
 
-OpenRuntime 是面向 Coding Agent 的 **Web 开发调试工具**。
+OpenRuntime 是面向 Coding Agent 的**可扩展 Web 开发调试工具**。
 
-它帮助 Agent 在真实、已授权、可重复的浏览器场景中完成问题复现、诊断和验证，尽量减少开发过程中需要人登录、授权、演示和确认的次数。
+它提供开箱即用的真实 Web 场景调试流程，并允许团队通过 Extension 接入自己的账号、环境、内部平台、诊断方法和验证标准。Agent 可以从用户正在使用的页面出发，调用已有的 SDK、OpenAPI 或 CLI，再回到相同场景验证代码变化。
 
-OpenRuntime 不替代 Coding Agent 修改代码，也不是后端调试器。它负责提供代码修改前后所需的浏览器上下文、调试能力和验证依据，让 Agent 能在代码与真实页面之间持续工作。
+这里的领域知识不只是说明文档，而是能够直接执行的上下文识别、资源查询、问题诊断和结果验证方法。OpenRuntime 让这些方法能够被安装、调用和复用，而不必每次都由人告诉 Agent 下一步该去哪里、使用什么工具。
+
+OpenRuntime 不负责运行 Coding Agent，也不替代 Agent 修改代码。它通过浏览器保留真实页面的账号、环境、用户路径和调试证据，让 Agent 在代码修改前后持续验证。
 
 ---
 

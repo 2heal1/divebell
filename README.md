@@ -7,7 +7,7 @@
 <p align="center">
 <b>Let coding agents debug and verify real web scenarios autonomously.</b>
 <br/>
-A web development debugging tool for coding agents.
+An extensible web development debugging tool for coding agents.
 </p>
 
 ---
@@ -18,11 +18,13 @@ Agent entry point: [OpenRuntime Skill](./skills/openruntime/SKILL.md)
 
 # OpenRuntime
 
-OpenRuntime is a **web development debugging tool** for coding agents.
+OpenRuntime is an **extensible web development debugging tool** for coding agents.
 
-It helps agents reproduce, diagnose, and verify problems in real, authorized, and repeatable browser scenarios, reducing the number of times a person has to log in, grant access, demonstrate a flow, or confirm an intermediate result.
+It provides an out-of-the-box workflow for debugging real web scenarios and lets teams use Extensions to connect their own accounts, environments, internal platforms, diagnostic methods, and verification criteria. An agent can start from the page a user is viewing, call an existing SDK, OpenAPI, or CLI, and return to the same scenario to verify a code change.
 
-OpenRuntime does not replace the coding agent that edits source code, and it is not a backend debugger. It provides the browser context, diagnostic capabilities, and verification evidence needed before and after a code change so the agent can keep working between code and the real page.
+Domain knowledge here is more than documentation. It includes executable methods for recognizing context, resolving resources, diagnosing problems, and verifying outcomes. OpenRuntime makes these methods installable, callable, and reusable instead of requiring a person to tell the agent where to go and which tool to use every time.
+
+OpenRuntime does not run the coding agent or replace it as the source-code editor. It uses the browser to preserve the account, environment, user journey, and diagnostic evidence from the real page so the agent can keep verifying before and after a code change.
 
 ---
 

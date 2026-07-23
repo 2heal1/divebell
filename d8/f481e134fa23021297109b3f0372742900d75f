@@ -1,0 +1,51 @@
+.changeset/inject-mf-debug-runtime.md
+  s_710d8f9c183ff0::t_c1a8337f2d6e93 5
+packages/extension-mf/README.md
+  s_710d8f9c183ff0::t_f8d790343e3a6d 42,46-52,56-58,61,67-69
+packages/extension-mf/assets/install-observability.js
+  s_e84425219326c8::t_6a8331afc130e0 2
+packages/extension-mf/assets/install-runtime-debug.js
+  s_e84425219326c8::t_d138e190a9af80 2,41-45,48-62
+packages/extension-mf/assets/observability-build.json
+  s_e84425219326c8::t_3110f820ef974b 3-4,6
+packages/extension-mf/assets/observability-chrome-devtool.iife.js
+  s_e84425219326c8::t_2be4631080612d 35,53,72,188,214,361,452,482,485,696,787,863,954,1002,1082,1328
+packages/extension-mf/assets/runtime-debug-build.json
+  s_e84425219326c8::t_be7bd43c3e1af2 2-8
+packages/extension-mf/scripts/install-runtime-debug.template.js
+  s_710d8f9c183ff0::t_fc3f6034b49359 43-57
+packages/extension-mf/scripts/sync-mf-debug.mjs
+  s_e84425219326c8::t_d4686a8ee1c7b9 3,6,9-13,21-22,32,34-35,38,41,46,49,64,66,70,76,80-96,99-146,156,159-162,164-167,171-211,214-216,219-241,253,257-262,266-285,291-294,300-302,304-309,311-314,351-352,354-357,360,375-380,383,390,393-396,398-403
+packages/extension-mf/scripts/sync-observability.mjs
+  s_710d8f9c183ff0::t_24a433336515b8 26,85-105,136-137
+packages/extension-mf/test/open.test.mjs
+  s_710d8f9c183ff0::t_b6291169e49a19 15-16,55-59,73,80,99-102,104-107,202-205
+packages/extension-mf/test/sync-mf-debug.test.mjs
+  s_e84425219326c8::t_244ecb8f68139a 17-18,22-23,25-26,28-29,31-48,58-77,79-85,89,92,96-97,99-103,105-107,119-127,138-141,143-147,156,164-165,167-171,174-183,190-191,193-205,207-230,232-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d8f481e134fa23021297109b3f0372742900d75f",
+  "prompts": {},
+  "sessions": {
+    "s_710d8f9c183ff0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e3c-2051-7642-88d7-de258bf9cdfc",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,75 @@
+README.zh-CN.md
+  s_8284a8ed82b0cf::t_d077deb7f95f2f 80,82,154-156
+demos/cli-extension/README.md
+  s_acb8fe04693968::t_9ec4e4db96e376 1-52
+demos/cli-extension/command.mjs
+  s_acb8fe04693968::t_6217fc06cae242 1-42
+demos/cli-extension/hooks.mjs
+  s_a7284fdec5248a::t_ac365cbababf49 1-25
+demos/cli-extension/index.mjs
+  s_a7284fdec5248a::t_269041999210d9 1-27
+demos/cli-extension/package.json
+  s_a7284fdec5248a::t_4f5017f5a03cb2 1-15
+demos/cli-extension/test.mjs
+  s_acb8fe04693968::t_d0c660d778c256 1-88
+docs/cli-automation-scripts.zh-CN.md
+  s_acb8fe04693968::t_d42eb2ffc89eba 5
+docs/cli-extensions.zh-CN.md
+  s_34f23268dbf98c::t_1718e18fe59000 1,5,7,9,11,13-16,18,20,22,24,26,29-40,43,45,47,51,53,55-76,79-82,87,89-111,114,116-118,123,125-127,132-133,136,140,142,144,146,151-175,177,179,181,183,186-188,192,195,197,199,202-206,211,218,221,223,225,227-228,230-233,235,237-241,243-256,258,260,262,264-268,270,272,274,276,278-304,307-339,341-349,351
+docs/extension-api.zh-CN.md
+  s_acb8fe04693968::t_e06eb1e69769f0 1-250
+docs/extensions.zh-CN.md
+  s_acb8fe04693968::t_8599b153b97cbd 1-97
+pnpm-lock.yaml
+  s_e84425219326c8::t_38ff80fed8ed8a 37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "872141eca50722dfd87a48d6abfe459353c8f844",
+  "prompts": {},
+  "sessions": {
+    "s_34f23268dbf98c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f89af-be0e-77a0-9156-08925b550085",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_8284a8ed82b0cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8983-9d67-7ee1-b33a-92ed6c8873a0",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a7284fdec5248a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8975-92b5-73a1-a2a3-24d9bdecccae",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_acb8fe04693968": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8971-e86e-7962-bde7-4bc89c5fac72",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

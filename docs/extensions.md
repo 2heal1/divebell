@@ -18,6 +18,8 @@ Extensions are appropriate for development debugging workflows that a team will 
 
 ## Install an Extension
 
+### Install from npm
+
 Install a trusted Extension by npm package name:
 
 ```sh
@@ -26,7 +28,18 @@ openruntime extensions add @scope/package
 
 See the [official Extensions in the README](../README.md#official-extensions) for available packages and their purposes.
 
-Extensions execute local code, so install only packages with a known, trusted source. After installation, new commands appear in:
+### Install from a local directory
+
+You can also pass a local Extension directory directly. Both relative and absolute paths are supported:
+
+```sh
+openruntime extensions add ./path/to/my-extension
+openruntime extensions add /path/to/my-extension
+```
+
+Installing from a local directory is commonly useful when developing and debugging an Extension, and it can also install an Extension that is not published to npm. The directory must contain a valid Extension package declaration and a loadable entry.
+
+Extensions execute local code, so install only packages or local directories with a known, trusted source. After installation, new commands appear in:
 
 ```sh
 openruntime --help
@@ -42,9 +55,9 @@ openruntime extensions update @scope/package
 openruntime extensions remove @scope/package
 ```
 
-- `list` shows installed packages, commands, and hooks.
-- `update` downloads and activates the latest version; the current version remains active if the update fails.
-- `remove` uninstalls the specified package.
+- `list` shows installed Extensions, commands, and hooks.
+- `update` downloads and activates the latest version from npm by package name; the current version remains active if the update fails.
+- `remove` uninstalls the specified Extension.
 
 Extensions are installed by default in:
 

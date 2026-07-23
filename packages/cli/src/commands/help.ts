@@ -4,8 +4,8 @@ export type { CliCommandReference } from "../types/commands.js";
 export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Extensions",
-    usage: "openruntime extensions add <npm-package> [--extensions-dir <path>]",
-    description: "Download, validate, and install an OpenRuntime extension package with no runtime dependencies."
+    usage: "openruntime extensions add <package-or-path> [--extensions-dir <path>]",
+    description: "Validate and install an OpenRuntime extension with no runtime dependencies from an npm package or local path."
   },
   {
     category: "Extensions",

@@ -81,7 +81,7 @@ export async function runExtensionsCommand(options: RunExtensionsCommandOptions)
   }
 
   if (action === "add") {
-    const spec = requireCommandArgument(options.args, 2, "npm package spec");
+    const spec = requireCommandArgument(options.args, 2, "extension package or path");
     const result = await addExtensionPackage({
       spec,
       extensionsDirectory,
@@ -123,7 +123,7 @@ export async function runExtensionsCommand(options: RunExtensionsCommandOptions)
     code: "EXTENSIONS_ACTION_INVALID",
     kind: "validation",
     message: "extensions requires add, list, update, or remove.",
-    hint: "Run `openruntime extensions add <npm-package>`, `openruntime extensions list`, `openruntime extensions update <package>`, or `openruntime extensions remove <package>`."
+    hint: "Run `openruntime extensions add <package-or-path>`, `openruntime extensions list`, `openruntime extensions update <package>`, or `openruntime extensions remove <package>`."
   });
 }
 

@@ -50,7 +50,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Extensions
 
-- `openruntime extensions add <npm-package> [--extensions-dir <path>]` - Download, validate, and install an OpenRuntime extension package with no runtime dependencies.
+- `openruntime extensions add <package-or-path> [--extensions-dir <path>]` - Validate and install an OpenRuntime extension with no runtime dependencies from an npm package or local path.
 - `openruntime extensions list [--extensions-dir <path>]` - List installed OpenRuntime extension packages, commands, and hooks.
 - `openruntime extensions update <package> [--extensions-dir <path>]` - Download and activate the latest extension package version; keep the current version if the update fails.
 - `openruntime extensions remove <package> [--extensions-dir <path>]` - Uninstall the specified extension package.

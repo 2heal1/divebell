@@ -11,6 +11,7 @@ import {
   createOpenRuntimeCliWithExternalExtensions,
   validateExtension
 } from "@openruntime/cli";
+import { implementedMfCommandMetadata } from "../dist/commands/metadata.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -25,16 +26,18 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.match(entrySource, /import\("\.\/open\.js"\)/);
   assert.doesNotMatch(entrySource, /getRuntimeState|readFile/);
   const commandReferences = validated.commands[0].commandReferences;
-  assert.deepEqual(commandReferences.map((reference) => reference.usage), [
-    "openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]",
-    "openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]",
-    "openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]",
-    "openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]",
-    "openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]",
-    "openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]",
-    "openruntime mf shared status [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--json]",
-    "openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>] [--json]"
-  ]);
+  assert.deepEqual(
+    commandReferences,
+    implementedMfCommandMetadata.map(({ usage, description }) => ({
+      category: "External Extensions",
+      usage,
+      description
+    }))
+  );
+  const readme = readFileSync(resolve(packageRoot, "README.md"), "utf8");
+  for (const command of implementedMfCommandMetadata) {
+    assert.match(readme, new RegExp(escapeRegExp(command.usage)));
+  }
   assert.doesNotMatch(JSON.stringify(commandReferences), /mf remote trace|shared check/);
 });
 
@@ -53,7 +56,6 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     "remote/errors.js",
     "remote/selection.js",
     "remote/results.js",
-    "remote/format.js",
     "remote/types.js",
     "shared/capability.js",
     "shared/selection.js",
@@ -144,6 +146,10 @@ function listFiles(directory) {
   });
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test("packed archive supports real package-name imports for public API and extension", () => {
   const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-public-import-"));
   const packDirectory = join(tempDirectory, "pack");
@@ -174,9 +180,10 @@ test("packed archive supports real package-name imports for public API and exten
       "-e",
       `const extension = await import("@openruntime/extension-mf");
        const api = await import("@openruntime/extension-mf/core");
-       const names = ["readMfObservability", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteCheck", "createRemoteTraceResult", "createRemoteCheckResult", "buildRemoteTrace", "formatRemoteTrace", "formatRemoteCheck", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
+       const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteCheck", "createRemoteTraceResult", "createRemoteCheckResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
+       if ("formatRemoteTrace" in api || "formatRemoteCheck" in api) process.exit(5);
        if (extension.default?.name !== "mf") process.exit(3);`
     ], {
       cwd: tempDirectory,
@@ -226,6 +233,19 @@ test("packed archive installs and loads through the external extension mechanism
     assert.deepEqual(loaded.cli.extensions.map((extension) => extension.name), ["mf"]);
     assert.deepEqual(loaded.cli.extensions[0].commands.map((command) => command.name), ["mf"]);
     assert.equal(typeof loaded.cli.extensions[0].hooks.open, "function");
+    let help = "";
+    const helpExitCode = await loaded.cli.run(["--help"], {
+      stdout: { write(chunk) { help += chunk; } },
+      stderr: { write() {} }
+    });
+    assert.equal(helpExitCode, 0);
+    assert.match(help, /External Extensions:/);
+    let previousIndex = -1;
+    for (const command of implementedMfCommandMetadata) {
+      const index = help.indexOf(command.usage);
+      assert.ok(index > previousIndex, `${command.usage} is missing or out of order in --help`);
+      previousIndex = index;
+    }
   } finally {
     rmSync(tempDirectory, { recursive: true, force: true });
   }

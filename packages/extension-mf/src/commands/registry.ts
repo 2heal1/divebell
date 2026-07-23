@@ -20,10 +20,6 @@ export const mfCommandRegistry: readonly MfCommandRegistration[] = [
     load: async () => (await import("./module-info.js")).moduleInfoCommand
   },
   {
-    ...bridgeTraceCommandMetadata,
-    load: async () => (await import("./bridge-trace.js")).bridgeTraceCommand
-  },
-  {
     ...traceCommandMetadata,
     load: async () => (await import("./trace.js")).traceCommand
   },
@@ -42,5 +38,9 @@ export const mfCommandRegistry: readonly MfCommandRegistration[] = [
   {
     ...sharedTraceCommandMetadata,
     load: async () => (await import("./shared-trace.js")).sharedTraceCommand
+  },
+  {
+    ...bridgeTraceCommandMetadata,
+    load: async () => (await import("./bridge-trace.js")).bridgeTraceCommand
   }
 ];

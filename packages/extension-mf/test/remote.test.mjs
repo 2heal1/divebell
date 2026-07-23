@@ -5,10 +5,9 @@ import {
   RemoteCoreError,
   createRemoteCheckResult,
   createRemoteTraceResult,
-  formatRemoteCheck,
-  formatRemoteTrace,
   parseBrowserReadResult
 } from "../dist/public.js";
+import { formatRemoteCheck, formatRemoteTrace } from "../dist/remote/format.js";
 import { browserRead, capability } from "./fixtures.mjs";
 import {
   catalogRemote,

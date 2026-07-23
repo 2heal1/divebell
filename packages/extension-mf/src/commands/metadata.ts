@@ -64,10 +64,10 @@ export const sharedTraceCommandMetadata = {
 export const implementedMfCommandMetadata = [
   statusCommandMetadata,
   moduleInfoCommandMetadata,
-  bridgeTraceCommandMetadata,
   traceCommandMetadata,
   remoteCheckCommandMetadata,
   preloadTraceCommandMetadata,
   sharedStatusCommandMetadata,
-  sharedTraceCommandMetadata
+  sharedTraceCommandMetadata,
+  bridgeTraceCommandMetadata
 ] as const;

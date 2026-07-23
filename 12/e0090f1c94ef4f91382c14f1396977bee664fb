@@ -1,0 +1,33 @@
+README.zh-CN.md
+  s_a02894f8b7fd4e::t_71723d83bdde09 8,10,21,23,25,27,33,35,37-39,41,43,45,47-65,73-75,77,79,81,83,85,87,89,91,93,95,116-118,122-128,140-156
+assets/openruntime-workflow.svg
+  s_a02894f8b7fd4e::t_e435ae82003005 1-214
+assets/openruntime-workflow.zh-CN.svg
+  s_de9a8d96742e00::t_115e4b13ca4ed3 1-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "12e0090f1c94ef4f91382c14f1396977bee664fb",
+  "prompts": {},
+  "sessions": {
+    "s_a02894f8b7fd4e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8de5-52cf-7181-b55b-018335257972",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

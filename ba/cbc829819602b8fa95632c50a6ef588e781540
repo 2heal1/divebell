@@ -1,0 +1,97 @@
+.changeset/isolate-open-bridges.md
+  s_67c45a6ece4cdf::t_c912843f5f13ab 1-5
+docs/agent-devloop.md
+  s_67c45a6ece4cdf::t_2b5d2911de84b6 49
+docs/agent-devloop.zh-CN.md
+  s_67c45a6ece4cdf::t_837172e2e2e2a2 49
+docs/cli-automation-scripts.md
+  s_67c45a6ece4cdf::t_57b462b6f3df4c 154,184
+docs/cli-automation-scripts.zh-CN.md
+  s_67c45a6ece4cdf::t_633b84bbc8af83 154,184
+docs/cli-extensions.md
+  s_d327fe68d5a743::t_622b0611e82551 20
+docs/cli-extensions.zh-CN.md
+  s_67c45a6ece4cdf::t_a8a2c9eaec6d0a 20
+docs/cli-reference.md
+  s_67c45a6ece4cdf::t_e74ad583a3e601 27,42
+docs/cli-reference.zh-CN.md
+  s_67c45a6ece4cdf::t_a0844cafb205a1 27,42
+docs/runtime-connections.md
+  s_67c45a6ece4cdf::t_ee4a6c86af5612 9,15-16,91,93,157
+docs/runtime-connections.zh-CN.md
+  s_67c45a6ece4cdf::t_f6beb613e04eee 9,15-16,98,100,164
+packages/cli/src/commands/bridge.ts
+  s_67c45a6ece4cdf::t_99c3ec5e898085 7,22,46,51-52,56-71,88-96
+packages/cli/src/commands/browser.ts
+  s_67c45a6ece4cdf::t_6320017b1e75c6 6,8-15,40,49-52,55-72,75,96,107,111-113,124,129-130,179,194,201-255
+packages/cli/src/commands/help.ts
+  s_d327fe68d5a743::t_8c7bd9d82c4d93 73,133
+packages/cli/src/commands/runtime.ts
+  s_67c45a6ece4cdf::t_e1ab7e7f9a61d0 18,44,46-49,52,130
+packages/cli/src/commands/stack.ts
+  s_67c45a6ece4cdf::t_36f3f0fe1fac5c 74
+packages/cli/src/features/bridge/process.ts
+  s_67c45a6ece4cdf::t_a47755c69e30e1 11-12,16,20-107,178-227
+packages/cli/src/features/bridge/types.ts
+  s_d327fe68d5a743::t_5a7a0dd6868f61 9-10,50-64
+packages/cli/src/features/browser/runner.ts
+  s_67c45a6ece4cdf::t_cb5cd8ccb40325 30-35,57-58,138-139,142-147,201-202,210-214
+packages/cli/src/features/runtime/client.ts
+  s_67c45a6ece4cdf::t_19f277df0f7a25 119,140-143
+packages/cli/src/features/runtime/wait.ts
+  s_67c45a6ece4cdf::t_d239b3b2b146bf 122
+packages/cli/src/open-context.ts
+  s_67c45a6ece4cdf::t_4a1dc3517198cc 16-20
+packages/cli/src/runner.ts
+  s_57cb12c2205112::t_b24999bcec8529 59,68,118
+packages/cli/src/types/shared.ts
+  s_57cb12c2205112::t_ee4587ddbdca10 46,53
+packages/cli/src/utils/operation-log.ts
+  s_67c45a6ece4cdf::t_48c5aa20c16f3f 22,30,67-76,82-83,89-111
+packages/cli/test/browser.test.ts
+  s_67c45a6ece4cdf::t_5a597d0b80c3c4 2,5,10,54,70-77,95-96,102,106-195,231,264,311,421-449,626,630,638-639,643,653
+packages/cli/test/helpers.ts
+  s_67c45a6ece4cdf::t_4657df150f76f2 55,70,107,113,120
+packages/cli/test/profile.test.ts
+  s_67c45a6ece4cdf::t_f9bb934f778eae 25-26,51-71
+packages/cli/test/runtime-read.test.ts
+  s_67c45a6ece4cdf::t_0555861605bdb7 9,85-111,231,260,272,276,279-280,290,292,303-327,330-335
+packages/cli/test/wait-for.test.ts
+  s_67c45a6ece4cdf::t_d551c05e71196f 8,64,84,86
+scripts/sync-openruntime-cli-docs.mjs
+  s_67c45a6ece4cdf::t_dd1eb88ff5bf2e 93,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bacbc829819602b8fa95632c50a6ef588e781540",
+  "prompts": {},
+  "sessions": {
+    "s_57cb12c2205112": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ee1-3ff9-75a1-9061-6ba55d8d0109",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_67c45a6ece4cdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ede-226c-7800-87a3-bdaa89a3de3d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_d327fe68d5a743": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8eeb-92ec-77e2-a5bc-0734e90f0a39",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

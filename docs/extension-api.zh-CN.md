@@ -1,5 +1,7 @@
 # OpenRuntime CLI Extension API 参考
 
+English version: [OpenRuntime CLI Extension API Reference](extension-api.md)
+
 本文用于查询 Extension 定义、Command、Hook 和 `options` 的当前类型与使用约定。完整开发流程见 [CLI Extension 开发指南](cli-extensions.zh-CN.md)。
 
 开发时通常直接从 `@openruntime/cli` 导入 `OpenRuntimeExtensionDefinition`、`OpenRuntimeExtensionHooks`、`CliExtensionRunOptions` 和 `OpenRuntimeExtensionApi`。下文还会展开它们引用的子结构，便于查询字段；这些子结构不需要单独导入，可以由上层公开类型推导。

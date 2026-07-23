@@ -1,37 +1,39 @@
-# CLI Extension 本地开发 Demo
+# CLI Extension Local Development Demo
 
-这份 demo 对应[中文开发指南](../../docs/cli-extensions.zh-CN.md)，字段和方法说明见 [Extension API 参考](../../docs/extension-api.zh-CN.md)。它展示：
+Chinese version: [CLI Extension 本地开发 Demo](README.zh-CN.md)
 
-- 入口只声明命令和 Hook，实际实现按需加载。
-- 从 `options.args` 读取子命令和重复选项。
-- 通过 `options.output` 返回成功或需要补充操作的结果。
-- 检查 `options.page`，并通过 `options.openruntime.browser` 读取当前页面。
-- 使用 `open`、`detectStack` 和 `close` Hook。
+This demo accompanies [CLI Extension Development](../../docs/cli-extensions.md). See the [Extension API Reference](../../docs/extension-api.md) for fields and methods. It demonstrates:
 
-## 在仓库中运行
+- keeping the entry declaration-only and loading Command and Hook implementations on demand;
+- reading subcommands and repeated options from `options.args`;
+- returning success or a request for additional input through `options.output`;
+- checking `options.page` and reading the current page through `options.openruntime.browser`; and
+- using the `open`, `detectStack`, and `close` Hooks.
 
-先在仓库根目录安装依赖并构建 CLI：
+## Run in the repository
+
+Install dependencies and build the CLI from the repository root:
 
 ```sh
 pnpm install
 pnpm --filter @openruntime/cli build
 ```
 
-加载 demo 并检查命令是否出现：
+Load the demo and confirm that its Command appears:
 
 ```sh
 OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
   node packages/cli/dist/bin.js --help
 ```
 
-运行不需要页面的命令：
+Run the Command path that does not require a page:
 
 ```sh
 OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
   node packages/cli/dist/bin.js extension-demo hello --name Codex
 ```
 
-再验证页面流程：
+Then verify the page flow:
 
 ```sh
 export OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs"
@@ -41,12 +43,12 @@ node packages/cli/dist/bin.js stack --refresh
 node packages/cli/dist/bin.js close
 ```
 
-`page` 会返回页面地址、标题以及 `open` Hook 注入的标记；`stack` 会识别出 `OpenRuntime CLI Extension Demo`。
+`page` returns the page URL, title, and marker injected by the `open` Hook. `stack` detects `OpenRuntime CLI Extension Demo`.
 
-## 运行 demo 测试
+## Run the demo tests
 
 ```sh
 pnpm --dir demos/cli-extension test
 ```
 
-测试不启动浏览器，用代表性输入检查参数、输出、页面缺失和 Hook。发布真实扩展前，还需要按开发指南在目标页面上走一遍完整流程。
+The tests do not start a browser. They use representative inputs to check argument handling, output, missing-page behavior, and Hooks. Before publishing a real Extension, also run the complete workflow against the target page as described in the development guide.

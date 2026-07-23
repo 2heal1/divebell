@@ -77,9 +77,9 @@ These capabilities work with regular pages and do not depend on Runtime Core.
 
 ### Extensions
 
-An Extension is the installation and loading unit of OpenRuntime CLI. It may register commands, `open`, `detectStack`, and `close` hooks, and command Skills. Agents invoke Extension commands through the CLI; implementations use the Extension API to access the current page, browser diagnostics, memory, code execution, and optional Runtime information.
+An Extension expands OpenRuntime CLI with reusable account and environment setup, stack detection, focused diagnostics, and verification capabilities for agents. It may provide CLI commands, hooks for page opening and detection, and Skills that agents can read.
 
-[CLI Extension Development](./docs/cli-extensions.md)
+[Using Extensions](./docs/extensions.md) · [CLI Extension Development](./docs/cli-extensions.md) · [Extension API Reference](./docs/extension-api.md)
 
 ### Official Extensions
 
@@ -152,7 +152,9 @@ See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing
 - [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
 - [CLI Reference](./docs/cli-reference.md)
 - [Browser Auth Profiles](./docs/auth-profiles.md)
+- [Using Extensions](./docs/extensions.md)
 - [CLI Extension Development](./docs/cli-extensions.md)
+- [Extension API Reference](./docs/extension-api.md)
 - [Runtime Core API](./docs/runtime-core-api.md)
 - [Standalone Automation](./docs/cli-automation-scripts.md)
 - [Release Process](./docs/release.md)

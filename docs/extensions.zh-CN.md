@@ -1,5 +1,7 @@
 # OpenRuntime Extension 使用指南
 
+English version: [Using OpenRuntime Extensions](extensions.md)
+
 本文面向安装和使用 Extension 的 Agent 与开发者。如果你要编写自己的 Extension，直接阅读 [CLI Extension 开发指南](cli-extensions.zh-CN.md)；查找字段和方法时，使用 [Extension API 参考](extension-api.zh-CN.md)。
 
 ## 什么是 Extension

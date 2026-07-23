@@ -2,7 +2,7 @@
 
 Chinese version: [使用 OpenRuntime CLI 编写自动化脚本](cli-automation-scripts.zh-CN.md)
 
-This guide is for standalone automation scripts: a script opens the page, waits for it, runs page operations, reads Runtime information, and optionally stops the browser and Bridge managed by the CLI. Unlike page commands in the [OpenRuntime CLI Command Development Guide](cli-extensions.md), automation scripts can manage the browser lifecycle.
+This guide is for standalone automation scripts: a script opens the page, waits for it, runs page operations, reads Runtime information, and optionally stops the browser and Bridge managed by the CLI. Unlike page Commands in [OpenRuntime CLI Extension Development](cli-extensions.md), automation scripts can manage the browser lifecycle.
 
 ## When To Use
 

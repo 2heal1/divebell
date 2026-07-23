@@ -119,7 +119,7 @@ async function waitForLatestRuntime(
   status: string,
   where: RuntimeDataCondition[] | undefined
 ): Promise<RuntimeResourceResult<unknown>> {
-  const selector = createRuntimeSelector(args, { ignoreRuntimeId: true });
+  const selector = createRuntimeSelector(args, { ignoreRuntimeId: hasOption(args, "next") });
   const timeout = getNumberOption(args, "timeout") ?? 5000;
   const deadline = Date.now() + timeout;
   const ignoredRuntimeIds = hasOption(args, "next")

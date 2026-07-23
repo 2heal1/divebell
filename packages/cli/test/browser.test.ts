@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 import { type BrowserRunOptions } from "../dist/features/browser/runner.js";
+import { createDetachedBridgeStarter } from "../dist/features/bridge/process.js";
 import { createOperationSessionId } from "../dist/utils/operation-log.js";
 
 import { assertOpenOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
@@ -49,6 +51,7 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
     openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
     normalizedUrl: "http://app.test/",
     bridgeUrl: "http://localhost:18080",
+    bridgePort: 18080,
     sessionId
   });
   assert.equal(output.errorText(), "");
@@ -64,7 +67,14 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
     stderr: output.stderr,
     fetcher: async () => jsonResponse({ runtimes: [] }),
     bridgeStarter: {
-      start: async () => ({ pid: 12345 })
+      start: async ({ port }) => {
+        assert.equal(port, 0);
+        return {
+          pid: 12345,
+          port: 18123,
+          bridgeUrl: "http://localhost:18123"
+        };
+      }
     },
     browserRunner: createBrowserRunner(async (args) => {
       browserCalls.push(args);
@@ -82,15 +92,106 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
     url: "http://app.test/orders?region=cn#details",
     openedUrl: "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
     normalizedUrl: "http://app.test/orders?region=cn#details",
-    bridgeUrl: "http://localhost:17321",
+    bridgeUrl: "http://localhost:18123",
+    bridgePort: 18123,
     sessionId: "session-orders"
   });
   assertBridgeOpenCalls(
     browserCalls,
     "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
-    "http://localhost:17321"
+    "http://localhost:18123"
   );
 });
+
+test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
+  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const browserRunner = createBrowserRunner(async () => ({
+    exitCode: 0,
+    stdout: "ok\n",
+    stderr: ""
+  }));
+  let closed = false;
+
+  try {
+    const openOutput = createOutput();
+    const openExitCode = await runCli(["open", "http://app.test/"], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
+      bridgeStarter: createDetachedBridgeStarter(
+        pathToFileURL(join(process.cwd(), "dist", "bin.js")).href
+      ),
+      browserRunner
+    });
+    assert.equal(openExitCode, 0, `${openOutput.text()}\n${openOutput.errorText()}`);
+
+    const opened = JSON.parse(openOutput.text()).data;
+    assert.equal(typeof opened.bridgePort, "number");
+    assert.equal(opened.bridgePort > 0, true);
+    assert.equal(opened.bridgeUrl, `http://localhost:${opened.bridgePort}`);
+
+    const secondOpenOutput = createOutput();
+    assert.equal(await runCli(["open", "http://app.test/next"], {
+      stdout: secondOpenOutput.stdout,
+      stderr: secondOpenOutput.stderr,
+      bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
+      bridgeStarter: createDetachedBridgeStarter(
+        pathToFileURL(join(process.cwd(), "dist", "bin.js")).href
+      ),
+      browserRunner
+    }), 0);
+    const reopened = JSON.parse(secondOpenOutput.text()).data;
+    assert.notEqual(reopened.bridgePort, opened.bridgePort);
+    assert.equal(await waitForBridgeToStop(opened.bridgeUrl), true);
+
+    const runtimeOutput = createOutput();
+    assert.equal(await runCli(["runtimes"], {
+      stdout: runtimeOutput.stdout,
+      stderr: runtimeOutput.stderr,
+      bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(JSON.parse(runtimeOutput.text()).bridgeUrl, reopened.bridgeUrl);
+
+    assert.equal(await runCli(["close"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    closed = true;
+    assert.equal(readdirSync(operationLogDirectory).length, 0);
+  } finally {
+    if (!closed && readdirSync(operationLogDirectory).length > 0) {
+      await runCli(["close"], {
+        stdout: createOutput().stdout,
+        stderr: createOutput().stderr,
+        bridgeStateDirectory: stateDirectory,
+        operationLogDirectory,
+        browserRunner
+      });
+    }
+    rmSync(stateDirectory, { recursive: true, force: true });
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+async function waitForBridgeToStop(bridgeUrl: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      await fetch(`${bridgeUrl}/runtimes`);
+    } catch {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
+}
 
 test("opens a browser page without touching the bridge when no-bridge is set", async () => {
   const output = createOutput();
@@ -127,6 +228,7 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
     openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
     normalizedUrl: "http://app.test/",
     bridgeUrl: null,
+    bridgePort: null,
     sessionId
   });
   assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
@@ -159,6 +261,7 @@ test("opens a visible browser page when ui is set and keeps the session query", 
     openedUrl: "http://app.test/orders?openruntimeSessionId=session-orders",
     normalizedUrl: "http://app.test/orders",
     bridgeUrl: null,
+    bridgePort: null,
     sessionId: "session-orders"
   });
   assert.deepEqual(browserCalls, [["open", "http://app.test/orders?openruntimeSessionId=session-orders"]]);
@@ -205,6 +308,7 @@ test("records the latest open operation by working directory and removes it on c
     assert.equal(operation.url, "http://localhost:3000/users");
     assert.equal(operation.normalizedUrl, "http://localhost:3000/users");
     assert.equal(operation.bridgeUrl, "http://bridge.test");
+    assert.equal(operation.bridgePort, 80);
     assert.equal(operation.sessionId, "session-orders");
     assert.equal(operation.exitCode, 0);
     assertBridgeOpenCalls(
@@ -309,6 +413,35 @@ test("uses the latest open context as the default runtime selector", async () =>
         capturedAt: 3
       }
     });
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("keeps directory context written by the previous operation schema", async () => {
+  const context = createOpenContextFixture({
+    bridgeUrl: "http://bridge.test:18422"
+  });
+  const [contextFile] = readdirSync(context.operationLogDirectory);
+  assert.notEqual(contextFile, undefined);
+  const contextPath = join(context.operationLogDirectory, contextFile as string);
+  const legacyContext = JSON.parse(readFileSync(contextPath, "utf8"));
+  legacyContext.schemaVersion = 2;
+  delete legacyContext.bridgePort;
+  writeFileSync(contextPath, `${JSON.stringify(legacyContext, null, 2)}\n`, "utf8");
+
+  try {
+    const output = createOutput();
+    assert.equal(await runCli(["runtimes"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      fetcher: async (url) => {
+        assert.equal(String(url), "http://bridge.test:18422/runtimes");
+        return jsonResponse({ runtimes: [] });
+      }
+    }), 0);
+    assert.equal(JSON.parse(output.text()).bridgeUrl, "http://bridge.test:18422");
   } finally {
     context.cleanup();
   }
@@ -490,10 +623,11 @@ test("stops by closing the browser session before stopping the bridge", async ()
   let bridgeStarted = false;
 
   try {
-    assert.equal(await runCli(["start", "--port", "18082"], {
+    assert.equal(await runCli(["open", "http://app.test/orders", "--port", "18082"], {
       stdout: createOutput().stdout,
       stderr: createOutput().stderr,
       bridgeStateDirectory: stateDirectory,
+      operationLogDirectory,
       fetcher: async () => {
         if (!bridgeStarted) {
           throw new TypeError("fetch failed");
@@ -501,19 +635,12 @@ test("stops by closing the browser session before stopping the bridge", async ()
         return jsonResponse({ runtimes: [] });
       },
       bridgeStarter: {
-        start: async () => {
+        start: async ({ port }) => {
+          assert.equal(port, 18082);
           bridgeStarted = true;
           return { pid: 23456 };
         }
-      }
-    }), 0);
-
-    assert.equal(await runCli(["open", "http://app.test/orders", "--port", "18082"], {
-      stdout: createOutput().stdout,
-      stderr: createOutput().stderr,
-      bridgeStateDirectory: stateDirectory,
-      operationLogDirectory,
-      fetcher: async () => jsonResponse({ runtimes: [] }),
+      },
       browserRunner: createBrowserRunner(async () => ({
         exitCode: 0,
         stdout: "opened\n",
@@ -523,7 +650,7 @@ test("stops by closing the browser session before stopping the bridge", async ()
     assert.equal(readdirSync(operationLogDirectory).length, 1);
 
     const output = createOutput();
-    const exitCode = await runCli(["stop", "--port", "18082"], {
+    const exitCode = await runCli(["stop"], {
       stdout: output.stdout,
       stderr: output.stderr,
       bridgeStateDirectory: stateDirectory,

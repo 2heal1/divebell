@@ -5,7 +5,7 @@ import { runCli } from "../dist/index.js";
 
 import { createBrowserRunner, createOutput, jsonResponse } from "./helpers.js";
 
-test("wait-for follows the latest matching runtime unless strict mode is set", async () => {
+test("wait-for keeps an explicitly selected runtime", async () => {
   const calls: Array<{ url: string; method?: string; body?: unknown }> = [];
   const output = createOutput();
   const exitCode = await runCli([
@@ -61,7 +61,7 @@ test("wait-for follows the latest matching runtime unless strict mode is set", a
         });
       }
 
-      assert.equal(String(url), "http://bridge.test/runtimes/runtime-after-refresh/wait-for");
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-before-refresh/wait-for");
       assert.equal(init?.method, "POST");
       return jsonResponse({
         success: true,
@@ -81,9 +81,9 @@ test("wait-for follows the latest matching runtime unless strict mode is set", a
   assert.equal(exitCode, 0);
   assert.deepEqual(calls.map((call) => call.url), [
     "http://bridge.test/runtimes",
-    "http://bridge.test/runtimes/runtime-after-refresh/wait-for"
+    "http://bridge.test/runtimes/runtime-before-refresh/wait-for"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-before-refresh");
 });
 
 test("wait-for waits for a runtime to connect when none is currently connected", async () => {

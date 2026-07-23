@@ -43,13 +43,14 @@ export interface CommandOutput {
 
 
 export interface CliOperationLogEntry {
-  schemaVersion: 2;
+  schemaVersion: 3;
   command: "open";
   key: string;
   cwd: string;
   url: string;
   normalizedUrl: string;
   bridgeUrl: string | null;
+  bridgePort: number | null;
   sessionId: string | null;
   openedAt: number;
   exitCode: number;

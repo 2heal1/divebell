@@ -151,7 +151,7 @@ async function opr(args) {
 | `session` | 当前脚本使用的会话标识；并发或 Runtime 查询时建议显式设置。 |
 | `timeout` | 等待页面或 Runtime 状态的超时时间。 |
 | `headless/ui` | 默认静默运行；需要可见浏览器时给 `open` 加 `--ui`。 |
-| `bridge` | 默认自动准备本地 Bridge，并在跳转前放入连接管理器，连接页面注册的所有 runtime；需要连接指定 Bridge 时传 `--bridge <url>`，不需要连接时传 `--no-bridge`。 |
+| `bridge` | 每次 `open` 默认都会自动分配独立的本地 Bridge 端口，当前目录会记住它供后续命令使用；需要连接指定 Bridge 时传 `--bridge <url>`，不需要连接时传 `--no-bridge`。 |
 
 ### 打开页面
 
@@ -181,6 +181,7 @@ openruntime open http://localhost:3000 --ui
 | `openedUrl` | 实际打开的 URL，可能包含 OpenRuntime session 参数。 |
 | `normalizedUrl` | 用于匹配当前页面的规范化 URL。 |
 | `bridgeUrl` | 本次 open 使用的 Bridge 地址；`--no-bridge` 时为 `null`。 |
+| `bridgePort` | 本次 open 分配的 Bridge 端口；`--no-bridge` 时为 `null`。 |
 | `sessionId` | 本次 open 使用的 session。 |
 | `openedAt` | 打开页面的时间戳。 |
 

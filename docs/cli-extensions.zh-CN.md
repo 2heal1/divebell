@@ -21,7 +21,7 @@ Extension 不要求团队重写已经存在的服务能力。它可以只负责�
 
 Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
 
-页面类 Command 操作最近一次 `openruntime open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
+页面类 Command 操作当前工作目录最近一次通过 `openruntime open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
 
 ## 创建 Extension
 

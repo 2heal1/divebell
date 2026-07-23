@@ -29,7 +29,7 @@ An Extension does not require the team to rebuild a service capability that alre
 
 Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
 
-A page Command operates on the page most recently opened by `openruntime open <url>`. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
+A page Command operates on the page most recently opened by `openruntime open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
 ## Create an Extension
 

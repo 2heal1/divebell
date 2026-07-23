@@ -116,8 +116,7 @@ export async function waitForRuntime<T>(
 
 export function selectRuntime(
   runtimes: BridgeRuntimeInfo[],
-  selector: RuntimeSelector = {},
-  options: { requireUnique?: boolean } = {}
+  selector: RuntimeSelector = {}
 ): BridgeRuntimeInfo {
   if (selector.runtimeId !== undefined) {
     const runtime = runtimes.find((item) => item.runtimeId === selector.runtimeId);
@@ -138,12 +137,10 @@ export function selectRuntime(
   if (candidates.length === 0) {
     throw new Error(createNoRuntimeMessage(selector));
   }
-  if (options.requireUnique === true && candidates.length > 1) {
-    const runtimeIds = candidates.map((runtime) => runtime.runtimeId).join(", ");
-    throw new Error(`Multiple connected runtimes matched. Pass --runtime with one of: ${runtimeIds}.`);
-  }
-
-  return candidates.sort((left, right) => right.lastSeenAt - left.lastSeenAt)[0] as BridgeRuntimeInfo;
+  return candidates.sort((left, right) =>
+    left.connectedAt - right.connectedAt ||
+    left.runtimeId.localeCompare(right.runtimeId)
+  )[0] as BridgeRuntimeInfo;
 }
 
 function runtimeMatchesSession(runtime: BridgeRuntimeInfo, sessionId: string): boolean {

@@ -8,25 +8,101 @@ import type { BridgeRuntimeInfo } from "@openruntime/bridge";
 import type { Fetcher } from "../runtime/client.js";
 import { fetchRuntimes, selectRuntime } from "../runtime/client.js";
 
-import type { BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
-export type { BridgeStartOptions, BridgeStartResult, BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
+import type { BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
+export type { BridgeStartOptions, BridgeStartResult, BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
 
 export function createDetachedBridgeStarter(entryModuleUrl: string): BridgeStarter {
   return {
-    start: async ({ port }) => {
-      const child = spawn(process.execPath, [
-        fileURLToPath(entryModuleUrl),
-        "__bridge-server",
-        "--port",
-        String(port)
-      ], {
-        detached: true,
-        stdio: "ignore"
-      });
-      child.unref();
-      return child.pid === undefined ? {} : { pid: child.pid };
-    }
+    start: async ({ port }) => await startDetachedBridge(entryModuleUrl, port)
   };
+}
+
+async function startDetachedBridge(entryModuleUrl: string, port: number): Promise<{
+  pid?: number;
+  port: number;
+  bridgeUrl: string;
+}> {
+  const child = spawn(process.execPath, [
+    fileURLToPath(entryModuleUrl),
+    "__bridge-server",
+    "--port",
+    String(port)
+  ], {
+    detached: true,
+    stdio: ["ignore", "ignore", "pipe", "ipc"]
+  });
+
+  return await new Promise((resolve, reject) => {
+    let stderr = "";
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      stderr += String(chunk);
+    });
+    const timer = setTimeout(() => {
+      cleanup();
+      stopStartingBridge(child.pid);
+      releaseChild();
+      reject(new Error("OpenRuntime Bridge did not report its listening address."));
+    }, 5000);
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.off("error", onError);
+      child.off("exit", onExit);
+      child.off("message", onMessage);
+    };
+    const releaseChild = () => {
+      if (child.connected) child.disconnect();
+      child.stderr?.destroy();
+      child.unref();
+    };
+    const onError = (error: Error) => {
+      cleanup();
+      releaseChild();
+      reject(error);
+    };
+    const onExit = (code: number | null) => {
+      cleanup();
+      releaseChild();
+      const detail = stderr.trim();
+      reject(new Error(
+        `OpenRuntime Bridge exited before startup completed${code === null ? "." : ` with code ${code}.`}` +
+        (detail.length === 0 ? "" : ` ${detail}`)
+      ));
+    };
+    const onMessage = (message: unknown) => {
+      if (!isBridgeReadyMessage(message)) return;
+      cleanup();
+      releaseChild();
+      resolve({
+        ...(child.pid === undefined ? {} : { pid: child.pid }),
+        port: message.port,
+        bridgeUrl: message.url
+      });
+    };
+
+    child.once("error", onError);
+    child.once("exit", onExit);
+    child.on("message", onMessage);
+  });
+}
+
+function isBridgeReadyMessage(value: unknown): value is {
+  type: "openruntime.bridge.ready";
+  port: number;
+  url: string;
+} {
+  if (value === null || typeof value !== "object") return false;
+  const message = value as Record<string, unknown>;
+  return message.type === "openruntime.bridge.ready" &&
+    typeof message.port === "number" &&
+    typeof message.url === "string";
+}
+
+function stopStartingBridge(pid: number | undefined): void {
+  if (pid === undefined) return;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {}
 }
 
 export function createFileBridgeStateStore(
@@ -97,6 +173,56 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<Ensure
   }
 
   throw new Error(`OpenRuntime Bridge did not become available at ${options.bridgeUrl}.`);
+}
+
+export async function startDedicatedBridge(
+  options: StartDedicatedBridgeOptions
+): Promise<StartDedicatedBridgeResult> {
+  const requestedPort = options.port ?? 0;
+  if (requestedPort !== 0) {
+    const requestedBridgeUrl = `http://localhost:${requestedPort}`;
+    const probe = await probeBridge(options.fetcher, requestedBridgeUrl);
+    if (probe !== "unreachable") {
+      throw new Error(`Port ${requestedPort} is already in use. Choose another port or omit --port.`);
+    }
+  }
+
+  const startResult = await options.starter.start({ port: requestedPort });
+  const port = startResult?.port ?? (requestedPort === 0 ? undefined : requestedPort);
+  const bridgeUrl = startResult?.bridgeUrl ?? (port === undefined ? undefined : `http://localhost:${port}`);
+  if (port === undefined || bridgeUrl === undefined) {
+    stopStartingBridge(startResult?.pid);
+    throw new Error("OpenRuntime Bridge did not return its assigned port.");
+  }
+
+  const deadline = Date.now() + (options.timeout ?? 5000);
+  while (Date.now() <= deadline) {
+    const probe = await probeBridge(options.fetcher, bridgeUrl);
+    if (probe === "available") {
+      if (startResult?.pid !== undefined) {
+        await createFileBridgeStateStore(bridgeUrl, options.stateDirectory).write({
+          bridgeUrl,
+          pid: startResult.pid,
+          port,
+          startedAt: Date.now()
+        });
+      }
+      return {
+        bridgeUrl,
+        port,
+        status: "started",
+        ...createOptionalNumberProperty("pid", startResult?.pid)
+      };
+    }
+    if (probe === "wrong-service") {
+      stopStartingBridge(startResult?.pid);
+      throw new Error(`A non-OpenRuntime service is responding at ${bridgeUrl}.`);
+    }
+    await sleep(100);
+  }
+
+  stopStartingBridge(startResult?.pid);
+  throw new Error(`OpenRuntime Bridge did not become available at ${bridgeUrl}.`);
 }
 
 export async function stopManagedBridge(options: StopBridgeOptions): Promise<StopBridgeResult> {

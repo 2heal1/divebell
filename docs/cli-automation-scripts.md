@@ -151,7 +151,7 @@ Automation scripts usually work with these inputs:
 | `session` | Session id for this script; recommended for concurrent scripts and Runtime queries. |
 | `timeout` | Timeout for page or Runtime waits. |
 | `headless/ui` | The browser runs quietly by default; pass `--ui` to `open` for a visible browser. |
-| `bridge` | Local Bridge is prepared automatically by default. A connection manager is installed before navigation and connects every runtime registered by the page. Pass `--bridge <url>` for a specific Bridge or `--no-bridge` to disable injection. |
+| `bridge` | Each `open` gets its own automatically assigned local Bridge port. The current directory remembers it for later commands. Pass `--bridge <url>` for a specific Bridge or `--no-bridge` to disable injection. |
 
 ### Open The Page
 
@@ -181,6 +181,7 @@ On success, `open` prints unified JSON. `data` contains:
 | `openedUrl` | Actual opened URL, possibly with an OpenRuntime session parameter. |
 | `normalizedUrl` | Normalized URL used to match the current page. |
 | `bridgeUrl` | Bridge URL used by this open command; `null` with `--no-bridge`. |
+| `bridgePort` | Port assigned to this open command; `null` with `--no-bridge`. |
 | `sessionId` | Session used by this open command. |
 | `openedAt` | Open timestamp. |
 

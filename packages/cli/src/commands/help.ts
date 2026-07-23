@@ -70,7 +70,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
     usage: "openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "Open a page, optionally starting from a Chrome profile or state file, and connect its runtimes through the Bridge by default."
+    description: "Open a directory-scoped page with its own automatically assigned Bridge port, optionally using a Chrome profile, state file, or explicit Bridge."
   },
   {
     category: "Bridge and Browser",
@@ -130,7 +130,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Runtime",
     usage: "openruntime runtimes [--bridge <url>]",
-    description: "List runtimes connected to the Bridge, starting a local Bridge automatically when needed."
+    description: "List runtimes from the current directory's opened page, or from an explicitly selected Bridge."
   },
   {
     category: "Runtime",

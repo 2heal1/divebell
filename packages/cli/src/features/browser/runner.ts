@@ -27,7 +27,12 @@ export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions 
 export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}): BrowserRunner {
   const baseEnv = options.env ?? process.env;
   const profileDirectory = resolveBrowserProfileDirectory(baseEnv, options.profileDirectory);
-  const restoreName = resolveAgentBrowserSession(baseEnv, profileDirectory, options.session);
+  const restoreName = resolveAgentBrowserSession(
+    baseEnv,
+    profileDirectory,
+    options.session,
+    options.cwd
+  );
   const configuredExecutablePath = options.executablePath
     ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV];
   const bundledEntryPath = configuredExecutablePath === undefined
@@ -49,7 +54,8 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
             baseEnv,
             profileDirectory,
             restoreName,
-            runOptions
+            runOptions,
+            options.cwd
           ),
           maxBuffer: 1024 * 1024 * 10,
           ...(runOptions.input === undefined ? {} : { input: runOptions.input })
@@ -129,10 +135,16 @@ export function createAgentBrowserEnvironment(
   baseEnv: NodeJS.ProcessEnv,
   profileDirectory?: string,
   session?: string,
-  options: BrowserRunOptions = {}
+  options: BrowserRunOptions = {},
+  workingDirectory?: string
 ): NodeJS.ProcessEnv {
   const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
-  const resolvedSession = resolveAgentBrowserSession(baseEnv, resolvedProfileDirectory, session);
+  const resolvedSession = resolveAgentBrowserSession(
+    baseEnv,
+    resolvedProfileDirectory,
+    session,
+    workingDirectory
+  );
   const env: NodeJS.ProcessEnv = {
     ...baseEnv,
     [AGENT_BROWSER_SESSION_ENV]: resolvedSession,
@@ -186,7 +198,8 @@ function executeAgentBrowser(
 export function resolveAgentBrowserSession(
   baseEnv: NodeJS.ProcessEnv = process.env,
   profileDirectory?: string,
-  session?: string
+  session?: string,
+  workingDirectory = process.cwd()
 ): string {
   const configuredSession = session ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_SESSION_ENV];
   if (configuredSession !== undefined && configuredSession.length > 0) {
@@ -194,11 +207,11 @@ export function resolveAgentBrowserSession(
   }
 
   const resolvedProfileDirectory = resolveBrowserProfileDirectory(baseEnv, profileDirectory);
-  if (resolvedProfileDirectory === resolve(createDefaultBrowserProfileDirectory())) {
-    return "openruntime";
-  }
-  const profileKey = createHash("sha256").update(resolvedProfileDirectory).digest("hex").slice(0, 12);
-  return `openruntime-${profileKey}`;
+  const sessionKey = createHash("sha256")
+    .update(`${resolvedProfileDirectory}\0${resolve(workingDirectory)}`)
+    .digest("hex")
+    .slice(0, 12);
+  return `openruntime-${sessionKey}`;
 }
 
 export function createGetWindowScript(path: string): string {

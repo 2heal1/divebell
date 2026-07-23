@@ -69,12 +69,11 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
     }
 
     if (args.command[0] === "stop") {
-      const bridgeStateStore = createBridgeStateStore(args, options.bridgeStateDirectory);
       return await runStopCommand(
         args,
         stdout,
         browserRunner,
-        bridgeStateStore,
+        options.bridgeStateDirectory,
         operationLogStore,
         options.bridgeProcessController,
         async () => await runExtensionCloseHooks({
@@ -83,7 +82,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
           fetcher,
           browserRunner,
           bridgeStarter,
-          bridgeStateStore,
+          bridgeStateDirectory: options.bridgeStateDirectory,
           operationLogStore,
           extensions: config.extensions
         })
@@ -133,7 +132,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
         fetcher,
         browserRunner,
         bridgeStarter,
-        createBridgeStateStore(args, options.bridgeStateDirectory),
+        options.bridgeStateDirectory,
         operationLogStore,
         config.extensions
       );

@@ -6,11 +6,13 @@
 
 ## 基本流程
 
-页面只负责创建并登记 Runtime，不需要自己连接 Bridge。使用 CLI 打开页面时，CLI 会准备本地 Bridge，并在页面代码运行前放入连接管理器：
+页面只负责创建并登记 Runtime，不需要自己连接 Bridge。每次使用 CLI 打开页面时，CLI 都会在自动分配的端口上启动一个专属本地 Bridge，并在页面代码运行前放入连接管理器：
 
 ```bash
 openruntime open http://localhost:3000 --ui
 ```
+
+`open` 成功结果会返回 `bridgeUrl` 和 `bridgePort`。当前工作目录会记住这次打开的页面和 Bridge，后续浏览器命令和 Runtime 命令会自动回到对应浏览器会话，并使用同一个 Bridge。不同工作目录默认不会共享页面、浏览器会话或 Bridge。
 
 连接管理器会：
 
@@ -93,9 +95,9 @@ openruntime wait-for --runtime runtime-orders business:orders ready --timeout 50
 
 `--url` 和 `--session` 用于选择页面，但同一页面里的多个 Runtime 通常共享 URL 和 session，因此它们不能代替 `--runtime`。
 
-读取类命令未指定 `--runtime` 时，会选择最近有响应的匹配实例。`run-action` 在匹配到多个实例时会拒绝执行，并提示可选的 Runtime ID。多 Runtime 场景建议所有命令都显式传 `--runtime`，避免读取或等待了错误的子应用。
+所有 Runtime 命令在未指定 `--runtime` 时，包括 `run-action` 和 `wait-for`，都会选择页面最先登记且仍然连接的 Runtime。需要操作其他实例时，通过 `--runtime` 精确指定 ID。
 
-`wait-for` 默认允许在页面刷新后跟随新出现的 Runtime，因此只有同时传入 `--runtime` 和 `--strict` 才会固定等待指定实例。微前端子应用的精确验收应使用这种写法。
+传入 `--runtime` 后，`wait-for` 会始终使用该实例。需要只进行一次选择、不等待该 Runtime 或 Target 稍后出现时，再加 `--strict`。
 
 ## 微前端挂载与切换
 
@@ -159,7 +161,7 @@ openruntime open http://localhost:3000 --port 18000 --ui
 openruntime runtimes --port 18000
 ```
 
-打开页面和后续命令应使用同一个 Bridge 地址或端口。
+当前目录会记住显式指定的 Bridge 地址或端口，因此后续命令可以省略它。给 `open` 指定的端口必须空闲；OpenRuntime 不会为专属页面 Bridge 复用已经存在的服务。
 
 ## 推荐的验收顺序
 

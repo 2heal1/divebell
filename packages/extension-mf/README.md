@@ -1,6 +1,23 @@
 # @openruntime/extension-mf
 
-Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides `mf status`, `mf module-info`, `mf bridge trace`, `mf trace`, `mf remote check`, `mf preload trace`, `mf shared status`, and `mf shared trace`; it does not read Module Federation private globals or add built-in CLI commands.
+Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides eight external commands; it does not read Module Federation private globals or add built-in CLI commands.
+
+## Commands
+
+```text
+openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]
+openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]
+openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
+openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]
+openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
+openruntime mf shared status [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--json]
+openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>] [--json]
+openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]
+```
+
+`--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
+
+All commands analyze only facts already exposed through the page's safe public Observability reader. They do not inspect private globals or infer missing activity. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install
 
@@ -58,7 +75,7 @@ When a name matches more than one instance, the command returns candidates such 
 openruntime mf status --instance "mf-2"
 ```
 
-It never selects the first same-name instance. An `instanceRef` is valid only for the current page observation session and frame/realm; do not save or reuse it after reopening the page.
+It never selects the first same-name instance.
 
 ## `mf module-info`
 
@@ -73,24 +90,6 @@ openruntime mf module-info catalog --instance mf-1 --json
 The command first selects a confirmed consumer. It automatically selects only when exactly one consumer exists. With several consumers, duplicate names, or ambiguous remotes, it returns copyable candidate commands.
 
 Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, first observed loading time, capabilities, completeness, and warnings. Missing historical evidence remains unknown rather than being inferred from array order.
-
-## `mf bridge trace`
-
-```sh
-openruntime mf bridge trace
-openruntime mf bridge trace catalog
-openruntime mf bridge trace shop --instance mf-1
-openruntime mf bridge trace catalog --instance mf-1 --bridge bridge-1 --operation bridge-op-1
-openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1 --json
-```
-
-Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
-
-Operations are correlated by operationId within one MF instance. Consumer and producer evidence can share one operation while retaining their side. Missing operationId values are never correlated across reports or sides; those records remain independent and are marked as incomplete associations.
-
-The output distinguishes an operation call, render invocation, operation return, and framework commit. A successful render return does not imply that commit was observed. Even a commit does not establish that the page is rendered for the user, business data is ready, or the application is interactive. Route-sync output uses only the already-sanitized route summary and does not claim final navigation success.
-
-`bridgeTrace` capability controls historical output. `partial` returns available operations with a missing-history warning. `unavailable` returns a structured unsupported result instead of claiming that the page does not use Bridge. If current Bridge state exists, it is still shown while historical operations remain unavailable. Reopen the page before reproducing the operation when observation was installed late.
 
 ## Remote loading commands
 
@@ -129,6 +128,26 @@ openruntime mf shared trace react --trace-id mf-trace-42 --json
 `mf shared trace` explains registration, selection, and loading history. It correlates by `operationId` first and falls back to `traceId` or `requestId`; it never combines concurrent loads merely because they use the same package name. When a package matches several operations, the result contains instance, package, scope, operation, and a copyable command for each candidate.
 
 See [docs/shared.md](docs/shared.md) for capability, version, ambiguity, and partial-history behavior.
+
+## `mf bridge trace`
+
+```sh
+openruntime mf bridge trace
+openruntime mf bridge trace catalog
+openruntime mf bridge trace shop --instance mf-1
+openruntime mf bridge trace catalog --instance mf-1 --bridge bridge-1 --operation bridge-op-1
+openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1 --json
+```
+
+Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
+
+Operations are correlated by operationId within one MF instance. Consumer and producer evidence can share one operation while retaining their side. Missing operationId values are never correlated across reports or sides; those records remain independent and are marked as incomplete associations.
+
+The output distinguishes an operation call, render invocation, operation return, and framework commit. A successful render return does not imply that commit was observed. Even a commit does not establish that the page is rendered for the user, business data is ready, or the application is interactive. Route-sync output uses only the already-sanitized route summary and does not claim final navigation success.
+
+`bridgeTrace` capability controls historical output. `partial` returns available operations with a missing-history warning. `unavailable` returns a structured unsupported result instead of claiming that the page does not use Bridge. If current Bridge state exists, it is still shown while historical operations remain unavailable. Reopen the page before reproducing the operation when observation was installed late.
+
+See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boundaries.
 
 ## Collection modes and compatibility
 

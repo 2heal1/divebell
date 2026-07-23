@@ -158,4 +158,8 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 - [自动化脚本](./docs/cli-automation-scripts.zh-CN.md)
 - [发版流程](./docs/release.zh-CN.md)
 
+## Credits
+
+OpenRuntime 使用 [agent-browser](https://github.com/vercel-labs/agent-browser) 作为默认的浏览器执行能力。感谢 agent-browser 的作者和贡献者。
+
 Extensions 会执行本机代码，只安装和加载可信内容。登录状态文件包含敏感信息，应只保存在可信环境中。

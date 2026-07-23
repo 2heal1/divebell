@@ -159,4 +159,8 @@ See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing
 - [Standalone Automation](./docs/cli-automation-scripts.md)
 - [Release Process](./docs/release.md)
 
+## Credits
+
+OpenRuntime uses [agent-browser](https://github.com/vercel-labs/agent-browser) as its default browser execution layer. Thanks to the agent-browser authors and contributors.
+
 Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.

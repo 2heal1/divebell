@@ -58,7 +58,6 @@ OpenRuntime 的 Module Federation 接入后续应在 MF 仓库的 observability 
 
 - 不要把 `Agent Runtime` 旧命名当成当前产品名；当前统一叫 OpenRuntime。
 - 不要把 OpenRuntime 定义成 Agent Runtime、Runtime API、浏览器自动化工具或开发运行环境；产品定位是面向 Coding Agent 的可扩展开发调试工具。
-- agent-browser 提供通用浏览器能力；OpenRuntime 提供面向开发调试的默认流程和领域 Extension。只需要通用浏览器操作时，可以直接使用 agent-browser。
 - 团队已有的账号、环境、资源识别、SDK、OpenAPI、CLI、内部平台、诊断方法和验收标准应优先通过 Extension 接入。
 - 受保护页面优先复用已经准备好的登录状态和 session。测试账号和授权应提前配置、范围明确、可重复使用，不能绕过权限边界。
 - 普通页面没有 Runtime Core 时，正常使用页面结果、Console、Network、截图和专项 Extension 排查，不要为了开始调试强制修改应用接入 Runtime。

@@ -4,7 +4,7 @@ Chinese version: [Coding Agent 开发调试闭环](agent-devloop.zh-CN.md)
 
 OpenRuntime connects a team's domain capabilities to the coding agent's development debugging loop. The coding agent reads and changes source code; OpenRuntime identifies development context from the real page, calls existing SDKs, OpenAPIs, CLIs, or internal platforms, and preserves verification evidence from before and after the change.
 
-The browser is the default entry point for real scenarios today, but it is not the product boundary. Use agent-browser directly for general browser operation. Use an OpenRuntime Extension when the workflow needs team domain knowledge, existing services, and verification methods.
+The browser is the default entry point for real scenarios today, but it is not the product boundary. Teams can use OpenRuntime Extensions to connect domain knowledge, existing services, and verification methods.
 
 The goal is to reduce human intervention during development. This does not bypass authorization. Teams prepare test accounts, login state, accessible environments, and allowed actions in advance so an agent can continue working within explicit boundaries.
 

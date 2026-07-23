@@ -5,9 +5,9 @@
 <h1 align="center">OpenRuntime</h1>
 
 <p align="center">
-<b>让 Coding Agent 在真实 Web 场景中自主调试和验证。</b>
+<b>帮助 Coding Agent 在真实 Web 场景中完成问题复现、诊断和验证。</b>
 <br/>
-面向 Coding Agent 的可扩展 Web 开发调试工具。
+面向 Coding Agent 的 Web 开发调试工具。
 </p>
 
 ---
@@ -18,39 +18,51 @@ Agent 使用入口：[OpenRuntime Skill](./skills/openruntime/SKILL.md)
 
 # OpenRuntime
 
-OpenRuntime 是面向 Coding Agent 的**可扩展 Web 开发调试工具**。
+OpenRuntime 是面向 Coding Agent 的 **Web 开发调试工具**。
 
-它提供开箱即用的真实 Web 场景调试流程，并允许团队通过 Extension 接入自己的账号、环境、内部平台、诊断方法和验证标准。Agent 可以从用户正在使用的页面出发，调用已有的 SDK、OpenAPI 或 CLI，再回到相同场景验证代码变化。
+OpenRuntime 将 Web 页面作为 Coding Agent 的工作入口，将页面上下文、浏览器能力和团队已有的开发调试工具连接起来，让 Agent 可以直接在真实 Web 场景中完成问题复现、诊断和验证。
 
-这里的领域知识不只是说明文档，而是能够直接执行的上下文识别、资源查询、问题诊断和结果验证方法。OpenRuntime 让这些方法能够被安装、调用和复用，而不必每次都由人告诉 Agent 下一步该去哪里、使用什么工具。
+Agent 可以基于当前页面调用已有的 SDK、OpenAPI、CLI 和诊断能力，不再需要人先提取页面信息，再帮助它串联不同工具。
 
-OpenRuntime 不负责运行 Coding Agent，也不替代 Agent 修改代码。它通过浏览器保留真实页面的账号、环境、用户路径和调试证据，让 Agent 在代码修改前后持续验证。
+Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的浏览器上下文，并把页面操作、浏览器诊断和结果验证封装成可以直接调用的能力。团队可以通过 Extension 接入自己的账号、环境、内部平台、专项诊断和验证流程。
 
 ---
 
 ## 为什么需要 OpenRuntime
 
-OpenRuntime 主要解决四个问题：
+Coding Agent 已经可以阅读和修改代码，也可以调用各种开发工具。但真实 Web 开发中的问题通常发生在页面场景中：用户看到的是一个页面，而定位问题需要结合页面状态、运行环境、业务上下文以及团队已有的诊断能力。
 
-1. 通用浏览器工具每次都要重新识别页面、规划操作和处理等待。页面越复杂、链路越长，这种从头推理的方式就越慢。
-2. 用户从网页发现问题，诊断工具却往往在 CLI 中，通常需要人提取网页信息、交给 Agent，再把 CLI 结果带回网页。OpenRuntime 让 Agent 在同一个页面和会话中完成这段串联。
-3. 已经跑通的浏览器登录状态、用户路径、诊断和验收流程可以通过 agent-browser state、脚本、Extension 或 Skill 保存，供其他 Agent 和 CI 继续复用，形成长期积累。
-4. 真实场景不只有 URL，还需要测试账号、登录状态、目标环境、准备数据和成功标准。OpenRuntime 可以提前准备并复用这些条件，让 Agent 从复现、诊断、修改一直走到复验。
+这些信息和能力通常分散在不同地方：
 
-这里的目标不是绕过授权，而是让授权、测试账号和可执行动作的边界能够被提前配置、重复使用和清楚检查。
+- 页面中的用户操作和运行状态
+- 浏览器提供的 Console、Network 等调试信息
+- 团队已有的 SDK、OpenAPI、CLI 和内部平台
 
-## 一个真实的开发调试流程
+Agent 往往还需要人帮助它理解当前页面代表什么，以及接下来应该调用哪些能力。
 
-以一个只有登录后才能访问的订单页面为例：
+OpenRuntime 将 Web 页面作为 Agent 的工作入口，连接页面上下文、浏览器诊断能力和团队已有工具，让 Agent 可以直接在真实场景中完成问题复现、诊断和验证。
 
-1. 团队提前准备测试账号的 Chrome Profile、浏览器 state 或登录凭据，或者用 Extension 提供账号和环境准备能力。
-2. Agent 使用固定会话打开真实页面，复现用户操作。
-3. OpenRuntime 读取页面报错、请求、页面状态、内存或代码执行情况；页面已经接入 Runtime Core 时，还可以读取应用内部状态。
-4. Coding Agent 根据证据修改源码。
-5. OpenRuntime 复用原来的账号、会话和页面上下文重新加载并验证结果。
-6. 有长期价值的排查或验收方法可以沉淀成 Extension、自动化脚本或 Runtime Core 信号。
+团队可以通过 Extension 将已有能力接入当前页面场景，而不需要重新建设一套 Agent 工具体系。已经跑通的方法可以继续交给其他 Agent 和 CI 使用，形成长期积累。
 
-浏览器操作只是这条流程的基础。OpenRuntime 的重点是让 Agent 能进入真实场景、持续保留开发上下文、使用专项调试能力，并在修改后完成可重复的验证。
+## OpenRuntime 改变了什么
+
+<p align="center">
+  <img src="./assets/openruntime-workflow.zh-CN.svg" width="900" alt="OpenRuntime 工作流" />
+</p>
+
+OpenRuntime 降低了 Web 页面和 Agent 能力之间的连接成本，用户不再需要充当页面、开发工具和 Agent 之间的上下文搬运者。
+
+## 一个真实的 Web 问题调试流程
+
+以用户反馈“点击提交后页面报错”为例：
+
+1. Agent 打开真实 Web 页面，进入对应的用户操作路径并复现问题。
+2. OpenRuntime 获取页面上下文、Console、Network、截图和运行状态等诊断信息。
+3. 如果需要业务信息，Extension 根据当前页面连接已有的 SDK、OpenAPI、CLI 或内部平台。
+4. Coding Agent 根据诊断结果修改源码。
+5. OpenRuntime 回到相同页面场景验证修改结果。
+
+OpenRuntime 的核心不是让 Agent 学会操作浏览器，而是让 Web 页面成为 Agent 可以直接工作的场景入口。
 
 完整流程见 [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)。
 
@@ -58,32 +70,29 @@ OpenRuntime 主要解决四个问题：
 
 | 模块 | 职责 | 使用入口 | 是否需要页面接入 |
 | --- | --- | --- | --- |
-| Browser Authentication | 复用 Chrome Profile、保存/载入浏览器 state、管理加密登录凭据 | `openruntime profiles`、`state`、`auth` | 否 |
-| Browser Session & Diagnostics | 管理页面会话，执行页面操作，读取 Console、Network、截图和代码执行情况 | OpenRuntime CLI | 否 |
-| Extensions | 增加账号与环境准备、技术栈识别、专项诊断、验证命令和 Skill | CLI 命令、Extension API | 否 |
-| Runtime Core | 提供应用内部状态、事件、声明动作和等待条件 | `@openruntime/core`、框架插件 | 是 |
+| Web Context & Diagnostics | 将真实 Web 页面作为 Agent 工作入口，提供页面上下文、浏览器诊断和同场景验证 | OpenRuntime CLI | 否 |
+| Extensions | 连接 Web 页面和团队已有的开发调试能力 | CLI 命令、Extension API | 否 |
+| Runtime Core | 暴露浏览器信息无法稳定表达的应用内部事实 | `@openruntime/core`、框架插件 | 是 |
 
-### Browser Authentication
+### Web Context & Diagnostics
 
-OpenRuntime 组合使用 agent-browser 的三组能力：Profile 复用完整 Chrome 配置，state 保存可迁移的 Cookie 和网页存储，auth 加密保存登录凭据并填写登录页。
+OpenRuntime 将真实 Web 页面作为 Agent 的工作入口，提供页面上下文、页面操作、浏览器诊断以及修改后的同场景验证能力。
 
-[浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
-
-### Browser Session & Diagnostics
-
-`openruntime open` 创建可复用的页面上下文，`--session` 用于标识会话。页面操作和诊断命令包括 `page-snapshot`、`click`、`fill`、`eval`、`wait-eval`、`console`、`network`、`screenshot` 和 `coverage`。
-
-这些能力适用于普通页面，不依赖 Runtime Core。
+这些能力包括当前页面和用户路径，`click`、`fill`、`eval` 等页面操作，以及 Console、Network、Screenshot 和 Coverage 等诊断信息。Agent 可以通过 OpenRuntime CLI 直接调用，不依赖 Runtime Core。
 
 [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 
+完整浏览器流程需要由脚本管理时，见 [使用 OpenRuntime CLI 编写自动化脚本](./docs/cli-automation-scripts.zh-CN.md)。
+
 ### Extensions
 
-Extension 是 OpenRuntime CLI 的扩展机制，用于为 Agent 增加账号与环境准备、技术栈识别、专项诊断和可重复验证能力。一个 Extension 可以提供 CLI 命令、页面打开与识别阶段的 Hook，以及 Agent 可读取的 Skill。
+Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
+
+它可以根据当前页面识别应用、环境和资源，调用已有的 SDK、OpenAPI、CLI 或内部平台，将原本需要人工串联的诊断和验证流程提供给 Agent。
 
 [Extension 使用指南](./docs/extensions.zh-CN.md) · [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md) · [Extension API 参考](./docs/extension-api.zh-CN.md)
 
-### 官方扩展
+#### 官方扩展
 
 专项能力以可选扩展包发布，需要时再单独安装：
 
@@ -104,11 +113,19 @@ openruntime extensions add @openruntime/extension-memory
 
 ### Runtime Core
 
-Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。它只在需要应用内部事实或稳定业务信号时接入，不是使用 OpenRuntime CLI、浏览器登录能力或 Extensions 的前置条件。
+Runtime Core 是可选的页面侧 API。当页面 DOM、Console、Network 等浏览器信息无法稳定表达应用状态时，Runtime Core 可以向 Agent 暴露更细粒度的应用内部事实。
+
+它支持注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。没有 Runtime Core 也可以使用 OpenRuntime，普通页面不需要接入。
 
 [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
 
-完整浏览器流程需要由脚本管理时，见 [使用 OpenRuntime CLI 编写自动化脚本](./docs/cli-automation-scripts.zh-CN.md)。
+## 环境准备
+
+### 浏览器授权
+
+OpenRuntime 可以复用已有的 Chrome Profile 或浏览器状态，也可以使用用户明确提供的加密登录凭据，帮助 Agent 进入真实 Web 环境。这些能力不会绕过授权。
+
+[浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
 
 ## 专项调试场景
 
@@ -117,35 +134,26 @@ Runtime Core 是可选的页面侧 API，用于注册 Target、更新 Snapshot�
 - [录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md)：把一次人工演示转换成可继续检查和验证的脚本草稿。
 - [浏览器连接与多 Runtime](./docs/runtime-connections.zh-CN.md)：在微前端页面中复用会话并选择正确的 Runtime。
 
-## 发版流程
-
-普通功能和修复合并请求不会发布 OpenRuntime。维护者需要手动启动发版准备流程，检查自动创建的发版合并请求，并在 CI 通过后合入。合入后，所有公开包会使用同一个版本发布，同时创建对应的 GitHub Release。
-
-准备、发布、失败重试、本地检查以及临时 OpenRuntime 版 `agent-browser` 的说明见 [OpenRuntime 发版流程](./docs/release.zh-CN.md)。
-
 ## 组成
 
 ```text
                   Coding Agent
                        │
-                修改代码与制定计划
-                       │
                        ▼
-                OpenRuntime CLI
-      ┌──────────────────────────────────┐
-      │ 登录状态与持续会话               │
-      │ 页面操作、Console、Network       │
-      │ 性能、内存、代码执行与调试产物   │
-      │ Extensions 与可重复验证          │
-      └──────────────────────────────────┘
-                       │
-                真实浏览器与页面
-                       │
-             可选的 Runtime Core API
-      ┌──────────────────────────────────┐
-      │ Target / Snapshot / Event        │
-      │ Action / waitFor                 │
-      └──────────────────────────────────┘
+                  OpenRuntime
+       ┌──────────────────────────────────┐
+       │ Web 页面：Agent 的工作入口       │
+       │                                  │
+       │ 页面上下文、浏览器操作与诊断     │
+       │ 修改前后的结果验证               │
+       │                                  │
+       │ Extensions                       │
+       │ 连接团队已有 SDK / API / CLI     │
+       │ 和内部平台                       │
+       │                                  │
+       │ Runtime Core                     │
+       │ 获取应用内部事实                 │
+       └──────────────────────────────────┘
 ```
 
 ## 文档

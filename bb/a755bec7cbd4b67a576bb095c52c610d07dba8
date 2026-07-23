@@ -1,0 +1,37 @@
+AGENTS.md
+  s_de9a8d96742e00::t_1334a702a9066e 5,10-12,61
+README.md
+  s_de9a8d96742e00::t_222e990287ca40 10,21,23,27
+README.zh-CN.md
+  s_90a0f8758a9e06::t_c39f30f914bcc8 10,21,23,27
+docs/agent-devloop.md
+  s_de9a8d96742e00::t_167614f88d142b 5,7
+docs/agent-devloop.zh-CN.md
+  s_de9a8d96742e00::t_cc6e770bb76afa 5,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bba755bec7cbd4b67a576bb095c52c610d07dba8",
+  "prompts": {},
+  "sessions": {
+    "s_90a0f8758a9e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8cce-7849-7e00-afbd-ae55a5e5fee2",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

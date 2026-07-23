@@ -1,0 +1,27 @@
+README.md
+  s_de9a8d96742e00::t_1e11f1a01dbdda 152-155
+README.zh-CN.md
+  s_de9a8d96742e00::t_21cb20634eae4c 154-157
+docs/agent-devloop.md
+  s_de9a8d96742e00::t_da5164e21104b4 7
+docs/agent-devloop.zh-CN.md
+  s_de9a8d96742e00::t_7553ce928f0ac4 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4802d2bd1d9536a2aa63440ad869ac47ee0a6620",
+  "prompts": {},
+  "sessions": {
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

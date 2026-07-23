@@ -1,0 +1,33 @@
+AGENTS.md
+  s_de9a8d96742e00::t_c1f3603d4ba877 5-6,8-10,60-62
+README.md
+  s_de9a8d96742e00::t_81651c1eeb1153 8,10,21,23,25-27,33-39,41,43-45,49,51-56,58,66-68,71,73,75-77,87,89,91,136-147
+README.zh-CN.md
+  s_de9a8d96742e00::t_88d33fec565361 8,10,21,23,25-27,33-39,41,43-45,49,51-56,58,66-68,71,73,75-77,87,89,91,136-147
+docs/agent-devloop.md
+  s_de9a8d96742e00::t_8382c9728df743 5-7,18-20,71-72,134
+docs/agent-devloop.zh-CN.md
+  s_de9a8d96742e00::t_80bd89f1148664 5-7,18-20,71-72,134
+docs/cli-extensions.md
+  s_de9a8d96742e00::t_c0b8c73fe26c1f 5,10-11,19-20
+docs/cli-extensions.zh-CN.md
+  s_de9a8d96742e00::t_ee3d4f99d51e31 5,10-11,19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "467999456fb40f7a13464d6023f49b83a7418e87",
+  "prompts": {},
+  "sessions": {
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

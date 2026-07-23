@@ -6,20 +6,19 @@ import type {
 
 import { runMemoryCheck } from "./memory-check.js";
 
-export async function runMemoryCliCommand(options: CliExtensionRunOptions): Promise<number> {
+export async function runMemoryCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
   if (options.args.command[1] === "check") {
-    return await runMemoryCheckCommand(options.args, options.output, options.openruntime.browser);
+    return await runMemoryCheckCommand(options.args, options.openruntime.browser);
   }
-  return await runRawMemoryCommand(options.args, options.stdout, options.stderr, options.openruntime.browser.raw);
+  return await runRawMemoryCommand(options.args, options.openruntime.browser.raw);
 }
 export { runMemoryCheck } from "./memory-check.js";
 export type * from "./types.js";
 
 async function runMemoryCheckCommand(
   args: ParsedCliArgs,
-  output: CliExtensionRunOptions["output"],
   browser: Parameters<typeof runMemoryCheck>[0]["browser"]
-): Promise<number> {
+): Promise<unknown> {
   if (args.command.length !== 2) {
     throw commandError({
       code: "MEMORY_CHECK_USAGE_INVALID",
@@ -42,7 +41,7 @@ async function runMemoryCheckCommand(
       browser,
       ui: args.options.has("ui")
     });
-    output.ok({
+    return {
       reportPath: result.reportPath,
       baselineSnapshotPath: result.baselineSnapshotPath,
       finalSnapshotPath: result.finalSnapshotPath,
@@ -52,8 +51,7 @@ async function runMemoryCheckCommand(
       deltas: result.report.deltas,
       slopesPerIteration: result.report.slopesPerIteration,
       topFunctions: result.report.topFunctions
-    }, "Memory check completed.");
-    return 0;
+    };
   } catch (error) {
     throw commandError({
       code: "MEMORY_CHECK_FAILED",
@@ -65,20 +63,17 @@ async function runMemoryCheckCommand(
 
 async function runRawMemoryCommand(
   args: ParsedCliArgs,
-  stdout: { write(chunk: string): void },
-  stderr: { write(chunk: string): void },
   run: (args: string[]) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-): Promise<number> {
+): Promise<unknown> {
   if (args.command[1] === "metrics" && !args.options.has("no-gc")) {
     const garbageCollection = await run(["memory", "collect-garbage", "--json"]);
     if (garbageCollection.exitCode !== 0) {
-      pipeResult(garbageCollection, stdout, stderr);
-      return garbageCollection.exitCode;
+      throw browserCommandError(garbageCollection);
     }
   }
   const result = await run(createMemoryBrowserArgs(args));
-  pipeResult(result, stdout, stderr);
-  return result.exitCode;
+  if (result.exitCode !== 0) throw browserCommandError(result);
+  return parseBrowserResult(result.stdout);
 }
 
 function createMemoryBrowserArgs(args: ParsedCliArgs): string[] {
@@ -116,13 +111,26 @@ function appendOption(browserArgs: string[], args: ParsedCliArgs, name: string):
   if (value !== undefined) browserArgs.push(`--${name}`, value);
 }
 
-function pipeResult(
-  result: { stdout: string; stderr: string },
-  stdout: { write(chunk: string): void },
-  stderr: { write(chunk: string): void }
-): void {
-  if (result.stdout.length > 0) stdout.write(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
-  if (result.stderr.length > 0) stderr.write(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
+function browserCommandError(result: { stdout: string; stderr: string }): Error {
+  return commandError({
+    code: "MEMORY_BROWSER_COMMAND_FAILED",
+    kind: "browser",
+    message: result.stderr.trim() || result.stdout.trim() || "Memory browser command failed."
+  });
+}
+
+function parseBrowserResult(stdout: string): unknown {
+  const value = stdout.trim();
+  if (value.length === 0) return null;
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    throw commandError({
+      code: "MEMORY_BROWSER_OUTPUT_INVALID",
+      kind: "browser",
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {

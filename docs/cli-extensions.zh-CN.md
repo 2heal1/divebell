@@ -156,23 +156,22 @@ export default extension;
 
 ### Commands
 
-Command 是 Agent 调用 Extension 的主要入口。它接收已经解析的命令参数、最近页面上下文、结构化输出工具和 Extension API。
+Command 是 Agent 调用 Extension 的主要入口。它接收已经解析的命令参数、最近页面上下文、请求入口和 Extension API。
 
 ```ts
 import type { CliExtensionRunOptions } from "@openruntime/cli";
 
 export async function runFoo(
   options: CliExtensionRunOptions
-): Promise<number> {
+): Promise<unknown> {
   const action = options.args.command[1] ?? "inspect";
   const name = options.args.options.get("name")?.at(-1) ?? "default";
 
-  options.output.ok({ action, name }, "检查完成");
-  return 0;
+  return { action, name };
 }
 ```
 
-返回 `0` 表示成功，返回非 `0` 表示没有完成。一次 Command 只写一个最终结构化结果。`args`、`page`、`output` 和 `openruntime` 的类型与使用方式见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
+成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。`args`、`page`、`fetcher` 和 `openruntime` 的类型与使用方式见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
 ### Hooks
 
@@ -310,7 +309,7 @@ openruntime close
 仓库内的[本地 CLI Extension demo](../demos/cli-extension/README.zh-CN.md)包含可直接运行的 Command、三个 Hook 和测试。它展示了：
 
 - 读取位置参数和选项。
-- 返回成功或需要补充操作的结果。
+- 成功时返回结果，失败时抛出清晰错误。
 - 在页面不存在时给出明确下一步。
 - 读取当前页面和 `open` 注入的标记。
 - 通过 `detectStack` 返回识别结果。

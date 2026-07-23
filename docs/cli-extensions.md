@@ -156,23 +156,22 @@ Tests and CI may call `validateExtension(...)` on the default export. See the [E
 
 ### Commands
 
-A Command is the main way an agent invokes an Extension. It receives parsed command arguments, the latest page context, structured output helpers, and the Extension API.
+A Command is the main way an agent invokes an Extension. It receives parsed command arguments, the latest page context, a request function, and the Extension API.
 
 ```ts
 import type { CliExtensionRunOptions } from "@openruntime/cli";
 
 export async function runFoo(
   options: CliExtensionRunOptions
-): Promise<number> {
+): Promise<unknown> {
   const action = options.args.command[1] ?? "inspect";
   const name = options.args.options.get("name")?.at(-1) ?? "default";
 
-  options.output.ok({ action, name }, "Inspection complete");
-  return 0;
+  return { action, name };
 }
 ```
 
-Return `0` on success and a non-zero value when the Command did not complete. Write exactly one final structured result. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the types and usage of `args`, `page`, `output`, and `openruntime`.
+Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the types and usage of `args`, `page`, `fetcher`, and `openruntime`.
 
 ### Hooks
 
@@ -310,7 +309,7 @@ After a change, return to the same account, environment, and user journey to ver
 The repository includes a [local CLI Extension demo](../demos/cli-extension/README.md) with a runnable Command, all three Hooks, and tests. It demonstrates:
 
 - reading positional arguments and options;
-- returning success or a request for additional input;
+- returning successful results and throwing clear errors;
 - providing a clear next step when no page exists;
 - reading the current page and the marker injected by `open`; and
 - returning a stack detection through `detectStack`.

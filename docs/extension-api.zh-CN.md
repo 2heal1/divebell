@@ -37,7 +37,7 @@ interface OpenRuntimeExtensionCommand {
   name: string;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
-  run(options: CliExtensionRunOptions): Promise<number>;
+  run(options: CliExtensionRunOptions): Promise<unknown>;
 }
 
 interface CliCommandReference {
@@ -54,19 +54,16 @@ interface CliCommandReference {
 - `name` 是挂载到 `openruntime` 下的命令名。
 - `commandReferences` 控制 `openruntime --help` 中展示的用法和说明。
 - `skill.path` 必须是现有 `SKILL.md` 的绝对路径。
-- `run` 返回 `0` 表示成功，返回非 `0` 表示命令没有完成。
+- `run` 成功时直接返回结果，失败时直接抛出错误。
 
 ### `CliExtensionRunOptions`
 
 ```ts
 interface CliExtensionRunOptions {
   args: ParsedCliArgs;
-  stdout: { write(chunk: string): void };
-  stderr: { write(chunk: string): void };
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;
-  output: CommandOutput;
 }
 ```
 
@@ -74,10 +71,7 @@ interface CliExtensionRunOptions {
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | 当前命令解析后的参数。`command` 是命令名和位置参数组成的数组；`options` 是 `Map<string, string[]>`，同名选项可以出现多次。 |
 | `options.page` | `CliExtensionPageContext \| undefined` | 最近一次成功执行 `openruntime open` 后保存的页面上下文。无需页面的命令不要强制检查它；需要页面时必须先处理 `undefined`。 |
-| `options.output` | `CommandOutput` | 输出 Agent 可以稳定解析的结果。成功用 `ok`，需要用户补充选择用 `needsInput`，失败用 `error` 或直接抛出错误。 |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
-| `options.stdout` | `{ write(chunk: string): void }` | 原始标准输出。只用于进度或必须保持纯文本格式的内容；最终结果优先通过 `output` 返回。 |
-| `options.stderr` | `{ write(chunk: string): void }` | 原始错误输出。只用于诊断日志，不要用它代替结构化失败结果。 |
 | `options.fetcher` | `Fetcher` | OpenRuntime 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.openruntime`。 |
 
 ### `options.args`
@@ -138,26 +132,15 @@ interface CliExtensionPageContext {
 - `bridgeUrl` 和 `sessionId` 可能为空，不能据此假设页面一定接入 Runtime Core。
 - 这个对象是最近打开页面的历史上下文。需要确认页面此刻的真实状态时，继续使用 `options.openruntime.browser` 读取。
 
-### `options.output`
+### Command 返回值和错误
+
+Command 成功时直接返回结果。CLI 会把结果放入统一成功输出的 `data` 字段；没有显式返回值时，`data` 为 `null`。
 
 ```ts
-interface CommandOutput {
-  ok<T>(data: T, message?: string): void;
-  needsInput(message: string, choices: readonly unknown[], data?: unknown): void;
-  error(error: unknown): void;
-}
+return { count: 3 };
 ```
 
-```ts
-options.output.ok({ count: 3 }, "检查完成");
-
-options.output.needsInput(
-  "请选择要检查的环境",
-  [{ id: "staging", label: "Staging" }]
-);
-```
-
-一次 Command 只应写一个最终结果。成功时写 `ok` 并返回 `0`；需要补充输入或失败时写对应结果并返回非 `0`。直接抛出的错误会被 CLI 转换成统一错误结果。
+Command 失败时直接抛出错误。CLI 会把错误转换成统一错误输出并返回非零退出码。
 
 ## Skills
 

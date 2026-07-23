@@ -4,7 +4,6 @@ import type { OpenRuntimeExtensionApi } from "../features/extension/types.js";
 import type { Fetcher } from "../features/runtime/types.js";
 import type {
   CliOperationLogStore,
-  CommandOutput,
   ParsedCliArgs
 } from "./shared.js";
 
@@ -19,19 +18,16 @@ export interface CliExtensionPageContext {
 
 export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
-  stdout: { write(chunk: string): void };
-  stderr: { write(chunk: string): void };
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   openruntime: OpenRuntimeExtensionApi;
-  output: CommandOutput;
 }
 
 export interface OpenRuntimeExtensionCommand {
   name: string;
   skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
-  run(options: CliExtensionRunOptions): Promise<number>;
+  run(options: CliExtensionRunOptions): Promise<unknown>;
 }
 
 export interface OpenRuntimeOpenHookOptions {
@@ -78,7 +74,6 @@ export interface OpenRuntimeExtensionDefinition {
 export interface ExtensionCliCommandOptions {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
-  stderr: { write(chunk: string): void };
   fetcher: Fetcher;
   browserRunner: BrowserRunner;
   bridgeStarter: BridgeStarter;

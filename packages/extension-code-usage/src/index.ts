@@ -12,16 +12,16 @@ import {
   waitForCodeUsageReportServer
 } from "./server.js";
 
-export async function runCodeUsageCommand(options: CliExtensionRunOptions): Promise<number> {
+export async function runCodeUsageCommand(options: CliExtensionRunOptions): Promise<unknown> {
   const action = options.args.command[1];
   if (action === "analyze") {
-    return await runAnalyze(options.args, options.output);
+    return await runAnalyze(options.args);
   }
   if (action === "report") {
-    return await runCodeUsageReportCommand(options.args, options.output);
+    return await runCodeUsageReportCommand(options.args);
   }
   if (action === "serve") {
-    return await runCodeUsageServeCommand(options.args, options.stdout);
+    return await runCodeUsageServeCommand(options.args);
   }
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
@@ -47,9 +47,8 @@ export {
 export type * from "./types.js";
 
 async function runAnalyze(
-  args: ParsedCliArgs,
-  output: CliExtensionRunOptions["output"]
-): Promise<number> {
+  args: ParsedCliArgs
+): Promise<unknown> {
   if (args.command.length !== 2) {
     throw commandError({
       code: "CODE_USAGE_ANALYZE_USAGE_INVALID",
@@ -85,14 +84,13 @@ async function runAnalyze(
       ...optionalString("assets", getOptionValue(args, "assets")),
       ...optionalString("output", getOptionValue(args, "output"))
     });
-    output.ok({
+    return {
       chunkMap: result.chunkMap,
       coverage: result.coverage,
       assets: result.assets,
       output: result.output,
       phaseCount: result.phaseCount
-    }, t("Code usage analysis created.", "代码使用分析已生成。"));
-    return 0;
+    };
   } catch (error) {
     throw commandError({
       code: "CODE_USAGE_ANALYSIS_FAILED",
@@ -104,9 +102,8 @@ async function runAnalyze(
 
 export async function runCodeUsageReportCommand(
   args: ParsedCliArgs,
-  output: CliExtensionRunOptions["output"],
   opener: (path: string) => Promise<void> = openHtmlReport
-): Promise<number> {
+): Promise<unknown> {
   if (args.command.length !== 3) {
     throw commandError({
       code: "ANALYSIS_REPORT_INPUT_REQUIRED",
@@ -151,19 +148,15 @@ export async function runCodeUsageReportCommand(
       });
     }
   }
-  output.ok({
+  return {
     ...report,
     opened
-  }, opened
-    ? t("Analysis report created and opened.", "分析报告已生成并打开。")
-    : t("Analysis report created.", "分析报告已生成。"));
-  return 0;
+  };
 }
 
 export async function runCodeUsageServeCommand(
-  args: ParsedCliArgs,
-  stdout: { write(chunk: string): void }
-): Promise<number> {
+  args: ParsedCliArgs
+): Promise<unknown> {
   if (args.command.length !== 3) {
     throw commandError({
       code: "CODE_USAGE_SERVE_INPUT_REQUIRED",
@@ -185,13 +178,8 @@ export async function runCodeUsageServeCommand(
       inputPath,
       ...(port === undefined ? {} : { port })
     });
-    stdout.write(t(
-      `Page experience report started: ${server.url}\n`,
-      `页面体验报告已启动：${server.url}\n`
-    ));
-    stdout.write(t("Press Ctrl+C to stop the server.\n", "按 Ctrl+C 停止服务。\n"));
-    await waitForCodeUsageReportServer(server);
-    return 0;
+    void waitForCodeUsageReportServer(server);
+    return { url: server.url };
   } catch (error) {
     throw commandError({
       code: "CODE_USAGE_SERVE_FAILED",

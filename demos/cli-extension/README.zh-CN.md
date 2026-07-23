@@ -6,7 +6,7 @@ English version: [CLI Extension Local Development Demo](README.md)
 
 - 入口只声明命令和 Hook，实际实现按需加载。
 - 从 `options.args` 读取子命令和重复选项。
-- 通过 `options.output` 返回成功或需要补充操作的结果。
+- 成功时直接返回结果，失败时抛出清晰错误。
 - 检查 `options.page`，并通过 `options.openruntime.browser` 读取当前页面。
 - 使用 `open`、`detectStack` 和 `close` Hook。
 

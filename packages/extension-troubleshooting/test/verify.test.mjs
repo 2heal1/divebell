@@ -29,6 +29,10 @@ function createBrowserRunner(run) {
   return { run };
 }
 
+function commandData(output) {
+  return JSON.parse(output.text()).data;
+}
+
 test("verify passes only when a business target reaches the expected status", async () => {
   const output = createOutput();
   const browserCalls = [];
@@ -108,7 +112,7 @@ test("verify passes only when a business target reaches the expected status", as
     })
   });
 
-  const parsed = JSON.parse(output.text());
+  const parsed = commandData(output);
   assert.equal(exitCode, 0);
   assert.equal(parsed.result.success, true);
   assert.equal(parsed.result.evidence.level, "business");
@@ -191,7 +195,7 @@ test("verify matches localhost and IPv4 loopback runtime URLs", async () => {
     }
   });
 
-  const parsed = JSON.parse(output.text());
+  const parsed = commandData(output);
   assert.equal(exitCode, 0);
   assert.equal(parsed.runtime.runtimeId, "runtime-loopback");
   assert.equal(parsed.result.evidence.businessVerified, true);
@@ -289,7 +293,7 @@ test("verify does not treat a ready Modern route as business success when the pa
     })
   });
 
-  const parsed = JSON.parse(output.text());
+  const parsed = commandData(output);
   assert.equal(exitCode, 1);
   assert.equal(parsed.result.success, false);
   assert.equal(parsed.result.evidence.level, "runtime");
@@ -387,7 +391,7 @@ test("verify reports MF readiness as runtime-layer evidence when no business tar
     }))
   });
 
-  const parsed = JSON.parse(output.text());
+  const parsed = commandData(output);
   assert.equal(exitCode, 1);
   assert.equal(parsed.result.success, false);
   assert.equal(parsed.result.evidence.level, "runtime");
@@ -474,7 +478,7 @@ test("verify suggests an existing business target instead of running a blank-pag
     })
   });
 
-  const parsed = JSON.parse(output.text());
+  const parsed = commandData(output);
   assert.equal(exitCode, 1);
   assert.equal(parsed.result.success, false);
   assert.deepEqual(parsed.result.evidence.businessTargetHints, ["business:orders:risk-panel"]);

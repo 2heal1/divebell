@@ -123,11 +123,30 @@ test("forwards supported memory commands as JSON requests", async () => {
       })
     });
     assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()), { command: argv });
+    assert.deepEqual(JSON.parse(output.text()).data, { command: argv });
   }
   assert.deepEqual(calls, commands.flatMap((argv) => argv[1] === "metrics"
     ? [["memory", "collect-garbage", "--json"], ["memory", "metrics", "--json"]]
     : [[...argv, "--json"]]));
+});
+
+test("throws browser command failures into the shared error formatter", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["memory", "status"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => ({
+      exitCode: 1,
+      stdout: "",
+      stderr: "memory unavailable"
+    }))
+  });
+
+  assert.equal(exitCode, 1);
+  const result = JSON.parse(output.text());
+  assert.equal(result.status, "error");
+  assert.equal(result.error.code, "MEMORY_BROWSER_COMMAND_FAILED");
+  assert.equal(result.message, "memory unavailable");
 });
 
 test("allows memory metrics without garbage collection", async () => {

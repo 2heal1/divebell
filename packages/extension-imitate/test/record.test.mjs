@@ -28,8 +28,7 @@ test("records the current OpenRuntime page without reopening or closing the brow
 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
-    const result = JSON.parse(output.text());
-    assert.equal(result.ok, true);
+    const result = commandData(output);
     assert.equal(result.output, fixture.outputDir);
     for (const file of [
       "manifest.json",
@@ -79,7 +78,7 @@ test("starts and stops a manual recording on the same current page", async () =>
       "--mic"
     ], startOutput), 0);
     assert.equal(startOutput.errorText(), "");
-    assert.equal(JSON.parse(startOutput.text()).status, "prepared");
+    assert.equal(commandData(startOutput).status, "prepared");
 
     await fixture.open("http://app.test/");
 
@@ -99,7 +98,7 @@ test("starts and stops a manual recording on the same current page", async () =>
       fixture.outputDir
     ], stopOutput), 0);
     assert.equal(stopOutput.errorText(), "");
-    const stopResult = JSON.parse(stopOutput.text());
+    const stopResult = commandData(stopOutput);
     assert.equal(stopResult.status, "completed");
     assert.equal(stopResult.script, join(fixture.outputDir, "generated-script.mjs"));
     assert.equal(fixture.browserCalls.some((call) => call.args[0] === "close"), false);
@@ -202,7 +201,7 @@ test("keeps persisted interactions after navigation", async () => {
 
     const stopOutput = createOutput();
     assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
-    assert.equal(JSON.parse(stopOutput.text()).counts.interactions, 3);
+    assert.equal(commandData(stopOutput).counts.interactions, 3);
     assert.deepEqual(readJsonLines(join(fixture.outputDir, "interactions.jsonl")).map((item) => item.type), [
       "input",
       "keydown",
@@ -290,6 +289,10 @@ test("captures audio chunks and transcribes a recording", async () => {
       }
     });
     assert.equal(transcribeExitCode, 0);
+    assert.equal(transcribeOutput.errorText(), "");
+    const transcribeResult = commandData(transcribeOutput);
+    assert.equal(transcribeResult.segmentCount, 1);
+    assert.equal(transcribeResult.wordCount, 1);
     const transcript = readJson(join(fixture.outputDir, "transcript.json"));
     assert.equal(transcript.segments[0].startMs, 1200);
     assert.equal(transcript.segments[0].text, "打开 issues 页面");
@@ -307,7 +310,7 @@ test("uses the current blank page and the default recording output", async () =>
     process.chdir(fixture.tempDir);
     const output = createOutput();
     assert.equal(await fixture.run(["record", "start"], output), 0);
-    const result = JSON.parse(output.text());
+    const result = commandData(output);
     assert.equal(result.status, "prepared");
     assert.match(result.output, /recordings\/openruntime-/);
     assert.equal(result.output.endsWith(".orrec"), true);
@@ -527,6 +530,12 @@ function createOutput() {
     text: () => stdout,
     errorText: () => stderr
   };
+}
+
+function commandData(output) {
+  const result = JSON.parse(output.text());
+  assert.equal(result.status, "ok");
+  return result.data;
 }
 
 function jsonResponse(body) {

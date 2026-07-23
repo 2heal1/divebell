@@ -6,7 +6,7 @@ This demo accompanies [CLI Extension Development](../../docs/cli-extensions.md).
 
 - keeping the entry declaration-only and loading Command and Hook implementations on demand;
 - reading subcommands and repeated options from `options.args`;
-- returning success or a request for additional input through `options.output`;
+- returning successful results directly and throwing clear errors;
 - checking `options.page` and reading the current page through `options.openruntime.browser`; and
 - using the `open`, `detectStack`, and `close` Hooks.
 

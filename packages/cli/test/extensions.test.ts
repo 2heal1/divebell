@@ -153,7 +153,7 @@ test("installs, loads, lists, and removes a self-contained npm extension package
 };\n`, "utf8");
   writeFileSync(join(packageRoot, "run.mjs"), `
 globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ = (globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ ?? 0) + 1;
-export async function run({ output }) { output.ok({ installed: true }); return 0; }
+export async function run() { return { installed: true }; }
 `, "utf8");
   const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
     encoding: "utf8"
@@ -175,7 +175,7 @@ export async function run({ output }) { output.ok({ installed: true }); return 0
   commands: [{
     name: "hello-installed",
     commandReferences: [{ category: "Extensions", usage: "openruntime hello-installed", description: "Runs updated command." }],
-    async run({ output }) { output.ok({ installed: true, updated: true }); return 0; }
+    async run() { return { installed: true, updated: true }; }
   }]
 };\n`, "utf8");
   const updatedTarResult = spawnSync("tar", ["-czf", updatedArchivePath, "-C", join(tempDir, "fixture-updated"), "package"], {
@@ -357,11 +357,14 @@ test("registers a command and merges its help entries", async () => {
       }
     ],
     run: async (options) => {
-      const { args, page, openruntime, output } = options;
+      const { args, page, openruntime } = options;
       const snapshot = await openruntime.snapshot({ id: "target-1" });
       const browserValue = await openruntime.browser.eval("window.answer");
-      output.ok({
+      return {
         command: args.command,
+        hasOutputOption: "output" in options,
+        hasStdoutOption: "stdout" in options,
+        hasStderrOption: "stderr" in options,
         hasBridgeUrlOption: "bridgeUrl" in options,
         hasRuntimeSelectorOption: "runtimeSelector" in options,
         hasEnsureBridgeApi: "ensureBridge" in openruntime,
@@ -371,8 +374,7 @@ test("registers a command and merges its help entries", async () => {
         page,
         snapshot: snapshot.result,
         browserValue
-      });
-      return 0;
+      };
     }
   });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
@@ -443,6 +445,9 @@ test("registers a command and merges its help entries", async () => {
     assert.equal(output.errorText(), "");
     assert.deepEqual(JSON.parse(output.text()), commandOutput("demo ping", {
       command: ["demo", "ping"],
+      hasOutputOption: false,
+      hasStdoutOption: false,
+      hasStderrOption: false,
       hasBridgeUrlOption: false,
       hasRuntimeSelectorOption: false,
       hasEnsureBridgeApi: false,
@@ -476,11 +481,40 @@ test("registers a command and merges its help entries", async () => {
   }
 });
 
+test("formats errors thrown by extension commands", async () => {
+  const extension = createCommandExtension({
+    name: "failing-demo",
+    run: async () => {
+      throw Object.assign(new Error("Demo command failed."), {
+        name: "CommandError",
+        code: "DEMO_FAILED",
+        kind: "runtime",
+        retryable: false
+      });
+    }
+  });
+  const output = createOutput();
+
+  const exitCode = await createOpenRuntimeCli({ extensions: [extension] }).run([
+    "failing-demo"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.errorText(), "");
+  const result = JSON.parse(output.text());
+  assert.equal(result.status, "error");
+  assert.equal(result.error.code, "DEMO_FAILED");
+  assert.equal(result.message, "Demo command failed.");
+});
+
 test("exposes memory capture commands to CLI extensions", async () => {
   const extension = createCommandExtension({
     name: "memory-demo",
-    run: async ({ openruntime, output }) => {
-      output.ok({
+    run: async ({ openruntime }) => {
+      return {
         metrics: await openruntime.browser.memory.metrics(),
         status: await openruntime.browser.memory.status(),
         started: await openruntime.browser.memory.sampling.start({ samplingInterval: 1024 }),
@@ -497,8 +531,7 @@ test("exposes memory capture commands to CLI extensions", async () => {
         }),
         garbageCollected: await openruntime.browser.memory.collectGarbage(),
         cancelled: await openruntime.browser.memory.cancel()
-      });
-      return 0;
+      };
     }
   });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
@@ -550,8 +583,8 @@ test("exposes memory capture commands to CLI extensions", async () => {
 test("exposes coverage commands to CLI extensions", async () => {
   const extension = createCommandExtension({
     name: "coverage-demo",
-    run: async ({ openruntime, output }) => {
-      output.ok({
+    run: async ({ openruntime }) => {
+      return {
         status: await openruntime.browser.coverage.status(),
         started: await openruntime.browser.coverage.start({ callCount: true }),
         taken: await openruntime.browser.coverage.take({
@@ -564,8 +597,7 @@ test("exposes coverage commands to CLI extensions", async () => {
           label: "orders"
         }),
         cancelled: await openruntime.browser.coverage.cancel()
-      });
-      return 0;
+      };
     }
   });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
@@ -702,14 +734,13 @@ test("commands can wait for targets in the opened page context", async () => {
         description: "Waits for a demo target."
       }
     ],
-    run: async ({ openruntime, output }) => {
+    run: async ({ openruntime }) => {
       const result = await openruntime.waitFor("business:demo", "ready", {
         timeout: 250
       });
-      output.ok({
+      return {
         result
-      });
-      return 0;
+      };
     }
   });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
@@ -837,10 +868,9 @@ test("loads external extensions from the configured directory", async () => {
       "    command: 'openruntime foo ping',",
       "    description: 'Runs Foo example.'",
       "  }],",
-      "  async run({ args, stdout, openruntime }) {",
+      "  async run({ args, openruntime }) {",
       "    const value = await openruntime.browser.eval('window.foo');",
-      "    stdout.write(`${JSON.stringify({ command: args.command, value })}\\n`);",
-      "    return 0;",
+      "    return { command: args.command, value };",
       "  }",
       "  }],",
       "};",
@@ -889,12 +919,12 @@ test("loads external extensions from the configured directory", async () => {
 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("foo ping", {
       command: ["foo", "ping"],
       value: {
         ok: true
       }
-    });
+    }));
 
     const skillOutput = createOutput();
     const skillExitCode = await loaded.cli.run(["foo", "--skill"], {

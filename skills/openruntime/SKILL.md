@@ -62,8 +62,9 @@ OpenRuntime 就预防性读取所有参考资料，也不要为了使用 OpenRun
 
 ## 共同规则
 
-- 需要确认当前命令、参数、示例或扩展命令时，运行当前环境实际可用的
-  `openruntime --help`、`opr --help` 或项目内等价命令。以实际 help 为准，不根据旧文档猜测。
+- 需要确认当前命令或扩展命令时，先运行当前环境实际可用的
+  `openruntime --help`、`opr --help` 或项目内等价命令；需要参数和详细用法时，再运行
+  `openruntime <command> --help`。以实际 help 为准，不根据旧文档猜测。
 - 扩展命令出现在 help 的 `Extensions` 或 `External Extensions`。只在命令描述明确匹配任务时使用。
 - 如果 help 显示某个命令有可用 skill，先运行 `openruntime <command> --skill` 获取路径，完整读取
   并遵循后再执行该命令。命令 skill 只约束这段子任务。

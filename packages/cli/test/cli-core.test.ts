@@ -72,7 +72,7 @@ test("defines and validates extension exports", () => {
   );
 });
 
-test("prints explicit runtime resource help", async () => {
+test("prints compact top-level help", async () => {
   const output = createOutput();
   const exitCode = await runCli(["--help"], {
     stdout: output.stdout,
@@ -81,27 +81,26 @@ test("prints explicit runtime resource help", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
-  assert.match(output.text(), /openruntime snapshot .*--id <id>/);
-  assert.match(output.text(), /openruntime events .*--target-id <id>.*--limit <n>.*--query <keyword>/);
-  assert.match(output.text(), /openruntime actions .*--name <name>/);
-  assert.match(output.text(), /openruntime open <url> .*--ui/);
-  assert.match(output.text(), /openruntime profiles/);
-  assert.match(output.text(), /openruntime state save <path> \[--url <url>\]/);
-  assert.match(output.text(), /openruntime state load <path>/);
-  assert.match(output.text(), /openruntime auth save <name>/);
-  assert.match(output.text(), /openruntime auth login <name>/);
+  assert.match(output.text(), /^Usage: openruntime <command> \[options\]/);
+  assert.match(output.text(), /openruntime snapshot - Read the current snapshot state/);
+  assert.match(output.text(), /openruntime open - Open a page/);
+  assert.match(output.text(), /openruntime profiles - List Chrome profiles/);
+  assert.match(output.text(), /openruntime state - Inspect and manage/);
+  assert.match(output.text(), /openruntime auth - Inspect or delete/);
+  assert.match(output.text(), /openruntime extensions - Install, list, update, or remove/);
+  assert.match(output.text(), /Run `openruntime <command> --help` for detailed usage\./);
+  assert.doesNotMatch(output.text(), /openruntime extensions (add|list|update|remove)/);
+  assert.doesNotMatch(output.text(), /openruntime state (save|load)/);
+  assert.doesNotMatch(output.text(), /openruntime auth (save|login)/);
+  assert.doesNotMatch(output.text(), /--id <id>/);
+  assert.doesNotMatch(output.text(), /--target-id <id>/);
+  assert.doesNotMatch(output.text(), /--ui/);
   assert.doesNotMatch(output.text(), /openruntime auth export/);
   assert.doesNotMatch(output.text(), /openruntime auth import/);
   assert.doesNotMatch(output.text(), /openruntime export-profile /);
   assert.doesNotMatch(output.text(), /openruntime import-profile /);
   assert.doesNotMatch(output.text(), /openruntime profile /);
-  assert.match(output.text(), /openruntime network \[--url <query>\]/);
-  assert.match(output.text(), /openruntime console \[--level <level>\] \[--query <keyword>\] \[--limit <n>\]/);
   assert.doesNotMatch(output.text(), /openruntime verify /);
-  assert.match(output.text(), /openruntime wait-for .*--next/);
-  assert.match(output.text(), /openruntime snapshot .* - Read the current snapshot state from the selected runtime\./);
-  assert.match(output.text(), /openruntime wait-for .* - Wait for a target to reach a status/);
-  assert.match(output.text(), /openruntime extensions list/);
   assert.match(output.text(), /openruntime stack/);
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
@@ -111,6 +110,37 @@ test("prints explicit runtime resource help", async () => {
   assert.doesNotMatch(output.text(), /Examples:/);
   assert.doesNotMatch(output.text(), /Skill: available/);
   assert.doesNotMatch(output.text(), /\p{Script=Han}/u);
+});
+
+test("prints progressively scoped command help", async () => {
+  const extensionsOutput = createOutput();
+  assert.equal(await runCli(["extensions", "--help"], {
+    stdout: extensionsOutput.stdout,
+    stderr: extensionsOutput.stderr
+  }), 0);
+  assert.equal(extensionsOutput.errorText(), "");
+  assert.match(extensionsOutput.text(), /openruntime extensions add <npm-package>/);
+  assert.match(extensionsOutput.text(), /openruntime extensions list/);
+  assert.match(extensionsOutput.text(), /openruntime extensions update <package>/);
+  assert.match(extensionsOutput.text(), /openruntime extensions remove <package>/);
+  assert.doesNotMatch(extensionsOutput.text(), /openruntime snapshot/);
+
+  const addOutput = createOutput();
+  assert.equal(await runCli(["extensions", "add", "--help"], {
+    stdout: addOutput.stdout,
+    stderr: addOutput.stderr
+  }), 0);
+  assert.equal(addOutput.errorText(), "");
+  assert.match(addOutput.text(), /openruntime extensions add <npm-package>/);
+  assert.doesNotMatch(addOutput.text(), /openruntime extensions (list|update|remove)/);
+
+  const stateOutput = createOutput();
+  assert.equal(await runCli(["state", "list", "--help"], {
+    stdout: stateOutput.stdout,
+    stderr: stateOutput.stderr
+  }), 0);
+  assert.match(stateOutput.text(), /openruntime state <list\|show\|rename\|clear\|clean>/);
+  assert.doesNotMatch(stateOutput.text(), /openruntime state (save|load)/);
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -143,8 +173,23 @@ test("prints help for command help without executing the command", async () => {
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
     assert.match(output.text(), /Usage:/);
+    assert.match(output.text(), new RegExp(`openruntime ${command}(?: |$)`));
+    assert.doesNotMatch(output.text(), /openruntime extensions/);
     assert.equal(touchedSideEffect, false);
   }
+});
+
+test("rejects unknown scoped help", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["unknown", "--help"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.errorText(), "");
+  assert.equal(JSON.parse(output.text()).error.code, "CLI_UNKNOWN_COMMAND");
+  assert.doesNotMatch(output.text(), /Bridge and Browser:/);
 });
 
 test("generates CLI reference markdown from the help table", () => {

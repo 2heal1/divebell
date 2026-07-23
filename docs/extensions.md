@@ -66,7 +66,7 @@ OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
 
 ## Use an Extension
 
-Check `openruntime --help` for a command's purpose and arguments, then select only the capability that matches the current task. Do not run every diagnostic without a reason.
+Use `openruntime --help` to discover the available top-level commands, then run `openruntime <command> --help` for that command's detailed usage and arguments. Select only the capability that matches the current task; do not run every diagnostic without a reason.
 
 Page commands generally operate on the page most recently opened with `openruntime open <url>`:
 

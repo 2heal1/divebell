@@ -66,7 +66,7 @@ OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
 
 ## 使用 Extension
 
-先通过 `openruntime --help` 确认命令的用途和参数，再按当前任务选择匹配的能力，不要无目的地运行所有诊断命令。
+先通过 `openruntime --help` 发现可用的一级命令，再通过 `openruntime <command> --help` 查看该命令的详细用法和参数。按当前任务选择匹配的能力，不要无目的地运行所有诊断命令。
 
 页面类命令通常操作最近一次通过 `openruntime open <url>` 打开的页面：
 

@@ -1,7 +1,7 @@
 import { parseCliArgs } from "./utils/args.js";
 import { createDefaultBrowserRunner } from "./features/browser/runner.js";
 import { createDetachedBridgeStarter } from "./features/bridge/process.js";
-import { createHelpText } from "./commands/help.js";
+import { createCommandHelpText, createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
 import { createError, writeErrorOutput } from "./utils/output.js";
 import { runAgentBrowserAuthCommand, runAgentBrowserProfilesCommand, runAgentBrowserStateCommand } from "./commands/browser-auth.js";
@@ -35,11 +35,28 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
   const args = parseCliArgs(argv);
 
   try {
-    if (args.command.length === 0 || hasOption(args, "help")) {
+    if (args.command.length === 0) {
       stdout.write(`${createHelpText({
         commandReferences: config.commandReferences,
         commandSkillReferences: config.commandSkillReferences
       })}\n`);
+      return 0;
+    }
+
+    if (hasOption(args, "help")) {
+      const helpText = createCommandHelpText(args.command, {
+        commandReferences: config.commandReferences,
+        commandSkillReferences: config.commandSkillReferences
+      });
+      if (helpText === undefined) {
+        throw createError({
+          code: "CLI_UNKNOWN_COMMAND",
+          kind: "validation",
+          message: `Unknown command "${args.command.join(" ")}".`,
+          hint: "Run `openruntime --help` to see available commands."
+        });
+      }
+      stdout.write(`${helpText}\n`);
       return 0;
     }
 

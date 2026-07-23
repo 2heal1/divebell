@@ -20,10 +20,16 @@ openruntime --help
 pnpm exec openruntime --help
 ```
 
-也可以使用等价的 `opr --help`。以实际 help 为准：
+也可以使用等价的 `opr --help`。顶层 help 只负责发现一级命令；找到匹配的命令后继续运行：
 
-- 从命令描述判断是否匹配当前任务。
-- 从 usage 和描述确认参数及调用顺序；help 额外提供示例时再参考示例。
+```bash
+openruntime <command> --help
+```
+
+以实际 help 为准：
+
+- 从顶层命令描述判断是否匹配当前任务。
+- 从命令自己的 usage 和描述确认参数及调用顺序；help 额外提供示例时再参考示例。
 - 从 `External Extensions` 发现当前机器或项目注入的扩展命令。
 - 只在描述明确匹配时使用扩展命令，不根据命令名、文件路径或记忆猜测。
 

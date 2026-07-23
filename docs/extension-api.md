@@ -52,7 +52,7 @@ interface CliCommandReference {
 ```
 
 - `name` is the command name mounted under `openruntime`.
-- `commandReferences` controls the usage and description shown by `openruntime --help`.
+- `commandReferences` controls the detailed usage and description shown by `openruntime <command> --help`. The top-level `openruntime --help` lists only the command name and a short summary.
 - `skill.path` must be an absolute path to an existing `SKILL.md`.
 - `run` returns the result directly on success and throws an error on failure.
 

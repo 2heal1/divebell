@@ -52,7 +52,7 @@ interface CliCommandReference {
 ```
 
 - `name` 是挂载到 `openruntime` 下的命令名。
-- `commandReferences` 控制 `openruntime --help` 中展示的用法和说明。
+- `commandReferences` 控制 `openruntime <command> --help` 中展示的详细用法和说明。顶层 `openruntime --help` 只展示命令名和简要说明。
 - `skill.path` 必须是现有 `SKILL.md` 的绝对路径。
 - `run` 成功时直接返回结果，失败时直接抛出错误。
 

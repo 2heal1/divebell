@@ -379,8 +379,17 @@ test("registers a command and merges its help entries", async () => {
   });
   const cli = createOpenRuntimeCli({ extensions: [extension] });
 
-  assert.match(cli.createHelpText(), /openruntime demo ping/);
+  assert.match(cli.createHelpText(), /openruntime demo - Runs a demo command\./);
+  assert.doesNotMatch(cli.createHelpText(), /openruntime demo ping/);
   assert.deepEqual(cli.getCommandReferences().at(-1), extension.commands?.[0]?.commandReferences?.[0]);
+
+  const helpOutput = createOutput();
+  assert.equal(await cli.run(["demo", "--help"], {
+    stdout: helpOutput.stdout,
+    stderr: helpOutput.stderr
+  }), 0);
+  assert.match(helpOutput.text(), /openruntime demo ping \[--url <url>\] - Runs a demo command\./);
+  assert.doesNotMatch(helpOutput.text(), /openruntime snapshot/);
 
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
@@ -683,11 +692,23 @@ test("shows and resolves command skills without running commands", async () => {
     });
 
     const help = cli.createHelpText();
-    assert.match(help, /openruntime demo ping - Runs demo\./);
-    assert.match(help, /openruntime plain ping - Runs without a skill\./);
+    assert.match(help, /openruntime demo - Runs demo\./);
+    assert.match(help, /openruntime plain - Runs without a skill\./);
+    assert.doesNotMatch(help, /openruntime demo ping/);
+    assert.doesNotMatch(help, /openruntime plain ping/);
     assert.match(help, /Skill: available for demo\./);
     assert.match(help, /Skill usage: `openruntime <command> --skill`/);
     assert.doesNotMatch(help, /Examples:/);
+
+    const commandHelpOutput = createOutput();
+    assert.equal(await cli.run(["demo", "--help"], {
+      stdout: commandHelpOutput.stdout,
+      stderr: commandHelpOutput.stderr
+    }), 0);
+    assert.match(commandHelpOutput.text(), /openruntime demo ping - Runs demo\./);
+    assert.match(commandHelpOutput.text(), /Skill: available via `openruntime demo --skill`\./);
+    assert.doesNotMatch(commandHelpOutput.text(), /openruntime plain/);
+    assert.equal(runCount, 0);
 
     const skillOutput = createOutput();
     const skillExitCode = await cli.run(["demo", "--skill"], {
@@ -895,7 +916,8 @@ test("loads external extensions from the configured directory", async () => {
       }
     ]);
     assert.match(loaded.cli.createHelpText(), /External Extensions/);
-    assert.match(loaded.cli.createHelpText(), /openruntime foo ping - Runs Foo\./);
+    assert.match(loaded.cli.createHelpText(), /openruntime foo - Runs Foo\./);
+    assert.doesNotMatch(loaded.cli.createHelpText(), /openruntime foo ping/);
     assert.doesNotMatch(loaded.cli.createHelpText(), /\[external: foo\]/);
     assert.match(loaded.cli.createHelpText(), /Runs Foo\./);
     assert.doesNotMatch(loaded.cli.createHelpText(), /Runs Foo example\./);
@@ -944,9 +966,21 @@ test("loads external extensions from the configured directory", async () => {
     assert.equal(helpExitCode, 0);
     assert.equal(helpOutput.errorText(), "");
     assert.match(helpOutput.text(), /External Extensions:/);
-    assert.match(helpOutput.text(), /openruntime foo ping - Runs Foo\./);
+    assert.match(helpOutput.text(), /openruntime foo - Runs Foo\./);
+    assert.doesNotMatch(helpOutput.text(), /openruntime foo ping/);
     assert.match(helpOutput.text(), /Skill: available for foo\./);
     assert.doesNotMatch(helpOutput.text(), /Examples:/);
+
+    const commandHelpOutput = createOutput();
+    const commandHelpExitCode = await loaded.cli.run(["foo", "--help"], {
+      stdout: commandHelpOutput.stdout,
+      stderr: commandHelpOutput.stderr
+    });
+    assert.equal(commandHelpExitCode, 0);
+    assert.equal(commandHelpOutput.errorText(), "");
+    assert.match(commandHelpOutput.text(), /openruntime foo ping - Runs Foo\./);
+    assert.match(commandHelpOutput.text(), /Skill: available via `openruntime foo --skill`\./);
+    assert.doesNotMatch(commandHelpOutput.text(), /openruntime extensions/);
   } finally {
     rmSync(tempDir, {
       recursive: true,

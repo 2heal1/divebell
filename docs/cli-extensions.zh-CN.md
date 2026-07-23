@@ -289,10 +289,13 @@ OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
   openruntime --help
 
 OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  openruntime foo --help
+
+OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
   openruntime foo inspect --name demo
 ```
 
-先确认 `--help` 中出现了 Command，再运行无需页面的路径。实现文件通过动态导入加载，因此修改后直接重跑命令即可，不需要常驻开发进程。
+先确认顶层 help 中出现了 Command，并通过该 Command 自己的 help 检查详细用法，再运行无需页面的路径。实现文件通过动态导入加载，因此修改后直接重跑命令即可，不需要常驻开发进程。
 
 ### 验证页面路径
 
@@ -334,13 +337,14 @@ npm pack --dry-run
 openruntime extensions add ./scope-my-extension-1.0.0.tgz
 openruntime extensions list
 openruntime --help
+openruntime foo --help
 ```
 
 ## 验证 Extension
 
 交付前至少确认：
 
-1. `openruntime --help` 能发现 Command，入口没有加载错误。
+1. `openruntime --help` 能发现 Command，入口没有加载错误，并且 `openruntime <command> --help` 能展示详细用法。
 2. 运行无关命令时，实际实现文件没有被提前加载。
 3. 无需页面的 Command 在没有执行 `openruntime open` 时也能运行。
 4. 需要页面的 Command 在没有页面时返回明确下一步。

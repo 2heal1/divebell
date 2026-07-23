@@ -172,20 +172,36 @@ export const cliCommandReferences: CliCommandReference[] = [
 import type { CliReferenceCollection } from "../types/commands.js";
 export type { CliCommandSkillReference, CliReferenceCollection } from "../types/commands.js";
 
+const HELP_CATEGORIES: CliCommandReference["category"][] = [
+  "Bridge and Browser",
+  "Runtime",
+  "Extensions",
+  "External Extensions"
+];
+
+const TOP_LEVEL_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  console: "Read browser console logs.",
+  eval: "Run a script in the current page.",
+  extensions: "Install, list, update, or remove OpenRuntime extensions.",
+  "wait-for": "Wait for a target to reach a status."
+};
+
 export function createHelpText(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
   const commandSkillReferences = references.commandSkillReferences ?? [];
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
-  const commandLines = categories.flatMap((category) => {
+  const commandLines = HELP_CATEGORIES.flatMap((category) => {
     const commands = commandReferences.filter((command) => command.category === category);
     if (commands.length === 0) return [];
+    const topLevelCommands = collectTopLevelCommands(commands);
     const skillCommands = commandSkillReferences
       .filter((reference) => reference.category === category)
       .map((reference) => reference.command);
     return [
       "",
       `${category}:`,
-      ...commands.map((command) => `  ${command.usage} - ${command.description}`),
+      ...topLevelCommands.map((command) =>
+        `  openruntime ${command.name} - ${command.description}`
+      ),
       ...(skillCommands.length === 0 ? [] : [
         "",
         `  Skill: available for ${skillCommands.join(", ")}.`,
@@ -195,14 +211,45 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
   });
 
   return [
+    "Usage: openruntime <command> [options]",
+    ...commandLines,
+    "",
+    "Run `openruntime <command> --help` for detailed usage."
+  ].join("\n");
+}
+
+export function createCommandHelpText(
+  commandPath: readonly string[],
+  references: CliReferenceCollection = {}
+): string | undefined {
+  if (commandPath.length === 0) return createHelpText(references);
+
+  const commandReferences = references.commandReferences ?? cliCommandReferences;
+  const matchingReferences = commandReferences.filter((reference) =>
+    matchesCommandPath(reference.usage, commandPath)
+  );
+  if (matchingReferences.length === 0) return undefined;
+
+  const commandSkillReferences = references.commandSkillReferences ?? [];
+  const commandName = commandPath[0];
+  const hasSkill = commandName !== undefined && commandSkillReferences.some(
+    (reference) => reference.command === commandName
+  );
+
+  return [
     "Usage:",
-    ...commandLines
+    ...matchingReferences.map((reference) =>
+      `  ${reference.usage} - ${reference.description}`
+    ),
+    ...(hasSkill ? [
+      "",
+      `Skill: available via \`openruntime ${commandName} --skill\`.`
+    ] : [])
   ].join("\n");
 }
 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
-  const categories: CliCommandReference["category"][] = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const categoryLabels: Record<CliCommandReference["category"], string> = {
     "Bridge and Browser": "Bridge and Browser",
     Runtime: "Runtime",
@@ -224,7 +271,7 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
     "## Commands"
   ];
 
-  for (const category of categories) {
+  for (const category of HELP_CATEGORIES) {
     const categoryCommands = commandReferences.filter((item) => item.category === category);
     if (categoryCommands.length === 0) continue;
     lines.push("", `### ${categoryLabels[category]}`, "");
@@ -234,4 +281,75 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function collectTopLevelCommands(
+  references: readonly CliCommandReference[]
+): Array<{ name: string; description: string }> {
+  const grouped = new Map<string, CliCommandReference[]>();
+  for (const reference of references) {
+    const commandName = getUsageTokens(reference.usage)[0];
+    if (commandName === undefined || isUsagePlaceholder(commandName)) continue;
+    const existing = grouped.get(commandName);
+    if (existing === undefined) {
+      grouped.set(commandName, [reference]);
+    } else {
+      existing.push(reference);
+    }
+  }
+
+  return [...grouped].map(([name, commandReferences]) => ({
+    name,
+    description: TOP_LEVEL_DESCRIPTIONS[name] ??
+      selectTopLevelDescription(commandReferences)
+  }));
+}
+
+function selectTopLevelDescription(
+  references: readonly CliCommandReference[]
+): string {
+  return [...references]
+    .sort((left, right) =>
+      countLiteralCommandTokens(left.usage) - countLiteralCommandTokens(right.usage)
+    )[0]?.description ?? "Show command help."
+}
+
+function countLiteralCommandTokens(usage: string): number {
+  let count = 0;
+  for (const token of getUsageTokens(usage)) {
+    if (isUsagePlaceholder(token)) break;
+    count += 1;
+  }
+  return count;
+}
+
+function matchesCommandPath(usage: string, commandPath: readonly string[]): boolean {
+  const usageTokens = getUsageTokens(usage);
+  if (commandPath.length > usageTokens.length) return false;
+
+  return commandPath.every((commandToken, index) => {
+    const usageToken = usageTokens[index];
+    if (usageToken === undefined || usageToken.startsWith("--")) return false;
+    if (!isUsagePlaceholder(usageToken)) return usageToken === commandToken;
+
+    const alternatives = getPlaceholderAlternatives(usageToken);
+    return alternatives === undefined || alternatives.includes(commandToken);
+  });
+}
+
+function getUsageTokens(usage: string): string[] {
+  const tokens = usage.trim().split(/\s+/);
+  if (tokens[0] !== "openruntime") return [];
+  return tokens.slice(1);
+}
+
+function isUsagePlaceholder(token: string): boolean {
+  return token.startsWith("<") || token.startsWith("[") || token.startsWith("--");
+}
+
+function getPlaceholderAlternatives(token: string): string[] | undefined {
+  if (!token.startsWith("<") || !token.includes("|")) return undefined;
+  const endIndex = token.indexOf(">");
+  if (endIndex < 0) return undefined;
+  return token.slice(1, endIndex).split("|");
 }

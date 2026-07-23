@@ -297,10 +297,13 @@ OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
   openruntime --help
 
 OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  openruntime foo --help
+
+OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
   openruntime foo inspect --name demo
 ```
 
-Confirm that `--help` lists the Command before running a path that does not require a page. Implementations are dynamically imported, so rerun the command after a change; no persistent development process is required.
+Confirm that the top-level help lists the Command and its command-specific help shows the detailed usage before running a path that does not require a page. Implementations are dynamically imported, so rerun the command after a change; no persistent development process is required.
 
 ### Verify the page path
 
@@ -342,13 +345,14 @@ Install the local `.tgz` for final verification before publishing:
 openruntime extensions add ./scope-my-extension-1.0.0.tgz
 openruntime extensions list
 openruntime --help
+openruntime foo --help
 ```
 
 ## Verify the Extension
 
 Before delivery, confirm at least the following:
 
-1. `openruntime --help` discovers the Command without an entry-loading error.
+1. `openruntime --help` discovers the Command without an entry-loading error, and `openruntime <command> --help` shows its detailed usage.
 2. Unrelated commands do not load implementation modules early.
 3. Commands that do not need a page run without a prior `openruntime open`.
 4. Commands that need a page return a clear next step when no page exists.

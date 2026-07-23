@@ -1,0 +1,53 @@
+.changeset/record-current-page.md
+  s_334f9a01d7a3b8::t_daaeec0b96282d 1-6
+docs/record-browser-workflows.md
+  s_334f9a01d7a3b8::t_4e9990476596e2 45,52-54
+docs/record-browser-workflows.zh-CN.md
+  s_334f9a01d7a3b8::t_95969867a263a7 45,52-54
+packages/cli/test/extensions.test.ts
+  s_334f9a01d7a3b8::t_70715263396226 368,448-449
+packages/extension-imitate/README.md
+  s_334f9a01d7a3b8::t_7a7e7bcd5eb7bb 13,19-25,31-37,63,67
+packages/extension-imitate/src/capture.ts
+  s_334f9a01d7a3b8::t_c4e4bc1330ec28 13-21,29-30,151,235,238-239,241
+packages/extension-imitate/src/extension.ts
+  s_334f9a01d7a3b8::t_01b407ebf0351d 11-12,16-17,21-22,36-39
+packages/extension-imitate/src/index.ts
+  s_334f9a01d7a3b8::t_031f3ca319dc09 2,4,8,30-31,49-52,56-58,65,80,89,94-100,104,107,113,116-123,133-135,295,299-300,303-310,322,338-339,371-372,375,385-391,434,528,534-618
+packages/extension-imitate/src/open.ts
+  s_334f9a01d7a3b8::t_31a7ebaae019b1 1-101
+packages/extension-imitate/src/script.ts
+  s_334f9a01d7a3b8::t_234194413c1899 28-32,50-51,70,77,87-88
+packages/extension-imitate/src/session.ts
+  s_334f9a01d7a3b8::t_f090b3e70aaa36 1,6,12-14,33-38,40,81-96
+packages/extension-imitate/src/types.ts
+  s_334f9a01d7a3b8::t_7bdc6091eb4735 1,16,36-39,67-72
+packages/extension-imitate/test/record.test.mjs
+  s_334f9a01d7a3b8::t_5e80865d6f048e 13-14,18-19,22,26-27,33-46,48-50,53-56,58,62-70,74,78,80,82-86,89-92,94-95,99-100,104-106,110,113,116-118,120,122,127-134,136,142-145,147,151-154,158-159,161,204-209,211,214,216,221,226,230,234,236-237,239-242,253,263-264,268,274,278,281,287-288,293,298,302-303,307-309,311,314-316,318-319,322-357,361-520,525-526,535,539,542-543,545-552,555-561,563,577-584,586-592,599-602,604-606,609-617
+skills/record-openruntime-workflow/SKILL.md
+  s_334f9a01d7a3b8::t_c05c01dfcb1332 20,23,46,52,54,57,60,62-68,79,93-100
+skills/record-openruntime-workflow/references/openruntime-cli.md
+  s_334f9a01d7a3b8::t_b0c2568851f0b0 29,31
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_334f9a01d7a3b8::t_4db6ec376dbcba 127
+skills/record-openruntime-workflow/scripts/probe-openruntime-cli.mjs
+  s_334f9a01d7a3b8::t_9c134f9df82d10 131,135,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "fd42a3b031ab258fc1d6547ebeca14df712b7dfe",
+  "prompts": {},
+  "sessions": {
+    "s_334f9a01d7a3b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8973-8d68-74d1-9029-9fdacf28e15d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

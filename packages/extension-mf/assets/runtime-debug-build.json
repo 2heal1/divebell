@@ -1,7 +1,9 @@
 {
-  "packageName": "@module-federation/runtime",
-  "packageVersion": "2.8.0",
-  "sourceRevision": "641a0b6edc0f30865586e7d021522bfa27051c4c",
-  "debugEntry": "./dist/debug/index.iife.js",
-  "bundleSha256": "a0a4db331e8c3e8264af22464d155b276ca016c77b4747283a8546c59feb5d48"
+  "runtimePackageName": "@module-federation/runtime",
+  "runtimePackageVersion": "0.0.0-feat-operate-openruntime-20260722064424",
+  "packageName": "@module-federation/runtime-core",
+  "packageVersion": "0.0.0-feat-operate-openruntime-20260722064424",
+  "sourceRevision": "54e733342953e3f384282078aa518c7f87cd1724",
+  "publicEntry": "./dist/index.js",
+  "bundleSha256": "e3be44985366d0371588a82459f6655edd0e723b11213322ffcdf7a42a940313"
 }

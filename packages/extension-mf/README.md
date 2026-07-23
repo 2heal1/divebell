@@ -39,27 +39,34 @@ This behavior is enabled by default. Disable the whole MF debug injection for on
 openruntime open https://example.com --mf-debug=false
 ```
 
-The published package contains both browser bundles and has no runtime npm dependencies. The target project does not need to install the MF Runtime or Observability Plugin for injected mode. If the application already exposes a compatible Observability reader, that application reader is used instead. If the same debug Runtime version or global Observability Plugin is already present, the extension keeps it instead of adding a duplicate.
+The published package contains both browser bundles and has no runtime npm dependencies. The target project does not need to add these preview packages to its own dependencies. If the application already exposes a compatible Observability reader, that application reader is used instead. If the same debug Runtime version or global Observability Plugin is already present, the extension keeps it instead of adding a duplicate.
 
 ## Sync the browser collector
 
-The Observability IIFE is generated from the plugin package's public `./chrome-devtool` export. The matching debug Runtime comes from the official output of the Runtime package's `build-debug` script. Build the Runtime debug output first, then pass both local package roots:
+The checked-in Runtime, Runtime Core, and Observability Plugin all use the same preview release:
 
 ```sh
-pnpm --dir /path/to/module-federation/packages/runtime run build-debug
-pnpm run sync:mf-observability -- \
-  --package-root /path/to/module-federation/packages/observability-plugin \
-  --runtime-package-root /path/to/module-federation/packages/runtime
+0.0.0-feat-operate-openruntime-20260722064424
 ```
 
-The sync command requires both packages to come from the same repository commit. It resolves the public Observability entry, includes the official debug Runtime output, updates both installer versions from their package manifests, and records the package versions, source commit, entries, and bundle hashes. It does not read a private source entry.
+Install that exact set in a temporary tooling project, then pass all three package roots:
+
+```sh
+pnpm run sync:mf-observability -- \
+  --package-root /path/to/node_modules/@module-federation/observability-plugin \
+  --runtime-package-root /path/to/node_modules/@module-federation/runtime \
+  --runtime-core-package-root /path/to/node_modules/@module-federation/runtime-core
+```
+
+The sync command rejects the input unless all three package versions are exactly equal to that preview release and Runtime depends on that exact Runtime Core version. It builds the injected debug class from Runtime Core's public entry and the global plugin from Observability Plugin's public Chrome entry. The preview packages were published from MF commit `54e733342953e3f384282078aa518c7f87cd1724`.
 
 Use check mode in CI or before publishing. It regenerates everything in memory and fails when any checked-in asset is stale without modifying the repository:
 
 ```sh
 pnpm run check:mf-observability -- \
-  --package-root /path/to/module-federation/packages/observability-plugin \
-  --runtime-package-root /path/to/module-federation/packages/runtime
+  --package-root /path/to/node_modules/@module-federation/observability-plugin \
+  --runtime-package-root /path/to/node_modules/@module-federation/runtime \
+  --runtime-core-package-root /path/to/node_modules/@module-federation/runtime-core
 ```
 
 The generated collector and build metadata are included in the published extension. The extension still has no runtime npm dependencies and the target page does not resolve packages or request a CDN at runtime.

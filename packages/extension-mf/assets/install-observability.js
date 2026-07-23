@@ -1,5 +1,5 @@
 (() => {
-  const PLUGIN_VERSION = "2.5.4";
+  const PLUGIN_VERSION = "0.0.0-feat-operate-openruntime-20260722064424";
   const SCOPE = "chrome_extension";
   const PLUGIN_NAME = "observability-plugin:chrome-extension";
   const LEGACY_PLUGIN_NAME = "observability-plugin-devtools";

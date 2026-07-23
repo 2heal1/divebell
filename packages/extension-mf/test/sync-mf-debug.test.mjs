@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import {
   mkdirSync,
   mkdtempSync,
@@ -15,29 +14,38 @@ import test from "node:test";
 
 import {
   generateRuntimeDebugArtifacts,
-  loadRuntimeDebugContext,
+  loadRuntimeCoreContext,
+  loadRuntimeContext,
   synchronizeMfDebug
 } from "../scripts/sync-mf-debug.mjs";
 
-function createMatchedPackages(root) {
-  const observabilityRoot = join(root, "packages", "observability-plugin");
-  const runtimeRoot = join(root, "packages", "runtime");
-  mkdirSync(join(observabilityRoot, "dist", "esm"), { recursive: true });
-  mkdirSync(join(runtimeRoot, "dist", "debug"), { recursive: true });
+const fixtureVersion = "7.8.9-preview";
+const fixtureRevision = "a".repeat(40);
 
+function writeManifest(packageRoot, manifest) {
+  mkdirSync(packageRoot, { recursive: true });
   writeFileSync(
-    join(observabilityRoot, "package.json"),
-    `${JSON.stringify({
-      name: "@module-federation/observability-plugin",
-      version: "4.5.6",
-      exports: {
-        "./chrome-devtool": {
-          import: "./dist/esm/chrome-devtool.js",
-          require: "./dist/chrome-devtool.js"
-        }
-      }
-    }, null, 2)}\n`
+    join(packageRoot, "package.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`
   );
+}
+
+function createMatchedPackages(root) {
+  const scopeRoot = join(root, "node_modules", "@module-federation");
+  const observabilityRoot = join(scopeRoot, "observability-plugin");
+  const runtimeRoot = join(scopeRoot, "runtime");
+  const runtimeCoreRoot = join(scopeRoot, "runtime-core");
+
+  writeManifest(observabilityRoot, {
+    name: "@module-federation/observability-plugin",
+    version: fixtureVersion,
+    exports: {
+      "./chrome-devtool": {
+        import: "./dist/esm/chrome-devtool.js"
+      }
+    }
+  });
+  mkdirSync(join(observabilityRoot, "dist", "esm"), { recursive: true });
   writeFileSync(
     join(observabilityRoot, "dist", "esm", "chrome-devtool.js"),
     `export function ChromeObservabilityPlugin() {
@@ -47,53 +55,56 @@ function createMatchedPackages(root) {
     `
   );
 
+  writeManifest(runtimeRoot, {
+    name: "@module-federation/runtime",
+    version: fixtureVersion,
+    dependencies: {
+      "@module-federation/runtime-core": fixtureVersion
+    }
+  });
+
+  writeManifest(runtimeCoreRoot, {
+    name: "@module-federation/runtime-core",
+    version: fixtureVersion,
+    exports: {
+      ".": {
+        import: {
+          default: "./dist/index.js"
+        }
+      }
+    }
+  });
+  mkdirSync(join(runtimeCoreRoot, "dist"), { recursive: true });
   writeFileSync(
-    join(runtimeRoot, "package.json"),
-    `${JSON.stringify({
-      name: "@module-federation/runtime",
-      version: "7.8.9"
-    }, null, 2)}\n`
-  );
-  writeFileSync(
-    join(runtimeRoot, "dist", "debug", "index.iife.js"),
-    `var ModuleFederationRuntime = (function(exports) {
-      const target = globalThis;
-      target.__FEDERATION__ ??= {};
-      class ModuleFederation {}
-      target.__FEDERATION__.__DEBUG_CONSTRUCTOR__ = ModuleFederation;
-      target.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__ = "7.8.9";
-      exports.ModuleFederation = ModuleFederation;
-      return exports;
-    })({});
-    //# sourceMappingURL=index.iife.js.map
+    join(runtimeCoreRoot, "dist", "index.js"),
+    `export class ModuleFederation {
+      constructor(options) {
+        this.name = options.name;
+        this.version = ${JSON.stringify(fixtureVersion)};
+      }
+    }
     `
   );
 
-  execFileSync("git", ["init", "-q"], { cwd: root });
-  execFileSync("git", ["config", "user.email", "test@openruntime.dev"], { cwd: root });
-  execFileSync("git", ["config", "user.name", "OpenRuntime Test"], { cwd: root });
-  execFileSync("git", ["add", "."], { cwd: root });
-  execFileSync("git", ["commit", "-qm", "fixture"], { cwd: root });
-  return { observabilityRoot, runtimeRoot };
+  return { observabilityRoot, runtimeRoot, runtimeCoreRoot };
 }
 
-test("sync creates a matched debug Runtime and Observability pair", async () => {
+test("sync creates one exact-version Runtime, Runtime Core, and Observability set", async () => {
   const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-sync-"));
   const assets = join(root, "assets");
   try {
-    const { observabilityRoot, runtimeRoot } = createMatchedPackages(root);
-    const result = await synchronizeMfDebug({
+    const packages = createMatchedPackages(root);
+    const options = {
       mode: "sync",
-      inputPackageRoot: observabilityRoot,
-      inputRuntimePackageRoot: runtimeRoot,
+      inputPackageRoot: packages.observabilityRoot,
+      inputRuntimePackageRoot: packages.runtimeRoot,
+      inputRuntimeCorePackageRoot: packages.runtimeCoreRoot,
+      sourceRevision: fixtureRevision,
+      requiredVersion: fixtureVersion,
       assetDirectory: assets
-    });
-    await synchronizeMfDebug({
-      mode: "check",
-      inputPackageRoot: observabilityRoot,
-      inputRuntimePackageRoot: runtimeRoot,
-      assetDirectory: assets
-    });
+    };
+    const result = await synchronizeMfDebug(options);
+    await synchronizeMfDebug({ ...options, mode: "check" });
 
     const runtimeInstaller = readFileSync(
       join(assets, "install-runtime-debug.js"),
@@ -105,9 +116,15 @@ test("sync creates a matched debug Runtime and Observability pair", async () => 
     const observabilityMetadata = JSON.parse(
       readFileSync(join(assets, "observability-build.json"), "utf8")
     );
-    assert.equal(result.runtime.packageVersion, "7.8.9");
-    assert.equal(result.observability.packageVersion, "4.5.6");
-    assert.equal(runtimeMetadata.sourceRevision, observabilityMetadata.sourceRevision);
+    assert.equal(result.version, fixtureVersion);
+    assert.equal(result.runtime.packageVersion, fixtureVersion);
+    assert.equal(result.runtimeCore.packageVersion, fixtureVersion);
+    assert.equal(result.observability.packageVersion, fixtureVersion);
+    assert.equal(runtimeMetadata.runtimePackageVersion, fixtureVersion);
+    assert.equal(runtimeMetadata.packageVersion, fixtureVersion);
+    assert.equal(observabilityMetadata.packageVersion, fixtureVersion);
+    assert.equal(runtimeMetadata.sourceRevision, fixtureRevision);
+    assert.equal(observabilityMetadata.sourceRevision, fixtureRevision);
     assert.equal(
       runtimeMetadata.bundleSha256,
       createHash("sha256").update(runtimeInstaller).digest("hex")
@@ -118,8 +135,16 @@ test("sync creates a matched debug Runtime and Observability pair", async () => 
     context.globalThis = context;
     vm.runInContext(runtimeInstaller, context);
     assert.equal(typeof context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, "function");
-    assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__, "7.8.9");
+    assert.equal(
+      context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__,
+      fixtureVersion
+    );
     assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "installed");
+    const instance = new context.__FEDERATION__.__DEBUG_CONSTRUCTOR__({
+      name: "fixture"
+    });
+    assert.equal(instance.name, "fixture");
+    assert.equal(instance.version, fixtureVersion);
 
     const firstConstructor = context.__FEDERATION__.__DEBUG_CONSTRUCTOR__;
     vm.runInContext(runtimeInstaller, context);
@@ -128,12 +153,7 @@ test("sync creates a matched debug Runtime and Observability pair", async () => 
 
     writeFileSync(join(assets, "runtime-debug-build.json"), "stale\n");
     await assert.rejects(
-      synchronizeMfDebug({
-        mode: "check",
-        inputPackageRoot: observabilityRoot,
-        inputRuntimePackageRoot: runtimeRoot,
-        assetDirectory: assets
-      }),
+      synchronizeMfDebug({ ...options, mode: "check" }),
       /runtime-debug-build\.json/
     );
   } finally {
@@ -141,55 +161,76 @@ test("sync creates a matched debug Runtime and Observability pair", async () => 
   }
 });
 
-test("Runtime debug package validation rejects wrong packages and missing builds", async () => {
-  await assert.rejects(loadRuntimeDebugContext(), /--runtime-package-root/);
-  await assert.rejects(
-    loadRuntimeDebugContext("/path/that/does/not/exist"),
-    /does not exist/
-  );
-
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-invalid-"));
+test("sync rejects any package that does not use the required version", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-mismatch-"));
   try {
-    const wrong = join(root, "wrong");
-    mkdirSync(wrong);
-    writeFileSync(
-      join(wrong, "package.json"),
-      JSON.stringify({ name: "not-the-runtime", version: "1.0.0" })
-    );
-    await assert.rejects(loadRuntimeDebugContext(wrong), /Expected package name/);
+    const packages = createMatchedPackages(root);
+    const manifestPath = join(packages.observabilityRoot, "package.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.version = "different-version";
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
-    const missing = join(root, "missing");
-    mkdirSync(missing);
-    writeFileSync(
-      join(missing, "package.json"),
-      JSON.stringify({
-        name: "@module-federation/runtime",
-        version: "1.0.0"
-      })
-    );
     await assert.rejects(
-      loadRuntimeDebugContext(missing),
-      /build-debug script first/
+      synchronizeMfDebug({
+        mode: "sync",
+        inputPackageRoot: packages.observabilityRoot,
+        inputRuntimePackageRoot: packages.runtimeRoot,
+        inputRuntimeCorePackageRoot: packages.runtimeCoreRoot,
+        sourceRevision: fixtureRevision,
+        requiredVersion: fixtureVersion,
+        assetDirectory: join(root, "assets")
+      }),
+      /All injected Module Federation packages must use/
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("Runtime debug generation rejects a bundle whose embedded version does not match", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-version-"));
+test("Runtime must depend on the exact Runtime Core version", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-runtime-core-"));
   try {
-    const { runtimeRoot } = createMatchedPackages(root);
-    writeFileSync(
-      join(runtimeRoot, "dist", "debug", "index.iife.js"),
-      `var ModuleFederationRuntime = {};
-      globalThis.__FEDERATION__ = { __DEBUG_CONSTRUCTOR__: function Debug() {} };
-      globalThis.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__ = "0.0.1";
-      `
-    );
+    const packages = createMatchedPackages(root);
+    const manifestPath = join(packages.runtimeRoot, "package.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.dependencies["@module-federation/runtime-core"] = "other-version";
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
     await assert.rejects(
-      generateRuntimeDebugArtifacts(runtimeRoot),
-      /does not contain its package version/
+      generateRuntimeDebugArtifacts({
+        inputRuntimePackageRoot: packages.runtimeRoot,
+        inputRuntimeCorePackageRoot: packages.runtimeCoreRoot,
+        sourceRevision: fixtureRevision
+      }),
+      /must depend on the exact Runtime Core version/
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Runtime package validation rejects wrong packages and missing public entries", async () => {
+  await assert.rejects(loadRuntimeContext(), /--runtime-package-root/);
+  await assert.rejects(
+    loadRuntimeCoreContext("/path/that/does/not/exist"),
+    /does not exist/
+  );
+
+  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-invalid-"));
+  try {
+    const wrong = join(root, "wrong");
+    writeManifest(wrong, { name: "not-the-runtime", version: "1.0.0" });
+    await assert.rejects(loadRuntimeContext(wrong), /Expected package name/);
+
+    const missing = join(root, "missing");
+    writeManifest(missing, {
+      name: "@module-federation/runtime-core",
+      version: "1.0.0",
+      exports: { ".": { import: "./dist/index.js" } }
+    });
+    await assert.rejects(
+      loadRuntimeCoreContext(missing),
+      /public entry does not exist/
     );
   } finally {
     rmSync(root, { recursive: true, force: true });

@@ -12,6 +12,8 @@ import { openMfObservability } from "../dist/open.js";
 import extension from "../dist/extension.js";
 
 const packageRoot = new URL("..", import.meta.url);
+const injectedMfVersion =
+  "0.0.0-feat-operate-openruntime-20260722064424";
 
 test("generated injection assets agree with their source metadata", () => {
   const bundle = readFileSync(new URL(
@@ -50,7 +52,11 @@ test("generated injection assets agree with their source metadata", () => {
   assert.match(observabilityMetadata.sourceRevision, /^[0-9a-f]{40}$/);
   assert.equal(runtimeMetadata.sourceRevision, observabilityMetadata.sourceRevision);
   assert.equal(observabilityMetadata.packageName, "@module-federation/observability-plugin");
-  assert.equal(runtimeMetadata.packageName, "@module-federation/runtime");
+  assert.equal(runtimeMetadata.runtimePackageName, "@module-federation/runtime");
+  assert.equal(runtimeMetadata.packageName, "@module-federation/runtime-core");
+  assert.equal(runtimeMetadata.runtimePackageVersion, injectedMfVersion);
+  assert.equal(runtimeMetadata.packageVersion, injectedMfVersion);
+  assert.equal(observabilityMetadata.packageVersion, injectedMfVersion);
   assert.doesNotMatch(
     `${bundle}\n${installer}\n${runtimeInstaller}\n${JSON.stringify({
       observabilityMetadata,
@@ -64,14 +70,14 @@ test("open hook returns one self-contained script with matched Runtime and Obser
   const result = await openMfObservability();
   assert.equal(result.scripts.length, 1);
   const source = result.scripts[0];
-  assert.match(source, /ModuleFederationRuntime/);
+  assert.match(source, /ModuleFederationDebugRuntime/);
   assert.match(source, /__DEBUG_CONSTRUCTOR__/);
   assert.match(source, /ChromeObservabilityPlugin/);
   assert.match(source, /getRuntimeState/);
   assert.match(source, /openruntime\/extension-mf/);
   assert.doesNotMatch(source, /\brequire\s*\(/);
   assert.doesNotMatch(source, /^\s*import\s/m);
-  assert.doesNotMatch(source, /<script|cdn\.jsdelivr|unpkg\.com/i);
+  assert.doesNotMatch(source, /https?:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)/i);
 });
 
 test("injection installs the debug constructor before business setup and observes later MF instances", async () => {
@@ -90,9 +96,15 @@ test("injection installs the debug constructor before business setup and observe
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
 
   assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.timing, "before-runtime");
-  assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.runtimeVersion, "2.8.0");
+  assert.equal(
+    context.__MF_RUNTIME_DEBUG_INJECTION__.runtimeVersion,
+    injectedMfVersion
+  );
   assert.equal(typeof context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, "function");
-  assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__, "2.8.0");
+  assert.equal(
+    context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__,
+    injectedMfVersion
+  );
   const applicationFallback = function ApplicationModuleFederation() {};
   const ConstructorUsedByApplication =
     context.__FEDERATION__.__DEBUG_CONSTRUCTOR__ ?? applicationFallback;
@@ -187,7 +199,10 @@ test("injection replaces a mismatched debug constructor before Runtime creates i
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
 
   assert.notEqual(context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, oldConstructor);
-  assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__, "2.8.0");
+  assert.equal(
+    context.__FEDERATION__.__DEBUG_CONSTRUCTOR_VERSION__,
+    injectedMfVersion
+  );
   assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "installed");
 });
 

@@ -40,7 +40,21 @@
 
     /*__MF_RUNTIME_DEBUG_SOURCE__*/
 
-    const installedFederation = target.__FEDERATION__ ?? target.__VMOK__;
+    const installedFederation =
+      target.__FEDERATION__ ?? target.__VMOK__ ?? {};
+    if (target.__FEDERATION__ === undefined) {
+      target.__FEDERATION__ = installedFederation;
+    }
+    if (target.__VMOK__ === undefined) {
+      target.__VMOK__ = installedFederation;
+    }
+    const DebugConstructor =
+      ModuleFederationDebugRuntime?.ModuleFederation;
+    if (typeof DebugConstructor !== "function") {
+      throw new Error("Module Federation Runtime Core export is unavailable.");
+    }
+    installedFederation.__DEBUG_CONSTRUCTOR__ = DebugConstructor;
+    installedFederation.__DEBUG_CONSTRUCTOR_VERSION__ = RUNTIME_VERSION;
     if (typeof installedFederation?.__DEBUG_CONSTRUCTOR__ !== "function") {
       throw new Error("Module Federation debug constructor is unavailable.");
     }

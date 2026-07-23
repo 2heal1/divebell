@@ -1,4 +1,3 @@
-"use strict";
 var ModuleFederationChromeObservabilityPlugin = (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -33,7 +32,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     default: () => ChromeObservabilityPlugin
   });
 
-  // ../sdk/dist/constant.js
+  // ../../../../@module-federation+sdk@0.0.0-feat-operate-openruntime-20260722064424/node_modules/@module-federation/sdk/dist/constant.js
   var BROWSER_LOG_KEY = "FEDERATION_DEBUG";
   var NameTransformSymbol = {
     AT: "@",
@@ -51,7 +50,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     [NameTransformMap[NameTransformSymbol.SLASH]]: NameTransformSymbol.SLASH
   };
 
-  // ../sdk/dist/env.js
+  // ../../../../@module-federation+sdk@0.0.0-feat-operate-openruntime-20260722064424/node_modules/@module-federation/sdk/dist/env.js
   var isBrowserEnvValue = typeof ENV_TARGET !== "undefined" ? ENV_TARGET === "web" : typeof window !== "undefined" && typeof window.document !== "undefined";
   function isBrowserEnv() {
     return isBrowserEnvValue;
@@ -70,7 +69,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return isBrowserDebug();
   }
 
-  // ../sdk/dist/logger.js
+  // ../../../../@module-federation+sdk@0.0.0-feat-operate-openruntime-20260722064424/node_modules/@module-federation/sdk/dist/logger.js
   var PREFIX = "[ Module Federation ]";
   var DEFAULT_DELEGATE = console;
   var LOGGER_STACK_SKIP_TOKENS = [
@@ -186,7 +185,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   var logger = createLogger(PREFIX);
   var infrastructureLogger = createInfrastructureLogger(PREFIX);
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/shared/query.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/shared/query.js
   function matchesValue(value, query) {
     if (query === void 0) {
       return true;
@@ -212,7 +211,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/registry.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/registry.js
   var defaultActionSource = "business";
   var defaultActionRisk = "state-changing";
   var _clock, _actions;
@@ -359,7 +358,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return value;
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/validation.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/validation.js
   function validateActionPayload(schema, payload) {
     if (schema === void 0) {
       return void 0;
@@ -450,7 +449,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/command.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/command.js
   async function executeBridgeRuntimeRequest(runtime, request) {
     switch (request.method) {
       case "getTargets":
@@ -480,10 +479,10 @@ ${filtered.slice(0, 5).join("\n")}`;
     return value;
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/types.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/types.js
   var OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/connect.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/connect.js
   var reconnectDelays = [1e3, 2e3, 4e3, 8e3, 1e4];
   function connectBridge(runtime, options = {}) {
     if (getGlobalBridgeConnection() !== void 0) {
@@ -694,7 +693,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/event/log.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/event/log.js
   var DEFAULT_EVENT_LIMIT = 100;
   var _clock2, _events, _nextEventId;
   var EventLog = class {
@@ -785,7 +784,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Math.floor(limit);
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/snapshot/store.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/snapshot/store.js
   var _clock3, _targets;
   var SnapshotStore = class {
     constructor(clock) {
@@ -861,7 +860,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return clone;
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/target/registry.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/target/registry.js
   var _clock4, _targets2;
   var TargetRegistry = class {
     constructor(clock) {
@@ -952,7 +951,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesAnyValue(target.statuses, query.status) && matchesText([target.id, target.label, target.description], query.query);
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/condition.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/condition.js
   function matchesRuntimeCondition(target, condition) {
     return target?.status === condition.status && matchesDataConditions(target.data, condition.where);
   }
@@ -1000,7 +999,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     return Object.is(value, expected);
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/manager.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/manager.js
   var _waits, _nextWaitId, _WaitManager_instances, failWait_fn, clear_fn;
   var WaitManager = class {
     constructor() {
@@ -1080,7 +1079,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     };
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/center.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/center.js
   var systemSource = "openruntime";
   var _targets3, _snapshot, _events2, _actions2, _waits2, _bridgeConnected, _RuntimeCenter_instances, recordRejectedUpdate_fn, recordActionFailure_fn, createActionContext_fn;
   var RuntimeCenter = class {
@@ -1326,7 +1325,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
   }
 
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/window.js
+  // ../../../../@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/window.js
   function installOpenRuntimeOnWindow(runtime = createOpenRuntime(), host = getDefaultWindowHost()) {
     if (host === void 0) {
       return runtime;

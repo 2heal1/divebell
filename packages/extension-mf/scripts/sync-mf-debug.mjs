@@ -1,13 +1,16 @@
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
 import { access, mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { promisify } from "node:util";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { build } from "esbuild";
 import { generateObservabilityArtifacts } from "./sync-observability.mjs";
 
-const execFileAsync = promisify(execFile);
+export const MF_PREVIEW_VERSION =
+  "0.0.0-feat-operate-openruntime-20260722064424";
+export const MF_PREVIEW_SOURCE_REVISION =
+  "54e733342953e3f384282078aa518c7f87cd1724";
+
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultAssetDirectory = resolve(packageRoot, "assets");
 const runtimeInstallerTemplatePath = resolve(
@@ -15,7 +18,8 @@ const runtimeInstallerTemplatePath = resolve(
   "scripts/install-runtime-debug.template.js"
 );
 const expectedRuntimePackageName = "@module-federation/runtime";
-const runtimeDebugEntry = "./dist/debug/index.iife.js";
+const expectedRuntimeCorePackageName = "@module-federation/runtime-core";
+const runtimeCoreGlobalName = "ModuleFederationDebugRuntime";
 
 const artifactNames = {
   observabilityBundle: "observability-chrome-devtool.iife.js",
@@ -25,49 +29,24 @@ const artifactNames = {
   runtimeMetadata: "runtime-debug-build.json"
 };
 
-async function readGitContext(inputPackageRoot) {
-  try {
-    const rootResult = await execFileAsync(
-      "git",
-      ["-C", inputPackageRoot, "rev-parse", "--show-toplevel"],
-      { encoding: "utf8" }
-    );
-    const revisionResult = await execFileAsync(
-      "git",
-      ["-C", inputPackageRoot, "rev-parse", "HEAD"],
-      { encoding: "utf8" }
-    );
-    return {
-      repositoryRoot: rootResult.stdout.trim(),
-      sourceRevision: revisionResult.stdout.trim()
-    };
-  } catch (error) {
-    throw new Error(
-      `Cannot read the source git revision for ${inputPackageRoot}: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-}
-
-export async function loadRuntimeDebugContext(inputRuntimePackageRoot) {
+async function loadManifest(inputPackageRoot, optionName, expectedName) {
   if (
-    typeof inputRuntimePackageRoot !== "string" ||
-    inputRuntimePackageRoot.length === 0
+    typeof inputPackageRoot !== "string" ||
+    inputPackageRoot.length === 0
   ) {
     throw new Error(
-      "--runtime-package-root must point to an @module-federation/runtime package directory."
+      `${optionName} must point to an ${expectedName} package directory.`
     );
   }
-  const resolvedPackageRoot = resolve(inputRuntimePackageRoot);
+  const resolvedPackageRoot = resolve(inputPackageRoot);
   let packageStat;
   try {
     packageStat = await stat(resolvedPackageRoot);
   } catch {
-    throw new Error(`Runtime package root does not exist: ${resolvedPackageRoot}`);
+    throw new Error(`Package root does not exist: ${resolvedPackageRoot}`);
   }
   if (!packageStat.isDirectory()) {
-    throw new Error(`Runtime package root is not a directory: ${resolvedPackageRoot}`);
+    throw new Error(`Package root is not a directory: ${resolvedPackageRoot}`);
   }
 
   let manifest;
@@ -82,43 +61,89 @@ export async function loadRuntimeDebugContext(inputRuntimePackageRoot) {
       }`
     );
   }
-  if (manifest.name !== expectedRuntimePackageName) {
+  if (manifest.name !== expectedName) {
     throw new Error(
-      `Expected package name ${expectedRuntimePackageName}, received ${String(manifest.name)}.`
+      `Expected package name ${expectedName}, received ${String(manifest.name)}.`
     );
   }
   if (typeof manifest.version !== "string" || manifest.version.length === 0) {
-    throw new Error("Module Federation Runtime package.json must contain a version.");
+    throw new Error(`${expectedName} package.json must contain a version.`);
   }
-
-  const entryPath = resolve(resolvedPackageRoot, runtimeDebugEntry);
-  try {
-    await access(entryPath);
-  } catch {
-    throw new Error(
-      `The Module Federation debug runtime does not exist at ${runtimeDebugEntry}. Run the runtime package's build-debug script first.`
-    );
-  }
-  const git = await readGitContext(resolvedPackageRoot);
-  if (!/^[0-9a-f]{40}$/i.test(git.sourceRevision)) {
-    throw new Error("The Module Federation Runtime source revision is not a full git commit.");
-  }
-
   return {
     packageRoot: resolvedPackageRoot,
     packageName: manifest.name,
     packageVersion: manifest.version,
-    debugEntry: runtimeDebugEntry,
-    entryPath,
-    ...git
+    manifest
   };
 }
 
-function stripSourceMapReference(source) {
-  return `${source.replace(/\n?\/\/# sourceMappingURL=.*(?:\n|$)/g, "").trimEnd()}\n`;
+function resolvePublicEntry(value) {
+  if (typeof value === "string") return value;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  const imported = value.import;
+  if (typeof imported === "string") return imported;
+  if (imported !== null && typeof imported === "object") {
+    if (typeof imported.default === "string") return imported.default;
+  }
+  for (const condition of ["browser", "default", "require"]) {
+    const candidate = value[condition];
+    if (typeof candidate === "string" && candidate.endsWith(".js")) {
+      return candidate;
+    }
+  }
+  return undefined;
 }
 
-function assertRuntimeDebugBundle(source, context) {
+function resolveEntryInsidePackage(context, publicEntry, label) {
+  const entryPath = resolve(context.packageRoot, publicEntry);
+  const entryRelative = relative(context.packageRoot, entryPath);
+  if (
+    entryRelative === "" ||
+    entryRelative === ".." ||
+    entryRelative.startsWith(`..${sep}`) ||
+    isAbsolute(entryRelative)
+  ) {
+    throw new Error(`${label} must stay inside the package root.`);
+  }
+  return entryPath;
+}
+
+export async function loadRuntimeContext(inputRuntimePackageRoot) {
+  return await loadManifest(
+    inputRuntimePackageRoot,
+    "--runtime-package-root",
+    expectedRuntimePackageName
+  );
+}
+
+export async function loadRuntimeCoreContext(inputRuntimeCorePackageRoot) {
+  const context = await loadManifest(
+    inputRuntimeCorePackageRoot,
+    "--runtime-core-package-root",
+    expectedRuntimeCorePackageName
+  );
+  const publicEntry = resolvePublicEntry(context.manifest.exports?.["."]);
+  if (publicEntry === undefined) {
+    throw new Error(
+      "Module Federation Runtime Core package.json does not expose a public JavaScript entry."
+    );
+  }
+  const entryPath = resolveEntryInsidePackage(
+    context,
+    publicEntry,
+    "The Runtime Core public entry"
+  );
+  try {
+    await access(entryPath);
+  } catch {
+    throw new Error(`The Runtime Core public entry does not exist: ${publicEntry}`);
+  }
+  return { ...context, publicEntry, entryPath };
+}
+
+function assertSelfContainedRuntimeCoreBundle(source, context) {
   const disallowed = [
     [/\brequire\s*\(/, "require"],
     [/^\s*import\s/m, "static import"],
@@ -128,26 +153,92 @@ function assertRuntimeDebugBundle(source, context) {
   ];
   for (const [pattern, label] of disallowed) {
     if (pattern.test(source)) {
-      throw new Error(`Module Federation debug runtime contains ${label}.`);
+      throw new Error(`Module Federation Runtime Core bundle contains ${label}.`);
     }
   }
-  if (!source.includes("var ModuleFederationRuntime =")) {
-    throw new Error("Module Federation debug runtime does not create ModuleFederationRuntime.");
+  if (!new RegExp(`var\\s+${runtimeCoreGlobalName}\\s*=`).test(source)) {
+    throw new Error(
+      `Module Federation Runtime Core bundle does not create ${runtimeCoreGlobalName}.`
+    );
   }
-  if (!source.includes("__DEBUG_CONSTRUCTOR__")) {
-    throw new Error("Module Federation debug runtime does not install a debug constructor.");
+  if (!source.includes("ModuleFederation")) {
+    throw new Error(
+      "Module Federation Runtime Core bundle does not export ModuleFederation."
+    );
   }
   if (!source.includes(JSON.stringify(context.packageVersion))) {
     throw new Error(
-      "Module Federation debug runtime does not contain its package version."
+      "Module Federation Runtime Core bundle does not contain its package version."
     );
   }
 }
 
-export async function generateRuntimeDebugArtifacts(inputRuntimePackageRoot) {
-  const context = await loadRuntimeDebugContext(inputRuntimePackageRoot);
-  const source = stripSourceMapReference(await readFile(context.entryPath, "utf8"));
-  assertRuntimeDebugBundle(source, context);
+async function createRuntimeCoreBundle(context) {
+  const result = await build({
+    absWorkingDir: context.packageRoot,
+    bundle: true,
+    charset: "utf8",
+    format: "iife",
+    globalName: runtimeCoreGlobalName,
+    legalComments: "none",
+    logLevel: "silent",
+    metafile: true,
+    minify: false,
+    minifyWhitespace: true,
+    platform: "browser",
+    sourcemap: false,
+    stdin: {
+      contents: `export { ModuleFederation } from ${JSON.stringify(context.entryPath)};`,
+      resolveDir: context.packageRoot,
+      sourcefile: "openruntime-mf-debug-runtime.js"
+    },
+    target: ["es2020"],
+    treeShaking: true,
+    write: false
+  });
+  if (result.outputFiles.length !== 1) {
+    throw new Error(
+      `Expected one Runtime Core browser bundle, received ${result.outputFiles.length}.`
+    );
+  }
+  const externalImports = Object.values(result.metafile.outputs)
+    .flatMap((output) => output.imports)
+    .filter((item) => item.external);
+  if (externalImports.length > 0) {
+    throw new Error(
+      `The Runtime Core browser bundle still has external imports: ${externalImports
+        .map((item) => item.path)
+        .join(", ")}`
+    );
+  }
+  const source = result.outputFiles[0].text.replace(/[ \t]+$/gm, "");
+  assertSelfContainedRuntimeCoreBundle(source, context);
+  return source;
+}
+
+export async function generateRuntimeDebugArtifacts({
+  inputRuntimePackageRoot,
+  inputRuntimeCorePackageRoot,
+  sourceRevision = MF_PREVIEW_SOURCE_REVISION
+}) {
+  const [runtime, runtimeCore] = await Promise.all([
+    loadRuntimeContext(inputRuntimePackageRoot),
+    loadRuntimeCoreContext(inputRuntimeCorePackageRoot)
+  ]);
+  if (runtime.packageVersion !== runtimeCore.packageVersion) {
+    throw new Error(
+      `Module Federation Runtime and Runtime Core versions must match, received ${runtime.packageVersion} and ${runtimeCore.packageVersion}.`
+    );
+  }
+  if (
+    runtime.manifest.dependencies?.[expectedRuntimeCorePackageName] !==
+    runtimeCore.packageVersion
+  ) {
+    throw new Error(
+      "Module Federation Runtime must depend on the exact Runtime Core version being injected."
+    );
+  }
+  const source = await createRuntimeCoreBundle(runtimeCore);
 
   const template = await readFile(runtimeInstallerTemplatePath, "utf8");
   const versionToken = '"__MF_RUNTIME_VERSION__"';
@@ -159,41 +250,68 @@ export async function generateRuntimeDebugArtifacts(inputRuntimePackageRoot) {
     throw new Error("Runtime installer template must contain exactly one source token.");
   }
   const installer = template
-    .replace(versionToken, JSON.stringify(context.packageVersion))
+    .replace(versionToken, JSON.stringify(runtimeCore.packageVersion))
     .replace(sourceToken, () => source);
   const bundleSha256 = createHash("sha256").update(installer).digest("hex");
   const metadata = `${JSON.stringify({
-    packageName: context.packageName,
-    packageVersion: context.packageVersion,
-    sourceRevision: context.sourceRevision,
-    debugEntry: context.debugEntry,
+    runtimePackageName: runtime.packageName,
+    runtimePackageVersion: runtime.packageVersion,
+    packageName: runtimeCore.packageName,
+    packageVersion: runtimeCore.packageVersion,
+    sourceRevision,
+    publicEntry: runtimeCore.publicEntry,
     bundleSha256
   }, null, 2)}\n`;
 
-  return { context, installer, metadata, bundleSha256 };
+  return {
+    context: runtimeCore,
+    runtime,
+    installer,
+    metadata,
+    bundleSha256
+  };
+}
+
+function assertExactPreviewVersion(contexts, requiredVersion) {
+  const mismatches = contexts.filter(
+    (context) => context.packageVersion !== requiredVersion
+  );
+  if (mismatches.length > 0) {
+    throw new Error(
+      `All injected Module Federation packages must use ${requiredVersion}; received ${mismatches
+        .map((context) => `${context.packageName}@${context.packageVersion}`)
+        .join(", ")}.`
+    );
+  }
 }
 
 export async function synchronizeMfDebug({
   mode,
   inputPackageRoot,
-  inputRuntimePackageRoot = resolve(inputPackageRoot ?? "", "..", "runtime"),
+  inputRuntimePackageRoot,
+  inputRuntimeCorePackageRoot,
+  sourceRevision = MF_PREVIEW_SOURCE_REVISION,
+  requiredVersion = MF_PREVIEW_VERSION,
   assetDirectory = defaultAssetDirectory
 }) {
   if (mode !== "sync" && mode !== "check") {
     throw new Error(`Unsupported mode ${String(mode)}. Use sync or check.`);
   }
-  const [observability, runtime] = await Promise.all([
-    generateObservabilityArtifacts(inputPackageRoot),
-    generateRuntimeDebugArtifacts(inputRuntimePackageRoot)
-  ]);
-  if (
-    observability.context.repositoryRoot !== runtime.context.repositoryRoot ||
-    observability.context.sourceRevision !== runtime.context.sourceRevision
-  ) {
-    throw new Error(
-      "The Module Federation Runtime and Observability Plugin must come from the same repository revision."
-    );
+  if (!/^[0-9a-f]{40}$/i.test(sourceRevision)) {
+    throw new Error("The Module Federation source revision must be a full git commit.");
   }
+  const [observability, runtime] = await Promise.all([
+    generateObservabilityArtifacts(inputPackageRoot, { sourceRevision }),
+    generateRuntimeDebugArtifacts({
+      inputRuntimePackageRoot,
+      inputRuntimeCorePackageRoot,
+      sourceRevision
+    })
+  ]);
+  assertExactPreviewVersion(
+    [observability.context, runtime.runtime, runtime.context],
+    requiredVersion
+  );
 
   const expected = new Map([
     [artifactNames.observabilityBundle, observability.bundle],
@@ -230,11 +348,16 @@ export async function synchronizeMfDebug({
 
   return {
     mode,
-    sourceRevision: runtime.context.sourceRevision,
+    sourceRevision,
+    version: requiredVersion,
     runtime: {
+      packageName: runtime.runtime.packageName,
+      packageVersion: runtime.runtime.packageVersion
+    },
+    runtimeCore: {
       packageName: runtime.context.packageName,
       packageVersion: runtime.context.packageVersion,
-      debugEntry: runtime.context.debugEntry,
+      publicEntry: runtime.context.publicEntry,
       bundleSha256: runtime.bundleSha256
     },
     observability: {
@@ -249,27 +372,35 @@ export async function synchronizeMfDebug({
 function parseCliArguments(argv) {
   const [mode, ...rawArgs] = argv;
   const args = rawArgs[0] === "--" ? rawArgs.slice(1) : rawArgs;
-  let inputPackageRoot;
-  let inputRuntimePackageRoot;
+  const values = new Map();
+  const supported = new Set([
+    "--package-root",
+    "--runtime-package-root",
+    "--runtime-core-package-root"
+  ]);
   for (let index = 0; index < args.length; index += 1) {
     const name = args[index];
-    if (name !== "--package-root" && name !== "--runtime-package-root") {
+    if (!supported.has(name)) {
       throw new Error(`Unknown argument: ${name}`);
     }
     const value = args[index + 1];
     if (value === undefined) {
       throw new Error(`Missing value for ${name}.`);
     }
-    if (name === "--package-root") inputPackageRoot = value;
-    if (name === "--runtime-package-root") inputRuntimePackageRoot = value;
+    values.set(name, value);
     index += 1;
   }
-  if (inputPackageRoot === undefined) {
-    throw new Error(
-      "Missing required --package-root <observability-plugin-directory> argument."
-    );
+  for (const name of supported) {
+    if (!values.has(name)) {
+      throw new Error(`Missing required ${name} <directory> argument.`);
+    }
   }
-  return { mode, inputPackageRoot, inputRuntimePackageRoot };
+  return {
+    mode,
+    inputPackageRoot: values.get("--package-root"),
+    inputRuntimePackageRoot: values.get("--runtime-package-root"),
+    inputRuntimeCorePackageRoot: values.get("--runtime-core-package-root")
+  };
 }
 
 async function main() {

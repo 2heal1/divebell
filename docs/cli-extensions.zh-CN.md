@@ -2,11 +2,13 @@
 
 English version: [OpenRuntime CLI Extension Development](cli-extensions.md)
 
-本文面向 Extension 开发者，按创建、注册能力、本地调试、发布和验证的顺序说明如何完成一个 Extension。安装和管理已有 Extension 见 [Extension 使用指南](extensions.zh-CN.md)；查询完整字段和类型见 [Extension API 参考](extension-api.zh-CN.md)。
+本文面向 Extension 开发者，按创建、注册能力、本地调试、发布和验证的顺序说明如何完成一个 Extension。Extension 是团队将领域知识接入 OpenRuntime 的主要机制，可以复用当前页面、登录状态和浏览器诊断，也可以连接已有的 SDK、OpenAPI、CLI 和内部平台。
+
+安装和管理已有 Extension 见 [Extension 使用指南](extensions.zh-CN.md)；查询完整字段和类型见 [Extension API 参考](extension-api.zh-CN.md)。
 
 ## Extension 开发模型
 
-Extension 用于把团队会反复使用的账号与环境准备、技术栈识别、专项诊断和验证流程封装成 Agent 可以通过 OpenRuntime CLI 发现和调用的能力。
+Extension 用于把团队会反复使用的账号与环境准备、技术栈识别、领域资源查询、专项诊断和验证流程，封装成 Agent 可以通过 OpenRuntime CLI 发现和调用的能力。例如，它可以从当前页面识别应用、环境或部署 ID，再将这些信息交给团队已有的服务能力。
 
 一个 Extension 由以下部分组成：
 
@@ -14,6 +16,8 @@ Extension 用于把团队会反复使用的账号与环境准备、技术栈识�
 - 一个轻量的 Extension 入口，用于声明 Commands、Hooks 和 Skills。
 - 按需加载的实现代码和必要资源。
 - 对当前页面、浏览器诊断以及可选 Runtime 信息的访问。
+
+Extension 不要求团队重写已经存在的服务能力。它可以只负责从当前现场补齐调用所需的上下文，再把参数交给原有工具，并将结果带回同一个开发调试流程。
 
 Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
 

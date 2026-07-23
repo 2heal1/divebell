@@ -5,7 +5,7 @@
 <h1 align="center">OpenRuntime</h1>
 
 <p align="center">
-<b>Let coding agents debug and verify real web scenarios autonomously.</b>
+<b>Help coding agents reproduce, diagnose, and verify issues in real web scenarios.</b>
 <br/>
 A web development debugging tool for coding agents.
 </p>
@@ -20,35 +20,49 @@ Agent entry point: [OpenRuntime Skill](./skills/openruntime/SKILL.md)
 
 OpenRuntime is a **web development debugging tool** for coding agents.
 
-It helps agents reproduce, diagnose, and verify problems in real, authorized, and repeatable browser scenarios, reducing the number of times a person has to log in, grant access, demonstrate a flow, or confirm an intermediate result.
+OpenRuntime makes the web page the coding agent's point of entry. It connects page context, browser capabilities, and the team's existing development and debugging tools so the agent can reproduce, diagnose, and verify issues directly in real web scenarios.
 
-OpenRuntime does not replace the coding agent that edits source code, and it is not a backend debugger. It provides the browser context, diagnostic capabilities, and verification evidence needed before and after a code change so the agent can keep working between code and the real page.
+Starting from the current page, an agent can call existing SDKs, OpenAPIs, CLIs, and diagnostic capabilities without requiring a person to extract page information and connect the tools first.
+
+The coding agent reads and modifies code. OpenRuntime prepares reusable browser context and exposes page operations, browser diagnostics, and result verification as directly callable capabilities. Teams can use Extensions to connect their own accounts, environments, internal platforms, focused diagnostics, and verification workflows.
 
 ---
 
 ## Why OpenRuntime
 
-OpenRuntime addresses four problems:
+Coding agents can already read and modify code, and they can call many development tools. But real web development issues usually happen in the page itself: users see a page, while diagnosing the problem requires its state, runtime environment, business context, and the team's existing diagnostic capabilities.
 
-1. General browser tools must rediscover the page, plan operations, and handle waits each time. Reasoning from scratch gets slower as the page and user journey become more complex.
-2. Users discover problems on the web, while diagnostic tools often live in CLIs. A person usually has to extract page context for the agent and carry CLI results back to the browser. OpenRuntime lets the agent connect both sides in the same page and session.
-3. Working browser login state, user journeys, diagnostics, and verification flows can be saved through agent-browser state, scripts, Extensions, or Skills, then reused by other agents and CI as a growing team asset.
-4. A real scenario needs more than a URL: it also needs a test account, login state, target environment, prepared data, and success criteria. OpenRuntime prepares and reuses these conditions so the agent can move from reproduction and diagnosis through code changes and re-verification.
+That information and those capabilities are usually scattered across:
 
-The goal is not to bypass authorization. It is to make authorization, test accounts, and allowed actions explicit, reusable, and inspectable.
+- User actions and runtime state on the page
+- Browser diagnostics such as Console and Network
+- Existing SDKs, OpenAPIs, CLIs, and internal platforms
 
-## A Real Development Debugging Flow
+An agent often still needs a person to explain what the current page represents and which capability to call next.
 
-Consider an orders page that is only available after sign-in:
+OpenRuntime makes the web page the agent's point of entry, connecting page context, browser diagnostics, and the team's existing tools so the agent can reproduce, diagnose, and verify issues directly in the real scenario.
 
-1. The team prepares a test account's Chrome profile, browser state, or login credentials, or provides account and environment setup through an Extension.
-2. The agent opens the real page in a named session and reproduces the user journey.
-3. OpenRuntime reads page errors, requests, page state, memory, or code execution. If the page uses Runtime Core, it can also read application-internal state.
-4. The coding agent edits the source based on that evidence.
-5. OpenRuntime reuses the same account, session, and page context to reload and verify the result.
-6. Troubleshooting or verification logic worth keeping can become an Extension, an automation script, or a Runtime Core signal.
+Teams can use Extensions to bring existing capabilities into the current page scenario without rebuilding a separate tool system for agents. Once a workflow works, other agents and CI can keep using it as a durable team asset.
 
-Browser operation is the foundation of this flow, not the product boundary. OpenRuntime focuses on entering real scenarios, preserving development context, applying specialized diagnostics, and verifying changes repeatably.
+## What OpenRuntime Changes
+
+<p align="center">
+  <img src="./assets/openruntime-workflow.svg" width="900" alt="OpenRuntime workflow" />
+</p>
+
+OpenRuntime reduces the cost of connecting web pages with agent capabilities. Users no longer need to carry context between the page, development tools, and the agent.
+
+## A Real Web Issue Debugging Flow
+
+Consider a user reporting, "The page shows an error after I click Submit":
+
+1. The agent opens the real web page, follows the relevant user journey, and reproduces the issue.
+2. OpenRuntime collects page context and diagnostic evidence such as Console, Network, screenshots, and runtime state.
+3. When business information is needed, an Extension uses the current page to connect existing SDKs, OpenAPIs, CLIs, or internal platforms.
+4. The coding agent modifies the source code based on the diagnosis.
+5. OpenRuntime returns to the same page scenario to verify the change.
+
+The point of OpenRuntime is not to teach an agent how to operate a browser. It is to make the web page a scenario where the agent can work directly.
 
 See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the complete workflow.
 
@@ -56,32 +70,29 @@ See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the c
 
 | Module | Responsibility | Entry point | Page integration required |
 | --- | --- | --- | --- |
-| Browser Authentication | Reuse Chrome profiles, save/load browser state, and manage encrypted login credentials | `openruntime profiles`, `state`, `auth` | No |
-| Browser Session & Diagnostics | Manage page sessions, operate pages, and read Console, Network, screenshots, and code execution | OpenRuntime CLI | No |
-| Extensions | Add account and environment setup, stack detection, focused diagnostics, verification commands, and Skills | CLI commands, Extension API | No |
-| Runtime Core | Expose application-internal state, events, declared actions, and wait conditions | `@openruntime/core`, framework plugins | Yes |
+| Web Context & Diagnostics | Make a real web page the agent's point of entry and provide page context, browser diagnostics, and same-scenario verification | OpenRuntime CLI | No |
+| Extensions | Connect the web page with the team's existing development and debugging capabilities | CLI commands, Extension API | No |
+| Runtime Core | Expose application-internal facts that browser information cannot represent reliably | `@openruntime/core`, framework plugins | Yes |
 
-### Browser Authentication
+### Web Context & Diagnostics
 
-OpenRuntime composes three agent-browser capabilities: profiles reuse a complete Chrome configuration, state files carry portable cookies and web storage, and auth stores encrypted login credentials and fills login pages.
+OpenRuntime makes a real web page the agent's point of entry, providing page context, page operations, browser diagnostics, and same-scenario verification after a code change.
 
-[Browser Authentication and State](./docs/browser-auth.md)
-
-### Browser Session & Diagnostics
-
-`openruntime open` creates a reusable page context, and `--session` identifies the session. Page and diagnostic commands include `page-snapshot`, `click`, `fill`, `eval`, `wait-eval`, `console`, `network`, `screenshot`, and `coverage`.
-
-These capabilities work with regular pages and do not depend on Runtime Core.
+These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, and diagnostic evidence from Console, Network, Screenshot, and Coverage. Agents can call them directly through the OpenRuntime CLI without Runtime Core.
 
 [CLI Reference](./docs/cli-reference.md)
 
+When a script must manage the complete browser flow, see [Automating with OpenRuntime CLI](./docs/cli-automation-scripts.md).
+
 ### Extensions
 
-An Extension expands OpenRuntime CLI with reusable account and environment setup, stack detection, focused diagnostics, and verification capabilities for agents. It may provide CLI commands, hooks for page opening and detection, and Skills that agents can read.
+Extensions are the mechanism for connecting a web page with the team's existing development capabilities.
+
+An Extension can identify applications, environments, and resources from the current page, call existing SDKs, OpenAPIs, CLIs, or internal platforms, and expose diagnostic and verification workflows that previously required a person to connect them.
 
 [Using Extensions](./docs/extensions.md) · [CLI Extension Development](./docs/cli-extensions.md) · [Extension API Reference](./docs/extension-api.md)
 
-### Official Extensions
+#### Official Extensions
 
 Focused capabilities are published as optional Extension packages and installed only when needed:
 
@@ -102,11 +113,19 @@ Installed Extension commands appear in `openruntime --help` and run through the 
 
 ### Runtime Core
 
-Runtime Core is an optional page-side API for registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Integrate it only when application-internal facts or stable business signals are needed. It is not a prerequisite for OpenRuntime CLI, browser authentication, or Extensions.
+Runtime Core is an optional page-side API. When the DOM, Console, Network, and other browser information cannot represent application state reliably, Runtime Core can expose more granular application-internal facts to the agent.
+
+It supports registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. OpenRuntime works without Runtime Core, and regular pages do not need to integrate it.
 
 [Runtime Core API](./docs/runtime-core-api.md)
 
-When a script must manage the complete browser flow, see [Automating with OpenRuntime CLI](./docs/cli-automation-scripts.md).
+## Environment Setup
+
+### Browser Authentication
+
+OpenRuntime can reuse an existing Chrome profile or browser state, and it can use encrypted credentials explicitly supplied by the user. These capabilities help an agent enter a real web environment without bypassing authorization.
+
+[Browser Authentication and State](./docs/browser-auth.md)
 
 ## Focused Debugging Scenarios
 
@@ -115,36 +134,27 @@ When a script must manage the complete browser flow, see [Automating with OpenRu
 - [Record browser workflows](./docs/record-browser-workflows.md): turn a manual demonstration into a script draft that can be inspected and verified.
 - [Browser connections and multiple Runtimes](./docs/runtime-connections.md): preserve sessions and select the right Runtime in micro-frontend pages.
 
-## Release Process
-
-Ordinary feature and fix pull requests do not publish OpenRuntime. A maintainer starts the release workflow manually, reviews the generated release pull request, and merges it after CI passes. That merge publishes all public packages at one version and creates the matching GitHub Release.
-
-See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing, retries, local checks, and the temporary OpenRuntime `agent-browser` dependency.
-
 ## Components
 
 ```text
                   Coding Agent
                        │
-              edits code and plans work
-                       │
                        ▼
-                OpenRuntime CLI
-      ┌──────────────────────────────────┐
-      │ Login state and persistent       │
-      │ browser sessions                 │
-      │ Page, Console, and Network       │
-      │ Performance, memory, code        │
-      │ execution, Extensions, evidence  │
-      └──────────────────────────────────┘
-                       │
-                Real browser and page
-                       │
-              Optional Runtime Core API
-      ┌──────────────────────────────────┐
-      │ Target / Snapshot / Event        │
-      │ Action / waitFor                 │
-      └──────────────────────────────────┘
+                  OpenRuntime
+       ┌──────────────────────────────────┐
+       │ Web page: the agent's entry point│
+       │                                  │
+       │ Page context, browser operations │
+       │ and diagnostics                  │
+       │ Before-and-after verification    │
+       │                                  │
+       │ Extensions                       │
+       │ Connect existing SDKs, APIs,     │
+       │ CLIs, and internal platforms     │
+       │                                  │
+       │ Runtime Core                     │
+       │ Expose application facts         │
+       └──────────────────────────────────┘
 ```
 
 ## Documentation
@@ -158,5 +168,9 @@ See [OpenRuntime Release Process](./docs/release.md) for preparation, publishing
 - [Runtime Core API](./docs/runtime-core-api.md)
 - [Standalone Automation](./docs/cli-automation-scripts.md)
 - [Release Process](./docs/release.md)
+
+## Credits
+
+OpenRuntime uses [agent-browser](https://github.com/vercel-labs/agent-browser) as its default browser execution layer. Thanks to the agent-browser authors and contributors.
 
 Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.

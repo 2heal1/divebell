@@ -1,0 +1,47 @@
+.changeset/inject-extension-headers.md
+  s_ad605cf1b9404e::t_530cbc482fce0c 5
+docs/cli-extensions.md
+  s_ad605cf1b9404e::t_7d3fcf2dbc33ab 186,199,201,206
+docs/cli-extensions.zh-CN.md
+  s_ad605cf1b9404e::t_232c1de54d2edc 178,191,193,198
+docs/extension-api.md
+  s_ad605cf1b9404e::t_d2bba620d0a2de 66,75,197
+docs/extension-api.zh-CN.md
+  s_ad605cf1b9404e::t_b42e5ea769ec71 66,75,197
+packages/cli/src/commands/browser.ts
+  s_ad605cf1b9404e::t_43eb05c7267d6f 129,197-200,202-208
+packages/cli/src/commands/extension.ts
+  s_ad605cf1b9404e::t_853c5ed52c7aad 64
+packages/cli/src/commands/stack.ts
+  s_ad605cf1b9404e::t_f82d9b3763839d 60,79,81
+packages/cli/src/features/extension/hooks.ts
+  s_ad605cf1b9404e::t_c0c1f5cf6a9b61 51,68,106
+packages/cli/src/types/commands.ts
+  s_ad605cf1b9404e::t_ad36f606c27634 23
+packages/cli/src/types/shared.ts
+  s_ad605cf1b9404e::t_5123e53dac8e41 58
+packages/cli/src/utils/operation-log.ts
+  s_ad605cf1b9404e::t_c29bc13700c19f 89,102,104-107
+packages/cli/test/extensions.test.ts
+  s_ad605cf1b9404e::t_ce58b74a9b9940 40,42,51,128-129,135-138,140-141,143-146,149,151,153,175-181,184-190,199-201
+packages/cli/test/helpers.ts
+  s_ad605cf1b9404e::t_b33661eb765154 124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d88d2280c4afc59b3f2c649431b07edd9fe300c0",
+  "prompts": {},
+  "sessions": {
+    "s_ad605cf1b9404e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f933f-4dd1-7db3-8eb2-8e2703cd957e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

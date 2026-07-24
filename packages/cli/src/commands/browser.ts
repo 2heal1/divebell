@@ -34,7 +34,13 @@ import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
 import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
-import { runCloseHooks, runOpenHooks, type ExtensionHookFailure } from "../features/extension/hooks.js";
+import {
+  runCloseHooks,
+  runOpenHooks,
+  type ExtensionHookFailure,
+  type ExtensionOpenHookScript
+} from "../features/extension/hooks.js";
+import type { ExtensionHookPlan } from "../features/extension/plan.js";
 import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
@@ -45,7 +51,8 @@ export async function runBrowserCliCommand(
   bridgeStarter: BridgeStarter,
   bridgeStateDirectory: string | undefined,
   operationLogStore: CliOperationLogStore,
-  extensions: readonly OpenRuntimeExtensionDefinition[]
+  extensions: readonly OpenRuntimeExtensionDefinition[],
+  openHookPlan: ExtensionHookPlan
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
@@ -69,7 +76,8 @@ export async function runBrowserCliCommand(
         bridgeStarter,
         bridgeStateDirectory,
         operationLogStore,
-        extensions
+        extensions,
+        openHookPlan
       });
     }
     const hookResult = await runOpenHooks(extensions, {
@@ -77,7 +85,7 @@ export async function runBrowserCliCommand(
       url,
       openedUrl,
       ...(headers === undefined ? {} : { headers })
-    });
+    }, openHookPlan);
     writeHookFailures(stderr, hookResult.failures);
     let result: BrowserRunResult;
     try {
@@ -190,6 +198,7 @@ export async function runExtensionCloseHooks(options: {
   bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
   extensions: readonly OpenRuntimeExtensionDefinition[];
+  openHookPlan: ExtensionHookPlan;
 }): Promise<void> {
   const openContext = await options.operationLogStore.read();
   if (openContext === undefined) return;
@@ -205,7 +214,7 @@ export async function runExtensionCloseHooks(options: {
       bridgeStateStore: createBridgeStateStore(closeArgs, options.bridgeStateDirectory),
       openContext
     })
-  });
+  }, options.openHookPlan);
   writeHookFailures(options.stderr, failures);
 }
 
@@ -296,7 +305,7 @@ async function openBrowserPage(
   args: ParsedCliArgs,
   openedUrl: string,
   bridgeUrl: string | null,
-  hookScripts: readonly string[],
+  hookScripts: readonly ExtensionOpenHookScript[],
   options: BrowserRunOptions
 ): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
@@ -358,10 +367,13 @@ function appendBrowserOption(browserArgs: string[], args: ParsedCliArgs, name: s
   }
 }
 
-async function ensureBrowserInitScript(bridgeUrl: string | null, hookScripts: readonly string[]): Promise<string> {
+async function ensureBrowserInitScript(
+  bridgeUrl: string | null,
+  hookScripts: readonly ExtensionOpenHookScript[]
+): Promise<string> {
   const directory = join(tmpdir(), "openruntime-bridge-init");
   const script = [
-    ...hookScripts,
+    ...hookScripts.map(createIsolatedHookScript),
     ...(bridgeUrl === null ? [] : [createBridgeInitScript(bridgeUrl)])
   ].join("\n;\n");
   const key = createHash("sha256").update(script).digest("hex").slice(0, 16);
@@ -369,6 +381,15 @@ async function ensureBrowserInitScript(bridgeUrl: string | null, hookScripts: re
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await writeFile(scriptPath, script, { encoding: "utf8", mode: 0o600 });
   return scriptPath;
+}
+
+function createIsolatedHookScript(hookScript: ExtensionOpenHookScript): string {
+  const message = `OpenRuntime Extension "${hookScript.extension}" open hook script failed.`;
+  return `try {
+${hookScript.script}
+} catch (error) {
+  globalThis.console?.error?.(${JSON.stringify(message)}, error);
+}`;
 }
 
 function writeHookFailures(

@@ -177,6 +177,29 @@ export async function runFoo(
 
 成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
+Extension 可以在基础定义的 `requires` 中统一声明依赖，再通过 `runExtension` 复用对方的 Command：
+
+```ts
+{
+  schemaVersion: 1,
+  name: "order-workflow",
+  requires: ["account-tools"],
+  commands: [{
+    name: "verify-order",
+    run: async ({ runExtension }) => {
+      const account = await runExtension("account-tools", {
+        command: "resolve-account",
+        args: ["checkout"],
+        options: { role: "buyer" }
+      });
+      return { account };
+    }
+  }]
+}
+```
+
+OpenRuntime 会在加载 Extension 列表时检查依赖，并明确提示还需要安装哪个 Extension。被调用的 Command 会复用当前页面和会话，直接返回原始结果，不会额外输出一份 CLI 结果，也不会触发 Hook。如果 Command 必须依赖自己 Extension 的 `open` 准备工作，可以加 `requiresOpenHook: true`。
+
 ### Hooks
 
 Hooks 在 OpenRuntime 页面打开、技术栈识别和关闭阶段执行。Hook 应只完成当前阶段必要的工作，不要把完整诊断流程塞进入口或 Hook。
@@ -236,6 +259,21 @@ export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () =
 ```
 
 只有成功参与对应 `open` 的 Extension 会收到 `close`。当页面被 `stop`，或被同一工作目录中的另一次 `open` 替换时，它都会运行。清理失败会被记录，但不会阻止页面生命周期继续。
+
+Hook 默认并行执行。需要控制顺序时，使用对象形式：
+
+```ts
+hooks: {
+  open: {
+    after: ["account-tools"],
+    run: async options => {
+      // ...
+    }
+  }
+}
+```
+
+`before` 和 `after` 只控制先后顺序；必需的 Extension 统一放在 Extension 基础定义的 `requires` 中。OpenRuntime 会根据已加载的 Extension 列表算出并行批次，`close` 按 `open` 的相反顺序执行。Hook 结果不会传给后续 Hook，一个 Hook 失败也不会停止无关 Hook。
 
 Hook 参数和返回类型见 [Hooks API](extension-api.zh-CN.md#hooks)。
 

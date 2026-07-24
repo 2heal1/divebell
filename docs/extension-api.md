@@ -12,6 +12,7 @@ Extension development normally imports `OpenRuntimeExtensionDefinition`, `OpenRu
 interface OpenRuntimeExtensionDefinition {
   schemaVersion: 1;
   name: string;
+  requires?: readonly string[];
   displayName?: string;
   description?: string;
   commands?: readonly OpenRuntimeExtensionCommand[];
@@ -23,18 +24,20 @@ interface OpenRuntimeExtensionDefinition {
 | --- | --- |
 | `schemaVersion` | Currently fixed at `1`. |
 | `name` | The stable Extension name. It must match `^[a-z][a-z0-9-]*$` and must not duplicate another loaded Extension. |
+| `requires` | Extension names that must be installed and may be called through `options.runExtension`. |
 | `displayName` | Optional human-readable name. |
 | `description` | Optional short purpose. |
 | `commands` | Commands registered by this Extension. Command names must not conflict with built-in commands or commands from other Extensions. |
 | `hooks` | The `open`, `detectStack`, and `close` hooks. |
 
-A definition must contain at least one Command or Hook. TypeScript entries should normally be annotated as `OpenRuntimeExtensionDefinition`. If declaration files are not generated, `satisfies OpenRuntimeExtensionDefinition` is also suitable. Tests and CI may call `validateExtension(...)` on the default export.
+A definition must contain at least one Command or Hook. OpenRuntime checks `requires` when it loads the Extension list. A missing dependency prevents that Extension from loading and reports which Extension must be installed. TypeScript entries should normally be annotated as `OpenRuntimeExtensionDefinition`. If declaration files are not generated, `satisfies OpenRuntimeExtensionDefinition` is also suitable. Tests and CI may call `validateExtension(...)` on the default export.
 
 ## Commands
 
 ```ts
 interface OpenRuntimeExtensionCommand {
   name: string;
+  requiresOpenHook?: boolean;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
   run(options: CliExtensionRunOptions): Promise<unknown>;
@@ -52,6 +55,7 @@ interface CliCommandReference {
 ```
 
 - `name` is the command name mounted under `openruntime`.
+- `requiresOpenHook` makes the Command available only when its own Extension completed `open` successfully for the current page.
 - `commandReferences` controls the detailed usage and description shown by `openruntime <command> --help`. The top-level `openruntime --help` lists only the command name and a short summary.
 - `skill.path` must be an absolute path to an existing `SKILL.md`.
 - `run` returns the result directly on success and throws an error on failure.
@@ -65,6 +69,7 @@ interface CliExtensionRunOptions {
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
+  runExtension: CliExtensionRunFunction;
 }
 ```
 
@@ -75,6 +80,7 @@ interface CliExtensionRunOptions {
 | `options.headers` | `Readonly<Record<string, string>> \| undefined` | The exact effective headers from the latest successful `openruntime open --headers`. It is `undefined` when the page was opened without headers. |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by OpenRuntime. Normally avoid calling it directly; use `options.openruntime` for Bridge and Runtime access. |
+| `options.runExtension` | `CliExtensionRunFunction` | Calls a Command from this Extension or a declared Extension dependency and returns its raw result. |
 
 ### `options.args`
 
@@ -115,6 +121,55 @@ const timeout = getNumberOption(options.args, "timeout");
 ```
 
 `--flag` is parsed as the string `"true"`. Unknown options are not rejected automatically. Each Command must validate required arguments, accepted values, and invalid combinations.
+
+### `options.runExtension`
+
+```ts
+interface CliExtensionRunRequest {
+  command: string;
+  args?: readonly string[];
+  options?: Readonly<Record<
+    string,
+    string | number | boolean |
+    readonly (string | number | boolean)[]
+  >>;
+}
+
+interface CliExtensionRunFunction {
+  <T = unknown>(
+    extensionName: string,
+    request: CliExtensionRunRequest
+  ): Promise<T>;
+}
+```
+
+Declare other Extensions once on the Extension definition, then call one of their Commands:
+
+```ts
+{
+  schemaVersion: 1,
+  name: "order-workflow",
+  requires: ["account-tools"],
+  commands: [{
+    name: "verify-order",
+    run: async ({ runExtension }) => {
+      const account = await runExtension<{ id: string }>("account-tools", {
+        command: "resolve-account",
+        args: ["checkout"],
+        options: {
+          role: "buyer",
+          tag: ["smoke", "checkout"]
+        }
+      });
+      return { accountId: account.id };
+    }
+  }]
+}
+```
+
+`args` contains only positional arguments after the target Command name. `options` accepts scalar values or arrays; the target receives them through its normal `options.args`. The target shares the current page, session, Runtime selection, browser access, and nested `runExtension` capability.
+
+The target result is returned directly to the caller. A nested call does not write a second CLI result and does not trigger lifecycle Hooks. A Command may call another Command in its own Extension without listing itself in `requires`. Calls to another Extension must be declared by the calling Extension. Cyclic calls and call chains deeper than 16 levels fail with the full call chain.
 
 ### `options.page`
 
@@ -169,15 +224,48 @@ The following declarations expand the structures used by all three hooks:
 
 ```ts
 interface OpenRuntimeExtensionHooks {
-  open?(
-    options: OpenRuntimeOpenHookOptions
-  ): Promise<OpenRuntimeOpenHookResult | void>;
-  detectStack?(
-    options: OpenRuntimePageHookOptions
-  ): Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
+  open?: OpenRuntimeOpenHook | OpenRuntimeOrderedHook<OpenRuntimeOpenHook>;
+  detectStack?:
+    | OpenRuntimeDetectStackHook
+    | OpenRuntimeOrderedHook<OpenRuntimeDetectStackHook>;
   close?(options: OpenRuntimePageHookOptions): Promise<void>;
 }
+
+type OpenRuntimeOpenHook = (
+  options: OpenRuntimeOpenHookOptions
+) => Promise<OpenRuntimeOpenHookResult | void>;
+
+type OpenRuntimeDetectStackHook = (
+  options: OpenRuntimePageHookOptions
+) => Promise<
+  OpenRuntimeStackDetection |
+  readonly OpenRuntimeStackDetection[] |
+  void
+>;
+
+interface OpenRuntimeOrderedHook<Handler> {
+  run: Handler;
+  before?: readonly string[];
+  after?: readonly string[];
+}
 ```
+
+The function shorthand remains valid. Use the object form only when a Hook needs ordering:
+
+```ts
+hooks: {
+  open: {
+    after: ["account-tools"],
+    run: async options => {
+      // ...
+    }
+  }
+}
+```
+
+Hooks without ordering relationships run in parallel. OpenRuntime computes execution batches when it creates the CLI from the current Extension list. `before` and `after` control ordering only: a missing or failed referenced Hook does not disable this Hook. Declare required Extensions on the Extension definition instead. Ordering cycles disable only their participants. Hook return values are not passed to later Hooks.
+
+`close` does not declare its own ordering. It follows the reverse batch order of `open`; Hooks that were parallel during `open` are also parallel during `close`.
 
 ### `open`
 
@@ -194,7 +282,7 @@ interface OpenRuntimeOpenHookResult {
 }
 ```
 
-`open` runs before the browser opens the URL and may return one or more page initialization scripts. `headers` contains the parsed, effective value of `open --headers`; it is `undefined` when the command did not provide headers. OpenRuntime stores the same headers in its directory-scoped operation record and passes them to later Extension Commands as `options.headers`. This includes credentials or tokens when they are present, so protect the local OpenRuntime state directory accordingly. Scripts from multiple Extensions are combined. One failed hook does not block the page or other Extensions.
+`open` runs before the browser opens the URL and may return one or more page initialization scripts. `headers` contains the parsed, effective value of `open --headers`; it is `undefined` when the command did not provide headers. OpenRuntime stores the same headers in its directory-scoped operation record and passes them to later Extension Commands as `options.headers`. This includes credentials or tokens when they are present, so protect the local OpenRuntime state directory accordingly. Scripts from multiple Extensions are combined in Hook execution order and isolated so an exception in one script does not block later Extension scripts or OpenRuntime's own page setup. One failed Hook does not block the page or unrelated Extensions.
 
 ### `detectStack` and `close`
 

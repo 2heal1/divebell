@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { OpenRuntimeOpenHook } from "@openruntime/cli";
 import { createInteractionRecorderScript } from "./capture.js";
 import { clearRecordingControlFile, readRecordingControlFile } from "./session.js";
 import { appendJsonLine, readRecordingManifest, writeJsonFile } from "./storage.js";
@@ -6,9 +6,8 @@ import type { RecordingManifest } from "./types.js";
 import { join } from "node:path";
 
 const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
-type OpenHook = NonNullable<NonNullable<OpenRuntimeExtensionDefinition["hooks"]>["open"]>;
-type OpenHookOptions = Parameters<OpenHook>[0];
-type OpenHookResult = Awaited<ReturnType<OpenHook>>;
+type OpenHookOptions = Parameters<OpenRuntimeOpenHook>[0];
+type OpenHookResult = Awaited<ReturnType<OpenRuntimeOpenHook>>;
 
 export async function runRecordingOpenHook(
   options: OpenHookOptions

@@ -296,7 +296,8 @@ export async function run() { return { installed: true }; }
       stderr: failedUpdateOutput.stderr,
       extensionsDirectory,
       extensionPackageDownloader: {
-        download: async () => {
+        download: async (spec) => {
+          assert.equal(spec, "@demo/command-hello@latest");
           throw new Error("simulated download failure");
         }
       }
@@ -315,7 +316,10 @@ export async function run() { return { installed: true }; }
       stderr: updateOutput.stderr,
       extensionsDirectory,
       extensionPackageDownloader: {
-        download: async () => updatedArchivePath
+        download: async (spec) => {
+          assert.equal(spec, "@demo/command-hello@latest");
+          return updatedArchivePath;
+        }
       }
     }), 0);
     assert.equal(JSON.parse(updateOutput.text()).package.version, "1.1.0");

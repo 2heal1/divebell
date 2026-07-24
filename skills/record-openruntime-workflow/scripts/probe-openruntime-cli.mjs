@@ -122,7 +122,7 @@ function probeCandidate(candidate, timeout) {
     };
   }
 
-  const result = spawnSync(candidate.command, [...candidate.args, "--help"], {
+  const result = spawnSync(candidate.command, [...candidate.args, "record", "--help"], {
     encoding: "utf8",
     timeout
   });

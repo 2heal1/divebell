@@ -46,7 +46,7 @@ try {
 }
 
 function runWrapper(wrapper, env) {
-  return spawnSync(process.execPath, [wrapper, "--help"], {
+  return spawnSync(process.execPath, [wrapper, "record", "--help"], {
     cwd: repositoryRoot,
     env,
     encoding: "utf8",

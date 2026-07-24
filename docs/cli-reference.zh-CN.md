@@ -50,7 +50,7 @@ English version: [OpenRuntime CLI Reference](cli-reference.md)
 
 ### 扩展
 
-- `openruntime extensions add <npm-package> [--extensions-dir <path>]` - 下载、检查并安装一个不含运行依赖的 OpenRuntime 扩展包。
+- `openruntime extensions add <package-or-path> [--extensions-dir <path>]` - 检查并从 npm 包或本地路径安装一个不含运行依赖的 OpenRuntime Extension。
 - `openruntime extensions list [--extensions-dir <path>]` - 列出已安装的 OpenRuntime 扩展包、命令和 Hook。
 - `openruntime extensions update <package> [--extensions-dir <path>]` - 下载并启用扩展包的最新版本；更新失败时保留当前版本。
 - `openruntime extensions remove <package> [--extensions-dir <path>]` - 卸载指定扩展包。

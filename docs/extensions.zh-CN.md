@@ -18,6 +18,8 @@ Extension 适合团队会反复使用的开发调试流程。一次性的页面�
 
 ## 安装 Extension
 
+### 从 npm 安装
+
 使用 npm 包名安装可信的 Extension：
 
 ```sh
@@ -26,7 +28,18 @@ openruntime extensions add @scope/package
 
 官方 Extension 及其用途见 [README 的官方扩展列表](../README.zh-CN.md#官方扩展)。
 
-Extension 会执行本机代码，只安装来源明确、内容可信的包。安装完成后，新命令会出现在：
+### 从本地目录安装
+
+也可以直接传入本地 Extension 目录。相对路径和绝对路径都支持：
+
+```sh
+openruntime extensions add ./path/to/my-extension
+openruntime extensions add /path/to/my-extension
+```
+
+本地目录安装常用于开发和调试 Extension，也可以用于安装没有发布到 npm 的 Extension。目录需要包含有效的 Extension 包声明和可加载入口。
+
+Extension 会执行本机代码，只安装来源明确、内容可信的包或本地目录。安装完成后，新命令会出现在：
 
 ```sh
 openruntime --help
@@ -42,9 +55,9 @@ openruntime extensions update @scope/package
 openruntime extensions remove @scope/package
 ```
 
-- `list` 查看已经安装的包、命令和 Hook。
-- `update` 下载并启用最新版本；更新失败时保留当前版本。
-- `remove` 卸载指定包。
+- `list` 查看已经安装的 Extension、命令和 Hook。
+- `update` 按包名从 npm 下载并启用最新版本；更新失败时保留当前版本。
+- `remove` 卸载指定 Extension。
 
 扩展默认安装到：
 

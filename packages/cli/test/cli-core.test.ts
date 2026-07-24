@@ -119,7 +119,8 @@ test("prints progressively scoped command help", async () => {
     stderr: extensionsOutput.stderr
   }), 0);
   assert.equal(extensionsOutput.errorText(), "");
-  assert.match(extensionsOutput.text(), /openruntime extensions add <npm-package>/);
+  assert.match(extensionsOutput.text(), /openruntime extensions add <package-or-path>/);
+  assert.doesNotMatch(extensionsOutput.text(), /<npm-package>/);
   assert.match(extensionsOutput.text(), /openruntime extensions list/);
   assert.match(extensionsOutput.text(), /openruntime extensions update <package>/);
   assert.match(extensionsOutput.text(), /openruntime extensions remove <package>/);
@@ -131,7 +132,8 @@ test("prints progressively scoped command help", async () => {
     stderr: addOutput.stderr
   }), 0);
   assert.equal(addOutput.errorText(), "");
-  assert.match(addOutput.text(), /openruntime extensions add <npm-package>/);
+  assert.match(addOutput.text(), /openruntime extensions add <package-or-path>/);
+  assert.doesNotMatch(addOutput.text(), /<npm-package>/);
   assert.doesNotMatch(addOutput.text(), /openruntime extensions (list|update|remove)/);
 
   const stateOutput = createOutput();
@@ -228,6 +230,8 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /openruntime coverage <status\|start\|take\|stop\|cancel>/);
   assert.doesNotMatch(markdown, /openruntime verify /);
   assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
+  assert.match(markdown, /openruntime extensions add <package-or-path>/);
+  assert.doesNotMatch(markdown, /<npm-package>/);
   assert.match(markdown, /openruntime extensions list/);
   assert.match(markdown, /openruntime stack/);
   assert.doesNotMatch(markdown, /openruntime goto /);

@@ -1,0 +1,47 @@
+.changeset/open-headers.md
+  s_05b8a638f1a41b::t_73be0224b079c4 1-5
+docs/cli-automation-scripts.md
+  s_05b8a638f1a41b::t_7159273fc3922b 151,165-172
+docs/cli-automation-scripts.zh-CN.md
+  s_05b8a638f1a41b::t_75d5df4b9e38d5 151,165-172
+docs/cli-reference.md
+  s_082a94227b06db::t_cc3e40d6b63059 27
+docs/cli-reference.zh-CN.md
+  s_082a94227b06db::t_7e6fc8e19b429c 27
+packages/cli/src/commands/browser.ts
+  s_05b8a638f1a41b::t_02ce90689fc56e 290-293,299-302,309,319,324-325,329-340
+packages/cli/src/commands/help.ts
+  s_082a94227b06db::t_a1e275ebaafeea 72-73
+packages/cli/test/browser.test.ts
+  s_05b8a638f1a41b::t_c51fc2d765875b 106-145,278-357
+packages/cli/test/cli-core.test.ts
+  s_05b8a638f1a41b::t_ef1618d428ce6a 215
+scripts/sync-openruntime-cli-docs.mjs
+  s_05b8a638f1a41b::t_3edca3a5fd5ea0 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b4bea7b7db2b13780ed6c5c8f6a0ed6eef31c76b",
+  "prompts": {},
+  "sessions": {
+    "s_05b8a638f1a41b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9234-f31c-7d53-8da2-813ca3321c52",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_082a94227b06db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9226-385c-79f3-a531-37ac9818eaae",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

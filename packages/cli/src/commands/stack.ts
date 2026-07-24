@@ -57,11 +57,7 @@ export async function runStackCommand(
       : "Technology stack detected.");
     return 0;
   }
-  const result = await runDetectStackHooks(
-    options.extensions,
-    openContext.extensionContexts ?? {},
-    { args, page, openruntime }
-  );
+  const result = await runDetectStackHooks(options.extensions, { args, page, openruntime });
   const stackDetection = {
     url: currentUrl,
     detectedAt: Date.now(),
@@ -80,9 +76,9 @@ export async function runStackCommand(
     openedAt: openContext.openedAt,
     exitCode: openContext.exitCode,
     activeExtensions: openContext.activeExtensions,
-    ...(openContext.extensionContexts === undefined
+    ...(openContext.headers === undefined
       ? {}
-      : { extensionContexts: openContext.extensionContexts }),
+      : { headers: openContext.headers }),
     stackDetection
   });
   const { detectorSignature: _, ...publicDetection } = stackDetection;

@@ -1,6 +1,5 @@
 import type {
   OpenRuntimeExtensionDefinition,
-  OpenRuntimeExtensionContext,
   OpenRuntimeOpenHookOptions,
   OpenRuntimePageHookOptions,
   OpenRuntimeStackDetection
@@ -19,7 +18,6 @@ export async function runOpenHooks(
   options: OpenRuntimeOpenHookOptions
 ): Promise<{
   activeExtensions: string[];
-  extensionContexts: Record<string, OpenRuntimeExtensionContext>;
   scripts: string[];
   failures: ExtensionHookFailure[];
 }> {
@@ -31,7 +29,6 @@ export async function runOpenHooks(
     result: await withTimeout(run(options), extension.name, "open")
   })));
   const activeExtensions: string[] = [];
-  const extensionContexts: Record<string, OpenRuntimeExtensionContext> = {};
   const scripts: string[] = [];
   const failures: ExtensionHookFailure[] = [];
   for (let index = 0; index < settled.length; index += 1) {
@@ -43,13 +40,6 @@ export async function runOpenHooks(
       continue;
     }
     activeExtensions.push(result.value.extension);
-    if (result.value.result?.context !== undefined) {
-      try {
-        extensionContexts[result.value.extension] = cloneExtensionContext(result.value.result.context);
-      } catch (error) {
-        failures.push(failure(handler.extension.name, "open", error));
-      }
-    }
     for (const script of result.value.result?.scripts ?? []) {
       if (typeof script !== "string") {
         failures.push(failure(handler.extension.name, "open", "Open hook returned a non-string script."));
@@ -58,12 +48,11 @@ export async function runOpenHooks(
       }
     }
   }
-  return { activeExtensions, extensionContexts, scripts, failures };
+  return { activeExtensions, scripts, failures };
 }
 
 export async function runDetectStackHooks(
   extensions: readonly OpenRuntimeExtensionDefinition[],
-  extensionContexts: Readonly<Record<string, OpenRuntimeExtensionContext>>,
   options: OpenRuntimePageHookOptions
 ): Promise<{
   detections: Array<OpenRuntimeStackDetection & { extension: string }>;
@@ -76,10 +65,7 @@ export async function runDetectStackHooks(
   );
   const settled = await Promise.allSettled(handlers.map(async ({ extension, run }) => ({
     extension: extension.name,
-    result: await withTimeout(run({
-      ...options,
-      ...createOpenContextProperty(extensionContexts[extension.name])
-    }), extension.name, "detectStack")
+    result: await withTimeout(run(options), extension.name, "detectStack")
   })));
   const detections: Array<OpenRuntimeStackDetection & { extension: string }> = [];
   const failures: ExtensionHookFailure[] = [];
@@ -108,7 +94,6 @@ export async function runDetectStackHooks(
 export async function runCloseHooks(
   extensions: readonly OpenRuntimeExtensionDefinition[],
   activeExtensions: readonly string[],
-  extensionContexts: Readonly<Record<string, OpenRuntimeExtensionContext>>,
   options: OpenRuntimePageHookOptions
 ): Promise<ExtensionHookFailure[]> {
   const active = new Set(activeExtensions);
@@ -118,54 +103,13 @@ export async function runCloseHooks(
       : [{ extension, run: extension.hooks.close }]
   );
   const settled = await Promise.allSettled(handlers.map(({ extension, run }) =>
-    withTimeout(run({
-      ...options,
-      ...createOpenContextProperty(extensionContexts[extension.name])
-    }), extension.name, "close")
+    withTimeout(run(options), extension.name, "close")
   ));
   return settled.flatMap((result, index) => {
     if (result.status === "fulfilled") return [];
     const extension = handlers[index]?.extension.name ?? "unknown";
     return [failure(extension, "close", result.reason)];
   });
-}
-
-function createOpenContextProperty(
-  context: OpenRuntimeExtensionContext | undefined
-): { openContext: OpenRuntimeExtensionContext } | Record<string, never> {
-  return context === undefined ? {} : { openContext: context };
-}
-
-function cloneExtensionContext(value: OpenRuntimeExtensionContext): OpenRuntimeExtensionContext {
-  if (!isPlainRecord(value) || !isExtensionContextValue(value, new Set())) {
-    throw new Error("Open hook context must be a JSON object containing only serializable values.");
-  }
-  return JSON.parse(JSON.stringify(value)) as OpenRuntimeExtensionContext;
-}
-
-function isExtensionContextValue(value: unknown, seen: Set<object>): boolean {
-  if (
-    value === null
-    || typeof value === "string"
-    || typeof value === "boolean"
-  ) {
-    return true;
-  }
-  if (typeof value === "number") return Number.isFinite(value);
-  if (typeof value !== "object" || seen.has(value)) return false;
-  seen.add(value);
-  const valid = Array.isArray(value)
-    ? value.every((item) => isExtensionContextValue(item, seen))
-    : isPlainRecord(value)
-      && Object.values(value).every((item) => isExtensionContextValue(item, seen));
-  seen.delete(value);
-  return valid;
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }
 
 function validateDetection(value: OpenRuntimeStackDetection): OpenRuntimeStackDetection {

@@ -4,12 +4,7 @@ import type { OpenRuntimeExtensionApi } from "../features/extension/types.js";
 import type { Fetcher } from "../features/runtime/types.js";
 import type {
   CliOperationLogStore,
-  OpenRuntimeExtensionContext,
   ParsedCliArgs
-} from "./shared.js";
-export type {
-  OpenRuntimeExtensionContext,
-  OpenRuntimeExtensionContextValue
 } from "./shared.js";
 
 export interface CliExtensionPageContext {
@@ -25,7 +20,7 @@ export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
-  openContext?: OpenRuntimeExtensionContext;
+  headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
 }
 
@@ -45,13 +40,11 @@ export interface OpenRuntimeOpenHookOptions {
 
 export interface OpenRuntimeOpenHookResult {
   scripts?: readonly string[];
-  context?: OpenRuntimeExtensionContext;
 }
 
 export interface OpenRuntimePageHookOptions {
   args: ParsedCliArgs;
   page: CliExtensionPageContext;
-  openContext?: OpenRuntimeExtensionContext;
   openruntime: OpenRuntimeExtensionApi;
 }
 

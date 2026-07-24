@@ -175,7 +175,7 @@ export async function runFoo(
 }
 ```
 
-成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果同一个 Extension 在 `open` 阶段保存了非敏感上下文，Command 可以通过 `options.openContext` 读取。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
+成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
 ### Hooks
 
@@ -188,17 +188,14 @@ Hooks 在 OpenRuntime 页面打开、技术栈识别和关闭阶段执行。Hook
 ```ts
 import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
 
-export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async ({ headers }) => {
-  const diagnosticsEnabled = Object.entries(headers ?? {}).some(
-    ([name, value]) => name.toLowerCase() === "get-svc" && value === "1"
-  );
+export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => {
   return {
-    context: { diagnosticsEnabled }
+    scripts: ["globalThis.__TEAM_MARKER__ = true;"]
   };
 };
 ```
 
-Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。Hook 可以返回非敏感 JSON `context`，OpenRuntime 保存后只会回传给同一个 Extension 的 Command、`detectStack` 和 `close` Hook。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
+Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。后续 Extension Command 会收到同一个对象。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
 
 #### `detectStack`
 

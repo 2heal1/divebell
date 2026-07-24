@@ -29,8 +29,6 @@ function createCommandExtension(
 test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-hooks-"));
   const calls: string[] = [];
-  let detectOpenContext: unknown;
-  let closeOpenContext: unknown;
   let closeCount = 0;
   const cli = createOpenRuntimeCli({
     extensions: [{
@@ -39,14 +37,10 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       hooks: {
         open: async () => {
           calls.push("open");
-          return {
-            scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"],
-            context: { diagnosticsEnabled: true, source: "open-hook" }
-          };
+          return { scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"] };
         },
-        detectStack: async ({ openruntime, openContext }) => {
+        detectStack: async ({ openruntime }) => {
           calls.push("detectStack");
-          detectOpenContext = openContext;
           const detected = await openruntime.browser.eval<boolean>("globalThis._MODERNJS_ROUTE_MANIFEST != null");
           return detected ? {
             id: "modernjs",
@@ -54,9 +48,8 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
             evidence: ["window._MODERNJS_ROUTE_MANIFEST"]
           } : undefined;
         },
-        close: async ({ openContext }) => {
+        close: async () => {
           calls.push("close");
-          closeOpenContext = openContext;
           closeCount += 1;
         }
       }
@@ -105,10 +98,6 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.equal(stackResult.data.detections[0].id, "modernjs");
     assert.equal(stackResult.data.detections[0].extension, "modern-detector");
     assert.equal(stackResult.data.cached, false);
-    assert.deepEqual(detectOpenContext, {
-      diagnosticsEnabled: true,
-      source: "open-hook"
-    });
     assert.deepEqual(calls, ["open", "detectStack"]);
 
     const cachedOutput = createOutput();
@@ -129,10 +118,6 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       browserRunner
     }), 0);
     assert.equal(closeCount, 1);
-    assert.deepEqual(closeOpenContext, {
-      diagnosticsEnabled: true,
-      source: "open-hook"
-    });
     assert.deepEqual(calls, ["open", "detectStack", "close"]);
     assert.deepEqual(browserCalls.map((args) => args[0]), ["open", "eval", "eval", "eval", "close"]);
   } finally {
@@ -140,60 +125,32 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
   }
 });
 
-test("returns each extension's saved open context to its commands", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-context-"));
+test("returns the opened page headers unchanged to extension commands", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-command-headers-"));
   const headers = JSON.stringify({
     Authorization: "Bearer secret-token",
     "Get-Svc": "1"
   });
   const cli = createOpenRuntimeCli({
-    extensions: [
-      {
-        schemaVersion: 1,
+    extensions: [{
+      schemaVersion: 1,
+      name: "goofy",
+      commands: [{
         name: "goofy",
-        commands: [{
-          name: "goofy",
-          async run({ openContext }) {
-            return { openContext };
-          }
-        }],
-        hooks: {
-          async open({ headers: openHeaders }) {
-            const diagnosticsEnabled = Object.entries(openHeaders ?? {}).some(
-              ([name, value]) => name.toLowerCase() === "get-svc" && value === "1"
-            );
-            return diagnosticsEnabled ? {
-              context: {
-                diagnosticsEnabled: true
-              }
-            } : undefined;
-          }
+        async run({ headers: openedHeaders }) {
+          return { headers: openedHeaders };
         }
-      },
-      {
-        schemaVersion: 1,
-        name: "other",
-        commands: [{
-          name: "other",
-          async run({ openContext }) {
-            return { openContext };
-          }
-        }],
-        hooks: {
-          async open() {
-            return {
-              context: {
-                owner: "other"
-              }
-            };
-          }
+      }],
+      hooks: {
+        async detectStack() {
+          return undefined;
         }
       }
-    ]
+    }]
   });
-  const browserRunner = createBrowserRunner(async () => ({
+  const browserRunner = createBrowserRunner(async (args) => ({
     exitCode: 0,
-    stdout: "",
+    stdout: args[0] === "eval" ? JSON.stringify("http://app.test/") : "",
     stderr: ""
   }));
 
@@ -215,16 +172,21 @@ test("returns each extension's saved open context to its commands", async () => 
 
     const files = readdirSync(operationLogDirectory);
     assert.equal(files.length, 1);
-    const persistedText = readFileSync(join(operationLogDirectory, files[0] as string), "utf8");
-    assert.doesNotMatch(persistedText, /secret-token|Authorization|Get-Svc/);
-    assert.deepEqual(JSON.parse(persistedText).extensionContexts, {
-      goofy: {
-        diagnosticsEnabled: true
-      },
-      other: {
-        owner: "other"
-      }
+    const persisted = JSON.parse(readFileSync(
+      join(operationLogDirectory, files[0] as string),
+      "utf8"
+    ));
+    assert.deepEqual(persisted.headers, {
+      Authorization: "Bearer secret-token",
+      "Get-Svc": "1"
     });
+
+    assert.equal(await cli.run(["stack"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
 
     const goofyOutput = createOutput();
     assert.equal(await cli.run(["goofy", "status"], {
@@ -234,21 +196,9 @@ test("returns each extension's saved open context to its commands", async () => 
       browserRunner
     }), 0);
     assert.deepEqual(JSON.parse(goofyOutput.text()), commandOutput("goofy status", {
-      openContext: {
-        diagnosticsEnabled: true
-      }
-    }));
-
-    const otherOutput = createOutput();
-    assert.equal(await cli.run(["other", "status"], {
-      stdout: otherOutput.stdout,
-      stderr: otherOutput.stderr,
-      operationLogDirectory,
-      browserRunner
-    }), 0);
-    assert.deepEqual(JSON.parse(otherOutput.text()), commandOutput("other status", {
-      openContext: {
-        owner: "other"
+      headers: {
+        Authorization: "Bearer secret-token",
+        "Get-Svc": "1"
       }
     }));
 
@@ -266,48 +216,6 @@ test("returns each extension's saved open context to its commands", async () => 
       browserRunner
     }), 0);
     assert.deepEqual(JSON.parse(reopenedGoofyOutput.text()), commandOutput("goofy status", {}));
-  } finally {
-    rmSync(operationLogDirectory, { recursive: true, force: true });
-  }
-});
-
-test("ignores invalid open context without blocking the page", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-invalid-extension-context-"));
-  const cli = createOpenRuntimeCli({
-    extensions: [{
-      schemaVersion: 1,
-      name: "invalid-context",
-      hooks: {
-        async open() {
-          return {
-            context: {
-              diagnosticsEnabled: undefined
-            } as never
-          };
-        }
-      }
-    }]
-  });
-
-  try {
-    const output = createOutput();
-    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      operationLogDirectory,
-      browserRunner: createBrowserRunner(async () => ({
-        exitCode: 0,
-        stdout: "",
-        stderr: ""
-      }))
-    }), 0);
-    assert.match(
-      output.errorText(),
-      /Open hook context must be a JSON object containing only serializable values/
-    );
-    const files = readdirSync(operationLogDirectory);
-    const persisted = JSON.parse(readFileSync(join(operationLogDirectory, files[0] as string), "utf8"));
-    assert.equal(persisted.extensionContexts, undefined);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

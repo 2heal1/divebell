@@ -17,8 +17,6 @@ export type {
   CliExtensionPageContext,
   CliExtensionRunOptions,
   OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionContext,
-  OpenRuntimeExtensionContextValue,
   OpenRuntimeExtensionDefinition
 } from "./commands.js";
 

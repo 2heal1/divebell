@@ -183,7 +183,7 @@ export async function runFoo(
 }
 ```
 
-Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. If this Extension saved non-sensitive context during `open`, the Command receives it as `options.openContext`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
+Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
 ### Hooks
 
@@ -196,17 +196,14 @@ Hooks run while OpenRuntime opens a page, detects its stack, and closes it. A Ho
 ```ts
 import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
 
-export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async ({ headers }) => {
-  const diagnosticsEnabled = Object.entries(headers ?? {}).some(
-    ([name, value]) => name.toLowerCase() === "get-svc" && value === "1"
-  );
+export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => {
   return {
-    context: { diagnosticsEnabled }
+    scripts: ["globalThis.__TEAM_MARKER__ = true;"]
   };
 };
 ```
 
-The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Treat header values as sensitive data. It may return a non-sensitive JSON `context`; OpenRuntime saves that context and returns it only to the same Extension in later Commands, `detectStack`, and `close` Hooks. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
+The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Later Extension Commands receive the same object. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
 
 #### `detectStack`
 

@@ -57,12 +57,11 @@ export async function runExtensionCliCommand(
   const openContext = await operationLogStore.read();
   const extensionArgs = applyOpenContextDefaults(args, openContext);
   const bridgeStateStore = createBridgeStateStore(extensionArgs, bridgeStateDirectory);
-  const extensionOpenContext = openContext?.extensionContexts?.[registered.extension.name];
   const result = await registered.command.run({
     args: extensionArgs,
     fetcher,
     ...(openContext === undefined ? {} : { page: createExtensionPageContext(openContext) }),
-    ...(extensionOpenContext === undefined ? {} : { openContext: extensionOpenContext }),
+    ...(openContext?.headers === undefined ? {} : { headers: openContext.headers }),
     openruntime: createOpenRuntimeExtensionApi({
       args: extensionArgs,
       fetcher,

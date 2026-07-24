@@ -1,8 +1,6 @@
 import { validateCommandSkill } from "./skill.js";
 import type {
   OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionContext,
-  OpenRuntimeExtensionContextValue,
   OpenRuntimeExtensionDefinition,
   OpenRuntimeExtensionHooks,
   ValidateExtensionOptions
@@ -10,8 +8,6 @@ import type {
 
 export type {
   OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionContext,
-  OpenRuntimeExtensionContextValue,
   OpenRuntimeExtensionDefinition,
   OpenRuntimeExtensionHooks,
   ValidateExtensionOptions

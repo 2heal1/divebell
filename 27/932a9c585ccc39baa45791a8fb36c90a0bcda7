@@ -1,0 +1,41 @@
+.changeset/inject-mf-debug-runtime.md
+  s_71d7abfc3080ba::t_7b95d7b52fef0a 5
+packages/extension-mf/README.md
+  s_71d7abfc3080ba::t_a9fcaec67589ff 18,120-122,135-136
+packages/extension-mf/docs/remote.md
+  s_e84425219326c8::t_3c0750e20de737 15-16,32-33
+packages/extension-mf/src/cli/observability.ts
+  s_71d7abfc3080ba::t_e0a058eec6822f 41-106,161-164
+packages/extension-mf/test/command.test.mjs
+  s_71d7abfc3080ba::t_c604371e5f131c 231-232
+packages/extension-mf/test/integration.test.mjs
+  s_e84425219326c8::t_4c449f9d3d6c21 73-74,151-152
+packages/extension-mf/test/remote-command.test.mjs
+  s_71d7abfc3080ba::t_b9f64c347b3562 24-39,49-50,61-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "27932a9c585ccc39baa45791a8fb36c90a0bcda7",
+  "prompts": {},
+  "sessions": {
+    "s_71d7abfc3080ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92ce-6474-7053-9538-40cb8ecbfd6a",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

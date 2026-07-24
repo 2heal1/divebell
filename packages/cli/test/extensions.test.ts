@@ -125,6 +125,65 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
   }
 });
 
+test("provides the effective request headers to open hooks", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-headers-"));
+  const browserCalls: string[][] = [];
+  let receivedHeaders: Readonly<Record<string, string>> | undefined;
+  const headers = JSON.stringify({
+    Authorization: "Bearer secret-token",
+    "X-Debug-User": "agent"
+  });
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "header-aware",
+      hooks: {
+        open: async (options) => {
+          receivedHeaders = options.headers;
+        }
+      }
+    }]
+  });
+
+  try {
+    const output = createOutput();
+    assert.equal(await cli.run([
+      "open",
+      "http://app.test",
+      "--headers",
+      JSON.stringify({ "X-Ignored": "first" }),
+      "--headers",
+      headers,
+      "--session",
+      "session-headers",
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+
+    assert.deepEqual(receivedHeaders, {
+      Authorization: "Bearer secret-token",
+      "X-Debug-User": "agent"
+    });
+    assert.equal(Object.isFrozen(receivedHeaders), true);
+    assert.deepEqual(browserCalls, [[
+      "open",
+      "http://app.test/?openruntimeSessionId=session-headers",
+      "--headers",
+      headers
+    ]]);
+    assert.doesNotMatch(output.text(), /secret-token/);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
 test("runs the previous page close hook before opening its replacement", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-reopen-hooks-"));
   const calls: string[] = [];

@@ -184,6 +184,7 @@ interface OpenRuntimeOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
+  headers?: Readonly<Record<string, string>>;
 }
 
 interface OpenRuntimeOpenHookResult {
@@ -191,7 +192,7 @@ interface OpenRuntimeOpenHookResult {
 }
 ```
 
-`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
+`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
 
 ### `detectStack` 与 `close`
 

@@ -314,6 +314,46 @@ test("forwards origin-scoped headers to the first page request", async () => {
   assert.doesNotMatch(output.text(), /secret-token/);
 });
 
+test("rejects headers that cannot be provided to the browser and extensions", async () => {
+  for (const [headers, expected] of [
+    ["{", {
+      code: "CLI_HEADERS_INVALID_JSON",
+      message: "--headers must be valid JSON."
+    }],
+    [JSON.stringify({ "X-Debug-User": 1 }), {
+      code: "CLI_HEADERS_INVALID_SHAPE",
+      message: "--headers must be a JSON object with string values."
+    }]
+  ] as const) {
+    const output = createOutput();
+    let browserTouched = false;
+    const exitCode = await runCli([
+      "open",
+      "http://app.test/orders",
+      "--headers",
+      headers,
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      browserRunner: createBrowserRunner(async () => {
+        browserTouched = true;
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(browserTouched, false);
+    assert.deepEqual(JSON.parse(output.text()), errorOutput("open http://app.test/orders", {
+      code: expected.code,
+      kind: "validation",
+      message: expected.message,
+      retryable: false,
+      hint: "Pass --headers as a JSON object with string values."
+    }));
+  }
+});
+
 test("keeps headers on the first navigation when cookies are staged before opening", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

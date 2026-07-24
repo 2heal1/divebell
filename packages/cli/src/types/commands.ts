@@ -34,6 +34,7 @@ export interface OpenRuntimeOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
+  headers?: Readonly<Record<string, string>>;
 }
 
 export interface OpenRuntimeOpenHookResult {

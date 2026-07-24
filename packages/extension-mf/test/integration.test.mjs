@@ -30,7 +30,8 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
     {
       command: ["mf", "trace", "shop/Button"],
       options: [["instance", ["mf-1"]], ["trace-id", ["remote-load"]]],
-      expected: "mf trace"
+      expected: "mf trace",
+      traceOperation: "loadRemote"
     },
     {
       command: ["mf", "remote", "check", "shop"],
@@ -40,7 +41,8 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
     {
       command: ["mf", "preload", "trace", "shop"],
       options: [["instance", ["mf-1"]], ["trace-id", ["remote-preload"]]],
-      expected: "mf preload trace"
+      expected: "mf preload trace",
+      traceOperation: "preloadRemote"
     },
     {
       command: ["mf", "shared", "status", "react"],
@@ -68,6 +70,11 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
     assert.equal(await runMfCommand(run.options), 0, item.expected);
     if (item.compactStatus) {
       assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
+    } else if (item.traceOperation !== undefined) {
+      assert.equal(run.outputValue().traces[0].operation, item.traceOperation);
+      assert.ok(Array.isArray(run.outputValue().traces[0].lifecycle));
+      assert.equal(run.outputValue().command, undefined);
+      assert.equal(run.outputValue().selection, undefined);
     } else {
       assert.equal(run.outputValue().command, item.expected);
       assert.equal(run.outputValue().compatibility, undefined);
@@ -145,7 +152,7 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
     snapshot
   );
 
-  assert.equal(pending.outcome, "pending");
+  assert.equal(pending.result, "pending");
   assert.equal(unknown.remote.outcome, "unknown");
   assert.equal(partial.supported, true);
   assert.match(partial.warnings.join(" "), /partial|missing/i);

@@ -10,13 +10,14 @@ openruntime mf remote check <remote> [--mf <name>] [--instance <ref>]
 openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 ```
 
-All commands return the versioned structured result objects by default.
+All commands return structured JSON by default.
 
 Successful command output omits the internal compatibility and capability summaries. If collection is incomplete or unavailable, the reason remains in `warnings` and the recovery step remains in `recommendedActions`.
 
 ## Ordinary remote trace
 
-`mf trace` orders evidence into these fixed stages:
+`mf trace` returns a compact result and orders its `lifecycle` array into these
+fixed stages:
 
 1. request start
 2. remote match
@@ -27,13 +28,28 @@ Successful command output omits the internal compatibility and capability summar
 7. factory execution
 8. final result
 
-Each stage contains its observed status, timestamps, duration, remote, expose, safe URL, HTTP status, MIME type, redirect state, cache/recovery/timeout flags, resource results, and safe error summary. A stage with a start event and no later completion is `pending`. A stage with no related record is `unknown`; it is never promoted to success from a later unrelated stage.
+Each trace identifies the instance, target, and operation (`loadRemote`), then
+shows the overall result and the lifecycle stages. An observed stage contains
+its result, readable start and end times, duration, and the lifecycle hooks that
+started and ended it. Cache, recovery, timeout, and safe error details appear
+only when relevant. Resource loading details appear only on stages that
+actually contain a related manifest, remote entry, script, style, or other
+resource request.
 
 The `mf trace` and `mf preload trace` commands format absolute start and end times as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
 
 The top-level trace outcome comes from the captured report. A recovered trace remains `recovered`, while its original failed resource stays in the resource list.
 
-With no target, the command returns a summary array sorted by start time. Every item includes its page-session `instanceRef` and `traceId`. A target that matches several concurrent reports requires `--trace-id` and returns copyable candidates.
+For an ordinary load, `preload` reports whether a matching `preloadRemote`
+trace was captured for the same instance and remote. `timing` is
+`before-load` when preload finished before the load started, or `overlapping`
+when it was still running. `not-observed` means no matching preload report was
+captured; it does not prove that no preload happened before collection began.
+
+With no target, the command returns trace items sorted by start time. Every item
+includes its page-session `instance.ref` and `traceId`. A target that matches
+several concurrent reports requires `--trace-id` and returns copyable
+candidates.
 
 ## Remote check
 
@@ -50,7 +66,11 @@ The check does not fetch a manifest or remote entry, execute a script, initializ
 
 ## Preload trace
 
-`mf preload trace` accepts only reports and resources identified as `preloadRemote`. Its stages are preload target, manifest resolution, resource requests, and final result. Ordinary `loadRemote` events are excluded, including when the remote name, expose, URL, or request id is the same.
+`mf preload trace` identifies its operation as `preloadRemote` and accepts only
+reports and resources from that operation. Its lifecycle order is preload
+target, manifest resolution, resource requests, and final result. Ordinary
+`loadRemote` events are excluded, including when the remote name, expose, URL,
+or request id is the same.
 
 ## Selection and ambiguity
 

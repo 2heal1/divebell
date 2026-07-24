@@ -9,6 +9,7 @@ import type {
 } from "../types.js";
 import { RemoteCoreError } from "./errors.js";
 import {
+  isRemoteTraceReport,
   normalizeExpose,
   reportInstanceRef,
   selectRemoteCheck,
@@ -99,11 +100,18 @@ export function createRemoteTraceResult(
 
   const selected = selectRemoteTrace(snapshot, kind, selectors);
   if (!selected.ok) throw new RemoteCoreError(selected.issue);
-  const traces = selected.value.reports.map((report) =>
-    buildRemoteTrace(report, kind, selected.value.consumer === undefined
-      ? undefined
-      : visibleInstanceName(selected.value.consumer))
-  );
+  const traces = selected.value.reports.map((report) => {
+    const trace = buildRemoteTrace(
+      report,
+      kind,
+      selected.value.consumer === undefined
+        ? undefined
+        : visibleInstanceName(selected.value.consumer)
+    );
+    return kind === "load"
+      ? { ...trace, preload: matchingPreload(snapshot, report) }
+      : trace;
+  });
   const outcome = traceCollectionOutcome(traces, capability);
   const warnings = [...common.warnings];
   const actions = [...common.actions];
@@ -296,6 +304,65 @@ export function buildRemoteTrace(
   };
 }
 
+function matchingPreload(
+  snapshot: BrowserObservabilitySnapshot,
+  loadReport: RuntimeReport
+): NonNullable<RemoteTraceSummary["preload"]> {
+  const matches = snapshot.reports
+    .filter((report) => isRemoteTraceReport(report, "preload"))
+    .filter((report) => report.startedAt <= loadReport.startedAt)
+    .filter((report) => reportsShareTarget(loadReport, report))
+    .sort((left, right) =>
+      right.startedAt - left.startedAt ||
+      right.traceId.localeCompare(left.traceId)
+    );
+  const report = matches[0];
+  if (report === undefined) return { status: "not-observed" };
+  const trace = buildRemoteTrace(report, "preload");
+  return {
+    status: trace.outcome,
+    traceId: trace.traceId,
+    timing: trace.endedAt !== undefined &&
+      trace.endedAt <= loadReport.startedAt
+      ? "before-load"
+      : "overlapping",
+    startedAt: trace.startedAt,
+    ...(trace.endedAt === undefined ? {} : { endedAt: trace.endedAt }),
+    duration: trace.duration
+  };
+}
+
+function reportsShareTarget(
+  loadReport: RuntimeReport,
+  preloadReport: RuntimeReport
+): boolean {
+  if (
+    loadReport.remote === undefined ||
+    preloadReport.remote === undefined ||
+    !remotesMatch(loadReport.remote, preloadReport.remote)
+  ) {
+    return false;
+  }
+  const loadInstanceRef = reportInstanceRef(loadReport);
+  const preloadInstanceRef = reportInstanceRef(preloadReport);
+  if (
+    loadInstanceRef !== undefined ||
+    preloadInstanceRef !== undefined
+  ) {
+    if (loadInstanceRef !== preloadInstanceRef) return false;
+  } else if (
+    loadReport.hostName === undefined ||
+    preloadReport.hostName === undefined ||
+    loadReport.hostName !== preloadReport.hostName
+  ) {
+    return false;
+  }
+  return loadReport.expose === undefined ||
+    preloadReport.expose === undefined ||
+    normalizeExpose(loadReport.expose) ===
+      normalizeExpose(preloadReport.expose);
+}
+
 export function remoteCapability(
   snapshot: BrowserObservabilitySnapshot
 ): RemoteCapabilitySummary {
@@ -340,6 +407,12 @@ function aggregateStage(
   const startedAt = minimum(startTimes) ?? (events.length > 0 ? events[0]?.timestamp : undefined) ??
     report?.startedAt;
   const endedAt = maximum(endTimes) ?? (report?.status === "pending" ? undefined : report?.updatedAt);
+  const startedBy = events.find((event) =>
+    event.status === "start" && event.lifecycle !== undefined
+  )?.lifecycle;
+  const endedBy = [...events].reverse().find((event) =>
+    event.status !== "start" && event.lifecycle !== undefined
+  )?.lifecycle;
   const explicitDuration = [...events].reverse().find((event) =>
     event.duration !== undefined || event.resource?.duration !== undefined
   );
@@ -363,7 +436,11 @@ function aggregateStage(
     label,
     status,
     ...(startedAt === undefined ? {} : { startedAt }),
+    ...(startedBy === undefined ? {} : { startedBy }),
     ...(endedAt === undefined || status === "pending" ? {} : { endedAt }),
+    ...(endedAt === undefined || status === "pending" || endedBy === undefined
+      ? {}
+      : { endedBy }),
     ...(duration === undefined ? {} : { duration }),
     ...(remote === undefined ? {} : { remote }),
     ...(expose === undefined ? {} : { expose: normalizeExpose(expose) }),

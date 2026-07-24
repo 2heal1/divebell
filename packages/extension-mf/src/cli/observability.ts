@@ -50,39 +50,148 @@ function presentCommandResult(result: unknown): unknown {
     presented.command === "mf trace" ||
     presented.command === "mf preload trace"
   ) {
-    presented.traces = Array.isArray(presented.traces)
-      ? presented.traces.map(presentRemoteTraceTime)
-      : presented.traces;
+    return presentRemoteTraceResult(presented);
   }
   return presented;
 }
 
-function presentRemoteTraceTime(value: unknown): unknown {
+function presentRemoteTraceResult(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const warnings = stringArray(value.warnings);
+  const recommendedActions = stringArray(value.recommendedActions);
+  return {
+    result: value.outcome,
+    traces: Array.isArray(value.traces)
+      ? value.traces.map(presentRemoteTrace)
+      : [],
+    ...(warnings.length === 0 ? {} : { warnings }),
+    ...(recommendedActions.length === 0
+      ? {}
+      : { recommendedActions })
+  };
+}
+
+function presentRemoteTrace(value: unknown): unknown {
   if (!isRecord(value)) return value;
   return {
-    ...value,
-    ...readableTimeFields(value),
+    traceId: value.traceId,
+    ...(value.requestId === undefined ? {} : { requestId: value.requestId }),
+    instance: {
+      ref: value.instanceRef,
+      name: value.instanceName
+    },
+    ...presentRemoteTarget(value),
+    operation: value.kind === "preload"
+      ? "preloadRemote"
+      : "loadRemote",
+    ...(value.kind === "load"
+      ? { preload: presentPreload(value.preload) }
+      : {}),
+    result: presentTraceOutcome(value),
     ...(Array.isArray(value.stages)
-      ? { stages: value.stages.map(presentRemoteStageTime) }
-      : {})
+      ? { lifecycle: value.stages.map(presentRemoteLifecycle) }
+      : { lifecycle: [] })
   };
 }
 
-function presentRemoteStageTime(value: unknown): unknown {
-  if (!isRecord(value)) return value;
+function presentRemoteTarget(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const remote = isRecord(value.remote) ? value.remote : undefined;
+  if (remote === undefined && value.expose === undefined) return {};
   return {
-    ...value,
+    target: {
+      ...(remote?.name === undefined ? {} : { remote: remote.name }),
+      ...(remote?.alias === undefined ? {} : { alias: remote.alias }),
+      ...(value.expose === undefined ? {} : { expose: value.expose })
+    }
+  };
+}
+
+function presentPreload(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) return { status: "not-observed" };
+  return {
+    status: value.status,
+    ...(value.traceId === undefined ? {} : { traceId: value.traceId }),
+    ...(value.timing === undefined ? {} : { timing: value.timing }),
     ...readableTimeFields(value),
-    ...(Array.isArray(value.resources)
-      ? { resources: value.resources.map(presentRemoteResourceTime) }
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
       : {})
   };
 }
 
-function presentRemoteResourceTime(value: unknown): unknown {
-  return isRecord(value)
-    ? { ...value, ...readableTimeFields(value) }
-    : value;
+function presentTraceOutcome(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    status: value.outcome,
+    ...readableTimeFields(value),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.cached === true ? { cached: true } : {}),
+    ...(value.recovered === true ? { recovered: true } : {}),
+    ...(value.timeout === true ? { timeout: true } : {}),
+    ...(isRecord(value.error) ? { error: value.error } : {})
+  };
+}
+
+function presentRemoteLifecycle(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const resources = Array.isArray(value.resources)
+    ? value.resources.map(presentRemoteResource)
+    : [];
+  return {
+    phase: value.name,
+    result: value.status,
+    ...readableTimeFields(value),
+    ...(value.startedBy === undefined
+      ? {}
+      : { startedBy: value.startedBy }),
+    ...(value.endedBy === undefined ? {} : { endedBy: value.endedBy }),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.cached === true ? { cached: true } : {}),
+    ...(value.recovered === true ? { recovered: true } : {}),
+    ...(value.timeout === true ? { timeout: true } : {}),
+    ...(resources.length === 0 ? {} : { resources }),
+    ...(isRecord(value.error) ? { error: value.error } : {})
+  };
+}
+
+function presentRemoteResource(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const rawError = isRecord(value.error) ? value.error : undefined;
+  const error = value.errorType === undefined && rawError === undefined
+    ? undefined
+    : {
+        ...(value.errorType === undefined ? {} : { type: value.errorType }),
+        ...(rawError ?? {})
+      };
+  return {
+    type: value.type,
+    loadedBy: value.initiator,
+    result: value.outcome ?? "pending",
+    ...(value.url === undefined ? {} : { url: value.url }),
+    ...readableTimeFields(value),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.httpStatus === undefined
+      ? {}
+      : { httpStatus: value.httpStatus }),
+    ...(value.mimeType === undefined ? {} : { mimeType: value.mimeType }),
+    ...(value.redirected === undefined
+      ? {}
+      : { redirected: value.redirected }),
+    ...(value.cacheSource === undefined
+      ? {}
+      : { cacheSource: value.cacheSource }),
+    ...(error === undefined ? {} : { error })
+  };
 }
 
 function readableTimeFields(
@@ -104,6 +213,12 @@ function readableTimestamp(value: number): string {
   return date.toISOString()
     .replace("T", " ")
     .replace("Z", " UTC");
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function unavailableError(

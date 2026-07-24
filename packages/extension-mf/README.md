@@ -130,13 +130,27 @@ openruntime mf remote check shop --mf host
 openruntime mf preload trace shop --instance mf-1
 ```
 
-`mf trace` shows the captured ordinary `loadRemote` chain from request start through remote matching, manifest or snapshot resolution, remote entry loading, container initialization, expose lookup, factory execution, and final result. With no target it lists trace summaries; each summary keeps its `instanceRef` and `traceId`.
+`mf trace` returns a compact lifecycle for the captured `loadRemote` operation:
+request, remote match, manifest or snapshot resolution, remote entry loading,
+container initialization, expose lookup, factory execution, and final result.
+Each observed phase shows its result, readable start and end times, duration,
+and the lifecycle hooks that opened and closed it. Related resource loading
+details appear only on phases that have them. With no target it lists trace
+items in start-time order; each item keeps its `instance.ref` and `traceId`.
 
 Absolute trace times are returned as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
 
+An ordinary load also includes matching preload evidence. It distinguishes a
+preload that finished before loading from one that overlapped loading.
+`not-observed` means that no matching preload report was captured, not that
+preloading definitely did not happen.
+
 `mf remote check` checks the remote declaration, current relationship, manifest and remote entry facts, observed resource results, HTTP/MIME/redirect evidence, container initialization, exposes, cache, recovery, and timeout state. It only analyzes existing page evidence. It does not request a manifest or remote entry, execute a remote entry, or call container code.
 
-`mf preload trace` uses only `preloadRemote` evidence. Ordinary `loadRemote` resources are excluded even when both operations target the same remote.
+`mf preload trace` identifies the operation as `preloadRemote` and displays its
+own lifecycle: target selection, manifest resolution, resource requests, and
+final result. It uses only preload evidence. Ordinary `loadRemote` resources
+are excluded even when both operations target the same remote.
 
 Remote names and aliases are accepted. For `remote/expose`, the full remote name or alias is matched before the expose suffix is parsed, including scoped remote names that contain `/`. Same-name instances and concurrent traces are never reduced to the first result; candidate output includes copyable `--instance` or `--trace-id` commands.
 

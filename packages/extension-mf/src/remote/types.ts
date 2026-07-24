@@ -98,7 +98,9 @@ export interface RemoteStageEvidence {
   label: string;
   status: RemoteEvidenceStatus;
   startedAt?: number;
+  startedBy?: string;
   endedAt?: number;
+  endedBy?: string;
   duration?: number;
   remote?: RuntimeRemote;
   expose?: string;
@@ -129,6 +131,16 @@ export interface RemoteTraceSummary {
   recovered: boolean;
   timeout: boolean;
   stages: RemoteStageEvidence[];
+  preload?: {
+    status:
+      | Exclude<RemoteTraceOutcome, "unavailable">
+      | "not-observed";
+    traceId?: string;
+    timing?: "before-load" | "overlapping";
+    startedAt?: number;
+    endedAt?: number;
+    duration?: number;
+  };
   error?: RemoteErrorEvidence;
 }
 

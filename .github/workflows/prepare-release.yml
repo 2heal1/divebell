@@ -42,12 +42,14 @@ jobs:
           package-manager-cache: false
 
       - name: Confirm current release baseline
+        id: baseline
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           current_tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
           gh release view "$current_tag" >/dev/null
           node scripts/npm-release.mjs check
+          echo "tag=$current_tag" >> "$GITHUB_OUTPUT"
 
       - name: Bump release version
         run: node scripts/bump-recording-skill-runtime.mjs "${{ inputs.bump }}"
@@ -60,11 +62,24 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Generate release pull request description
+        env:
+          BASE_TAG: ${{ steps.baseline.outputs.tag }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+          PR_BODY: ${{ runner.temp }}/openruntime-release-pr.md
+        run: |
+          node scripts/generate-release-pr-body.mjs \
+            --base "$BASE_TAG" \
+            --version "$VERSION" \
+            --tag "$TAG" \
+            --output "$PR_BODY"
+
       - name: Create release branch and pull request
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.metadata.outputs.version }}
-          TAG: ${{ steps.metadata.outputs.tag }}
+          PR_BODY: ${{ runner.temp }}/openruntime-release-pr.md
         run: |
           branch="release/openruntime-v${VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
@@ -89,13 +104,11 @@ jobs:
             packages/extension-imitate/package.json \
             packages/extension-memory/package.json \
             skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
-          git commit -m "chore: prepare OpenRuntime ${VERSION}" -m "Co-Authored-By: Riff"
+          git commit -m "chore: prepare OpenRuntime ${VERSION}"
           git push origin "$branch"
           gh pr create \
             --base main \
             --head "$branch" \
             --title "chore: release OpenRuntime ${VERSION}" \
-            --body "Bumps every OpenRuntime npm package and the recording skill runtime to ${VERSION}. After this PR passes CI and is merged, the trusted workflow publishes npm packages through OIDC, then creates ${TAG} with the recording runtime assets.
-
-          Co-Authored-By: Riff"
+            --body-file "$PR_BODY"
           gh workflow run ci.yml --ref "$branch"

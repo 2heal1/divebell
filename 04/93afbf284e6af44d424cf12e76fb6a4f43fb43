@@ -1,0 +1,47 @@
+demos/modern-basic/scripts/verify-experience.mjs
+  s_67c45a6ece4cdf::t_27970d82c050c7 293
+docs/record-browser-workflows.md
+  s_c6ce3da04425cf::t_ac70d3b6edb926 52
+docs/record-browser-workflows.zh-CN.md
+  s_c6ce3da04425cf::t_c31d2df58f3d87 52
+packages/cli/src/commands/browser.ts
+  s_67c45a6ece4cdf::t_b2e8860fe63cdc 53-67
+packages/cli/src/commands/names.ts
+  s_67c45a6ece4cdf::t_3e1e147a745984 16,50
+packages/cli/src/features/browser/command-args.ts
+  s_67c45a6ece4cdf::t_39aa5100ad56d1 50
+packages/cli/src/types/commands.ts
+  s_67c45a6ece4cdf::t_6c8e52d1b57a89 151
+packages/extension-imitate/README.md
+  s_67c45a6ece4cdf::t_2d0c1e466996b1 34,67
+packages/extension-imitate/src/index.ts
+  s_67c45a6ece4cdf::t_faa9c474ddc74c 550
+packages/extension-imitate/test/record.test.mjs
+  s_67c45a6ece4cdf::t_9e7b45b440f0b5 143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0493afbf284e6af44d424cf12e76fb6a4f43fb43",
+  "prompts": {},
+  "sessions": {
+    "s_67c45a6ece4cdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ede-226c-7800-87a3-bdaa89a3de3d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_c6ce3da04425cf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f91fe-7756-79d3-a7c6-8630cf848877",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

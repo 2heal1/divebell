@@ -23,7 +23,7 @@
     "version:packages": "changeset version",
     "release:npm:check": "node ./scripts/npm-release.mjs check",
     "release:npm:pack": "node ./scripts/npm-release.mjs pack",
-    "test:release-script": "node --test ./scripts/npm-release-utils.test.mjs",
+    "test:release-script": "node --test ./scripts/npm-release-utils.test.mjs ./scripts/release-pr-body-utils.test.mjs",
     "publish:packages": "node ./scripts/npm-release.mjs publish",
     "version:check": "node ./scripts/check-package-versions.mjs",
     "clean": "node ./scripts/clean.mjs"

@@ -195,7 +195,7 @@ export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => 
 };
 ```
 
-多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
+Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
 
 #### `detectStack`
 

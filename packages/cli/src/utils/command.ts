@@ -59,6 +59,38 @@ export function parsePayloadOption(args: ParsedCliArgs): Record<string, unknown>
   return parsed as Record<string, unknown>;
 }
 
+export function parseHeadersOption(args: ParsedCliArgs): Readonly<Record<string, string>> | undefined {
+  const headers = getOptionValue(args, "headers");
+  if (headers === undefined) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(headers);
+  } catch {
+    throw createError({
+      code: "CLI_HEADERS_INVALID_JSON",
+      kind: "validation",
+      message: "--headers must be valid JSON.",
+      hint: "Pass --headers as a JSON object with string values."
+    });
+  }
+
+  if (
+    parsed === null
+    || typeof parsed !== "object"
+    || Array.isArray(parsed)
+    || !Object.values(parsed).every((value) => typeof value === "string")
+  ) {
+    throw createError({
+      code: "CLI_HEADERS_INVALID_SHAPE",
+      kind: "validation",
+      message: "--headers must be a JSON object with string values.",
+      hint: "Pass --headers as a JSON object with string values."
+    });
+  }
+  return Object.freeze(parsed as Record<string, string>);
+}
+
 export function parseWhereOptions(args: ParsedCliArgs): RuntimeDataCondition[] | undefined {
   const values = getOptionValues(args, "where");
   if (values.length === 0) return undefined;

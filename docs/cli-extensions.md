@@ -203,7 +203,7 @@ export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => 
 };
 ```
 
-Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
+The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Treat header values as sensitive data. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
 
 #### `detectStack`
 

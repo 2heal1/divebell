@@ -18,7 +18,13 @@ import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
 import { normalizeOpenRuntimeUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
 import { createGetWindowScript, createInteractiveTextClickScript, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
-import { createOptionalNumberProperty, hasOption, requireCommandArgument, writeJson } from "../utils/command.js";
+import {
+  createOptionalNumberProperty,
+  hasOption,
+  parseHeadersOption,
+  requireCommandArgument,
+  writeJson
+} from "../utils/command.js";
 import { withOpenRuntimeSession } from "../utils/url.js";
 import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
 import { createExtensionPageContext } from "../open-context.js";
@@ -46,6 +52,7 @@ export async function runBrowserCliCommand(
     const url = requireCommandArgument(args, 1, "URL");
     const sessionId = getOpenCommandSessionId(args);
     const openedUrl = withOpenRuntimeSession(url, sessionId);
+    const headers = parseHeadersOption(args);
     const previousOpenContext = await operationLogStore.read();
     const bridge = await prepareOpenBridge(args, fetcher, bridgeStarter, bridgeStateDirectory);
     const bridgeUrl = bridge?.bridgeUrl ?? null;
@@ -65,7 +72,12 @@ export async function runBrowserCliCommand(
         extensions
       });
     }
-    const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
+    const hookResult = await runOpenHooks(extensions, {
+      args,
+      url,
+      openedUrl,
+      ...(headers === undefined ? {} : { headers })
+    });
     writeHookFailures(stderr, hookResult.failures);
     let result: BrowserRunResult;
     try {

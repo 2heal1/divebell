@@ -184,6 +184,7 @@ interface OpenRuntimeOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
+  headers?: Readonly<Record<string, string>>;
 }
 
 interface OpenRuntimeOpenHookResult {
@@ -191,7 +192,7 @@ interface OpenRuntimeOpenHookResult {
 }
 ```
 
-`open` runs before the browser opens the URL and may return one or more page initialization scripts. Scripts from multiple Extensions are combined. One failed hook does not block the page or other Extensions.
+`open` runs before the browser opens the URL and may return one or more page initialization scripts. `headers` contains the parsed, effective value of `open --headers`; it is `undefined` when the command did not provide headers. Treat header values as sensitive data. Scripts from multiple Extensions are combined. One failed hook does not block the page or other Extensions.
 
 ### `detectStack` and `close`
 

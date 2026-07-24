@@ -1,0 +1,55 @@
+.changeset/inject-mf-debug-runtime.md
+  s_0c8c5e652755ce::t_d2a3525995f151 5
+packages/extension-mf/README.md
+  s_710d8f9c183ff0::t_10dc7b39822ed3 86
+packages/extension-mf/src/format.ts
+  s_710d8f9c183ff0::t_a98f1c3f6e06c0 4,7,9-12,16-18,20-21
+packages/extension-mf/src/results.ts
+  s_710d8f9c183ff0::t_b1635c597d176d 21,46-84,88-128
+packages/extension-mf/src/shared/capability.ts
+  s_b3cfedc7e9e033::t_2c480f5200f691 9-10,17-35
+packages/extension-mf/src/types.ts
+  s_710d8f9c183ff0::t_1bd4e0e0d29e03 433-457,484-485
+packages/extension-mf/test/command.test.mjs
+  s_710d8f9c183ff0::t_12c032564434a7 18,20-21,122-124,135,145,148,153,156
+packages/extension-mf/test/integration.test.mjs
+  s_0c8c5e652755ce::t_b2b8b5f114a70c 24,69-73
+packages/extension-mf/test/results.test.mjs
+  s_710d8f9c183ff0::t_e3a4a18b51888b 42-54,83,94-125
+packages/extension-mf/test/shared-trace.test.mjs
+  s_b3cfedc7e9e033::t_d4ebc721ec079e 217-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1259b7d76b144102d9112715f0a765e94bfb9bf2",
+  "prompts": {},
+  "sessions": {
+    "s_0c8c5e652755ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ec3-7432-75f2-8976-2c36c0a30088",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_710d8f9c183ff0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8e3c-2051-7642-88d7-de258bf9cdfc",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_b3cfedc7e9e033": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9201-2e02-7780-ba4e-83ce2a0e7a90",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

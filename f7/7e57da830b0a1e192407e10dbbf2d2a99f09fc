@@ -1,0 +1,31 @@
+.github/workflows/ci.yml
+  s_57e26400884147::t_f49a506195c319 41
+.github/workflows/prepare-release.yml
+  s_57e26400884147::t_975543ffd915a0 45,52,65-77,82,107,113
+package.json
+  s_57e26400884147::t_dd685090f604ae 26
+scripts/generate-release-pr-body.mjs
+  s_57e26400884147::t_13bd17ee3750c0 1-70
+scripts/release-pr-body-utils.mjs
+  s_57e26400884147::t_20005d7ae2f91f 1-53
+scripts/release-pr-body-utils.test.mjs
+  s_57e26400884147::t_03fe340bd6c5e5 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f77e57da830b0a1e192407e10dbbf2d2a99f09fc",
+  "prompts": {},
+  "sessions": {
+    "s_57e26400884147": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92de-f946-7831-ac7f-7a4bc97b2306",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -29,6 +29,8 @@ function createCommandExtension(
 test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-hooks-"));
   const calls: string[] = [];
+  let detectOpenContext: unknown;
+  let closeOpenContext: unknown;
   let closeCount = 0;
   const cli = createOpenRuntimeCli({
     extensions: [{
@@ -37,10 +39,14 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       hooks: {
         open: async () => {
           calls.push("open");
-          return { scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"] };
+          return {
+            scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"],
+            context: { diagnosticsEnabled: true, source: "open-hook" }
+          };
         },
-        detectStack: async ({ openruntime }) => {
+        detectStack: async ({ openruntime, openContext }) => {
           calls.push("detectStack");
+          detectOpenContext = openContext;
           const detected = await openruntime.browser.eval<boolean>("globalThis._MODERNJS_ROUTE_MANIFEST != null");
           return detected ? {
             id: "modernjs",
@@ -48,8 +54,9 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
             evidence: ["window._MODERNJS_ROUTE_MANIFEST"]
           } : undefined;
         },
-        close: async () => {
+        close: async ({ openContext }) => {
           calls.push("close");
+          closeOpenContext = openContext;
           closeCount += 1;
         }
       }
@@ -98,6 +105,10 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.equal(stackResult.data.detections[0].id, "modernjs");
     assert.equal(stackResult.data.detections[0].extension, "modern-detector");
     assert.equal(stackResult.data.cached, false);
+    assert.deepEqual(detectOpenContext, {
+      diagnosticsEnabled: true,
+      source: "open-hook"
+    });
     assert.deepEqual(calls, ["open", "detectStack"]);
 
     const cachedOutput = createOutput();
@@ -118,8 +129,185 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       browserRunner
     }), 0);
     assert.equal(closeCount, 1);
+    assert.deepEqual(closeOpenContext, {
+      diagnosticsEnabled: true,
+      source: "open-hook"
+    });
     assert.deepEqual(calls, ["open", "detectStack", "close"]);
     assert.deepEqual(browserCalls.map((args) => args[0]), ["open", "eval", "eval", "eval", "close"]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("returns each extension's saved open context to its commands", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-context-"));
+  const headers = JSON.stringify({
+    Authorization: "Bearer secret-token",
+    "Get-Svc": "1"
+  });
+  const cli = createOpenRuntimeCli({
+    extensions: [
+      {
+        schemaVersion: 1,
+        name: "goofy",
+        commands: [{
+          name: "goofy",
+          async run({ openContext }) {
+            return { openContext };
+          }
+        }],
+        hooks: {
+          async open({ headers: openHeaders }) {
+            const diagnosticsEnabled = Object.entries(openHeaders ?? {}).some(
+              ([name, value]) => name.toLowerCase() === "get-svc" && value === "1"
+            );
+            return diagnosticsEnabled ? {
+              context: {
+                diagnosticsEnabled: true
+              }
+            } : undefined;
+          }
+        }
+      },
+      {
+        schemaVersion: 1,
+        name: "other",
+        commands: [{
+          name: "other",
+          async run({ openContext }) {
+            return { openContext };
+          }
+        }],
+        hooks: {
+          async open() {
+            return {
+              context: {
+                owner: "other"
+              }
+            };
+          }
+        }
+      }
+    ]
+  });
+  const browserRunner = createBrowserRunner(async () => ({
+    exitCode: 0,
+    stdout: "",
+    stderr: ""
+  }));
+
+  try {
+    const openOutput = createOutput();
+    assert.equal(await cli.run([
+      "open",
+      "http://app.test",
+      "--headers",
+      headers,
+      "--no-bridge"
+    ], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.doesNotMatch(openOutput.text(), /secret-token/);
+
+    const files = readdirSync(operationLogDirectory);
+    assert.equal(files.length, 1);
+    const persistedText = readFileSync(join(operationLogDirectory, files[0] as string), "utf8");
+    assert.doesNotMatch(persistedText, /secret-token|Authorization|Get-Svc/);
+    assert.deepEqual(JSON.parse(persistedText).extensionContexts, {
+      goofy: {
+        diagnosticsEnabled: true
+      },
+      other: {
+        owner: "other"
+      }
+    });
+
+    const goofyOutput = createOutput();
+    assert.equal(await cli.run(["goofy", "status"], {
+      stdout: goofyOutput.stdout,
+      stderr: goofyOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(JSON.parse(goofyOutput.text()), commandOutput("goofy status", {
+      openContext: {
+        diagnosticsEnabled: true
+      }
+    }));
+
+    const otherOutput = createOutput();
+    assert.equal(await cli.run(["other", "status"], {
+      stdout: otherOutput.stdout,
+      stderr: otherOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(JSON.parse(otherOutput.text()), commandOutput("other status", {
+      openContext: {
+        owner: "other"
+      }
+    }));
+
+    assert.equal(await cli.run(["open", "http://other.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    const reopenedGoofyOutput = createOutput();
+    assert.equal(await cli.run(["goofy", "status"], {
+      stdout: reopenedGoofyOutput.stdout,
+      stderr: reopenedGoofyOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(JSON.parse(reopenedGoofyOutput.text()), commandOutput("goofy status", {}));
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("ignores invalid open context without blocking the page", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-invalid-extension-context-"));
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "invalid-context",
+      hooks: {
+        async open() {
+          return {
+            context: {
+              diagnosticsEnabled: undefined
+            } as never
+          };
+        }
+      }
+    }]
+  });
+
+  try {
+    const output = createOutput();
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => ({
+        exitCode: 0,
+        stdout: "",
+        stderr: ""
+      }))
+    }), 0);
+    assert.match(
+      output.errorText(),
+      /Open hook context must be a JSON object containing only serializable values/
+    );
+    const files = readdirSync(operationLogDirectory);
+    const persisted = JSON.parse(readFileSync(join(operationLogDirectory, files[0] as string), "utf8"));
+    assert.equal(persisted.extensionContexts, undefined);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

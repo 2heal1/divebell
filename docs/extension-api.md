@@ -63,14 +63,30 @@ interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
+  openContext?: OpenRuntimeExtensionContext;
   openruntime: OpenRuntimeExtensionApi;
 }
+```
+
+```ts
+type OpenRuntimeExtensionContext = Readonly<
+  Record<string, OpenRuntimeExtensionContextValue>
+>;
+
+type OpenRuntimeExtensionContextValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly OpenRuntimeExtensionContextValue[]
+  | Readonly<Record<string, OpenRuntimeExtensionContextValue>>;
 ```
 
 | Field | Type | Usage |
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | Parsed arguments for the current command. `command` contains the command name and positional arguments; `options` is a `Map<string, string[]>`, so the same option may appear more than once. |
 | `options.page` | `CliExtensionPageContext \| undefined` | Page context saved after the latest successful `openruntime open`. Commands that do not need a page should not require it; commands that do must handle `undefined` first. |
+| `options.openContext` | `OpenRuntimeExtensionContext \| undefined` | Non-sensitive context returned by this same Extension's successful `open` Hook. OpenRuntime isolates it by Extension name; commands never receive another Extension's context. |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by OpenRuntime. Normally avoid calling it directly; use `options.openruntime` for Bridge and Runtime access. |
 
@@ -189,10 +205,15 @@ interface OpenRuntimeOpenHookOptions {
 
 interface OpenRuntimeOpenHookResult {
   scripts?: readonly string[];
+  context?: OpenRuntimeExtensionContext;
 }
 ```
 
-`open` runs before the browser opens the URL and may return one or more page initialization scripts. `headers` contains the parsed, effective value of `open --headers`; it is `undefined` when the command did not provide headers. Treat header values as sensitive data. Scripts from multiple Extensions are combined. One failed hook does not block the page or other Extensions.
+`open` runs before the browser opens the URL and may return one or more page initialization scripts. `headers` contains the parsed, effective value of `open --headers`; it is `undefined` when the command did not provide headers. Treat header values as sensitive data.
+
+`context` may contain a JSON object with non-sensitive facts derived during `open`, such as `{ diagnosticsEnabled: true }`. OpenRuntime saves it with the page context and returns it only to the same Extension as `options.openContext` in later Commands, `detectStack`, and `close` Hooks. Do not put credentials, tokens, raw headers, or other secrets in this object.
+
+Scripts from multiple Extensions are combined. One failed hook does not block the page or other Extensions. Invalid context is ignored and reported as a Hook failure without blocking the page.
 
 ### `detectStack` and `close`
 
@@ -200,6 +221,7 @@ interface OpenRuntimeOpenHookResult {
 interface OpenRuntimePageHookOptions {
   args: ParsedCliArgs;
   page: CliExtensionPageContext;
+  openContext?: OpenRuntimeExtensionContext;
   openruntime: OpenRuntimeExtensionApi;
 }
 

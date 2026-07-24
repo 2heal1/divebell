@@ -63,14 +63,30 @@ interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
+  openContext?: OpenRuntimeExtensionContext;
   openruntime: OpenRuntimeExtensionApi;
 }
+```
+
+```ts
+type OpenRuntimeExtensionContext = Readonly<
+  Record<string, OpenRuntimeExtensionContextValue>
+>;
+
+type OpenRuntimeExtensionContextValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly OpenRuntimeExtensionContextValue[]
+  | Readonly<Record<string, OpenRuntimeExtensionContextValue>>;
 ```
 
 | 字段 | 类型 | 使用说明 |
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | 当前命令解析后的参数。`command` 是命令名和位置参数组成的数组；`options` 是 `Map<string, string[]>`，同名选项可以出现多次。 |
 | `options.page` | `CliExtensionPageContext \| undefined` | 最近一次成功执行 `openruntime open` 后保存的页面上下文。无需页面的命令不要强制检查它；需要页面时必须先处理 `undefined`。 |
+| `options.openContext` | `OpenRuntimeExtensionContext \| undefined` | 同一个 Extension 在成功执行 `open` Hook 时返回的非敏感上下文。OpenRuntime 按 Extension 名称隔离，Command 不会收到其他 Extension 的上下文。 |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
 | `options.fetcher` | `Fetcher` | OpenRuntime 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.openruntime`。 |
 
@@ -189,10 +205,15 @@ interface OpenRuntimeOpenHookOptions {
 
 interface OpenRuntimeOpenHookResult {
   scripts?: readonly string[];
+  context?: OpenRuntimeExtensionContext;
 }
 ```
 
-`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
+`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。
+
+`context` 可以保存 `open` 阶段得到的非敏感 JSON 对象，例如 `{ diagnosticsEnabled: true }`。OpenRuntime 会把它与页面上下文一起保存，后续只通过 `options.openContext` 传给同一个 Extension 的 Command、`detectStack` 和 `close` Hook。不要在其中保存账号凭据、Token、原始 header 或其他敏感信息。
+
+多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。非法 context 会被忽略并记录为 Hook 失败，不会阻止页面打开。
 
 ### `detectStack` 与 `close`
 
@@ -200,6 +221,7 @@ interface OpenRuntimeOpenHookResult {
 interface OpenRuntimePageHookOptions {
   args: ParsedCliArgs;
   page: CliExtensionPageContext;
+  openContext?: OpenRuntimeExtensionContext;
   openruntime: OpenRuntimeExtensionApi;
 }
 

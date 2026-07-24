@@ -86,6 +86,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.exitCode === "number" &&
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
+    isExtensionContextMap(entry.extensionContexts) &&
     isStackDetectionCache(entry.stackDetection)
   )) {
     return undefined;
@@ -96,6 +97,30 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     bridgeUrl,
     bridgePort
   } as CliOperationLogEntry;
+}
+
+function isExtensionContextMap(value: unknown): boolean {
+  if (value === undefined) return true;
+  return isRecord(value) && Object.values(value).every((context) =>
+    isRecord(context) && isJsonValue(context)
+  );
+}
+
+function isJsonValue(value: unknown): boolean {
+  if (
+    value === null
+    || typeof value === "string"
+    || typeof value === "boolean"
+  ) {
+    return true;
+  }
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every(isJsonValue);
+  return isRecord(value) && Object.values(value).every(isJsonValue);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function getOperationBridgePort(bridgeUrl: unknown): number | null {

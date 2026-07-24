@@ -125,7 +125,10 @@ export async function runBrowserCliCommand(
       sessionId,
       openedAt,
       exitCode: result.exitCode,
-      activeExtensions: hookResult.activeExtensions
+      activeExtensions: hookResult.activeExtensions,
+      ...(Object.keys(hookResult.extensionContexts).length === 0
+        ? {}
+        : { extensionContexts: hookResult.extensionContexts })
     });
     createCommandOutput(stdout, args.command.join(" ")).ok({
       url,
@@ -193,18 +196,23 @@ export async function runExtensionCloseHooks(options: {
   const openContext = await options.operationLogStore.read();
   if (openContext === undefined) return;
   const closeArgs = applyOpenContextDefaultsOrThrow(options.args, openContext, "always");
-  const failures = await runCloseHooks(options.extensions, openContext.activeExtensions, {
-    args: closeArgs,
-    page: createExtensionPageContext(openContext),
-    openruntime: createOpenRuntimeExtensionApi({
+  const failures = await runCloseHooks(
+    options.extensions,
+    openContext.activeExtensions,
+    openContext.extensionContexts ?? {},
+    {
       args: closeArgs,
-      fetcher: options.fetcher,
-      browserRunner: options.browserRunner,
-      bridgeStarter: options.bridgeStarter,
-      bridgeStateStore: createBridgeStateStore(closeArgs, options.bridgeStateDirectory),
-      openContext
-    })
-  });
+      page: createExtensionPageContext(openContext),
+      openruntime: createOpenRuntimeExtensionApi({
+        args: closeArgs,
+        fetcher: options.fetcher,
+        browserRunner: options.browserRunner,
+        bridgeStarter: options.bridgeStarter,
+        bridgeStateStore: createBridgeStateStore(closeArgs, options.bridgeStateDirectory),
+        openContext
+      })
+    }
+  );
   writeHookFailures(options.stderr, failures);
 }
 

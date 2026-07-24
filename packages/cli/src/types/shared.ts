@@ -3,6 +3,15 @@ export interface ParsedCliArgs {
   options: Map<string, string[]>;
 }
 
+export type OpenRuntimeExtensionContextValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly OpenRuntimeExtensionContextValue[]
+  | Readonly<{ [key: string]: OpenRuntimeExtensionContextValue }>;
+
+export type OpenRuntimeExtensionContext = Readonly<Record<string, OpenRuntimeExtensionContextValue>>;
 
 export type CommandOutputStatus = "ok" | "needs_input" | "error";
 
@@ -55,6 +64,7 @@ export interface CliOperationLogEntry {
   openedAt: number;
   exitCode: number;
   activeExtensions: string[];
+  extensionContexts?: Record<string, OpenRuntimeExtensionContext>;
   stackDetection?: {
     url: string;
     detectedAt: number;

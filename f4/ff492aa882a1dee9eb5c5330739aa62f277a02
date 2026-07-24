@@ -1,0 +1,25 @@
+scripts/verify-recording-skill-runtime.mjs
+  s_0c8c5e652755ce::t_b960803297e816 49
+skills/record-openruntime-workflow/scripts/openruntime-cli.mjs
+  s_0c8c5e652755ce::t_2af021db75cc9f 123
+skills/record-openruntime-workflow/scripts/probe-openruntime-cli.mjs
+  s_0c8c5e652755ce::t_833995ac55bf34 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f4ff492aa882a1dee9eb5c5330739aa62f277a02",
+  "prompts": {},
+  "sessions": {
+    "s_0c8c5e652755ce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ec3-7432-75f2-8976-2c36c0a30088",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

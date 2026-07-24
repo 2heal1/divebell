@@ -103,6 +103,46 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
   );
 });
 
+test("forwards headers alongside the Bridge initialization script", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const headers = JSON.stringify({ Authorization: "Bearer secret-token" });
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/orders",
+    "--headers",
+    headers,
+    "--bridge",
+    "http://bridge.test",
+    "--session",
+    "session-headers"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    fetcher: async () => jsonResponse({ runtimes: [] }),
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(browserCalls.length, 1);
+  assert.deepEqual(browserCalls[0]?.slice(0, 2), [
+    "open",
+    "http://app.test/orders?openruntimeSessionId=session-headers"
+  ]);
+  assert.equal(browserCalls[0]?.[2], "--init-script");
+  assert.match(browserCalls[0]?.[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+  assert.deepEqual(browserCalls[0]?.slice(4), ["--headers", headers]);
+  assert.doesNotMatch(output.text(), /secret-token/);
+});
+
 test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
   const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
@@ -233,6 +273,86 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   });
   assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
   assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
+});
+
+test("forwards origin-scoped headers to the first page request", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const headers = JSON.stringify({
+    Authorization: "Bearer secret-token",
+    "X-Debug-User": "agent"
+  });
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/orders",
+    "--headers",
+    headers,
+    "--session",
+    "session-headers",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "open",
+    "http://app.test/orders?openruntimeSessionId=session-headers",
+    "--headers",
+    headers
+  ]]);
+  assert.doesNotMatch(output.text(), /secret-token/);
+});
+
+test("keeps headers on the first navigation when cookies are staged before opening", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const headers = JSON.stringify({ Authorization: "Bearer secret-token" });
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/orders",
+    "--headers",
+    headers,
+    "--cookies",
+    "Cookie: session=test",
+    "--session",
+    "session-headers",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "ok\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [
+    ["open"],
+    ["cookies", "set", "--curl", "Cookie: session=test"],
+    [
+      "goto",
+      "http://app.test/orders?openruntimeSessionId=session-headers",
+      "--headers",
+      headers
+    ]
+  ]);
 });
 
 test("opens a visible browser page when ui is set and keeps the session query", async () => {

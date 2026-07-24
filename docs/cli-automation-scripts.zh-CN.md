@@ -148,6 +148,7 @@ async function opr(args) {
 | 参数 | 用途 |
 | --- | --- |
 | `url` | 要打开的页面地址。 |
+| `headers` | JSON 格式的 HTTP header，仅发送给该 URL 的来源，并覆盖第一次页面请求。 |
 | `session` | 当前脚本使用的会话标识；并发或 Runtime 查询时建议显式设置。 |
 | `timeout` | 等待页面或 Runtime 状态的超时时间。 |
 | `headless/ui` | 默认静默运行；需要可见浏览器时给 `open` 加 `--ui`。 |
@@ -160,6 +161,14 @@ async function opr(args) {
 ```sh
 openruntime open http://localhost:3000
 ```
+
+给第一次请求传入 header：
+
+```sh
+openruntime open http://localhost:3000 --headers '{"Authorization":"Bearer test-token"}'
+```
+
+这些 header 只会发送给所打开 URL 的来源。
 
 带 session：
 

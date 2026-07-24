@@ -1,0 +1,43 @@
+.changeset/compose-extension-hooks.md
+  s_8ab25d176290e7::t_f09baf0ec9939d 5
+docs/cli-extensions.md
+  s_8ab25d176290e7::t_f60d93705fe9c6 188,192-193,195-205,209,284
+docs/cli-extensions.zh-CN.md
+  s_8ab25d176290e7::t_85998ff1cb8313 180,184-185,187-197,201,276
+docs/extension-api.md
+  s_8ab25d176290e7::t_011e76a6bf4d90 15,27,33,144,148-149,151-164,170,264
+docs/extension-api.zh-CN.md
+  s_8ab25d176290e7::t_548589155e959c 15,27,33,144,148-149,151-164,170,264
+packages/cli/src/commands/definition.ts
+  s_8ab25d176290e7::t_917b368184419a 42-46,64,153,175,185
+packages/cli/src/commands/extension.ts
+  s_8ab25d176290e7::t_16571b05d6c004 205,212-213
+packages/cli/src/create.ts
+  s_8ab25d176290e7::t_bd0dc93b195a3d 80-87,122-126,129,136,144-188
+packages/cli/src/features/extension/hooks.ts
+  s_8ab25d176290e7::t_e122fe17412f85 46,93
+packages/cli/src/features/extension/plan.ts
+  s_8ab25d176290e7::t_3c7203260959c7 54,150
+packages/cli/src/types/commands.ts
+  s_8ab25d176290e7::t_87f6f7c00eb056 103
+packages/cli/test/extensions.test.ts
+  s_8ab25d176290e7::t_daa9282dcc56dd 671,760-761,764-765,767-768,771,778,788,790,793-799,804-806,848,943,1005,1605-1637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5aa52840646b503c2bf469676713ab35974ccbb6",
+  "prompts": {},
+  "sessions": {
+    "s_8ab25d176290e7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f931b-0eac-78e2-a8ee-0bb3a3d2b0d6",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -17,7 +17,7 @@ test("status returns structured data without requiring --json", async () => {
   assert.equal(run.outputValue().compatibility, undefined);
 });
 
-test("status --verbose adds unloaded shared dependencies", async () => {
+test("status --verbose adds unloaded shared dependencies and function details", async () => {
   const state = runtimeState({
     instances: [instance({ instanceRef: "mf-1", name: "host", role: "consumer" })]
   });
@@ -61,13 +61,9 @@ test("status --verbose adds unloaded shared dependencies", async () => {
     Object.keys(defaultRun.outputValue().shared.default.react),
     ["18.3.1"]
   );
-  assert.deepEqual(
+  assert.equal(
     defaultRun.outputValue().shared.default.react["18.3.1"].lib,
-    {
-      location: {
-        url: "https://cdn.test/assets/main.js"
-      }
-    }
+    undefined
   );
 
   const verboseRun = createOptions(

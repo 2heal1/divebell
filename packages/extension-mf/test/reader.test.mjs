@@ -148,6 +148,54 @@ test("browser adapter merges the global share table by scope, package, and versi
   );
 });
 
+test("default browser read does not collect lib or get locations", async () => {
+  const state = runtimeState();
+  const context = vm.createContext({
+    __FEDERATION__: {
+      __OBSERVABILITY__: {
+        chrome_extension: {
+          getRuntimeState: () => state,
+          getReports: () => []
+        }
+      },
+      __SHARE__: {
+        host: {
+          default: {
+            react: {
+              "18.3.1": {
+                from: "host",
+                useIn: ["host"],
+                loaded: true,
+                lib: () => "react",
+                get: () => "react-factory"
+              }
+            }
+          }
+        }
+      }
+    },
+    __MF_OBSERVABILITY_INJECTION__: {
+      observabilityVersion: "2.5.4"
+    }
+  });
+  context.globalThis = context;
+  let rawCalled = false;
+  const result = await readMfObservability({
+    async eval(script) {
+      return vm.runInContext(script, context);
+    },
+    async raw() {
+      rawCalled = true;
+      throw new Error("default reads must not request a debugger connection");
+    }
+  });
+  assert.equal(result.ok, true);
+  assert.equal(rawCalled, false);
+  const shared = result.snapshot.globalShared.default.react["18.3.1"];
+  assert.equal(shared.lib, undefined);
+  assert.equal(shared.get, undefined);
+});
+
 test("--verbose browser read includes bounded lib and get source text", async () => {
   const state = runtimeState();
   const context = vm.createContext({

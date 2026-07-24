@@ -282,7 +282,8 @@ export async function readMfObservability(browser: {
     stderr: string;
   }>;
 }, options: { verbose?: boolean } = {}): Promise<BrowserReadResult> {
-  const includeFunctionLocations = browser.raw !== undefined;
+  const includeFunctionLocations =
+    options.verbose === true && browser.raw !== undefined;
   const value = await browser.eval<unknown>(
     createBrowserReadScript(
       options.verbose === true,

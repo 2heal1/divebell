@@ -93,10 +93,10 @@ Function details use two output levels:
 
 | Output | Loaded versions | Unloaded versions | `lib` / `get` details |
 | --- | --- | --- | --- |
-| default | yes | no | bundle file URL when Chrome exposes a function location |
+| default | yes | no | omitted |
 | `--verbose` | yes | yes | bounded function source text, generated file URL and line/column, plus original source file and line/column when a usable Source Map is available |
 
-`--verbose` is additive: the generated bundle location remains present when an original source location is found. Location collection is best effort. Native functions, anonymous evaluation scripts, an unavailable browser debugging connection, missing Source Maps, oversized Source Maps, or inaccessible Source Maps can leave some location fields absent. Failure to locate one function does not fail `mf status`. URL credentials, queries, and fragments are removed from returned locations, and function objects are never returned.
+The default command does not collect function locations. With `--verbose`, the generated bundle location remains present when an original source location is found. Location collection is best effort. Native functions, anonymous evaluation scripts, an unavailable browser debugging connection, missing Source Maps, oversized Source Maps, or inaccessible Source Maps can leave some location fields absent. Failure to locate one function does not fail `mf status`. URL credentials, queries, and fragments are removed from returned locations, and function objects are never returned.
 
 When a name matches more than one instance, the command returns candidates such as:
 

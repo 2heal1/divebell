@@ -159,17 +159,7 @@ test("status returns compact instances, consumers, and loaded shared dependencie
           loaded: true,
           scope: ["default"],
           strategy: "loaded-first",
-          shareConfig: { singleton: true },
-          lib: {
-            location: {
-              url: "https://cdn.test/assets/main.js"
-            }
-          },
-          get: {
-            location: {
-              url: "https://cdn.test/remoteEntry.js"
-            }
-          }
+          shareConfig: { singleton: true }
         }
       }
     }

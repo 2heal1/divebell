@@ -21,9 +21,9 @@ The command checks `state.capabilities.sharedState`:
 
 ## Global shared registry in `mf status`
 
-`openruntime mf status` also returns the sanitized global Shared registry grouped by scope, package, and version. Its default output contains only loaded versions. When `lib` or `get` has a browser function location, the default output includes only the generated bundle file URL.
+`openruntime mf status` also returns the sanitized global Shared registry grouped by scope, package, and version. Its default output contains only loaded versions and omits `lib` and `get` entirely. It does not collect function locations.
 
-`openruntime mf status --verbose` additionally includes unloaded versions, bounded `lib` and `get` source text, generated line and column, and the original source file, line, and column when a usable Source Map is available. These details are additive and best effort: missing or inaccessible Source Maps leave the generated bundle location intact, while a function with no browser location simply omits the location field. Location failures never fail the status command.
+`openruntime mf status --verbose` additionally includes unloaded versions, bounded `lib` and `get` source text, generated file, line, and column, and the original source file, line, and column when a usable Source Map is available. These details are best effort: missing or inaccessible Source Maps leave the generated bundle location intact, while a function with no browser location simply omits the location field. Location failures never fail the status command.
 
 ## Registration, selection, and load trace
 

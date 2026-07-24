@@ -1,0 +1,70 @@
+packages/cli/test/cli-core.test.ts
+  s_bd2cd8fb3040d2::t_18b95f9cd87ee4 86
+  s_67c45a6ece4cdf::t_0da5273c31990a 146-159
+.changeset/isolate-open-bridges.md
+  s_67c45a6ece4cdf::t_d4f05815c49c83 5
+demos/modern-basic/scripts/verify-experience.mjs
+  s_67c45a6ece4cdf::t_b962e8455485d5 293
+docs/cli-extensions.md
+  s_67c45a6ece4cdf::t_d8f2c8f44b2dc1 246,317,360
+docs/cli-extensions.zh-CN.md
+  s_67c45a6ece4cdf::t_c9dd95ed3b4976 238,309,352
+docs/extension-api.md
+  s_67c45a6ece4cdf::t_afac1b035b39f9 216
+docs/extension-api.zh-CN.md
+  s_67c45a6ece4cdf::t_e198f5701d1477 216
+docs/record-browser-workflows.md
+  s_67c45a6ece4cdf::t_74fa6c2dd8e326 52
+docs/record-browser-workflows.zh-CN.md
+  s_67c45a6ece4cdf::t_404a84a26308b5 52
+packages/cli/src/commands/bridge.ts
+  s_67c45a6ece4cdf::t_be406e2cbda436 54,73
+packages/cli/src/commands/browser.ts
+  s_67c45a6ece4cdf::t_d7fce99f16ace4 53-67
+packages/cli/src/commands/names.ts
+  s_67c45a6ece4cdf::t_5f246467928030 16,50
+packages/cli/src/features/browser/command-args.ts
+  s_67c45a6ece4cdf::t_477058f4da5551 50
+packages/cli/src/types/commands.ts
+  s_67c45a6ece4cdf::t_da7f3d3cc0f99f 151
+packages/cli/test/browser.test.ts
+  s_67c45a6ece4cdf::t_b04c0c88ade5f8 160,171,271,326,683
+packages/cli/test/extensions.test.ts
+  s_67c45a6ece4cdf::t_239ff7d97485e0 114,128-187
+packages/extension-imitate/README.md
+  s_67c45a6ece4cdf::t_63b92798e121a8 34,67
+packages/extension-imitate/src/index.ts
+  s_67c45a6ece4cdf::t_47177e8f736ab5 550
+packages/extension-imitate/test/record.test.mjs
+  s_67c45a6ece4cdf::t_78028ece44945b 143
+skills/record-openruntime-workflow/SKILL.md
+  s_67c45a6ece4cdf::t_3ef5fd784f37d4 23,46,96
+skills/record-openruntime-workflow/references/openruntime-cli.md
+  s_67c45a6ece4cdf::t_7d281b6d71de5e 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e7052531febb0d39e41a97e58a41690d138325e7",
+  "prompts": {},
+  "sessions": {
+    "s_67c45a6ece4cdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ede-226c-7800-87a3-bdaa89a3de3d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_bd2cd8fb3040d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ee9-cb3b-7223-960b-6e3db61df87c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,21 @@
+AGENTS.md
+  s_57e26400884147::t_67d34e79600505 57-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8b8a13e555fbd29ca6dbb4bc4732fbc4a612b124",
+  "prompts": {},
+  "sessions": {
+    "s_57e26400884147": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92de-f946-7831-ac7f-7a4bc97b2306",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

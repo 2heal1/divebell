@@ -77,6 +77,7 @@ export async function runBrowserCliCommand(
         hookResult.scripts,
         {
           ui: hasOption(args, "ui"),
+          reuseInitialBlankPage: true,
           ...(hasOption(args, "profile") || hasOption(args, "state")
             ? { disableRestore: true }
             : {})

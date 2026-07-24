@@ -15,6 +15,13 @@ const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
 const AGENT_BROWSER_RESTORE_ENV = "AGENT_BROWSER_RESTORE";
 const AGENT_BROWSER_ENCRYPTION_KEY_ENV = "AGENT_BROWSER_ENCRYPTION_KEY";
+const AGENT_BROWSER_ARGS_ENV = "AGENT_BROWSER_ARGS";
+const AGENT_BROWSER_ALLOWED_DOMAINS_ENV = "AGENT_BROWSER_ALLOWED_DOMAINS";
+const AGENT_BROWSER_CDP_ENV = "AGENT_BROWSER_CDP";
+const AGENT_BROWSER_AUTO_CONNECT_ENV = "AGENT_BROWSER_AUTO_CONNECT";
+const AGENT_BROWSER_PROVIDER_ENV = "AGENT_BROWSER_PROVIDER";
+const AGENT_BROWSER_ENGINE_ENV = "AGENT_BROWSER_ENGINE";
+const INITIAL_BLANK_PAGE_URL = "about:blank";
 
 export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions = {}): BrowserRunner {
   const env = options.env ?? process.env;
@@ -162,7 +169,44 @@ export function createAgentBrowserEnvironment(
   if (options.unencryptedStateOutput === true) {
     delete env[AGENT_BROWSER_ENCRYPTION_KEY_ENV];
   }
+  // Headed Chrome creates chrome://newtab by default. agent-browser ignores that
+  // internal target and otherwise has to create a second, controllable tab.
+  if (options.reuseInitialBlankPage === true && supportsReusableInitialBlankPage(env)) {
+    env[AGENT_BROWSER_ARGS_ENV] = appendAgentBrowserArgument(
+      env[AGENT_BROWSER_ARGS_ENV],
+      INITIAL_BLANK_PAGE_URL
+    );
+  }
   return env;
+}
+
+function appendAgentBrowserArgument(current: string | undefined, argument: string): string {
+  const existing = current
+    ?.split(/[,\n]/)
+    .map((value) => value.trim())
+    .filter(Boolean) ?? [];
+  if (existing.includes(argument)) {
+    return current ?? argument;
+  }
+  if (existing.some((value) => !value.startsWith("-"))) {
+    return current ?? argument;
+  }
+  return current === undefined || current.trim().length === 0
+    ? argument
+    : `${current}\n${argument}`;
+}
+
+function supportsReusableInitialBlankPage(env: NodeJS.ProcessEnv): boolean {
+  const engine = env[AGENT_BROWSER_ENGINE_ENV]?.trim().toLowerCase();
+  return env[AGENT_BROWSER_ALLOWED_DOMAINS_ENV] === undefined
+    && env[AGENT_BROWSER_CDP_ENV] === undefined
+    && !isTruthyEnvironmentValue(env[AGENT_BROWSER_AUTO_CONNECT_ENV])
+    && !env[AGENT_BROWSER_PROVIDER_ENV]?.trim()
+    && (engine === undefined || engine === "" || engine === "chrome");
+}
+
+function isTruthyEnvironmentValue(value: string | undefined): boolean {
+  return value === "1" || value?.toLowerCase() === "true";
 }
 
 function executeAgentBrowser(

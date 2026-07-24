@@ -232,7 +232,7 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
     sessionId
   });
   assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
-  assert.deepEqual(browserOptions, [{ ui: false }]);
+  assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
 });
 
 test("opens a visible browser page when ui is set and keeps the session query", async () => {
@@ -265,7 +265,7 @@ test("opens a visible browser page when ui is set and keeps the session query", 
     sessionId: "session-orders"
   });
   assert.deepEqual(browserCalls, [["open", "http://app.test/orders?openruntimeSessionId=session-orders"]]);
-  assert.deepEqual(browserOptions, [{ ui: true }]);
+  assert.deepEqual(browserOptions, [{ ui: true, reuseInitialBlankPage: true }]);
 });
 
 test("records the latest open operation by working directory and removes it on stop", async () => {

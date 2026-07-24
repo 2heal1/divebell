@@ -120,7 +120,7 @@ async function canRun(invocation, env = process.env) {
 }
 
 function supportsRecordCommand(invocation, env) {
-  const result = spawnSync(invocation.command, [...invocation.args, "--help"], {
+  const result = spawnSync(invocation.command, [...invocation.args, "record", "--help"], {
     env,
     encoding: "utf8"
   });

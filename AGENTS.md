@@ -54,6 +54,15 @@ OpenRuntime 的 Module Federation 接入后续应在 MF 仓库的 observability 
 
 如果本地仓库没有足够上下文，再参考官方文档：`https://modernjs.dev/guides/get-started/introduction`。
 
+## GitHub PR 操作
+
+- 创建或更新 PR 时，本地 Git 负责创建分支、提交和推送；已授权的 GitHub connector/plugin 负责创建、读取和更新 PR。
+- `gh auth status` 显示未登录不能单独作为停止操作的理由，也不要仅因此要求用户登录 `gh`。
+- 确认改动范围并完成验证后，应先尝试使用现有 Git 凭据推送。推送成功后，继续使用 GitHub connector/plugin 创建或更新 PR。
+- `gh` 只作为 GitHub connector/plugin 无法完成目标操作时的备用方式。
+- 只有 Git 推送失败，并且 GitHub connector/plugin 也无法访问目标仓库或完成目标操作时，才需要用户介入。
+- 本节规则优先于通用发布流程中“必须先登录 `gh`”的要求。
+
 ## 工作规则
 
 - 不要把 `Agent Runtime` 旧命名当成当前产品名；当前统一叫 OpenRuntime。

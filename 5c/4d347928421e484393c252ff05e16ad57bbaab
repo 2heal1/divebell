@@ -1,0 +1,33 @@
+packages/cli/src/commands/browser.ts
+  s_1f88e018b3978a::t_78b9e97d7e4f1f 80
+packages/cli/src/features/browser/types.ts
+  s_20d55655b26e9b::t_6f2d03bf696759 12
+packages/cli/test/browser.test.ts
+  s_1f88e018b3978a::t_ac5392071660f6 235,268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5c4d347928421e484393c252ff05e16ad57bbaab",
+  "prompts": {},
+  "sessions": {
+    "s_1f88e018b3978a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f920f-3438-7751-9e3b-e1dada81da7d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_20d55655b26e9b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f921e-1a8d-7901-befa-31ac0f3de726",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

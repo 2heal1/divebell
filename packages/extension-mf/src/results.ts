@@ -18,6 +18,7 @@ import type {
   RuntimeRemote,
   RuntimeReport,
   SelectionIssue,
+  StatusConsumer,
   StatusResult
 } from "./types.js";
 
@@ -42,21 +43,87 @@ export function createStatusResult(
   const selected = selectStatusInstances(snapshot.state, selectors);
   if (!selected.ok) throw selectionError(selected.issue);
   return {
-    schemaVersion: 1,
-    command: "mf status",
-    compatibility: createCompatibilitySummary(snapshot),
-    selection: {
-      kind: selected.value.kind,
-      ...(selectors.name === undefined ? {} : { name: selectors.name }),
-      ...(selectors.role === undefined ? {} : { role: selectors.role }),
-      ...(selectors.instanceRef === undefined ? {} : { instanceRef: selectors.instanceRef })
-    },
-    instances: selected.value.instances,
-    relationships: filterRelationshipsForInstances(
-      snapshot.state.relationships,
-      selected.value.instances.map((instance) => instance.instanceRef)
-    )
+    instances: selected.value.instances.map((instance) => ({
+      instanceRef: instance.instanceRef,
+      name: visibleInstanceName(instance),
+      role: instance.role,
+      consumers: consumersForInstance(
+        instance.instanceRef,
+        snapshot.state.instances,
+        snapshot.state.relationships
+      ),
+      active: instance.active
+    })),
+    shared: selected.value.instances
+      .filter((instance) => instance.active)
+      .flatMap((instance) =>
+        instance.shareScopes.flatMap((scope) =>
+          scope.shared.flatMap((item) =>
+            item.versions
+              .filter((version) => version.loaded === true)
+              .map((version) => ({
+                instanceRef: instance.instanceRef,
+                instanceName: visibleInstanceName(instance),
+                scope: scope.name,
+                name: item.name,
+                version: version.version,
+                ...(version.provider === undefined
+                  ? {}
+                  : { provider: version.provider }),
+                ...(version.singleton === undefined
+                  ? {}
+                  : { singleton: version.singleton }),
+                ...(version.eager === undefined ? {} : { eager: version.eager }),
+                ...(version.strategy === undefined
+                  ? {}
+                  : { strategy: version.strategy })
+              }))
+          )
+        )
+      )
+      .sort(compareLoadedShared)
   };
+}
+
+function consumersForInstance(
+  producerInstanceRef: string,
+  instances: readonly RuntimeInstance[],
+  relationships: readonly RuntimeRelationship[]
+): StatusConsumer[] {
+  const byRef = new Map(
+    instances.map((instance) => [instance.instanceRef, instance] as const)
+  );
+  const consumers = new Map<string, StatusConsumer>();
+  for (const relationship of relationships) {
+    if (
+      relationship.status !== "resolved" ||
+      relationship.producerInstanceRef !== producerInstanceRef
+    ) {
+      continue;
+    }
+    const consumer = byRef.get(relationship.consumerInstanceRef);
+    consumers.set(relationship.consumerInstanceRef, {
+      instanceRef: relationship.consumerInstanceRef,
+      name: consumer === undefined
+        ? "unknown"
+        : visibleInstanceName(consumer)
+    });
+  }
+  return Array.from(consumers.values()).sort((left, right) =>
+    left.instanceRef.localeCompare(right.instanceRef)
+  );
+}
+
+function compareLoadedShared(
+  left: StatusResult["shared"][number],
+  right: StatusResult["shared"][number]
+): number {
+  return [
+    left.instanceRef.localeCompare(right.instanceRef),
+    left.scope.localeCompare(right.scope),
+    left.name.localeCompare(right.name),
+    left.version.localeCompare(right.version)
+  ].find((result) => result !== 0) ?? 0;
 }
 
 export function filterRelationshipsForInstances(

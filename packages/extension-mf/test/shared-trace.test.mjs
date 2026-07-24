@@ -214,6 +214,67 @@ test("available capability is used even when runtime version text looks old", ()
   assert.equal(result.capability.minimumRuntimeVersion, undefined);
 });
 
+test("injected preview Runtime is not rejected by the stable-version fallback", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+  const state = runtimeState({
+    instances: [host({ runtimeVersion: previewVersion })]
+  });
+  state.capabilities.sharedTrace = capability(
+    false,
+    "unavailable",
+    "Shared tracing requires a stable runtime version of 2.5.0 or newer."
+  );
+  const marker = {
+    schemaVersion: 1,
+    source: "openruntime/extension-mf",
+    status: "installed",
+    scope: "chrome_extension",
+    observabilityVersion: previewVersion,
+    installedAt: 50,
+    timing: "before-runtime"
+  };
+  const result = createSharedTraceResult(
+    snapshot(state, [], {
+      marker,
+      observabilityVersion: previewVersion
+    }),
+    { package: "react" }
+  );
+  assert.equal(result.supported, true);
+  assert.equal(result.selection.kind, "not-found");
+  assert.equal(result.capability.minimumRuntimeVersion, undefined);
+  assert.doesNotMatch(result.warnings.join(" "), /Upgrade to 2\.5\.0/);
+});
+
+test("preview Observability does not hide an older application Runtime", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+  const state = runtimeState({
+    instances: [host({ runtimeVersion: "2.4.9" })]
+  });
+  state.capabilities.sharedTrace = capability(
+    false,
+    "unavailable",
+    "Shared tracing requires a stable runtime version of 2.5.0 or newer."
+  );
+  const result = createSharedTraceResult(
+    snapshot(state, [], {
+      observabilityVersion: previewVersion,
+      marker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "installed",
+        scope: "chrome_extension",
+        observabilityVersion: previewVersion,
+        installedAt: 50,
+        timing: "before-runtime"
+      }
+    }),
+    { package: "react" }
+  );
+  assert.equal(result.supported, false);
+  assert.equal(result.capability.minimumRuntimeVersion, "2.5.0");
+});
+
 test("partial history and late injection return data with explicit reopen guidance", () => {
   const state = runtimeState({
     instances: [host()],

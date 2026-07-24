@@ -430,6 +430,31 @@ export interface InstanceCandidate {
   roles: InstanceRole[];
 }
 
+export interface StatusConsumer {
+  instanceRef: string;
+  name: string;
+}
+
+export interface StatusInstance {
+  instanceRef: string;
+  name: string;
+  role: InstanceRole;
+  consumers: StatusConsumer[];
+  active: boolean;
+}
+
+export interface StatusSharedDependency {
+  instanceRef: string;
+  instanceName: string;
+  scope: string;
+  name: string;
+  version: string;
+  provider?: string;
+  singleton?: boolean;
+  eager?: boolean;
+  strategy?: string;
+}
+
 export type MfIssueKind = "not_found" | "needs_input" | "runtime";
 
 export type MfRecommendedAction =
@@ -456,17 +481,8 @@ export type MfRecommendedAction =
     };
 
 export interface StatusResult {
-  schemaVersion: 1;
-  command: "mf status";
-  compatibility: CompatibilitySummary;
-  selection: {
-    kind: "list" | "detail";
-    name?: string;
-    role?: RoleFilter;
-    instanceRef?: string;
-  };
-  instances: RuntimeInstance[];
-  relationships: RuntimeRelationship[];
+  instances: StatusInstance[];
+  shared: StatusSharedDependency[];
 }
 
 export interface ModuleInfoResult {

@@ -83,7 +83,7 @@ openruntime mf status --instance mf-2
 openruntime mf status --json
 ```
 
-Without selectors, the command returns all observed instances and their flat relationships. It includes each session-scoped `instanceRef`, realm/frame scope, name, versions, roles and evidence, remotes, loaded producers, shared and Bridge summaries, capabilities, completeness, warnings, and recovery actions.
+Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it. The top-level `shared` list contains only loaded shared dependency versions, flattened from the safe per-instance view of the MF global share table and identified by instance, scope, package, version, and provider. Remote declarations, Runtime versions, Bridge summaries, trace capabilities, and compatibility warnings stay in their dedicated commands instead of adding noise to `mf status`.
 
 When a name matches more than one instance, the command returns candidates such as:
 

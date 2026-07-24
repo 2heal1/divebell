@@ -15,8 +15,10 @@ test("status defaults to readable text and --json returns stable structured data
 
   const jsonRun = createOptions(["mf", "status"], new Map([["json", ["true"]]]), browserRead(state));
   assert.equal(await runMfCommand(jsonRun.options), 0);
-  assert.equal(jsonRun.outputValue().schemaVersion, 1);
+  assert.deepEqual(Object.keys(jsonRun.outputValue()), ["instances", "shared"]);
   assert.equal(jsonRun.outputValue().instances[0].instanceRef, "mf-1");
+  assert.equal(jsonRun.outputValue().command, undefined);
+  assert.equal(jsonRun.outputValue().compatibility, undefined);
 });
 
 test("missing reader explains current evidence and the next open command", async () => {
@@ -117,7 +119,9 @@ test("representative status selectors and module-info still route and produce JS
     browserRead(state)
   );
   assert.equal(await runMfCommand(statusRun.options), 0);
-  assert.equal(statusRun.outputValue().selection.instanceRef, "mf-1");
+  assert.deepEqual(statusRun.outputValue().instances.map((item) => item.instanceRef), [
+    "mf-1"
+  ]);
 
   const moduleRun = createOptions(
     ["mf", "module-info", "catalog"],
@@ -128,7 +132,7 @@ test("representative status selectors and module-info still route and produce JS
   assert.equal(moduleRun.outputValue().remote.status, "declared");
 });
 
-test("status JSON remains byte-for-byte compatible with the MF-OR-00 fixture", async () => {
+test("status JSON remains byte-for-byte compatible with the compact fixture", async () => {
   const state = runtimeState({
     instances: [instance({ instanceRef: "mf-1", name: "host", role: "consumer" })]
   });
@@ -138,53 +142,18 @@ test("status JSON remains byte-for-byte compatible with the MF-OR-00 fixture", a
     browserRead(state)
   );
   assert.equal(await runMfCommand(run.options), 0);
-  assert.deepEqual(run.outputValue(), statusCompatibilityFixture);
+  assert.deepEqual(run.outputValue(), statusCompactFixture);
 });
 
-const statusCompatibilityFixture = {
-  schemaVersion: 1,
-  command: "mf status",
-  compatibility: {
-    observabilityVersion: "2.5.4",
-    runtimeVersions: ["2.5.4"],
-    observabilityMode: "injected",
-    scope: { name: "chrome_extension", realm: "current", frame: "top" },
-    capabilities: {
-      instanceState: { available: true, completeness: "complete" },
-      remoteTrace: { available: true, completeness: "complete" },
-      sharedState: { available: true, completeness: "complete" },
-      sharedTrace: { available: true, completeness: "complete" },
-      bridgeTrace: {
-        available: false,
-        completeness: "unavailable",
-        reason: "No Bridge signal."
-      }
-    },
-    completeness: {
-      currentState: "complete",
-      history: "complete",
-      historyCleared: false,
-      lateBoundInstanceRefs: []
-    },
-    warnings: ["bridgeTrace is unavailable: No Bridge signal."],
-    recommendedActions: []
-  },
-  selection: { kind: "list" },
+const statusCompactFixture = {
   instances: [{
     instanceRef: "mf-1",
     name: "host",
-    optionsName: "host",
-    optionsVersion: "1.0.0",
-    runtimeVersion: "2.5.4",
     role: "consumer",
-    roleEvidence: { consumer: ["options.remotes"], producer: [] },
-    remotes: [],
-    loadedProducers: [],
-    shareScopes: [],
-    bridge: { available: false },
+    consumers: [],
     active: true
   }],
-  relationships: []
+  shared: []
 };
 
 function createOptions(command, argsOptions, browserValue, browserError) {

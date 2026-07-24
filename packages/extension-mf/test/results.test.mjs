@@ -39,7 +39,19 @@ function multiInstanceFixture() {
       name: "default",
       sharedCount: 1,
       sharedNames: ["react"],
-      shared: [{ name: "react", versions: [{ version: "18.3.1", loaded: true }] }]
+      shared: [{
+        name: "react",
+        versions: [
+          {
+            version: "18.3.1",
+            provider: "catalog",
+            loaded: true,
+            singleton: true,
+            strategy: "loaded-first"
+          },
+          { version: "17.0.2", provider: "legacy", loaded: false }
+        ]
+      }]
     }]
   });
   const state = runtimeState({
@@ -68,7 +80,7 @@ function multiInstanceFixture() {
   return { consumer, producer, state };
 }
 
-test("status keeps nested and cyclic relationships flat", () => {
+test("status returns compact instances, consumers, and loaded shared dependencies", () => {
   const { state } = multiInstanceFixture();
   state.relationships.push({
     consumerInstanceRef: "mf-2",
@@ -79,8 +91,38 @@ test("status keeps nested and cyclic relationships flat", () => {
   });
   const parsed = parseBrowserReadResult(browserRead(state));
   const result = createStatusResult(parsed.snapshot, {});
-  assert.equal(result.instances.length, 2);
-  assert.equal(result.relationships.length, 2);
+  assert.deepEqual(result.instances, [
+    {
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer",
+      consumers: [{ instanceRef: "mf-2", name: "catalog" }],
+      active: true
+    },
+    {
+      instanceRef: "mf-2",
+      name: "catalog",
+      role: "producer",
+      consumers: [{ instanceRef: "mf-1", name: "host" }],
+      active: true
+    }
+  ]);
+  assert.deepEqual(result.shared, [{
+    instanceRef: "mf-2",
+    instanceName: "catalog",
+    scope: "default",
+    name: "react",
+    version: "18.3.1",
+    provider: "catalog",
+    singleton: true,
+    strategy: "loaded-first"
+  }]);
+  assert.equal(JSON.stringify(result).includes("17.0.2"), false);
+  assert.equal(JSON.stringify(result).includes("runtimeVersion"), false);
+  assert.equal(JSON.stringify(result).includes("remotes"), false);
+  assert.equal(JSON.stringify(result).includes("shareScopes"), false);
+  assert.equal(JSON.stringify(result).includes("relationships"), false);
+  assert.equal(JSON.stringify(result).includes("compatibility"), false);
   assert.doesNotThrow(() => JSON.stringify(result));
 });
 

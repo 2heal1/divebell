@@ -21,7 +21,7 @@ const idleRemote = {
 test("all eight commands execute against one combined Remote, Shared, and Bridge snapshot", async () => {
   const snapshot = combinedSnapshot();
   const cases = [
-    { command: ["mf", "status"], expected: "mf status" },
+    { command: ["mf", "status"], expected: "mf status", compactStatus: true },
     {
       command: ["mf", "module-info", "shop"],
       options: [["instance", ["mf-1"]]],
@@ -66,7 +66,11 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
       snapshot
     );
     assert.equal(await runMfCommand(run.options), 0, item.expected);
-    assert.equal(run.outputValue().command, item.expected);
+    if (item.compactStatus) {
+      assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
+    } else {
+      assert.equal(run.outputValue().command, item.expected);
+    }
     assert.doesNotThrow(() => JSON.parse(JSON.stringify(run.outputValue())));
   }
 });

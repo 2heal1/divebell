@@ -1,0 +1,43 @@
+.changeset/inject-mf-debug-runtime.md
+  s_e84425219326c8::t_a82cb23cce820e 5
+packages/extension-mf/README.md
+  s_e84425219326c8::t_956e710dd8f472 96,99
+packages/extension-mf/docs/shared.md
+  s_e84425219326c8::t_b70cd72d76375d 24,26
+packages/extension-mf/src/commands/metadata.ts
+  s_e84425219326c8::t_5b72865b74261f 12
+packages/extension-mf/src/reader.ts
+  s_71d7abfc3080ba::t_00fee7b5cac3aa 285-286
+packages/extension-mf/test/command.test.mjs
+  s_e84425219326c8::t_5b77a443512e82 20,64,66
+packages/extension-mf/test/reader.test.mjs
+  s_e84425219326c8::t_595dc9eddd2f4c 151-198
+packages/extension-mf/test/results.test.mjs
+  s_e84425219326c8::t_ea01479b37b945 162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7b9ce11a863e985c45b366a175ed7f8eb3b8f199",
+  "prompts": {},
+  "sessions": {
+    "s_71d7abfc3080ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92ce-6474-7053-9538-40cb8ecbfd6a",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

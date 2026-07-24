@@ -118,7 +118,6 @@ async function executeExtensionCommand<T = unknown>(
   args: ParsedCliArgs,
   calls: readonly ExtensionCall[]
 ): Promise<T> {
-  assertCommandRequirements(executor, registered);
   assertRequiredOpenHook(executor.openContext, registered);
   const runExtension = async <Result = unknown>(
     extensionName: string,
@@ -182,27 +181,6 @@ async function executeExtensionCommand<T = unknown>(
   }) as T;
 }
 
-function assertCommandRequirements(
-  executor: ExtensionCommandExecutor,
-  registered: RegisteredExtensionCommand
-): void {
-  const missing = registered.command.requires?.find(
-    (extensionName) => !executor.extensionRegistry.has(extensionName)
-  );
-  if (missing === undefined) return;
-  throw createError({
-    code: "EXTENSION_DEPENDENCY_MISSING",
-    kind: "not_found",
-    message: `Command "${registered.command.name}" requires Extension "${missing}", but it is not loaded.`,
-    hint: `Install and load Extension "${missing}" before running this command.`,
-    details: {
-      extension: registered.extension.name,
-      command: registered.command.name,
-      missingExtension: missing
-    }
-  });
-}
-
 function assertRequiredOpenHook(
   openContext: CliOperationLogEntry | undefined,
   registered: RegisteredExtensionCommand
@@ -227,15 +205,15 @@ function assertDeclaredDependency(
 ): void {
   if (
     extensionName === caller.extension.name
-    || caller.command.requires?.includes(extensionName) === true
+    || caller.extension.requires?.includes(extensionName) === true
   ) {
     return;
   }
   throw createError({
     code: "EXTENSION_DEPENDENCY_UNDECLARED",
     kind: "validation",
-    message: `Command "${caller.command.name}" cannot call undeclared Extension "${extensionName}".`,
-    hint: `Add "${extensionName}" to the Command requires list.`,
+    message: `Extension "${caller.extension.name}" cannot call undeclared Extension "${extensionName}".`,
+    hint: `Add "${extensionName}" to the Extension requires list.`,
     details: {
       extension: caller.extension.name,
       command: caller.command.name,

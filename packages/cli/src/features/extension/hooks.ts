@@ -35,26 +35,15 @@ export async function runOpenHooks(
 }> {
   const registry = new Map(extensions.map((extension) => [extension.name, extension]));
   const activeExtensions: string[] = [];
-  const successful = new Set<string>();
   const scripts: ExtensionOpenHookScript[] = [];
   const failures: ExtensionHookFailure[] = [...plan.failures];
 
   for (const batch of plan.batches) {
     const settled = await Promise.allSettled(batch.map(async (extensionName) => {
-      const unavailable = findUnavailableRequirement(plan, extensionName, successful);
-      if (unavailable !== undefined) {
-        return {
-          extension: extensionName,
-          skipped: `Required open hook from Extension "${unavailable}" did not complete successfully.`
-        };
-      }
       const extension = registry.get(extensionName);
       const run = extension === undefined ? undefined : getOpenHook(extension);
       if (run === undefined) {
-        return {
-          extension: extensionName,
-          skipped: `Extension "${extensionName}" open hook is unavailable.`
-        };
+        throw new Error(`Extension "${extensionName}" open hook is unavailable.`);
       }
       return {
         extension: extensionName,
@@ -70,11 +59,6 @@ export async function runOpenHooks(
         failures.push(failure(extensionName, "open", result.reason));
         continue;
       }
-      if ("skipped" in result.value) {
-        failures.push(failure(extensionName, "open", result.value.skipped));
-        continue;
-      }
-      successful.add(extensionName);
       activeExtensions.push(extensionName);
       for (const script of result.value.result?.scripts ?? []) {
         if (typeof script !== "string") {
@@ -98,26 +82,15 @@ export async function runDetectStackHooks(
   failures: ExtensionHookFailure[];
 }> {
   const registry = new Map(extensions.map((extension) => [extension.name, extension]));
-  const successful = new Set<string>();
   const detections: Array<OpenRuntimeStackDetection & { extension: string }> = [];
   const failures: ExtensionHookFailure[] = [...plan.failures];
 
   for (const batch of plan.batches) {
     const settled = await Promise.allSettled(batch.map(async (extensionName) => {
-      const unavailable = findUnavailableRequirement(plan, extensionName, successful);
-      if (unavailable !== undefined) {
-        return {
-          extension: extensionName,
-          skipped: `Required detectStack hook from Extension "${unavailable}" did not complete successfully.`
-        };
-      }
       const extension = registry.get(extensionName);
       const run = extension === undefined ? undefined : getDetectStackHook(extension);
       if (run === undefined) {
-        return {
-          extension: extensionName,
-          skipped: `Extension "${extensionName}" detectStack hook is unavailable.`
-        };
+        throw new Error(`Extension "${extensionName}" detectStack hook is unavailable.`);
       }
       return {
         extension: extensionName,
@@ -133,11 +106,6 @@ export async function runDetectStackHooks(
         failures.push(failure(extensionName, "detectStack", result.reason));
         continue;
       }
-      if ("skipped" in result.value) {
-        failures.push(failure(extensionName, "detectStack", result.value.skipped));
-        continue;
-      }
-      successful.add(extensionName);
       const values = result.value.result === undefined
         ? []
         : Array.isArray(result.value.result) ? result.value.result : [result.value.result];
@@ -182,14 +150,6 @@ export async function runCloseHooks(
     }
   }
   return failures;
-}
-
-function findUnavailableRequirement(
-  plan: ExtensionHookPlan,
-  extension: string,
-  successful: ReadonlySet<string>
-): string | undefined {
-  return plan.requires.get(extension)?.find((name) => !successful.has(name));
 }
 
 function validateDetection(value: OpenRuntimeStackDetection): OpenRuntimeStackDetection {

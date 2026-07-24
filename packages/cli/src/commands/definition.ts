@@ -39,6 +39,11 @@ export function validateExtension(
     throw new Error(`Extension schemaVersion must be ${OPENRUNTIME_EXTENSION_SCHEMA_VERSION}.`);
   }
   const name = validateName(value.name, "Extension");
+  const requires = validateExtensionReferences(
+    value.requires,
+    name,
+    `Extension "${name}" requires`
+  );
   const commands = validateCommands(value.commands, name);
   const hooks = validateHooks(value.hooks, name);
   if (hooks?.open === undefined) {
@@ -56,6 +61,7 @@ export function validateExtension(
   return {
     schemaVersion: 1,
     name,
+    ...(requires.length === 0 ? {} : { requires }),
     ...(typeof value.displayName === "string" ? { displayName: value.displayName } : {}),
     ...(typeof value.description === "string" ? { description: value.description } : {}),
     ...(commands.length === 0 ? {} : { commands }),
@@ -89,13 +95,11 @@ function validateCommands(value: unknown, extensionName: string): OpenRuntimeExt
     const skill = candidate.skill === undefined
       ? undefined
       : validateCommandSkill(candidate.skill, name);
-    const requires = validateExtensionReferences(candidate.requires, extensionName, `Command "${name}" requires`);
     if (candidate.requiresOpenHook !== undefined && typeof candidate.requiresOpenHook !== "boolean") {
       throw new Error(`Command "${name}" requiresOpenHook must be a boolean.`);
     }
     return {
       name,
-      ...(requires.length === 0 ? {} : { requires }),
       ...(candidate.requiresOpenHook === true ? { requiresOpenHook: true } : {}),
       ...(skill === undefined ? {} : { skill }),
       ...(commandReferences === undefined ? {} : {
@@ -146,7 +150,7 @@ function validateOrderedHook(
       `Extension "${extensionName}" hook "${hookName}" must be a function or an ordered hook object.`
     );
   }
-  const supported = new Set(["run", "before", "after", "requires"]);
+  const supported = new Set(["run", "before", "after"]);
   for (const name of Object.keys(value)) {
     if (!supported.has(name)) {
       throw new Error(
@@ -167,13 +171,8 @@ function validateOrderedHook(
     extensionName,
     `Extension "${extensionName}" hook "${hookName}" after`
   );
-  const requires = validateExtensionReferences(
-    value.requires,
-    extensionName,
-    `Extension "${extensionName}" hook "${hookName}" requires`
-  );
   const beforeSet = new Set(before);
-  for (const dependency of [...after, ...requires]) {
+  for (const dependency of after) {
     if (beforeSet.has(dependency)) {
       throw new Error(
         `Extension "${extensionName}" hook "${hookName}" cannot run both before and after "${dependency}".`
@@ -183,8 +182,7 @@ function validateOrderedHook(
   return {
     run: value.run,
     ...(before.length === 0 ? {} : { before }),
-    ...(after.length === 0 ? {} : { after }),
-    ...(requires.length === 0 ? {} : { requires })
+    ...(after.length === 0 ? {} : { after })
   };
 }
 

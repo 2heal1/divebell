@@ -764,9 +764,9 @@ test("lets a command call declared Extension commands with shared page context",
   const caller: OpenRuntimeExtensionDefinition = {
     schemaVersion: 1,
     name: "workflow",
+    requires: ["shared-tools"],
     commands: [{
       name: "inspect-shared",
-      requires: ["shared-tools"],
       run: async ({ args, page, runExtension }) => {
         const first = await runExtension<{ value: string }>("shared-tools", {
           command: "shared-lookup",
@@ -853,48 +853,27 @@ test("lets a command call declared Extension commands with shared page context",
   }
 });
 
-test("keeps unrelated commands usable when a Command dependency is missing", async () => {
-  const cli = createOpenRuntimeCli({
+test("detects missing Extension dependencies when the Extension list loads", () => {
+  assert.throws(() => createOpenRuntimeCli({
     extensions: [{
       schemaVersion: 1,
-      name: "partial-workflow",
+      name: "dependent-workflow",
+      requires: ["missing-tools"],
       commands: [{
-        name: "needs-missing",
-        requires: ["missing-tools"],
-        run: async () => {
-          throw new Error("This command must not run.");
-        }
-      }, {
-        name: "healthy-command",
-        run: async () => ({ healthy: true })
+        name: "dependent-command",
+        run: async () => ({ ready: true })
       }]
     }]
-  });
-
-  const healthyOutput = createOutput();
-  assert.equal(await cli.run(["healthy-command"], {
-    stdout: healthyOutput.stdout,
-    stderr: healthyOutput.stderr
-  }), 0);
-  assert.deepEqual(JSON.parse(healthyOutput.text()), commandOutput("healthy-command", {
-    healthy: true
-  }));
-
-  const missingOutput = createOutput();
-  assert.equal(await cli.run(["needs-missing"], {
-    stdout: missingOutput.stdout,
-    stderr: missingOutput.stderr
-  }), 1);
-  assert.equal(JSON.parse(missingOutput.text()).error.code, "EXTENSION_DEPENDENCY_MISSING");
+  }), /requires Extension "missing-tools".*not installed or loaded/);
 });
 
 test("rejects undeclared Extension calls and nested command cycles", async () => {
   const target: OpenRuntimeExtensionDefinition = {
     schemaVersion: 1,
     name: "target-tools",
+    requires: ["caller-tools"],
     commands: [{
       name: "target-command",
-      requires: ["caller-tools"],
       run: async ({ runExtension }) =>
         await runExtension("caller-tools", { command: "cycle-command" })
     }]
@@ -902,18 +881,25 @@ test("rejects undeclared Extension calls and nested command cycles", async () =>
   const caller: OpenRuntimeExtensionDefinition = {
     schemaVersion: 1,
     name: "caller-tools",
+    requires: ["target-tools"],
     commands: [{
-      name: "undeclared-command",
-      run: async ({ runExtension }) =>
-        await runExtension("target-tools", { command: "target-command" })
-    }, {
       name: "cycle-command",
-      requires: ["target-tools"],
       run: async ({ runExtension }) =>
         await runExtension("target-tools", { command: "target-command" })
     }]
   };
-  const cli = createOpenRuntimeCli({ extensions: [caller, target] });
+  const undeclaredCaller: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "undeclared-caller",
+    commands: [{
+      name: "undeclared-command",
+      run: async ({ runExtension }) =>
+        await runExtension("target-tools", { command: "target-command" })
+    }]
+  };
+  const cli = createOpenRuntimeCli({
+    extensions: [caller, target, undeclaredCaller]
+  });
 
   const undeclaredOutput = createOutput();
   assert.equal(await cli.run(["undeclared-command"], {
@@ -955,9 +941,9 @@ test("enforces requiresOpenHook for direct and composed commands", async () => {
   const caller: OpenRuntimeExtensionDefinition = {
     schemaVersion: 1,
     name: "open-aware-caller",
+    requires: ["open-aware"],
     commands: [{
       name: "call-open-aware",
-      requires: ["open-aware"],
       run: async ({ runExtension }) =>
         await runExtension("open-aware", { command: "open-aware-command" })
     }]
@@ -1050,7 +1036,7 @@ test("runs unordered hooks in parallel and ordered hooks in dependency batches",
   assert.deepEqual(result.failures, []);
 });
 
-test("isolates hook failures while enforcing hard requirements and ordering cycles", async () => {
+test("isolates hook failures and ordering cycles", async () => {
   const calls: string[] = [];
   const result = await runOpenHooks([{
     schemaVersion: 1,
@@ -1069,28 +1055,6 @@ test("isolates hook failures while enforcing hard requirements and ordering cycl
         after: ["failing-hook"],
         run: async () => {
           calls.push("soft");
-        }
-      }
-    }
-  }, {
-    schemaVersion: 1,
-    name: "hard-after",
-    hooks: {
-      open: {
-        requires: ["failing-hook"],
-        run: async () => {
-          calls.push("hard");
-        }
-      }
-    }
-  }, {
-    schemaVersion: 1,
-    name: "missing-hook",
-    hooks: {
-      open: {
-        requires: ["not-installed"],
-        run: async () => {
-          calls.push("missing");
         }
       }
     }
@@ -1134,7 +1098,7 @@ test("isolates hook failures while enforcing hard requirements and ordering cycl
   assert.deepEqual(result.activeExtensions, ["independent-hook", "soft-after"]);
   assert.deepEqual(
     result.failures.map((failure) => failure.extension).sort(),
-    ["cycle-a", "cycle-b", "failing-hook", "hard-after", "missing-hook"].sort()
+    ["cycle-a", "cycle-b", "failing-hook"].sort()
   );
 });
 
@@ -1731,6 +1695,39 @@ test("loads external extensions from the configured directory", async () => {
       force: true
     });
     context.cleanup();
+  }
+});
+
+test("skips external Extensions whose declared dependencies are unavailable", async () => {
+  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-dependencies-"));
+  try {
+    writeFileSync(join(tempDir, "dependent.mjs"), [
+      "export default {",
+      "  schemaVersion: 1,",
+      "  name: 'dependent-tools',",
+      "  requires: ['missing-tools'],",
+      "  commands: [{ name: 'dependent-command', async run() { return 0; } }],",
+      "};",
+      ""
+    ].join("\n"));
+
+    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+      ...process.env,
+      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
+      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+    });
+
+    assert.deepEqual(loaded.cli.extensions, []);
+    assert.equal(loaded.extensionLoadRecords[0]?.status, "skipped");
+    assert.match(
+      loaded.extensionLoadRecords[0]?.reason ?? "",
+      /requires Extension "missing-tools".*not installed or loaded/
+    );
+  } finally {
+    rmSync(tempDir, {
+      recursive: true,
+      force: true
+    });
   }
 });
 

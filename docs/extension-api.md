@@ -12,6 +12,7 @@ Extension development normally imports `OpenRuntimeExtensionDefinition`, `OpenRu
 interface OpenRuntimeExtensionDefinition {
   schemaVersion: 1;
   name: string;
+  requires?: readonly string[];
   displayName?: string;
   description?: string;
   commands?: readonly OpenRuntimeExtensionCommand[];
@@ -23,19 +24,19 @@ interface OpenRuntimeExtensionDefinition {
 | --- | --- |
 | `schemaVersion` | Currently fixed at `1`. |
 | `name` | The stable Extension name. It must match `^[a-z][a-z0-9-]*$` and must not duplicate another loaded Extension. |
+| `requires` | Extension names that must be installed and may be called through `options.runExtension`. |
 | `displayName` | Optional human-readable name. |
 | `description` | Optional short purpose. |
 | `commands` | Commands registered by this Extension. Command names must not conflict with built-in commands or commands from other Extensions. |
 | `hooks` | The `open`, `detectStack`, and `close` hooks. |
 
-A definition must contain at least one Command or Hook. TypeScript entries should normally be annotated as `OpenRuntimeExtensionDefinition`. If declaration files are not generated, `satisfies OpenRuntimeExtensionDefinition` is also suitable. Tests and CI may call `validateExtension(...)` on the default export.
+A definition must contain at least one Command or Hook. OpenRuntime checks `requires` when it loads the Extension list. A missing dependency prevents that Extension from loading and reports which Extension must be installed. TypeScript entries should normally be annotated as `OpenRuntimeExtensionDefinition`. If declaration files are not generated, `satisfies OpenRuntimeExtensionDefinition` is also suitable. Tests and CI may call `validateExtension(...)` on the default export.
 
 ## Commands
 
 ```ts
 interface OpenRuntimeExtensionCommand {
   name: string;
-  requires?: readonly string[];
   requiresOpenHook?: boolean;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
@@ -54,13 +55,10 @@ interface CliCommandReference {
 ```
 
 - `name` is the command name mounted under `openruntime`.
-- `requires` lists the Extension names that this Command may call through `options.runExtension`.
 - `requiresOpenHook` makes the Command available only when its own Extension completed `open` successfully for the current page.
 - `commandReferences` controls the detailed usage and description shown by `openruntime <command> --help`. The top-level `openruntime --help` lists only the command name and a short summary.
 - `skill.path` must be an absolute path to an existing `SKILL.md`.
 - `run` returns the result directly on success and throws an error on failure.
-
-A missing `requires` entry disables only that Command when it is invoked. Other Commands from the same Extension remain usable.
 
 ### `CliExtensionRunOptions`
 
@@ -145,29 +143,33 @@ interface CliExtensionRunFunction {
 }
 ```
 
-Declare other Extensions by name on the calling Command, then call one of their Commands:
+Declare other Extensions once on the Extension definition, then call one of their Commands:
 
 ```ts
 {
-  name: "verify-order",
+  schemaVersion: 1,
+  name: "order-workflow",
   requires: ["account-tools"],
-  run: async ({ runExtension }) => {
-    const account = await runExtension<{ id: string }>("account-tools", {
-      command: "resolve-account",
-      args: ["checkout"],
-      options: {
-        role: "buyer",
-        tag: ["smoke", "checkout"]
-      }
-    });
-    return { accountId: account.id };
-  }
+  commands: [{
+    name: "verify-order",
+    run: async ({ runExtension }) => {
+      const account = await runExtension<{ id: string }>("account-tools", {
+        command: "resolve-account",
+        args: ["checkout"],
+        options: {
+          role: "buyer",
+          tag: ["smoke", "checkout"]
+        }
+      });
+      return { accountId: account.id };
+    }
+  }]
 }
 ```
 
 `args` contains only positional arguments after the target Command name. `options` accepts scalar values or arrays; the target receives them through its normal `options.args`. The target shares the current page, session, Runtime selection, browser access, and nested `runExtension` capability.
 
-The target result is returned directly to the caller. A nested call does not write a second CLI result and does not trigger lifecycle Hooks. A Command may call another Command in its own Extension without listing itself in `requires`. Calls to another Extension must be declared. Cyclic calls and call chains deeper than 16 levels fail with the full call chain.
+The target result is returned directly to the caller. A nested call does not write a second CLI result and does not trigger lifecycle Hooks. A Command may call another Command in its own Extension without listing itself in `requires`. Calls to another Extension must be declared by the calling Extension. Cyclic calls and call chains deeper than 16 levels fail with the full call chain.
 
 ### `options.page`
 
@@ -245,7 +247,6 @@ interface OpenRuntimeOrderedHook<Handler> {
   run: Handler;
   before?: readonly string[];
   after?: readonly string[];
-  requires?: readonly string[];
 }
 ```
 
@@ -255,7 +256,6 @@ The function shorthand remains valid. Use the object form only when a Hook needs
 hooks: {
   open: {
     after: ["account-tools"],
-    requires: ["environment-tools"],
     run: async options => {
       // ...
     }
@@ -263,7 +263,7 @@ hooks: {
 }
 ```
 
-Hooks without ordering relationships run in parallel. OpenRuntime computes execution batches when it creates the CLI from the current Extension list. `before` and `after` are soft ordering constraints: a missing or failed referenced Hook does not disable this Hook. `requires` is a hard dependency: the referenced Hook must exist and complete successfully. Ordering cycles disable only their participants. Hook return values are not passed to later Hooks.
+Hooks without ordering relationships run in parallel. OpenRuntime computes execution batches when it creates the CLI from the current Extension list. `before` and `after` control ordering only: a missing or failed referenced Hook does not disable this Hook. Declare required Extensions on the Extension definition instead. Ordering cycles disable only their participants. Hook return values are not passed to later Hooks.
 
 `close` does not declare its own ordering. It follows the reverse batch order of `open`; Hooks that were parallel during `open` are also parallel during `close`.
 

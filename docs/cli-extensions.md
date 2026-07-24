@@ -185,24 +185,28 @@ export async function runFoo(
 
 Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
-A Command can reuse another Extension's Command by declaring that Extension in `requires` and calling `runExtension`:
+An Extension can reuse another Extension's Commands by declaring it once in the Extension-level `requires` list and calling `runExtension`:
 
 ```ts
 {
-  name: "verify-order",
+  schemaVersion: 1,
+  name: "order-workflow",
   requires: ["account-tools"],
-  run: async ({ runExtension }) => {
-    const account = await runExtension("account-tools", {
-      command: "resolve-account",
-      args: ["checkout"],
-      options: { role: "buyer" }
-    });
-    return { account };
-  }
+  commands: [{
+    name: "verify-order",
+    run: async ({ runExtension }) => {
+      const account = await runExtension("account-tools", {
+        command: "resolve-account",
+        args: ["checkout"],
+        options: { role: "buyer" }
+      });
+      return { account };
+    }
+  }]
 }
 ```
 
-The nested Command shares the current page and session and returns its raw result without producing separate CLI output or triggering Hooks. Missing dependencies affect only the Commands that declare them. Add `requiresOpenHook: true` when a Command depends on setup completed by its own Extension's `open` Hook.
+OpenRuntime checks dependencies when it loads the Extension list and reports any Extension that must be installed. The nested Command shares the current page and session and returns its raw result without producing separate CLI output or triggering Hooks. Add `requiresOpenHook: true` when a Command depends on setup completed by its own Extension's `open` Hook.
 
 ### Hooks
 
@@ -270,7 +274,6 @@ Hooks run in parallel by default. When order matters, use the object form:
 hooks: {
   open: {
     after: ["account-tools"],
-    requires: ["environment-tools"],
     run: async options => {
       // ...
     }
@@ -278,7 +281,7 @@ hooks: {
 }
 ```
 
-`before` and `after` only control order. `requires` also requires the referenced Hook to exist and succeed. OpenRuntime computes parallel execution batches from the loaded Extension list; it runs `close` in reverse `open` order. Hook results are not passed to later Hooks, and one failure does not stop unrelated Hooks.
+`before` and `after` only control order. Required Extensions belong in the Extension-level `requires` list. OpenRuntime computes parallel execution batches from the loaded Extension list; it runs `close` in reverse `open` order. Hook results are not passed to later Hooks, and one failure does not stop unrelated Hooks.
 
 See the [Hooks API](extension-api.md#hooks) for Hook parameters and return types.
 

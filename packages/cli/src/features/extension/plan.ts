@@ -15,7 +15,6 @@ export interface ExtensionHookPlanFailure {
 export interface ExtensionHookPlan {
   hook: ExtensionOrderedHookName;
   batches: readonly (readonly string[])[];
-  requires: ReadonlyMap<string, readonly string[]>;
   failures: readonly ExtensionHookPlanFailure[];
 }
 
@@ -28,7 +27,6 @@ interface HookNode {
   name: string;
   before: readonly string[];
   after: readonly string[];
-  requires: readonly string[];
 }
 
 export function createExtensionHookPlans(
@@ -53,23 +51,11 @@ export function createExtensionHookPlan(
     nodes.set(extension.name, {
       name: extension.name,
       before: ordered?.before ?? [],
-      after: ordered?.after ?? [],
-      requires: ordered?.requires ?? []
+      after: ordered?.after ?? []
     });
   }
 
   const skipped = new Map<string, string>();
-  for (const node of nodes.values()) {
-    const missing = node.requires.find((name) => !nodes.has(name));
-    if (missing !== undefined) {
-      skipped.set(
-        node.name,
-        `Required ${hook} hook from Extension "${missing}" is unavailable.`
-      );
-    }
-  }
-  propagateRequiredSkips(nodes, skipped, hook);
-
   const cyclicGroups = findCyclicGroups(nodes, skipped, order);
   for (const group of cyclicGroups) {
     for (const name of group) {
@@ -79,8 +65,6 @@ export function createExtensionHookPlan(
       );
     }
   }
-  propagateRequiredSkips(nodes, skipped, hook);
-
   const { outgoing, incomingCount } = createEdges(nodes, skipped);
   const batches: string[][] = [];
   let ready = [...nodes.keys()]
@@ -110,11 +94,6 @@ export function createExtensionHookPlan(
   return {
     hook,
     batches,
-    requires: new Map(
-      [...nodes.values()]
-        .filter((node) => !skipped.has(node.name))
-        .map((node) => [node.name, [...node.requires]])
-    ),
     failures: [...skipped.entries()]
       .sort(([left], [right]) => compareOrder(left, right, order))
       .map(([extension, message]) => ({ extension, hook, message }))
@@ -168,30 +147,9 @@ function createEdges(
   };
   for (const node of nodes.values()) {
     for (const target of node.before) addEdge(node.name, target);
-    for (const source of [...node.after, ...node.requires]) addEdge(source, node.name);
+    for (const source of node.after) addEdge(source, node.name);
   }
   return { outgoing, incomingCount };
-}
-
-function propagateRequiredSkips(
-  nodes: ReadonlyMap<string, HookNode>,
-  skipped: Map<string, string>,
-  hook: ExtensionOrderedHookName
-): void {
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const node of nodes.values()) {
-      if (skipped.has(node.name)) continue;
-      const unavailable = node.requires.find((name) => skipped.has(name));
-      if (unavailable === undefined) continue;
-      skipped.set(
-        node.name,
-        `Required ${hook} hook from Extension "${unavailable}" is unavailable.`
-      );
-      changed = true;
-    }
-  }
 }
 
 function findCyclicGroups(

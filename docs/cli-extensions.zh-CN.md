@@ -177,24 +177,28 @@ export async function runFoo(
 
 成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
-Command 可以先在 `requires` 中声明另一个 Extension，再通过 `runExtension` 复用它的 Command：
+Extension 可以在基础定义的 `requires` 中统一声明依赖，再通过 `runExtension` 复用对方的 Command：
 
 ```ts
 {
-  name: "verify-order",
+  schemaVersion: 1,
+  name: "order-workflow",
   requires: ["account-tools"],
-  run: async ({ runExtension }) => {
-    const account = await runExtension("account-tools", {
-      command: "resolve-account",
-      args: ["checkout"],
-      options: { role: "buyer" }
-    });
-    return { account };
-  }
+  commands: [{
+    name: "verify-order",
+    run: async ({ runExtension }) => {
+      const account = await runExtension("account-tools", {
+        command: "resolve-account",
+        args: ["checkout"],
+        options: { role: "buyer" }
+      });
+      return { account };
+    }
+  }]
 }
 ```
 
-被调用的 Command 会复用当前页面和会话，直接返回原始结果，不会额外输出一份 CLI 结果，也不会触发 Hook。依赖缺失只影响声明它的 Command。如果 Command 必须依赖自己 Extension 的 `open` 准备工作，可以加 `requiresOpenHook: true`。
+OpenRuntime 会在加载 Extension 列表时检查依赖，并明确提示还需要安装哪个 Extension。被调用的 Command 会复用当前页面和会话，直接返回原始结果，不会额外输出一份 CLI 结果，也不会触发 Hook。如果 Command 必须依赖自己 Extension 的 `open` 准备工作，可以加 `requiresOpenHook: true`。
 
 ### Hooks
 
@@ -262,7 +266,6 @@ Hook 默认并行执行。需要控制顺序时，使用对象形式：
 hooks: {
   open: {
     after: ["account-tools"],
-    requires: ["environment-tools"],
     run: async options => {
       // ...
     }
@@ -270,7 +273,7 @@ hooks: {
 }
 ```
 
-`before` 和 `after` 只控制先后顺序；`requires` 还要求被引用的 Hook 必须存在并成功完成。OpenRuntime 会根据已加载的 Extension 列表算出并行批次，`close` 按 `open` 的相反顺序执行。Hook 结果不会传给后续 Hook，一个 Hook 失败也不会停止无关 Hook。
+`before` 和 `after` 只控制先后顺序；必需的 Extension 统一放在 Extension 基础定义的 `requires` 中。OpenRuntime 会根据已加载的 Extension 列表算出并行批次，`close` 按 `open` 的相反顺序执行。Hook 结果不会传给后续 Hook，一个 Hook 失败也不会停止无关 Hook。
 
 Hook 参数和返回类型见 [Hooks API](extension-api.zh-CN.md#hooks)。
 

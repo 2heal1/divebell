@@ -43,7 +43,6 @@ export interface CliExtensionRunOptions {
 
 export interface OpenRuntimeExtensionCommand {
   name: string;
-  requires?: readonly string[];
   requiresOpenHook?: boolean;
   skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
@@ -79,7 +78,6 @@ export interface OpenRuntimeOrderedHook<Handler> {
   run: Handler;
   before?: readonly string[];
   after?: readonly string[];
-  requires?: readonly string[];
 }
 
 export type OpenRuntimeOpenHook = (
@@ -103,6 +101,7 @@ export interface OpenRuntimeExtensionHooks {
 export interface OpenRuntimeExtensionDefinition {
   schemaVersion: 1;
   name: string;
+  requires?: readonly string[];
   displayName?: string;
   description?: string;
   commands?: readonly OpenRuntimeExtensionCommand[];

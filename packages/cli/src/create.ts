@@ -77,6 +77,14 @@ function createExtensionRegistry(
     }
     registry.set(extension.name, extension);
   }
+  for (const extension of registry.values()) {
+    const missing = extension.requires?.find((name) => !registry.has(name));
+    if (missing !== undefined) {
+      throw new Error(
+        `Extension "${extension.name}" requires Extension "${missing}", but it is not installed or loaded.`
+      );
+    }
+  }
   return registry;
 }
 
@@ -111,20 +119,70 @@ export async function createOpenRuntimeCliWithExternalExtensions(
     ],
     env
   });
+  const resolvedExternal = resolveExternalExtensionDependencies(
+    internalExtensions,
+    external.extensions,
+    external.records
+  );
   const extensionLoadRecords = [
     ...createInternalExtensionRecords(internalExtensions),
-    ...external.records
+    ...resolvedExternal.records
   ];
   return {
     cli: createOpenRuntimeCli({
       ...options,
       extensions: [
         ...internalExtensions,
-        ...external.extensions
+        ...resolvedExternal.extensions
       ],
       extensionLoadRecords
     }),
     extensionLoadRecords
+  };
+}
+
+function resolveExternalExtensionDependencies(
+  internalExtensions: readonly OpenRuntimeExtensionDefinition[],
+  externalExtensions: readonly OpenRuntimeExtensionDefinition[],
+  records: readonly ExtensionLoadRecord[]
+): {
+  extensions: OpenRuntimeExtensionDefinition[];
+  records: ExtensionLoadRecord[];
+} {
+  const available = new Map(
+    [...internalExtensions, ...externalExtensions].map((extension) => [
+      extension.name,
+      extension
+    ])
+  );
+  const unavailable = new Map<string, string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const extension of externalExtensions) {
+      if (!available.has(extension.name)) continue;
+      const missing = extension.requires?.find((name) => !available.has(name));
+      if (missing === undefined) continue;
+      available.delete(extension.name);
+      unavailable.set(
+        extension.name,
+        `Extension "${extension.name}" requires Extension "${missing}", but it is not installed or loaded.`
+      );
+      changed = true;
+    }
+  }
+  return {
+    extensions: externalExtensions.filter((extension) => available.has(extension.name)),
+    records: records.map((record) => {
+      const reason = unavailable.get(record.name);
+      return reason === undefined || record.status !== "loaded"
+        ? record
+        : {
+            ...record,
+            status: "skipped",
+            reason
+          };
+    })
   };
 }
 

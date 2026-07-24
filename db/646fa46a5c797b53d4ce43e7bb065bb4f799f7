@@ -1,0 +1,73 @@
+.changeset/compose-extension-hooks.md
+  s_8ab25d176290e7::t_9b45feb6b80676 1-5
+docs/cli-extensions.md
+  s_ddbb5e750bd45c::t_4ff5e7eaf27029 188-206,267-282
+docs/cli-extensions.zh-CN.md
+  s_ddbb5e750bd45c::t_ddd3dc1646ec53 180-198,259-274
+docs/extension-api.md
+  s_ddbb5e750bd45c::t_b1729dcddf3b38 38-39,57-58,63-64,73,83,125-169,223-226,229-261,264-267,283
+docs/extension-api.zh-CN.md
+  s_ddbb5e750bd45c::t_be99b43a63ec1e 38-39,57-58,63-64,73,83,125-169,223-226,229-261,264-267,283
+packages/cli/src/commands/browser.ts
+  s_082a94227b06db::t_90364b3fabc9cb 37-43,54-55,79-80,88,200,216,307,369-372,375,385-393
+packages/cli/src/commands/definition.ts
+  s_8ab25d176290e7::t_a66a8de1e45372 10-14,16-17,20-21,44-51,92-95,98-99,123-213
+packages/cli/src/commands/extension.ts
+  s_ddbb5e750bd45c::t_c23b5469c6adc2 4-8,13-20,23-45,57,94-95,99-110,114-397
+packages/cli/src/commands/stack.ts
+  s_ddbb5e750bd45c::t_ed0112d089416c 4,11-14,64-68
+packages/cli/src/create.ts
+  s_8ab25d176290e7::t_131c589dc7c095 16,34,36,50-51,70-82
+packages/cli/src/features/extension/hooks.ts
+  s_8ab25d176290e7::t_7d4f50d7e39fb7 7-12,20-24,29-30,33,36,38-84,88,94-95,100-101,103-149,153,160-161,164-192
+packages/cli/src/features/extension/plan.ts
+  s_ddbb5e750bd45c::t_65d6b9997f7350 1-253
+packages/cli/src/index.ts
+  s_8ab25d176290e7::t_d845dfd352eefb 14-16,18
+packages/cli/src/runner.ts
+  s_8ab25d176290e7::t_f805d88485183c 87-88,124-125,139-140,176
+packages/cli/src/types/cli.ts
+  s_8ab25d176290e7::t_220ea8429043bd 7-10,19,23-26,85-86
+packages/cli/src/types/commands.ts
+  s_8ab25d176290e7::t_b0299b83922c7b 19-34,40,45-46,77-95,97-99,119
+packages/cli/test/extensions.test.ts
+  s_8ab25d176290e7::t_b26a6d5cbf9b4b 15,646-1169
+packages/cli/test/helpers.ts
+  s_8ab25d176290e7::t_37e7025a68485b 109,125
+packages/extension-imitate/src/open.ts
+  s_8ab25d176290e7::t_92cb00bd9c9a9c 1,9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "db646fa46a5c797b53d4ce43e7bb065bb4f799f7",
+  "prompts": {},
+  "sessions": {
+    "s_082a94227b06db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f9226-385c-79f3-a531-37ac9818eaae",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_8ab25d176290e7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f931b-0eac-78e2-a8ee-0bb3a3d2b0d6",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_ddbb5e750bd45c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f930f-557e-7fa2-af3b-8f052dc6a7a3",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

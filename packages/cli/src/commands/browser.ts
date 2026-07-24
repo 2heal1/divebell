@@ -288,20 +288,26 @@ async function openBrowserPage(
 ): Promise<BrowserRunResult> {
   const cookies = getOptionValue(args, "cookies");
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
-    return await browserRunner.run(createBrowserLaunchArgs(args, ["open", openedUrl]), options);
+    return await browserRunner.run(
+      createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl)),
+      options
+    );
   }
 
   if (bridgeUrl !== null || hookScripts.length > 0) {
     const scriptPath = await ensureBrowserInitScript(bridgeUrl, hookScripts);
     if (cookies === undefined) {
-      return await browserRunner.run(createBrowserLaunchArgs(args, ["open", openedUrl, "--init-script", scriptPath]), options);
+      return await browserRunner.run(
+        createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl, ["--init-script", scriptPath])),
+        options
+      );
     }
 
     const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open", "--init-script", scriptPath]), options);
     if (launch.exitCode !== 0) return launch;
     const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
     if (applyCookies.exitCode !== 0) return applyCookies;
-    return await browserRunner.run(["goto", openedUrl]);
+    return await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl));
   }
 
   if (cookies === undefined) {
@@ -311,17 +317,28 @@ async function openBrowserPage(
   if (launch.exitCode !== 0) return launch;
   const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
   if (applyCookies.exitCode !== 0) return applyCookies;
-  return await browserRunner.run(["goto", openedUrl]);
+  return await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl));
 }
 
 function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string[] {
   const launchArgs: string[] = [];
-  appendLaunchOption(launchArgs, args, "profile");
-  appendLaunchOption(launchArgs, args, "state");
+  appendBrowserOption(launchArgs, args, "profile");
+  appendBrowserOption(launchArgs, args, "state");
   return [...launchArgs, ...command];
 }
 
-function appendLaunchOption(browserArgs: string[], args: ParsedCliArgs, name: string): void {
+function createBrowserNavigationArgs(
+  args: ParsedCliArgs,
+  command: "open" | "goto",
+  url: string,
+  additionalArgs: readonly string[] = []
+): string[] {
+  const navigationArgs = [command, url, ...additionalArgs];
+  appendBrowserOption(navigationArgs, args, "headers");
+  return navigationArgs;
+}
+
+function appendBrowserOption(browserArgs: string[], args: ParsedCliArgs, name: string): void {
   const value = getOptionValue(args, name);
   if (value !== undefined && value !== "true") {
     browserArgs.push(`--${name}`, value);

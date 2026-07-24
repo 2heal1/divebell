@@ -69,8 +69,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "Open a directory-scoped page with its own automatically assigned Bridge port, optionally using a Chrome profile, state file, or explicit Bridge."
+    usage: "openruntime open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
+    description: "Open a directory-scoped page with its own automatically assigned Bridge port, optionally using origin-scoped HTTP headers, a Chrome profile, state file, or explicit Bridge."
   },
   {
     category: "Bridge and Browser",

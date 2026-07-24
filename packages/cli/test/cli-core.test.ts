@@ -212,6 +212,7 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /openruntime open <url>/);
+  assert.match(markdown, /openruntime open <url> \[--headers <json>\]/);
   assert.match(markdown, /openruntime profiles/);
   assert.match(markdown, /openruntime state save <path> \[--url <url>\]/);
   assert.match(markdown, /openruntime state load <path>/);

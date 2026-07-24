@@ -24,7 +24,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `openruntime auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `openruntime auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `openruntime auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a directory-scoped page with its own automatically assigned Bridge port, optionally using a Chrome profile, state file, or explicit Bridge.
+- `openruntime open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a directory-scoped page with its own automatically assigned Bridge port, optionally using origin-scoped HTTP headers, a Chrome profile, state file, or explicit Bridge.
 - `openruntime stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
 - `openruntime page-snapshot` - Read the current page snapshot, including actionable element references.
 - `openruntime click <ref|selector|text>` - Click an element by page reference, selector, or visible text.

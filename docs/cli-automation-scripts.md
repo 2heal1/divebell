@@ -148,6 +148,7 @@ Automation scripts usually work with these inputs:
 | Input | Purpose |
 | --- | --- |
 | `url` | Page URL to open. |
+| `headers` | JSON object of HTTP headers sent to the URL's origin, including the first page request. |
 | `session` | Session id for this script; recommended for concurrent scripts and Runtime queries. |
 | `timeout` | Timeout for page or Runtime waits. |
 | `headless/ui` | The browser runs quietly by default; pass `--ui` to `open` for a visible browser. |
@@ -160,6 +161,14 @@ Basic form:
 ```sh
 openruntime open http://localhost:3000
 ```
+
+With headers on the first request:
+
+```sh
+openruntime open http://localhost:3000 --headers '{"Authorization":"Bearer test-token"}'
+```
+
+These headers are sent only to the opened URL's origin.
 
 With session:
 

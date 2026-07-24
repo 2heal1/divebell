@@ -90,7 +90,7 @@ function createCliReferenceZhCNMarkdown(commandReferences) {
     ["openruntime auth save <name> --url <url> --username <user> --password-stdin", "把登录凭据加密保存在 agent-browser 的凭据库中。"],
     ["openruntime auth login <name>", "打开保存的登录页，让 agent-browser 填写并提交匹配的登录表单。"],
     ["openruntime auth <list|show|delete> [name]", "查看或删除 agent-browser 的凭据条目；不会显示密码。"],
-    ["openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]", "为当前目录打开独立页面并自动分配专属 Bridge 端口，也可使用 Chrome Profile、state 文件或显式指定 Bridge。"],
+    ["openruntime open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]", "为当前目录打开独立页面并自动分配专属 Bridge 端口，也可传入仅对目标网址来源生效的 HTTP header、Chrome Profile、state 文件或显式指定 Bridge。"],
     ["openruntime stack [--refresh]", "运行已安装扩展中的技术栈识别器，并汇总当前页面的结果。"],
     ["openruntime page-snapshot", "读取当前页面快照，包括可操作元素的引用。"],
     ["openruntime click <ref|selector|text>", "通过页面引用、选择器或可见文字点击元素。"],

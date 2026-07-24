@@ -6,7 +6,7 @@ The Shared commands analyze facts already exposed by the page's public Module Fe
 
 ```sh
 openruntime mf shared status [package] \
-  [--mf <name>] [--instance <ref>] [--scope <scope>] [--json]
+  [--mf <name>] [--instance <ref>] [--scope <scope>]
 ```
 
 Status uses `state.instances[].shareScopes` as its source of truth. Without `--mf` or `--instance`, it returns every observed instance. `--mf` may return several same-name instances and always preserves their `instanceRef`; `--instance` is exact. Results are grouped by instance and scope and include every current version, loaded versions, provider, `loaded`, `singleton`, `eager`, and strategy.
@@ -24,7 +24,7 @@ The command checks `state.capabilities.sharedState`:
 ```sh
 openruntime mf shared trace [package] \
   [--mf <name>] [--instance <ref>] [--scope <scope>] \
-  [--operation <id>] [--trace-id <id>] [--json]
+  [--operation <id>] [--trace-id <id>]
 ```
 
 Without a package, trace returns an operation summary list. With a package, one matching operation is shown in full. Several matches produce candidates containing `instanceRef`, MF name, package, scope, `operationId`, `traceId`, and a copyable command.

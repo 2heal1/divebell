@@ -1,6 +1,5 @@
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { formatRemoteCheck } from "../remote/format.js";
 import { createRemoteCheckResult } from "../remote/results.js";
 import { remoteCheckCommandMetadata } from "./metadata.js";
 import { option, singleTarget } from "./remote-command.js";
@@ -19,7 +18,7 @@ export const remoteCheckCommand: MfCommandDefinition = {
       ...(name === undefined ? {} : { name }),
       ...(instanceRef === undefined ? {} : { instanceRef })
     });
-    writeCommandResult(options, result, formatRemoteCheck(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };

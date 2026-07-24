@@ -89,7 +89,31 @@ test("status returns compact instances, consumers, and loaded shared dependencie
     evidence: ["moduleCache.remoteInfo"],
     status: "resolved"
   });
-  const parsed = parseBrowserReadResult(browserRead(state));
+  const globalShared = {
+    default: {
+      react: {
+        "18.3.1": {
+          from: "catalog",
+          useIn: ["host"],
+          loaded: true,
+          scope: ["default"],
+          strategy: "loaded-first",
+          shareConfig: { singleton: true },
+          lib: { source: "() => react" },
+          get: { source: "() => factory" }
+        },
+        "17.0.2": {
+          from: "legacy",
+          useIn: [],
+          loaded: false,
+          get: { source: "() => legacyFactory" }
+        }
+      }
+    }
+  };
+  const parsed = parseBrowserReadResult(browserRead(state, [], {
+    globalShared
+  }));
   const result = createStatusResult(parsed.snapshot, {});
   assert.deepEqual(result.instances, [
     {
@@ -107,23 +131,39 @@ test("status returns compact instances, consumers, and loaded shared dependencie
       active: true
     }
   ]);
-  assert.deepEqual(result.shared, [{
-    instanceRef: "mf-2",
-    instanceName: "catalog",
-    scope: "default",
-    name: "react",
-    version: "18.3.1",
-    provider: "catalog",
-    singleton: true,
-    strategy: "loaded-first"
-  }]);
+  assert.deepEqual(result.shared, {
+    default: {
+      react: {
+        "18.3.1": {
+          from: "catalog",
+          useIn: ["host"],
+          loaded: true,
+          scope: ["default"],
+          strategy: "loaded-first",
+          shareConfig: { singleton: true }
+        }
+      }
+    }
+  });
   assert.equal(JSON.stringify(result).includes("17.0.2"), false);
+  assert.equal(JSON.stringify(result).includes("factory"), false);
   assert.equal(JSON.stringify(result).includes("runtimeVersion"), false);
   assert.equal(JSON.stringify(result).includes("remotes"), false);
   assert.equal(JSON.stringify(result).includes("shareScopes"), false);
   assert.equal(JSON.stringify(result).includes("relationships"), false);
   assert.equal(JSON.stringify(result).includes("compatibility"), false);
   assert.doesNotThrow(() => JSON.stringify(result));
+
+  const verbose = createStatusResult(parsed.snapshot, {}, { verbose: true });
+  assert.equal(verbose.shared.default.react["17.0.2"].loaded, false);
+  assert.equal(
+    verbose.shared.default.react["17.0.2"].get.source,
+    "() => legacyFactory"
+  );
+  assert.equal(
+    verbose.shared.default.react["18.3.1"].lib.source,
+    "() => react"
+  );
 });
 
 test("module-info reports loaded facts from the public state and reports", () => {

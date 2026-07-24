@@ -24,7 +24,8 @@ import type {
 
 export function createStatusResult(
   snapshot: BrowserObservabilitySnapshot,
-  selectors: StatusSelectors
+  selectors: StatusSelectors,
+  options: { verbose?: boolean } = {}
 ): StatusResult {
   assertInstanceState(snapshot);
   if (snapshot.state.instances.length === 0) {
@@ -54,34 +55,7 @@ export function createStatusResult(
       ),
       active: instance.active
     })),
-    shared: selected.value.instances
-      .filter((instance) => instance.active)
-      .flatMap((instance) =>
-        instance.shareScopes.flatMap((scope) =>
-          scope.shared.flatMap((item) =>
-            item.versions
-              .filter((version) => version.loaded === true)
-              .map((version) => ({
-                instanceRef: instance.instanceRef,
-                instanceName: visibleInstanceName(instance),
-                scope: scope.name,
-                name: item.name,
-                version: version.version,
-                ...(version.provider === undefined
-                  ? {}
-                  : { provider: version.provider }),
-                ...(version.singleton === undefined
-                  ? {}
-                  : { singleton: version.singleton }),
-                ...(version.eager === undefined ? {} : { eager: version.eager }),
-                ...(version.strategy === undefined
-                  ? {}
-                  : { strategy: version.strategy })
-              }))
-          )
-        )
-      )
-      .sort(compareLoadedShared)
+    shared: filterGlobalShared(snapshot.globalShared, options.verbose === true)
   };
 }
 
@@ -114,16 +88,49 @@ function consumersForInstance(
   );
 }
 
-function compareLoadedShared(
-  left: StatusResult["shared"][number],
-  right: StatusResult["shared"][number]
+function filterGlobalShared(
+  shared: BrowserObservabilitySnapshot["globalShared"],
+  verbose: boolean
+): StatusResult["shared"] {
+  return Object.fromEntries(
+    Object.entries(shared).sort(byKey).flatMap(([scope, packages]) => {
+      const filteredPackages = Object.fromEntries(
+        Object.entries(packages).sort(byKey).flatMap(([packageName, versions]) => {
+          const filteredVersions = Object.fromEntries(
+            Object.entries(versions)
+              .sort(byKey)
+              .filter(([, value]) => verbose || value.loaded)
+              .map(([version, value]) => [
+                version,
+                verbose ? value : withoutFunctionSources(value)
+              ])
+          );
+          return Object.keys(filteredVersions).length === 0
+            ? []
+            : [[packageName, filteredVersions]];
+        })
+      );
+      return Object.keys(filteredPackages).length === 0
+        ? []
+        : [[scope, filteredPackages]];
+    })
+  );
+}
+
+function withoutFunctionSources(
+  value: StatusResult["shared"][string][string][string]
+): StatusResult["shared"][string][string][string] {
+  const safeValue = { ...value };
+  delete safeValue.lib;
+  delete safeValue.get;
+  return safeValue;
+}
+
+function byKey(
+  left: readonly [string, unknown],
+  right: readonly [string, unknown]
 ): number {
-  return [
-    left.instanceRef.localeCompare(right.instanceRef),
-    left.scope.localeCompare(right.scope),
-    left.name.localeCompare(right.name),
-    left.version.localeCompare(right.version)
-  ].find((result) => result !== 0) ?? 0;
+  return left[0].localeCompare(right[0]);
 }
 
 export function filterRelationshipsForInstances(

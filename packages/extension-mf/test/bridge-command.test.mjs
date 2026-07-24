@@ -18,8 +18,7 @@ test("bridge trace JSON is stable and preserves explicit lifecycle semantics", a
   const options = new Map([
     ["instance", ["mf-1"]],
     ["bridge", ["bridge-1"]],
-    ["operation", ["bridge-op-1"]],
-    ["json", ["true"]]
+    ["operation", ["bridge-op-1"]]
   ]);
   const first = createOptions(["mf", "bridge", "trace", "shop"], options, browserValue);
   const second = createOptions(["mf", "bridge", "trace", "shop"], options, browserValue);
@@ -47,7 +46,7 @@ test("bridge trace JSON is stable and preserves explicit lifecycle semantics", a
   assert.equal(result.operations[0].applicationReadiness, "not-observed");
 });
 
-test("human output includes instance, sides, timing, outcome, and conservative readiness", async () => {
+test("default bridge output preserves instance, sides, timing, outcome, and conservative readiness", async () => {
   const browserValue = bridgeSnapshot({
     instances: [bridgeInstance()],
     reports: [
@@ -61,17 +60,21 @@ test("human output includes instance, sides, timing, outcome, and conservative r
     browserValue
   );
   assert.equal(await runMfCommand(run.options), 0);
-  const text = run.stdout();
-  assert.match(text, /Module Federation Bridge trace/);
-  assert.match(text, /host \(mf-1\)/);
-  assert.match(text, /consumer \/ react \/ render/);
-  assert.match(text, /producer \/ react \/ render/);
-  assert.match(text, /started:/);
-  assert.match(text, /duration: 10 ms/);
-  assert.match(text, /outcome: success/);
-  assert.match(text, /commit observed for this operation: yes/);
-  assert.match(text, /application readiness: not observed/);
-  assert.doesNotMatch(text, /page (?:is|has been) rendered|application ready: yes|user can interact: yes/i);
+  assert.equal(run.stdout(), "");
+  const result = run.outputValue();
+  assert.equal(result.operations[0].instance.instanceRef, "mf-1");
+  assert.equal(
+    result.operations[0].sides.find((side) => side.side === "consumer").framework,
+    "react"
+  );
+  assert.equal(
+    result.operations[0].sides.find((side) => side.side === "producer").framework,
+    "react"
+  );
+  assert.equal(result.operations[0].duration, 10);
+  assert.equal(result.operations[0].outcome, "success");
+  assert.equal(result.operations[0].commitObserved, true);
+  assert.equal(result.operations[0].applicationReadiness, "not-observed");
 });
 
 test("ambiguous remote results include copyable --operation candidate commands", async () => {

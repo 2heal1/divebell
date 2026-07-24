@@ -27,6 +27,35 @@ export interface SharedVersion {
   strategy?: string;
 }
 
+export interface SharedFunctionSource {
+  source: string;
+}
+
+export interface GlobalSharedVersion {
+  from?: string;
+  useIn: string[];
+  loaded: boolean;
+  loading?: boolean;
+  scope?: string[];
+  deps?: string[];
+  eager?: boolean;
+  strategy?: string;
+  shareConfig?: {
+    requiredVersion?: string | false;
+    singleton?: boolean;
+    eager?: boolean;
+    strictVersion?: boolean;
+    layer?: string | null;
+  };
+  lib?: SharedFunctionSource;
+  get?: SharedFunctionSource;
+}
+
+export type GlobalSharedState = Record<
+  string,
+  Record<string, Record<string, GlobalSharedVersion>>
+>;
+
 export interface SharedCandidate {
   scope: string;
   version: string;
@@ -395,6 +424,7 @@ export interface BrowserObservabilitySnapshot {
   injection?: InjectionMarker;
   state: RuntimeState;
   reports: RuntimeReport[];
+  globalShared: GlobalSharedState;
 }
 
 export type BrowserReadResult =
@@ -443,18 +473,6 @@ export interface StatusInstance {
   active: boolean;
 }
 
-export interface StatusSharedDependency {
-  instanceRef: string;
-  instanceName: string;
-  scope: string;
-  name: string;
-  version: string;
-  provider?: string;
-  singleton?: boolean;
-  eager?: boolean;
-  strategy?: string;
-}
-
 export type MfIssueKind = "not_found" | "needs_input" | "runtime";
 
 export type MfRecommendedAction =
@@ -482,7 +500,7 @@ export type MfRecommendedAction =
 
 export interface StatusResult {
   instances: StatusInstance[];
-  shared: StatusSharedDependency[];
+  shared: GlobalSharedState;
 }
 
 export interface ModuleInfoResult {

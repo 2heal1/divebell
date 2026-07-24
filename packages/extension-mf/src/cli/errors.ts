@@ -78,20 +78,20 @@ function coreErrorHint(error: MfCoreError): string {
       return "Upgrade or configure the MF Observability Plugin, then reopen the page with `openruntime open <url>`.";
     case "MF_INSTANCE_REF_NOT_FOUND":
       return error.facts.requiredRole === "consumer"
-        ? "Run `openruntime mf status --role consumer --json` and choose a current instanceRef."
-        : "Run `openruntime mf status --json` and choose a current instanceRef.";
+        ? "Run `openruntime mf status --role consumer` and choose a current instanceRef."
+        : "Run `openruntime mf status` and choose a current instanceRef.";
     case "MF_INSTANCE_NOT_CONSUMER":
       return "Choose a consumer candidate. Unknown role evidence is not treated as consumer proof.";
     case "MF_INSTANCE_NAME_AMBIGUOUS":
     case "MF_CONSUMER_AMBIGUOUS":
       return "Repeat the command with one of the candidate --instance values.";
     case "MF_REMOTE_NOT_FOUND":
-      return "Run `openruntime mf status --json` to inspect the consumer's declared and loaded remotes.";
+      return "Run `openruntime mf status` to inspect the current consumers.";
     case "MF_REMOTE_AMBIGUOUS":
       return "Repeat the command with one of the candidate remote names and the same --instance value.";
     case "MF_CONSUMER_NOT_FOUND":
-      return "Run `openruntime mf status --json` and inspect roles and role evidence.";
+      return "Run `openruntime mf status` and inspect the current roles.";
     default:
-      return "Run `openruntime mf status --json` to inspect the current candidates.";
+      return "Run `openruntime mf status` to inspect the current candidates.";
   }
 }

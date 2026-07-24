@@ -1,23 +1,25 @@
 # @openruntime/extension-mf
 
-Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides eight external commands; it does not read Module Federation private globals or add built-in CLI commands.
+Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides eight external commands and a bounded, serializable view of the MF global share table.
 
 ## Commands
 
 ```text
-openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--json]
-openruntime mf module-info [remote] [--mf <name>] [--instance <ref>] [--json]
-openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
-openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]
-openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
-openruntime mf shared status [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--json]
-openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>] [--json]
-openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>] [--json]
+openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
+openruntime mf module-info [remote] [--mf <name>] [--instance <ref>]
+openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+openruntime mf remote check <remote> [--mf <name>] [--instance <ref>]
+openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+openruntime mf shared status [package] [--mf <name>] [--instance <ref>] [--scope <scope>]
+openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>]
+openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>]
 ```
 
-`--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
+All commands return structured output by default; `--json` is not required.
 
-All commands analyze only facts already exposed through the page's safe public Observability reader. They do not inspect private globals or infer missing activity. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
+`--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. The Observability Plugin assigns this reference to an instance object for the current page session; it is not an MF global key and is not used to index `__SHARE__`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
+
+Remote and trace commands analyze facts exposed through the page's safe public Observability reader. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; raw functions, promises, module values, and instance ids are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install
 
@@ -80,10 +82,12 @@ openruntime mf status
 openruntime mf status host
 openruntime mf status --role consumer
 openruntime mf status --instance mf-2
-openruntime mf status --json
+openruntime mf status --verbose
 ```
 
-Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it. The top-level `shared` list contains only loaded shared dependency versions, flattened from the safe per-instance view of the MF global share table and identified by instance, scope, package, version, and provider. Remote declarations, Runtime versions, Bridge summaries, trace capabilities, and compatibility warnings stay in their dedicated commands instead of adding noise to `mf status`.
+Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it.
+
+The top-level `shared` object is grouped as `scope -> package -> version`. It traverses the values of `__FEDERATION__.__SHARE__[instanceId]`, merges duplicate scope maps, and omits the instance ids. Each version keeps safe Shared fields such as `from`, `useIn`, loading state, scope, dependencies, strategy, and share configuration. By default, only versions with `loaded === true` or a `lib` function are returned. `--verbose` also returns unloaded versions and bounded `lib`/`get` function source text. JavaScript does not expose a reliable source file position for a function object, so this command does not claim a source-map location.
 
 When a name matches more than one instance, the command returns candidates such as:
 
@@ -100,7 +104,6 @@ openruntime mf module-info
 openruntime mf module-info catalog
 openruntime mf module-info catalog --mf host
 openruntime mf module-info catalog --instance mf-1
-openruntime mf module-info catalog --instance mf-1 --json
 ```
 
 The command first selects a confirmed consumer. It automatically selects only when exactly one consumer exists. With several consumers, duplicate names, or ambiguous remotes, it returns copyable candidate commands.
@@ -131,12 +134,12 @@ See [docs/remote.md](docs/remote.md) for the result fields, evidence boundaries,
 ```sh
 openruntime mf shared status
 openruntime mf shared status react --mf host --scope default
-openruntime mf shared status react --instance mf-1 --json
+openruntime mf shared status react --instance mf-1
 
 openruntime mf shared trace
 openruntime mf shared trace react --instance mf-1
 openruntime mf shared trace react --instance mf-1 --operation loadShare-42
-openruntime mf shared trace react --trace-id mf-trace-42 --json
+openruntime mf shared trace react --trace-id mf-trace-42
 ```
 
 `mf shared status` reads only the current `shareScopes` state and keeps every matching instance separate, including duplicate MF names. It groups packages by instance and share scope, and reports available and loaded versions, providers, loading flags, strategy, and conflicts that current versions still confirm.
@@ -152,7 +155,7 @@ openruntime mf bridge trace
 openruntime mf bridge trace catalog
 openruntime mf bridge trace shop --instance mf-1
 openruntime mf bridge trace catalog --instance mf-1 --bridge bridge-1 --operation bridge-op-1
-openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1 --json
+openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1
 ```
 
 Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
@@ -171,7 +174,7 @@ See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boun
 - `application`: the page exposes one compatible application Observability reader; it is preferred over the injected reader.
 - `unavailable`: no compatible public reader is present. Reopen the page with `openruntime open <url>` or configure the MF Observability Plugin in the application.
 
-Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, share scopes, `options.id`, or other private runtime objects.
+Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, `options.id`, or other private runtime objects. The only additional global read is the sanitized `__SHARE__` snapshot used by `mf status`.
 
 ## Public API for other extensions
 

@@ -28,7 +28,7 @@ test("shared presenter emits copyable status and trace selectors", () => {
   );
 });
 
-test("shared status JSON is stable and human output is readable", async () => {
+test("shared status returns stable structured output by default", async () => {
   const state = runtimeState({
     instances: [instance({
       instanceRef: "mf-1",
@@ -41,7 +41,7 @@ test("shared status JSON is stable and human output is readable", async () => {
   });
   const jsonRun = createOptions(
     ["mf", "shared", "status", "react"],
-    new Map([["scope", ["default"]], ["json", ["true"]]]),
+    new Map([["scope", ["default"]]]),
     browserRead(state)
   );
   assert.equal(await runMfCommand(jsonRun.options), 0);
@@ -88,8 +88,9 @@ test("shared status JSON is stable and human output is readable", async () => {
     browserRead(state)
   );
   assert.equal(await runMfCommand(textRun.options), 0);
-  assert.match(textRun.stdout(), /Module Federation shared status/);
-  assert.match(textRun.stdout(), /mf-1  host/);
+  assert.equal(textRun.stdout(), "");
+  assert.equal(textRun.outputValue().command, "mf shared status");
+  assert.equal(textRun.outputValue().instances[0].instanceRef, "mf-1");
 });
 
 test("ambiguous shared trace returns copyable operation commands", async () => {
@@ -102,7 +103,7 @@ test("ambiguous shared trace returns copyable operation commands", async () => {
   ];
   const jsonRun = createOptions(
     ["mf", "shared", "trace", "react"],
-    new Map([["json", ["true"]]]),
+    new Map(),
     browserRead(state, reports)
   );
   assert.equal(await runMfCommand(jsonRun.options), 0);
@@ -120,8 +121,9 @@ test("ambiguous shared trace returns copyable operation commands", async () => {
     browserRead(state, reports)
   );
   assert.equal(await runMfCommand(textRun.options), 0);
-  assert.match(textRun.stdout(), /Candidates/);
-  assert.match(textRun.stdout(), /--operation "op-a"/);
+  assert.equal(textRun.stdout(), "");
+  assert.equal(textRun.outputValue().selection.kind, "ambiguous");
+  assert.match(textRun.outputValue().candidates[0].command, /--operation "op-a"/);
 });
 
 test("shared trace command applies instance, scope, operation, and trace-id selectors", async () => {

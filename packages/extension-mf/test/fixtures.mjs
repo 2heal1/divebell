@@ -128,6 +128,7 @@ export function browserRead(state, reports = [], overrides = {}) {
     },
     state,
     reports,
+    globalShared: {},
     ...overrides
   };
 }

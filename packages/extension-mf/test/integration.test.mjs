@@ -62,7 +62,7 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
   for (const item of cases) {
     const run = createOptions(
       item.command,
-      new Map([...(item.options ?? []), ["json", ["true"]]]),
+      new Map(item.options ?? []),
       snapshot
     );
     assert.equal(await runMfCommand(run.options), 0, item.expected);
@@ -75,7 +75,7 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
   }
 });
 
-test("combined human output keeps Remote, Shared, preload, and Bridge evidence isolated", async () => {
+test("combined structured output keeps Remote, Shared, preload, and Bridge evidence isolated", async () => {
   const snapshot = combinedSnapshot();
   const remote = createOptions(
     ["mf", "trace", "shop/Button"],
@@ -100,15 +100,20 @@ test("combined human output keeps Remote, Shared, preload, and Bridge evidence i
 
   for (const run of [remote, preload, shared, bridge]) {
     assert.equal(await runMfCommand(run.options), 0);
+    assert.equal(run.stdout(), "");
   }
-  assert.match(remote.stdout(), /remote-load/);
-  assert.doesNotMatch(remote.stdout(), /remote-preload|shared-op|bridge-op/);
-  assert.match(preload.stdout(), /remote-preload/);
-  assert.doesNotMatch(preload.stdout(), /remote-load|shared-op|bridge-op/);
-  assert.match(shared.stdout(), /shared-op/);
-  assert.doesNotMatch(shared.stdout(), /remote-load|remote-preload|bridge-op/);
-  assert.match(bridge.stdout(), /bridge-op/);
-  assert.doesNotMatch(bridge.stdout(), /remote-load|remote-preload|shared-op/);
+  const remoteOutput = JSON.stringify(remote.outputValue());
+  const preloadOutput = JSON.stringify(preload.outputValue());
+  const sharedOutput = JSON.stringify(shared.outputValue());
+  const bridgeOutput = JSON.stringify(bridge.outputValue());
+  assert.match(remoteOutput, /remote-load/);
+  assert.doesNotMatch(remoteOutput, /remote-preload|shared-op|bridge-op/);
+  assert.match(preloadOutput, /remote-preload/);
+  assert.doesNotMatch(preloadOutput, /remote-load|shared-op|bridge-op/);
+  assert.match(sharedOutput, /shared-op/);
+  assert.doesNotMatch(sharedOutput, /remote-load|remote-preload|bridge-op/);
+  assert.match(bridgeOutput, /bridge-op/);
+  assert.doesNotMatch(bridgeOutput, /remote-load|remote-preload|shared-op/);
 });
 
 test("pending, unknown, partial, and unavailable remain distinct in one snapshot", async () => {
@@ -204,13 +209,25 @@ function combinedSnapshot(options = {}) {
         moduleName: `${catalogRemote.name}/App`
       })
     })
-  ]);
+  ], {
+    globalShared: {
+      default: {
+        react: {
+          "18.3.1": {
+            from: "host",
+            useIn: ["host", "catalog"],
+            loaded: true
+          }
+        }
+      }
+    }
+  });
 }
 
 async function runJson(command, optionEntries, browserValue) {
   const run = createOptions(
     command,
-    new Map([...optionEntries, ["json", ["true"]]]),
+    new Map(optionEntries),
     browserValue
   );
   assert.equal(await runMfCommand(run.options), 0);

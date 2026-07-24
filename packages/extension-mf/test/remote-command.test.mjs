@@ -10,12 +10,12 @@ import {
   stateWithConsumer
 } from "./remote-fixtures.mjs";
 
-test("trace, remote check, and preload trace support JSON and readable output", async () => {
+test("trace, remote check, and preload trace return structured output by default", async () => {
   const state = stateWithConsumer();
   const read = browserRead(state, [loadTrace(), preloadTrace()]);
   const trace = createOptions(
     ["mf", "trace", "shop/Button"],
-    new Map([["trace-id", ["trace-load-1"]], ["json", ["true"]]]),
+    new Map([["trace-id", ["trace-load-1"]]]),
     read
   );
   assert.equal(await runMfCommand(trace.options), 0);
@@ -24,7 +24,7 @@ test("trace, remote check, and preload trace support JSON and readable output", 
 
   const check = createOptions(
     ["mf", "remote", "check", "shop"],
-    new Map([["instance", ["mf-1"]], ["json", ["true"]]]),
+    new Map([["instance", ["mf-1"]]]),
     read
   );
   assert.equal(await runMfCommand(check.options), 0);
@@ -37,9 +37,10 @@ test("trace, remote check, and preload trace support JSON and readable output", 
     read
   );
   assert.equal(await runMfCommand(preload.options), 0);
-  assert.match(preload.stdout(), /Module Federation preload trace/);
-  assert.match(preload.stdout(), /trace-preload-1/);
-  assert.doesNotMatch(preload.stdout(), /trace-load-1/);
+  assert.equal(preload.stdout(), "");
+  assert.equal(preload.outputValue().command, "mf preload trace");
+  assert.equal(preload.outputValue().traces[0].traceId, "trace-preload-1");
+  assert.doesNotMatch(JSON.stringify(preload.outputValue()), /trace-load-1/);
 });
 
 test("same-name MF instances return copyable command candidates", async () => {

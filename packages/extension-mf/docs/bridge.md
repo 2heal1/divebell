@@ -11,7 +11,7 @@ openruntime mf bridge trace <remote-or-alias> --mf <name>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --bridge <bridgeId>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId> --json
+openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
 ```
 
 `--instance` always takes the session-scoped instanceRef shown by `openruntime mf status`. `--mf` matches the visible MF name. Duplicate names return candidates instead of selecting the first instance.

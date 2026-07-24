@@ -4,6 +4,8 @@ import type {
   BridgeRouteSummary,
   Capability,
   CapabilityName,
+  GlobalSharedState,
+  GlobalSharedVersion,
   InjectionMarker,
   RuntimeBridgeInfo,
   RuntimeBridgeState,
@@ -31,7 +33,8 @@ const capabilityNames: CapabilityName[] = [
   "bridgeTrace"
 ];
 
-export const MF_BROWSER_READ_SCRIPT = `(() => {
+const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
+  const includeFunctionSource = __OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__;
   const marker = globalThis.__MF_OBSERVABILITY_INJECTION__;
   const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__;
   const availableScopes = readers && typeof readers === "object"
@@ -43,6 +46,123 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
       typeof reader.getRuntimeState === "function";
   });
   const applicationScopes = compatibleScopes.filter((scope) => scope !== "chrome_extension");
+  const isRecord = (value) =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+  const safeText = (value, limit = 240) =>
+    typeof value === "string" && value.length > 0
+      ? value.slice(0, limit)
+      : undefined;
+  const safeKey = (value, limit) => {
+    const key = safeText(value, limit);
+    return key === undefined ||
+        key === "__proto__" ||
+        key === "prototype" ||
+        key === "constructor"
+      ? undefined
+      : key;
+  };
+  const safeStringArray = (value) =>
+    Array.isArray(value)
+      ? Array.from(new Set(value
+          .map((item) => safeText(item, 160))
+          .filter((item) => item !== undefined)))
+          .slice(0, 100)
+          .sort()
+      : [];
+  const functionSource = (value) => {
+    if (!includeFunctionSource || typeof value !== "function") return undefined;
+    try {
+      return {
+        source: Function.prototype.toString.call(value).slice(0, 1000)
+      };
+    } catch {
+      return { source: "[function source unavailable]" };
+    }
+  };
+  const safeShareConfig = (value) => {
+    if (!isRecord(value)) return undefined;
+    const requiredVersion = value.requiredVersion === false
+      ? false
+      : safeText(value.requiredVersion, 160);
+    const config = {
+      ...(requiredVersion === undefined ? {} : { requiredVersion }),
+      ...(typeof value.singleton === "boolean" ? { singleton: value.singleton } : {}),
+      ...(typeof value.eager === "boolean" ? { eager: value.eager } : {}),
+      ...(typeof value.strictVersion === "boolean"
+        ? { strictVersion: value.strictVersion }
+        : {}),
+      ...(typeof value.layer === "string" || value.layer === null
+        ? { layer: value.layer }
+        : {})
+    };
+    return Object.keys(config).length === 0 ? undefined : config;
+  };
+  const safeSharedValue = (value) => {
+    if (!isRecord(value)) return undefined;
+    const from = safeText(value.from, 160);
+    const scope = safeStringArray(value.scope);
+    const deps = safeStringArray(value.deps);
+    const strategy = safeText(value.strategy, 80);
+    const shareConfig = safeShareConfig(value.shareConfig);
+    const lib = functionSource(value.lib);
+    const get = functionSource(value.get);
+    return {
+      ...(from === undefined ? {} : { from }),
+      useIn: safeStringArray(value.useIn),
+      loaded: value.loaded === true || typeof value.lib === "function",
+      ...(value.loading === undefined ? {} : { loading: value.loading != null }),
+      ...(scope.length === 0 ? {} : { scope }),
+      ...(deps.length === 0 ? {} : { deps }),
+      ...(typeof value.eager === "boolean" ? { eager: value.eager } : {}),
+      ...(strategy === undefined ? {} : { strategy }),
+      ...(shareConfig === undefined ? {} : { shareConfig }),
+      ...(lib === undefined ? {} : { lib }),
+      ...(get === undefined ? {} : { get })
+    };
+  };
+  const readGlobalShared = () => {
+    const root = globalThis.__FEDERATION__?.__SHARE__;
+    if (!isRecord(root)) return {};
+    const result = Object.create(null);
+    const seenInstanceMaps = new Set();
+    for (const instanceMap of Object.values(root).slice(0, 100)) {
+      if (!isRecord(instanceMap) || seenInstanceMaps.has(instanceMap)) continue;
+      seenInstanceMaps.add(instanceMap);
+      for (const [rawScope, packages] of Object.entries(instanceMap).slice(0, 100)) {
+        const scope = safeKey(rawScope, 120);
+        if (scope === undefined || !isRecord(packages)) continue;
+        const scopeResult = result[scope] || (result[scope] = Object.create(null));
+        for (const [rawPackage, versions] of Object.entries(packages).slice(0, 200)) {
+          const packageName = safeKey(rawPackage, 240);
+          if (packageName === undefined || !isRecord(versions)) continue;
+          const packageResult =
+            scopeResult[packageName] ||
+            (scopeResult[packageName] = Object.create(null));
+          for (const [rawVersion, rawShared] of Object.entries(versions).slice(0, 50)) {
+            const version = safeKey(rawVersion, 120);
+            const shared = safeSharedValue(rawShared);
+            if (version === undefined || shared === undefined) continue;
+            const existing = packageResult[version];
+            if (existing === undefined) {
+              packageResult[version] = shared;
+              continue;
+            }
+            const preferExisting = existing.loaded && !shared.loaded;
+            packageResult[version] = {
+              ...(preferExisting ? shared : existing),
+              ...(preferExisting ? existing : shared),
+              useIn: Array.from(new Set([
+                ...existing.useIn,
+                ...shared.useIn
+              ])).sort(),
+              loaded: existing.loaded || shared.loaded
+            };
+          }
+        }
+      }
+    }
+    return result;
+  };
 
   if (applicationScopes.length > 1) {
     return {
@@ -98,7 +218,8 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
       compatibleScopes,
       marker,
       state,
-      reports
+      reports,
+      globalShared: readGlobalShared()
     };
   } catch (error) {
     return {
@@ -112,10 +233,21 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
   }
 })()`;
 
+export const MF_BROWSER_READ_SCRIPT = createBrowserReadScript(false);
+
+function createBrowserReadScript(includeFunctionSource: boolean): string {
+  return MF_BROWSER_READ_SCRIPT_TEMPLATE.replace(
+    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__",
+    includeFunctionSource ? "true" : "false"
+  );
+}
+
 export async function readMfObservability(browser: {
   eval<T = unknown>(script: string): Promise<T>;
-}): Promise<BrowserReadResult> {
-  const value = await browser.eval<unknown>(MF_BROWSER_READ_SCRIPT);
+}, options: { verbose?: boolean } = {}): Promise<BrowserReadResult> {
+  const value = await browser.eval<unknown>(
+    createBrowserReadScript(options.verbose === true)
+  );
   return parseBrowserReadResult(value);
 }
 
@@ -159,8 +291,93 @@ function parseSnapshot(record: Record<string, unknown>): BrowserObservabilitySna
     compatibleScopes: stringArray(record.compatibleScopes, "compatible scopes"),
     ...(injection === undefined ? {} : { injection }),
     state: parseRuntimeState(record.state),
-    reports: array(record.reports, "reports").map(parseReport)
+    reports: array(record.reports, "reports").map(parseReport),
+    globalShared: parseGlobalShared(record.globalShared)
   };
+}
+
+function parseGlobalShared(value: unknown): GlobalSharedState {
+  if (value === undefined) return {};
+  return Object.fromEntries(
+    Object.entries(asRecord(value, "global shared state")).map(
+      ([scope, rawPackages]) => [
+        scope,
+        Object.fromEntries(
+          Object.entries(asRecord(rawPackages, `shared scope ${scope}`)).map(
+            ([packageName, rawVersions]) => [
+              packageName,
+              Object.fromEntries(
+                Object.entries(
+                  asRecord(rawVersions, `shared package ${packageName}`)
+                ).map(([version, rawShared]) => [
+                  version,
+                  parseGlobalSharedVersion(rawShared)
+                ])
+              )
+            ]
+          )
+        )
+      ]
+    )
+  );
+}
+
+function parseGlobalSharedVersion(value: unknown): GlobalSharedVersion {
+  const record = asRecord(value, "global shared version");
+  const shareConfigRecord = record.shareConfig === undefined
+    ? undefined
+    : asRecord(record.shareConfig, "global shared shareConfig");
+  const requiredVersion = shareConfigRecord?.requiredVersion === false
+    ? false
+    : optionalString(
+        shareConfigRecord?.requiredVersion,
+        "global shared requiredVersion"
+      );
+  const layer = shareConfigRecord?.layer;
+  if (layer !== undefined && layer !== null && typeof layer !== "string") {
+    throw new Error("global shared layer must be a string or null.");
+  }
+  const shareConfig = shareConfigRecord === undefined
+    ? undefined
+    : compact({
+        requiredVersion,
+        singleton: optionalBoolean(
+          shareConfigRecord.singleton,
+          "global shared singleton"
+        ),
+        eager: optionalBoolean(shareConfigRecord.eager, "global shared eager"),
+        strictVersion: optionalBoolean(
+          shareConfigRecord.strictVersion,
+          "global shared strictVersion"
+        ),
+        layer: layer as string | null | undefined
+      });
+  return compact({
+    from: optionalString(record.from, "global shared provider"),
+    useIn: stringArray(record.useIn, "global shared useIn"),
+    loaded: requiredBoolean(record.loaded, "global shared loaded"),
+    loading: optionalBoolean(record.loading, "global shared loading"),
+    scope: record.scope === undefined
+      ? undefined
+      : stringArray(record.scope, "global shared scope"),
+    deps: record.deps === undefined
+      ? undefined
+      : stringArray(record.deps, "global shared deps"),
+    eager: optionalBoolean(record.eager, "global shared eager"),
+    strategy: optionalString(record.strategy, "global shared strategy"),
+    shareConfig,
+    lib: parseFunctionSource(record.lib, "global shared lib"),
+    get: parseFunctionSource(record.get, "global shared get")
+  }) as GlobalSharedVersion;
+}
+
+function parseFunctionSource(
+  value: unknown,
+  label: string
+): { source: string } | undefined {
+  if (value === undefined) return undefined;
+  const record = asRecord(value, label);
+  return { source: requiredString(record.source, `${label} source`) };
 }
 
 export function parseRuntimeState(value: unknown): RuntimeState {

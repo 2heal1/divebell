@@ -8,7 +8,6 @@ export interface SharedCommandPresenter {
     mf?: string;
     instanceRef?: string;
     scope?: string;
-    json?: boolean;
   }): string;
   trace(options?: {
     package?: string;
@@ -17,7 +16,6 @@ export interface SharedCommandPresenter {
     scope?: string;
     operationId?: string;
     traceId?: string;
-    json?: boolean;
   }): string;
 }
 
@@ -33,8 +31,7 @@ export function createSharedCommandPresenter(
         options.package === undefined ? undefined : quote(options.package),
         options.mf === undefined ? undefined : `--mf ${quote(options.mf)}`,
         options.instanceRef === undefined ? undefined : `--instance ${quote(options.instanceRef)}`,
-        options.scope === undefined ? undefined : `--scope ${quote(options.scope)}`,
-        options.json === true ? "--json" : undefined
+        options.scope === undefined ? undefined : `--scope ${quote(options.scope)}`
       ].filter((value): value is string => value !== undefined).join(" ");
     },
     trace(options = {}) {
@@ -46,8 +43,7 @@ export function createSharedCommandPresenter(
         options.instanceRef === undefined ? undefined : `--instance ${quote(options.instanceRef)}`,
         options.scope === undefined ? undefined : `--scope ${quote(options.scope)}`,
         options.operationId === undefined ? undefined : `--operation ${quote(options.operationId)}`,
-        options.traceId === undefined ? undefined : `--trace-id ${quote(options.traceId)}`,
-        options.json === true ? "--json" : undefined
+        options.traceId === undefined ? undefined : `--trace-id ${quote(options.traceId)}`
       ].filter((value): value is string => value !== undefined).join(" ");
     }
   };

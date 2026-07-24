@@ -2,7 +2,6 @@ import { MfCommandError } from "../cli/errors.js";
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { sharedCoreErrorToCommandError } from "../cli/shared.js";
-import { formatSharedStatus } from "../shared/format.js";
 import { createSharedStatusResult } from "../shared/status.js";
 import { sharedStatusCommandMetadata } from "./metadata.js";
 
@@ -24,7 +23,7 @@ export const sharedStatusCommand: MfCommandDefinition = {
     } catch (error) {
       sharedCoreErrorToCommandError(error);
     }
-    writeCommandResult(options, result, formatSharedStatus(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };
@@ -34,7 +33,7 @@ function usageError(message: string): MfCommandError {
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${sharedStatusCommandMetadata.usage.replace(" [--json]", "")}\`.`
+    hint: `Run \`${sharedStatusCommandMetadata.usage}\`.`
   });
 }
 

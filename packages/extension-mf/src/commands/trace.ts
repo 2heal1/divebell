@@ -1,6 +1,5 @@
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { formatRemoteTrace } from "../remote/format.js";
 import { createRemoteTraceResult } from "../remote/results.js";
 import { traceCommandMetadata } from "./metadata.js";
 import { remoteSelectors, singleTarget } from "./remote-command.js";
@@ -17,7 +16,7 @@ export const traceCommand: MfCommandDefinition = {
       "load",
       remoteSelectors(options, target)
     );
-    writeCommandResult(options, result, formatRemoteTrace(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };

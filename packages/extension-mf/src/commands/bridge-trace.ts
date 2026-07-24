@@ -2,10 +2,7 @@ import { createCommandPresenter } from "../cli/presenter.js";
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import { MfCommandError } from "../cli/errors.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import {
-  formatBridgeTrace,
-  presentBridgeTraceResult
-} from "../bridge/format.js";
+import { presentBridgeTraceResult } from "../bridge/format.js";
 import { createBridgeTraceResult } from "../bridge/result.js";
 import { bridgeTraceCommandMetadata } from "./metadata.js";
 
@@ -17,7 +14,7 @@ export const bridgeTraceCommand: MfCommandDefinition = {
         code: "MF_COMMAND_USAGE_INVALID",
         kind: "validation",
         message: "bridge trace accepts at most one remote name or alias.",
-        hint: `Run \`${bridgeTraceCommandMetadata.usage.replace(" [--json]", "")}\`.`
+        hint: `Run \`${bridgeTraceCommandMetadata.usage}\`.`
       });
     }
     const remote = positionals[0];
@@ -37,7 +34,7 @@ export const bridgeTraceCommand: MfCommandDefinition = {
       result,
       createCommandPresenter(["openruntime", "mf"])
     );
-    writeCommandResult(options, presented, formatBridgeTrace(presented));
+    writeCommandResult(options, presented);
     return 0;
   }
 };

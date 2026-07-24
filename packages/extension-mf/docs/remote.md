@@ -5,12 +5,12 @@ The remote commands analyze the public `RuntimeState` and `RuntimeReport` values
 ## Commands
 
 ```text
-openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
-openruntime mf remote check <remote> [--mf <name>] [--instance <ref>] [--json]
-openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>] [--json]
+openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+openruntime mf remote check <remote> [--mf <name>] [--instance <ref>]
+openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 ```
 
-All commands default to readable text. `--json` returns the same versioned result objects used by the public result builders.
+All commands return the versioned structured result objects by default.
 
 ## Ordinary remote trace
 

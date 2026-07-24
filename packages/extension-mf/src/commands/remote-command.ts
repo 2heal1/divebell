@@ -15,7 +15,7 @@ export function singleTarget(
       message: options.required === true
         ? `${options.label} requires exactly one remote.`
         : `${options.label} accepts at most one target.`,
-      hint: `Run \`${metadata.usage.replace(" [--json]", "")}\`.`
+      hint: `Run \`${metadata.usage}\`.`
     });
   }
   return positionals[0];

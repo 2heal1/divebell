@@ -2,7 +2,6 @@ export interface CommandPresenter {
   status(options?: {
     instanceRef?: string;
     role?: "consumer" | "producer";
-    json?: boolean;
   }): string;
   moduleInfo(options?: {
     remote?: string;
@@ -14,7 +13,6 @@ export interface CommandPresenter {
     instanceRef?: string;
     bridgeId?: string;
     operationId?: string;
-    json?: boolean;
   }): string;
   trace(options?: {
     target?: string;
@@ -42,8 +40,7 @@ export function createCommandPresenter(prefix: readonly string[]): CommandPresen
         options.role === undefined ? undefined : `--role ${quote(options.role)}`,
         options.instanceRef === undefined
           ? undefined
-          : `--instance ${quote(options.instanceRef)}`,
-        options.json === true ? "--json" : undefined
+          : `--instance ${quote(options.instanceRef)}`
       ].filter((value): value is string => value !== undefined).join(" ");
     },
     moduleInfo(options = {}) {
@@ -70,8 +67,7 @@ export function createCommandPresenter(prefix: readonly string[]): CommandPresen
           : `--bridge ${quote(options.bridgeId)}`,
         options.operationId === undefined
           ? undefined
-          : `--operation ${quote(options.operationId)}`,
-        options.json === true ? "--json" : undefined
+          : `--operation ${quote(options.operationId)}`
       ].filter((value): value is string => value !== undefined).join(" ");
     },
     trace(options = {}) {

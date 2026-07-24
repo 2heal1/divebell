@@ -1,30 +1,4 @@
-import type { ModuleInfoResult, StatusResult } from "./types.js";
-
-export function formatStatus(result: StatusResult): string {
-  const lines = ["Module Federation status", ""];
-  for (const instance of result.instances) {
-    lines.push(
-      `${instance.instanceRef}  ${instance.name}`,
-      `  role: ${instance.role}`,
-      `  active: ${String(instance.active)}`,
-      `  consumers: ${instance.consumers
-        .map((consumer) => `${consumer.name} (${consumer.instanceRef})`)
-        .join(", ") || "none"}`,
-      ""
-    );
-  }
-  if (result.shared.length > 0) {
-    lines.push("Loaded shared dependencies");
-    for (const shared of result.shared) {
-      lines.push(
-        `  ${shared.name}@${shared.version}  ${shared.instanceName} (${shared.instanceRef}) / ${shared.scope}`,
-        `    provider: ${shared.provider ?? "unknown"}; singleton=${String(shared.singleton ?? false)}; eager=${String(shared.eager ?? false)}; strategy=${shared.strategy ?? "unknown"}`
-      );
-    }
-    lines.push("");
-  }
-  return `${lines.join("\n").trimEnd()}\n`;
-}
+import type { ModuleInfoResult } from "./types.js";
 
 export function formatModuleInfo(result: ModuleInfoResult): string {
   const remote = result.remote;

@@ -5,11 +5,15 @@ import type { BrowserObservabilitySnapshot } from "../types.js";
 import { MfCommandError } from "./errors.js";
 
 export async function readCommandSnapshot(
-  options: CliExtensionRunOptions
+  options: CliExtensionRunOptions,
+  readOptions: { verbose?: boolean } = {}
 ): Promise<BrowserObservabilitySnapshot> {
   let readResult;
   try {
-    readResult = await readMfObservability(options.openruntime.browser);
+    readResult = await readMfObservability(
+      options.openruntime.browser,
+      readOptions
+    );
   } catch (error) {
     if (isOpenContextError(error)) {
       throw new MfCommandError({
@@ -32,14 +36,9 @@ export async function readCommandSnapshot(
 
 export function writeCommandResult(
   options: CliExtensionRunOptions,
-  result: unknown,
-  humanText: string
+  result: unknown
 ): void {
-  if (options.args.options.has("json")) {
-    options.output.ok(result);
-  } else {
-    options.stdout.write(humanText);
-  }
+  options.output.ok(result);
 }
 
 function unavailableError(

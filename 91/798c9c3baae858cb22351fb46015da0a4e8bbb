@@ -1,0 +1,53 @@
+.changeset/inject-mf-debug-runtime.md
+  s_e84425219326c8::t_bb5d13e0d3eff3 5
+packages/extension-mf/README.md
+  s_e84425219326c8::t_3e6151824d2eb3 22,90-99
+packages/extension-mf/docs/shared.md
+  s_e84425219326c8::t_b0561e03c311a7 22-27
+packages/extension-mf/src/commands/metadata.ts
+  s_e84425219326c8::t_89f81fa3ef8269 12
+packages/extension-mf/src/function-location.ts
+  s_71d7abfc3080ba::t_ab418d845883f5 1-882
+packages/extension-mf/src/reader.ts
+  s_71d7abfc3080ba::t_21547e64bec4e7 24,28,40-47,82-89,92,96,117,124-125,145-147,162-165,242,261-264,268-270,276-283,285,287-290,292-294,421,424-471,1147-1183
+packages/extension-mf/src/results.ts
+  s_71d7abfc3080ba::t_98a18c1cf5dfa8 126-129,133-140
+packages/extension-mf/src/types.ts
+  s_e84425219326c8::t_331e15c8074877 30,32-45
+packages/extension-mf/test/command.test.mjs
+  s_71d7abfc3080ba::t_6ac075745c27e2 30-43,64-71,87-99
+packages/extension-mf/test/function-location.test.mjs
+  s_71d7abfc3080ba::t_def684d8cdf07f 1-65
+packages/extension-mf/test/package.test.mjs
+  s_e84425219326c8::t_f4cf4f1b9f88b1 47,71-74
+packages/extension-mf/test/reader.test.mjs
+  s_e84425219326c8::t_e3c6261ffa2862 194-235
+packages/extension-mf/test/results.test.mjs
+  s_e84425219326c8::t_815d514646c1c2 102-122,162-172,196-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "91798c9c3baae858cb22351fb46015da0a4e8bbb",
+  "prompts": {},
+  "sessions": {
+    "s_71d7abfc3080ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92ce-6474-7053-9538-40cb8ecbfd6a",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

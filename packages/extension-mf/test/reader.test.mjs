@@ -191,6 +191,48 @@ test("--verbose browser read includes bounded lib and get source text", async ()
   assert.ok(shared.get.source.length <= 1000);
 });
 
+test("shared function locations are validated and sensitive URL parts are removed", () => {
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [], {
+    globalShared: {
+      default: {
+        react: {
+          "18.3.1": {
+            from: "host",
+            useIn: ["host"],
+            loaded: true,
+            lib: {
+              location: {
+                url: "https://user:password@cdn.test/main.js?token=secret#hash"
+              }
+            },
+            get: {
+              source: "() => factory",
+              location: {
+                url: "https://cdn.test/remoteEntry.js",
+                line: 8,
+                column: 4,
+                original: {
+                  source:
+                    "https://user:password@source.test/src/shared/react.ts?token=secret#hash",
+                  line: 14,
+                  column: 2
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }));
+  const shared = result.snapshot.globalShared.default.react["18.3.1"];
+  assert.equal(shared.lib.location.url, "https://cdn.test/main.js");
+  assert.deepEqual(shared.get.location.original, {
+    source: "https://source.test/src/shared/react.ts",
+    line: 14,
+    column: 2
+  });
+});
+
 test("unavailable mode preserves what was checked and how to recover", () => {
   const result = parseBrowserReadResult({
     ok: false,

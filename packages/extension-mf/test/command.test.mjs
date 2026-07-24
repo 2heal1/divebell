@@ -27,7 +27,20 @@ test("status --verbose adds unloaded shared dependencies", async () => {
         "18.3.1": {
           from: "host",
           useIn: ["host"],
-          loaded: true
+          loaded: true,
+          lib: {
+            source: "() => react",
+            location: {
+              url: "https://cdn.test/assets/main.js",
+              line: 120,
+              column: 18,
+              original: {
+                source: "src/shared/react.ts",
+                line: 14,
+                column: 2
+              }
+            }
+          }
         },
         "17.0.2": {
           from: "legacy",
@@ -48,6 +61,14 @@ test("status --verbose adds unloaded shared dependencies", async () => {
     Object.keys(defaultRun.outputValue().shared.default.react),
     ["18.3.1"]
   );
+  assert.deepEqual(
+    defaultRun.outputValue().shared.default.react["18.3.1"].lib,
+    {
+      location: {
+        url: "https://cdn.test/assets/main.js"
+      }
+    }
+  );
 
   const verboseRun = createOptions(
     ["mf", "status"],
@@ -62,6 +83,19 @@ test("status --verbose adds unloaded shared dependencies", async () => {
   assert.match(
     verboseRun.outputValue().shared.default.react["17.0.2"].get.source,
     /legacyReact/
+  );
+  assert.deepEqual(
+    verboseRun.outputValue().shared.default.react["18.3.1"].lib.location,
+    {
+      url: "https://cdn.test/assets/main.js",
+      line: 120,
+      column: 18,
+      original: {
+        source: "src/shared/react.ts",
+        line: 14,
+        column: 2
+      }
+    }
   );
 
   const disabledRun = createOptions(

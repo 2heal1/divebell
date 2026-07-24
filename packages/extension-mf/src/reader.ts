@@ -21,9 +21,11 @@ import type {
   ShareScope,
   SharedCandidate,
   SharedConflict,
+  SharedFunctionLocation,
   SharedRegistration,
   SharedVersion
 } from "./types.js";
+import { enrichSharedFunctionLocations } from "./function-location.js";
 
 const capabilityNames: CapabilityName[] = [
   "instanceState",
@@ -35,6 +37,14 @@ const capabilityNames: CapabilityName[] = [
 
 const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
   const includeFunctionSource = __OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__;
+  const includeFunctionLocations = __OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__;
+  const locationTokenSymbol = "openruntime.mf.location-token";
+  const pageToken = includeFunctionLocations
+    ? \`\${Date.now().toString(36)}-\${Math.random().toString(36).slice(2)}\`
+    : undefined;
+  if (pageToken !== undefined) {
+    globalThis[Symbol.for(locationTokenSymbol)] = pageToken;
+  }
   const marker = globalThis.__MF_OBSERVABILITY_INJECTION__;
   const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__;
   const availableScopes = readers && typeof readers === "object"
@@ -69,14 +79,21 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
           .slice(0, 100)
           .sort()
       : [];
-  const functionSource = (value) => {
-    if (!includeFunctionSource || typeof value !== "function") return undefined;
+  const functionSource = (value, locator) => {
+    if (typeof value !== "function") return undefined;
+    const details = includeFunctionLocations
+      ? { __openruntimeFunctionLocator: locator }
+      : {};
+    if (!includeFunctionSource) {
+      return includeFunctionLocations ? details : undefined;
+    }
     try {
       return {
+        ...details,
         source: Function.prototype.toString.call(value).slice(0, 1000)
       };
     } catch {
-      return { source: "[function source unavailable]" };
+      return { ...details, source: "[function source unavailable]" };
     }
   };
   const safeShareConfig = (value) => {
@@ -97,15 +114,15 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     };
     return Object.keys(config).length === 0 ? undefined : config;
   };
-  const safeSharedValue = (value) => {
+  const safeSharedValue = (value, locator) => {
     if (!isRecord(value)) return undefined;
     const from = safeText(value.from, 160);
     const scope = safeStringArray(value.scope);
     const deps = safeStringArray(value.deps);
     const strategy = safeText(value.strategy, 80);
     const shareConfig = safeShareConfig(value.shareConfig);
-    const lib = functionSource(value.lib);
-    const get = functionSource(value.get);
+    const lib = functionSource(value.lib, [...locator, "lib"]);
+    const get = functionSource(value.get, [...locator, "get"]);
     return {
       ...(from === undefined ? {} : { from }),
       useIn: safeStringArray(value.useIn),
@@ -125,7 +142,9 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     if (!isRecord(root)) return {};
     const result = Object.create(null);
     const seenInstanceMaps = new Set();
-    for (const instanceMap of Object.values(root).slice(0, 100)) {
+    for (const [rawInstanceKey, instanceMap] of Object.entries(root).slice(0, 100)) {
+      const instanceKey = safeKey(rawInstanceKey, 240);
+      if (instanceKey === undefined) continue;
       if (!isRecord(instanceMap) || seenInstanceMaps.has(instanceMap)) continue;
       seenInstanceMaps.add(instanceMap);
       for (const [rawScope, packages] of Object.entries(instanceMap).slice(0, 100)) {
@@ -140,7 +159,10 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
             (scopeResult[packageName] = Object.create(null));
           for (const [rawVersion, rawShared] of Object.entries(versions).slice(0, 50)) {
             const version = safeKey(rawVersion, 120);
-            const shared = safeSharedValue(rawShared);
+            const shared = safeSharedValue(
+              rawShared,
+              [instanceKey, scope, packageName, version]
+            );
             if (version === undefined || shared === undefined) continue;
             const existing = packageResult[version];
             if (existing === undefined) {
@@ -217,6 +239,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
       availableScopes,
       compatibleScopes,
       marker,
+      pageToken,
       state,
       reports,
       globalShared: readGlobalShared()
@@ -235,19 +258,40 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
 
 export const MF_BROWSER_READ_SCRIPT = createBrowserReadScript(false);
 
-function createBrowserReadScript(includeFunctionSource: boolean): string {
+function createBrowserReadScript(
+  includeFunctionSource: boolean,
+  includeFunctionLocations = false
+): string {
   return MF_BROWSER_READ_SCRIPT_TEMPLATE.replace(
     "__OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__",
     includeFunctionSource ? "true" : "false"
+  ).replace(
+    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__",
+    includeFunctionLocations ? "true" : "false"
   );
 }
 
 export async function readMfObservability(browser: {
   eval<T = unknown>(script: string): Promise<T>;
+  raw?(
+    args: string[],
+    options?: { ui?: boolean }
+  ): Promise<{
+    exitCode: number;
+    stdout: string;
+    stderr: string;
+  }>;
 }, options: { verbose?: boolean } = {}): Promise<BrowserReadResult> {
+  const includeFunctionLocations = browser.raw !== undefined;
   const value = await browser.eval<unknown>(
-    createBrowserReadScript(options.verbose === true)
+    createBrowserReadScript(
+      options.verbose === true,
+      includeFunctionLocations
+    )
   );
+  if (includeFunctionLocations) {
+    await enrichSharedFunctionLocations(value, browser, options);
+  }
   return parseBrowserReadResult(value);
 }
 
@@ -374,10 +418,57 @@ function parseGlobalSharedVersion(value: unknown): GlobalSharedVersion {
 function parseFunctionSource(
   value: unknown,
   label: string
-): { source: string } | undefined {
+): GlobalSharedVersion["lib"] {
   if (value === undefined) return undefined;
   const record = asRecord(value, label);
-  return { source: requiredString(record.source, `${label} source`) };
+  const source = optionalString(record.source, `${label} source`);
+  const location = parseFunctionLocation(record.location, `${label} location`);
+  if (source === undefined && location === undefined) {
+    throw new Error(`${label} must include source or location.`);
+  }
+  return {
+    ...(source === undefined ? {} : { source }),
+    ...(location === undefined ? {} : { location })
+  };
+}
+
+function parseFunctionLocation(
+  value: unknown,
+  label: string
+): SharedFunctionLocation | undefined {
+  if (value === undefined) return undefined;
+  const record = asRecord(value, label);
+  const url = optionalFunctionLocationUrl(record.url, `${label} url`);
+  if (url === undefined) {
+    throw new Error(`${label} must include a URL.`);
+  }
+  const line = optionalNumber(record.line, `${label} line`);
+  const column = optionalNumber(record.column, `${label} column`);
+  const originalRecord = record.original === undefined
+    ? undefined
+    : asRecord(record.original, `${label} original`);
+  const original = originalRecord === undefined
+    ? undefined
+    : {
+        source: requiredFunctionSourceName(
+          originalRecord.source,
+          `${label} original source`
+        ),
+        line: requiredNumber(
+          originalRecord.line,
+          `${label} original line`
+        ),
+        column: requiredNumber(
+          originalRecord.column,
+          `${label} original column`
+        )
+      };
+  return {
+    url,
+    ...(line === undefined ? {} : { line }),
+    ...(column === undefined ? {} : { column }),
+    ...(original === undefined ? {} : { original })
+  };
 }
 
 export function parseRuntimeState(value: unknown): RuntimeState {
@@ -1051,6 +1142,43 @@ function optionalSafeUrl(value: unknown, label: string): string | undefined {
     .filter((index) => index >= 0)
     .reduce((smallest, index) => Math.min(smallest, index), url.length);
   return url.slice(0, end);
+}
+
+function optionalFunctionLocationUrl(
+  value: unknown,
+  label: string
+): string | undefined {
+  const valueWithoutQuery = optionalSafeUrl(value, label);
+  if (valueWithoutQuery === undefined) return undefined;
+  try {
+    const url = new URL(valueWithoutQuery);
+    url.username = "";
+    url.password = "";
+    return url.toString();
+  } catch {
+    return valueWithoutQuery;
+  }
+}
+
+function requiredFunctionSourceName(value: unknown, label: string): string {
+  const source = requiredString(value, label);
+  if (/[\u0000-\u001f\u007f]/.test(source)) {
+    throw new Error(`${label} must not include control characters.`);
+  }
+  const queryIndex = source.indexOf("?");
+  const hashIndex = source.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), source.length);
+  const valueWithoutQuery = source.slice(0, end);
+  try {
+    const url = new URL(valueWithoutQuery);
+    url.username = "";
+    url.password = "";
+    return url.toString().slice(0, 2048);
+  } catch {
+    return valueWithoutQuery.slice(0, 2048);
+  }
 }
 
 function requiredNumber(value: unknown, label: string): number {

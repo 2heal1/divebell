@@ -44,6 +44,7 @@ test("extension manifest is valid and implementation stays lazy", async () => {
 test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
   const publicFiles = [
     "public.js",
+    "function-location.js",
     "reader.js",
     "selection.js",
     "results.js",
@@ -67,7 +68,10 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     readFileSync(resolve(packageRoot, "dist", file), "utf8")
   );
   for (const source of sources) {
-    assert.doesNotMatch(source, /(?:from|import\()\s*["'](?!\.\.?\/)/);
+    assert.doesNotMatch(
+      source,
+      /(?:from|import\()\s*["'](?!\.\.?\/|node:)/
+    );
   }
   assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info|bridge trace|trace|remote check|preload trace)/);
 });

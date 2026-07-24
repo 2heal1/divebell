@@ -27,8 +27,22 @@ export interface SharedVersion {
   strategy?: string;
 }
 
-export interface SharedFunctionSource {
+export interface SharedOriginalFunctionLocation {
   source: string;
+  line: number;
+  column: number;
+}
+
+export interface SharedFunctionLocation {
+  url: string;
+  line?: number;
+  column?: number;
+  original?: SharedOriginalFunctionLocation;
+}
+
+export interface SharedFunctionSource {
+  source?: string;
+  location?: SharedFunctionLocation;
 }
 
 export interface GlobalSharedVersion {

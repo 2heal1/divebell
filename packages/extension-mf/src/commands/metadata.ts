@@ -9,7 +9,7 @@ export const statusCommandMetadata = {
   path: ["status"],
   usage: "openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]",
   summaryUsage: "openruntime mf status",
-  description: "List or select Module Federation instances from the current page."
+  description: "List Module Federation instances and loaded shared dependencies, including their bundle files."
 } as const satisfies MfCommandMetadata;
 
 export const moduleInfoCommandMetadata = {

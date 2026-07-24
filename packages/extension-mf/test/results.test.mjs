@@ -99,8 +99,27 @@ test("status returns compact instances, consumers, and loaded shared dependencie
           scope: ["default"],
           strategy: "loaded-first",
           shareConfig: { singleton: true },
-          lib: { source: "() => react" },
-          get: { source: "() => factory" }
+          lib: {
+            source: "() => react",
+            location: {
+              url: "https://cdn.test/assets/main.js",
+              line: 120,
+              column: 18,
+              original: {
+                source: "src/shared/react.ts",
+                line: 14,
+                column: 2
+              }
+            }
+          },
+          get: {
+            source: "() => factory",
+            location: {
+              url: "https://cdn.test/remoteEntry.js",
+              line: 8,
+              column: 4
+            }
+          }
         },
         "17.0.2": {
           from: "legacy",
@@ -140,7 +159,17 @@ test("status returns compact instances, consumers, and loaded shared dependencie
           loaded: true,
           scope: ["default"],
           strategy: "loaded-first",
-          shareConfig: { singleton: true }
+          shareConfig: { singleton: true },
+          lib: {
+            location: {
+              url: "https://cdn.test/assets/main.js"
+            }
+          },
+          get: {
+            location: {
+              url: "https://cdn.test/remoteEntry.js"
+            }
+          }
         }
       }
     }
@@ -163,6 +192,14 @@ test("status returns compact instances, consumers, and loaded shared dependencie
   assert.equal(
     verbose.shared.default.react["18.3.1"].lib.source,
     "() => react"
+  );
+  assert.deepEqual(
+    verbose.shared.default.react["18.3.1"].lib.location.original,
+    {
+      source: "src/shared/react.ts",
+      line: 14,
+      column: 2
+    }
   );
 });
 

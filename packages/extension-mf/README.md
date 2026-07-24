@@ -19,7 +19,7 @@ All commands return structured output by default; `--json` is not required.
 
 `--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. The Observability Plugin assigns this reference to an instance object for the current page session; it is not an MF global key and is not used to index `__SHARE__`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
 
-Remote and trace commands analyze facts exposed through the page's safe public Observability reader. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; raw functions, promises, module values, and instance ids are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
+Remote and trace commands analyze facts exposed through the page's safe public Observability reader. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; promises, module values, instance ids, and executable function objects are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install
 
@@ -87,7 +87,16 @@ openruntime mf status --verbose
 
 Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it.
 
-The top-level `shared` object is grouped as `scope -> package -> version`. It traverses the values of `__FEDERATION__.__SHARE__[instanceId]`, merges duplicate scope maps, and omits the instance ids. Each version keeps safe Shared fields such as `from`, `useIn`, loading state, scope, dependencies, strategy, and share configuration. By default, only versions with `loaded === true` or a `lib` function are returned. `--verbose` also returns unloaded versions and bounded `lib`/`get` function source text. JavaScript does not expose a reliable source file position for a function object, so this command does not claim a source-map location.
+The top-level `shared` object is grouped as `scope -> package -> version`. It traverses the values of `__FEDERATION__.__SHARE__[instanceId]`, merges duplicate scope maps, and omits the instance ids. Each version keeps safe Shared fields such as `from`, `useIn`, loading state, scope, dependencies, strategy, and share configuration. By default, only versions with `loaded === true` or a `lib` function are returned.
+
+Function details use two output levels:
+
+| Output | Loaded versions | Unloaded versions | `lib` / `get` details |
+| --- | --- | --- | --- |
+| default | yes | no | bundle file URL when Chrome exposes a function location |
+| `--verbose` | yes | yes | bounded function source text, generated file URL and line/column, plus original source file and line/column when a usable Source Map is available |
+
+`--verbose` is additive: the generated bundle location remains present when an original source location is found. Location collection is best effort. Native functions, anonymous evaluation scripts, an unavailable browser debugging connection, missing Source Maps, oversized Source Maps, or inaccessible Source Maps can leave some location fields absent. Failure to locate one function does not fail `mf status`. URL credentials, queries, and fragments are removed from returned locations, and function objects are never returned.
 
 When a name matches more than one instance, the command returns candidates such as:
 

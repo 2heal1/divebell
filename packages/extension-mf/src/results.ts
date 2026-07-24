@@ -123,7 +123,19 @@ function withoutFunctionSources(
   const safeValue = { ...value };
   delete safeValue.lib;
   delete safeValue.get;
+  const lib = withoutFunctionSource(value.lib);
+  const get = withoutFunctionSource(value.get);
+  if (lib !== undefined) safeValue.lib = lib;
+  if (get !== undefined) safeValue.get = get;
   return safeValue;
+}
+
+function withoutFunctionSource(
+  value: StatusResult["shared"][string][string][string]["lib"]
+): StatusResult["shared"][string][string][string]["lib"] {
+  return value?.location === undefined
+    ? undefined
+    : { location: { url: value.location.url } };
 }
 
 function byKey(

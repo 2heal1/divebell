@@ -3,9 +3,16 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
-import { createBridgeUrl } from "../features/bridge/config.js";
+import { createBridgeStateStore, createBridgeUrl } from "../features/bridge/config.js";
 import { createBridgeInitScript } from "../features/bridge/inject.js";
-import { createFileBridgeStateStore, ensureBridge, type BridgeStarter } from "../features/bridge/process.js";
+import {
+  createFileBridgeStateStore,
+  ensureBridge,
+  getBridgePort,
+  startDedicatedBridge,
+  stopManagedBridge,
+  type BridgeStarter
+} from "../features/bridge/process.js";
 import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
@@ -30,7 +37,7 @@ export async function runBrowserCliCommand(
   fetcher: Fetcher,
   browserRunner: BrowserRunner,
   bridgeStarter: BridgeStarter,
-  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>,
+  bridgeStateDirectory: string | undefined,
   operationLogStore: CliOperationLogStore,
   extensions: readonly OpenRuntimeExtensionDefinition[]
 ): Promise<number> {
@@ -39,33 +46,48 @@ export async function runBrowserCliCommand(
     const url = requireCommandArgument(args, 1, "URL");
     const sessionId = getOpenCommandSessionId(args);
     const openedUrl = withOpenRuntimeSession(url, sessionId);
-    const bridgeUrl = hasOption(args, "no-bridge") ? null : createBridgeUrl(args);
-    const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
-    writeHookFailures(stderr, hookResult.failures);
-    await operationLogStore.remove();
-    if (!hasOption(args, "no-bridge")) {
-      await ensureBridge({
+    const previousOpenContext = await operationLogStore.read();
+    const bridge = await prepareOpenBridge(args, fetcher, bridgeStarter, bridgeStateDirectory);
+    const bridgeUrl = bridge?.bridgeUrl ?? null;
+    const bridgePort = bridge?.port ?? null;
+    if (previousOpenContext !== undefined) {
+      await runExtensionCloseHooks({
+        args: {
+          command: ["stop"],
+          options: new Map()
+        },
+        stderr,
         fetcher,
-        bridgeUrl: createBridgeUrl(args),
-        starter: bridgeStarter,
-        stateStore: bridgeStateStore,
-        ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+        browserRunner,
+        bridgeStarter,
+        bridgeStateDirectory,
+        operationLogStore,
+        extensions
       });
     }
-    const result = await openBrowserPage(
-      browserRunner,
-      args,
-      openedUrl,
-      bridgeUrl,
-      hookResult.scripts,
-      {
-        ui: hasOption(args, "ui"),
-        ...(hasOption(args, "profile") || hasOption(args, "state")
-          ? { disableRestore: true }
-          : {})
-      }
-    );
+    const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
+    writeHookFailures(stderr, hookResult.failures);
+    let result: BrowserRunResult;
+    try {
+      result = await openBrowserPage(
+        browserRunner,
+        args,
+        openedUrl,
+        bridgeUrl,
+        hookResult.scripts,
+        {
+          ui: hasOption(args, "ui"),
+          ...(hasOption(args, "profile") || hasOption(args, "state")
+            ? { disableRestore: true }
+            : {})
+        }
+      );
+    } catch (error) {
+      await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
+      throw error;
+    }
     if (result.exitCode !== 0) {
+      await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
       throw createError({
         code: "PAGE_OPEN_FAILED",
         kind: "browser",
@@ -86,6 +108,7 @@ export async function runBrowserCliCommand(
       url,
       normalizedUrl,
       bridgeUrl,
+      bridgePort,
       sessionId,
       openedAt,
       exitCode: result.exitCode,
@@ -96,26 +119,14 @@ export async function runBrowserCliCommand(
       openedUrl,
       normalizedUrl,
       bridgeUrl,
+      bridgePort,
       sessionId,
       openedAt
     }, "Page opened.");
+    if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
+      await stopOpenContextBridge(previousOpenContext?.bridgeUrl ?? null, bridgeStateDirectory);
+    }
     return 0;
-  }
-
-  if (command === "close") {
-    await runExtensionCloseHooks({
-      args,
-      stderr,
-      fetcher,
-      browserRunner,
-      bridgeStarter,
-      bridgeStateStore,
-      operationLogStore,
-      extensions
-    });
-    const exitCode = await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
-    await operationLogStore.remove();
-    return exitCode;
   }
 
   const commandArgs = isBrowserPageCommand(command)
@@ -162,7 +173,7 @@ export async function runExtensionCloseHooks(options: {
   fetcher: Fetcher;
   browserRunner: BrowserRunner;
   bridgeStarter: BridgeStarter;
-  bridgeStateStore: ReturnType<typeof createFileBridgeStateStore>;
+  bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
   extensions: readonly OpenRuntimeExtensionDefinition[];
 }): Promise<void> {
@@ -177,11 +188,66 @@ export async function runExtensionCloseHooks(options: {
       fetcher: options.fetcher,
       browserRunner: options.browserRunner,
       bridgeStarter: options.bridgeStarter,
-      bridgeStateStore: options.bridgeStateStore,
+      bridgeStateStore: createBridgeStateStore(closeArgs, options.bridgeStateDirectory),
       openContext
     })
   });
   writeHookFailures(options.stderr, failures);
+}
+
+async function prepareOpenBridge(
+  args: ParsedCliArgs,
+  fetcher: Fetcher,
+  bridgeStarter: BridgeStarter,
+  bridgeStateDirectory: string | undefined
+): Promise<{ bridgeUrl: string; port: number | null } | null> {
+  if (hasOption(args, "no-bridge")) return null;
+
+  if (hasOption(args, "bridge")) {
+    const bridgeUrl = createBridgeUrl(args);
+    await ensureBridge({
+      fetcher,
+      bridgeUrl,
+      starter: bridgeStarter,
+      stateStore: createFileBridgeStateStore(bridgeUrl, bridgeStateDirectory)
+    });
+    return {
+      bridgeUrl,
+      port: getExplicitBridgePort(bridgeUrl)
+    };
+  }
+
+  const result = await startDedicatedBridge({
+    fetcher,
+    starter: bridgeStarter,
+    ...(bridgeStateDirectory === undefined ? {} : { stateDirectory: bridgeStateDirectory }),
+    ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+  });
+  return {
+    bridgeUrl: result.bridgeUrl,
+    port: result.port
+  };
+}
+
+async function stopOpenContextBridge(
+  bridgeUrl: string | null,
+  bridgeStateDirectory: string | undefined
+): Promise<void> {
+  if (bridgeUrl === null) return;
+  await stopManagedBridge({
+    bridgeUrl,
+    stateStore: createFileBridgeStateStore(bridgeUrl, bridgeStateDirectory)
+  });
+}
+
+function getExplicitBridgePort(bridgeUrl: string): number | null {
+  try {
+    const url = new URL(bridgeUrl);
+    if (url.port.length > 0) return Number(url.port);
+    return url.protocol === "https:" ? 443 : url.protocol === "http:" ? 80 : null;
+  } catch {
+    return getBridgePort(bridgeUrl) ?? null;
+  }
 }
 
 async function runClickCommand(

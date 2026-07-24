@@ -547,7 +547,7 @@ function requireCurrentPage(options: RecordCommandOptions): CliExtensionPageCont
 
 function requireNoCurrentPage(options: RecordCommandOptions): void {
   if (options.page === undefined) return;
-  throw new Error("A current OpenRuntime page is already open. Run `openruntime close`, then prepare the recording before opening the page again.");
+  throw new Error("A current OpenRuntime page is already open. Run `openruntime stop`, then prepare the recording before opening the page again.");
 }
 
 function assertNoLegacyPageLifecycleOptions(args: ParsedCliArgs): void {

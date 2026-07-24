@@ -49,7 +49,7 @@ Then:
 1. Navigate, click, type, and move through the target workflow normally.
 2. Use the microphone to describe the intended result when additional context is useful.
 3. Tell the Agent “done” when the walkthrough is complete.
-4. The Agent stops recording, closes the current page through `openruntime close`, reads the recorded evidence and transcript, then generates and checks a script.
+4. The Agent stops recording, closes the current page through `openruntime stop`, reads the recorded evidence and transcript, then generates and checks a script.
 
 The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `openruntime open`. Recording refuses to mix evidence if another `openruntime open` replaces that page before `record stop`.
 

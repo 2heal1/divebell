@@ -21,7 +21,7 @@ Extension 不要求团队重写已经存在的服务能力。它可以只负责�
 
 Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
 
-页面类 Command 操作最近一次 `openruntime open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
+页面类 Command 操作当前工作目录最近一次通过 `openruntime open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
 
 ## 创建 Extension
 
@@ -235,7 +235,7 @@ export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () =
 };
 ```
 
-只有成功参与对应 `open` 的 Extension 会收到 `close`。清理失败会被记录，但不会阻止浏览器关闭。
+只有成功参与对应 `open` 的 Extension 会收到 `close`。当页面被 `stop`，或被同一工作目录中的另一次 `open` 替换时，它都会运行。清理失败会被记录，但不会阻止页面生命周期继续。
 
 Hook 参数和返回类型见 [Hooks API](extension-api.zh-CN.md#hooks)。
 
@@ -306,7 +306,7 @@ export OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
 openruntime open https://example.com --no-bridge
 openruntime foo inspect
 openruntime stack --refresh
-openruntime close
+openruntime stop
 ```
 
 修改后始终回到相同账号、环境和用户路径验证结果。
@@ -349,7 +349,7 @@ openruntime foo --help
 3. 无需页面的 Command 在没有执行 `openruntime open` 时也能运行。
 4. 需要页面的 Command 在没有页面时返回明确下一步。
 5. 缺少参数、重复选项、未知子命令和失败路径都有确定结果。
-6. `open`、`stack` 和 `close` 只触发对应 Hook。
+6. `open`、`stack` 和 `stop` 分别触发对应的 `open`、`detectStack` 和 `close` Hook。
 7. 一个 Hook 失败时，其他 Extension 和页面仍能工作。
 8. 在真实或代表性页面上完成操作，并验证最终页面或 Runtime 结果。
 9. `npm pack --dry-run` 中只包含预期文件。

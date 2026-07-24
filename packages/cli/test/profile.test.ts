@@ -22,8 +22,8 @@ test("uses agent-browser automatic restore while preserving native profile and s
 
   assert.equal(env.AGENT_BROWSER_PROFILE, "Work");
   assert.equal(env.AGENT_BROWSER_STATE, "/tmp/browser-state.json");
-  assert.equal(env.AGENT_BROWSER_SESSION, "openruntime");
-  assert.equal(env.AGENT_BROWSER_RESTORE, "openruntime");
+  assert.match(env.AGENT_BROWSER_SESSION ?? "", /^openruntime-[a-f0-9]{12}$/);
+  assert.equal(env.AGENT_BROWSER_RESTORE, env.AGENT_BROWSER_SESSION);
   assert.equal(createDefaultBrowserProfileDirectory().endsWith(".openruntime/browser-profile"), true);
 
   const exportEnv = createAgentBrowserEnvironment({
@@ -46,6 +46,27 @@ test("configures an isolated restore name and headed mode", () => {
   assert.equal(env.AGENT_BROWSER_SESSION, "browser-check");
   assert.equal(env.AGENT_BROWSER_RESTORE, "browser-check");
   assert.equal(env.AGENT_BROWSER_HEADED, "1");
+});
+
+test("uses a different browser session for each working directory", () => {
+  const first = createAgentBrowserEnvironment(
+    {},
+    undefined,
+    undefined,
+    {},
+    "/tmp/openruntime-project-a"
+  );
+  const second = createAgentBrowserEnvironment(
+    {},
+    undefined,
+    undefined,
+    {},
+    "/tmp/openruntime-project-b"
+  );
+
+  assert.notEqual(first.AGENT_BROWSER_SESSION, second.AGENT_BROWSER_SESSION);
+  assert.equal(first.AGENT_BROWSER_RESTORE, first.AGENT_BROWSER_SESSION);
+  assert.equal(second.AGENT_BROWSER_RESTORE, second.AGENT_BROWSER_SESSION);
 });
 
 test("runs agent-browser through a replaceable executable and forwards stdin", async () => {

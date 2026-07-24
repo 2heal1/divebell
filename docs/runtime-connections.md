@@ -6,11 +6,13 @@ For Chinese, see [浏览器连接与多 Runtime 使用指南](runtime-connection
 
 ## Basic flow
 
-The page only creates and registers Runtimes. It does not connect to the Bridge itself. When the CLI opens a page, it prepares the local Bridge and installs a connection manager before page code runs:
+The page only creates and registers Runtimes. It does not connect to the Bridge itself. Each time the CLI opens a page, it starts a dedicated local Bridge on an automatically assigned port and installs a connection manager before page code runs:
 
 ```bash
 openruntime open http://localhost:3000 --ui
 ```
+
+The successful `open` result includes `bridgeUrl` and `bridgePort`. The current working directory remembers that page and Bridge, so later browser and Runtime commands return to the matching browser session and use the same Bridge automatically. Different working directories do not share their default page, browser session, or Bridge.
 
 The connection manager connects every registered Runtime, watches for later registrations such as mounted micro-frontends, disconnects only unregistered instances, and remains active across navigation and refreshes in the current browser session.
 
@@ -86,9 +88,9 @@ openruntime wait-for --runtime runtime-orders business:orders ready --timeout 50
 
 `--url` and `--session` select a page, but Runtimes in the same page normally share both values, so they do not replace `--runtime`.
 
-Read commands without `--runtime` select the most recently responding matching instance. `run-action` refuses to run when multiple instances match and reports the available Runtime IDs. Explicitly pass `--runtime` for every command in multiple-Runtime flows to avoid reading or waiting on the wrong child application.
+All Runtime commands without `--runtime`, including `run-action` and `wait-for`, select the first connected Runtime registered by the page. Pass `--runtime` to select another instance by its exact ID.
 
-By default, `wait-for` may follow a newly connected Runtime after a page refresh. Pass both `--runtime` and `--strict` to pin the wait to one instance. Use this form when validating a specific micro-frontend child.
+When `--runtime` is present, `wait-for` stays on that exact instance. Add `--strict` when the command should make only one selection attempt instead of waiting for the selected Runtime or target to become available.
 
 ## Micro-frontend mounting and switching
 
@@ -152,7 +154,7 @@ openruntime open http://localhost:3000 --port 18000 --ui
 openruntime runtimes --port 18000
 ```
 
-Use the same Bridge address or port for the open command and subsequent commands.
+The current directory records the explicit Bridge address or port, so subsequent commands can omit it. A port passed to `open` must be free; OpenRuntime does not reuse an existing service for a dedicated page Bridge.
 
 ## Recommended validation flow
 

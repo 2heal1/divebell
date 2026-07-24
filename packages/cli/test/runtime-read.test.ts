@@ -6,7 +6,7 @@ import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 
-import { createOutput, errorOutput, jsonResponse } from "./helpers.js";
+import { createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
 test("passes keyword query to events", async () => {
   const calls: string[] = [];
@@ -80,6 +80,33 @@ test("prints runtimes from the configured bridge", async () => {
       }
     ]
   });
+});
+
+test("uses the current directory open context when listing runtimes", async () => {
+  const context = createOpenContextFixture({
+    bridgeUrl: "http://bridge.context",
+    bridgePort: 18421
+  });
+  const output = createOutput();
+  const calls: string[] = [];
+
+  try {
+    const exitCode = await runCli(["runtimes"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      fetcher: async (url) => {
+        calls.push(String(url));
+        return jsonResponse({ runtimes: [] });
+      }
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(calls, ["http://bridge.context/runtimes"]);
+    assert.equal(JSON.parse(output.text()).bridgeUrl, "http://bridge.context");
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("auto-starts a local bridge before listing runtimes", async () => {
@@ -201,7 +228,7 @@ test("auto-starts a local bridge before reading runtime resources", async () => 
   }
 });
 
-test("selects the latest matching runtime for read commands", async () => {
+test("selects the first matching runtime for read commands", async () => {
   const calls: string[] = [];
   const output = createOutput();
   const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://app.test/"], {
@@ -230,7 +257,7 @@ test("selects the latest matching runtime for read commands", async () => {
         });
       }
 
-      assert.equal(String(url), "http://bridge.test/runtimes/runtime-new/snapshot");
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-old/snapshot");
       return jsonResponse({
         targets: {},
         latestEventId: 0,
@@ -242,15 +269,15 @@ test("selects the latest matching runtime for read commands", async () => {
   assert.equal(exitCode, 0);
   assert.deepEqual(calls, [
     "http://bridge.test/runtimes",
-    "http://bridge.test/runtimes/runtime-new/snapshot"
+    "http://bridge.test/runtimes/runtime-old/snapshot"
   ]);
   assert.deepEqual(JSON.parse(output.text()), {
     runtime: {
-      runtimeId: "runtime-new",
+      runtimeId: "runtime-old",
       url: "http://app.test/",
       status: "connected",
-      connectedAt: 3,
-      lastSeenAt: 4
+      connectedAt: 1,
+      lastSeenAt: 2
     },
     result: {
       targets: {},
@@ -260,8 +287,9 @@ test("selects the latest matching runtime for read commands", async () => {
   });
 });
 
-test("requires an explicit runtime for actions when multiple instances match", async () => {
+test("uses the first runtime for actions when multiple instances match", async () => {
   const output = createOutput();
+  const calls: string[] = [];
   const exitCode = await runCli([
     "run-action",
     "--bridge",
@@ -272,28 +300,39 @@ test("requires an explicit runtime for actions when multiple instances match", a
   ], {
     stdout: output.stdout,
     stderr: output.stderr,
-    fetcher: async () => jsonResponse({
-      runtimes: [
-        {
-          runtimeId: "runtime-main",
-          url: "http://app.test/",
-          status: "connected",
-          connectedAt: 1,
-          lastSeenAt: 2
-        },
-        {
-          runtimeId: "runtime-child",
-          url: "http://app.test/",
-          status: "connected",
-          connectedAt: 3,
-          lastSeenAt: 4
-        }
-      ]
-    })
+    fetcher: async (url) => {
+      calls.push(String(url));
+      if (String(url).endsWith("/runtimes")) {
+        return jsonResponse({
+          runtimes: [
+            {
+              runtimeId: "runtime-main",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 1,
+              lastSeenAt: 2
+            },
+            {
+              runtimeId: "runtime-child",
+              url: "http://app.test/",
+              status: "connected",
+              connectedAt: 3,
+              lastSeenAt: 4
+            }
+          ]
+        });
+      }
+      assert.equal(String(url), "http://bridge.test/runtimes/runtime-main/actions/route.pick/run");
+      return jsonResponse({ selected: "main" });
+    }
   });
 
-  assert.equal(exitCode, 1);
-  assert.match(JSON.parse(output.text()).message, /Pass --runtime with one of: runtime-main, runtime-child/);
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls, [
+    "http://bridge.test/runtimes",
+    "http://bridge.test/runtimes/runtime-main/actions/route.pick/run"
+  ]);
+  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-main");
 });
 
 test("matches runtime url when root path trailing slash differs", async () => {

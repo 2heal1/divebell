@@ -24,7 +24,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `openruntime auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `openruntime auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `openruntime auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a page, optionally starting from a Chrome profile or state file, and connect its runtimes through the Bridge by default.
+- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a directory-scoped page with its own automatically assigned Bridge port, optionally using a Chrome profile, state file, or explicit Bridge.
 - `openruntime stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
 - `openruntime page-snapshot` - Read the current page snapshot, including actionable element references.
 - `openruntime click <ref|selector|text>` - Click an element by page reference, selector, or visible text.
@@ -39,7 +39,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Runtime
 
-- `openruntime runtimes [--bridge <url>]` - List runtimes connected to the Bridge, starting a local Bridge automatically when needed.
+- `openruntime runtimes [--bridge <url>]` - List runtimes from the current directory's opened page, or from an explicitly selected Bridge.
 - `openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read target definitions registered by the selected runtime.
 - `openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read the current snapshot state from the selected runtime.
 - `openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - Read runtime event history.

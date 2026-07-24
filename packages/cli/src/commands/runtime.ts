@@ -15,7 +15,7 @@ import {
   requireOption,
   writeJson
 } from "../utils/command.js";
-import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
+import { applyOpenContextDefaults, applyOpenContextDefaultsOrThrow } from "../open-context.js";
 import type { RuntimeCliCommandOptions } from "../types/cli.js";
 import { createQuery } from "../features/runtime/query.js";
 import {
@@ -41,11 +41,15 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
   } = options;
 
   if (args.command[0] === "runtimes") {
-    const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(
+    const commandArgs = applyOpenContextDefaults(
       args,
+      await operationLogStore.read()
+    );
+    const bridgeUrl = await ensureLocalBridgeForRuntimeCommand(
+      commandArgs,
       fetcher,
       bridgeStarter,
-      createBridgeStateStore(args, bridgeStateDirectory)
+      createBridgeStateStore(commandArgs, bridgeStateDirectory)
     );
     const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
     writeJson(stdout, { bridgeUrl, runtimes });
@@ -123,7 +127,7 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
       createBridgeStateStore(commandArgs, bridgeStateDirectory)
     );
     const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs), { requireUnique: true });
+    const runtime = selectRuntime(runtimes, createRuntimeSelector(commandArgs));
     const result = await runRuntimeAction(fetcher, bridgeUrl, runtime, actionName, payload);
     writeJson(stdout, result);
     return 0;

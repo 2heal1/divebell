@@ -213,7 +213,7 @@ interface OpenRuntimeStackDetection {
 
 `detectStack` runs only for `openruntime stack` and may return one detection, multiple detections, or no result. Do not include full page configuration or sensitive values in `evidence`.
 
-`close` runs only for Extensions that successfully participated in the matching `open`. Cleanup failures are reported but do not prevent the browser from closing.
+`close` runs only for Extensions that successfully participated in the matching `open`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
 
 Each hook may run for up to five seconds. A timeout is recorded as a hook failure for that Extension and does not block other Extensions.
 

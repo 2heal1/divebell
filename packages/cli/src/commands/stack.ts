@@ -71,6 +71,7 @@ export async function runStackCommand(
     url: openContext.url,
     normalizedUrl: openContext.normalizedUrl,
     bridgeUrl: openContext.bridgeUrl,
+    bridgePort: openContext.bridgePort,
     sessionId: openContext.sessionId,
     openedAt: openContext.openedAt,
     exitCode: openContext.exitCode,

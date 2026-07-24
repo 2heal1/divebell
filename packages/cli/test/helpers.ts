@@ -52,6 +52,7 @@ export function assertOpenOutput(
     openedUrl: string;
     normalizedUrl: string;
     bridgeUrl: string | null;
+    bridgePort: number | null;
     sessionId: string;
   }
 ): void {
@@ -66,6 +67,7 @@ export function assertOpenOutput(
   assert.equal(parsed.data.openedUrl, expected.openedUrl);
   assert.equal(parsed.data.normalizedUrl, expected.normalizedUrl);
   assert.equal(parsed.data.bridgeUrl, expected.bridgeUrl);
+  assert.equal(parsed.data.bridgePort, expected.bridgePort);
   assert.equal(parsed.data.sessionId, expected.sessionId);
   assert.equal(typeof parsed.data.openedAt, "number");
 }
@@ -102,18 +104,20 @@ export function createOpenContextFixture(overrides: Partial<{
   url: string;
   normalizedUrl: string;
   bridgeUrl: string | null;
+  bridgePort: number | null;
   sessionId: string | null;
 }> = {}): { operationLogDirectory: string; cleanup(): void } {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
   const entry = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     command: "open",
     key,
     cwd: process.cwd(),
     url: overrides.url ?? "http://app.test/",
     normalizedUrl: overrides.normalizedUrl ?? "http://app.test/",
     bridgeUrl: overrides.bridgeUrl ?? "http://bridge.test",
+    bridgePort: overrides.bridgePort ?? null,
     sessionId: overrides.sessionId ?? "session-open",
     openedAt: 1,
     exitCode: 0,

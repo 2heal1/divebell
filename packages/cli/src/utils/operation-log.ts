@@ -19,8 +19,7 @@ export function createFileOperationLogStore(
     read: async () => {
       try {
         const parsed: unknown = JSON.parse(await readFile(stateFile, "utf8"));
-        if (!isCliOperationLogEntry(parsed)) return undefined;
-        return parsed;
+        return normalizeCliOperationLogEntry(parsed);
       } catch {
         return undefined;
       }
@@ -28,7 +27,7 @@ export function createFileOperationLogStore(
     write: async (entry) => {
       await mkdir(stateDirectory, { recursive: true });
       await writeFile(stateFile, `${JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         key,
         cwd: normalizedCwd,
         ...entry
@@ -65,22 +64,51 @@ export function normalizeOpenRuntimeUrlForMatch(input: string): string {
   }
 }
 
-function isCliOperationLogEntry(value: unknown): value is CliOperationLogEntry {
-  if (value === null || typeof value !== "object") return false;
-  const entry = value as Partial<CliOperationLogEntry>;
-  return entry.schemaVersion === 2 &&
+function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | undefined {
+  if (value === null || typeof value !== "object") return undefined;
+  const entry = value as Record<string, unknown>;
+  const schemaVersion = entry.schemaVersion;
+  const bridgeUrl = entry.bridgeUrl;
+  const bridgePort = schemaVersion === 2
+    ? getOperationBridgePort(bridgeUrl)
+    : entry.bridgePort;
+  if (!(
+    (schemaVersion === 2 || schemaVersion === 3) &&
     entry.command === "open" &&
     typeof entry.key === "string" &&
     typeof entry.cwd === "string" &&
     typeof entry.url === "string" &&
     typeof entry.normalizedUrl === "string" &&
-    (typeof entry.bridgeUrl === "string" || entry.bridgeUrl === null) &&
+    (typeof bridgeUrl === "string" || bridgeUrl === null) &&
+    (typeof bridgePort === "number" || bridgePort === null) &&
     (typeof entry.sessionId === "string" || entry.sessionId === null) &&
     typeof entry.openedAt === "number" &&
     typeof entry.exitCode === "number" &&
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
-    isStackDetectionCache(entry.stackDetection);
+    isStackDetectionCache(entry.stackDetection)
+  )) {
+    return undefined;
+  }
+  return {
+    ...entry,
+    schemaVersion: 3,
+    bridgeUrl,
+    bridgePort
+  } as CliOperationLogEntry;
+}
+
+function getOperationBridgePort(bridgeUrl: unknown): number | null {
+  if (typeof bridgeUrl !== "string") return null;
+  try {
+    const url = new URL(bridgeUrl);
+    if (url.port.length > 0) return Number(url.port);
+    if (url.protocol === "http:") return 80;
+    if (url.protocol === "https:") return 443;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 function isStackDetectionCache(value: unknown): boolean {

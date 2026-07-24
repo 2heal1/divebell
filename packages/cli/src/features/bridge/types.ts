@@ -6,6 +6,8 @@ export interface BridgeStartOptions {
 
 export interface BridgeStartResult {
   pid?: number;
+  port?: number;
+  bridgeUrl?: string;
 }
 
 export interface BridgeStarter {
@@ -43,6 +45,21 @@ export interface EnsureBridgeResult {
   bridgeUrl: string;
   pid?: number;
   status: "running" | "started";
+}
+
+export interface StartDedicatedBridgeOptions {
+  fetcher: Fetcher;
+  starter: BridgeStarter;
+  stateDirectory?: string;
+  port?: number;
+  timeout?: number;
+}
+
+export interface StartDedicatedBridgeResult {
+  bridgeUrl: string;
+  port: number;
+  pid?: number;
+  status: "started";
 }
 
 export interface StopBridgeOptions {

@@ -24,7 +24,7 @@ English version: [OpenRuntime CLI Reference](cli-reference.md)
 - `openruntime auth save <name> --url <url> --username <user> --password-stdin` - 把登录凭据加密保存在 agent-browser 的凭据库中。
 - `openruntime auth login <name>` - 打开保存的登录页，让 agent-browser 填写并提交匹配的登录表单。
 - `openruntime auth <list|show|delete> [name]` - 查看或删除 agent-browser 的凭据条目；不会显示密码。
-- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 打开页面，可从 Chrome Profile 或 state 文件启动，并默认通过 Bridge 连接 Runtime。
+- `openruntime open <url> [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - 为当前目录打开独立页面并自动分配专属 Bridge 端口，也可使用 Chrome Profile、state 文件或显式指定 Bridge。
 - `openruntime stack [--refresh]` - 运行已安装扩展中的技术栈识别器，并汇总当前页面的结果。
 - `openruntime page-snapshot` - 读取当前页面快照，包括可操作元素的引用。
 - `openruntime click <ref|selector|text>` - 通过页面引用、选择器或可见文字点击元素。
@@ -39,7 +39,7 @@ English version: [OpenRuntime CLI Reference](cli-reference.md)
 
 ### Runtime
 
-- `openruntime runtimes [--bridge <url>]` - 列出连接到 Bridge 的 Runtime；需要时自动启动本机 Bridge。
+- `openruntime runtimes [--bridge <url>]` - 列出当前目录已打开页面中的 Runtime，也可显式指定其他 Bridge。
 - `openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 Runtime 注册的 Target 定义。
 - `openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - 读取所选 Runtime 的当前 Snapshot 状态。
 - `openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - 读取 Runtime 的事件历史。

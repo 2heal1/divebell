@@ -13,8 +13,7 @@ export const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
   "screenshot",
   "network",
   "console",
-  "coverage",
-  "close"
+  "coverage"
 ];
 
 export const RUNTIME_RESOURCE_COMMAND_NAMES: readonly RuntimeResourceCommandName[] = [
@@ -48,7 +47,7 @@ export function isBrowserCommand(command: string | undefined): command is Browse
 }
 
 export function isBrowserPageCommand(command: string | undefined): command is BrowserCommandName {
-  return isBrowserCommand(command) && command !== "open" && command !== "goto" && command !== "close";
+  return isBrowserCommand(command) && command !== "open" && command !== "goto";
 }
 
 export function isRuntimeResourceCommand(command: string | undefined): command is RuntimeResourceCommandName {

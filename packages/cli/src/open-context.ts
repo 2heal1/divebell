@@ -13,7 +13,11 @@ export function applyOpenContextDefaults(
   }
 
   const options = cloneOptions(args.options);
-  if (openContext.bridgeUrl !== null) {
+  if (
+    openContext.bridgeUrl !== null &&
+    !hasOption(args, "bridge") &&
+    !hasOption(args, "port")
+  ) {
     setDefaultOption(options, "bridge", openContext.bridgeUrl);
   }
   if (!hasRuntimeSelectorOption(args)) {

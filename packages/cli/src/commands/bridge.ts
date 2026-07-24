@@ -4,6 +4,7 @@ import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
 import { getNumberOption, type ParsedCliArgs } from "../utils/args.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import {
+  createFileBridgeStateStore,
   ensureBridge,
   stopManagedBridge,
   type BridgeProcessController,
@@ -18,6 +19,7 @@ import {
   writeJson
 } from "../utils/command.js";
 import { createBridgeUrl } from "../features/bridge/config.js";
+import { applyOpenContextDefaults } from "../open-context.js";
 
 export async function runStartCommand(
   args: ParsedCliArgs,
@@ -41,21 +43,34 @@ export async function runStopCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
   browserRunner: BrowserRunner,
-  bridgeStateStore: BridgeStateStore,
+  bridgeStateDirectory: string | undefined,
   operationLogStore: CliOperationLogStore,
   bridgeProcessController: BridgeProcessController | undefined,
   beforeBrowserClose?: () => Promise<void>
 ): Promise<number> {
+  const openContext = await operationLogStore.read();
+  const commandArgs = applyOpenContextDefaults(args, openContext);
   await beforeBrowserClose?.();
-  const closeResult = await browserRunner.run(["close"]);
+  const browserStopResult = await browserRunner.run(["close"]);
   await operationLogStore.remove();
-  const bridgeResult = await stopManagedBridge({
-    bridgeUrl: createBridgeUrl(args),
-    stateStore: bridgeStateStore,
-    ...createOptionalObjectProperty("processController", bridgeProcessController)
-  });
+  const bridgeUrl = openContext?.bridgeUrl === null &&
+      !commandArgs.options.has("bridge") &&
+      !commandArgs.options.has("port")
+    ? null
+    : createBridgeUrl(commandArgs);
+  const bridgeResult = bridgeUrl === null
+    ? {
+        bridgeUrl: null,
+        stopped: false,
+        reason: "The opened page does not use a Bridge."
+      }
+    : await stopManagedBridge({
+        bridgeUrl,
+        stateStore: createFileBridgeStateStore(bridgeUrl, bridgeStateDirectory),
+        ...createOptionalObjectProperty("processController", bridgeProcessController)
+      });
   writeJson(stdout, {
-    browser: { command: "close", exitCode: closeResult.exitCode },
+    browser: { command: "stop", exitCode: browserStopResult.exitCode },
     bridge: bridgeResult
   });
   return 0;
@@ -70,7 +85,15 @@ export async function runBridgeServerCommand(
   const address = await server.listen({
     port: getNumberOption(args, "port") ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT
   });
-  stdout.write(`OpenRuntime Bridge listening on ${address.url}\n`);
+  if (typeof process.send === "function") {
+    process.send({
+      type: "openruntime.bridge.ready",
+      port: address.port,
+      url: address.url
+    });
+  } else {
+    stdout.write(`OpenRuntime Bridge listening on ${address.url}\n`);
+  }
   if (waitUntilClosed !== undefined) await waitUntilClosed(server);
   else await waitForProcessExit(server);
   return 0;

@@ -50,7 +50,7 @@ openruntime open https://example.com/orders --state /path/to/test-account.json -
 openruntime open https://example.com/orders --session orders-debug --ui
 ```
 
-后续页面命令和 Extension 会默认复用最近一次打开的页面、会话和登录状态。除非任务拥有完整浏览器生命周期，否则不要在中间步骤随意 `stop`，避免丢失仍有价值的页面上下文。
+后续页面命令和 Extension 会默认复用**当前工作目录**最近一次打开的页面、会话和登录状态。除非任务拥有完整浏览器生命周期，否则不要在中间步骤随意 `stop`，避免丢失仍有价值的页面上下文。
 
 OpenRuntime 能调试没有接入 Runtime Core 的普通页面。页面没有 connected runtime 时，继续使用浏览器侧能力，不要为了开始排查而先修改应用。
 

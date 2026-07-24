@@ -50,7 +50,7 @@ Open the target page with a named session:
 openruntime open https://example.com/orders --session orders-debug --ui
 ```
 
-Later page commands and Extensions reuse the most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
+Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
 OpenRuntime can debug a regular page without Runtime Core. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 

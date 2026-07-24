@@ -29,7 +29,7 @@ An Extension does not require the team to rebuild a service capability that alre
 
 Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
 
-A page Command operates on the page most recently opened by `openruntime open <url>`. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
+A page Command operates on the page most recently opened by `openruntime open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
 ## Create an Extension
 
@@ -243,7 +243,7 @@ export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () =
 };
 ```
 
-Only Extensions that successfully participated in the matching `open` receive `close`. Cleanup failures are reported but do not prevent the browser from closing.
+Only Extensions that successfully participated in the matching `open` receive `close`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
 
 See the [Hooks API](extension-api.md#hooks) for Hook parameters and return types.
 
@@ -314,7 +314,7 @@ export OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
 openruntime open https://example.com --no-bridge
 openruntime foo inspect
 openruntime stack --refresh
-openruntime close
+openruntime stop
 ```
 
 After a change, return to the same account, environment, and user journey to verify the result.
@@ -357,7 +357,7 @@ Before delivery, confirm at least the following:
 3. Commands that do not need a page run without a prior `openruntime open`.
 4. Commands that need a page return a clear next step when no page exists.
 5. Missing arguments, repeated options, unknown subcommands, and failure paths all have deterministic results.
-6. `open`, `stack`, and `close` trigger only their matching Hooks.
+6. `open`, `stack`, and `stop` trigger their matching `open`, `detectStack`, and `close` Hooks.
 7. One failed Hook does not prevent other Extensions or the page from working.
 8. Operations complete on a real or representative page, and the final page or Runtime result is verified.
 9. `npm pack --dry-run` contains only expected files.

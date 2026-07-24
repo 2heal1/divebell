@@ -290,7 +290,7 @@ async function withIsolatedBrowser(label, purpose, includeExperienceRecorder, ac
     return await action(environment);
   } finally {
     if (browserOpened) {
-      await runCli(["close"], { allowFailure: true, environment });
+      await runCli(["stop"], { allowFailure: true, environment });
     }
     await rm(routeDirectory, { recursive: true, force: true });
     await rm(socketDirectory, { recursive: true, force: true });

@@ -140,7 +140,7 @@ test("starts and stops a manual recording on the same current page", async () =>
     ]);
 
     const closeOutput = createOutput();
-    assert.equal(await fixture.run(["close"], closeOutput), 0);
+    assert.equal(await fixture.run(["stop"], closeOutput), 0);
     assert.equal(fixture.browserCalls.at(-1)?.args[0], "close");
   } finally {
     fixture.cleanup();

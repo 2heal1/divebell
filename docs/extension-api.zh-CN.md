@@ -213,7 +213,7 @@ interface OpenRuntimeStackDetection {
 
 `detectStack` 只在执行 `openruntime stack` 时运行，可以返回一个结果、多个结果或不返回结果。不要在 `evidence` 中包含完整页面配置或敏感值。
 
-`close` 只会通知在同一次 `open` 中成功参与过的 Extension。清理失败会被记录，但不会阻止浏览器关闭。
+`close` 只会通知在同一次 `open` 中成功参与过的 Extension。当这个页面被 `stop`，或被同一工作目录中的另一次 `open` 替换时，它都会运行。清理失败会被记录，但不会阻止页面生命周期继续。
 
 每个 Hook 最长运行 5 秒。超时会被记录为该 Extension 的 Hook 失败，不会阻塞其他 Extension。
 

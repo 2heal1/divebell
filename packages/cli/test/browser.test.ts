@@ -157,7 +157,7 @@ test("assigns a dedicated bridge port and reuses it for directory commands", asy
     }), 0);
     assert.equal(JSON.parse(runtimeOutput.text()).bridgeUrl, reopened.bridgeUrl);
 
-    assert.equal(await runCli(["close"], {
+    assert.equal(await runCli(["stop"], {
       stdout: createOutput().stdout,
       stderr: createOutput().stderr,
       bridgeStateDirectory: stateDirectory,
@@ -168,7 +168,7 @@ test("assigns a dedicated bridge port and reuses it for directory commands", asy
     assert.equal(readdirSync(operationLogDirectory).length, 0);
   } finally {
     if (!closed && readdirSync(operationLogDirectory).length > 0) {
-      await runCli(["close"], {
+      await runCli(["stop"], {
         stdout: createOutput().stdout,
         stderr: createOutput().stderr,
         bridgeStateDirectory: stateDirectory,
@@ -268,7 +268,7 @@ test("opens a visible browser page when ui is set and keeps the session query", 
   assert.deepEqual(browserOptions, [{ ui: true }]);
 });
 
-test("records the latest open operation by working directory and removes it on close", async () => {
+test("records the latest open operation by working directory and removes it on stop", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
   const browserCalls: string[][] = [];
 
@@ -323,7 +323,7 @@ test("records the latest open operation by working directory and removes it on c
     );
 
     const closeOutput = createOutput();
-    const closeExitCode = await runCli(["close"], {
+    const closeExitCode = await runCli(["stop"], {
       stdout: closeOutput.stdout,
       stderr: closeOutput.stderr,
       operationLogDirectory,
@@ -680,7 +680,7 @@ test("stops by closing the browser session before stopping the bridge", async ()
     assert.equal(readdirSync(operationLogDirectory).length, 0);
     assert.deepEqual(JSON.parse(output.text()), {
       browser: {
-        command: "close",
+        command: "stop",
         exitCode: 0
       },
       bridge: {

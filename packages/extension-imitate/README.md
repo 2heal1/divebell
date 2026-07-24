@@ -31,7 +31,7 @@ openruntime record stop --out ./recordings/openruntime-<timestamp>.orrec
 Stopping captures final state and writes `generated-script.mjs` by default. It leaves the current page open; close it through the normal page lifecycle when the workflow is complete:
 
 ```bash
-openruntime close
+openruntime stop
 ```
 
 Recording preparation refuses to replace an already open page. Close the current page first, prepare the recording, and then open the page to record. Stopping refuses to mix evidence if another `openruntime open` replaced the recorded page.
@@ -64,7 +64,7 @@ openruntime open https://example.com/ --ui
 openruntime record \
   --out ./recordings/example.orrec \
   --duration 30000
-openruntime close
+openruntime stop
 ```
 
 For an Agent-guided installation and workflow, see the [English guide](../../docs/record-browser-workflows.md) or [中文指南](../../docs/record-browser-workflows.zh-CN.md).

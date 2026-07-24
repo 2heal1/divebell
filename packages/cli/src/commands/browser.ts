@@ -50,6 +50,21 @@ export async function runBrowserCliCommand(
     const bridge = await prepareOpenBridge(args, fetcher, bridgeStarter, bridgeStateDirectory);
     const bridgeUrl = bridge?.bridgeUrl ?? null;
     const bridgePort = bridge?.port ?? null;
+    if (previousOpenContext !== undefined) {
+      await runExtensionCloseHooks({
+        args: {
+          command: ["stop"],
+          options: new Map()
+        },
+        stderr,
+        fetcher,
+        browserRunner,
+        bridgeStarter,
+        bridgeStateDirectory,
+        operationLogStore,
+        extensions
+      });
+    }
     const hookResult = await runOpenHooks(extensions, { args, url, openedUrl });
     writeHookFailures(stderr, hookResult.failures);
     let result: BrowserRunResult;
@@ -112,24 +127,6 @@ export async function runBrowserCliCommand(
       await stopOpenContextBridge(previousOpenContext?.bridgeUrl ?? null, bridgeStateDirectory);
     }
     return 0;
-  }
-
-  if (command === "close") {
-    await runExtensionCloseHooks({
-      args,
-      stderr,
-      fetcher,
-      browserRunner,
-      bridgeStarter,
-      bridgeStateDirectory,
-      operationLogStore,
-      extensions
-    });
-    const exitCode = await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
-    const openContext = await operationLogStore.read();
-    await stopOpenContextBridge(openContext?.bridgeUrl ?? null, bridgeStateDirectory);
-    await operationLogStore.remove();
-    return exitCode;
   }
 
   const commandArgs = isBrowserPageCommand(command)

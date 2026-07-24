@@ -148,7 +148,6 @@ export type BrowserCommandName =
   | "network"
   | "console"
   | "memory"
-  | "coverage"
-  | "close";
+  | "coverage";
 
 export type RuntimeResourceCommandName = "targets" | "snapshot" | "events" | "actions";

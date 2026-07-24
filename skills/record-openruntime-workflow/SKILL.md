@@ -20,7 +20,7 @@ description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器
 - 默认先运行 `record start` 准备录制，再通过 `openruntime open about:blank --ui` 打开可见页面。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
 - 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
 - 用户说“结束”“完成”“done”后，再调用 stop。
-- `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `openruntime close`。
+- `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `openruntime stop`。
 - 第一版录制包会保存鼠标点击、输入、键盘事件、事件相对录制开始的时间、页面快照、DOM 摘要、OpenRuntime 结构化状态和可选麦克风音频。连续视频还不是可靠产物。
 - 使用 `--mic` 时，浏览器会申请麦克风权限，并把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`。如果权限被拒绝，必须读取 `audio-events.jsonl` 和 manifest 里的失败原因。
 - 页面跳转、搜索或打开新页面后，中间的点击和输入也应该保留在 `interactions.jsonl`。不要只按最后停留的 URL 判断录制结果。
@@ -43,7 +43,7 @@ node <skill-dir>/scripts/probe-openruntime-cli.mjs
 
 ## 启动录制
 
-1. 确认当前没有 OpenRuntime 页面仍在打开。如果有，先运行 `close`。然后准备录制：
+1. 确认当前没有 OpenRuntime 页面仍在打开。如果有，先运行 `stop`。然后准备录制：
 
 ```bash
 node <skill-dir>/scripts/openruntime-cli.mjs record start --mic
@@ -93,7 +93,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-pat
 stop 成功后，再通过标准页面流程关闭浏览器：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs close
+node <skill-dir>/scripts/openruntime-cli.mjs stop
 ```
 
 如果 stop 提示当前页面和录制页面不一致，不要强行继续或混入新页面数据；回到开始录制时的项目和页面后重试。

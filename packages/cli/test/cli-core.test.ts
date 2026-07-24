@@ -83,7 +83,7 @@ test("prints compact top-level help", async () => {
   assert.equal(output.errorText(), "");
   assert.match(output.text(), /^Usage: openruntime <command> \[options\]/);
   assert.match(output.text(), /openruntime snapshot - Read the current snapshot state/);
-  assert.match(output.text(), /openruntime open - Open a page/);
+  assert.match(output.text(), /openruntime open - Open a directory-scoped page/);
   assert.match(output.text(), /openruntime profiles - List Chrome profiles/);
   assert.match(output.text(), /openruntime state - Inspect and manage/);
   assert.match(output.text(), /openruntime auth - Inspect or delete/);
@@ -141,6 +141,20 @@ test("prints progressively scoped command help", async () => {
   }), 0);
   assert.match(stateOutput.text(), /openruntime state <list\|show\|rename\|clear\|clean>/);
   assert.doesNotMatch(stateOutput.text(), /openruntime state (save|load)/);
+});
+
+test("rejects the removed close command", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["close"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.errorText(), "");
+  const error = JSON.parse(output.text());
+  assert.equal(error.error.code, "CLI_UNKNOWN_COMMAND");
+  assert.match(error.message, /Unknown command "close"/);
 });
 
 test("prints help for command help without executing the command", async () => {

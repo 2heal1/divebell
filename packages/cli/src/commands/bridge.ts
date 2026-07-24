@@ -51,7 +51,7 @@ export async function runStopCommand(
   const openContext = await operationLogStore.read();
   const commandArgs = applyOpenContextDefaults(args, openContext);
   await beforeBrowserClose?.();
-  const closeResult = await browserRunner.run(["close"]);
+  const browserStopResult = await browserRunner.run(["close"]);
   await operationLogStore.remove();
   const bridgeUrl = openContext?.bridgeUrl === null &&
       !commandArgs.options.has("bridge") &&
@@ -70,7 +70,7 @@ export async function runStopCommand(
         ...createOptionalObjectProperty("processController", bridgeProcessController)
       });
   writeJson(stdout, {
-    browser: { command: "close", exitCode: closeResult.exitCode },
+    browser: { command: "stop", exitCode: browserStopResult.exitCode },
     bridge: bridgeResult
   });
   return 0;

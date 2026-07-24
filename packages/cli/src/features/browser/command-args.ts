@@ -47,7 +47,7 @@ export function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
   if (command === "coverage") {
     return createCoverageBrowserArgs(args);
   }
-  return ["close"];
+  throw new Error(`Unsupported browser command "${command ?? ""}".`);
 }
 
 function createCoverageBrowserArgs(args: ParsedCliArgs): string[] {

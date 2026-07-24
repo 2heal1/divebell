@@ -111,7 +111,7 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.deepEqual(calls, ["open", "detectStack"]);
 
     const closeOutput = createOutput();
-    assert.equal(await cli.run(["close"], {
+    assert.equal(await cli.run(["stop"], {
       stdout: closeOutput.stdout,
       stderr: closeOutput.stderr,
       operationLogDirectory,
@@ -120,6 +120,66 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.equal(closeCount, 1);
     assert.deepEqual(calls, ["open", "detectStack", "close"]);
     assert.deepEqual(browserCalls.map((args) => args[0]), ["open", "eval", "eval", "eval", "close"]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("runs the previous page close hook before opening its replacement", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-reopen-hooks-"));
+  const calls: string[] = [];
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "page-lifecycle",
+      hooks: {
+        open: async ({ url }) => {
+          calls.push(`open:${url}`);
+        },
+        close: async ({ page }) => {
+          calls.push(`close:${page.url}`);
+        }
+      }
+    }]
+  });
+  const browserRunner = createBrowserRunner(async (args) => {
+    if (args[0] === "open" || args[0] === "close") {
+      return { exitCode: 0, stdout: "", stderr: "" };
+    }
+    throw new Error(`Unexpected browser command: ${args.join(" ")}`);
+  });
+
+  try {
+    assert.equal(await cli.run(["open", "http://first.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(await cli.run(["open", "http://second.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(calls, [
+      "open:http://first.test",
+      "close:http://first.test",
+      "open:http://second.test"
+    ]);
+
+    assert.equal(await cli.run(["stop"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(calls, [
+      "open:http://first.test",
+      "close:http://first.test",
+      "open:http://second.test",
+      "close:http://second.test"
+    ]);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

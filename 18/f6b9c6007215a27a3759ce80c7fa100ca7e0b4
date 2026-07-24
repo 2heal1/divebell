@@ -1,0 +1,43 @@
+.changeset/inject-mf-debug-runtime.md
+  s_e84425219326c8::t_eaeaaac168b3b1 5
+packages/extension-mf/README.md
+  s_71d7abfc3080ba::t_505b19879a8e34 133-139,143-147,150-153
+packages/extension-mf/docs/remote.md
+  s_71d7abfc3080ba::t_a142e9f783a320 13,19-20,31-37,43-52,69-73
+packages/extension-mf/src/cli/observability.ts
+  s_71d7abfc3080ba::t_9eb330a6cbdda1 53,58-75,78-91,93-120,125-141,143-145,147-148,150-161,165-194,218-223
+packages/extension-mf/src/remote/results.ts
+  s_71d7abfc3080ba::t_012208d542b119 12,103-114,307-365,410-415,439,441-443
+packages/extension-mf/src/remote/types.ts
+  s_71d7abfc3080ba::t_eab4b8e638a483 101,103,134-143
+packages/extension-mf/test/integration.test.mjs
+  s_e84425219326c8::t_33965cec34ff61 33-34,44-45,73-77,155
+packages/extension-mf/test/remote-command.test.mjs
+  s_71d7abfc3080ba::t_bdfc74049ed394 13,15-18,25-43,45,48-59,61,64-65,67-69,72-75,95,97-103,107-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "18f6b9c6007215a27a3759ce80c7fa100ca7e0b4",
+  "prompts": {},
+  "sessions": {
+    "s_71d7abfc3080ba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f92ce-6474-7053-9538-40cb8ecbfd6a",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e84425219326c8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8977-9f53-7ec1-b0b5-f0d5a4c6c03c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

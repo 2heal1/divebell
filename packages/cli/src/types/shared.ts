@@ -55,6 +55,7 @@ export interface CliOperationLogEntry {
   openedAt: number;
   exitCode: number;
   activeExtensions: string[];
+  headers?: Record<string, string>;
   stackDetection?: {
     url: string;
     detectedAt: number;

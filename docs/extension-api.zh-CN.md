@@ -63,6 +63,7 @@ interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
+  headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
 }
 ```
@@ -71,6 +72,7 @@ interface CliExtensionRunOptions {
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | 当前命令解析后的参数。`command` 是命令名和位置参数组成的数组；`options` 是 `Map<string, string[]>`，同名选项可以出现多次。 |
 | `options.page` | `CliExtensionPageContext \| undefined` | 最近一次成功执行 `openruntime open` 后保存的页面上下文。无需页面的命令不要强制检查它；需要页面时必须先处理 `undefined`。 |
+| `options.headers` | `Readonly<Record<string, string>> \| undefined` | 最近一次成功执行 `openruntime open --headers` 时实际使用的完整 headers；打开页面时未传 headers 则为 `undefined`。 |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
 | `options.fetcher` | `Fetcher` | OpenRuntime 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.openruntime`。 |
 
@@ -192,7 +194,7 @@ interface OpenRuntimeOpenHookResult {
 }
 ```
 
-`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
+`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。OpenRuntime 会把同一份 headers 保存在当前目录对应的页面记录中，并通过 `options.headers` 传给后续 Extension Command。如果其中包含账号凭据或 Token，也会一并保存，因此需要妥善保护本地 OpenRuntime 状态目录。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
 
 ### `detectStack` 与 `close`
 

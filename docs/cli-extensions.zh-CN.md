@@ -175,7 +175,7 @@ export async function runFoo(
 }
 ```
 
-成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。`args`、`page`、`fetcher` 和 `openruntime` 的类型与使用方式见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
+成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
 ### Hooks
 
@@ -195,7 +195,7 @@ export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => 
 };
 ```
 
-Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。Header 值应按敏感信息处理。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
+Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。后续 Extension Command 会收到同一个对象。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
 
 #### `detectStack`
 

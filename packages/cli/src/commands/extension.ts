@@ -61,6 +61,7 @@ export async function runExtensionCliCommand(
     args: extensionArgs,
     fetcher,
     ...(openContext === undefined ? {} : { page: createExtensionPageContext(openContext) }),
+    ...(openContext?.headers === undefined ? {} : { headers: openContext.headers }),
     openruntime: createOpenRuntimeExtensionApi({
       args: extensionArgs,
       fetcher,

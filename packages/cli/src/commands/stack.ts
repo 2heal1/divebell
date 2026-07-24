@@ -76,6 +76,9 @@ export async function runStackCommand(
     openedAt: openContext.openedAt,
     exitCode: openContext.exitCode,
     activeExtensions: openContext.activeExtensions,
+    ...(openContext.headers === undefined
+      ? {}
+      : { headers: openContext.headers }),
     stackDetection
   });
   const { detectorSignature: _, ...publicDetection } = stackDetection;

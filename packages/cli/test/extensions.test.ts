@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -120,6 +120,102 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.equal(closeCount, 1);
     assert.deepEqual(calls, ["open", "detectStack", "close"]);
     assert.deepEqual(browserCalls.map((args) => args[0]), ["open", "eval", "eval", "eval", "close"]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("returns the opened page headers unchanged to extension commands", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-command-headers-"));
+  const headers = JSON.stringify({
+    Authorization: "Bearer secret-token",
+    "Get-Svc": "1"
+  });
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "goofy",
+      commands: [{
+        name: "goofy",
+        async run({ headers: openedHeaders }) {
+          return { headers: openedHeaders };
+        }
+      }],
+      hooks: {
+        async detectStack() {
+          return undefined;
+        }
+      }
+    }]
+  });
+  const browserRunner = createBrowserRunner(async (args) => ({
+    exitCode: 0,
+    stdout: args[0] === "eval" ? JSON.stringify("http://app.test/") : "",
+    stderr: ""
+  }));
+
+  try {
+    const openOutput = createOutput();
+    assert.equal(await cli.run([
+      "open",
+      "http://app.test",
+      "--headers",
+      headers,
+      "--no-bridge"
+    ], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.doesNotMatch(openOutput.text(), /secret-token/);
+
+    const files = readdirSync(operationLogDirectory);
+    assert.equal(files.length, 1);
+    const persisted = JSON.parse(readFileSync(
+      join(operationLogDirectory, files[0] as string),
+      "utf8"
+    ));
+    assert.deepEqual(persisted.headers, {
+      Authorization: "Bearer secret-token",
+      "Get-Svc": "1"
+    });
+
+    assert.equal(await cli.run(["stack"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+
+    const goofyOutput = createOutput();
+    assert.equal(await cli.run(["goofy", "status"], {
+      stdout: goofyOutput.stdout,
+      stderr: goofyOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(JSON.parse(goofyOutput.text()), commandOutput("goofy status", {
+      headers: {
+        Authorization: "Bearer secret-token",
+        "Get-Svc": "1"
+      }
+    }));
+
+    assert.equal(await cli.run(["open", "http://other.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    const reopenedGoofyOutput = createOutput();
+    assert.equal(await cli.run(["goofy", "status"], {
+      stdout: reopenedGoofyOutput.stdout,
+      stderr: reopenedGoofyOutput.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(JSON.parse(reopenedGoofyOutput.text()), commandOutput("goofy status", {}));
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

@@ -20,6 +20,7 @@ export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
+  headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
 }
 

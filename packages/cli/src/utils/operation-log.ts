@@ -86,6 +86,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.exitCode === "number" &&
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
+    isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
   )) {
     return undefined;
@@ -96,6 +97,14 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     bridgeUrl,
     bridgePort
   } as CliOperationLogEntry;
+}
+
+function isHeaders(value: unknown): boolean {
+  if (value === undefined) return true;
+  return value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && Object.values(value).every((header) => typeof header === "string");
 }
 
 function getOperationBridgePort(bridgeUrl: unknown): number | null {

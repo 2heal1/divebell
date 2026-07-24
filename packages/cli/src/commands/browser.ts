@@ -125,7 +125,8 @@ export async function runBrowserCliCommand(
       sessionId,
       openedAt,
       exitCode: result.exitCode,
-      activeExtensions: hookResult.activeExtensions
+      activeExtensions: hookResult.activeExtensions,
+      ...(headers === undefined ? {} : { headers })
     });
     createCommandOutput(stdout, args.command.join(" ")).ok({
       url,

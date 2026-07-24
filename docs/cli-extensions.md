@@ -183,7 +183,7 @@ export async function runFoo(
 }
 ```
 
-Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the types and usage of `args`, `page`, `fetcher`, and `openruntime`.
+Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
 ### Hooks
 
@@ -203,7 +203,7 @@ export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => 
 };
 ```
 
-The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Treat header values as sensitive data. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
+The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Later Extension Commands receive the same object. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
 
 #### `detectStack`
 

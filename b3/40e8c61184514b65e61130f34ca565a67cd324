@@ -1,0 +1,23 @@
+docs/agent-devloop.md
+  s_67c45a6ece4cdf::t_29a216c144b882 49
+docs/agent-devloop.zh-CN.md
+  s_67c45a6ece4cdf::t_7041a1a1d45657 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b340e8c61184514b65e61130f34ca565a67cd324",
+  "prompts": {},
+  "sessions": {
+    "s_67c45a6ece4cdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ede-226c-7800-87a3-bdaa89a3de3d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

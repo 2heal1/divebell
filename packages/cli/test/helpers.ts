@@ -106,6 +106,7 @@ export function createOpenContextFixture(overrides: Partial<{
   bridgeUrl: string | null;
   bridgePort: number | null;
   sessionId: string | null;
+  activeExtensions: string[];
 }> = {}): { operationLogDirectory: string; cleanup(): void } {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
@@ -121,7 +122,7 @@ export function createOpenContextFixture(overrides: Partial<{
     sessionId: overrides.sessionId ?? "session-open",
     openedAt: 1,
     exitCode: 0,
-    activeExtensions: []
+    activeExtensions: overrides.activeExtensions ?? []
   };
   writeFileSync(join(operationLogDirectory, `${key}.json`), `${JSON.stringify(entry, null, 2)}\n`, "utf8");
   return {

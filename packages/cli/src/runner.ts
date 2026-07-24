@@ -84,7 +84,8 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
           bridgeStarter,
           bridgeStateDirectory: options.bridgeStateDirectory,
           operationLogStore,
-          extensions: config.extensions
+          extensions: config.extensions,
+          openHookPlan: config.hookPlans.open
         })
       );
     }
@@ -120,7 +121,8 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
         bridgeStarter,
         bridgeStateDirectory: options.bridgeStateDirectory,
         operationLogStore,
-        extensions: config.extensions
+        extensions: config.extensions,
+        detectStackHookPlan: config.hookPlans.detectStack
       });
     }
 
@@ -134,7 +136,8 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
         bridgeStarter,
         options.bridgeStateDirectory,
         operationLogStore,
-        config.extensions
+        config.extensions,
+        config.hookPlans.open
       );
     }
 
@@ -170,6 +173,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
       bridgeStarter,
       bridgeStateDirectory: options.bridgeStateDirectory,
       operationLogStore,
+      extensionRegistry: config.extensionRegistry,
       commandRegistry: config.commandRegistry
     });
     if (extensionExitCode !== undefined) {

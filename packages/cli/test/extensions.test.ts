@@ -12,6 +12,7 @@ import {
   type OpenRuntimeExtensionCommand,
   type OpenRuntimeExtensionDefinition
 } from "../dist/index.js";
+import { runOpenHooks } from "../dist/features/extension/hooks.js";
 
 import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
 
@@ -736,6 +737,530 @@ test("formats errors thrown by extension commands", async () => {
   assert.equal(result.status, "error");
   assert.equal(result.error.code, "DEMO_FAILED");
   assert.equal(result.message, "Demo command failed.");
+});
+
+test("lets a command call declared Extension commands with shared page context", async () => {
+  const calls: unknown[] = [];
+  const target: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "shared-tools",
+    commands: [{
+      name: "shared-lookup",
+      run: async ({ args, page, runExtension }) => {
+        calls.push({
+          command: args.command,
+          format: args.options.get("format"),
+          tags: args.options.get("tag"),
+          bridge: args.options.get("bridge"),
+          session: args.options.get("session"),
+          url: args.options.get("url"),
+          page,
+          hasRunExtension: typeof runExtension === "function"
+        });
+        return { value: args.command[1] };
+      }
+    }]
+  };
+  const caller: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "workflow",
+    commands: [{
+      name: "inspect-shared",
+      requires: ["shared-tools"],
+      run: async ({ args, page, runExtension }) => {
+        const first = await runExtension<{ value: string }>("shared-tools", {
+          command: "shared-lookup",
+          args: ["item-1"],
+          options: {
+            format: "json",
+            tag: ["smoke", "checkout"]
+          }
+        });
+        const second = await runExtension<{ value: string }>("shared-tools", {
+          command: "shared-lookup",
+          args: ["item-2"]
+        });
+        return {
+          command: args.command,
+          page,
+          first,
+          second
+        };
+      }
+    }]
+  };
+  const cli = createOpenRuntimeCli({ extensions: [caller, target] });
+  const context = createOpenContextFixture();
+
+  try {
+    const output = createOutput();
+    assert.equal(await cli.run(["inspect-shared"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory
+    }), 0);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("inspect-shared", {
+      command: ["inspect-shared"],
+      page: {
+        url: "http://app.test/",
+        openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+        normalizedUrl: "http://app.test/",
+        bridgeUrl: "http://bridge.test",
+        sessionId: "session-open",
+        openedAt: 1
+      },
+      first: { value: "item-1" },
+      second: { value: "item-2" }
+    }));
+    assert.deepEqual(calls, [
+      {
+        command: ["shared-lookup", "item-1"],
+        format: ["json"],
+        tags: ["smoke", "checkout"],
+        bridge: ["http://bridge.test"],
+        session: ["session-open"],
+        url: ["http://app.test/"],
+        page: {
+          url: "http://app.test/",
+          openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+          normalizedUrl: "http://app.test/",
+          bridgeUrl: "http://bridge.test",
+          sessionId: "session-open",
+          openedAt: 1
+        },
+        hasRunExtension: true
+      },
+      {
+        command: ["shared-lookup", "item-2"],
+        format: undefined,
+        tags: undefined,
+        bridge: ["http://bridge.test"],
+        session: ["session-open"],
+        url: ["http://app.test/"],
+        page: {
+          url: "http://app.test/",
+          openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+          normalizedUrl: "http://app.test/",
+          bridgeUrl: "http://bridge.test",
+          sessionId: "session-open",
+          openedAt: 1
+        },
+        hasRunExtension: true
+      }
+    ]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("keeps unrelated commands usable when a Command dependency is missing", async () => {
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "partial-workflow",
+      commands: [{
+        name: "needs-missing",
+        requires: ["missing-tools"],
+        run: async () => {
+          throw new Error("This command must not run.");
+        }
+      }, {
+        name: "healthy-command",
+        run: async () => ({ healthy: true })
+      }]
+    }]
+  });
+
+  const healthyOutput = createOutput();
+  assert.equal(await cli.run(["healthy-command"], {
+    stdout: healthyOutput.stdout,
+    stderr: healthyOutput.stderr
+  }), 0);
+  assert.deepEqual(JSON.parse(healthyOutput.text()), commandOutput("healthy-command", {
+    healthy: true
+  }));
+
+  const missingOutput = createOutput();
+  assert.equal(await cli.run(["needs-missing"], {
+    stdout: missingOutput.stdout,
+    stderr: missingOutput.stderr
+  }), 1);
+  assert.equal(JSON.parse(missingOutput.text()).error.code, "EXTENSION_DEPENDENCY_MISSING");
+});
+
+test("rejects undeclared Extension calls and nested command cycles", async () => {
+  const target: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "target-tools",
+    commands: [{
+      name: "target-command",
+      requires: ["caller-tools"],
+      run: async ({ runExtension }) =>
+        await runExtension("caller-tools", { command: "cycle-command" })
+    }]
+  };
+  const caller: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "caller-tools",
+    commands: [{
+      name: "undeclared-command",
+      run: async ({ runExtension }) =>
+        await runExtension("target-tools", { command: "target-command" })
+    }, {
+      name: "cycle-command",
+      requires: ["target-tools"],
+      run: async ({ runExtension }) =>
+        await runExtension("target-tools", { command: "target-command" })
+    }]
+  };
+  const cli = createOpenRuntimeCli({ extensions: [caller, target] });
+
+  const undeclaredOutput = createOutput();
+  assert.equal(await cli.run(["undeclared-command"], {
+    stdout: undeclaredOutput.stdout,
+    stderr: undeclaredOutput.stderr
+  }), 1);
+  assert.equal(
+    JSON.parse(undeclaredOutput.text()).error.code,
+    "EXTENSION_DEPENDENCY_UNDECLARED"
+  );
+
+  const cycleOutput = createOutput();
+  assert.equal(await cli.run(["cycle-command"], {
+    stdout: cycleOutput.stdout,
+    stderr: cycleOutput.stderr
+  }), 1);
+  const cycleResult = JSON.parse(cycleOutput.text());
+  assert.equal(cycleResult.error.code, "EXTENSION_COMMAND_CYCLE");
+  assert.deepEqual(cycleResult.error.details.extensionCallChain, [
+    { extension: "caller-tools", command: "cycle-command" },
+    { extension: "target-tools", command: "target-command" },
+    { extension: "caller-tools", command: "cycle-command" }
+  ]);
+});
+
+test("enforces requiresOpenHook for direct and composed commands", async () => {
+  const openAware: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "open-aware",
+    commands: [{
+      name: "open-aware-command",
+      requiresOpenHook: true,
+      run: async () => ({ ready: true })
+    }],
+    hooks: {
+      open: async () => {}
+    }
+  };
+  const caller: OpenRuntimeExtensionDefinition = {
+    schemaVersion: 1,
+    name: "open-aware-caller",
+    commands: [{
+      name: "call-open-aware",
+      requires: ["open-aware"],
+      run: async ({ runExtension }) =>
+        await runExtension("open-aware", { command: "open-aware-command" })
+    }]
+  };
+  const cli = createOpenRuntimeCli({ extensions: [caller, openAware] });
+  const inactiveContext = createOpenContextFixture();
+  const activeContext = createOpenContextFixture({
+    activeExtensions: ["open-aware"]
+  });
+
+  try {
+    const inactiveOutput = createOutput();
+    assert.equal(await cli.run(["call-open-aware"], {
+      stdout: inactiveOutput.stdout,
+      stderr: inactiveOutput.stderr,
+      operationLogDirectory: inactiveContext.operationLogDirectory
+    }), 1);
+    assert.equal(
+      JSON.parse(inactiveOutput.text()).error.code,
+      "EXTENSION_OPEN_HOOK_REQUIRED"
+    );
+
+    const activeOutput = createOutput();
+    assert.equal(await cli.run(["call-open-aware"], {
+      stdout: activeOutput.stdout,
+      stderr: activeOutput.stderr,
+      operationLogDirectory: activeContext.operationLogDirectory
+    }), 0);
+    assert.deepEqual(
+      JSON.parse(activeOutput.text()),
+      commandOutput("call-open-aware", { ready: true })
+    );
+  } finally {
+    inactiveContext.cleanup();
+    activeContext.cleanup();
+  }
+});
+
+test("runs unordered hooks in parallel and ordered hooks in dependency batches", async () => {
+  const calls: string[] = [];
+  const result = await runOpenHooks([{
+    schemaVersion: 1,
+    name: "base-hook",
+    hooks: {
+      open: async () => {
+        calls.push("base:start");
+        await Promise.resolve();
+        calls.push("base:end");
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "peer-hook",
+    hooks: {
+      open: async () => {
+        calls.push("peer:start");
+        await Promise.resolve();
+        calls.push("peer:end");
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "dependent-hook",
+    hooks: {
+      open: {
+        after: ["base-hook"],
+        run: async () => {
+          calls.push("dependent");
+        }
+      }
+    }
+  }], {
+    args: { command: ["open"], options: new Map() },
+    url: "http://app.test/",
+    openedUrl: "http://app.test/"
+  });
+
+  assert.deepEqual(calls, [
+    "base:start",
+    "peer:start",
+    "base:end",
+    "peer:end",
+    "dependent"
+  ]);
+  assert.deepEqual(result.activeExtensions, [
+    "base-hook",
+    "peer-hook",
+    "dependent-hook"
+  ]);
+  assert.deepEqual(result.failures, []);
+});
+
+test("isolates hook failures while enforcing hard requirements and ordering cycles", async () => {
+  const calls: string[] = [];
+  const result = await runOpenHooks([{
+    schemaVersion: 1,
+    name: "failing-hook",
+    hooks: {
+      open: async () => {
+        calls.push("failing");
+        throw new Error("failed");
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "soft-after",
+    hooks: {
+      open: {
+        after: ["failing-hook"],
+        run: async () => {
+          calls.push("soft");
+        }
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "hard-after",
+    hooks: {
+      open: {
+        requires: ["failing-hook"],
+        run: async () => {
+          calls.push("hard");
+        }
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "missing-hook",
+    hooks: {
+      open: {
+        requires: ["not-installed"],
+        run: async () => {
+          calls.push("missing");
+        }
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "cycle-a",
+    hooks: {
+      open: {
+        after: ["cycle-b"],
+        run: async () => {
+          calls.push("cycle-a");
+        }
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "cycle-b",
+    hooks: {
+      open: {
+        after: ["cycle-a"],
+        run: async () => {
+          calls.push("cycle-b");
+        }
+      }
+    }
+  }, {
+    schemaVersion: 1,
+    name: "independent-hook",
+    hooks: {
+      open: async () => {
+        calls.push("independent");
+      }
+    }
+  }], {
+    args: { command: ["open"], options: new Map() },
+    url: "http://app.test/",
+    openedUrl: "http://app.test/"
+  });
+
+  assert.deepEqual(calls, ["failing", "independent", "soft"]);
+  assert.deepEqual(result.activeExtensions, ["independent-hook", "soft-after"]);
+  assert.deepEqual(
+    result.failures.map((failure) => failure.extension).sort(),
+    ["cycle-a", "cycle-b", "failing-hook", "hard-after", "missing-hook"].sort()
+  );
+});
+
+test("runs close hooks in reverse open order", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-ordered-close-"));
+  const calls: string[] = [];
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "base-close",
+      hooks: {
+        open: async () => {
+          calls.push("open:base");
+        },
+        close: async () => {
+          calls.push("close:base");
+        }
+      }
+    }, {
+      schemaVersion: 1,
+      name: "peer-close",
+      hooks: {
+        open: async () => {
+          calls.push("open:peer");
+        },
+        close: async () => {
+          calls.push("close:peer");
+        }
+      }
+    }, {
+      schemaVersion: 1,
+      name: "dependent-close",
+      hooks: {
+        open: {
+          after: ["base-close"],
+          run: async () => {
+            calls.push("open:dependent");
+          }
+        },
+        close: async () => {
+          calls.push("close:dependent");
+        }
+      }
+    }]
+  });
+  const browserRunner = createBrowserRunner(async () => ({
+    exitCode: 0,
+    stdout: "",
+    stderr: ""
+  }));
+
+  try {
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(await cli.run(["stop"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(calls, [
+      "open:base",
+      "open:peer",
+      "open:dependent",
+      "close:dependent",
+      "close:base",
+      "close:peer"
+    ]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("isolates page initialization scripts returned by open hooks", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-hook-scripts-"));
+  const cli = createOpenRuntimeCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "throwing-script",
+      hooks: {
+        open: async () => ({
+          scripts: ["throw new Error('script failed');"]
+        })
+      }
+    }, {
+      schemaVersion: 1,
+      name: "working-script",
+      hooks: {
+        open: async () => ({
+          scripts: ["globalThis.__OPENRUNTIME_SCRIPT_ISOLATION__ = 'worked';"]
+        })
+      }
+    }]
+  });
+  const originalConsoleError = console.error;
+
+  try {
+    console.error = () => {};
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+      stdout: createOutput().stdout,
+      stderr: createOutput().stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        const scriptPath = args.at(-1);
+        assert.equal(args.at(-2), "--init-script");
+        assert.equal(typeof scriptPath, "string");
+        const script = readFileSync(scriptPath as string, "utf8");
+        new Function(script)();
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+    assert.equal(
+      (globalThis as { __OPENRUNTIME_SCRIPT_ISOLATION__?: string })
+        .__OPENRUNTIME_SCRIPT_ISOLATION__,
+      "worked"
+    );
+  } finally {
+    console.error = originalConsoleError;
+    delete (globalThis as { __OPENRUNTIME_SCRIPT_ISOLATION__?: string })
+      .__OPENRUNTIME_SCRIPT_ISOLATION__;
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("exposes memory capture commands to CLI extensions", async () => {

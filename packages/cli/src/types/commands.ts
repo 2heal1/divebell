@@ -16,16 +16,35 @@ export interface CliExtensionPageContext {
   openedAt: number;
 }
 
+export type CliExtensionRunOptionScalar = string | number | boolean;
+
+export type CliExtensionRunOptionValue =
+  | CliExtensionRunOptionScalar
+  | readonly CliExtensionRunOptionScalar[];
+
+export interface CliExtensionRunRequest {
+  command: string;
+  args?: readonly string[];
+  options?: Readonly<Record<string, CliExtensionRunOptionValue>>;
+}
+
+export interface CliExtensionRunFunction {
+  <T = unknown>(extensionName: string, request: CliExtensionRunRequest): Promise<T>;
+}
+
 export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
+  runExtension: CliExtensionRunFunction;
 }
 
 export interface OpenRuntimeExtensionCommand {
   name: string;
+  requires?: readonly string[];
+  requiresOpenHook?: boolean;
   skill?: OpenRuntimeCommandSkill;
   commandReferences?: readonly CliCommandReference[];
   run(options: CliExtensionRunOptions): Promise<unknown>;
@@ -56,12 +75,29 @@ export interface OpenRuntimeStackDetection {
   recommendedExtensions?: readonly string[];
 }
 
+export interface OpenRuntimeOrderedHook<Handler> {
+  run: Handler;
+  before?: readonly string[];
+  after?: readonly string[];
+  requires?: readonly string[];
+}
+
+export type OpenRuntimeOpenHook = (
+  options: OpenRuntimeOpenHookOptions
+) => Promise<OpenRuntimeOpenHookResult | void>;
+
+export type OpenRuntimeDetectStackHook = (
+  options: OpenRuntimePageHookOptions
+) => Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
+
+export type OpenRuntimeCloseHook = (
+  options: OpenRuntimePageHookOptions
+) => Promise<void>;
+
 export interface OpenRuntimeExtensionHooks {
-  open?(options: OpenRuntimeOpenHookOptions): Promise<OpenRuntimeOpenHookResult | void>;
-  detectStack?(
-    options: OpenRuntimePageHookOptions
-  ): Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
-  close?(options: OpenRuntimePageHookOptions): Promise<void>;
+  open?: OpenRuntimeOpenHook | OpenRuntimeOrderedHook<OpenRuntimeOpenHook>;
+  detectStack?: OpenRuntimeDetectStackHook | OpenRuntimeOrderedHook<OpenRuntimeDetectStackHook>;
+  close?: OpenRuntimeCloseHook;
 }
 
 export interface OpenRuntimeExtensionDefinition {
@@ -81,6 +117,7 @@ export interface ExtensionCliCommandOptions {
   bridgeStarter: BridgeStarter;
   bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
+  extensionRegistry: Map<string, OpenRuntimeExtensionDefinition>;
   commandRegistry: Map<string, {
     extension: OpenRuntimeExtensionDefinition;
     command: OpenRuntimeExtensionCommand;

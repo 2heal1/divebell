@@ -35,6 +35,8 @@ interface OpenRuntimeExtensionDefinition {
 ```ts
 interface OpenRuntimeExtensionCommand {
   name: string;
+  requires?: readonly string[];
+  requiresOpenHook?: boolean;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
   run(options: CliExtensionRunOptions): Promise<unknown>;
@@ -52,9 +54,13 @@ interface CliCommandReference {
 ```
 
 - `name` 是挂载到 `openruntime` 下的命令名。
+- `requires` 声明当前 Command 可以通过 `options.runExtension` 调用哪些 Extension。
+- `requiresOpenHook` 表示只有自己的 Extension 已在当前页面成功完成 `open`，这个 Command 才能执行。
 - `commandReferences` 控制 `openruntime <command> --help` 中展示的详细用法和说明。顶层 `openruntime --help` 只展示命令名和简要说明。
 - `skill.path` 必须是现有 `SKILL.md` 的绝对路径。
 - `run` 成功时直接返回结果，失败时直接抛出错误。
+
+`requires` 中的 Extension 缺失时，只影响当前 Command；同一个 Extension 的其他 Command 仍然可用。
 
 ### `CliExtensionRunOptions`
 
@@ -65,6 +71,7 @@ interface CliExtensionRunOptions {
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
   openruntime: OpenRuntimeExtensionApi;
+  runExtension: CliExtensionRunFunction;
 }
 ```
 
@@ -75,6 +82,7 @@ interface CliExtensionRunOptions {
 | `options.headers` | `Readonly<Record<string, string>> \| undefined` | 最近一次成功执行 `openruntime open --headers` 时实际使用的完整 headers；打开页面时未传 headers 则为 `undefined`。 |
 | `options.openruntime` | `OpenRuntimeExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
 | `options.fetcher` | `Fetcher` | OpenRuntime 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.openruntime`。 |
+| `options.runExtension` | `CliExtensionRunFunction` | 调用当前 Extension 或已声明依赖中的 Command，并直接拿到原始结果。 |
 
 ### `options.args`
 
@@ -115,6 +123,51 @@ const timeout = getNumberOption(options.args, "timeout");
 ```
 
 `--flag` 会被解析成字符串 `"true"`。未知选项不会自动报错，Command 需要自行校验必填参数、允许值和组合关系。
+
+### `options.runExtension`
+
+```ts
+interface CliExtensionRunRequest {
+  command: string;
+  args?: readonly string[];
+  options?: Readonly<Record<
+    string,
+    string | number | boolean |
+    readonly (string | number | boolean)[]
+  >>;
+}
+
+interface CliExtensionRunFunction {
+  <T = unknown>(
+    extensionName: string,
+    request: CliExtensionRunRequest
+  ): Promise<T>;
+}
+```
+
+先在调用方 Command 上按名称声明依赖，再调用目标 Extension 的 Command：
+
+```ts
+{
+  name: "verify-order",
+  requires: ["account-tools"],
+  run: async ({ runExtension }) => {
+    const account = await runExtension<{ id: string }>("account-tools", {
+      command: "resolve-account",
+      args: ["checkout"],
+      options: {
+        role: "buyer",
+        tag: ["smoke", "checkout"]
+      }
+    });
+    return { accountId: account.id };
+  }
+}
+```
+
+`args` 只包含目标 Command 名称之后的位置参数。`options` 可以传单值或数组，目标 Command 会从自己的 `options.args` 中正常读取。目标会复用当前页面、会话、Runtime 选择、浏览器能力和嵌套的 `runExtension`。
+
+目标结果会直接返回给调用方。嵌套调用不会额外输出一份 CLI 结果，也不会触发生命周期 Hook。调用同一个 Extension 内的其他 Command 不需要在 `requires` 中声明自己；调用其他 Extension 必须先声明。循环调用和超过 16 层的调用会失败，并给出完整调用链。
 
 ### `options.page`
 
@@ -169,15 +222,50 @@ export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> =
 
 ```ts
 interface OpenRuntimeExtensionHooks {
-  open?(
-    options: OpenRuntimeOpenHookOptions
-  ): Promise<OpenRuntimeOpenHookResult | void>;
-  detectStack?(
-    options: OpenRuntimePageHookOptions
-  ): Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
+  open?: OpenRuntimeOpenHook | OpenRuntimeOrderedHook<OpenRuntimeOpenHook>;
+  detectStack?:
+    | OpenRuntimeDetectStackHook
+    | OpenRuntimeOrderedHook<OpenRuntimeDetectStackHook>;
   close?(options: OpenRuntimePageHookOptions): Promise<void>;
 }
+
+type OpenRuntimeOpenHook = (
+  options: OpenRuntimeOpenHookOptions
+) => Promise<OpenRuntimeOpenHookResult | void>;
+
+type OpenRuntimeDetectStackHook = (
+  options: OpenRuntimePageHookOptions
+) => Promise<
+  OpenRuntimeStackDetection |
+  readonly OpenRuntimeStackDetection[] |
+  void
+>;
+
+interface OpenRuntimeOrderedHook<Handler> {
+  run: Handler;
+  before?: readonly string[];
+  after?: readonly string[];
+  requires?: readonly string[];
+}
 ```
+
+原来的函数简写仍然有效。只有需要控制顺序时，才使用对象形式：
+
+```ts
+hooks: {
+  open: {
+    after: ["account-tools"],
+    requires: ["environment-tools"],
+    run: async options => {
+      // ...
+    }
+  }
+}
+```
+
+没有顺序关系的 Hook 默认并行执行。OpenRuntime 会在用当前 Extension 列表创建 CLI 时算好执行批次。`before` 和 `after` 只是顺序约束：引用的 Hook 不存在或执行失败时，当前 Hook 仍可继续。`requires` 是强依赖：引用的 Hook 必须存在并成功完成。出现顺序循环时，只停用循环中的 Hook。前一个 Hook 的返回值不会传给后一个 Hook。
+
+`close` 不单独声明顺序。它按 `open` 批次的相反顺序执行；`open` 时并行的 Hook，在 `close` 时也并行。
 
 ### `open`
 
@@ -194,7 +282,7 @@ interface OpenRuntimeOpenHookResult {
 }
 ```
 
-`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。OpenRuntime 会把同一份 headers 保存在当前目录对应的页面记录中，并通过 `options.headers` 传给后续 Extension Command。如果其中包含账号凭据或 Token，也会一并保存，因此需要妥善保护本地 OpenRuntime 状态目录。多个 Extension 的脚本会合并；某个 Hook 失败不会阻止其他 Extension 或页面继续打开。
+`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。OpenRuntime 会把同一份 headers 保存在当前目录对应的页面记录中，并通过 `options.headers` 传给后续 Extension Command。如果其中包含账号凭据或 Token，也会一并保存，因此需要妥善保护本地 OpenRuntime 状态目录。多个 Extension 的脚本会按 Hook 执行顺序合并并各自隔离；一个脚本抛错不会阻断后续 Extension 脚本或 OpenRuntime 自己的页面初始化。某个 Hook 失败不会阻止无关 Extension 或页面继续打开。
 
 ### `detectStack` 与 `close`
 

@@ -13,6 +13,7 @@ import {
   type CliCommandSkillReference
 } from "./commands/help.js";
 import { runCliWithConfig } from "./runner.js";
+import { createExtensionHookPlans } from "./features/extension/plan.js";
 import type {
   CliRunOptions,
   CreateOpenRuntimeCliOptions,
@@ -30,7 +31,9 @@ export function getCliCommandName(): "openruntime" {
 
 export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}): OpenRuntimeCli {
   const extensions = (options.extensions ?? []).map((extension) => validateExtension(extension));
+  const extensionRegistry = createExtensionRegistry(extensions);
   const commandRegistry = createCommandRegistry(extensions);
+  const hookPlans = createExtensionHookPlans(extensions);
   const commandReferences = [
     ...cliCommandReferences,
     ...extensions.flatMap((extension) =>
@@ -44,6 +47,8 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
     commandReferences,
     commandSkillReferences,
     extensions,
+    hookPlans,
+    extensionRegistry,
     commandRegistry,
     extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions)
   };
@@ -60,6 +65,19 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
     }),
     getCommandReferences: () => [...commandReferences]
   };
+}
+
+function createExtensionRegistry(
+  extensions: readonly OpenRuntimeExtensionDefinition[]
+): Map<string, OpenRuntimeExtensionDefinition> {
+  const registry = new Map<string, OpenRuntimeExtensionDefinition>();
+  for (const extension of extensions) {
+    if (registry.has(extension.name)) {
+      throw new Error(`Extension "${extension.name}" is registered more than once.`);
+    }
+    registry.set(extension.name, extension);
+  }
+  return registry;
 }
 
 export const defaultOpenRuntimeCli = createOpenRuntimeCli();
@@ -114,7 +132,6 @@ function createCommandRegistry(extensions: readonly OpenRuntimeExtensionDefiniti
   extension: OpenRuntimeExtensionDefinition;
   command: OpenRuntimeExtensionCommand;
 }> {
-  const extensionNames = new Set<string>();
   const registry = new Map<string, {
     extension: OpenRuntimeExtensionDefinition;
     command: OpenRuntimeExtensionCommand;
@@ -125,10 +142,6 @@ function createCommandRegistry(extensions: readonly OpenRuntimeExtensionDefiniti
     if (extension.name.length === 0) {
       throw new Error("Extension name must not be empty.");
     }
-    if (extensionNames.has(extension.name)) {
-      throw new Error(`Extension "${extension.name}" is registered more than once.`);
-    }
-    extensionNames.add(extension.name);
     for (const command of extension.commands ?? []) {
       if (builtInCommandNames.has(command.name)) {
         throw new Error(`Command "${command.name}" conflicts with a built-in command.`);

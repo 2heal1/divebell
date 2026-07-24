@@ -1,13 +1,17 @@
 import { createBridgeStateStore } from "../features/bridge/config.js";
 import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
 import { runDetectStackHooks } from "../features/extension/hooks.js";
+import type { ExtensionHookPlan } from "../features/extension/plan.js";
 import { applyOpenContextDefaultsOrThrow, createExtensionPageContext } from "../open-context.js";
 import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
 import type { RuntimeCliCommandOptions } from "../types/cli.js";
 import { createCommandOutput, createError } from "../utils/output.js";
 
 export async function runStackCommand(
-  options: RuntimeCliCommandOptions & { extensions: readonly OpenRuntimeExtensionDefinition[] }
+  options: RuntimeCliCommandOptions & {
+    extensions: readonly OpenRuntimeExtensionDefinition[];
+    detectStackHookPlan: ExtensionHookPlan;
+  }
 ): Promise<number> {
   if (options.args.command.length !== 1) {
     throw createError({
@@ -57,7 +61,11 @@ export async function runStackCommand(
       : "Technology stack detected.");
     return 0;
   }
-  const result = await runDetectStackHooks(options.extensions, { args, page, openruntime });
+  const result = await runDetectStackHooks(
+    options.extensions,
+    { args, page, openruntime },
+    options.detectStackHookPlan
+  );
   const stackDetection = {
     url: currentUrl,
     detectedAt: Date.now(),

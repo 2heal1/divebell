@@ -4,6 +4,10 @@ import type { BrowserRunner } from "../features/browser/runner.js";
 import type { BridgeProcessController, BridgeStarter } from "../features/bridge/process.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import type {
+  CliExtensionRunFunction,
+  CliExtensionRunOptionScalar,
+  CliExtensionRunOptionValue,
+  CliExtensionRunRequest,
   CliCommandReference,
   CliCommandSkillReference,
   ExtensionLoadRecord,
@@ -12,9 +16,14 @@ import type {
 } from "./commands.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
 import type { ExtensionPackageDownloader } from "../commands/installed.js";
+import type { ExtensionHookPlans } from "../features/extension/plan.js";
 
 export type {
   CliExtensionPageContext,
+  CliExtensionRunFunction,
+  CliExtensionRunOptionScalar,
+  CliExtensionRunOptionValue,
+  CliExtensionRunRequest,
   CliExtensionRunOptions,
   OpenRuntimeExtensionCommand,
   OpenRuntimeExtensionDefinition
@@ -73,6 +82,8 @@ export interface OpenRuntimeCliConfig {
   commandReferences: readonly CliCommandReference[];
   commandSkillReferences: readonly CliCommandSkillReference[];
   extensions: readonly OpenRuntimeExtensionDefinition[];
+  hookPlans: ExtensionHookPlans;
+  extensionRegistry: Map<string, OpenRuntimeExtensionDefinition>;
   commandRegistry: Map<string, {
     extension: OpenRuntimeExtensionDefinition;
     command: OpenRuntimeExtensionCommand;

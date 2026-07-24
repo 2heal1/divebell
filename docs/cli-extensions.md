@@ -185,6 +185,25 @@ export async function runFoo(
 
 Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
+A Command can reuse another Extension's Command by declaring that Extension in `requires` and calling `runExtension`:
+
+```ts
+{
+  name: "verify-order",
+  requires: ["account-tools"],
+  run: async ({ runExtension }) => {
+    const account = await runExtension("account-tools", {
+      command: "resolve-account",
+      args: ["checkout"],
+      options: { role: "buyer" }
+    });
+    return { account };
+  }
+}
+```
+
+The nested Command shares the current page and session and returns its raw result without producing separate CLI output or triggering Hooks. Missing dependencies affect only the Commands that declare them. Add `requiresOpenHook: true` when a Command depends on setup completed by its own Extension's `open` Hook.
+
 ### Hooks
 
 Hooks run while OpenRuntime opens a page, detects its stack, and closes it. A Hook should perform only the work required for its stage. Do not place a complete diagnostic workflow in the entry or a Hook.
@@ -244,6 +263,22 @@ export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () =
 ```
 
 Only Extensions that successfully participated in the matching `open` receive `close`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
+
+Hooks run in parallel by default. When order matters, use the object form:
+
+```ts
+hooks: {
+  open: {
+    after: ["account-tools"],
+    requires: ["environment-tools"],
+    run: async options => {
+      // ...
+    }
+  }
+}
+```
+
+`before` and `after` only control order. `requires` also requires the referenced Hook to exist and succeed. OpenRuntime computes parallel execution batches from the loaded Extension list; it runs `close` in reverse `open` order. Hook results are not passed to later Hooks, and one failure does not stop unrelated Hooks.
 
 See the [Hooks API](extension-api.md#hooks) for Hook parameters and return types.
 

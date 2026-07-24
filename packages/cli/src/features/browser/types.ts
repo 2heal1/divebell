@@ -9,6 +9,7 @@ export interface BrowserRunOptions {
   input?: string;
   disableRestore?: boolean;
   unencryptedStateOutput?: boolean;
+  reuseInitialBlankPage?: boolean;
 }
 
 export interface BrowserRunner {

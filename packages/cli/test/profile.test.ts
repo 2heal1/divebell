@@ -48,6 +48,42 @@ test("configures an isolated restore name and headed mode", () => {
   assert.equal(env.AGENT_BROWSER_HEADED, "1");
 });
 
+test("adds a reusable blank startup page without dropping custom browser arguments", () => {
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--disable-features=Translate,--start-maximized"
+  }, undefined, undefined, { reuseInitialBlankPage: true });
+
+  assert.equal(
+    env.AGENT_BROWSER_ARGS,
+    "--disable-features=Translate,--start-maximized\nabout:blank"
+  );
+
+  const existing = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--start-maximized\nabout:blank"
+  }, undefined, undefined, { reuseInitialBlankPage: true });
+  assert.equal(existing.AGENT_BROWSER_ARGS, "--start-maximized\nabout:blank");
+
+  const customStartupPage = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--start-maximized\nhttps://start.example.com"
+  }, undefined, undefined, { reuseInitialBlankPage: true });
+  assert.equal(customStartupPage.AGENT_BROWSER_ARGS, "--start-maximized\nhttps://start.example.com");
+});
+
+test("does not add a local startup page to restricted or external browsers", () => {
+  for (const source of [
+    { AGENT_BROWSER_ALLOWED_DOMAINS: "example.com" },
+    { AGENT_BROWSER_CDP: "9222" },
+    { AGENT_BROWSER_AUTO_CONNECT: "1" },
+    { AGENT_BROWSER_PROVIDER: "browserbase" },
+    { AGENT_BROWSER_ENGINE: "lightpanda" }
+  ]) {
+    const env = createAgentBrowserEnvironment(source, undefined, undefined, {
+      reuseInitialBlankPage: true
+    });
+    assert.equal(env.AGENT_BROWSER_ARGS, undefined);
+  }
+});
+
 test("uses a different browser session for each working directory", () => {
   const first = createAgentBrowserEnvironment(
     {},
@@ -212,7 +248,8 @@ test("forwards Chrome profile and state launch options when opening a page", asy
   assert.match(calls[0]?.at(-1) ?? "", /^https:\/\/app\.example\.com\/\?openruntimeSessionId=/);
   assert.deepEqual(launchOptions, {
     ui: false,
-    disableRestore: true
+    disableRestore: true,
+    reuseInitialBlankPage: true
   });
 });
 

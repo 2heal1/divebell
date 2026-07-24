@@ -38,7 +38,72 @@ export function writeCommandResult(
   options: CliExtensionRunOptions,
   result: unknown
 ): void {
-  options.output.ok(result);
+  options.output.ok(presentCommandResult(result));
+}
+
+function presentCommandResult(result: unknown): unknown {
+  if (!isRecord(result)) return result;
+  const presented = { ...result };
+  delete presented.compatibility;
+  delete presented.capability;
+  if (
+    presented.command === "mf trace" ||
+    presented.command === "mf preload trace"
+  ) {
+    presented.traces = Array.isArray(presented.traces)
+      ? presented.traces.map(presentRemoteTraceTime)
+      : presented.traces;
+  }
+  return presented;
+}
+
+function presentRemoteTraceTime(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    ...readableTimeFields(value),
+    ...(Array.isArray(value.stages)
+      ? { stages: value.stages.map(presentRemoteStageTime) }
+      : {})
+  };
+}
+
+function presentRemoteStageTime(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...value,
+    ...readableTimeFields(value),
+    ...(Array.isArray(value.resources)
+      ? { resources: value.resources.map(presentRemoteResourceTime) }
+      : {})
+  };
+}
+
+function presentRemoteResourceTime(value: unknown): unknown {
+  return isRecord(value)
+    ? { ...value, ...readableTimeFields(value) }
+    : value;
+}
+
+function readableTimeFields(
+  value: Record<string, unknown>
+): Record<string, string> {
+  return {
+    ...(typeof value.startedAt === "number"
+      ? { startedAt: readableTimestamp(value.startedAt) }
+      : {}),
+    ...(typeof value.endedAt === "number"
+      ? { endedAt: readableTimestamp(value.endedAt) }
+      : {})
+  };
+}
+
+function readableTimestamp(value: number): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toISOString()
+    .replace("T", " ")
+    .replace("Z", " UTC");
 }
 
 function unavailableError(
@@ -92,4 +157,8 @@ function isOpenContextError(error: unknown): boolean {
   return error instanceof Error &&
     ((error as Error & { code?: string }).code === "OPEN_CONTEXT_REQUIRED" ||
       /No opened page context/i.test(error.message));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

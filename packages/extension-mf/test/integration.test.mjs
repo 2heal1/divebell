@@ -70,6 +70,8 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
       assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
     } else {
       assert.equal(run.outputValue().command, item.expected);
+      assert.equal(run.outputValue().compatibility, undefined);
+      assert.equal(run.outputValue().capability, undefined);
     }
     assert.doesNotThrow(() => JSON.parse(JSON.stringify(run.outputValue())));
   }
@@ -146,8 +148,8 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
   assert.equal(pending.outcome, "pending");
   assert.equal(unknown.remote.outcome, "unknown");
   assert.equal(partial.supported, true);
-  assert.equal(partial.capability.completeness, "partial");
-  assert.equal(unavailable.capability.completeness, "unavailable");
+  assert.match(partial.warnings.join(" "), /partial|missing/i);
+  assert.match(unavailable.warnings.join(" "), /unavailable/i);
   assert.equal(unavailable.selection.kind, "unsupported");
 });
 

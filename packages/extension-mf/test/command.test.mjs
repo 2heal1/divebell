@@ -228,6 +228,8 @@ test("representative status selectors and module-info still route and produce JS
   );
   assert.equal(await runMfCommand(moduleRun.options), 0);
   assert.equal(moduleRun.outputValue().remote.status, "declared");
+  assert.equal(moduleRun.outputValue().compatibility, undefined);
+  assert.equal(moduleRun.outputValue().capability, undefined);
 });
 
 test("status output remains byte-for-byte compatible with the compact fixture", async () => {

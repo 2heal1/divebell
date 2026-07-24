@@ -29,8 +29,6 @@ test("bridge trace JSON is stable and preserves explicit lifecycle semantics", a
   assert.deepEqual(Object.keys(result), [
     "schemaVersion",
     "command",
-    "compatibility",
-    "capability",
     "selection",
     "operations",
     "currentStates",

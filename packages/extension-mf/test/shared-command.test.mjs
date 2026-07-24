@@ -49,12 +49,6 @@ test("shared status returns stable structured output by default", async () => {
     schemaVersion: 1,
     command: "mf shared status",
     supported: true,
-    capability: {
-      available: true,
-      completeness: "complete",
-      runtimeVersions: ["2.5.4"],
-      runtimeVersionKnown: true
-    },
     filters: { package: "react", scope: "default" },
     instances: [{
       instanceRef: "mf-1",

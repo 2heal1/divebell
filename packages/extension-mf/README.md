@@ -15,7 +15,7 @@ openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope 
 openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge <id>] [--operation <id>]
 ```
 
-All commands return structured output by default; `--json` is not required.
+All commands return structured output by default; `--json` is not required. Compatibility and capability summaries are used internally but are omitted from successful command output. When evidence is incomplete or unavailable, the useful reason remains in `warnings` and the next step remains in `recommendedActions`.
 
 `--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. The Observability Plugin assigns this reference to an instance object for the current page session; it is not an MF global key and is not used to index `__SHARE__`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
 
@@ -117,7 +117,9 @@ openruntime mf module-info catalog --instance mf-1
 
 The command first selects a confirmed consumer. It automatically selects only when exactly one consumer exists. With several consumers, duplicate names, or ambiguous remotes, it returns copyable candidate commands.
 
-Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, first observed loading time, capabilities, completeness, and warnings. Missing historical evidence remains unknown rather than being inferred from array order.
+The positional `remote` is optional only when the selected consumer has exactly one declared or loaded remote. It matches that consumer's configured remote name or alias; it does not select an MF producer instance by the producer's visible name. When the remote relationship is known, the result includes the matching `producerInstanceRef`.
+
+Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, and first observed loading time. Missing historical evidence remains unknown rather than being inferred from array order; useful gaps and next steps remain in `warnings` and `recommendedActions`.
 
 ## Remote loading commands
 
@@ -129,6 +131,8 @@ openruntime mf preload trace shop --instance mf-1
 ```
 
 `mf trace` shows the captured ordinary `loadRemote` chain from request start through remote matching, manifest or snapshot resolution, remote entry loading, container initialization, expose lookup, factory execution, and final result. With no target it lists trace summaries; each summary keeps its `instanceRef` and `traceId`.
+
+Absolute trace times are returned as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
 
 `mf remote check` checks the remote declaration, current relationship, manifest and remote entry facts, observed resource results, HTTP/MIME/redirect evidence, container initialization, exposes, cache, recovery, and timeout state. It only analyzes existing page evidence. It does not request a manifest or remote entry, execute a remote entry, or call container code.
 

@@ -12,6 +12,8 @@ openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-
 
 All commands return the versioned structured result objects by default.
 
+Successful command output omits the internal compatibility and capability summaries. If collection is incomplete or unavailable, the reason remains in `warnings` and the recovery step remains in `recommendedActions`.
+
 ## Ordinary remote trace
 
 `mf trace` orders evidence into these fixed stages:
@@ -26,6 +28,8 @@ All commands return the versioned structured result objects by default.
 8. final result
 
 Each stage contains its observed status, timestamps, duration, remote, expose, safe URL, HTTP status, MIME type, redirect state, cache/recovery/timeout flags, resource results, and safe error summary. A stage with a start event and no later completion is `pending`. A stage with no related record is `unknown`; it is never promoted to success from a later unrelated stage.
+
+The `mf trace` and `mf preload trace` commands format absolute start and end times as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
 
 The top-level trace outcome comes from the captured report. A recovered trace remains `recovered`, while its original failed resource stays in the resource list.
 

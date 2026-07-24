@@ -21,6 +21,22 @@ test("trace, remote check, and preload trace return structured output by default
   assert.equal(await runMfCommand(trace.options), 0);
   assert.equal(trace.outputValue().command, "mf trace");
   assert.equal(trace.outputValue().traces[0].traceId, "trace-load-1");
+  assert.equal(trace.outputValue().compatibility, undefined);
+  assert.equal(trace.outputValue().capability, undefined);
+  assert.equal(
+    trace.outputValue().traces[0].startedAt,
+    "1970-01-01 00:00:01.000 UTC"
+  );
+  assert.equal(
+    trace.outputValue().traces[0].stages[0].startedAt,
+    "1970-01-01 00:00:01.000 UTC"
+  );
+  const manifestStage = trace.outputValue().traces[0].stages.find(
+    (stage) => stage.name === "manifest"
+  );
+  assert.match(manifestStage.resources[0].startedAt, / UTC$/);
+  assert.match(manifestStage.resources[0].endedAt, / UTC$/);
+  assert.equal(typeof trace.outputValue().traces[0].duration, "number");
 
   const check = createOptions(
     ["mf", "remote", "check", "shop"],
@@ -30,6 +46,8 @@ test("trace, remote check, and preload trace return structured output by default
   assert.equal(await runMfCommand(check.options), 0);
   assert.equal(check.outputValue().command, "mf remote check");
   assert.equal(check.outputValue().remote.declared, true);
+  assert.equal(check.outputValue().compatibility, undefined);
+  assert.equal(check.outputValue().capability, undefined);
 
   const preload = createOptions(
     ["mf", "preload", "trace", "shop"],
@@ -40,6 +58,9 @@ test("trace, remote check, and preload trace return structured output by default
   assert.equal(preload.stdout(), "");
   assert.equal(preload.outputValue().command, "mf preload trace");
   assert.equal(preload.outputValue().traces[0].traceId, "trace-preload-1");
+  assert.equal(preload.outputValue().compatibility, undefined);
+  assert.equal(preload.outputValue().capability, undefined);
+  assert.match(preload.outputValue().traces[0].startedAt, / UTC$/);
   assert.doesNotMatch(JSON.stringify(preload.outputValue()), /trace-load-1/);
 });
 

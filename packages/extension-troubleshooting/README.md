@@ -2,7 +2,7 @@
 
 This OpenRuntime Extension adds `openruntime verify`, a focused command for checking that a page-declared business target reaches the expected status and optional data conditions.
 
-The package requires a page connected to Runtime Core. Framework targets such as Modern.js, Module Federation, Garfish, or Vmok provide supporting evidence, but they do not by themselves prove that the business result is correct.
+The package requires a page connected to Runtime Core. Framework targets such as Modern.js, Module Federation, or Garfish provide supporting evidence, but they do not by themselves prove that the business result is correct.
 
 ## Install
 

@@ -11,7 +11,7 @@
 
 - **Extension**：增加测试账号、环境准备、技术栈识别、专项诊断、验证命令或 Skill。
 - **自动化脚本**：由脚本自己打开页面、等待、操作、查询并按需停止浏览器和 Bridge。
-- **项目接入**：让页面 runtime 连接 Bridge，并暴露 Modern.js、MF、Vmok 或 Garfish 状态。
+- **项目接入**：让页面 runtime 连接 Bridge，并暴露 Modern.js、MF 或 Garfish 状态。
 - **业务能力**：增加 target、snapshot、event、action 或可等待的长期业务状态。
 
 只实现用户需要的类型。页面外部能完成的需求优先使用 Extension；只有需要应用内部事实时才做项目或
@@ -30,11 +30,11 @@ node <openruntime-skill-dir>/scripts/resolve-integration.mjs <path-to-package.js
 
 根据输出继续：
 
-- Modern.js / EdenX 满足当前插件条件时，使用 `@openruntime/modern-plugin`；读取
+- Modern.js 满足当前插件条件时，使用 `@openruntime/modern-plugin`；读取
   同目录的 `modernjs.md`。
-- 较旧的 Modern.js / EdenX 或普通前端项目需要页面侧能力时，使用 `@openruntime/core`；
+- 较旧的 Modern.js 或普通前端项目需要页面侧能力时，使用 `@openruntime/core`；
   读取同目录的 `core.md`。
-- Module Federation 或 Vmok 项目使用 MF observability 接入；读取
+- Module Federation 项目使用 MF observability 接入；读取
   同目录的 `module-federation.md`。任务涉及 MF 时，同时遵循当前环境提供的 MF skill。
 - Garfish 项目使用 Modern plugin 提供的 Garfish 能力；读取同目录的 `garfish.md`。
 

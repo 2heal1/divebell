@@ -164,6 +164,6 @@ Extension、源码和实际测试推进。
 
 - `@openruntime/core` 页面侧 target、snapshot、action：同目录的 `core.md`
 - Extension、自动化脚本和项目接入：同目录的 `integrate.md`
-- Modern.js / EdenX route、loader 和 hydration：同目录的 `modernjs.md`
-- Module Federation / Vmok remote、expose、shared 和 observability：同目录的 `module-federation.md`
+- Modern.js route、loader 和 hydration：同目录的 `modernjs.md`
+- Module Federation remote、expose、shared 和 observability：同目录的 `module-federation.md`
 - Garfish 子应用生命周期和 custom loader：同目录的 `garfish.md`

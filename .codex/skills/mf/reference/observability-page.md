@@ -142,7 +142,7 @@ Run this only when a project path or local dev context is available.
    `browser`:
    `rsbuild.config.*`, `rspack.config.*`, `webpack.config.*`,
    `vite.config.*`, `module-federation.config.*`,
-   `modern.config.*`, `edenx.config.*`, `src/observability*`,
+   `modern.config.*`, `src/observability*`,
    `src/runtime*`, `src/bootstrap*`, `src/main*`, and local page files that
    import an `observability` helper.
    - `ObservabilityBuildPlugin` is the build-side companion and does not replace

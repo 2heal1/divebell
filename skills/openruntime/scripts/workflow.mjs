@@ -437,7 +437,7 @@ function createInstallRuntimeNextAction(integration, bridge, url) {
     additionalActions.push({
       type: "wire_mf_observability",
       reference: "skills/openruntime/references/module-federation.md",
-      summary: "Wire @module-federation/observability-plugin in the MF/Vmok consumer if mf:* targets are required."
+      summary: "Wire @module-federation/observability-plugin in the MF consumer if mf:* targets are required."
     });
   }
 
@@ -538,7 +538,7 @@ function createSnapshotObserveNextAction(pluginSnapshot, url) {
 function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
   return {
     type: "browser_diagnose",
-    summary: "No installed MF/Vmok/Modern snapshot plugin was found. Inspect --help only when extension command discovery is useful, then diagnose normally with console/page-snapshot/network. Add a business target only when business facts or JS execution must be verified.",
+    summary: "No installed MF/Modern snapshot plugin was found. Inspect --help only when extension command discovery is useful, then diagnose normally with console/page-snapshot/network. Add a business target only when business facts or JS execution must be verified.",
     missingInstall: pluginSnapshot.missingInstall,
     url: url ?? null,
     commands: [

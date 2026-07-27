@@ -14,9 +14,6 @@ const mfDependencySignals = [
   "@module-federation/enhanced",
   "@module-federation/"
 ];
-const vmokDependencySignals = [
-  "vmok"
-];
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -113,7 +110,7 @@ function resolveModern(dependencies) {
     }
   }
 
-  const detected = Object.keys(versions).length > 0 || dependencies.edenx !== undefined || dependencies["@edenx/app-tools"] !== undefined;
+  const detected = Object.keys(versions).length > 0;
   const versionEntries = Object.entries(versions).map(([name, range]) => ({
     name,
     range,
@@ -169,7 +166,7 @@ function resolveModern(dependencies) {
 
 function resolveModuleFederation(dependencies) {
   const dependencyNames = Object.keys(dependencies);
-  const detected = dependencyNames.some((name) => isMfDependency(name) || isVmokDependency(name));
+  const detected = dependencyNames.some((name) => isMfDependency(name));
   const hasObservability = dependencies[mfObservabilityPackage] !== undefined;
 
   if (!detected) {
@@ -199,11 +196,6 @@ function isMfDependency(name) {
       ? name.startsWith(signal)
       : name === signal
   );
-}
-
-function isVmokDependency(name) {
-  const normalizedName = name.toLowerCase();
-  return vmokDependencySignals.some((signal) => normalizedName.includes(signal));
 }
 
 function parseVersion(input) {

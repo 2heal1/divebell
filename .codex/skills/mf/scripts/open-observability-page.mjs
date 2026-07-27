@@ -146,13 +146,10 @@ const defineWritableGlobal = (key, value) => {
 
 const ensureFederationGlobal = () => {
   const targetWindow = getTargetWindow();
-  const federation = targetWindow.__FEDERATION__ || targetWindow.__VMOK__ || {};
+  const federation = targetWindow.__FEDERATION__ || {};
 
   if (!targetWindow.__FEDERATION__) {
     defineWritableGlobal('__FEDERATION__', federation);
-  }
-  if (!targetWindow.__VMOK__) {
-    defineWritableGlobal('__VMOK__', targetWindow.__FEDERATION__);
   }
 
   targetWindow.__FEDERATION__.__GLOBAL_PLUGIN__ ||= [];
@@ -695,7 +692,6 @@ async function main() {
         title: document.title,
         injection: window[${JSON.stringify(INJECTION_GLOBAL)}] || null,
         hasFederation: Boolean(window.__FEDERATION__),
-        hasVmok: Boolean(window.__VMOK__),
         scopes: observability ? Object.keys(observability) : [],
       };
     })()`,
@@ -742,7 +738,6 @@ async function main() {
     title: pageState?.title,
     injection: pageState?.injection,
     hasFederation: pageState?.hasFederation,
-    hasVmok: pageState?.hasVmok,
     scopes: pageState?.scopes,
     reportSource: readAfterOpen ? 'initialRead' : 'not-read',
     initialReadAvailable,

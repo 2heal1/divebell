@@ -1212,7 +1212,7 @@ business target 时，可以把它用在修改代码后的最后一步。
 pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-Modern/MF/Vmok/Garfish target ready 只能证明对应底层加载链路，不应直接解释成业务 UI 成功。
+Modern/MF/Garfish target ready 只能证明对应底层加载链路，不应直接解释成业务 UI 成功。
 普通页面没有 business target 时，应在 Runtime Core 之外使用与任务直接对应的页面结果、请求结果或专项
 Extension 验证；不要只为了运行 `verify` 增加没有长期价值的 target。
 

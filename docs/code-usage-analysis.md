@@ -4,6 +4,22 @@ Chinese version: [分块与代码使用分析](code-usage-analysis.zh-CN.md)
 
 This optional analysis maps code recorded in the browser back to build chunks, application files, workspace packages, and third-party dependencies. It helps identify code that may be loaded too early or split more effectively.
 
+## What the report shows
+
+After installing `@openruntime/extension-code-usage`, you can generate a code-usage report that
+compares mapped size with actual execution across application code, third-party dependencies,
+files, and chunks. In Figure 1, the selected dependency is 62.0 KB but only 2.6% executed in the
+current phase, making it a useful candidate for closer inspection.
+
+![Figure 1: Mapped size and actual execution for dependencies](https://github.com/user-attachments/assets/a706172c-c348-431b-a911-c0ea5f4d0b88)
+
+Open a file from the report to see which code actually executed in the selected phase, as shown in
+Figure 2. Blue marks executed ranges; unhighlighted code did not execute.
+
+![Figure 2: Code executed in the selected phase](https://github.com/user-attachments/assets/d9d9feea-a00c-48fe-a73a-304e41db5ebf)
+
+## How to use it
+
 Basic memory checks do not need this setup. See the [Memory Analysis Guide](memory-analysis.md) when the question is whether a page journey causes sustained memory growth.
 
 Install the analysis command:

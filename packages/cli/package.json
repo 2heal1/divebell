@@ -9,6 +9,9 @@
     "directory": "packages/cli"
   },
   "author": "2heal1",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "bin": {
     "openruntime": "./dist/bin.js",
     "opr": "./dist/bin.js"

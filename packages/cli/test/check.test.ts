@@ -3,7 +3,10 @@ import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 import {
-  createBrowserInstallArgs
+  createBrowserInstallArgs,
+  isSupportedNodeVersion,
+  runCheckCommand,
+  SUPPORTED_NODE_RANGE
 } from "../dist/commands/check.js";
 import type {
   BrowserRunOptions,
@@ -15,6 +18,8 @@ import {
   createOutput,
   jsonResponse
 } from "./helpers.js";
+
+const CHROME_USER_AGENT = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36";
 
 test("checks an isolated Bridge, browser open, and page control path", async () => {
   const output = createOutput();
@@ -39,7 +44,11 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
       if (args[0] === "eval") {
         assert.match(args[1] ?? "", /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
         lifecycle.push("browser control");
-        return success('{"controlled":true,"bridgeInjected":true}');
+        return success(JSON.stringify({
+          controlled: true,
+          bridgeInjected: true,
+          userAgent: CHROME_USER_AGENT
+        }));
       }
       if (args[0] === "close") {
         lifecycle.push("browser close");
@@ -54,7 +63,12 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
     ready: true,
     fixed: false,
+    environment: expectedEnvironment(),
     checks: [
+      {
+        id: "node",
+        status: "passed"
+      },
       {
         id: "bridge",
         status: "passed"
@@ -105,7 +119,13 @@ test("installs browser requirements and retries only after browser startup fails
           : success("opened");
       }
       if (args[0] === "install") return success("installed");
-      if (args[0] === "eval") return success("true");
+      if (args[0] === "eval") {
+        return success(JSON.stringify({
+          controlled: true,
+          bridgeInjected: true,
+          userAgent: CHROME_USER_AGENT
+        }));
+      }
       if (args[0] === "close") return success("closed");
       throw new Error(`unexpected browser command: ${args.join(" ")}`);
     }
@@ -124,7 +144,12 @@ test("installs browser requirements and retries only after browser startup fails
   assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
     ready: true,
     fixed: true,
+    environment: expectedEnvironment(),
     checks: [
+      {
+        id: "node",
+        status: "passed"
+      },
       {
         id: "bridge",
         status: "passed"
@@ -174,6 +199,10 @@ test("does not install anything when a configured Chrome debugging port is unava
   assert.match(parsed.error.hint, /--user-data-dir/);
   assert.equal(parsed.data.ready, false);
   assert.equal(parsed.data.fixed, false);
+  assert.deepEqual(parsed.data.environment, expectedEnvironment({
+    kind: "cdp",
+    port: "9222"
+  }, null, null));
 });
 
 test("reports browser control failures without trying to reinstall Chrome", async () => {
@@ -196,6 +225,10 @@ test("reports browser control failures without trying to reinstall Chrome", asyn
   const parsed = JSON.parse(output.text());
   assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_CONTROL_FAILED");
   assert.deepEqual(parsed.data.checks, [
+    {
+      id: "node",
+      status: "passed"
+    },
     {
       id: "bridge",
       status: "passed"
@@ -261,6 +294,10 @@ test("stops before touching the browser when the local Bridge cannot start", asy
   assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BRIDGE_FAILED");
   assert.deepEqual(parsed.data.checks, [
     {
+      id: "node",
+      status: "passed"
+    },
+    {
       id: "bridge",
       status: "failed",
       message: "local ports are blocked"
@@ -284,6 +321,134 @@ test("adds Linux system dependencies only to the explicit browser repair", () =>
   assert.deepEqual(createBrowserInstallArgs("darwin"), ["install"]);
   assert.deepEqual(createBrowserInstallArgs("win32"), ["install"]);
 });
+
+test("reports unsupported Node before starting the Bridge or browser", async () => {
+  const output = createOutput();
+  let bridgeTouched = false;
+  let browserTouched = false;
+
+  const exitCode = await runCheckCommand({
+    args: {
+      command: ["check"],
+      options: new Map()
+    },
+    stdout: output.stdout,
+    env: {},
+    nodeVersion: "22.14.0",
+    fetcher: async () => {
+      throw new Error("fetch should not run");
+    },
+    bridgeStarter: {
+      start: async () => {
+        bridgeTouched = true;
+        throw new Error("bridge should not start");
+      }
+    },
+    browserRunner: createBrowserRunner(async () => {
+      browserTouched = true;
+      return success("browser should not start");
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(bridgeTouched, false);
+  assert.equal(browserTouched, false);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_NODE_UNSUPPORTED");
+  assert.deepEqual(parsed.data.environment, {
+    node: {
+      version: "22.14.0",
+      requirement: SUPPORTED_NODE_RANGE,
+      supported: false
+    },
+    browser: {
+      source: {
+        kind: "managed"
+      },
+      name: null,
+      version: null
+    }
+  });
+  assert.deepEqual(parsed.data.checks, [
+    {
+      id: "node",
+      status: "failed",
+      message: `Node.js 22.14.0 does not satisfy ${SUPPORTED_NODE_RANGE}.`
+    },
+    {
+      id: "bridge",
+      status: "skipped"
+    },
+    {
+      id: "browser.open",
+      status: "skipped"
+    },
+    {
+      id: "browser.control",
+      status: "skipped"
+    }
+  ]);
+});
+
+test("recognizes only Node.js 24 as supported", () => {
+  assert.equal(isSupportedNodeVersion("24.0.0"), true);
+  assert.equal(isSupportedNodeVersion("24.13.1"), true);
+  assert.equal(isSupportedNodeVersion("v24.13.1"), true);
+  assert.equal(isSupportedNodeVersion("23.11.1"), false);
+  assert.equal(isSupportedNodeVersion("25.0.0"), false);
+  assert.equal(isSupportedNodeVersion("24"), false);
+});
+
+test("does not install over a configured browser executable", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    env: {
+      AGENT_BROWSER_EXECUTABLE_PATH: "/opt/custom/chrome"
+    },
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") return failure("Configured Chrome could not start");
+      if (args[0] === "close") return success("closed");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(calls.map((args) => args[0]), ["open", "close"]);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_CONFIGURED_BROWSER_FAILED");
+  assert.deepEqual(parsed.data.environment.browser, {
+    source: {
+      kind: "executable"
+    },
+    name: null,
+    version: null
+  });
+});
+
+function expectedEnvironment(
+  source: Record<string, string> = {
+    kind: "managed"
+  },
+  name: string | null = "Chrome",
+  version: string | null = "150.0.0.0"
+) {
+  return {
+    node: {
+      version: process.versions.node,
+      requirement: SUPPORTED_NODE_RANGE,
+      supported: true
+    },
+    browser: {
+      source,
+      name,
+      version
+    }
+  };
+}
 
 function createCheckRunOptions(options: {
   output: ReturnType<typeof createOutput>;

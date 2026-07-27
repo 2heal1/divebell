@@ -26,24 +26,30 @@ import {
 import { openBrowserPage } from "./browser.js";
 
 const CHECK_URL = "about:blank";
+export const SUPPORTED_NODE_RANGE = ">=24.0.0 <25";
 const CHECK_CONTROL_SCRIPT = `(() => {
   const manager = globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__;
   if (manager === null || typeof manager !== "object") {
     throw new Error("OpenRuntime Bridge initialization was not installed in the page.");
   }
-  return { controlled: true, bridgeInjected: true };
+  return {
+    controlled: true,
+    bridgeInjected: true,
+    userAgent: typeof navigator === "object" ? navigator.userAgent : null
+  };
 })()`;
 
 type CheckStatus = "passed" | "failed" | "skipped";
 
 interface CheckEntry {
-  id: "bridge" | "browser.open" | "browser.control";
+  id: "node" | "bridge" | "browser.open" | "browser.control";
   status: CheckStatus;
   message?: string;
 }
 
 interface BrowserProbeSuccess {
   ok: true;
+  browser: BrowserIdentity;
 }
 
 interface BrowserProbeFailure {
@@ -54,12 +60,18 @@ interface BrowserProbeFailure {
 
 type BrowserProbeResult = BrowserProbeSuccess | BrowserProbeFailure;
 
+interface BrowserIdentity {
+  name: string | null;
+  version: string | null;
+}
+
 type BrowserSource =
   | { kind: "managed" }
   | { kind: "cdp"; port?: string }
   | { kind: "auto-connect" }
-  | { kind: "provider" }
-  | { kind: "engine" };
+  | { kind: "provider"; name: string }
+  | { kind: "engine"; name: string }
+  | { kind: "executable" };
 
 export async function runCheckCommand(options: {
   args: ParsedCliArgs;
@@ -69,8 +81,52 @@ export async function runCheckCommand(options: {
   bridgeStarter: BridgeStarter;
   bridgeProcessController?: BridgeProcessController;
   env: NodeJS.ProcessEnv;
+  nodeVersion?: string;
 }): Promise<number> {
   const output = createCommandOutput(options.stdout, "check");
+  const nodeVersion = options.nodeVersion ?? process.versions.node;
+  const browserSource = detectBrowserSource(options.env);
+  if (!isSupportedNodeVersion(nodeVersion)) {
+    const checks: CheckEntry[] = [
+      {
+        id: "node",
+        status: "failed",
+        message: `Node.js ${nodeVersion} does not satisfy ${SUPPORTED_NODE_RANGE}.`
+      },
+      {
+        id: "bridge",
+        status: "skipped"
+      },
+      {
+        id: "browser.open",
+        status: "skipped"
+      },
+      {
+        id: "browser.control",
+        status: "skipped"
+      }
+    ];
+    output.error(createError({
+      code: "OPENRUNTIME_CHECK_NODE_UNSUPPORTED",
+      kind: "validation",
+      message: `OpenRuntime requires Node.js 24, but this command is running on Node.js ${nodeVersion}.`,
+      retryable: false,
+      hint: "Install and select Node.js 24, then run `openruntime check` again.",
+      data: {
+        ready: false,
+        fixed: false,
+        environment: createEnvironmentData(
+          nodeVersion,
+          false,
+          browserSource,
+          emptyBrowserIdentity()
+        ),
+        checks
+      }
+    }));
+    return 1;
+  }
+
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "openruntime-check-"));
   const bridgeStateDirectory = join(temporaryDirectory, "bridge");
   const browserOptions: BrowserRunOptions = {
@@ -78,13 +134,17 @@ export async function runCheckCommand(options: {
     disableRestore: true
   };
   const fixRequested = hasOption(options.args, "fix");
-  const browserSource = detectBrowserSource(options.env);
   let bridge: StartDedicatedBridgeResult | undefined;
   let browserTouched = false;
   let fixed = false;
   let fixAttempted = false;
   let initialFailure: string | undefined;
-  let checks: CheckEntry[] = [];
+  const nodeCheck: CheckEntry = {
+    id: "node",
+    status: "passed"
+  };
+  let checks: CheckEntry[] = [nodeCheck];
+  let browserIdentity = emptyBrowserIdentity();
   let failure: CommandError | undefined;
   let cleanupFailure: string | undefined;
 
@@ -95,13 +155,17 @@ export async function runCheckCommand(options: {
         starter: options.bridgeStarter,
         stateDirectory: bridgeStateDirectory
       });
-      checks = [{
-        id: "bridge",
-        status: "passed"
-      }];
+      checks = [
+        nodeCheck,
+        {
+          id: "bridge",
+          status: "passed"
+        }
+      ];
     } catch (error) {
       const reason = errorMessage(error);
       checks = [
+        nodeCheck,
         {
           id: "bridge",
           status: "failed",
@@ -134,9 +198,12 @@ export async function runCheckCommand(options: {
         browserOptions
       );
       checks = [
-        checks[0] as CheckEntry,
+        ...checks.slice(0, 2),
         ...createBrowserChecks(probe)
       ];
+      if (probe.ok) {
+        browserIdentity = probe.browser;
+      }
 
       if (!probe.ok && probe.stage === "browser.open" && fixRequested && browserSource.kind === "managed") {
         fixAttempted = true;
@@ -167,9 +234,12 @@ export async function runCheckCommand(options: {
             browserOptions
           );
           checks = [
-            checks[0] as CheckEntry,
+            ...checks.slice(0, 2),
             ...createBrowserChecks(probe)
           ];
+          if (probe.ok) {
+            browserIdentity = probe.browser;
+          }
         }
       }
 
@@ -233,6 +303,12 @@ export async function runCheckCommand(options: {
   const data = {
     ready: failure === undefined,
     fixed,
+    environment: createEnvironmentData(
+      nodeVersion,
+      true,
+      browserSource,
+      browserIdentity
+    ),
     checks,
     ...(fixAttempted ? {
       fix: {
@@ -337,7 +413,8 @@ async function runBrowserProbe(
   }
 
   return {
-    ok: true
+    ok: true,
+    browser: readBrowserIdentity(controlled.stdout)
   };
 }
 
@@ -422,7 +499,11 @@ function createProbeFailure(
     });
   }
 
-  if (browserSource.kind === "provider" || browserSource.kind === "engine") {
+  if (
+    browserSource.kind === "provider"
+    || browserSource.kind === "engine"
+    || browserSource.kind === "executable"
+  ) {
     return createError({
       code: "OPENRUNTIME_CHECK_CONFIGURED_BROWSER_FAILED",
       kind: "needs_input",
@@ -499,19 +580,143 @@ function detectBrowserSource(env: NodeJS.ProcessEnv): BrowserSource {
       kind: "auto-connect"
     };
   }
-  if (env.AGENT_BROWSER_PROVIDER?.trim()) {
+  const provider = env.AGENT_BROWSER_PROVIDER?.trim();
+  if (provider) {
     return {
-      kind: "provider"
+      kind: "provider",
+      name: provider
     };
   }
   const engine = env.AGENT_BROWSER_ENGINE?.trim().toLowerCase();
   if (engine !== undefined && engine.length > 0 && engine !== "chrome") {
     return {
-      kind: "engine"
+      kind: "engine",
+      name: engine
+    };
+  }
+  if (env.AGENT_BROWSER_EXECUTABLE_PATH?.trim()) {
+    return {
+      kind: "executable"
     };
   }
   return {
     kind: "managed"
+  };
+}
+
+export function isSupportedNodeVersion(version: string): boolean {
+  const match = /^(?:v)?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  return match?.[1] === "24";
+}
+
+function createEnvironmentData(
+  nodeVersion: string,
+  nodeSupported: boolean,
+  browserSource: BrowserSource,
+  browserIdentity: BrowserIdentity
+) {
+  return {
+    node: {
+      version: nodeVersion,
+      requirement: SUPPORTED_NODE_RANGE,
+      supported: nodeSupported
+    },
+    browser: {
+      source: createBrowserSourceData(browserSource),
+      name: browserIdentity.name,
+      version: browserIdentity.version
+    }
+  };
+}
+
+function createBrowserSourceData(browserSource: BrowserSource) {
+  switch (browserSource.kind) {
+    case "cdp":
+      return {
+        kind: browserSource.kind,
+        ...(browserSource.port === undefined ? {} : { port: browserSource.port })
+      };
+    case "provider":
+    case "engine":
+      return {
+        kind: browserSource.kind,
+        name: browserSource.name
+      };
+    default:
+      return {
+        kind: browserSource.kind
+      };
+  }
+}
+
+function readBrowserIdentity(stdout: string): BrowserIdentity {
+  let result: unknown;
+  try {
+    result = JSON.parse(stdout);
+  } catch {
+    return emptyBrowserIdentity();
+  }
+  if (
+    result === null
+    || typeof result !== "object"
+    || !("userAgent" in result)
+    || typeof result.userAgent !== "string"
+  ) {
+    return emptyBrowserIdentity();
+  }
+  return parseBrowserUserAgent(result.userAgent);
+}
+
+function parseBrowserUserAgent(userAgent: string): BrowserIdentity {
+  const patterns: Array<{
+    name: string;
+    pattern: RegExp;
+  }> = [
+    {
+      name: "Edge",
+      pattern: /\bEdg(?:A|iOS)?\/([\d.]+)/
+    },
+    {
+      name: "Opera",
+      pattern: /\bOPR\/([\d.]+)/
+    },
+    {
+      name: "Chrome",
+      pattern: /\b(?:HeadlessChrome|Chrome|CriOS)\/([\d.]+)/
+    },
+    {
+      name: "Chromium",
+      pattern: /\bChromium\/([\d.]+)/
+    },
+    {
+      name: "Lightpanda",
+      pattern: /\bLightpanda\/([\d.]+)/
+    },
+    {
+      name: "Firefox",
+      pattern: /\b(?:Firefox|FxiOS)\/([\d.]+)/
+    },
+    {
+      name: "Safari",
+      pattern: /\bVersion\/([\d.]+).*\bSafari\//
+    }
+  ];
+  for (const entry of patterns) {
+    const match = entry.pattern.exec(userAgent);
+    if (match?.[1]) {
+      return {
+        name: entry.name,
+        version: match[1]
+      };
+    }
+  }
+  return emptyBrowserIdentity();
+}
+
+function emptyBrowserIdentity(): BrowserIdentity {
+  return {
+    name: null,
+    version: null
   };
 }
 

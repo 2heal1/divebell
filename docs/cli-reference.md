@@ -15,6 +15,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Bridge and Browser
 
+- `openruntime check [--fix]` - Open and control an isolated blank page to verify browser readiness; --fix installs missing browser requirements and retries.
 - `openruntime start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `openruntime stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
 - `openruntime profiles` - List Chrome profiles available to agent-browser.

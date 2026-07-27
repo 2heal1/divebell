@@ -1,0 +1,350 @@
+import assert from "node:assert/strict";
+import { test } from "@rstest/core";
+
+import { runCli } from "../dist/index.js";
+import {
+  createBrowserInstallArgs
+} from "../dist/commands/check.js";
+import type {
+  BrowserRunOptions,
+  BrowserRunResult
+} from "../dist/features/browser/runner.js";
+import {
+  commandOutput,
+  createBrowserRunner,
+  createOutput,
+  jsonResponse
+} from "./helpers.js";
+
+test("checks an isolated Bridge, browser open, and page control path", async () => {
+  const output = createOutput();
+  const browserCalls: Array<{
+    args: string[];
+    options: BrowserRunOptions | undefined;
+  }> = [];
+  const lifecycle: string[] = [];
+
+  const exitCode = await runCli(["check"], createCheckRunOptions({
+    output,
+    lifecycle,
+    browserRun: async (args, options) => {
+      browserCalls.push({ args, options });
+      if (args[0] === "open") {
+        assert.equal(args[1], "about:blank");
+        assert.equal(args[2], "--init-script");
+        assert.match(args[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+        lifecycle.push("browser open");
+        return success("opened");
+      }
+      if (args[0] === "eval") {
+        assert.match(args[1] ?? "", /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
+        lifecycle.push("browser control");
+        return success('{"controlled":true,"bridgeInjected":true}');
+      }
+      if (args[0] === "close") {
+        lifecycle.push("browser close");
+        return success("closed");
+      }
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+    ready: true,
+    fixed: false,
+    checks: [
+      {
+        id: "bridge",
+        status: "passed"
+      },
+      {
+        id: "browser.open",
+        status: "passed"
+      },
+      {
+        id: "browser.control",
+        status: "passed"
+      }
+    ]
+  }, "OpenRuntime is ready."));
+  assert.deepEqual(lifecycle, [
+    "bridge start",
+    "browser open",
+    "browser control",
+    "browser close",
+    "bridge stop"
+  ]);
+  assert.equal(browserCalls.length, 3);
+  const sessions = new Set(browserCalls.map((call) => call.options?.session));
+  assert.equal(sessions.size, 1);
+  assert.match(String([...sessions][0]), /^openruntime-check-[a-f0-9]+$/);
+  assert.deepEqual(
+    browserCalls.map((call) => call.options?.disableRestore),
+    [true, true, true]
+  );
+  assert.equal(browserCalls[0]?.options?.reuseInitialBlankPage, true);
+  assert.equal(browserCalls[1]?.options?.reuseInitialBlankPage, undefined);
+  assert.equal(browserCalls[2]?.options?.reuseInitialBlankPage, undefined);
+});
+
+test("installs browser requirements and retries only after browser startup fails", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+  let openAttempts = 0;
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") {
+        openAttempts += 1;
+        return openAttempts === 1
+          ? failure("Chrome exited early (unknown code)")
+          : success("opened");
+      }
+      if (args[0] === "install") return success("installed");
+      if (args[0] === "eval") return success("true");
+      if (args[0] === "close") return success("closed");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls.map((args) => args[0]), [
+    "open",
+    "close",
+    "install",
+    "open",
+    "eval",
+    "close"
+  ]);
+  assert.deepEqual(calls[2], createBrowserInstallArgs(process.platform));
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+    ready: true,
+    fixed: true,
+    checks: [
+      {
+        id: "bridge",
+        status: "passed"
+      },
+      {
+        id: "browser.open",
+        status: "passed"
+      },
+      {
+        id: "browser.control",
+        status: "passed"
+      }
+    ],
+    fix: {
+      attempted: true,
+      status: "applied",
+      initialFailure: "Chrome exited early (unknown code)"
+    }
+  }, "OpenRuntime is ready. Browser requirements were installed."));
+});
+
+test("does not install anything when a configured Chrome debugging port is unavailable", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    env: {
+      AGENT_BROWSER_CDP: "9222"
+    },
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") return failure("Failed to connect to CDP");
+      if (args[0] === "close") return success("closed");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(calls.map((args) => args[0]), ["open", "close"]);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.status, "error");
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_DEBUG_CONNECTION_REQUIRED");
+  assert.equal(parsed.error.kind, "needs_input");
+  assert.match(parsed.message, /Chrome DevTools port 9222/);
+  assert.match(parsed.error.hint, /--remote-debugging-port=9222/);
+  assert.match(parsed.error.hint, /--user-data-dir/);
+  assert.equal(parsed.data.ready, false);
+  assert.equal(parsed.data.fixed, false);
+});
+
+test("reports browser control failures without trying to reinstall Chrome", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") return success("opened");
+      if (args[0] === "eval") return failure("Bridge initialization was missing");
+      if (args[0] === "close") return success("closed");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(calls.map((args) => args[0]), ["open", "eval", "close"]);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_CONTROL_FAILED");
+  assert.deepEqual(parsed.data.checks, [
+    {
+      id: "bridge",
+      status: "passed"
+    },
+    {
+      id: "browser.open",
+      status: "passed"
+    },
+    {
+      id: "browser.control",
+      status: "failed",
+      message: "Bridge initialization was missing"
+    }
+  ]);
+});
+
+test("keeps browser installer errors in the check result", async () => {
+  const output = createOutput();
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    browserRun: async (args) => {
+      if (args[0] === "open") return failure("Chrome is missing");
+      if (args[0] === "close") return success("closed");
+      if (args[0] === "install") throw new Error("installer was blocked");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_FIX_FAILED");
+  assert.match(parsed.message, /installer was blocked/);
+  assert.deepEqual(parsed.data.fix, {
+    attempted: true,
+    status: "failed",
+    initialFailure: "Chrome is missing"
+  });
+});
+
+test("stops before touching the browser when the local Bridge cannot start", async () => {
+  const output = createOutput();
+  let browserTouched = false;
+
+  const exitCode = await runCli(["check"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    env: {},
+    bridgeStarter: {
+      start: async () => {
+        throw new Error("local ports are blocked");
+      }
+    },
+    browserRunner: createBrowserRunner(async () => {
+      browserTouched = true;
+      return success("unexpected");
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(browserTouched, false);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BRIDGE_FAILED");
+  assert.deepEqual(parsed.data.checks, [
+    {
+      id: "bridge",
+      status: "failed",
+      message: "local ports are blocked"
+    },
+    {
+      id: "browser.open",
+      status: "skipped"
+    },
+    {
+      id: "browser.control",
+      status: "skipped"
+    }
+  ]);
+});
+
+test("adds Linux system dependencies only to the explicit browser repair", () => {
+  assert.deepEqual(createBrowserInstallArgs("linux"), [
+    "install",
+    "--with-deps"
+  ]);
+  assert.deepEqual(createBrowserInstallArgs("darwin"), ["install"]);
+  assert.deepEqual(createBrowserInstallArgs("win32"), ["install"]);
+});
+
+function createCheckRunOptions(options: {
+  output: ReturnType<typeof createOutput>;
+  browserRun(
+    args: string[],
+    runOptions?: BrowserRunOptions
+  ): Promise<BrowserRunResult>;
+  lifecycle?: string[];
+  env?: NodeJS.ProcessEnv;
+}) {
+  let bridgeStarted = false;
+  const bridgePid = 41321;
+  const bridgePort = 18131;
+  const bridgeUrl = `http://localhost:${bridgePort}`;
+  return {
+    stdout: options.output.stdout,
+    stderr: options.output.stderr,
+    env: options.env ?? {},
+    fetcher: async (url: string | URL | Request) => {
+      assert.equal(String(url), `${bridgeUrl}/runtimes`);
+      if (!bridgeStarted) throw new TypeError("fetch failed");
+      return jsonResponse({ runtimes: [] });
+    },
+    bridgeStarter: {
+      start: async ({ port }: { port: number }) => {
+        assert.equal(port, 0);
+        bridgeStarted = true;
+        options.lifecycle?.push("bridge start");
+        return {
+          pid: bridgePid,
+          port: bridgePort,
+          bridgeUrl
+        };
+      }
+    },
+    bridgeProcessController: {
+      isRunning: (pid: number) => {
+        assert.equal(pid, bridgePid);
+        return true;
+      },
+      stop: (pid: number) => {
+        assert.equal(pid, bridgePid);
+        options.lifecycle?.push("bridge stop");
+      }
+    },
+    browserRunner: createBrowserRunner(options.browserRun)
+  };
+}
+
+function success(stdout: string): BrowserRunResult {
+  return {
+    exitCode: 0,
+    stdout,
+    stderr: ""
+  };
+}
+
+function failure(stderr: string): BrowserRunResult {
+  return {
+    exitCode: 1,
+    stdout: "",
+    stderr
+  };
+}

@@ -18,6 +18,7 @@ import { runRuntimeCliCommand } from "./commands/runtime.js";
 import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
+import { runCheckCommand } from "./commands/check.js";
 import type {
   CliRunOptions,
   OpenRuntimeCliConfig
@@ -27,7 +28,8 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
-  const browserRunner = options.browserRunner ?? createDefaultBrowserRunner();
+  const env = options.env ?? process.env;
+  const browserRunner = options.browserRunner ?? createDefaultBrowserRunner({ env });
   const bridgeStarter = options.bridgeStarter ?? createDetachedBridgeStarter(
     new URL("./bin.js", import.meta.url).href
   );
@@ -62,6 +64,20 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
 
     if (args.command[0] === "__bridge-server") {
       return await runBridgeServerCommand(args, stdout, options.waitUntilClosed);
+    }
+
+    if (args.command[0] === "check") {
+      return await runCheckCommand({
+        args,
+        stdout,
+        fetcher,
+        browserRunner,
+        bridgeStarter,
+        ...(options.bridgeProcessController === undefined
+          ? {}
+          : { bridgeProcessController: options.bridgeProcessController }),
+        env
+      });
     }
 
     if (args.command[0] === "start") {

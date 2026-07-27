@@ -3,6 +3,11 @@ export type { CliCommandReference } from "../types/commands.js";
 
 export const cliCommandReferences: CliCommandReference[] = [
   {
+    category: "Bridge and Browser",
+    usage: "openruntime check [--fix]",
+    description: "Open and control an isolated blank page to verify browser readiness; --fix installs missing browser requirements and retries."
+  },
+  {
     category: "Extensions",
     usage: "openruntime extensions add <package-or-path> [--extensions-dir <path>]",
     description: "Validate and install an OpenRuntime extension with no runtime dependencies from an npm package or local path."

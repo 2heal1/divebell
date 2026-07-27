@@ -60,7 +60,7 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
           env: createAgentBrowserEnvironment(
             baseEnv,
             profileDirectory,
-            restoreName,
+            runOptions.session ?? restoreName,
             runOptions,
             options.cwd
           ),

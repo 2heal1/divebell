@@ -7,6 +7,7 @@ export interface BrowserRunResult {
 export interface BrowserRunOptions {
   ui?: boolean;
   input?: string;
+  session?: string;
   disableRestore?: boolean;
   unencryptedStateOutput?: boolean;
   reuseInitialBlankPage?: boolean;

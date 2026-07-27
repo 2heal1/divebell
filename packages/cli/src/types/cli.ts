@@ -37,6 +37,7 @@ export interface CliRunOptions {
     write(chunk: string): void;
   };
   stdin?: AsyncIterable<string | Uint8Array>;
+  env?: NodeJS.ProcessEnv;
   fetcher?: Fetcher;
   browserRunner?: BrowserRunner;
   bridgeStarter?: BridgeStarter;

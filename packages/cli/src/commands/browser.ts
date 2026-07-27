@@ -113,6 +113,8 @@ export async function runBrowserCliCommand(
         code: "PAGE_OPEN_FAILED",
         kind: "browser",
         message: result.stderr.trim() || result.stdout.trim() || "Could not open the page.",
+        retryable: true,
+        hint: "Run `openruntime check` to verify browser startup, or `openruntime check --fix` to install missing browser requirements.",
         details: {
           url,
           openedUrl,
@@ -300,7 +302,7 @@ async function runClickCommand(
 }
 
 
-async function openBrowserPage(
+export async function openBrowserPage(
   browserRunner: BrowserRunner,
   args: ParsedCliArgs,
   openedUrl: string,

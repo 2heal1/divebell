@@ -144,6 +144,30 @@ test("uses agent-browser as the default browser runner", async () => {
   });
 });
 
+test("allows an isolated command to override the default browser session", async () => {
+  const runner = createDefaultBrowserRunner({
+    env: {},
+    agentBrowser: {
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ session: process.env.AGENT_BROWSER_SESSION, restore: process.env.AGENT_BROWSER_RESTORE ?? null }))"
+      ],
+      session: "default-agent-browser"
+    }
+  });
+
+  const result = await runner.run(["snapshot"], {
+    session: "isolated-browser-check",
+    disableRestore: true
+  });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    session: "isolated-browser-check",
+    restore: null
+  });
+});
+
 test("uses the packaged OpenRuntime agent-browser by default", async () => {
   const entryPath = resolveBundledAgentBrowserEntryPath();
   assert.match(entryPath ?? "", /@openruntime[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);

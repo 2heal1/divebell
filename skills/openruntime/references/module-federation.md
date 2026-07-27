@@ -2,6 +2,12 @@
 
 Use this reference when diagnosing Module Federation remote, expose, shared, preload, or observability report state through OpenRuntime.
 
+## Contents
+
+- [Browser Runtime Setup](#browser-runtime-setup)
+- [Targets](#targets)
+- [Report Actions](#report-actions)
+
 MF consumers should use `@module-federation/observability-plugin`. The plugin records remote, expose, shared, preload, and report data that OpenRuntime can expose as targets and actions.
 
 Prefer the resolver when a project package file is available:

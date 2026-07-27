@@ -2,6 +2,12 @@
 
 Use this reference when diagnosing Modern.js route, loader, route component, SSR, hydration, or navigation state through OpenRuntime.
 
+## Contents
+
+- [Version Gate](#version-gate)
+- [Route, Loader, SSR, and Hydration](#route--loader--ssr--hydration)
+- [Business Ready Helper](#business-ready-helper)
+
 ## Version Gate
 
 Before recommending `@openruntime/modern-plugin`, run the resolver against the

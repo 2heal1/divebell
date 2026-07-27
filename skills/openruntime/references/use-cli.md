@@ -1,109 +1,155 @@
-# 使用 OpenRuntime CLI 完成临时任务
+# Use the OpenRuntime CLI for One-Off Tasks
 
-只在根 `SKILL.md` 把任务分流到“功能使用”后读取本文件。目标是完成一次信息查询、
-页面操作或声明动作，然后回到用户原来的主流程。
+Read this file only after the root `SKILL.md` routes the task to **Use
+capabilities**. Complete one information query, page interaction, or declared
+action, then return to the user's original workflow.
 
-不要运行 troubleshooting workflow，不要为了普通查询修改应用源码、补 OpenRuntime 接入、
-注册 `business:*` target 或执行最终业务验收。
+Do not run the troubleshooting workflow. Do not modify application source,
+add an OpenRuntime integration, register a `business:*` target, or perform final
+business verification for an ordinary query.
 
-## 1. 发现当前能力
+## Contents
 
-先运行当前环境实际可用的 CLI help：
+- [Discover Current Capabilities](#1-discover-current-capabilities)
+- [Determine the Minimum Required Context](#2-determine-the-minimum-required-context)
+- [Run the Smallest Matching Command](#3-run-the-smallest-matching-command)
+- [Return to the Primary Workflow](#4-return-to-the-primary-workflow)
+- [Switch to Troubleshooting Only When Necessary](#5-switch-to-troubleshooting-only-when-necessary)
+- [Routing Examples](#routing-examples)
+
+## 1. Discover Current Capabilities
+
+Start with the CLI help that is actually available in the current environment:
 
 ```bash
 openruntime --help
 ```
 
-如果项目只提供本地依赖，使用项目自己的执行方式，例如：
+If the project provides only a local dependency, use its local execution method:
 
 ```bash
 pnpm exec openruntime --help
 ```
 
-也可以使用等价的 `opr --help`。顶层 help 只负责发现一级命令；找到匹配的命令后继续运行：
+`opr --help` is equivalent. Top-level help discovers first-level commands. After
+finding a relevant command, read its scoped help:
 
 ```bash
 openruntime <command> --help
 ```
 
-以实际 help 为准：
+Trust the actual help output:
 
-- 从顶层命令描述判断是否匹配当前任务。
-- 从命令自己的 usage 和描述确认参数及调用顺序；help 额外提供示例时再参考示例。
-- 从 `External Extensions` 发现当前机器或项目注入的扩展命令。
-- 只在描述明确匹配时使用扩展命令，不根据命令名、文件路径或记忆猜测。
+- Use the top-level command description to decide whether it matches the task.
+- Use the command's own usage and description to confirm arguments and ordering.
+  Consult examples only when that help includes them.
+- Discover commands injected by the current machine or project under
+  `External Extensions`.
+- Use an Extension command only when its description clearly matches the task.
+  Do not infer behavior from a command name, file path, or memory.
 
-如果命令区域显示 `Skill: available for <command>`，必须先运行：
+When a command section reports `Skill: available for <command>`, first run:
 
 ```bash
 openruntime <command> --skill
 ```
 
-这个命令只接受一级命令名，不能附带子命令或业务参数。它会返回对应 `SKILL.md` 的绝对路径，
-不会执行命令本身。完整读取并遵循该 skill 后再调用业务命令；不要只看文件名或节选猜测流程。
+Pass only the first-level command name, without subcommands or business
+arguments. The command returns the absolute path to its `SKILL.md` without
+executing business logic. Read that skill in full and follow it before invoking
+the command; do not guess from the filename or an excerpt.
 
-命令自带的 skill 只负责这次命令子任务。命令完成后，返回本文件并继续用户原来的主流程；
-除非它提供了必须修复的页面故障证据，否则不要把命令 skill 延伸成 OpenRuntime 全面排查。
+A command-provided skill governs only that command subtask. After the command
+finishes, return here and continue the user's original workflow. Do not expand
+it into a full OpenRuntime investigation unless it provides page-failure
+evidence that must be fixed.
 
-如果用户只是询问“有哪些功能”或“某个命令怎么用”，根据 help 直接说明；不要为了介绍
-功能而执行会改变页面、账号或业务状态的命令。
+When the user asks only what capabilities exist or how to use a command, answer
+from help. Do not execute commands that change page, account, or business state
+merely to explain a feature.
 
-## 2. 判断命令需要什么上下文
+## 2. Determine the Minimum Required Context
 
-按 help 和命令返回的提示选择最小准备动作：
+Choose the smallest preparation step from help and command output:
 
-- 不依赖页面的命令直接执行，例如查看帮助或列出已导入的账号状态。
-- 页面类命令只操作最近一次 `openruntime open <url>` 建立的页面上下文。已有正确页面时直接
-  复用；没有页面且用户给出了目标 URL 时先执行 `openruntime open <url>`。
-- 缺少目标 URL、账号、候选项或其他必要输入时，只请求缺失信息，不扩大任务范围。
-- `targets`、`snapshot`、`events`、`actions`、`input-options`、`run-action`、`wait-for` 和
-  `verify` 需要可选中的 connected runtime。普通查询遇到未接入页面时，不要擅自修改源码；
-  报告当前没有 runtime 证据，或在用户目标本来就包含接入时切换到接入流程。
+- Run page-independent commands directly, such as help or listing imported
+  authentication profiles.
+- Page commands operate on the current page created by the latest
+  `openruntime open <url>`. Reuse the correct page when it already exists. If no
+  page exists and the user supplied a target URL, run
+  `openruntime open <url>` first.
+- When a required URL, account, option, or other input is missing, request only
+  that missing input and do not broaden the task.
+- `targets`, `snapshot`, `events`, `actions`, `input-options`, `run-action`,
+  `wait-for`, and `verify` need a selectable connected runtime. For an ordinary
+  query against a page without integration, do not change source without
+  authorization. Report that Runtime evidence is unavailable, or switch to the
+  integration workflow only when integration is already part of the user's
+  goal.
 
-不要手动启动 Bridge，除非 help、错误提示或用户任务明确要求调试 Bridge。本地 CLI 通常会
-自动准备 Bridge。
+Do not start Bridge manually unless help, an error, or the user's task
+explicitly requires Bridge diagnosis. The local CLI normally prepares Bridge
+automatically.
 
-## 3. 执行最小命令
+## 3. Run the Smallest Matching Command
 
-先执行一条最匹配任务的命令，不要并发尝试多组相似查询。根据结构化输出继续：
+Start with one command that best matches the task. Do not run several similar
+queries in parallel. Continue from structured output:
 
-- `status=ok`：读取结果，完成当前支线。
-- `status=needs_input`：使用候选项或提示补充缺失输入，再继续同一命令。
-- `status=error`：优先根据 `code`、`message`、`hint` 和 `retryable` 修正输入、登录态或页面上下文。
+- `status=ok`: read the result and finish this subtask.
+- `status=needs_input`: use the supplied options or prompt to provide the
+  missing input, then continue the same command.
+- `status=error`: use `code`, `message`, `hint`, and `retryable` to correct the
+  input, authentication state, or page context first.
 
-对于安全的输入或上下文错误，按明确提示修正后重试。不要把命令不存在、参数错误、缺少页面、
-需要登录或没有匹配数据自动解释成应用故障。
+Retry safe input or context errors after applying the explicit correction. Do
+not automatically treat a missing command, invalid argument, missing page,
+login requirement, or empty result as an application failure.
 
-读取类命令可以直接执行。可能改变页面、账号或业务状态的命令，只在用户请求已经明确包含该
-动作时执行；先读取 action 的风险、启用状态和输入候选，不要自行扩大动作范围。
+Run read-only commands directly. Run commands that may change page, account, or
+business state only when the user's request already includes that action.
+Inspect the action's risk, enabled state, and input options first; do not widen
+its scope.
 
-## 4. 返回主流程
+## 4. Return to the Primary Workflow
 
-拿到查询或动作结果后：
+After obtaining the query or action result:
 
-1. 提取对用户原任务真正有用的结果。
-2. 简短记录使用了哪个 OpenRuntime 能力、是否遵循了命令自带的 skill，以及结果是否成功。
-3. 立即继续用户原来的主流程，不进入诊断、源码修改或业务验收。
+1. Extract only what is useful to the user's original task.
+2. Briefly record which OpenRuntime capability was used, whether a
+   command-provided skill applied, and whether the command succeeded.
+3. Resume the user's original workflow immediately without entering diagnosis,
+   source changes, or business verification.
 
-不要为了清理临时查询而执行 `openruntime stop`，以免关闭主流程仍可能复用的页面和 Bridge。
-只有用户明确要求结束会话，或当前任务本身负责完整浏览器生命周期时才停止。
+Do not run `openruntime stop` merely to clean up a temporary query; the primary
+workflow may still reuse the page and Bridge. Stop only when the user asks to
+end the session or the current task owns the complete browser lifecycle.
 
-## 5. 何时切换到问题排查
+## 5. Switch to Troubleshooting Only When Necessary
 
-只在满足下面任一条件时，返回根 `SKILL.md` 并改读 `references/troubleshoot.md`：
+Return to the root `SKILL.md` and read `references/troubleshoot.md` only when
+one of these conditions applies:
 
-- 用户明确要求找出问题并修好。
-- 命令已经提供页面或 runtime 故障证据，而且不修复就无法完成用户的最终目标。
-- 用户要求把当前异常修复后做业务级验收。
+- The user explicitly asks to find and fix the problem.
+- A command provides page or Runtime failure evidence, and the user's final
+  goal cannot be completed without fixing it.
+- The user asks for business-level verification after the current failure is
+  fixed.
 
-切换后从 troubleshooting 的访问条件和真实页面准备开始。已有正确登录状态和 open context 时复用，
-不要把功能使用阶段的命令成功当作最终验收。
+After switching, begin with troubleshooting access and real-page preparation.
+Reuse the correct authentication state and open context. Do not treat a
+successful capability query as final verification.
 
-## 示例分流
+## Routing Examples
 
-- “用 openruntime 跑一下当前项目的内存检查，然后继续修复”：查看 help，读取命令 skill，调用匹配的
-  扩展命令，提取结果；如果结果证明存在故障且修复属于目标，再切换到排查流程。
-- “OpenRuntime 现在有哪些账号命令”：查看 help 并说明，不执行导入、导出或清理。
-- “读取当前页面声明的 actions”：执行 `actions` 查询；没有 connected runtime 时报告证据不可用，
-  不擅自给页面接入 OpenRuntime。
-- “remote 一直加载失败，用 OpenRuntime 找到原因并修好”：直接进入问题排查，不使用本流程。
+- "Run the current project's memory check with OpenRuntime, then continue
+  fixing it": inspect help, read the command skill, invoke the matching
+  Extension command, and extract its result. Switch to troubleshooting only if
+  the result proves a failure and fixing it is part of the goal.
+- "Which account commands does OpenRuntime provide?": inspect help and explain
+  the commands without importing, exporting, or clearing anything.
+- "Read the actions declared by the current page": run the `actions` query. If
+  no runtime is connected, report that the evidence is unavailable; do not add
+  an OpenRuntime integration without authorization.
+- "A remote keeps failing to load. Use OpenRuntime to find the cause and fix
+  it": enter the troubleshooting workflow directly.

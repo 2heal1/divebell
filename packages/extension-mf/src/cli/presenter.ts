@@ -14,19 +14,15 @@ export interface CommandPresenter {
     bridgeId?: string;
     operationId?: string;
   }): string;
-  trace(options?: {
+  remoteTrace(options?: {
     target?: string;
     instanceRef?: string;
     traceId?: string;
+    preload?: boolean;
   }): string;
-  remoteCheck(options: {
+  remoteStatus(options: {
     remote: string;
     instanceRef?: string;
-  }): string;
-  preloadTrace(options?: {
-    remote?: string;
-    instanceRef?: string;
-    traceId?: string;
   }): string;
 }
 
@@ -64,20 +60,28 @@ export function createCommandPresenter(prefix: readonly string[]): CommandPresen
           : `--instance ${quote(options.instanceRef)}`,
         options.bridgeId === undefined
           ? undefined
-          : `--bridge ${quote(options.bridgeId)}`,
+          : `--bridge-id ${quote(options.bridgeId)}`,
         options.operationId === undefined
           ? undefined
           : `--operation ${quote(options.operationId)}`
       ].filter((value): value is string => value !== undefined).join(" ");
     },
-    trace(options = {}) {
-      return remoteCommand(commandPrefix, ["trace"], options.target, options);
+    remoteTrace(options = {}) {
+      return remoteCommand(
+        commandPrefix,
+        ["remote", "trace"],
+        options.target,
+        options,
+        options.preload === true ? "--preload" : undefined
+      );
     },
-    remoteCheck(options) {
-      return remoteCommand(commandPrefix, ["remote", "check"], options.remote, options);
-    },
-    preloadTrace(options = {}) {
-      return remoteCommand(commandPrefix, ["preload", "trace"], options.remote, options);
+    remoteStatus(options) {
+      return remoteCommand(
+        commandPrefix,
+        ["remote", "status"],
+        options.remote,
+        options
+      );
     }
   };
 }
@@ -86,12 +90,14 @@ function remoteCommand(
   prefix: string,
   path: string[],
   target: string | undefined,
-  options: { instanceRef?: string; traceId?: string }
+  options: { instanceRef?: string; traceId?: string },
+  mode?: string
 ): string {
   return [
     prefix,
     ...path,
     target === undefined ? undefined : quote(target),
+    mode,
     options.instanceRef === undefined ? undefined : `--instance ${quote(options.instanceRef)}`,
     options.traceId === undefined ? undefined : `--trace-id ${quote(options.traceId)}`
   ].filter((value): value is string => value !== undefined).join(" ");

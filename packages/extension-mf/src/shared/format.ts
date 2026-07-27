@@ -5,53 +5,7 @@ import type {
 } from "./types.js";
 
 export function formatSharedStatus(result: SharedStatusResult): string {
-  const lines = [
-    "Module Federation shared status",
-    `Capability: ${formatCapability(result)}`,
-    `Runtime: ${result.capability.runtimeVersions.join(", ") || "unknown"}`,
-    ""
-  ];
-  if (!result.supported) {
-    lines.push("Shared state is not supported by the current reader.", "");
-  } else {
-    for (const instance of result.instances) {
-      lines.push(
-        `${instance.instanceRef}  ${instance.mfName}`,
-        `  runtime: ${instance.runtimeVersion ?? "unknown"}`
-      );
-      if (instance.scopes.length === 0) {
-        lines.push("  shared scopes: none matched", "");
-        continue;
-      }
-      for (const scope of instance.scopes) {
-        lines.push(`  scope: ${scope.scope}`);
-        if (scope.packages.length === 0) {
-          lines.push("    packages: none matched");
-          continue;
-        }
-        for (const item of scope.packages) {
-          lines.push(
-            `    ${item.package}`,
-            `      available: ${item.availableVersions.join(", ") || "none"}`,
-            `      loaded: ${item.loadedVersions.join(", ") || "none"}`
-          );
-          for (const version of item.versions) {
-            lines.push(
-              `      ${version.version}: provider=${version.provider ?? "unknown"} loaded=${formatBoolean(version.loaded)} singleton=${formatBoolean(version.singleton)} eager=${formatBoolean(version.eager)} strategy=${version.strategy ?? "unknown"}`
-            );
-          }
-          for (const conflict of item.conflicts) {
-            lines.push(
-              `      conflict: ${conflict.reason}; versions=${conflict.versions.join(", ")}; current=${conflict.currentVersion ?? "unknown"} from=${conflict.currentFrom ?? "unknown"}`
-            );
-          }
-        }
-      }
-      lines.push("");
-    }
-  }
-  appendWarnings(lines, result.warnings, result.recommendedActions);
-  return `${lines.join("\n").trimEnd()}\n`;
+  return `${JSON.stringify(result.shared, null, 2)}\n`;
 }
 
 export function formatSharedTrace(result: PresentedSharedTraceResult): string {

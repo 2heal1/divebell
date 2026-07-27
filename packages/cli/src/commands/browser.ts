@@ -96,7 +96,10 @@ export async function runBrowserCliCommand(
       normalizedUrl,
       bridgeUrl,
       sessionId,
-      openedAt
+      openedAt,
+      ...(result.injectedScriptPath === undefined
+        ? {}
+        : { injectedScriptPath: result.injectedScriptPath })
     }, "Page opened.");
     return 0;
   }
@@ -217,7 +220,7 @@ async function openBrowserPage(
   bridgeUrl: string | null,
   hookScripts: readonly string[],
   options: BrowserRunOptions
-): Promise<BrowserRunResult> {
+): Promise<BrowserRunResult & { injectedScriptPath?: string }> {
   const cookies = getOptionValue(args, "cookies");
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
     return await browserRunner.run(["open", openedUrl], options);
@@ -226,14 +229,22 @@ async function openBrowserPage(
   if (bridgeUrl !== null || hookScripts.length > 0) {
     const scriptPath = await ensureBrowserInitScript(bridgeUrl, hookScripts);
     if (cookies === undefined) {
-      return await browserRunner.run(["open", openedUrl, "--init-script", scriptPath], options);
+      return withInjectedScriptPath(
+        await browserRunner.run(["open", openedUrl, "--init-script", scriptPath], options),
+        scriptPath
+      );
     }
 
     const launch = await browserRunner.run(["open", "--init-script", scriptPath], options);
-    if (launch.exitCode !== 0) return launch;
+    if (launch.exitCode !== 0) return withInjectedScriptPath(launch, scriptPath);
     const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
-    if (applyCookies.exitCode !== 0) return applyCookies;
-    return await browserRunner.run(["goto", openedUrl]);
+    if (applyCookies.exitCode !== 0) {
+      return withInjectedScriptPath(applyCookies, scriptPath);
+    }
+    return withInjectedScriptPath(
+      await browserRunner.run(["goto", openedUrl]),
+      scriptPath
+    );
   }
 
   if (cookies === undefined) {
@@ -244,6 +255,16 @@ async function openBrowserPage(
   const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
   if (applyCookies.exitCode !== 0) return applyCookies;
   return await browserRunner.run(["goto", openedUrl]);
+}
+
+function withInjectedScriptPath(
+  result: BrowserRunResult,
+  injectedScriptPath: string
+): BrowserRunResult & { injectedScriptPath: string } {
+  return {
+    ...result,
+    injectedScriptPath
+  };
 }
 
 async function ensureBrowserInitScript(bridgeUrl: string | null, hookScripts: readonly string[]): Promise<string> {

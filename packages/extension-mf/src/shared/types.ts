@@ -1,10 +1,9 @@
 import type {
   Capability,
+  GlobalSharedState,
   RuntimeReport,
   SharedCandidate,
-  SharedConflict,
-  SharedRegistration,
-  SharedVersion
+  SharedRegistration
 } from "../types.js";
 
 export interface SharedInstanceSelectors {
@@ -12,12 +11,19 @@ export interface SharedInstanceSelectors {
   instanceRef?: string;
 }
 
-export interface SharedStatusSelectors extends SharedInstanceSelectors {
+export interface SharedStatusSelectors {
   package?: string;
   scope?: string;
+  version?: string;
 }
 
-export interface SharedTraceSelectors extends SharedStatusSelectors {
+export interface SharedStatusOptions {
+  verbose?: boolean;
+}
+
+export interface SharedTraceSelectors extends SharedInstanceSelectors {
+  package?: string;
+  scope?: string;
   operationId?: string;
   traceId?: string;
 }
@@ -28,35 +34,8 @@ export interface SharedCapabilitySummary extends Capability {
   minimumRuntimeVersion?: string;
 }
 
-export interface SharedStatusPackage {
-  package: string;
-  availableVersions: string[];
-  loadedVersions: string[];
-  versions: SharedVersion[];
-  conflicts: SharedConflict[];
-}
-
-export interface SharedStatusScope {
-  scope: string;
-  packages: SharedStatusPackage[];
-}
-
-export interface SharedStatusInstance {
-  instanceRef: string;
-  mfName: string;
-  runtimeVersion?: string;
-  scopes: SharedStatusScope[];
-}
-
 export interface SharedStatusResult {
-  schemaVersion: 1;
-  command: "mf shared status";
-  supported: boolean;
-  capability: SharedCapabilitySummary;
-  filters: SharedStatusSelectors;
-  instances: SharedStatusInstance[];
-  warnings: string[];
-  recommendedActions: string[];
+  shared: GlobalSharedState;
 }
 
 export interface SharedTraceFinalResult {

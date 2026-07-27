@@ -9,12 +9,12 @@ openruntime mf bridge trace
 openruntime mf bridge trace <remote-or-alias>
 openruntime mf bridge trace <remote-or-alias> --mf <name>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --bridge <bridgeId>
+openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --bridge-id <bridgeId>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
 openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
 ```
 
-`--instance` always takes the session-scoped instanceRef shown by `openruntime mf status`. `--mf` matches the visible MF name. Duplicate names return candidates instead of selecting the first instance.
+`--instance` always takes the session-scoped instanceRef shown by `openruntime mf status`. `--mf` matches the visible MF name. `--bridge-id` selects one Module Federation Bridge instance without conflicting with OpenRuntime's own `--bridge` connection option. Duplicate names return candidates instead of selecting the first instance.
 
 Without a remote or operation selector, the command returns an operation summary array. A remote selector can use its declared name or alias, but alias matching remains scoped to the owning MF instance. Several matching operations return candidates with instanceRef, bridgeId, operationId, side, operation, and a copyable command containing `--operation`.
 

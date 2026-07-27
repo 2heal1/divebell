@@ -1,5 +1,9 @@
 import { readFile } from "node:fs/promises";
 import type { ParsedCliArgs } from "@openruntime/cli";
+import {
+  createMfProxyInitScript,
+  readMfProxyOverrides
+} from "./proxy.js";
 
 const observabilitySource = new URL(
   "./observability-chrome-devtool.iife.js",
@@ -7,6 +11,7 @@ const observabilitySource = new URL(
 );
 const installerSource = new URL("./install-observability.js", import.meta.url);
 const runtimeInstallerSource = new URL("./install-runtime-debug.js", import.meta.url);
+const proxySdkSource = new URL("./vmok-proxy-sdk.iife.js", import.meta.url);
 
 export function isMfDebugInjectionEnabled(args?: ParsedCliArgs): boolean {
   const value = args?.options.get("mf-debug")?.at(-1);
@@ -20,7 +25,15 @@ export function isMfDebugInjectionEnabled(args?: ParsedCliArgs): boolean {
 export async function openMfObservability(
   args?: ParsedCliArgs
 ): Promise<{ scripts: string[] }> {
-  if (!isMfDebugInjectionEnabled(args)) return { scripts: [] };
+  const overrides = await readMfProxyOverrides(args);
+  const hasProxy = Object.keys(overrides).length > 0;
+  const proxySdk = hasProxy
+    ? await readFile(proxySdkSource, "utf8")
+    : undefined;
+  const proxyInit = createMfProxyInitScript(proxySdk, overrides);
+  if (!isMfDebugInjectionEnabled(args)) {
+    return { scripts: [proxyInit] };
+  }
 
   const [runtimeInstaller, observability, installer] = await Promise.all([
     readFile(runtimeInstallerSource, "utf8"),
@@ -28,6 +41,8 @@ export async function openMfObservability(
     readFile(installerSource, "utf8")
   ]);
   return {
-    scripts: [`${runtimeInstaller}\n;${observability}\n;${installer}`]
+    scripts: [
+      `${proxyInit}\n;${runtimeInstaller}\n;${observability}\n;${installer}`
+    ]
   };
 }

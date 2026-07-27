@@ -3,11 +3,11 @@ import test from "node:test";
 
 import {
   RemoteCoreError,
-  createRemoteCheckResult,
+  createRemoteStatusResult,
   createRemoteTraceResult,
   parseBrowserReadResult
 } from "../dist/public.js";
-import { formatRemoteCheck, formatRemoteTrace } from "../dist/remote/format.js";
+import { formatRemoteStatus, formatRemoteTrace } from "../dist/remote/format.js";
 import { browserRead, capability } from "./fixtures.mjs";
 import {
   catalogRemote,
@@ -211,31 +211,182 @@ test("remoteTrace unavailable returns a structured unsupported result", () => {
   const preload = createRemoteTraceResult(snapshot(state, [preloadTrace()]), "preload", {
     target: "shop"
   });
-  const check = createRemoteCheckResult(snapshot(state, [loadTrace()]), "shop", {});
+  const status = createRemoteStatusResult(snapshot(state, [loadTrace()]), "shop", {});
   assert.equal(preload.outcome, "unavailable");
-  assert.equal(check.remote.outcome, "unavailable");
+  assert.equal(status.remote.latestResult, "unavailable");
 });
 
-test("remote check uses only captured declaration, relationship, resource, init, and expose evidence", () => {
-  const result = createRemoteCheckResult(snapshot(stateWithConsumer(), [loadTrace()]), "shop", {});
+test("remote status keeps current declaration, relationship, and latest trace summary compact", () => {
+  const result = createRemoteStatusResult(snapshot(stateWithConsumer(), [loadTrace()]), "shop", {});
   assert.equal(result.remote.declared, true);
+  assert.equal(result.remote.loaded, true);
+  assert.deepEqual(result.remote.loadedExposes, ["./Button"]);
   assert.equal(result.remote.relationship, "resolved");
   assert.equal(result.remote.producerInstanceRef, "mf-producer");
-  assert.equal(result.remote.resources.manifest.httpStatus, 200);
-  assert.equal(result.remote.resources.remoteEntry.mimeType, "text/javascript");
-  assert.equal(result.remote.containerInit.status, "success");
-  assert.deepEqual(result.remote.exposes.map((expose) => [expose.name, expose.status]), [
-    ["./Button", "success"]
+  assert.equal(result.remote.latestResult, "success");
+  assert.equal(result.remote.latestTraceId, "trace-load-1");
+  assert.deepEqual(Object.keys(result.remote), [
+    "name",
+    "alias",
+    "declared",
+    "loaded",
+    "loadedExposes",
+    "relationship",
+    "producerInstanceRef",
+    "latestResult",
+    "latestTraceId"
   ]);
 });
 
-test("remote check returns unknown and a replay recommendation when no load was observed", () => {
-  const result = createRemoteCheckResult(snapshot(stateWithConsumer()), "shop", {});
+test("remote status reports whether the active name or alias proxy was applied", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer({
+      consumer: consumer({
+        remotes: [{ ...catalogRemote, version: "2.0.0", entry: undefined }],
+        loadedProducers: [{ ...catalogRemote, version: "2.0.0", entry: undefined }]
+      })
+    }),
+    [loadTrace()],
+    {
+      proxyMarker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "installed",
+        installedAt: 10,
+        overrides: { shop: "2.0.0" }
+      }
+    }
+  ));
+  assert.equal(parsed.ok, true);
+  const result = createRemoteStatusResult(parsed.snapshot, "shop", {});
+  assert.deepEqual(result.proxy, {
+    target: "2.0.0",
+    matchedBy: "alias",
+    applied: true
+  });
+  assert.match(formatRemoteStatus(result), /Proxy applied: true/);
+});
+
+test("remote status sanitizes URL proxies and exposes setup failures", () => {
+  const urlParsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer({
+      consumer: consumer({
+        loadedProducers: [{
+          ...catalogRemote,
+          entry: "https://cdn.test/catalog/remoteEntry.js",
+          version: "https://cdn.test/catalog/mf-manifest.json"
+        }]
+      })
+    }),
+    [loadTrace()],
+    {
+      proxyMarker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "installed",
+        installedAt: 10,
+        overrides: {
+          "@scope/catalog": "https://user:secret@cdn.test/catalog/mf-manifest.json?token=secret#hash"
+        }
+      }
+    }
+  ));
+  assert.equal(urlParsed.ok, true);
+  const urlResult = createRemoteStatusResult(
+    urlParsed.snapshot,
+    "@scope/catalog",
+    {}
+  );
+  assert.deepEqual(urlResult.proxy, {
+    target: "https://cdn.test/catalog/mf-manifest.json",
+    matchedBy: "name",
+    applied: true,
+    loadedFrom: "https://cdn.test/catalog/mf-manifest.json"
+  });
+  assert.doesNotMatch(JSON.stringify(urlResult), /secret|token=/);
+
+  const failedParsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [],
+    {
+      proxyMarker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "error",
+        installedAt: 10,
+        overrides: { shop: "2.0.0" },
+        message: "Proxy SDK conflict."
+      }
+    }
+  ));
+  assert.equal(failedParsed.ok, true);
+  const failed = createRemoteStatusResult(failedParsed.snapshot, "shop", {});
+  assert.deepEqual(failed.proxy, {
+    target: "2.0.0",
+    matchedBy: "alias",
+    applied: false,
+    error: "Proxy SDK conflict."
+  });
+});
+
+test("remote status does not claim a URL proxy succeeded when loading used another manifest", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer({
+      consumer: consumer({
+        remotes: [{
+          ...catalogRemote,
+          entry: "http://localhost:3000/mf-manifest.json"
+        }]
+      })
+    }),
+    [loadTrace({
+      manifestUrl: "https://cdn.test/catalog/mf-manifest.json"
+    })],
+    {
+      proxyMarker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "installed",
+        installedAt: 10,
+        overrides: {
+          shop: "http://localhost:3000/mf-manifest.json"
+        }
+      }
+    }
+  ));
+  assert.equal(parsed.ok, true);
+  const result = createRemoteStatusResult(parsed.snapshot, "shop", {});
+  assert.deepEqual(result.proxy, {
+    target: "http://localhost:3000/mf-manifest.json",
+    matchedBy: "alias",
+    applied: false,
+    loadedFrom: "https://cdn.test/catalog/mf-manifest.json"
+  });
+});
+
+test("remote status returns unknown and a replay recommendation when no load was observed", () => {
+  const result = createRemoteStatusResult(snapshot(stateWithConsumer()), "shop", {});
   assert.equal(result.remote.declared, true);
-  assert.equal(result.remote.outcome, "unknown");
-  assert.equal(result.remote.resources.manifest.status, "unknown");
-  assert.equal(result.remote.resources.manifest.url, "https://cdn.test/catalog/mf-manifest.json");
+  assert.equal(result.remote.loaded, true);
+  assert.deepEqual(result.remote.loadedExposes, []);
+  assert.equal(result.remote.latestResult, "unknown");
+  assert.equal(result.remote.latestTraceId, undefined);
   assert.match(result.recommendedActions.join(" "), /reproduce/i);
+});
+
+test("remote status does not report failed exposes as loaded", () => {
+  const host = consumer({ loadedProducers: [] });
+  const state = stateWithConsumer({
+    consumer: host,
+    relationships: []
+  });
+  const result = createRemoteStatusResult(snapshot(state, [
+    loadTrace({ remoteEntryOutcome: "error" })
+  ]), "shop", {});
+  assert.equal(result.remote.declared, true);
+  assert.equal(result.remote.loaded, false);
+  assert.deepEqual(result.remote.loadedExposes, []);
+  assert.equal(result.remote.latestResult, "error");
 });
 
 test("JSON and readable output expose stable safe evidence only", () => {
@@ -243,17 +394,19 @@ test("JSON and readable output expose stable safe evidence only", () => {
     loadTrace({ remoteEntryOutcome: "error" })
   ]);
   const trace = createRemoteTraceResult(current, "load", { target: "shop/Button" });
-  const check = createRemoteCheckResult(current, "shop", {});
-  const json = JSON.stringify({ trace, check });
+  const status = createRemoteStatusResult(current, "shop", {});
+  const json = JSON.stringify({ trace, status });
   assert.doesNotMatch(json, /demo-secret|token=/);
   assert.doesNotMatch(json, /factory\s*[:=]\s*function|container code/i);
   assert.match(formatRemoteTrace(trace), /Remote match: success/);
   assert.match(formatRemoteTrace(trace), /remoteEntry resource: error/);
-  assert.match(formatRemoteCheck(check), /Declared: true/);
-  assert.match(formatRemoteCheck(check), /HTTP 503|HTTP 504|http=200/i);
+  assert.match(formatRemoteStatus(status), /Declared: true/);
+  assert.match(formatRemoteStatus(status), /Loaded: true/);
+  assert.match(formatRemoteStatus(status), /Loaded exposes: none/);
+  assert.match(formatRemoteStatus(status), /Latest result: error/);
   const secondJson = JSON.stringify({
     trace: createRemoteTraceResult(current, "load", { target: "shop/Button" }),
-    check: createRemoteCheckResult(current, "shop", {})
+    status: createRemoteStatusResult(current, "shop", {})
   });
   assert.equal(secondJson, json);
 });

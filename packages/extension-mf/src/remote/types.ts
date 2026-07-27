@@ -5,7 +5,10 @@ import type {
   RuntimeRemote
 } from "../types.js";
 
-export type RemoteOperation = "trace" | "remote-check" | "preload-trace";
+export type RemoteOperation =
+  | "remote-trace"
+  | "remote-status"
+  | "remote-preload-trace";
 export type RemoteTraceKind = "load" | "preload";
 export type RemoteEvidenceStatus = "success" | "error" | "pending" | "unknown";
 export type RemoteTraceOutcome = RemoteEvidenceStatus | "recovered" | "unavailable";
@@ -146,7 +149,7 @@ export interface RemoteTraceSummary {
 
 export interface RemoteTraceResult {
   schemaVersion: 1;
-  command: "mf trace" | "mf preload trace";
+  command: "mf remote trace";
   capability: RemoteCapabilitySummary;
   compatibility: CompatibilitySummary;
   selection: {
@@ -161,44 +164,42 @@ export interface RemoteTraceResult {
   recommendedActions: string[];
 }
 
-export interface RemoteCheckResourceSummary {
-  manifest: RemoteStageEvidence;
-  remoteEntry: RemoteStageEvidence;
-  observed: RemoteResourceEvidence[];
-}
-
 export interface RemoteExposeCheck {
   name: string;
   status: RemoteEvidenceStatus;
   traceIds: string[];
 }
 
-export interface RemoteCheckResult {
+export interface RemoteProxyStatus {
+  target: string;
+  matchedBy: "name" | "alias";
+  applied: boolean | "unknown";
+  loadedFrom?: string;
+  error?: string;
+}
+
+export interface RemoteStatusResult {
   schemaVersion: 1;
-  command: "mf remote check";
+  command: "mf remote status";
   capability: RemoteCapabilitySummary;
   compatibility: CompatibilitySummary;
   consumer: {
     instanceRef: string;
     name: string;
-    version?: string;
   };
   remote: {
     name: string;
     alias?: string;
     declared: boolean;
+    loaded: boolean;
+    loadedExposes: string[];
     relationship: "resolved" | "ambiguous" | "unresolved" | "unknown";
     producerInstanceRef?: string;
     candidateProducerInstanceRefs?: string[];
-    traceIds: string[];
-    outcome: RemoteTraceOutcome;
-    resources: RemoteCheckResourceSummary;
-    containerInit: RemoteStageEvidence;
-    exposes: RemoteExposeCheck[];
-    cached: boolean;
-    recovered: boolean;
-    timeout: boolean;
+    latestResult: RemoteTraceOutcome;
+    latestTraceId?: string;
   };
+  proxy?: RemoteProxyStatus;
   warnings: string[];
   recommendedActions: string[];
 }

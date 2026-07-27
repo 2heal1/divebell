@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import vm from "node:vm";
@@ -12,8 +12,12 @@ import { openMfObservability } from "../dist/open.js";
 import extension from "../dist/extension.js";
 
 const packageRoot = new URL("..", import.meta.url);
-const injectedMfVersion =
-  "0.0.0-feat-operate-openruntime-20260722064424";
+const injectedMfVersion = JSON.parse(
+  readFileSync(
+    new URL("assets/runtime-debug-build.json", packageRoot),
+    "utf8"
+  )
+).packageVersion;
 
 test("generated injection assets agree with their source metadata", () => {
   const bundle = readFileSync(new URL(
@@ -33,6 +37,14 @@ test("generated injection assets agree with their source metadata", () => {
     "assets/runtime-debug-build.json",
     packageRoot
   ), "utf8"));
+  const proxyBundle = readFileSync(new URL(
+    "assets/vmok-proxy-sdk.iife.js",
+    packageRoot
+  ), "utf8");
+  const proxyMetadata = JSON.parse(readFileSync(new URL(
+    "assets/proxy-sdk-build.json",
+    packageRoot
+  ), "utf8"));
   assert.equal(
     createHash("sha256").update(bundle).digest("hex"),
     observabilityMetadata.bundleSha256
@@ -40,6 +52,10 @@ test("generated injection assets agree with their source metadata", () => {
   assert.equal(
     createHash("sha256").update(runtimeInstaller).digest("hex"),
     runtimeMetadata.bundleSha256
+  );
+  assert.equal(
+    createHash("sha256").update(proxyBundle).digest("hex"),
+    proxyMetadata.bundleSha256
   );
   assert.match(
     installer,
@@ -54,13 +70,19 @@ test("generated injection assets agree with their source metadata", () => {
   assert.equal(observabilityMetadata.packageName, "@module-federation/observability-plugin");
   assert.equal(runtimeMetadata.runtimePackageName, "@module-federation/runtime");
   assert.equal(runtimeMetadata.packageName, "@module-federation/runtime-core");
-  assert.equal(runtimeMetadata.runtimePackageVersion, injectedMfVersion);
-  assert.equal(runtimeMetadata.packageVersion, injectedMfVersion);
-  assert.equal(observabilityMetadata.packageVersion, injectedMfVersion);
+  assert.equal(proxyMetadata.packageName, "@vmok/proxy-sdk");
+  assert.equal(proxyMetadata.packageVersion, "1.25.1");
+  assert.equal(
+    runtimeMetadata.runtimePackageVersion,
+    runtimeMetadata.packageVersion
+  );
+  assert.match(runtimeMetadata.packageVersion, /^\d+\.\d+\.\d+/);
+  assert.match(observabilityMetadata.packageVersion, /^\d+\.\d+\.\d+/);
   assert.doesNotMatch(
     `${bundle}\n${installer}\n${runtimeInstaller}\n${JSON.stringify({
       observabilityMetadata,
-      runtimeMetadata
+      runtimeMetadata,
+      proxyMetadata
     })}`,
     /\/Users\/|outter\/core/
   );
@@ -75,6 +97,7 @@ test("open hook returns one self-contained script with matched Runtime and Obser
   assert.match(source, /ChromeObservabilityPlugin/);
   assert.match(source, /getRuntimeState/);
   assert.match(source, /openruntime\/extension-mf/);
+  assert.doesNotMatch(source, /\bVmokProxySdk\b/);
   assert.doesNotMatch(source, /\brequire\s*\(/);
   assert.doesNotMatch(source, /^\s*import\s/m);
   assert.doesNotMatch(source, /https?:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com)/i);
@@ -228,12 +251,76 @@ test("late installation marks history timing instead of claiming nothing happene
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "late");
 });
 
-test("--mf-debug=false disables both Runtime and Observability injection", async () => {
+test("--mf-debug=false disables Runtime and Observability but retains proxy cleanup", async () => {
   const result = await openMfObservability({
     command: ["open", "https://app.test"],
     options: new Map([["mf-debug", ["false"]]])
   });
-  assert.deepEqual(result, { scripts: [] });
+  assert.equal(result.scripts.length, 1);
+  assert.match(result.scripts[0], /__OPENRUNTIME_MF_PROXY_OWNER__/);
+  assert.doesNotMatch(result.scripts[0], /ModuleFederationDebugRuntime/);
+  assert.doesNotMatch(result.scripts[0], /ChromeObservabilityPlugin/);
+});
+
+test("MF proxy is installed before Runtime and Observability and matches an alias", async () => {
+  const { scripts } = await openMfObservability({
+    command: ["open", "https://app.test"],
+    options: new Map([["mf-proxy", ["shop=2.0.0"]]])
+  });
+  const source = scripts[0];
+  assert.ok(source.indexOf("VmokProxySdk") < source.indexOf("ModuleFederationDebugRuntime"));
+  assert.ok(source.indexOf("ModuleFederationDebugRuntime") < source.indexOf("ChromeObservabilityPlugin"));
+  const storage = createTestStorage();
+  const context = vm.createContext({
+    console: { log() {}, info() {}, warn() {}, error() {} },
+    localStorage: storage,
+    URL,
+    setTimeout,
+    clearTimeout,
+    queueMicrotask,
+    postMessage() {}
+  });
+  context.globalThis = context;
+  context.window = context;
+  context.top = context;
+  vm.runInContext(source, context, { timeout: 5_000 });
+  assert.equal(context.__OPENRUNTIME_MF_PROXY_INJECTION__.status, "installed");
+  assert.deepEqual(
+    [...context.__FEDERATION__.__GLOBAL_PLUGIN__].map((plugin) => plugin.name),
+    [
+      "mf-chrome-devtools-override-remotes-plugin",
+      "mf-chrome-devtools-inject-snapshot-plugin",
+      "openruntime-mf-proxy-snapshot-override",
+      "observability-plugin:chrome-extension"
+    ]
+  );
+  const instance = new context.__FEDERATION__.__DEBUG_CONSTRUCTOR__({
+    name: "host",
+    remotes: [{
+      name: "catalog",
+      alias: "shop",
+      entry: "https://cdn.test/catalog/mf-manifest.json"
+    }]
+  });
+  assert.equal(instance.options.remotes[0].version, "2.0.0");
+  assert.equal(instance.options.remotes[0].entry, undefined);
+  context.__FEDERATION__.moduleInfo = {
+    host: {
+      remotesInfo: {
+        catalog: {
+          matchedVersion: "https://cdn.test/catalog/mf-manifest.json"
+        }
+      }
+    }
+  };
+  context.__FEDERATION__.__GLOBAL_PLUGIN__[2].beforeLoadRemoteSnapshot({
+    moduleInfo: instance.options.remotes[0],
+    origin: instance
+  });
+  assert.equal(
+    context.__FEDERATION__.moduleInfo.host.remotesInfo.catalog.matchedVersion,
+    "2.0.0"
+  );
 });
 
 test("invalid --mf-debug values fail with a useful message", async () => {
@@ -250,6 +337,7 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-open-"));
   const cli = createOpenRuntimeCli({ extensions: [extension] });
   let initScriptChecked = false;
+  let injectedScriptPath;
   let stdout = "";
   let stderr = "";
   try {
@@ -263,6 +351,7 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
           assert.equal(args[2], "--init-script");
           const initScriptPath = args[3];
           assert.equal(typeof initScriptPath, "string");
+          injectedScriptPath = initScriptPath;
           const context = vm.createContext({
             console: { log() {}, info() {}, warn() {}, error() {} },
             URL,
@@ -287,13 +376,70 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
     });
     assert.equal(exitCode, 0, stderr);
     assert.equal(initScriptChecked, true);
+    const output = JSON.parse(stdout);
+    assert.equal(output.status, "ok");
+    assert.equal(output.data.injectedScriptPath, injectedScriptPath);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("OpenRuntime open accepts a local --mf-proxy JSON file", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-proxy-open-"));
+  const proxyFile = join(operationLogDirectory, "proxy.json");
+  writeFileSync(proxyFile, JSON.stringify({
+    overrides: {
+      shop: "2.0.0"
+    }
+  }));
+  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  let stdout = "";
+  let stderr = "";
+  try {
+    const exitCode = await cli.run([
+      "open",
+      "https://app.test",
+      "--no-bridge",
+      "--mf-proxy",
+      proxyFile
+    ], {
+      stdout: { write(chunk) { stdout += chunk; } },
+      stderr: { write(chunk) { stderr += chunk; } },
+      operationLogDirectory,
+      browserRunner: {
+        async run(args) {
+          const initScriptPath = args[args.indexOf("--init-script") + 1];
+          const context = vm.createContext({
+            console: { log() {}, info() {}, warn() {}, error() {} },
+            localStorage: createTestStorage(),
+            URL,
+            setTimeout,
+            clearTimeout,
+            queueMicrotask,
+            postMessage() {}
+          });
+          context.globalThis = context;
+          context.window = context;
+          context.top = context;
+          vm.runInContext(readFileSync(initScriptPath, "utf8"), context, {
+            timeout: 5_000
+          });
+          assert.deepEqual(
+            { ...context.__OPENRUNTIME_MF_PROXY_INJECTION__.overrides },
+            { shop: "2.0.0" }
+          );
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }
+      }
+    });
+    assert.equal(exitCode, 0, stderr);
     assert.equal(JSON.parse(stdout).status, "ok");
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
 });
 
-test("OpenRuntime open omits the MF init script when --mf-debug=false", async () => {
+test("OpenRuntime open keeps only proxy cleanup when --mf-debug=false", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-disabled-"));
   const cli = createOpenRuntimeCli({ extensions: [extension] });
   let stdout = "";
@@ -309,7 +455,12 @@ test("OpenRuntime open omits the MF init script when --mf-debug=false", async ()
           async run(args) {
             assert.equal(args[0], "open");
             assert.match(args[1], /^https:\/\/app\.test/);
-            assert.equal(args.includes("--init-script"), false);
+            assert.equal(args.includes("--init-script"), true);
+            const initScriptPath = args[args.indexOf("--init-script") + 1];
+            const source = readFileSync(initScriptPath, "utf8");
+            assert.match(source, /__OPENRUNTIME_MF_PROXY_OWNER__/);
+            assert.doesNotMatch(source, /ModuleFederationDebugRuntime/);
+            assert.doesNotMatch(source, /ChromeObservabilityPlugin/);
             return { exitCode: 0, stdout: "", stderr: "" };
           }
         }
@@ -321,3 +472,18 @@ test("OpenRuntime open omits the MF init script when --mf-debug=false", async ()
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
 });
+
+function createTestStorage(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+    removeItem(key) {
+      values.delete(key);
+    }
+  };
+}

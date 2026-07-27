@@ -7,6 +7,7 @@ import type {
   GlobalSharedState,
   GlobalSharedVersion,
   InjectionMarker,
+  ProxyInjectionMarker,
   RuntimeBridgeInfo,
   RuntimeBridgeState,
   RuntimeInstance,
@@ -46,6 +47,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     globalThis[Symbol.for(locationTokenSymbol)] = pageToken;
   }
   const marker = globalThis.__MF_OBSERVABILITY_INJECTION__;
+  const proxyMarker = globalThis.__OPENRUNTIME_MF_PROXY_INJECTION__;
   const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__;
   const availableScopes = readers && typeof readers === "object"
     ? Object.keys(readers)
@@ -79,6 +81,14 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
           .slice(0, 100)
           .sort()
       : [];
+  const safeBooleanFlag = (value) =>
+    typeof value === "boolean"
+      ? value
+      : value === 1
+        ? true
+        : value === 0
+          ? false
+          : undefined;
   const functionSource = (value, locator) => {
     if (typeof value !== "function") return undefined;
     const details = includeFunctionLocations
@@ -101,13 +111,14 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     const requiredVersion = value.requiredVersion === false
       ? false
       : safeText(value.requiredVersion, 160);
+    const singleton = safeBooleanFlag(value.singleton);
+    const eager = safeBooleanFlag(value.eager);
+    const strictVersion = safeBooleanFlag(value.strictVersion);
     const config = {
       ...(requiredVersion === undefined ? {} : { requiredVersion }),
-      ...(typeof value.singleton === "boolean" ? { singleton: value.singleton } : {}),
-      ...(typeof value.eager === "boolean" ? { eager: value.eager } : {}),
-      ...(typeof value.strictVersion === "boolean"
-        ? { strictVersion: value.strictVersion }
-        : {}),
+      ...(singleton === undefined ? {} : { singleton }),
+      ...(eager === undefined ? {} : { eager }),
+      ...(strictVersion === undefined ? {} : { strictVersion }),
       ...(typeof value.layer === "string" || value.layer === null
         ? { layer: value.layer }
         : {})
@@ -121,16 +132,21 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     const deps = safeStringArray(value.deps);
     const strategy = safeText(value.strategy, 80);
     const shareConfig = safeShareConfig(value.shareConfig);
+    const eager = safeBooleanFlag(value.eager);
     const lib = functionSource(value.lib, [...locator, "lib"]);
     const get = functionSource(value.get, [...locator, "get"]);
+    const loaded = value.loaded === true || typeof value.lib === "function";
+    const loading = value.loading === undefined
+      ? undefined
+      : value.loading != null;
     return {
       ...(from === undefined ? {} : { from }),
       useIn: safeStringArray(value.useIn),
-      loaded: value.loaded === true || typeof value.lib === "function",
-      ...(value.loading === undefined ? {} : { loading: value.loading != null }),
+      loaded,
+      ...(loaded || loading === undefined ? {} : { loading }),
       ...(scope.length === 0 ? {} : { scope }),
       ...(deps.length === 0 ? {} : { deps }),
-      ...(typeof value.eager === "boolean" ? { eager: value.eager } : {}),
+      ...(eager === undefined ? {} : { eager }),
       ...(strategy === undefined ? {} : { strategy }),
       ...(shareConfig === undefined ? {} : { shareConfig }),
       ...(lib === undefined ? {} : { lib }),
@@ -170,7 +186,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
               continue;
             }
             const preferExisting = existing.loaded && !shared.loaded;
-            packageResult[version] = {
+            const merged = {
               ...(preferExisting ? shared : existing),
               ...(preferExisting ? existing : shared),
               useIn: Array.from(new Set([
@@ -179,6 +195,8 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
               ])).sort(),
               loaded: existing.loaded || shared.loaded
             };
+            if (merged.loaded) delete merged.loading;
+            packageResult[version] = merged;
           }
         }
       }
@@ -239,6 +257,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
       availableScopes,
       compatibleScopes,
       marker,
+      proxyMarker,
       pageToken,
       state,
       reports,
@@ -328,6 +347,7 @@ function parseSnapshot(record: Record<string, unknown>): BrowserObservabilitySna
     throw new Error(`Unsupported observability mode: ${mode}`);
   }
   const injection = optionalInjection(record.marker);
+  const proxy = optionalProxyInjection(record.proxyMarker);
   return {
     observabilityMode: mode,
     observabilityVersion: requiredString(record.observabilityVersion, "observability version"),
@@ -335,6 +355,7 @@ function parseSnapshot(record: Record<string, unknown>): BrowserObservabilitySna
     availableScopes: stringArray(record.availableScopes, "available scopes"),
     compatibleScopes: stringArray(record.compatibleScopes, "compatible scopes"),
     ...(injection === undefined ? {} : { injection }),
+    ...(proxy === undefined ? {} : { proxy }),
     state: parseRuntimeState(record.state),
     reports: array(record.reports, "reports").map(parseReport),
     globalShared: parseGlobalShared(record.globalShared)
@@ -369,6 +390,8 @@ function parseGlobalShared(value: unknown): GlobalSharedState {
 
 function parseGlobalSharedVersion(value: unknown): GlobalSharedVersion {
   const record = asRecord(value, "global shared version");
+  const loaded = requiredBoolean(record.loaded, "global shared loaded");
+  const loading = optionalBoolean(record.loading, "global shared loading");
   const shareConfigRecord = record.shareConfig === undefined
     ? undefined
     : asRecord(record.shareConfig, "global shared shareConfig");
@@ -400,8 +423,8 @@ function parseGlobalSharedVersion(value: unknown): GlobalSharedVersion {
   return compact({
     from: optionalString(record.from, "global shared provider"),
     useIn: stringArray(record.useIn, "global shared useIn"),
-    loaded: requiredBoolean(record.loaded, "global shared loaded"),
-    loading: optionalBoolean(record.loading, "global shared loading"),
+    loaded,
+    loading: loaded ? undefined : loading,
     scope: record.scope === undefined
       ? undefined
       : stringArray(record.scope, "global shared scope"),
@@ -598,27 +621,40 @@ function parseInstance(value: unknown): RuntimeInstance {
 
 function parseShareScope(value: unknown): ShareScope {
   const record = asRecord(value, "share scope");
-  return {
-    name: requiredString(record.name, "share scope name"),
-    sharedCount: requiredNumber(record.sharedCount, "shared count"),
-    sharedNames: stringArray(record.sharedNames, "shared names"),
-    shared: array(record.shared, "shared entries").map((entry) => {
+  const sharedEntries = array(record.shared, "shared entries")
+    .map((entry) => {
       const shared = asRecord(entry, "shared entry");
-      return {
-        name: requiredString(shared.name, "shared name"),
-        versions: array(shared.versions, "shared versions").map((version) => {
+      const versions = array(shared.versions, "shared versions")
+        .map((version) => {
           const item = asRecord(version, "shared version");
           return compact({
             version: requiredString(item.version, "shared version"),
             provider: optionalString(item.provider),
             loaded: optionalBoolean(item.loaded),
-            singleton: optionalBoolean(item.singleton),
-            eager: optionalBoolean(item.eager),
+            singleton: optionalBooleanFlag(item.singleton),
+            eager: optionalBooleanFlag(item.eager),
             strategy: optionalString(item.strategy, "shared strategy")
           }) as SharedVersion;
         })
+        .filter(
+          (version) =>
+            version.provider !== undefined ||
+            version.loaded !== undefined ||
+            version.singleton !== undefined ||
+            version.eager !== undefined ||
+            version.strategy !== undefined
+        );
+      return {
+        name: requiredString(shared.name, "shared name"),
+        versions
       };
     })
+    .filter((entry) => entry.versions.length > 0);
+  return {
+    name: requiredString(record.name, "share scope name"),
+    sharedCount: sharedEntries.length,
+    sharedNames: sharedEntries.map((entry) => entry.name),
+    shared: sharedEntries
   };
 }
 
@@ -858,9 +894,12 @@ function parseShared(value: unknown): RuntimeShared {
     ),
     provider: optionalString(record.provider, "shared provider"),
     useIn: optionalStringArrayStrict(record.useIn, "shared useIn"),
-    singleton: optionalBoolean(record.singleton, "shared singleton"),
-    strictVersion: optionalBoolean(record.strictVersion, "shared strictVersion"),
-    eager: optionalBoolean(record.eager, "shared eager"),
+    singleton: optionalBooleanFlag(record.singleton, "shared singleton"),
+    strictVersion: optionalBooleanFlag(
+      record.strictVersion,
+      "shared strictVersion"
+    ),
+    eager: optionalBooleanFlag(record.eager, "shared eager"),
     strategy: optionalString(record.strategy, "shared strategy"),
     loaded: optionalBoolean(record.loaded, "shared loaded"),
     loading: optionalBoolean(record.loading, "shared loading"),
@@ -946,7 +985,10 @@ function parseSharedConflict(value: unknown): SharedConflict {
       return compact({
         version: requiredString(item.version, "shared conflict version"),
         from: optionalString(item.from, "shared conflict provider"),
-        singleton: optionalBoolean(item.singleton, "shared conflict singleton"),
+        singleton: optionalBooleanFlag(
+          item.singleton,
+          "shared conflict singleton"
+        ),
         loaded: optionalBoolean(item.loaded, "shared conflict loaded")
       });
     })
@@ -1084,6 +1126,78 @@ function optionalInjection(value: unknown): InjectionMarker | undefined {
   }) as InjectionMarker;
 }
 
+function optionalProxyInjection(
+  value: unknown
+): ProxyInjectionMarker | undefined {
+  if (value === undefined || value === null) return undefined;
+  const record = asRecord(value, "proxy injection marker");
+  if (record.schemaVersion !== 1 || record.source !== "openruntime/extension-mf") {
+    return undefined;
+  }
+  const status = requiredString(record.status, "proxy injection status");
+  if (status !== "installed" && status !== "error") return undefined;
+  const rawOverrides = asRecord(
+    record.overrides,
+    "proxy injection overrides"
+  );
+  const overrides = Object.fromEntries(
+    Object.entries(rawOverrides).slice(0, 100).map(([remote, target]) => [
+      requiredProxyRemote(remote),
+      requiredProxyTarget(target, `proxy target for ${remote}`)
+    ])
+  );
+  return compact({
+    schemaVersion: 1,
+    source: "openruntime/extension-mf",
+    status: status as ProxyInjectionMarker["status"],
+    installedAt: requiredNumber(
+      record.installedAt,
+      "proxy injection timestamp"
+    ),
+    overrides,
+    message: optionalString(record.message, "proxy injection message")
+  }) as ProxyInjectionMarker;
+}
+
+function requiredProxyRemote(value: string): string {
+  if (
+    value.length === 0 ||
+    value.length > 240 ||
+    ["__proto__", "prototype", "constructor"].includes(value)
+  ) {
+    throw new Error("proxy remote name is invalid.");
+  }
+  return value;
+}
+
+function requiredProxyTarget(value: unknown, label: string): string {
+  const target = requiredString(value, label).slice(0, 2048);
+  if (/[\u0000-\u001f\u007f]/.test(target)) {
+    throw new Error(`${label} must not include control characters.`);
+  }
+  if (!/^(https?:)?\/\//i.test(target)) return target;
+  const queryIndex = target.indexOf("?");
+  const hashIndex = target.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), target.length);
+  const withoutQuery = target.slice(0, end);
+  try {
+    const protocolRelative = withoutQuery.startsWith("//");
+    const url = new URL(
+      withoutQuery,
+      protocolRelative ? "https://openruntime.invalid" : undefined
+    );
+    url.username = "";
+    url.password = "";
+    return protocolRelative
+      ? `//${url.host}${url.pathname}`
+      : url.toString();
+  } catch {
+    return withoutQuery;
+  }
+}
+
 function asRecord(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${label} must be an object.`);
@@ -1208,6 +1322,17 @@ function optionalBoolean(value: unknown, label = "optional boolean"): boolean | 
     throw new Error(`${label} must be a boolean when provided.`);
   }
   return value;
+}
+
+function optionalBooleanFlag(
+  value: unknown,
+  label = "optional boolean flag"
+): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  if (value === 1) return true;
+  if (value === 0) return false;
+  throw new Error(`${label} must be a boolean or 0/1 when provided.`);
 }
 
 function optionalStringOrNumber(

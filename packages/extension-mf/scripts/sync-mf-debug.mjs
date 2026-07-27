@@ -6,11 +6,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { generateObservabilityArtifacts } from "./sync-observability.mjs";
 
-export const MF_PREVIEW_VERSION =
-  "0.0.0-feat-operate-openruntime-20260722064424";
-export const MF_PREVIEW_SOURCE_REVISION =
-  "54e733342953e3f384282078aa518c7f87cd1724";
-
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultAssetDirectory = resolve(packageRoot, "assets");
 const runtimeInstallerTemplatePath = resolve(
@@ -216,10 +211,26 @@ async function createRuntimeCoreBundle(context) {
   return source;
 }
 
+function isCompatibleRuntimeCoreDependency(dependency, version) {
+  if (dependency === version) return true;
+  if (typeof dependency !== "string" || !dependency.startsWith("workspace:")) {
+    return false;
+  }
+  const workspaceRange = dependency.slice("workspace:".length);
+  return (
+    workspaceRange === "*" ||
+    workspaceRange === "^" ||
+    workspaceRange === "~" ||
+    workspaceRange === version ||
+    workspaceRange === `^${version}` ||
+    workspaceRange === `~${version}`
+  );
+}
+
 export async function generateRuntimeDebugArtifacts({
   inputRuntimePackageRoot,
   inputRuntimeCorePackageRoot,
-  sourceRevision = MF_PREVIEW_SOURCE_REVISION
+  sourceRevision
 }) {
   const [runtime, runtimeCore] = await Promise.all([
     loadRuntimeContext(inputRuntimePackageRoot),
@@ -230,12 +241,12 @@ export async function generateRuntimeDebugArtifacts({
       `Module Federation Runtime and Runtime Core versions must match, received ${runtime.packageVersion} and ${runtimeCore.packageVersion}.`
     );
   }
-  if (
-    runtime.manifest.dependencies?.[expectedRuntimeCorePackageName] !==
+  if (!isCompatibleRuntimeCoreDependency(
+    runtime.manifest.dependencies?.[expectedRuntimeCorePackageName],
     runtimeCore.packageVersion
-  ) {
+  )) {
     throw new Error(
-      "Module Federation Runtime must depend on the exact Runtime Core version being injected."
+      "Module Federation Runtime must depend on the injected Runtime Core version or its local workspace package."
     );
   }
   const source = await createRuntimeCoreBundle(runtimeCore);
@@ -272,7 +283,7 @@ export async function generateRuntimeDebugArtifacts({
   };
 }
 
-function assertExactPreviewVersion(contexts, requiredVersion) {
+function assertRequiredVersion(contexts, requiredVersion) {
   const mismatches = contexts.filter(
     (context) => context.packageVersion !== requiredVersion
   );
@@ -285,33 +296,69 @@ function assertExactPreviewVersion(contexts, requiredVersion) {
   }
 }
 
+function assertLocalPackageRootsShareRepository(observability, packageRoots) {
+  const repositoryRoot = observability.context.repositoryRoot;
+  if (typeof repositoryRoot !== "string" || repositoryRoot.length === 0) {
+    throw new Error(
+      "Cannot confirm that the local Module Federation packages use one source repository."
+    );
+  }
+  const outside = packageRoots.filter((candidate) => {
+    const path = relative(repositoryRoot, resolve(candidate));
+    return (
+      path === ".." ||
+      path.startsWith(`..${sep}`) ||
+      isAbsolute(path)
+    );
+  });
+  if (outside.length > 0) {
+    throw new Error(
+      "Local Runtime, Runtime Core, and Observability packages must come from the same source repository."
+    );
+  }
+}
+
 export async function synchronizeMfDebug({
   mode,
   inputPackageRoot,
   inputRuntimePackageRoot,
   inputRuntimeCorePackageRoot,
-  sourceRevision = MF_PREVIEW_SOURCE_REVISION,
-  requiredVersion = MF_PREVIEW_VERSION,
+  sourceRevision,
+  requiredVersion,
   assetDirectory = defaultAssetDirectory
 }) {
   if (mode !== "sync" && mode !== "check") {
     throw new Error(`Unsupported mode ${String(mode)}. Use sync or check.`);
   }
-  if (!/^[0-9a-f]{40}$/i.test(sourceRevision)) {
+  if (
+    sourceRevision !== undefined &&
+    !/^[0-9a-f]{40}$/i.test(sourceRevision)
+  ) {
     throw new Error("The Module Federation source revision must be a full git commit.");
   }
-  const [observability, runtime] = await Promise.all([
-    generateObservabilityArtifacts(inputPackageRoot, { sourceRevision }),
-    generateRuntimeDebugArtifacts({
-      inputRuntimePackageRoot,
-      inputRuntimeCorePackageRoot,
-      sourceRevision
-    })
-  ]);
-  assertExactPreviewVersion(
-    [observability.context, runtime.runtime, runtime.context],
-    requiredVersion
+  const observability = await generateObservabilityArtifacts(
+    inputPackageRoot,
+    sourceRevision === undefined ? {} : { sourceRevision }
   );
+  if (sourceRevision === undefined) {
+    assertLocalPackageRootsShareRepository(observability, [
+      inputRuntimePackageRoot,
+      inputRuntimeCorePackageRoot
+    ]);
+  }
+  const resolvedSourceRevision =
+    sourceRevision ?? observability.context.sourceRevision;
+  const runtime = await generateRuntimeDebugArtifacts({
+    inputRuntimePackageRoot,
+    inputRuntimeCorePackageRoot,
+    sourceRevision: resolvedSourceRevision
+  });
+  if (requiredVersion !== undefined) {
+    assertRequiredVersion(
+      [observability.context, runtime.runtime, runtime.context],
+      requiredVersion
+    );
+  }
 
   const expected = new Map([
     [artifactNames.observabilityBundle, observability.bundle],
@@ -348,8 +395,8 @@ export async function synchronizeMfDebug({
 
   return {
     mode,
-    sourceRevision,
-    version: requiredVersion,
+    sourceRevision: resolvedSourceRevision,
+    ...(requiredVersion === undefined ? {} : { version: requiredVersion }),
     runtime: {
       packageName: runtime.runtime.packageName,
       packageVersion: runtime.runtime.packageVersion

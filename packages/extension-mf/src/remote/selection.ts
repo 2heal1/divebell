@@ -26,7 +26,7 @@ export interface RemoteTraceSelection {
   reports: RuntimeReport[];
 }
 
-export interface RemoteCheckSelection {
+export interface RemoteStatusSelection {
   consumer: RuntimeInstance;
   target: RemoteTarget;
   reports: RuntimeReport[];
@@ -37,7 +37,9 @@ export function selectRemoteTrace(
   kind: RemoteTraceKind,
   selectors: RemoteTraceSelectors
 ): RemoteSelectionResult<RemoteTraceSelection> {
-  const operation = kind === "load" ? "trace" : "preload-trace";
+  const operation = kind === "load"
+    ? "remote-trace"
+    : "remote-preload-trace";
   const reports = snapshot.reports.filter((report) => isRemoteTraceReport(report, kind));
   const consumerSelection = selectTraceConsumer(snapshot, reports, selectors, operation);
   if (!consumerSelection.ok) return consumerSelection;
@@ -85,23 +87,23 @@ export function selectRemoteTrace(
   };
 }
 
-export function selectRemoteCheck(
+export function selectRemoteStatus(
   snapshot: BrowserObservabilitySnapshot,
   selectors: RemoteTraceSelectors
-): RemoteSelectionResult<RemoteCheckSelection> {
+): RemoteSelectionResult<RemoteStatusSelection> {
   const reports = snapshot.reports.filter((report) => isRemoteTraceReport(report, "load"));
   const consumerSelection = selectTraceConsumer(
     snapshot,
     reports,
     selectors,
-    "remote-check"
+    "remote-status"
   );
   if (!consumerSelection.ok) return consumerSelection;
   const consumer = consumerSelection.value;
   if (consumer === undefined) {
     return {
       ok: false,
-      issue: noConsumerIssue(snapshot.state.instances, selectors, "remote-check")
+      issue: noConsumerIssue(snapshot.state.instances, selectors, "remote-status")
     };
   }
   const consumerReports = reports.filter((report) => reportBelongsToConsumer(report, consumer));
@@ -109,7 +111,7 @@ export function selectRemoteCheck(
     consumer,
     consumerReports,
     selectors.target ?? "",
-    "remote-check"
+    "remote-status"
   );
   if (!targetSelection.ok) return targetSelection;
   const targetReports = consumerReports.filter((report) =>

@@ -202,8 +202,80 @@ test("Runtime must depend on the exact Runtime Core version", async () => {
         inputRuntimeCorePackageRoot: packages.runtimeCoreRoot,
         sourceRevision: fixtureRevision
       }),
-      /must depend on the exact Runtime Core version/
+      /must depend on the injected Runtime Core version/
     );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("sync accepts independently versioned packages from one local workspace", async () => {
+  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-workspace-"));
+  const assets = join(root, "assets");
+  try {
+    const packages = createMatchedPackages(root);
+    const observabilityManifestPath = join(
+      packages.observabilityRoot,
+      "package.json"
+    );
+    const observabilityManifest = JSON.parse(
+      readFileSync(observabilityManifestPath, "utf8")
+    );
+    observabilityManifest.version = "2.5.4";
+    writeFileSync(
+      observabilityManifestPath,
+      `${JSON.stringify(observabilityManifest, null, 2)}\n`
+    );
+
+    const runtimeManifestPath = join(packages.runtimeRoot, "package.json");
+    const runtimeManifest = JSON.parse(
+      readFileSync(runtimeManifestPath, "utf8")
+    );
+    runtimeManifest.version = "2.8.0";
+    runtimeManifest.dependencies["@module-federation/runtime-core"] =
+      "workspace:*";
+    writeFileSync(
+      runtimeManifestPath,
+      `${JSON.stringify(runtimeManifest, null, 2)}\n`
+    );
+
+    const runtimeCoreManifestPath = join(
+      packages.runtimeCoreRoot,
+      "package.json"
+    );
+    const runtimeCoreManifest = JSON.parse(
+      readFileSync(runtimeCoreManifestPath, "utf8")
+    );
+    runtimeCoreManifest.version = "2.8.0";
+    writeFileSync(
+      runtimeCoreManifestPath,
+      `${JSON.stringify(runtimeCoreManifest, null, 2)}\n`
+    );
+    writeFileSync(
+      join(packages.runtimeCoreRoot, "dist", "index.js"),
+      `export class ModuleFederation {
+        constructor(options) {
+          this.name = options.name;
+          this.version = "2.8.0";
+        }
+      }
+      `
+    );
+
+    const result = await synchronizeMfDebug({
+      mode: "sync",
+      inputPackageRoot: packages.observabilityRoot,
+      inputRuntimePackageRoot: packages.runtimeRoot,
+      inputRuntimeCorePackageRoot: packages.runtimeCoreRoot,
+      sourceRevision: fixtureRevision,
+      assetDirectory: assets
+    });
+
+    assert.equal(result.version, undefined);
+    assert.equal(result.runtime.packageVersion, "2.8.0");
+    assert.equal(result.runtimeCore.packageVersion, "2.8.0");
+    assert.equal(result.observability.packageVersion, "2.5.4");
+    assert.equal(result.sourceRevision, fixtureRevision);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

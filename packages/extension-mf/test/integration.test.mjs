@@ -18,7 +18,7 @@ const idleRemote = {
   type: "global"
 };
 
-test("all eight commands execute against one combined Remote, Shared, and Bridge snapshot", async () => {
+test("all seven commands and both trace modes execute against one combined snapshot", async () => {
   const snapshot = combinedSnapshot();
   const cases = [
     { command: ["mf", "status"], expected: "mf status", compactStatus: true },
@@ -28,30 +28,37 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
       expected: "mf module-info"
     },
     {
-      command: ["mf", "trace", "shop/Button"],
+      command: ["mf", "remote", "trace", "shop/Button"],
       options: [["instance", ["mf-1"]], ["trace-id", ["remote-load"]]],
-      expected: "mf trace",
+      expected: "mf remote trace",
       traceOperation: "loadRemote"
     },
     {
-      command: ["mf", "remote", "check", "shop"],
+      command: ["mf", "remote", "status", "shop"],
       options: [["instance", ["mf-1"]]],
-      expected: "mf remote check"
+      expected: "mf remote status"
     },
     {
-      command: ["mf", "preload", "trace", "shop"],
-      options: [["instance", ["mf-1"]], ["trace-id", ["remote-preload"]]],
-      expected: "mf preload trace",
+      command: ["mf", "remote", "trace", "shop"],
+      options: [
+        ["preload", ["true"]],
+        ["instance", ["mf-1"]],
+        ["trace-id", ["remote-preload"]]
+      ],
+      expected: "mf remote trace",
       traceOperation: "preloadRemote"
     },
     {
       command: ["mf", "shared", "status", "react"],
-      options: [["instance", ["mf-1"]], ["scope", ["default"]]],
+      options: [["scope", ["default"]], ["version", ["18.3.1"]]],
       expected: "mf shared status"
     },
     {
       command: ["mf", "shared", "trace", "react"],
-      options: [["instance", ["mf-1"]], ["operation", ["shared-op"]]],
+      options: [
+        ["instance", ["mf-1"]],
+        ["operation", ["shared-op"]]
+      ],
       expected: "mf shared trace"
     },
     {
@@ -70,6 +77,14 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
     assert.equal(await runMfCommand(run.options), 0, item.expected);
     if (item.compactStatus) {
       assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
+    } else if (item.expected === "mf remote status") {
+      assert.deepEqual(Object.keys(run.outputValue()), ["consumer", "remote"]);
+    } else if (item.expected === "mf shared status") {
+      assert.deepEqual(Object.keys(run.outputValue()), ["shared"]);
+      assert.equal(
+        run.outputValue().shared.default.react["18.3.1"].loaded,
+        true
+      );
     } else if (item.traceOperation !== undefined) {
       assert.equal(run.outputValue().traces[0].operation, item.traceOperation);
       assert.ok(Array.isArray(run.outputValue().traces[0].lifecycle));
@@ -87,18 +102,23 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
 test("combined structured output keeps Remote, Shared, preload, and Bridge evidence isolated", async () => {
   const snapshot = combinedSnapshot();
   const remote = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["remote-load"]]]),
     snapshot
   );
   const preload = createOptions(
-    ["mf", "preload", "trace", "shop"],
-    new Map([["trace-id", ["remote-preload"]]]),
+    ["mf", "remote", "trace", "shop"],
+    new Map([
+      ["preload", ["true"]],
+      ["trace-id", ["remote-preload"]]
+    ]),
     snapshot
   );
   const shared = createOptions(
     ["mf", "shared", "trace", "react"],
-    new Map([["operation", ["shared-op"]]]),
+    new Map([
+      ["operation", ["shared-op"]]
+    ]),
     snapshot
   );
   const bridge = createOptions(
@@ -132,18 +152,20 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
     bridgeTraceCapability: capability(false, "unavailable", "Bridge hooks are unavailable.")
   });
   const pending = await runJson(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     [["trace-id", ["remote-pending"]]],
     snapshot
   );
   const unknown = await runJson(
-    ["mf", "remote", "check", "idle"],
+    ["mf", "remote", "status", "idle"],
     [["instance", ["mf-1"]]],
     snapshot
   );
   const partial = await runJson(
     ["mf", "shared", "trace", "react"],
-    [["operation", ["shared-op"]]],
+    [
+      ["operation", ["shared-op"]]
+    ],
     snapshot
   );
   const unavailable = await runJson(
@@ -153,7 +175,7 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
   );
 
   assert.equal(pending.result, "pending");
-  assert.equal(unknown.remote.outcome, "unknown");
+  assert.equal(unknown.remote.latestResult, "unknown");
   assert.equal(partial.supported, true);
   assert.match(partial.warnings.join(" "), /partial|missing/i);
   assert.match(unavailable.warnings.join(" "), /unavailable/i);

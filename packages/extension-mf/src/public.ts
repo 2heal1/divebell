@@ -8,6 +8,7 @@ export {
   createCompatibilitySummary,
   createModuleInfoResult,
   createStatusResult,
+  filterGlobalShared,
   filterRelationshipsForInstances
 } from "./results.js";
 export {
@@ -34,7 +35,7 @@ export type * from "./bridge/types.js";
 export { RemoteCoreError } from "./remote/errors.js";
 export {
   buildRemoteTrace,
-  createRemoteCheckResult,
+  createRemoteStatusResult,
   createRemoteTraceResult,
   remoteCapability
 } from "./remote/results.js";
@@ -42,9 +43,9 @@ export {
   isRemoteTraceReport,
   normalizeExpose,
   reportInstanceRef,
-  selectRemoteCheck,
+  selectRemoteStatus,
   selectRemoteTrace,
-  type RemoteCheckSelection,
+  type RemoteStatusSelection,
   type RemoteTraceSelection
 } from "./remote/selection.js";
 export type * from "./remote/types.js";

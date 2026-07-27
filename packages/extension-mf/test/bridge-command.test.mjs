@@ -17,7 +17,7 @@ test("bridge trace JSON is stable and preserves explicit lifecycle semantics", a
   });
   const options = new Map([
     ["instance", ["mf-1"]],
-    ["bridge", ["bridge-1"]],
+    ["bridge-id", ["bridge-1"]],
     ["operation", ["bridge-op-1"]]
   ]);
   const first = createOptions(["mf", "bridge", "trace", "shop"], options, browserValue);
@@ -54,12 +54,16 @@ test("default bridge output preserves instance, sides, timing, outcome, and cons
   });
   const run = createOptions(
     ["mf", "bridge", "trace"],
-    new Map([ ["operation", ["bridge-op-1"]] ]),
+    new Map([
+      ["bridge", ["http://localhost:17321"]],
+      ["operation", ["bridge-op-1"]]
+    ]),
     browserValue
   );
   assert.equal(await runMfCommand(run.options), 0);
   assert.equal(run.stdout(), "");
   const result = run.outputValue();
+  assert.equal(result.selection.selectors.bridgeId, undefined);
   assert.equal(result.operations[0].instance.instanceRef, "mf-1");
   assert.equal(
     result.operations[0].sides.find((side) => side.side === "consumer").framework,
@@ -98,7 +102,7 @@ test("ambiguous remote results include copyable --operation candidate commands",
   for (const candidate of result.candidates) {
     assert.match(candidate.command, /^openruntime mf bridge trace "catalog"/);
     assert.match(candidate.command, /--instance "mf-1"/);
-    assert.match(candidate.command, new RegExp(`--bridge ${JSON.stringify(candidate.bridgeId)}`));
+    assert.match(candidate.command, new RegExp(`--bridge-id ${JSON.stringify(candidate.bridgeId)}`));
     assert.match(candidate.command, new RegExp(`--operation ${JSON.stringify(candidate.operationId)}`));
   }
 });

@@ -6,24 +6,23 @@ The Shared commands analyze facts already exposed by the page's public Module Fe
 
 ```sh
 openruntime mf shared status [package] \
-  [--mf <name>] [--instance <ref>] [--scope <scope>]
+  [--scope <scope>] [--version <version>] [--verbose]
 ```
 
-Status uses `state.instances[].shareScopes` as its source of truth. Without `--mf` or `--instance`, it returns every observed instance. `--mf` may return several same-name instances and always preserves their `instanceRef`; `--instance` is exact. Results are grouped by instance and scope and include every current version, loaded versions, provider, `loaded`, `singleton`, `eager`, and strategy.
+Status reads the sanitized merged global Shared registry and returns one `shared` object grouped as `scope -> package -> version`. It does not return an `instances` list. The optional positional package, `--scope`, and `--version` values are exact filters.
 
-Historical reports are not converted into current state. A historical singleton conflict is included only when the current scope still contains every version named by that conflict.
+The default output includes only versions whose `loaded` value is true. It keeps safe fields such as `from`, `useIn`, loading state, scope, dependencies, strategy, and share configuration, while omitting `lib` and `get`.
 
-The command checks `state.capabilities.sharedState`:
+`loading` is transitional evidence. It remains visible only while `loaded` is
+false; after loading completes, both `mf status` and `mf shared status` omit it.
 
-- `complete`: returns the current facts normally.
-- `partial`: returns the available facts with a warning.
-- `unavailable`: returns a structured unsupported result with the capability reason and recovery action.
+`--verbose` additionally includes unloaded versions and bounded `lib` / `get` source and location details. A package or version that exists but is not loaded therefore returns an empty `shared` object by default and appears with `--verbose`.
 
 ## Global shared registry in `mf status`
 
-`openruntime mf status` also returns the sanitized global Shared registry grouped by scope, package, and version. Its default output contains only loaded versions and omits `lib` and `get` entirely. It does not collect function locations.
+`openruntime mf status` and `openruntime mf shared status` use the same sanitized global Shared registry and the same default-versus-verbose rules. `mf status` returns the complete registry next to the instance list, while `mf shared status` can narrow it by package, scope, and version.
 
-`openruntime mf status --verbose` additionally includes unloaded versions, bounded `lib` and `get` source text, generated file, line, and column, and the original source file, line, and column when a usable Source Map is available. These details are best effort: missing or inaccessible Source Maps leave the generated bundle location intact, while a function with no browser location simply omits the location field. Location failures never fail the status command.
+Verbose output includes bounded `lib` and `get` source text, generated file, line, and column, and the original source file, line, and column when a usable Source Map is available. These details are best effort: missing or inaccessible Source Maps leave the generated bundle location intact, while a function with no browser location simply omits the location field. Location failures never fail the status command.
 
 ## Registration, selection, and load trace
 
@@ -33,7 +32,9 @@ openruntime mf shared trace [package] \
   [--operation <id>] [--trace-id <id>]
 ```
 
-Without a package, trace returns an operation summary list. With a package, one matching operation is shown in full. Several matches produce candidates containing `instanceRef`, MF name, package, scope, `operationId`, `traceId`, and a copyable command.
+Without `--mf` or `--instance`, Shared trace selects the first top-level consumer in instance creation order. A consumer already known as another consumer's producer is not top-level. If relationship evidence cannot identify a top-level consumer, the first created consumer is used. The command fails only when no consumer exists. `--mf` selects consumers by visible name, while `--instance` selects one exact current consumer.
+
+Without a package, `mf shared trace` returns an operation summary list. With a package, one matching operation is shown in full. Several matches produce candidates containing `instanceRef`, MF name, package, scope, `operationId`, `traceId`, and a copyable command.
 
 Correlation uses the strongest public identifier in this order:
 

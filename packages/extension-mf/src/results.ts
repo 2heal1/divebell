@@ -55,7 +55,9 @@ export function createStatusResult(
       ),
       active: instance.active
     })),
-    shared: filterGlobalShared(snapshot.globalShared, options.verbose === true)
+    shared: filterGlobalShared(snapshot.globalShared, {
+      verbose: options.verbose === true
+    })
   };
 }
 
@@ -88,21 +90,36 @@ function consumersForInstance(
   );
 }
 
-function filterGlobalShared(
+export function filterGlobalShared(
   shared: BrowserObservabilitySnapshot["globalShared"],
-  verbose: boolean
+  options: {
+    package?: string;
+    scope?: string;
+    version?: string;
+    verbose?: boolean;
+  } = {}
 ): StatusResult["shared"] {
   return Object.fromEntries(
     Object.entries(shared).sort(byKey).flatMap(([scope, packages]) => {
+      if (options.scope !== undefined && scope !== options.scope) return [];
       const filteredPackages = Object.fromEntries(
         Object.entries(packages).sort(byKey).flatMap(([packageName, versions]) => {
+          if (
+            options.package !== undefined &&
+            packageName !== options.package
+          ) {
+            return [];
+          }
           const filteredVersions = Object.fromEntries(
             Object.entries(versions)
               .sort(byKey)
-              .filter(([, value]) => verbose || value.loaded)
+              .filter(([version, value]) =>
+                (options.version === undefined || version === options.version) &&
+                (options.verbose === true || value.loaded)
+              )
               .map(([version, value]) => [
                 version,
-                verbose ? value : withoutFunctionSources(value)
+                normalizeGlobalSharedValue(value, options.verbose === true)
               ])
           );
           return Object.keys(filteredVersions).length === 0
@@ -117,12 +134,16 @@ function filterGlobalShared(
   );
 }
 
-function withoutFunctionSources(
-  value: StatusResult["shared"][string][string][string]
+function normalizeGlobalSharedValue(
+  value: StatusResult["shared"][string][string][string],
+  verbose: boolean
 ): StatusResult["shared"][string][string][string] {
   const safeValue = { ...value };
-  delete safeValue.lib;
-  delete safeValue.get;
+  if (safeValue.loaded) delete safeValue.loading;
+  if (!verbose) {
+    delete safeValue.lib;
+    delete safeValue.get;
+  }
   return safeValue;
 }
 
@@ -179,6 +200,7 @@ export function createModuleInfoResult(
       );
 
   const manifestUrl = firstDefined(
+    latestLoadedResourceUrl(reports, "manifest"),
     selected.remote.entry && isManifestUrl(selected.remote.entry)
       ? selected.remote.entry
       : undefined,
@@ -192,6 +214,7 @@ export function createModuleInfoResult(
     ))
   );
   const remoteEntryUrl = firstDefined(
+    latestLoadedResourceUrl(reports, "remoteEntry"),
     ...reportModuleInfo.map((entry) => entry.remoteEntry),
     selected.remote.entry && !isManifestUrl(selected.remote.entry)
       ? selected.remote.entry
@@ -361,6 +384,25 @@ function matchingReports(
     report.remote !== undefined &&
     remotesMatch(report.remote, remote)
   );
+}
+
+function latestLoadedResourceUrl(
+  reports: RuntimeReport[],
+  type: "manifest" | "remoteEntry"
+): string | undefined {
+  const events = reports
+    .flatMap((report) => report.events)
+    .filter((event) =>
+      event.resource?.type === type &&
+      event.resource.initiator === "loadRemote" &&
+      event.status !== "start" &&
+      event.status !== "error" &&
+      event.resource.outcome !== "error" &&
+      event.resource.outcome !== "timeout"
+    )
+    .sort((left, right) => right.timestamp - left.timestamp);
+  const latest = events[0];
+  return latest?.resource?.url ?? latest?.sanitizedUrl;
 }
 
 function matchingRuntimeModuleInfo(

@@ -168,6 +168,82 @@ test("the same operation id in two instances remains two independent chains", ()
   assert.deepEqual(byName.candidates.map((item) => item.instanceRef), ["mf-1", "mf-2"]);
 });
 
+test("shared trace defaults to the top-level consumer and allows an exact consumer", () => {
+  const parent = host({ instanceRef: "mf-1", name: "parent" });
+  const child = host({ instanceRef: "mf-2", name: "child" });
+  const reports = [
+    sharedReport({
+      instanceRef: "mf-1",
+      operationId: "parent-op",
+      traceId: "parent-trace"
+    }),
+    sharedReport({
+      instanceRef: "mf-2",
+      operationId: "child-op",
+      traceId: "child-trace"
+    })
+  ];
+  const current = snapshot(runtimeState({
+    instances: [parent, child],
+    relationships: [{
+      consumerInstanceRef: "mf-1",
+      producerInstanceRef: "mf-2",
+      remote: { name: "child" },
+      evidence: ["loadRemote"],
+      status: "resolved"
+    }]
+  }), reports);
+
+  const defaultResult = createSharedTraceResult(current, { package: "react" });
+  assert.equal(defaultResult.selection.kind, "detail");
+  assert.equal(defaultResult.operations[0].instanceRef, "mf-1");
+  assert.equal(defaultResult.operations[0].operationId, "parent-op");
+
+  const selectedChild = createSharedTraceResult(current, {
+    package: "react",
+    instanceRef: "mf-2"
+  });
+  assert.equal(selectedChild.selection.kind, "detail");
+  assert.equal(selectedChild.operations[0].operationId, "child-op");
+});
+
+test("shared trace falls back to the first created consumer and fails without one", () => {
+  const first = host({ instanceRef: "mf-2", name: "first" });
+  const second = host({ instanceRef: "mf-1", name: "second" });
+  const current = snapshot(runtimeState({
+    instances: [first, second]
+  }), [
+    sharedReport({
+      instanceRef: "mf-2",
+      operationId: "first-op",
+      traceId: "first-trace"
+    }),
+    sharedReport({
+      instanceRef: "mf-1",
+      operationId: "second-op",
+      traceId: "second-trace"
+    })
+  ]);
+  const result = createSharedTraceResult(current, { package: "react" });
+  assert.equal(result.operations[0].instanceRef, "mf-2");
+  assert.equal(result.operations[0].operationId, "first-op");
+
+  const producer = instance({
+    instanceRef: "mf-3",
+    name: "producer",
+    role: "producer"
+  });
+  assert.throws(
+    () => createSharedTraceResult(
+      snapshot(runtimeState({ instances: [producer] })),
+      { package: "react" }
+    ),
+    (error) =>
+      error.code === "MF_SHARED_CONSUMER_NOT_FOUND" &&
+      error.facts.requiredRole === "consumer"
+  );
+});
+
 test("trace id is the correlation fallback when operationId is absent", () => {
   const first = sharedReport({ operationId: "temporary", traceId: "trace-only" });
   delete first.shared.operationId;

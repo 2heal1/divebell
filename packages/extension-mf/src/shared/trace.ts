@@ -68,7 +68,8 @@ export function createSharedTraceResult(
   const selectedInstances = selectSharedInstances(
     snapshot.state.instances,
     selectors,
-    "mf shared trace"
+    "mf shared trace",
+    snapshot.state.relationships
   );
 
   const operations = groupSharedTraceOperations(snapshot, selectedInstances)

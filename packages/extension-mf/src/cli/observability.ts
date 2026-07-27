@@ -47,12 +47,31 @@ function presentCommandResult(result: unknown): unknown {
   delete presented.compatibility;
   delete presented.capability;
   if (
-    presented.command === "mf trace" ||
-    presented.command === "mf preload trace"
+    presented.command === "mf remote trace" &&
+    Array.isArray(presented.traces)
   ) {
     return presentRemoteTraceResult(presented);
   }
+  if (presented.command === "mf remote status") {
+    return presentRemoteStatusResult(presented);
+  }
   return presented;
+}
+
+function presentRemoteStatusResult(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const warnings = stringArray(value.warnings);
+  const recommendedActions = stringArray(value.recommendedActions);
+  return {
+    consumer: value.consumer,
+    remote: value.remote,
+    ...(value.proxy === undefined ? {} : { proxy: value.proxy }),
+    ...(warnings.length === 0 ? {} : { warnings }),
+    ...(recommendedActions.length === 0
+      ? {}
+      : { recommendedActions })
+  };
 }
 
 function presentRemoteTraceResult(

@@ -28,6 +28,7 @@ test("status --verbose adds unloaded shared dependencies and function details", 
           from: "host",
           useIn: ["host"],
           loaded: true,
+          loading: true,
           lib: {
             source: "() => react",
             location: {
@@ -65,6 +66,10 @@ test("status --verbose adds unloaded shared dependencies and function details", 
     defaultRun.outputValue().shared.default.react["18.3.1"].lib,
     undefined
   );
+  assert.equal(
+    defaultRun.outputValue().shared.default.react["18.3.1"].loading,
+    undefined
+  );
 
   const verboseRun = createOptions(
     ["mf", "status"],
@@ -92,6 +97,10 @@ test("status --verbose adds unloaded shared dependencies and function details", 
         column: 2
       }
     }
+  );
+  assert.equal(
+    verboseRun.outputValue().shared.default.react["18.3.1"].loading,
+    undefined
   );
 
   const disabledRun = createOptions(
@@ -151,25 +160,40 @@ test("unknown MF commands return the compatible unified help error", async () =>
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, trace, remote check, preload trace, shared status, shared trace or bridge trace." &&
+      error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, remote status, remote trace, shared status, shared trace or bridge trace." &&
       /openruntime mf status/.test(error.hint) &&
       /openruntime mf module-info/.test(error.hint) &&
       /openruntime mf bridge trace/.test(error.hint) &&
-      /openruntime mf remote check/.test(error.hint) &&
+      /openruntime mf remote status/.test(error.hint) &&
+      /openruntime mf remote trace/.test(error.hint) &&
       /openruntime mf shared status/.test(error.hint) &&
       /openruntime mf shared trace/.test(error.hint)
   );
 });
 
-test("mf without a subcommand lists the same eight commands without adding help", async () => {
+test("mf without a subcommand lists the same seven commands without adding help", async () => {
   const run = createOptions(["mf"], new Map(), undefined);
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_REQUIRED" &&
       /mf requires a subcommand/.test(error.message) &&
-      /status, module-info, trace, remote check, preload trace, shared status, shared trace or bridge trace/.test(error.message) &&
+      /status, module-info, remote status, remote trace, shared status, shared trace or bridge trace/.test(error.message) &&
       !/mf help/.test(`${error.message} ${error.hint}`)
   );
+});
+
+test("removed trace routes do not silently fall back to a new command", async () => {
+  for (const command of [
+    ["mf", "trace", "shop"],
+    ["mf", "remote", "check", "shop"],
+    ["mf", "preload", "trace", "shop"]
+  ]) {
+    const run = createOptions(command, new Map(), undefined);
+    await assert.rejects(
+      () => runMfCommand(run.options),
+      (error) => error.code === "MF_COMMAND_INVALID"
+    );
+  }
 });
 
 test("MF presenter preserves status and module-info candidate commands", async () => {

@@ -5,9 +5,8 @@ The remote commands analyze the public `RuntimeState` and `RuntimeReport` values
 ## Commands
 
 ```text
-openruntime mf trace [remote/expose] [--mf <name>] [--instance <ref>] [--trace-id <id>]
-openruntime mf remote check <remote> [--mf <name>] [--instance <ref>]
-openruntime mf preload trace [remote] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+openruntime mf remote status <remote> [--mf <name>] [--instance <ref>]
+openruntime mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 ```
 
 All commands return structured JSON by default.
@@ -16,7 +15,7 @@ Successful command output omits the internal compatibility and capability summar
 
 ## Ordinary remote trace
 
-`mf trace` returns a compact result and orders its `lifecycle` array into these
+`mf remote trace` returns a compact result and orders its `lifecycle` array into these
 fixed stages:
 
 1. request start
@@ -36,7 +35,7 @@ only when relevant. Resource loading details appear only on stages that
 actually contain a related manifest, remote entry, script, style, or other
 resource request.
 
-The `mf trace` and `mf preload trace` commands format absolute start and end times as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
+`mf remote trace` formats absolute start and end times as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
 
 The top-level trace outcome comes from the captured report. A recovered trace remains `recovered`, while its original failed resource stays in the resource list.
 
@@ -51,22 +50,43 @@ includes its page-session `instance.ref` and `traceId`. A target that matches
 several concurrent reports requires `--trace-id` and returns copyable
 candidates.
 
-## Remote check
+## Remote status
 
-`mf remote check` combines current consumer state with previously observed ordinary remote reports. It reports:
+`mf remote status` combines current consumer state with the latest observed ordinary remote report. It reports:
 
 - whether the remote was declared by the selected consumer;
+- whether the remote has loaded;
+- which exposes were observed loading successfully;
 - whether a current consumer-to-producer relationship exists;
-- manifest and remote entry resource evidence;
-- HTTP status, MIME type, redirects, and duration;
-- container initialization and expose outcomes;
-- cache, recovery, timeout, and trace ids.
+- the latest observed result;
+- the latest `traceId`.
 
-The check does not fetch a manifest or remote entry, execute a script, initialize a container, or call an expose/factory. A declaration without a captured load has outcome `unknown` and recommends reopening or reproducing the page path.
+When the page was opened with `--mf-proxy`, status also returns `proxy` for a
+remote matched by that rule:
+
+- `target`: the configured version or sanitized manifest URL;
+- `matchedBy`: whether the rule matched the remote `name` or `alias`;
+- `applied`: `true` when the registered version or entry equals the target,
+  or, for URL proxies with loading evidence, when the manifest was actually
+  loaded from the target; `false` when it differs or proxy setup failed, and
+  `unknown` when the public state does not expose the evidence needed for
+  comparison;
+- `loadedFrom`: the observed manifest URL when a URL proxy reached the loading
+  lifecycle;
+- `error`: present only when proxy setup failed before Module Federation
+  started.
+
+The proxy marker is evidence about the current `open` operation only. A later
+ordinary `openruntime open` restores the browser's previous proxy settings and
+does not return this field.
+
+`loadedExposes` contains only exposes from successful or recovered ordinary loads. A failed load is not included. A loaded remote can still have an empty `loadedExposes` list when current producer state confirms the remote but no successful expose load was captured.
+
+Detailed lifecycle and resource evidence stays in `mf remote trace`. Status does not fetch a manifest or remote entry, execute a script, initialize a container, or call an expose/factory. A declaration without captured loading history has latest result `unknown` and recommends reopening or reproducing the page path.
 
 ## Preload trace
 
-`mf preload trace` identifies its operation as `preloadRemote` and accepts only
+`mf remote trace --preload` identifies its operation as `preloadRemote` and accepts only
 reports and resources from that operation. Its lifecycle order is preload
 target, manifest resolution, resource requests, and final result. Ordinary
 `loadRemote` events are excluded, including when the remote name, expose, URL,
@@ -90,7 +110,7 @@ The result uses `state.capabilities.remoteTrace` and page history timing:
 
 - `complete`: the capability and captured history are complete.
 - `partial`: existing evidence is returned, with a warning that earlier stages may be missing. Partial history, partial capability, late injection, or late-bound instances produce this state.
-- `unavailable`: the result explicitly says the current reader cannot support remote tracing and recommends upgrading/configuring observability and reopening the page. It is not reported as an empty successful check.
+- `unavailable`: the result explicitly says the current reader cannot support remote tracing and recommends upgrading/configuring observability and reopening the page. It is not reported as an empty successful result.
 
 If the extension was installed after Module Federation had already started, reopen the page with `openruntime open <url>` before reproducing the load.
 
@@ -101,9 +121,9 @@ The package's `@openruntime/extension-mf/core` entry exports the pure selectors 
 ```ts
 import {
   buildRemoteTrace,
-  createRemoteCheckResult,
+  createRemoteStatusResult,
   createRemoteTraceResult,
-  selectRemoteCheck,
+  selectRemoteStatus,
   selectRemoteTrace
 } from "@openruntime/extension-mf/core";
 ```

@@ -34,13 +34,16 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/observability-build.json",
-    "dist/runtime-debug-build.json"
+    "dist/runtime-debug-build.json",
+    "dist/proxy-sdk-build.json"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -b --pretty false && node ./scripts/assemble.mjs",
+    "build": "node ./scripts/clean-dist.mjs && tsc -b --pretty false && node ./scripts/assemble.mjs",
+    "sync:vmok-proxy": "node ./scripts/sync-vmok-proxy.mjs sync",
+    "check:vmok-proxy": "node ./scripts/sync-vmok-proxy.mjs check",
     "test": "pnpm run build && node --test test/*.test.mjs"
   }
 }

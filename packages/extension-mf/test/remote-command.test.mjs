@@ -10,14 +10,14 @@ import {
   stateWithConsumer
 } from "./remote-fixtures.mjs";
 
-test("trace returns a compact lifecycle with results, resources, and preload evidence", async () => {
+test("remote trace returns a compact lifecycle with results, resources, and preload evidence", async () => {
   const state = stateWithConsumer();
   const read = browserRead(state, [
     preloadTrace({ base: 500 }),
     loadTrace()
   ]);
   const trace = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["trace-load-1"]]]),
     read
   );
@@ -74,20 +74,28 @@ test("trace returns a compact lifecycle with results, resources, and preload evi
   assert.equal(manifestStage.label, undefined);
   assert.equal(manifestStage.remote, undefined);
 
-  const check = createOptions(
-    ["mf", "remote", "check", "shop"],
+  const status = createOptions(
+    ["mf", "remote", "status", "shop"],
     new Map([["instance", ["mf-1"]]]),
     read
   );
-  assert.equal(await runMfCommand(check.options), 0);
-  assert.equal(check.outputValue().command, "mf remote check");
-  assert.equal(check.outputValue().remote.declared, true);
-  assert.equal(check.outputValue().compatibility, undefined);
-  assert.equal(check.outputValue().capability, undefined);
+  assert.equal(await runMfCommand(status.options), 0);
+  assert.deepEqual(Object.keys(status.outputValue()), ["consumer", "remote"]);
+  assert.deepEqual(status.outputValue().remote, {
+    name: "@scope/catalog",
+    alias: "shop",
+    declared: true,
+    loaded: true,
+    loadedExposes: ["./Button"],
+    relationship: "resolved",
+    producerInstanceRef: "mf-producer",
+    latestResult: "success",
+    latestTraceId: "trace-load-1"
+  });
 
   const preload = createOptions(
-    ["mf", "preload", "trace", "shop"],
-    new Map(),
+    ["mf", "remote", "trace", "shop"],
+    new Map([["preload", ["true"]]]),
     read
   );
   assert.equal(await runMfCommand(preload.options), 0);
@@ -104,9 +112,9 @@ test("trace returns a compact lifecycle with results, resources, and preload evi
   assert.doesNotMatch(JSON.stringify(preload.outputValue()), /trace-load-1/);
 });
 
-test("trace reports preload as not observed instead of claiming it did not happen", async () => {
+test("remote trace reports preload as not observed instead of claiming it did not happen", async () => {
   const run = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["trace-load-1"]]]),
     browserRead(stateWithConsumer(), [loadTrace()])
   );
@@ -116,9 +124,9 @@ test("trace reports preload as not observed instead of claiming it did not happe
   });
 });
 
-test("trace distinguishes an overlapping preload from one completed before load", async () => {
+test("remote trace distinguishes an overlapping preload from one completed before load", async () => {
   const run = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["trace-load-1"]]]),
     browserRead(stateWithConsumer(), [
       preloadTrace({ base: 995 }),
@@ -132,9 +140,9 @@ test("trace distinguishes an overlapping preload from one completed before load"
   );
 });
 
-test("trace keeps a failed lifecycle result and its related resource error", async () => {
+test("remote trace keeps a failed lifecycle result and its related resource error", async () => {
   const run = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["trace-load-1"]]]),
     browserRead(stateWithConsumer(), [
       loadTrace({ remoteEntryOutcome: "error" })
@@ -158,7 +166,7 @@ test("same-name MF instances return copyable command candidates", async () => {
   const second = consumer({ instanceRef: "mf-2", name: "host" });
   const state = stateWithConsumer({ instances: [first, second], relationships: [] });
   const run = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["mf", ["host"]]]),
     browserRead(state, [
       loadTrace({ traceId: "trace-a", instanceRef: "mf-1" }),
@@ -169,15 +177,15 @@ test("same-name MF instances return copyable command candidates", async () => {
     () => runMfCommand(run.options),
     (error) => error.code === "MF_CONSUMER_AMBIGUOUS" &&
       error.data.candidates[0].command ===
-        'openruntime mf trace "shop/Button" --instance "mf-1"' &&
+        'openruntime mf remote trace "shop/Button" --instance "mf-1"' &&
       error.data.candidates[1].command ===
-        'openruntime mf trace "shop/Button" --instance "mf-2"'
+        'openruntime mf remote trace "shop/Button" --instance "mf-2"'
   );
 });
 
 test("concurrent traces return copyable --trace-id candidates", async () => {
   const run = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map(),
     browserRead(stateWithConsumer(), [
       loadTrace({ traceId: "trace-a", base: 1000 }),
@@ -189,15 +197,15 @@ test("concurrent traces return copyable --trace-id candidates", async () => {
     (error) => error.code === "MF_REMOTE_TRACE_AMBIGUOUS" &&
       error.data.candidates[0].traceId === "trace-a" &&
       error.data.candidates[0].command ===
-        'openruntime mf trace "shop/Button" --instance "mf-1" --trace-id "trace-a"' &&
+        'openruntime mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-a"' &&
       error.data.candidates[1].command ===
-        'openruntime mf trace "shop/Button" --instance "mf-1" --trace-id "trace-b"'
+        'openruntime mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-b"'
   );
 });
 
-test("remote check requires one remote target", async () => {
+test("remote status requires one remote target", async () => {
   const missing = createOptions(
-    ["mf", "remote", "check"],
+    ["mf", "remote", "status"],
     new Map(),
     browserRead(stateWithConsumer())
   );
@@ -205,6 +213,19 @@ test("remote check requires one remote target", async () => {
     () => runMfCommand(missing.options),
     (error) => error.code === "MF_COMMAND_USAGE_INVALID" &&
       /requires exactly one remote/.test(error.message)
+  );
+});
+
+test("remote trace validates the --preload boolean value", async () => {
+  const run = createOptions(
+    ["mf", "remote", "trace", "shop"],
+    new Map([["preload", ["sometimes"]]]),
+    browserRead(stateWithConsumer())
+  );
+  await assert.rejects(
+    () => runMfCommand(run.options),
+    (error) => error.code === "MF_COMMAND_OPTION_INVALID" &&
+      /Invalid --preload value/.test(error.message)
   );
 });
 

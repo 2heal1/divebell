@@ -429,6 +429,15 @@ export interface InjectionMarker {
   message?: string;
 }
 
+export interface ProxyInjectionMarker {
+  schemaVersion: 1;
+  source: "openruntime/extension-mf";
+  status: "installed" | "error";
+  installedAt: number;
+  overrides: Record<string, string>;
+  message?: string;
+}
+
 export interface BrowserObservabilitySnapshot {
   observabilityMode: Exclude<ObservabilityMode, "unavailable">;
   observabilityVersion: string;
@@ -436,6 +445,7 @@ export interface BrowserObservabilitySnapshot {
   availableScopes: string[];
   compatibleScopes: string[];
   injection?: InjectionMarker;
+  proxy?: ProxyInjectionMarker;
   state: RuntimeState;
   reports: RuntimeReport[];
   globalShared: GlobalSharedState;

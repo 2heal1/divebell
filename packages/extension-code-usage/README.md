@@ -32,7 +32,9 @@ openruntime code-usage analyze \
   --output /tmp/code-usage-report.json
 ```
 
-Use `--assets <dir>` when the JavaScript and source maps are not beside the Chunk Map.
+The Chunk Map and asset base can be local paths or HTTP/HTTPS URLs. When
+JavaScript and source maps are not beside the Chunk Map, pass their directory
+or URL with `--assets`.
 
 ## View the result
 

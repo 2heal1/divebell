@@ -124,6 +124,23 @@ openruntime code-usage analyze \
   --output /tmp/code-usage-report.json
 ```
 
+`--chunk-map` and `--assets` also accept HTTP or HTTPS URLs. This is useful for
+a public deployment that keeps its Chunk Map, JavaScript, and source maps
+together:
+
+```bash
+openruntime code-usage analyze \
+  --chunk-map https://example.com/app/openruntime-chunks.json \
+  --coverage /tmp/first-screen.coverage.json \
+  --coverage /tmp/orders.coverage.json \
+  --output /tmp/code-usage-report.json
+```
+
+When the Chunk Map is remote and `--assets` is omitted, its URL directory is
+used as the asset base. Only analyze trusted deployments: the command downloads
+the referenced build files, and every file must still come from the exact build
+used by the recorded page.
+
 Repeat `--coverage` in the order the phases should appear in the report.
 
 ## 4. Open the report

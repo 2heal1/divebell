@@ -20,8 +20,10 @@ export async function analyzeCodeUsageFiles(
     throw new Error("At least one coverage checkpoint is required.");
   }
 
-  const chunkMapLocation = resolve(options.chunkMap);
-  const assetBase = resolve(options.assets ?? dirname(chunkMapLocation));
+  const chunkMapLocation = resolveInputLocation(options.chunkMap);
+  const assetBase = options.assets === undefined
+    ? defaultAssetBase(chunkMapLocation)
+    : resolveAssetBase(options.assets);
   const chunkMap = validateChunkMap(await readJson(chunkMapLocation));
   const coverageLocations = options.coverage.map((location) => resolve(location));
   const checkpoints = await Promise.all(coverageLocations.map(async (location) =>
@@ -80,14 +82,42 @@ async function readAnalysisAssets(
     return {
       file: asset.file,
       code,
-      sourceMapPath: sourceMapLocation,
+      sourceMapPath: isHttpLocation(sourceMapLocation)
+        ? `/${asset.sourceMap.replace(/^\/+/, "")}`
+        : sourceMapLocation,
       sourceMap: validateSourceMap(sourceMap, sourceMapLocation)
     };
   }));
 }
 
 function resolveFromBase(base: string, path: string): string {
-  return resolve(base, path);
+  return isHttpLocation(base)
+    ? new URL(path.replace(/^\/+/, ""), ensureTrailingSlash(base)).href
+    : resolve(base, path);
+}
+
+function resolveInputLocation(location: string): string {
+  return isHttpLocation(location) ? new URL(location).href : resolve(location);
+}
+
+function resolveAssetBase(location: string): string {
+  return isHttpLocation(location)
+    ? ensureTrailingSlash(new URL(location).href)
+    : resolve(location);
+}
+
+function defaultAssetBase(chunkMapLocation: string): string {
+  return isHttpLocation(chunkMapLocation)
+    ? new URL(".", chunkMapLocation).href
+    : resolve(dirname(chunkMapLocation));
+}
+
+function ensureTrailingSlash(location: string): string {
+  return location.endsWith("/") ? location : `${location}/`;
+}
+
+function isHttpLocation(location: string): boolean {
+  return location.startsWith("http://") || location.startsWith("https://");
 }
 
 async function readJson(location: string): Promise<unknown> {
@@ -101,6 +131,15 @@ async function readJson(location: string): Promise<unknown> {
 
 async function readText(location: string): Promise<string> {
   try {
+    if (isHttpLocation(location)) {
+      const response = await fetch(location, {
+        signal: AbortSignal.timeout(15_000)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      return await response.text();
+    }
     return await readFile(location, "utf8");
   } catch (error) {
     throw new Error(`Cannot read ${location}: ${errorMessage(error)}`);

@@ -119,9 +119,9 @@ pnpm exec openruntime code-usage analyze \
   --output /tmp/code-usage-report.json
 ```
 
-`--chunk-map` 可以指向任意本地路径。测试线上页面时，将线上正在运行的那一次构建
-产物下载或保留在本地，再把它的 Chunk Map 路径传给 CLI。页面地址和构建文件不需要
-位于同一台机器，但必须属于同一次构建。
+`--chunk-map` 可以指向本地路径，也可以直接指向 HTTP 或 HTTPS 地址。测试线上页面时，
+既可以把线上正在运行的那次构建产物保留在本地，也可以让 CLI 从可信的公开部署读取。
+页面和构建文件不必位于同一台机器，但必须属于同一次构建。
 
 默认会从 Chunk Map 所在目录读取 JavaScript 和 source map。如果它们放在另一个目录，
 使用：
@@ -133,6 +133,19 @@ pnpm exec openruntime code-usage analyze \
   --coverage /tmp/first-screen.coverage.json \
   --output /tmp/code-usage-report.json
 ```
+
+线上构建文件放在一起时，可以直接分析：
+
+```bash
+pnpm exec openruntime code-usage analyze \
+  --chunk-map https://example.com/app/openruntime-chunks.json \
+  --coverage /tmp/first-screen.coverage.json \
+  --coverage /tmp/orders.coverage.json \
+  --output /tmp/code-usage-report.json
+```
+
+远程 Chunk Map 没有指定 `--assets` 时，CLI 会从它所在的 URL 目录读取 JavaScript 和
+source map。只应分析可信的部署，因为命令会下载 Chunk Map 引用的构建文件。
 
 可以重复传入 `--coverage`，顺序就是报告中的阶段顺序。
 

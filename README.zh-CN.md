@@ -82,6 +82,10 @@ OpenRuntime 将真实 Web 页面作为 Agent 的工作入口，提供页面上�
 
 [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 
+对于需要登录的页面，OpenRuntime 可以复用已有的 Chrome Profile、浏览器状态或用户明确提供的加密登录凭据，在原有权限范围内完成调试和验证。
+
+[浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
+
 完整浏览器流程需要由脚本管理时，见 [使用 OpenRuntime CLI 编写自动化脚本](./docs/cli-automation-scripts.zh-CN.md)。
 
 ### Extensions
@@ -119,20 +123,37 @@ Runtime Core 是可选的页面侧 API。当页面 DOM、Console、Network 等�
 
 [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
 
-## 环境准备
+## Examples
 
-### 浏览器授权
+下面的例子按照用户可以完成的结果组织。可以先选择与当前任务最接近的例子体验完整流程，再查看背后的命令和接入方式。
 
-OpenRuntime 可以复用已有的 Chrome Profile 或浏览器状态，也可以使用用户明确提供的加密登录凭据，帮助 Agent 进入真实 Web 环境。这些能力不会绕过授权。
+### 直接体验
 
-[浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
+#### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
-## 专项调试场景
+在可见浏览器中演示一次流程，让 Agent 根据操作记录、页面上下文和可选语音说明生成脚本草稿。
 
-- [内存分析](./docs/memory-analysis.zh-CN.md)：用真实页面操作判断内存、DOM 节点和监听器是否持续增长。
-- [分块与代码使用分析](./docs/code-usage-analysis.zh-CN.md)：把浏览器中的代码执行情况还原到分块、源码文件和依赖包。
-- [录制浏览器操作并生成脚本](./docs/record-browser-workflows.zh-CN.md)：把一次人工演示转换成可继续检查和验证的脚本草稿。
-- [浏览器连接与多 Runtime](./docs/runtime-connections.zh-CN.md)：在微前端页面中复用会话并选择正确的 Runtime。
+**演示视频**
+
+https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
+
+#### [检查真实页面流程中的内存增长](./docs/memory-analysis.zh-CN.md)
+
+重复同一段用户操作，判断 JavaScript 内存、DOM 节点和事件监听器是否持续增长。
+
+#### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
+
+对比首屏与后续操作，查看分块、源码文件和依赖包的加载与执行情况。
+
+### 接入参考
+
+#### [让 Agent 读取应用状态并执行页面声明的动作](./demos/bridge-readonly/README.md)
+
+运行一个订单页面，读取状态和事件，执行页面允许的刷新动作并等待最终结果。
+
+#### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
+
+创建一个本地 Extension，读取当前页面并参与页面打开、技术栈识别和关闭流程。
 
 ## 组成
 
@@ -161,6 +182,7 @@ OpenRuntime 可以复用已有的 Chrome Profile 或浏览器状态，也可以�
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
 - [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 - [浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
+- [浏览器连接与多 Runtime](./docs/runtime-connections.zh-CN.md)
 - [Extension 使用指南](./docs/extensions.zh-CN.md)
 - [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md)
 - [Extension API 参考](./docs/extension-api.zh-CN.md)

@@ -1,7 +1,5 @@
 # CLI Extension Local Development Demo
 
-Chinese version: [CLI Extension 本地开发 Demo](README.zh-CN.md)
-
 This demo accompanies [CLI Extension Development](../../docs/cli-extensions.md). See the [Extension API Reference](../../docs/extension-api.md) for fields and methods. It demonstrates:
 
 - keeping the entry declaration-only and loading Command and Hook implementations on demand;

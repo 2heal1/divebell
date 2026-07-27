@@ -351,7 +351,7 @@ openruntime stop
 
 ### 运行仓库 demo
 
-仓库内的[本地 CLI Extension demo](../demos/cli-extension/README.zh-CN.md)包含可直接运行的 Command、三个 Hook 和测试。它展示了：
+仓库内的[本地 CLI Extension demo](../demos/cli-extension/README.md)包含可直接运行的 Command、三个 Hook 和测试。它展示了：
 
 - 读取位置参数和选项。
 - 成功时返回结果，失败时抛出清晰错误。

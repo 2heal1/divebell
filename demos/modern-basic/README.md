@@ -1,47 +1,47 @@
 # Modern.js Basic Demo
 
-这个 demo 用本地 Modern.js 代码接入 `@openruntime/modern-plugin`，用来验收 roadmap 阶段 3 的第一批框架状态。
+This demo integrates a local Modern.js checkout with `@openruntime/modern-plugin` and verifies the first set of framework states from roadmap stage 3.
 
-## 准备
+## Prerequisites
 
-这个 demo 依赖本机的 Modern.js 仓库：`/Users/bytedance/work/modern.js`。需要先确保那边已经包含 OpenRuntime 所需的 hook，并且依赖已安装。
+This demo depends on the local Modern.js repository at `/Users/bytedance/work/modern.js`. Make sure it includes the hooks required by OpenRuntime and has its dependencies installed.
 
-在仓库根目录先安装依赖并构建：
+Install dependencies and build from the repository root:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-## 启动
+## Start
 
-开第一个终端，启动 Bridge：
+Start the Bridge in the first terminal:
 
 ```bash
 pnpm exec openruntime start
 ```
 
-开第二个终端，启动 Modern.js demo：
+Start the Modern.js demo in a second terminal:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic dev
 ```
 
-然后打开：
+Then open:
 
 ```txt
 http://localhost:19081/
 ```
 
-## 验收
+## Verify
 
-在第三个终端执行：
+Run the verification in a third terminal:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify
 ```
 
-也可以手动查看：
+You can also inspect the state manually:
 
 ```bash
 pnpm exec openruntime runtimes
@@ -50,159 +50,146 @@ pnpm exec openruntime snapshot --url http://localhost:19081/
 pnpm exec openruntime events --url http://localhost:19081/ --limit 12
 ```
 
-这个 demo 没有开启 SSR，所以不会出现 `modern:ssr` target。
-CSR 模式下也不会默认出现 `modern:hydration` target。
+This demo does not enable SSR, so it does not expose a `modern:ssr` target.
+CSR mode does not expose a `modern:hydration` target by default.
 
-访问 `Orders` 页面后，再执行：
+Visit the `Orders` page, then run:
 
 ```bash
 pnpm exec openruntime snapshot
 ```
 
-应该能看到 `modern:route` 当前状态。
-真实执行过的 loader 会合并在 `modern:route` 的当前 matches 里，不再是独立 target。
-route component 正常挂载时不会出现在 snapshot 里，只有加载失败时才会显示错误。
+The result should show the current `modern:route` state.
+Loaders that actually ran are included in the current matches for `modern:route` instead of being exposed as separate targets.
+A route component that mounts normally does not appear in the snapshot; an error is shown only when loading fails.
 
-访问 `Broken` 页面后，再执行：
+Visit the `Broken` page, then run:
 
 ```bash
 pnpm exec openruntime events --limit 20
 ```
 
-应该能看到 loader error 和 route error。
+The result should show the loader error and route error.
 
-访问 `Component Error` 页面后，再执行：
+Visit the `Component Error` page, then run:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify:route-component-error
 ```
 
-应该能看到 `modern:route` 是 `error`，当前 pathname 是 `/component-error`，当前 match 里只有失败时才出现 `routeComponent: error`。
+The result should show `modern:route` as `error`, `/component-error` as the current pathname, and `routeComponent: error` in the current match. That route-component field appears only on failure.
 
-## wait-for 路由变化
+## Wait for a Route Change
 
-先让浏览器停在 Home 页面，然后在终端执行：
+Leave the browser on the Home page, then run:
 
 ```bash
 pnpm exec openruntime wait-for modern:route ready --where pathname=/orders --timeout 30000
 ```
 
-命令开始等待后，点击页面上的 `Orders`。命令应该返回成功结果。
+After the command starts waiting, click `Orders` on the page. The command should succeed.
 
-## run-action 触发点击
+## Trigger a Click with run-action
 
-先让浏览器停在 Home 页面，确认页面声明了点击 action：
+Leave the browser on the Home page and confirm that the page declares the click action:
 
 ```bash
 pnpm exec openruntime actions --url http://localhost:19081/
 ```
 
-应该能看到 `demo.click-orders`。
+The result should include `demo.click-orders`.
 
-执行点击 action：
+Run the click action:
 
 ```bash
 pnpm exec openruntime run-action --url http://localhost:19081/ demo.click-orders
 ```
 
-然后等待路由进入 Orders：
+Then wait for the route to reach Orders:
 
 ```bash
 pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders --timeout 30000
 ```
 
-## 预期结果
+## Expected Results
 
-- `runtimes` 里能看到 `http://localhost:19081/` 或当前访问的子路由。
-- `targets` 里能看到 `modern:app` 和 `modern:route`。
-- `actions` 里能看到 `demo.click-orders`。
-- `modern:route` 的 target data 里能看到 routes 清单。
-- `snapshot` 里能看到 `modern:route` 的当前 pathname 和 matches。
-- `snapshot` 里能看到 `business:ready:modern-demo`。
-- `Orders` 页面会在 `modern:route` 的 matches 里体现 loader success。
-- `Broken` 页面会在 `modern:route` 上体现错误状态。
-- `Component Error` 页面会在 `modern:route` 的当前 match 里体现 `routeComponent: error`。
+- `runtimes` shows `http://localhost:19081/` or the currently visited child route.
+- `targets` shows `modern:app` and `modern:route`.
+- `actions` shows `demo.click-orders`.
+- The target data for `modern:route` contains the route list.
+- `snapshot` shows the current pathname and matches for `modern:route`.
+- `snapshot` shows `business:ready:modern-demo`.
+- On the `Orders` page, the matches for `modern:route` show loader success.
+- On the `Broken` page, `modern:route` shows an error state.
+- On the `Component Error` page, the current match for `modern:route` shows `routeComponent: error`.
 
-## 构建检查
+## Build Check
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic build
 ```
 
-## Chunk Map 检查
+## Chunk Map Check
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify:chunk-map
 ```
 
-检查会执行一次真实生产构建，确认所有 JavaScript 文件都能唯一映射到
-`dist/openruntime-chunks.json`，文件大小一致，并验证 Orders 页面属于异步
-chunk 且能还原到 `src/routes/orders/page.tsx`。
-检查还会确认 React、React DOM、React Router 等第三方依赖的名称和版本，区分
-Modern.js、OpenRuntime 工作区依赖，并避免把 `.modern-js` 自动生成入口误判为
-第三方代码。
+The check runs a real production build and confirms that every JavaScript file maps uniquely to `dist/openruntime-chunks.json` with the same file size. It also verifies that the Orders page belongs to an async chunk and maps back to `src/routes/orders/page.tsx`.
 
-## 内存稳定性检查
+The check also verifies the names and versions of third-party dependencies such as React, React DOM, and React Router; distinguishes Modern.js and OpenRuntime workspace dependencies; and prevents generated `.modern-js` entries from being classified as third-party code.
 
-先保持 demo 运行，再在另一个终端执行：
+## Memory Stability Check
+
+Keep the demo running and execute the check in another terminal:
 
 ```bash
 OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
 pnpm --filter @openruntime/demo-modern-basic verify:memory
 ```
 
-检查会先预热页面，再让首页和 Orders 页面往返 12 次。每轮都会请求垃圾回收并记录 JS heap、DOM 节点和事件监听器，最后将报告、分配记录和前后两份快照保存到 `.memory-artifacts/`。
+The check warms up the page, then moves between the Home and Orders pages 12 times. Each iteration requests garbage collection and records the JavaScript heap, DOM nodes, and event listeners. It saves the report, allocation profile, and before-and-after snapshots in `.memory-artifacts/`.
 
-`verify:memory` 直接执行 `openruntime memory check`。demo 自己只在
-`scripts/memory-scenario.mjs` 中描述首页和 Orders 之间的往返操作；浏览器管理、
-内存采集、结果计算和文件保存都由 OpenRuntime CLI 完成。
+`verify:memory` runs `openruntime memory check` directly. The demo only describes the journey between the Home and Orders pages in `scripts/memory-scenario.mjs`; OpenRuntime CLI manages the browser, collects memory data, calculates the result, and saves the files.
 
-报告的 `verdict` 有两种结果：
+The report has two possible `verdict` values:
 
-- `no-clear-growth`：这次流程没有看到明确的持续增长。
-- `suspicious-growth`：回收后仍有持续增长，需要继续对比前后快照和 Top 函数。
+- `no-clear-growth`: the journey did not show clear sustained growth.
+- `suspicious-growth`: growth continued after garbage collection; compare the before-and-after snapshots and top functions.
 
-可以调整次数或输出目录：
+You can change the number of iterations or the output directory:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify:memory -- --iterations 20 --artifact-dir /tmp/modern-basic-memory
 ```
 
-## 页面体验检查
+## Page Experience Check
 
-完整的首次接入、操作流程、报告解读和常见问题见
-[分块与代码使用分析](../../docs/code-usage-analysis.zh-CN.md)。
+See [Chunk and Code-Usage Analysis](../../docs/code-usage-analysis.md) for initial setup, the complete workflow, report interpretation, and common issues.
 
-先执行 `verify:chunk-map` 生成生产构建，并保持 demo 服务运行。检查默认使用项目
-自带的浏览器，避免终端中的外部浏览器配置影响启动速度：
+Run `verify:chunk-map` first to create a production build, and keep the demo server running. The check uses the browser bundled with the project by default so an external browser configuration left in the terminal does not slow startup:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify:experience
 ```
 
-如需验证指定版本，可执行
-`pnpm --filter @openruntime/demo-modern-basic verify:experience -- --agent-browser /path/to/agent-browser`。
+To verify a specific browser version, run `pnpm --filter @openruntime/demo-modern-basic verify:experience -- --agent-browser /path/to/agent-browser`.
 
-首屏默认在 `modern:route` 进入 `ready` 后记录。应用提供了自己的 ready target 时，
-可以传入目标 ID：
+By default, the first screen is recorded after `modern:route` reaches `ready`. If the application provides its own ready target, pass its target ID:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic verify:experience -- \
   --ready-target business:ready:modern-demo
 ```
 
-检查会分别独立冷启动首页和 Orders 页面。每个页面先在不记录代码的情况下测量可用
-时间和 JS 内存，再单独记录代码执行，避免代码记录影响加载耗时。报告首先展示页面
-何时可用、ready 时内存、峰值内存和稳定内存，然后用 Chunk 加载原因与代码使用情况
-帮助定位问题。完整结果保存在 `.page-experience-artifacts/report.json`，可通过下方的本地服务查看。
+The check cold-starts the Home and Orders pages independently. For each page, it first measures time-to-ready and JavaScript memory without recording code, then records code execution separately so coverage collection does not affect load-time measurements. The report first shows time-to-ready, memory at ready, peak memory, and stable memory, then uses chunk loading reasons and code usage to help identify problems. The complete result is stored in `.page-experience-artifacts/report.json` and can be viewed with the local server below.
 
-加载与内存默认各测量 3 次，报告展示中位数。临时快速检查可以追加 `-- --runs 1`。
+Loading and memory are measured three times by default, and the report shows the median. Add `-- --runs 1` for a quick temporary check.
 
-启动流式报告服务：
+Start the streaming report server:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-basic report:serve
 ```
 
-然后打开 `http://127.0.0.1:4173/`。页面会先显示概要，分块、源码、依赖和代码内容
-会在收到后逐步补充。按 `Ctrl+C` 停止报告服务。
+Then open `http://127.0.0.1:4173/`. The page shows the summary first, then progressively adds chunks, source files, dependencies, and code content as they arrive. Press `Ctrl+C` to stop the report server.

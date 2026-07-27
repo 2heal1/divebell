@@ -1,111 +1,111 @@
-# Bridge Readonly Demo
+# Inspect Application State and Run Page-Declared Actions
 
-这个 demo 是一个基础 Rsbuild 项目，用来验收 roadmap 阶段 2：页面连接 Bridge，CLI 从页面外读取状态、读取输入选项、执行 action，并用 `wait-for` 等待结果。
+This example shows how OpenRuntime lets an Agent inspect the state and events of an orders page, run an allowed refresh action, and wait for the final result. The page also displays its current state and recent events so they can be compared with the command output.
 
-完整操作方式和多 Runtime 场景见 [浏览器连接与多 Runtime 使用指南](../../docs/runtime-connections.zh-CN.md)。
+See [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md) for the complete workflow and multi-Runtime scenarios.
 
-## 准备
+## Prerequisites
 
-在仓库根目录先构建一次：
+Build the workspace from the repository root:
 
 ```bash
 pnpm build
 ```
 
-## 启动
+## Start
 
-开第一个终端，启动 demo 页面：
+Start the demo page in the first terminal:
 
 ```bash
 pnpm --filter @openruntime/demo-bridge-readonly dev
 ```
 
-开第二个终端，用 CLI 打开页面。CLI 会自动启动 Bridge，并在页面加载前放入连接管理器：
+Open the page with the CLI in a second terminal. The CLI starts the Bridge automatically and installs the connection manager before the page loads:
 
 ```bash
 pnpm exec openruntime open http://localhost:19080/ --ui
 ```
 
-## 验收
+## Walkthrough
 
-继续在终端执行下面命令。
+Continue with the following commands.
 
-查看已连接页面：
+List connected pages:
 
 ```bash
 pnpm exec openruntime runtimes
 ```
 
-读取页面声明的 targets：
+Read the targets declared by the page:
 
 ```bash
 pnpm exec openruntime targets --url http://localhost:19080/
 ```
 
-读取页面当前状态：
+Read the current page state:
 
 ```bash
 pnpm exec openruntime snapshot --url http://localhost:19080/
 ```
 
-读取页面事件：
+Read page events:
 
 ```bash
 pnpm exec openruntime events --url http://localhost:19080/ --limit 8
 ```
 
-读取页面声明的 actions：
+Read the actions declared by the page:
 
 ```bash
 pnpm exec openruntime actions --url http://localhost:19080/
 ```
 
-读取 action 的输入选项：
+Read the input options for an action:
 
 ```bash
 pnpm exec openruntime input-options --url http://localhost:19080/ --action demo.refresh-orders --input source
 ```
 
-执行页面声明的 action：
+Run the page-declared action:
 
 ```bash
 pnpm exec openruntime run-action --url http://localhost:19080/ demo.refresh-orders --payload '{"amount":2,"source":"cli"}'
 ```
 
-等待 action 后的状态：
+Wait for the post-action state:
 
 ```bash
 pnpm exec openruntime wait-for --url http://localhost:19080/ business:orders ready --timeout 5000
 ```
 
-页面上点 `Loading`、`Error`、`Ready` 或 `Add order` 后，再执行 `snapshot` 和 `events`，应该能看到状态和事件变化。
+Click `Loading`, `Error`, `Ready`, or `Add order` on the page, then run `snapshot` and `events` again to see the state and event changes.
 
-## 预期结果
+## Expected Result
 
-- `runtimes` 里能看到一个 `connected` 的 runtime，`url` 是 `http://localhost:19080/`。
-- `targets` 里能看到 `app:bridge-readonly-demo`、`route:/bridge-readonly`、`business:orders`。
-- `snapshot` 里能看到这些 target 的当前状态。
-- `events` 会随着页面按钮操作增加。
-- `actions` 里能看到 `demo.refresh-orders`。
-- `input-options` 能看到 `cli` 和 `demo` 两个来源选项。
-- `run-action` 能增加 orders 数量。
-- `wait-for` 能返回 `business:orders` 已经是 `ready`。
+- `runtimes` shows a `connected` Runtime with `http://localhost:19080/` as its URL.
+- `targets` shows `app:bridge-readonly-demo`, `route:/bridge-readonly`, and `business:orders`.
+- `snapshot` shows the current state of those targets.
+- `events` grows as the page buttons are used.
+- `actions` shows `demo.refresh-orders`.
+- `input-options` shows `cli` and `demo` as the two source options.
+- `run-action` increases the order count.
+- `wait-for` reports that `business:orders` is `ready`.
 
-如果 Bridge 端口不是 `17321`，打开页面和后续命令都加上：
+If the Bridge does not use port `17321`, add the selected port to the open command and every subsequent command:
 
 ```bash
 --port 17322
 ```
 
-## 构建检查
+## Build Check
 
-这个 demo 也可以单独构建：
+The demo can also be built independently:
 
 ```bash
 pnpm --filter @openruntime/demo-bridge-readonly build
 ```
 
-构建后可以用 Rsbuild preview 查看：
+Preview the production build with Rsbuild:
 
 ```bash
 pnpm --filter @openruntime/demo-bridge-readonly preview

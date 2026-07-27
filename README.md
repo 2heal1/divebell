@@ -129,14 +129,31 @@ These examples are organized around the result a user can experience. Start with
 
 ### Try OpenRuntime
 
-- [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md): demonstrate a workflow in a visible browser and let the agent generate a script draft from the interactions, page context, and optional spoken intent.
-- [Check memory growth across a real page journey](./docs/memory-analysis.md): repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
-- [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md): compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
+#### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
+
+Demonstrate a workflow in a visible browser and let the agent generate a script draft from the interactions, page context, and optional spoken intent.
+
+**Demo video**
+
+https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
+
+#### [Check memory growth across a real page journey](./docs/memory-analysis.md)
+
+Repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
+
+#### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
+
+Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
 ### Build with OpenRuntime
 
-- [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md): run an orders page, inspect its state and events, invoke an allowed refresh action, and wait for the final result.
-- [Connect existing team tools to the current page](./demos/cli-extension/README.md): create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
+#### [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md)
+
+Run an orders page, inspect its state and events, invoke an allowed refresh action, and wait for the final result.
+
+#### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
+
+Create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
 
 ## Components
 

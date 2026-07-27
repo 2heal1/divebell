@@ -1,68 +1,68 @@
 # Modern.js Stream SSR Demo
 
-这个 demo 用来验收 Modern.js 默认推荐的 stream SSR 场景下，OpenRuntime 能否把服务端渲染和浏览器运行时关联到同一条记录。
+This demo verifies that OpenRuntime can connect server rendering and the browser Runtime in the same record when a Modern.js app uses the recommended streaming SSR mode.
 
-## 准备
+## Prerequisites
 
-这个 demo 依赖本机的 Modern.js 仓库：`/Users/bytedance/fork_repo/modern.js`。需要先确保那边已经包含 OpenRuntime 所需的 hook，并且依赖已安装。
+This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by OpenRuntime and has its dependencies installed.
 
-在 OpenRuntime 仓库根目录先安装依赖并构建：
+Install dependencies and build from the OpenRuntime repository root:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-## 启动
+## Start
 
-开第一个终端，启动 Bridge：
+Start the Bridge in the first terminal:
 
 ```bash
 pnpm exec openruntime start
 ```
 
-开第二个终端，启动 stream SSR demo：
+Start the streaming SSR demo in a second terminal:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-ssr-stream dev
 ```
 
-然后打开：
+Then open:
 
 ```txt
 http://localhost:19083/
 ```
 
-## 验收
+## Verify
 
-在第三个终端执行：
+Run the verification in a third terminal:
 
 ```bash
 pnpm --filter @openruntime/demo-modern-ssr-stream verify
 ```
 
-也可以手动查看：
+You can also inspect the state manually:
 
 ```bash
 pnpm exec openruntime targets --url http://localhost:19083/
 pnpm exec openruntime snapshot --url http://localhost:19083/
 ```
 
-预期结果：
+Expected results:
 
-- `targets` 里能看到 `modern:app`、`modern:route`、`modern:ssr`、`modern:hydration`。
-- `snapshot` 里 `modern:ssr` 是 `server-rendered`，并且来源是 server。
-- `snapshot` 里 `modern:hydration` 是 `success`，并且 renderMode 是 `stream`。
-- `snapshot` 里 `modern:route` 是 `ready`，当前 pathname 是 `/`。
-- `runtimes` 里的 `runtimeId` 会和 `modern:ssr` 里记录的 server `runtimeId` 一致。
+- `targets` shows `modern:app`, `modern:route`, `modern:ssr`, and `modern:hydration`.
+- In `snapshot`, `modern:ssr` is `server-rendered` and its source is the server.
+- In `snapshot`, `modern:hydration` is `success` and its `renderMode` is `stream`.
+- In `snapshot`, `modern:route` is `ready` and its current pathname is `/`.
+- The `runtimeId` shown by `runtimes` matches the server `runtimeId` recorded by `modern:ssr`.
 
-也可以单独等待 server SSR 状态：
+You can also wait for the server SSR state directly:
 
 ```bash
 pnpm exec openruntime wait-for modern:ssr server-rendered --url http://localhost:19083/ --where environment=server --timeout 5000
 ```
 
-## 构建检查
+## Build Check
 
 ```bash
 pnpm --filter @openruntime/demo-modern-ssr-stream build

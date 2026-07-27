@@ -12,9 +12,9 @@ Use it when a task is easier to demonstrate than to specify from scratch, such a
 
 ## Demo Video
 
-[Watch the browser recording workflow](https://github.com/2heal1/openruntime/releases/download/demo-assets-v1/openruntime-recording-skill-demo.mp4).
+https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-The video is published in a dedicated demo-assets Release, separate from runtime and npm package releases.
+The video shows the complete recording, interaction, and script-generation workflow.
 
 ## Install
 

@@ -82,6 +82,10 @@ These capabilities include the current page and user journey, page operations su
 
 [CLI Reference](./docs/cli-reference.md)
 
+For protected pages, OpenRuntime can reuse an existing Chrome profile, browser state, or encrypted credentials explicitly supplied by the user, and work within the account's existing permissions.
+
+[Browser Authentication and State](./docs/browser-auth.md)
+
 When a script must manage the complete browser flow, see [Automating with OpenRuntime CLI](./docs/cli-automation-scripts.md).
 
 ### Extensions
@@ -119,20 +123,20 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 [Runtime Core API](./docs/runtime-core-api.md)
 
-## Environment Setup
+## Examples
 
-### Browser Authentication
+These examples are organized around the result a user can experience. Start with the example closest to your task, run the complete workflow, and then explore the commands and integrations behind it.
 
-OpenRuntime can reuse an existing Chrome profile or browser state, and it can use encrypted credentials explicitly supplied by the user. These capabilities help an agent enter a real web environment without bypassing authorization.
+### Try OpenRuntime
 
-[Browser Authentication and State](./docs/browser-auth.md)
+- [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md): demonstrate a workflow in a visible browser and let the agent generate a script draft from the interactions, page context, and optional spoken intent.
+- [Check memory growth across a real page journey](./docs/memory-analysis.md): repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
+- [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md): compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
-## Focused Debugging Scenarios
+### Build with OpenRuntime
 
-- [Memory analysis](./docs/memory-analysis.md): determine whether memory, DOM nodes, and listeners keep growing across a real page journey.
-- [Chunk and code-usage analysis](./docs/code-usage-analysis.md): map browser code execution back to chunks, source files, and packages.
-- [Record browser workflows](./docs/record-browser-workflows.md): turn a manual demonstration into a script draft that can be inspected and verified.
-- [Browser connections and multiple Runtimes](./docs/runtime-connections.md): preserve sessions and select the right Runtime in micro-frontend pages.
+- [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md): run an orders page, inspect its state and events, invoke an allowed refresh action, and wait for the final result.
+- [Connect existing team tools to the current page](./demos/cli-extension/README.md): create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
 
 ## Components
 
@@ -162,6 +166,7 @@ OpenRuntime can reuse an existing Chrome profile or browser state, and it can us
 - [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
 - [CLI Reference](./docs/cli-reference.md)
 - [Browser Authentication and State](./docs/browser-auth.md)
+- [Browser Connections and Multiple Runtimes](./docs/runtime-connections.md)
 - [Using Extensions](./docs/extensions.md)
 - [CLI Extension Development](./docs/cli-extensions.md)
 - [Extension API Reference](./docs/extension-api.md)

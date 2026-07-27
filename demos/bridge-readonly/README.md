@@ -1,6 +1,6 @@
-# Bridge Readonly Demo
+# 读取应用状态并执行页面声明动作
 
-这个 demo 是一个基础 Rsbuild 项目，用来验收 roadmap 阶段 2：页面连接 Bridge，CLI 从页面外读取状态、读取输入选项、执行 action，并用 `wait-for` 等待结果。
+这个例子展示 OpenRuntime 如何让 Agent 从页面外读取一个订单页面的状态和事件，执行页面允许的刷新动作，并等待最终结果。页面同时显示当前状态和最近事件，方便对照命令返回的内容。
 
 完整操作方式和多 Runtime 场景见 [浏览器连接与多 Runtime 使用指南](../../docs/runtime-connections.zh-CN.md)。
 

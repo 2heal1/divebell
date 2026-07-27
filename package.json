@@ -2,6 +2,7 @@
   "name": "openruntime",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.18.1",
   "engines": {

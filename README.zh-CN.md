@@ -168,8 +168,16 @@ OpenRuntime 可以复用已有的 Chrome Profile 或浏览器状态，也可以�
 - [自动化脚本](./docs/cli-automation-scripts.zh-CN.md)
 - [发版流程](./docs/release.zh-CN.md)
 
+## 参与贡献
+
+请阅读 [贡献指南](./CONTRIBUTING.zh-CN.md) 来共同参与 OpenRuntime 的建设。
+
 ## Credits
 
 OpenRuntime 使用 [agent-browser](https://github.com/vercel-labs/agent-browser) 作为默认的浏览器执行能力。感谢 agent-browser 的作者和贡献者。
 
 Extensions 会执行本机代码，只安装和加载可信内容。登录状态文件包含敏感信息，应只保存在可信环境中。
+
+## 许可证
+
+OpenRuntime 基于 [MIT 许可证](./LICENSE) 发布。

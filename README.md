@@ -169,8 +169,16 @@ OpenRuntime can reuse an existing Chrome profile or browser state, and it can us
 - [Standalone Automation](./docs/cli-automation-scripts.md)
 - [Release Process](./docs/release.md)
 
+## Contribution
+
+Please read the [contributing guide](./CONTRIBUTING.md) and let's build OpenRuntime together.
+
 ## Credits
 
 OpenRuntime uses [agent-browser](https://github.com/vercel-labs/agent-browser) as its default browser execution layer. Thanks to the agent-browser authors and contributors.
 
 Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.
+
+## License
+
+OpenRuntime is [MIT licensed](./LICENSE).

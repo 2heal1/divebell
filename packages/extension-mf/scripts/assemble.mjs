@@ -18,5 +18,21 @@ await Promise.all([
   copyFile(
     resolve(packageRoot, "assets/observability-build.json"),
     resolve(distDirectory, "observability-build.json")
+  ),
+  copyFile(
+    resolve(packageRoot, "assets/install-runtime-debug.js"),
+    resolve(distDirectory, "install-runtime-debug.js")
+  ),
+  copyFile(
+    resolve(packageRoot, "assets/runtime-debug-build.json"),
+    resolve(distDirectory, "runtime-debug-build.json")
+  ),
+  copyFile(
+    resolve(packageRoot, "assets/vmok-proxy-sdk.iife.js"),
+    resolve(distDirectory, "vmok-proxy-sdk.iife.js")
+  ),
+  copyFile(
+    resolve(packageRoot, "assets/proxy-sdk-build.json"),
+    resolve(distDirectory, "proxy-sdk-build.json")
   )
 ]);

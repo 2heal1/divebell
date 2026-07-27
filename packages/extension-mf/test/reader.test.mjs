@@ -5,15 +5,96 @@ import test from "node:test";
 import {
   MF_BROWSER_READ_SCRIPT,
   parseBrowserReadResult,
-  parseRuntimeState
+  parseRuntimeState,
+  readMfObservability
 } from "../dist/reader.js";
-import { browserRead, report, runtimeState } from "./fixtures.mjs";
+import { browserRead, instance, report, runtimeState } from "./fixtures.mjs";
 
 test("injected mode accepts the MF-Obs-00 runtime-state schema", () => {
   const result = parseBrowserReadResult(browserRead(runtimeState()));
   assert.equal(result.ok, true);
   assert.equal(result.snapshot.observabilityMode, "injected");
   assert.equal(result.snapshot.observabilityVersion, "2.5.4");
+});
+
+test("reader keeps only a bounded and sanitized MF proxy marker", () => {
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [], {
+    proxyMarker: {
+      schemaVersion: 1,
+      source: "openruntime/extension-mf",
+      status: "installed",
+      installedAt: 10,
+      overrides: {
+        shop: "https://user:secret@cdn.test/shop/mf-manifest.json?token=secret#hash"
+      }
+    }
+  }));
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.snapshot.proxy, {
+    schemaVersion: 1,
+    source: "openruntime/extension-mf",
+    status: "installed",
+    installedAt: 10,
+    overrides: {
+      shop: "https://cdn.test/shop/mf-manifest.json"
+    }
+  });
+});
+
+test("legacy shared flags are normalized and metadata entries are omitted", () => {
+  const state = runtimeState({
+    instances: [
+      instance({
+        instanceRef: "mf-1",
+        name: "host",
+        role: "consumer",
+        shareScopes: [
+          {
+            name: "default",
+            sharedCount: 2,
+            sharedNames: ["react", "version"],
+            shared: [
+              {
+                name: "react",
+                versions: [
+                  {
+                    version: "19.1.1",
+                    provider: "host",
+                    loaded: true,
+                    singleton: 1
+                  }
+                ]
+              },
+              {
+                name: "version",
+                versions: [{ version: "0" }, { version: "1" }]
+              }
+            ]
+          }
+        ]
+      })
+    ]
+  });
+
+  const parsed = parseRuntimeState(state);
+  assert.deepEqual(parsed.instances[0].shareScopes[0], {
+    name: "default",
+    sharedCount: 1,
+    sharedNames: ["react"],
+    shared: [
+      {
+        name: "react",
+        versions: [
+          {
+            version: "19.1.1",
+            provider: "host",
+            loaded: true,
+            singleton: true
+          }
+        ]
+      }
+    ]
+  });
 });
 
 test("application mode is distinguished from injected mode", () => {
@@ -54,6 +135,235 @@ test("browser adapter prefers one application reader when injected and applicati
   assert.equal(result.ok, true);
   assert.equal(result.mode, "application");
   assert.equal(result.selectedScope, "runtime_host");
+});
+
+test("browser adapter merges the global share table by scope, package, and version", () => {
+  const state = runtimeState();
+  const sharedMap = {
+    default: {
+      react: {
+        "18.3.1": {
+          from: "producer",
+          useIn: ["host"],
+          loaded: false,
+          lib() {
+            return "react";
+          },
+          get: () => "react-factory",
+          scope: ["default"],
+          deps: ["scheduler"],
+          eager: true,
+          strategy: "loaded-first",
+          shareConfig: {
+            requiredVersion: "^18.0.0",
+            singleton: true,
+            eager: false,
+            strictVersion: false
+          }
+        },
+        "17.0.2": {
+          from: "legacy",
+          useIn: [],
+          loaded: false,
+          get: () => "legacy-react"
+        }
+      }
+    }
+  };
+  const context = vm.createContext({
+    __FEDERATION__: {
+      __OBSERVABILITY__: {
+        chrome_extension: {
+          getRuntimeState: () => state,
+          getReports: () => []
+        }
+      },
+      __SHARE__: {
+        "host:1.0.0": sharedMap,
+        "producer:1.0.0": sharedMap,
+        "consumer:1.0.0": {
+          default: {
+            react: {
+              "18.3.1": {
+                from: "producer",
+                useIn: ["catalog"],
+                loaded: true,
+                loading: Promise.resolve()
+              }
+            }
+          }
+        }
+      }
+    },
+    __MF_OBSERVABILITY_INJECTION__: {
+      observabilityVersion: "2.5.4"
+    }
+  });
+  context.globalThis = context;
+  const raw = vm.runInContext(MF_BROWSER_READ_SCRIPT, context);
+  const result = parseBrowserReadResult(raw);
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    result.snapshot.globalShared.default.react["18.3.1"].useIn,
+    ["catalog", "host"]
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["18.3.1"].loaded,
+    true
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["18.3.1"].loading,
+    undefined
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["18.3.1"].from,
+    "producer"
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["18.3.1"].eager,
+    true
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["17.0.2"].loaded,
+    false
+  );
+  assert.equal(
+    result.snapshot.globalShared.default.react["18.3.1"].lib,
+    undefined
+  );
+});
+
+test("default browser read does not collect lib or get locations", async () => {
+  const state = runtimeState();
+  const context = vm.createContext({
+    __FEDERATION__: {
+      __OBSERVABILITY__: {
+        chrome_extension: {
+          getRuntimeState: () => state,
+          getReports: () => []
+        }
+      },
+      __SHARE__: {
+        host: {
+          default: {
+            react: {
+              "18.3.1": {
+                from: "host",
+                useIn: ["host"],
+                loaded: true,
+                lib: () => "react",
+                get: () => "react-factory"
+              }
+            }
+          }
+        }
+      }
+    },
+    __MF_OBSERVABILITY_INJECTION__: {
+      observabilityVersion: "2.5.4"
+    }
+  });
+  context.globalThis = context;
+  let rawCalled = false;
+  const result = await readMfObservability({
+    async eval(script) {
+      return vm.runInContext(script, context);
+    },
+    async raw() {
+      rawCalled = true;
+      throw new Error("default reads must not request a debugger connection");
+    }
+  });
+  assert.equal(result.ok, true);
+  assert.equal(rawCalled, false);
+  const shared = result.snapshot.globalShared.default.react["18.3.1"];
+  assert.equal(shared.lib, undefined);
+  assert.equal(shared.get, undefined);
+});
+
+test("--verbose browser read includes bounded lib and get source text", async () => {
+  const state = runtimeState();
+  const context = vm.createContext({
+    __FEDERATION__: {
+      __OBSERVABILITY__: {
+        chrome_extension: {
+          getRuntimeState: () => state,
+          getReports: () => []
+        }
+      },
+      __SHARE__: {
+        host: {
+          default: {
+            react: {
+              "18.3.1": {
+                from: "host",
+                useIn: ["host"],
+                lib: () => "react",
+                get: () => "react-factory"
+              }
+            }
+          }
+        }
+      }
+    },
+    __MF_OBSERVABILITY_INJECTION__: {
+      observabilityVersion: "2.5.4"
+    }
+  });
+  context.globalThis = context;
+  const result = await readMfObservability({
+    async eval(script) {
+      return vm.runInContext(script, context);
+    }
+  }, { verbose: true });
+  assert.equal(result.ok, true);
+  const shared = result.snapshot.globalShared.default.react["18.3.1"];
+  assert.match(shared.lib.source, /react/);
+  assert.match(shared.get.source, /react-factory/);
+  assert.ok(shared.lib.source.length <= 1000);
+  assert.ok(shared.get.source.length <= 1000);
+});
+
+test("shared function locations are validated and sensitive URL parts are removed", () => {
+  const result = parseBrowserReadResult(browserRead(runtimeState(), [], {
+    globalShared: {
+      default: {
+        react: {
+          "18.3.1": {
+            from: "host",
+            useIn: ["host"],
+            loaded: true,
+            lib: {
+              location: {
+                url: "https://user:password@cdn.test/main.js?token=secret#hash"
+              }
+            },
+            get: {
+              source: "() => factory",
+              location: {
+                url: "https://cdn.test/remoteEntry.js",
+                line: 8,
+                column: 4,
+                original: {
+                  source:
+                    "https://user:password@source.test/src/shared/react.ts?token=secret#hash",
+                  line: 14,
+                  column: 2
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }));
+  const shared = result.snapshot.globalShared.default.react["18.3.1"];
+  assert.equal(shared.lib.location.url, "https://cdn.test/main.js");
+  assert.deepEqual(shared.get.location.original, {
+    source: "https://source.test/src/shared/react.ts",
+    line: 14,
+    column: 2
+  });
 });
 
 test("unavailable mode preserves what was checked and how to recover", () => {
@@ -327,8 +637,9 @@ test("reader rejects invalid types in newly recognized report fields", () => {
   );
 });
 
-test("browser adapter only names the public reader and extension marker", () => {
+test("browser adapter reads only the public reader, injection marker, and global share table", () => {
   assert.match(MF_BROWSER_READ_SCRIPT, /__OBSERVABILITY__/);
   assert.match(MF_BROWSER_READ_SCRIPT, /getRuntimeState/);
+  assert.match(MF_BROWSER_READ_SCRIPT, /__SHARE__/);
   assert.doesNotMatch(MF_BROWSER_READ_SCRIPT, /__INSTANCES__|moduleCache|moduleInfo|shareScopeMap|options\.id/);
 });

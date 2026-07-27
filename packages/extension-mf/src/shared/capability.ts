@@ -6,13 +6,33 @@ import type {
 import type { SharedCapabilitySummary } from "./types.js";
 
 export const MINIMUM_SHARED_TRACE_RUNTIME = "2.5.0";
+const INJECTED_MF_PREVIEW_VERSION =
+  "0.0.0-feat-operate-openruntime-20260722064424";
 
 export function createSharedCapabilitySummary(
   snapshot: BrowserObservabilitySnapshot,
   capabilityName: Extract<CapabilityName, "sharedState" | "sharedTrace">,
   instances: readonly RuntimeInstance[]
 ): SharedCapabilitySummary {
-  const capability = snapshot.state.capabilities[capabilityName];
+  const reportedCapability = snapshot.state.capabilities[capabilityName];
+  const capability = capabilityName === "sharedTrace" &&
+      reportedCapability.available === false &&
+      reasonRequiresStableRuntime(reportedCapability.reason) &&
+      snapshot.observabilityMode === "injected" &&
+      snapshot.injection?.source === "openruntime/extension-mf" &&
+      snapshot.injection.status !== "error" &&
+      snapshot.observabilityVersion === INJECTED_MF_PREVIEW_VERSION &&
+      snapshot.injection.observabilityVersion === INJECTED_MF_PREVIEW_VERSION &&
+      instances.length > 0 &&
+      instances.every((instance) =>
+        instance.runtimeVersion === INJECTED_MF_PREVIEW_VERSION
+      )
+    ? {
+        available: true,
+        completeness: snapshot.state.completeness.history,
+        reason: "No shared lifecycle signal has been observed yet."
+      } as const
+    : reportedCapability;
   const runtimeVersions = unique(instances.flatMap((instance) =>
     instance.runtimeVersion === undefined ? [] : [instance.runtimeVersion]
   ));

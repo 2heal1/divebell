@@ -168,6 +168,82 @@ test("the same operation id in two instances remains two independent chains", ()
   assert.deepEqual(byName.candidates.map((item) => item.instanceRef), ["mf-1", "mf-2"]);
 });
 
+test("shared trace defaults to the top-level consumer and allows an exact consumer", () => {
+  const parent = host({ instanceRef: "mf-1", name: "parent" });
+  const child = host({ instanceRef: "mf-2", name: "child" });
+  const reports = [
+    sharedReport({
+      instanceRef: "mf-1",
+      operationId: "parent-op",
+      traceId: "parent-trace"
+    }),
+    sharedReport({
+      instanceRef: "mf-2",
+      operationId: "child-op",
+      traceId: "child-trace"
+    })
+  ];
+  const current = snapshot(runtimeState({
+    instances: [parent, child],
+    relationships: [{
+      consumerInstanceRef: "mf-1",
+      producerInstanceRef: "mf-2",
+      remote: { name: "child" },
+      evidence: ["loadRemote"],
+      status: "resolved"
+    }]
+  }), reports);
+
+  const defaultResult = createSharedTraceResult(current, { package: "react" });
+  assert.equal(defaultResult.selection.kind, "detail");
+  assert.equal(defaultResult.operations[0].instanceRef, "mf-1");
+  assert.equal(defaultResult.operations[0].operationId, "parent-op");
+
+  const selectedChild = createSharedTraceResult(current, {
+    package: "react",
+    instanceRef: "mf-2"
+  });
+  assert.equal(selectedChild.selection.kind, "detail");
+  assert.equal(selectedChild.operations[0].operationId, "child-op");
+});
+
+test("shared trace falls back to the first created consumer and fails without one", () => {
+  const first = host({ instanceRef: "mf-2", name: "first" });
+  const second = host({ instanceRef: "mf-1", name: "second" });
+  const current = snapshot(runtimeState({
+    instances: [first, second]
+  }), [
+    sharedReport({
+      instanceRef: "mf-2",
+      operationId: "first-op",
+      traceId: "first-trace"
+    }),
+    sharedReport({
+      instanceRef: "mf-1",
+      operationId: "second-op",
+      traceId: "second-trace"
+    })
+  ]);
+  const result = createSharedTraceResult(current, { package: "react" });
+  assert.equal(result.operations[0].instanceRef, "mf-2");
+  assert.equal(result.operations[0].operationId, "first-op");
+
+  const producer = instance({
+    instanceRef: "mf-3",
+    name: "producer",
+    role: "producer"
+  });
+  assert.throws(
+    () => createSharedTraceResult(
+      snapshot(runtimeState({ instances: [producer] })),
+      { package: "react" }
+    ),
+    (error) =>
+      error.code === "MF_SHARED_CONSUMER_NOT_FOUND" &&
+      error.facts.requiredRole === "consumer"
+  );
+});
+
 test("trace id is the correlation fallback when operationId is absent", () => {
   const first = sharedReport({ operationId: "temporary", traceId: "trace-only" });
   delete first.shared.operationId;
@@ -212,6 +288,67 @@ test("available capability is used even when runtime version text looks old", ()
   assert.equal(result.supported, true);
   assert.equal(result.selection.kind, "detail");
   assert.equal(result.capability.minimumRuntimeVersion, undefined);
+});
+
+test("injected preview Runtime is not rejected by the stable-version fallback", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+  const state = runtimeState({
+    instances: [host({ runtimeVersion: previewVersion })]
+  });
+  state.capabilities.sharedTrace = capability(
+    false,
+    "unavailable",
+    "Shared tracing requires a stable runtime version of 2.5.0 or newer."
+  );
+  const marker = {
+    schemaVersion: 1,
+    source: "openruntime/extension-mf",
+    status: "installed",
+    scope: "chrome_extension",
+    observabilityVersion: previewVersion,
+    installedAt: 50,
+    timing: "before-runtime"
+  };
+  const result = createSharedTraceResult(
+    snapshot(state, [], {
+      marker,
+      observabilityVersion: previewVersion
+    }),
+    { package: "react" }
+  );
+  assert.equal(result.supported, true);
+  assert.equal(result.selection.kind, "not-found");
+  assert.equal(result.capability.minimumRuntimeVersion, undefined);
+  assert.doesNotMatch(result.warnings.join(" "), /Upgrade to 2\.5\.0/);
+});
+
+test("preview Observability does not hide an older application Runtime", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+  const state = runtimeState({
+    instances: [host({ runtimeVersion: "2.4.9" })]
+  });
+  state.capabilities.sharedTrace = capability(
+    false,
+    "unavailable",
+    "Shared tracing requires a stable runtime version of 2.5.0 or newer."
+  );
+  const result = createSharedTraceResult(
+    snapshot(state, [], {
+      observabilityVersion: previewVersion,
+      marker: {
+        schemaVersion: 1,
+        source: "openruntime/extension-mf",
+        status: "installed",
+        scope: "chrome_extension",
+        observabilityVersion: previewVersion,
+        installedAt: 50,
+        timing: "before-runtime"
+      }
+    }),
+    { package: "react" }
+  );
+  assert.equal(result.supported, false);
+  assert.equal(result.capability.minimumRuntimeVersion, "2.5.0");
 });
 
 test("partial history and late injection return data with explicit reopen guidance", () => {

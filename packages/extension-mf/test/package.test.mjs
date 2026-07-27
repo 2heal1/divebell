@@ -38,12 +38,16 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   for (const command of implementedMfCommandMetadata) {
     assert.match(readme, new RegExp(escapeRegExp(command.usage)));
   }
-  assert.doesNotMatch(JSON.stringify(commandReferences), /mf remote trace|shared check/);
+  assert.doesNotMatch(
+    JSON.stringify(commandReferences),
+    /openruntime mf trace|openruntime mf remote check|openruntime mf preload trace/
+  );
 });
 
 test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
   const publicFiles = [
     "public.js",
+    "function-location.js",
     "reader.js",
     "selection.js",
     "results.js",
@@ -67,9 +71,12 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     readFileSync(resolve(packageRoot, "dist", file), "utf8")
   );
   for (const source of sources) {
-    assert.doesNotMatch(source, /(?:from|import\()\s*["'](?!\.\.?\/)/);
+    assert.doesNotMatch(
+      source,
+      /(?:from|import\()\s*["'](?!\.\.?\/|node:)/
+    );
   }
-  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info|bridge trace|trace|remote check|preload trace)/);
+  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info|remote status|remote trace|shared status|shared trace|bridge trace)/);
 });
 
 test("packed npm archive is self-contained and has no runtime dependencies", () => {
@@ -84,6 +91,10 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
+    assert.doesNotMatch(
+      listed.stdout,
+      /package\/dist\/commands\/(?:trace|preload-trace|remote-check)\./
+    );
     assert.match(listed.stdout, /package\/dist\/package\.js/);
     assert.match(listed.stdout, /package\/dist\/package\.d\.ts/);
     assert.match(listed.stdout, /package\/dist\/public\.js/);
@@ -92,6 +103,10 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(listed.stdout, /package\/dist\/observability-chrome-devtool\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/install-observability\.js/);
     assert.match(listed.stdout, /package\/dist\/observability-build\.json/);
+    assert.match(listed.stdout, /package\/dist\/install-runtime-debug\.js/);
+    assert.match(listed.stdout, /package\/dist\/runtime-debug-build\.json/);
+    assert.match(listed.stdout, /package\/dist\/vmok-proxy-sdk\.iife\.js/);
+    assert.match(listed.stdout, /package\/dist\/proxy-sdk-build\.json/);
     assert.match(listed.stdout, /package\/README\.md/);
     const metadata = spawnSync("tar", [
       "-xOf",
@@ -100,6 +115,20 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     ], { encoding: "utf8" });
     assert.equal(metadata.status, 0, metadata.stderr);
     assert.doesNotMatch(metadata.stdout, /\/Users\/|outter\/core|registry|token/i);
+    const runtimeMetadata = spawnSync("tar", [
+      "-xOf",
+      archive,
+      "package/dist/runtime-debug-build.json"
+    ], { encoding: "utf8" });
+    assert.equal(runtimeMetadata.status, 0, runtimeMetadata.stderr);
+    assert.doesNotMatch(runtimeMetadata.stdout, /\/Users\/|outter\/core|registry|token/i);
+    const proxyMetadata = spawnSync("tar", [
+      "-xOf",
+      archive,
+      "package/dist/proxy-sdk-build.json"
+    ], { encoding: "utf8" });
+    assert.equal(proxyMetadata.status, 0, proxyMetadata.stderr);
+    assert.doesNotMatch(proxyMetadata.stdout, /\/Users\/|work\/garfish|registry|token/i);
     const publicTypes = spawnSync("tar", [
       "-xOf",
       archive,
@@ -128,12 +157,20 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
       .map((file) => readFileSync(file, "utf8"))
       .join("\n");
     assert.doesNotMatch(publishedSource, /\/Users\/|outter\/core/);
-    assert.doesNotMatch(publishedSource, /(?:"|')(?:file|link):/);
+    assert.doesNotMatch(publishedSource, /(?:"|')(?:file|link):(?:\/|\.)/);
     const publishedBundle = readFileSync(
       join(extracted, "package", "dist", "observability-chrome-devtool.iife.js"),
       "utf8"
     );
     assert.doesNotMatch(publishedBundle, /\brequire\s*\(|\bimport\s*\(|\bimport\s+[\w{*]/);
+    const publishedProxyBundle = readFileSync(
+      join(extracted, "package", "dist", "vmok-proxy-sdk.iife.js"),
+      "utf8"
+    );
+    assert.doesNotMatch(
+      publishedProxyBundle,
+      /\brequire\s*\(|\bimport\s*\(|\bimport\s+[\w{*]/
+    );
   } finally {
     rmSync(outputDirectory, { recursive: true, force: true });
   }
@@ -180,10 +217,10 @@ test("packed archive supports real package-name imports for public API and exten
       "-e",
       `const extension = await import("@openruntime/extension-mf");
        const api = await import("@openruntime/extension-mf/core");
-       const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteCheck", "createRemoteTraceResult", "createRemoteCheckResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
+       const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterGlobalShared", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteStatus", "createRemoteTraceResult", "createRemoteStatusResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
-       if ("formatRemoteTrace" in api || "formatRemoteCheck" in api) process.exit(5);
+       if ("formatRemoteTrace" in api || "formatRemoteStatus" in api) process.exit(5);
        if (extension.default?.name !== "mf") process.exit(3);`
     ], {
       cwd: tempDirectory,

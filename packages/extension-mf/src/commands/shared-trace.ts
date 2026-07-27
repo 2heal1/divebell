@@ -5,7 +5,6 @@ import {
   createSharedCommandPresenter,
   sharedCoreErrorToCommandError
 } from "../cli/shared.js";
-import { formatSharedTrace } from "../shared/format.js";
 import { createSharedTraceResult } from "../shared/trace.js";
 import type { PresentedSharedTraceResult, SharedTraceResult } from "../shared/types.js";
 import { sharedTraceCommandMetadata } from "./metadata.js";
@@ -31,7 +30,7 @@ export const sharedTraceCommand: MfCommandDefinition = {
       sharedCoreErrorToCommandError(error);
     }
     const presented = presentCandidates(result);
-    writeCommandResult(options, presented, formatSharedTrace(presented));
+    writeCommandResult(options, presented);
     return 0;
   }
 };
@@ -59,7 +58,7 @@ function usageError(message: string): MfCommandError {
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${sharedTraceCommandMetadata.usage.replace(" [--json]", "")}\`.`
+    hint: `Run \`${sharedTraceCommandMetadata.usage}\`.`
   });
 }
 

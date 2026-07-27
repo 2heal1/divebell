@@ -1,8 +1,6 @@
 import { MfCommandError } from "../cli/errors.js";
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { sharedCoreErrorToCommandError } from "../cli/shared.js";
-import { formatSharedStatus } from "../shared/format.js";
 import { createSharedStatusResult } from "../shared/status.js";
 import { sharedStatusCommandMetadata } from "./metadata.js";
 
@@ -12,19 +10,27 @@ export const sharedStatusCommand: MfCommandDefinition = {
     if (positionals.length > 1) {
       throw usageError("shared status accepts at most one package name.");
     }
-    const snapshot = await readCommandSnapshot(options);
-    let result: ReturnType<typeof createSharedStatusResult>;
-    try {
-      result = createSharedStatusResult(snapshot, {
-        ...(positionals[0] === undefined ? {} : { package: positionals[0] }),
-        ...selectedOption(options.args.options, "mf", "mf"),
-        ...selectedOption(options.args.options, "instance", "instanceRef"),
-        ...selectedOption(options.args.options, "scope", "scope")
+    const removedOption = ["mf", "instance"].find((name) =>
+      options.args.options.has(name)
+    );
+    if (removedOption !== undefined) {
+      throw new MfCommandError({
+        code: "MF_COMMAND_OPTION_INVALID",
+        kind: "validation",
+        message: `--${removedOption} is not available for shared status.`,
+        hint: `Shared status reads the merged global share registry. Run \`${sharedStatusCommandMetadata.usage}\`.`
       });
-    } catch (error) {
-      sharedCoreErrorToCommandError(error);
     }
-    writeCommandResult(options, result, formatSharedStatus(result));
+    const verbose = booleanOption(options.args.options, "verbose");
+    const snapshot = await readCommandSnapshot(options, { verbose });
+    const result = createSharedStatusResult(snapshot, {
+      ...(positionals[0] === undefined ? {} : { package: positionals[0] }),
+      ...selectedOption(options.args.options, "scope", "scope"),
+      ...selectedOption(options.args.options, "version", "version")
+    }, {
+      verbose
+    });
+    writeCommandResult(options, result);
     return 0;
   }
 };
@@ -34,7 +40,19 @@ function usageError(message: string): MfCommandError {
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${sharedStatusCommandMetadata.usage.replace(" [--json]", "")}\`.`
+    hint: `Run \`${sharedStatusCommandMetadata.usage}\`.`
+  });
+}
+
+function booleanOption(options: Map<string, string[]>, name: string): boolean {
+  const value = options.get(name)?.at(-1);
+  if (value === undefined || value === "false") return false;
+  if (value === "true") return true;
+  throw new MfCommandError({
+    code: "MF_COMMAND_OPTION_INVALID",
+    kind: "validation",
+    message: `Invalid --${name} value ${JSON.stringify(value)}.`,
+    hint: `Use --${name} or --${name}=false.`
   });
 }
 

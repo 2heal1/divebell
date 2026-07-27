@@ -1,4 +1,3 @@
-import { formatModuleInfo } from "../format.js";
 import { createModuleInfoResult } from "../results.js";
 import { MfCommandError } from "../cli/errors.js";
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
@@ -13,7 +12,7 @@ export const moduleInfoCommand: MfCommandDefinition = {
         code: "MF_COMMAND_USAGE_INVALID",
         kind: "validation",
         message: "module-info accepts at most one remote name.",
-        hint: `Run \`${moduleInfoCommandMetadata.usage.replace(" [--json]", "")}\`.`
+        hint: `Run \`${moduleInfoCommandMetadata.usage}\`.`
       });
     }
     const remote = positionals[0];
@@ -28,7 +27,7 @@ export const moduleInfoCommand: MfCommandDefinition = {
       },
       remote
     );
-    writeCommandResult(options, result, formatModuleInfo(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };

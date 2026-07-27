@@ -26,23 +26,17 @@ function candidateCommand(
   presenter: ReturnType<typeof createCommandPresenter>
 ): string {
   const target = remoteTarget(candidate);
-  if (operation === "remote-check") {
-    return presenter.remoteCheck({
+  if (operation === "remote-status") {
+    return presenter.remoteStatus({
       remote: target ?? candidate.remote ?? "unknown",
       instanceRef: candidate.instanceRef
     });
   }
-  if (operation === "preload-trace") {
-    return presenter.preloadTrace({
-      ...(target === undefined ? {} : { remote: target }),
-      instanceRef: candidate.instanceRef,
-      ...(candidate.traceId === undefined ? {} : { traceId: candidate.traceId })
-    });
-  }
-  return presenter.trace({
+  return presenter.remoteTrace({
     ...(target === undefined ? {} : { target }),
     instanceRef: candidate.instanceRef,
-    ...(candidate.traceId === undefined ? {} : { traceId: candidate.traceId })
+    ...(candidate.traceId === undefined ? {} : { traceId: candidate.traceId }),
+    ...(operation === "remote-preload-trace" ? { preload: true } : {})
   });
 }
 

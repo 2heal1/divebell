@@ -1,0 +1,9 @@
+{
+  "runtimePackageName": "@module-federation/runtime",
+  "runtimePackageVersion": "2.8.0",
+  "packageName": "@module-federation/runtime-core",
+  "packageVersion": "2.8.0",
+  "sourceRevision": "e80ae523309d08e92dc6009ec65a8d42721462e5",
+  "publicEntry": "./dist/index.js",
+  "bundleSha256": "6cfbaa360e66a46333906b8fe8441708a9f389848d7180dda55009d7ff0085a4"
+}

@@ -1,0 +1,6 @@
+{
+  "packageName": "@vmok/proxy-sdk",
+  "packageVersion": "1.25.1",
+  "publicEntry": "dist/iife.js",
+  "bundleSha256": "b0070f35f781b374bcea015e70644b3eda36a13f914e4d5bdc6a56c53550213b"
+}

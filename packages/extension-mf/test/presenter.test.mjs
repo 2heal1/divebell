@@ -30,22 +30,27 @@ test("Bridge candidate commands quote every reusable selector", () => {
       bridgeId: "bridge-1",
       operationId: "op-1"
     }),
-    'openruntime mf bridge trace "shop alias" --instance "mf-1" --bridge "bridge-1" --operation "op-1"'
+    'openruntime mf bridge trace "shop alias" --instance "mf-1" --bridge-id "bridge-1" --operation "op-1"'
   );
 });
 
 test("remote presenter creates directly copyable disambiguation commands", () => {
   const presenter = createCommandPresenter(["openruntime", "mf"]);
   assert.equal(
-    presenter.trace({ target: "shop/Button", instanceRef: "mf-1", traceId: "trace-1" }),
-    'openruntime mf trace "shop/Button" --instance "mf-1" --trace-id "trace-1"'
+    presenter.remoteTrace({ target: "shop/Button", instanceRef: "mf-1", traceId: "trace-1" }),
+    'openruntime mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-1"'
   );
   assert.equal(
-    presenter.remoteCheck({ remote: "shop", instanceRef: "mf-1" }),
-    'openruntime mf remote check "shop" --instance "mf-1"'
+    presenter.remoteStatus({ remote: "shop", instanceRef: "mf-1" }),
+    'openruntime mf remote status "shop" --instance "mf-1"'
   );
   assert.equal(
-    presenter.preloadTrace({ remote: "shop", instanceRef: "mf-1", traceId: "preload-1" }),
-    'openruntime mf preload trace "shop" --instance "mf-1" --trace-id "preload-1"'
+    presenter.remoteTrace({
+      target: "shop",
+      instanceRef: "mf-1",
+      traceId: "preload-1",
+      preload: true
+    }),
+    'openruntime mf remote trace "shop" --preload --instance "mf-1" --trace-id "preload-1"'
   );
 });

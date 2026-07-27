@@ -13,46 +13,45 @@ test("real MF routes match their own command modules", () => {
     registration: mfCommandRegistry[1],
     positionals: ["catalog"]
   });
-  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["trace", "catalog/Button"]), {
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["remote", "status", "catalog"]), {
     registration: mfCommandRegistry[2],
-    positionals: ["catalog/Button"]
+    positionals: ["catalog"]
   });
-  const match = matchMfCommand(mfCommandRegistry, ["remote", "check", "catalog"]);
+  const match = matchMfCommand(mfCommandRegistry, ["remote", "trace", "catalog/Button"]);
   assert.equal(match.registration, mfCommandRegistry[3]);
+  assert.deepEqual(match.positionals, ["catalog/Button"]);
   assert.deepEqual(matchMfCommand(mfCommandRegistry, ["shared", "status", "react"]), {
-    registration: mfCommandRegistry[5],
+    registration: mfCommandRegistry[4],
     positionals: ["react"]
   });
   assert.deepEqual(matchMfCommand(mfCommandRegistry, ["shared", "trace", "react"]), {
-    registration: mfCommandRegistry[6],
+    registration: mfCommandRegistry[5],
     positionals: ["react"]
   });
   assert.deepEqual(matchMfCommand(mfCommandRegistry, ["bridge", "trace", "catalog"]), {
-    registration: mfCommandRegistry[7],
+    registration: mfCommandRegistry[6],
     positionals: ["catalog"]
   });
-  assert.deepEqual(match.positionals, ["catalog"]);
-  assert.equal(
-    matchMfCommand(mfCommandRegistry, ["preload", "trace", "catalog"]).registration,
-    mfCommandRegistry[4]
-  );
+  assert.equal(matchMfCommand(mfCommandRegistry, ["trace", "catalog"]), undefined);
+  assert.equal(matchMfCommand(mfCommandRegistry, ["remote", "check", "catalog"]), undefined);
+  assert.equal(matchMfCommand(mfCommandRegistry, ["preload", "trace", "catalog"]), undefined);
 });
 
-test("a fake multi-segment remote check route matches completely", () => {
-  const remoteCheck = registration(["remote", "check"]);
-  const match = matchMfCommand([remoteCheck], ["remote", "check", "catalog"]);
-  assert.equal(match.registration, remoteCheck);
+test("a fake multi-segment remote status route matches completely", () => {
+  const remoteStatus = registration(["remote", "status"]);
+  const match = matchMfCommand([remoteStatus], ["remote", "status", "catalog"]);
+  assert.equal(match.registration, remoteStatus);
   assert.deepEqual(match.positionals, ["catalog"]);
 });
 
 test("longest matching route wins and a short input never matches a longer route", () => {
   const remote = registration(["remote"]);
-  const remoteCheck = registration(["remote", "check"]);
+  const remoteStatus = registration(["remote", "status"]);
   assert.equal(
-    matchMfCommand([remote, remoteCheck], ["remote", "check"]).registration,
-    remoteCheck
+    matchMfCommand([remote, remoteStatus], ["remote", "status"]).registration,
+    remoteStatus
   );
-  assert.equal(matchMfCommand([remoteCheck], ["remote"]), undefined);
+  assert.equal(matchMfCommand([remoteStatus], ["remote"]), undefined);
 });
 
 test("the real registry exposes exactly the implemented commands", () => {
@@ -61,9 +60,8 @@ test("the real registry exposes exactly the implemented commands", () => {
     [
       "status",
       "module-info",
-      "trace",
-      "remote check",
-      "preload trace",
+      "remote status",
+      "remote trace",
       "shared status",
       "shared trace",
       "bridge trace"

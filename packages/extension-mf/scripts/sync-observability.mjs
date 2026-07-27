@@ -23,7 +23,7 @@ const artifactNames = {
   metadata: "observability-build.json"
 };
 
-export async function loadPackageContext(inputPackageRoot) {
+export async function loadPackageContext(inputPackageRoot, options = {}) {
   if (typeof inputPackageRoot !== "string" || inputPackageRoot.length === 0) {
     throw new Error("--package-root must point to an Observability Plugin package directory.");
   }
@@ -82,25 +82,27 @@ export async function loadPackageContext(inputPackageRoot) {
     throw new Error(`The public ./chrome-devtool entry does not exist: ${publicEntry}`);
   }
 
-  let repositoryRoot;
-  let sourceRevision;
-  try {
-    const rootResult = await execFileAsync(
-      "git",
-      ["-C", resolvedPackageRoot, "rev-parse", "--show-toplevel"],
-      { encoding: "utf8" }
-    );
-    repositoryRoot = rootResult.stdout.trim();
-    const revisionResult = await execFileAsync(
-      "git",
-      ["-C", resolvedPackageRoot, "rev-parse", "HEAD"],
-      { encoding: "utf8" }
-    );
-    sourceRevision = revisionResult.stdout.trim();
-  } catch (error) {
-    throw new Error(
-      `Cannot read the source git revision for ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`
-    );
+  let repositoryRoot = options.repositoryRoot;
+  let sourceRevision = options.sourceRevision;
+  if (sourceRevision === undefined) {
+    try {
+      const rootResult = await execFileAsync(
+        "git",
+        ["-C", resolvedPackageRoot, "rev-parse", "--show-toplevel"],
+        { encoding: "utf8" }
+      );
+      repositoryRoot = rootResult.stdout.trim();
+      const revisionResult = await execFileAsync(
+        "git",
+        ["-C", resolvedPackageRoot, "rev-parse", "HEAD"],
+        { encoding: "utf8" }
+      );
+      sourceRevision = revisionResult.stdout.trim();
+    } catch (error) {
+      throw new Error(
+        `Cannot read the source git revision for ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
   if (!/^[0-9a-f]{40}$/i.test(sourceRevision)) {
     throw new Error("The Observability Plugin source revision is not a full git commit.");
@@ -131,8 +133,8 @@ function resolvePublicEntry(value) {
   return undefined;
 }
 
-export async function generateObservabilityArtifacts(inputPackageRoot) {
-  const context = await loadPackageContext(inputPackageRoot);
+export async function generateObservabilityArtifacts(inputPackageRoot, options = {}) {
+  const context = await loadPackageContext(inputPackageRoot, options);
   const result = await build({
     absWorkingDir: context.packageRoot,
     entryPoints: [context.entryPath],

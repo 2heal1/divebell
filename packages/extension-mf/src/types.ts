@@ -27,6 +27,49 @@ export interface SharedVersion {
   strategy?: string;
 }
 
+export interface SharedOriginalFunctionLocation {
+  source: string;
+  line: number;
+  column: number;
+}
+
+export interface SharedFunctionLocation {
+  url: string;
+  line?: number;
+  column?: number;
+  original?: SharedOriginalFunctionLocation;
+}
+
+export interface SharedFunctionSource {
+  source?: string;
+  location?: SharedFunctionLocation;
+}
+
+export interface GlobalSharedVersion {
+  from?: string;
+  useIn: string[];
+  loaded: boolean;
+  loading?: boolean;
+  scope?: string[];
+  deps?: string[];
+  eager?: boolean;
+  strategy?: string;
+  shareConfig?: {
+    requiredVersion?: string | false;
+    singleton?: boolean;
+    eager?: boolean;
+    strictVersion?: boolean;
+    layer?: string | null;
+  };
+  lib?: SharedFunctionSource;
+  get?: SharedFunctionSource;
+}
+
+export type GlobalSharedState = Record<
+  string,
+  Record<string, Record<string, GlobalSharedVersion>>
+>;
+
 export interface SharedCandidate {
   scope: string;
   version: string;
@@ -386,6 +429,15 @@ export interface InjectionMarker {
   message?: string;
 }
 
+export interface ProxyInjectionMarker {
+  schemaVersion: 1;
+  source: "openruntime/extension-mf";
+  status: "installed" | "error";
+  installedAt: number;
+  overrides: Record<string, string>;
+  message?: string;
+}
+
 export interface BrowserObservabilitySnapshot {
   observabilityMode: Exclude<ObservabilityMode, "unavailable">;
   observabilityVersion: string;
@@ -393,8 +445,10 @@ export interface BrowserObservabilitySnapshot {
   availableScopes: string[];
   compatibleScopes: string[];
   injection?: InjectionMarker;
+  proxy?: ProxyInjectionMarker;
   state: RuntimeState;
   reports: RuntimeReport[];
+  globalShared: GlobalSharedState;
 }
 
 export type BrowserReadResult =
@@ -430,6 +484,19 @@ export interface InstanceCandidate {
   roles: InstanceRole[];
 }
 
+export interface StatusConsumer {
+  instanceRef: string;
+  name: string;
+}
+
+export interface StatusInstance {
+  instanceRef: string;
+  name: string;
+  role: InstanceRole;
+  consumers: StatusConsumer[];
+  active: boolean;
+}
+
 export type MfIssueKind = "not_found" | "needs_input" | "runtime";
 
 export type MfRecommendedAction =
@@ -456,17 +523,8 @@ export type MfRecommendedAction =
     };
 
 export interface StatusResult {
-  schemaVersion: 1;
-  command: "mf status";
-  compatibility: CompatibilitySummary;
-  selection: {
-    kind: "list" | "detail";
-    name?: string;
-    role?: RoleFilter;
-    instanceRef?: string;
-  };
-  instances: RuntimeInstance[];
-  relationships: RuntimeRelationship[];
+  instances: StatusInstance[];
+  shared: GlobalSharedState;
 }
 
 export interface ModuleInfoResult {

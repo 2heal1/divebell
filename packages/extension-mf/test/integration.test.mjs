@@ -18,38 +18,47 @@ const idleRemote = {
   type: "global"
 };
 
-test("all eight commands execute against one combined Remote, Shared, and Bridge snapshot", async () => {
+test("all seven commands and both trace modes execute against one combined snapshot", async () => {
   const snapshot = combinedSnapshot();
   const cases = [
-    { command: ["mf", "status"], expected: "mf status" },
+    { command: ["mf", "status"], expected: "mf status", compactStatus: true },
     {
       command: ["mf", "module-info", "shop"],
       options: [["instance", ["mf-1"]]],
       expected: "mf module-info"
     },
     {
-      command: ["mf", "trace", "shop/Button"],
+      command: ["mf", "remote", "trace", "shop/Button"],
       options: [["instance", ["mf-1"]], ["trace-id", ["remote-load"]]],
-      expected: "mf trace"
+      expected: "mf remote trace",
+      traceOperation: "loadRemote"
     },
     {
-      command: ["mf", "remote", "check", "shop"],
+      command: ["mf", "remote", "status", "shop"],
       options: [["instance", ["mf-1"]]],
-      expected: "mf remote check"
+      expected: "mf remote status"
     },
     {
-      command: ["mf", "preload", "trace", "shop"],
-      options: [["instance", ["mf-1"]], ["trace-id", ["remote-preload"]]],
-      expected: "mf preload trace"
+      command: ["mf", "remote", "trace", "shop"],
+      options: [
+        ["preload", ["true"]],
+        ["instance", ["mf-1"]],
+        ["trace-id", ["remote-preload"]]
+      ],
+      expected: "mf remote trace",
+      traceOperation: "preloadRemote"
     },
     {
       command: ["mf", "shared", "status", "react"],
-      options: [["instance", ["mf-1"]], ["scope", ["default"]]],
+      options: [["scope", ["default"]], ["version", ["18.3.1"]]],
       expected: "mf shared status"
     },
     {
       command: ["mf", "shared", "trace", "react"],
-      options: [["instance", ["mf-1"]], ["operation", ["shared-op"]]],
+      options: [
+        ["instance", ["mf-1"]],
+        ["operation", ["shared-op"]]
+      ],
       expected: "mf shared trace"
     },
     {
@@ -62,30 +71,54 @@ test("all eight commands execute against one combined Remote, Shared, and Bridge
   for (const item of cases) {
     const run = createOptions(
       item.command,
-      new Map([...(item.options ?? []), ["json", ["true"]]]),
+      new Map(item.options ?? []),
       snapshot
     );
     assert.equal(await runMfCommand(run.options), 0, item.expected);
-    assert.equal(run.outputValue().command, item.expected);
+    if (item.compactStatus) {
+      assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
+    } else if (item.expected === "mf remote status") {
+      assert.deepEqual(Object.keys(run.outputValue()), ["consumer", "remote"]);
+    } else if (item.expected === "mf shared status") {
+      assert.deepEqual(Object.keys(run.outputValue()), ["shared"]);
+      assert.equal(
+        run.outputValue().shared.default.react["18.3.1"].loaded,
+        true
+      );
+    } else if (item.traceOperation !== undefined) {
+      assert.equal(run.outputValue().traces[0].operation, item.traceOperation);
+      assert.ok(Array.isArray(run.outputValue().traces[0].lifecycle));
+      assert.equal(run.outputValue().command, undefined);
+      assert.equal(run.outputValue().selection, undefined);
+    } else {
+      assert.equal(run.outputValue().command, item.expected);
+      assert.equal(run.outputValue().compatibility, undefined);
+      assert.equal(run.outputValue().capability, undefined);
+    }
     assert.doesNotThrow(() => JSON.parse(JSON.stringify(run.outputValue())));
   }
 });
 
-test("combined human output keeps Remote, Shared, preload, and Bridge evidence isolated", async () => {
+test("combined structured output keeps Remote, Shared, preload, and Bridge evidence isolated", async () => {
   const snapshot = combinedSnapshot();
   const remote = createOptions(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     new Map([["trace-id", ["remote-load"]]]),
     snapshot
   );
   const preload = createOptions(
-    ["mf", "preload", "trace", "shop"],
-    new Map([["trace-id", ["remote-preload"]]]),
+    ["mf", "remote", "trace", "shop"],
+    new Map([
+      ["preload", ["true"]],
+      ["trace-id", ["remote-preload"]]
+    ]),
     snapshot
   );
   const shared = createOptions(
     ["mf", "shared", "trace", "react"],
-    new Map([["operation", ["shared-op"]]]),
+    new Map([
+      ["operation", ["shared-op"]]
+    ]),
     snapshot
   );
   const bridge = createOptions(
@@ -96,15 +129,20 @@ test("combined human output keeps Remote, Shared, preload, and Bridge evidence i
 
   for (const run of [remote, preload, shared, bridge]) {
     assert.equal(await runMfCommand(run.options), 0);
+    assert.equal(run.stdout(), "");
   }
-  assert.match(remote.stdout(), /remote-load/);
-  assert.doesNotMatch(remote.stdout(), /remote-preload|shared-op|bridge-op/);
-  assert.match(preload.stdout(), /remote-preload/);
-  assert.doesNotMatch(preload.stdout(), /remote-load|shared-op|bridge-op/);
-  assert.match(shared.stdout(), /shared-op/);
-  assert.doesNotMatch(shared.stdout(), /remote-load|remote-preload|bridge-op/);
-  assert.match(bridge.stdout(), /bridge-op/);
-  assert.doesNotMatch(bridge.stdout(), /remote-load|remote-preload|shared-op/);
+  const remoteOutput = JSON.stringify(remote.outputValue());
+  const preloadOutput = JSON.stringify(preload.outputValue());
+  const sharedOutput = JSON.stringify(shared.outputValue());
+  const bridgeOutput = JSON.stringify(bridge.outputValue());
+  assert.match(remoteOutput, /remote-load/);
+  assert.doesNotMatch(remoteOutput, /remote-preload|shared-op|bridge-op/);
+  assert.match(preloadOutput, /remote-preload/);
+  assert.doesNotMatch(preloadOutput, /remote-load|shared-op|bridge-op/);
+  assert.match(sharedOutput, /shared-op/);
+  assert.doesNotMatch(sharedOutput, /remote-load|remote-preload|bridge-op/);
+  assert.match(bridgeOutput, /bridge-op/);
+  assert.doesNotMatch(bridgeOutput, /remote-load|remote-preload|shared-op/);
 });
 
 test("pending, unknown, partial, and unavailable remain distinct in one snapshot", async () => {
@@ -114,18 +152,20 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
     bridgeTraceCapability: capability(false, "unavailable", "Bridge hooks are unavailable.")
   });
   const pending = await runJson(
-    ["mf", "trace", "shop/Button"],
+    ["mf", "remote", "trace", "shop/Button"],
     [["trace-id", ["remote-pending"]]],
     snapshot
   );
   const unknown = await runJson(
-    ["mf", "remote", "check", "idle"],
+    ["mf", "remote", "status", "idle"],
     [["instance", ["mf-1"]]],
     snapshot
   );
   const partial = await runJson(
     ["mf", "shared", "trace", "react"],
-    [["operation", ["shared-op"]]],
+    [
+      ["operation", ["shared-op"]]
+    ],
     snapshot
   );
   const unavailable = await runJson(
@@ -134,11 +174,11 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
     snapshot
   );
 
-  assert.equal(pending.outcome, "pending");
-  assert.equal(unknown.remote.outcome, "unknown");
+  assert.equal(pending.result, "pending");
+  assert.equal(unknown.remote.latestResult, "unknown");
   assert.equal(partial.supported, true);
-  assert.equal(partial.capability.completeness, "partial");
-  assert.equal(unavailable.capability.completeness, "unavailable");
+  assert.match(partial.warnings.join(" "), /partial|missing/i);
+  assert.match(unavailable.warnings.join(" "), /unavailable/i);
   assert.equal(unavailable.selection.kind, "unsupported");
 });
 
@@ -200,13 +240,25 @@ function combinedSnapshot(options = {}) {
         moduleName: `${catalogRemote.name}/App`
       })
     })
-  ]);
+  ], {
+    globalShared: {
+      default: {
+        react: {
+          "18.3.1": {
+            from: "host",
+            useIn: ["host", "catalog"],
+            loaded: true
+          }
+        }
+      }
+    }
+  });
 }
 
 async function runJson(command, optionEntries, browserValue) {
   const run = createOptions(
     command,
-    new Map([...optionEntries, ["json", ["true"]]]),
+    new Map(optionEntries),
     browserValue
   );
   assert.equal(await runMfCommand(run.options), 0);

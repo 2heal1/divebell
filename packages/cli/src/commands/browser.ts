@@ -145,7 +145,10 @@ export async function runBrowserCliCommand(
       bridgeUrl,
       bridgePort,
       sessionId,
-      openedAt
+      openedAt,
+      ...(result.injectedScriptPath === undefined
+        ? {}
+        : { injectedScriptPath: result.injectedScriptPath })
     }, "Page opened.");
     if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
       await stopOpenContextBridge(previousOpenContext?.bridgeUrl ?? null, bridgeStateDirectory);
@@ -309,7 +312,7 @@ export async function openBrowserPage(
   bridgeUrl: string | null,
   hookScripts: readonly ExtensionOpenHookScript[],
   options: BrowserRunOptions
-): Promise<BrowserRunResult> {
+): Promise<BrowserRunResult & { injectedScriptPath?: string }> {
   const cookies = getOptionValue(args, "cookies");
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
     return await browserRunner.run(
@@ -321,17 +324,25 @@ export async function openBrowserPage(
   if (bridgeUrl !== null || hookScripts.length > 0) {
     const scriptPath = await ensureBrowserInitScript(bridgeUrl, hookScripts);
     if (cookies === undefined) {
-      return await browserRunner.run(
-        createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl, ["--init-script", scriptPath])),
-        options
+      return withInjectedScriptPath(
+        await browserRunner.run(
+          createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl, ["--init-script", scriptPath])),
+          options
+        ),
+        scriptPath
       );
     }
 
     const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open", "--init-script", scriptPath]), options);
-    if (launch.exitCode !== 0) return launch;
+    if (launch.exitCode !== 0) return withInjectedScriptPath(launch, scriptPath);
     const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
-    if (applyCookies.exitCode !== 0) return applyCookies;
-    return await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl));
+    if (applyCookies.exitCode !== 0) {
+      return withInjectedScriptPath(applyCookies, scriptPath);
+    }
+    return withInjectedScriptPath(
+      await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl)),
+      scriptPath
+    );
   }
 
   if (cookies === undefined) {
@@ -367,6 +378,16 @@ function appendBrowserOption(browserArgs: string[], args: ParsedCliArgs, name: s
   if (value !== undefined && value !== "true") {
     browserArgs.push(`--${name}`, value);
   }
+}
+
+function withInjectedScriptPath(
+  result: BrowserRunResult,
+  injectedScriptPath: string
+): BrowserRunResult & { injectedScriptPath: string } {
+  return {
+    ...result,
+    injectedScriptPath
+  };
 }
 
 async function ensureBrowserInitScript(

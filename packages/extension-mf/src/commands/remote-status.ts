@@ -1,25 +1,24 @@
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { formatRemoteCheck } from "../remote/format.js";
-import { createRemoteCheckResult } from "../remote/results.js";
-import { remoteCheckCommandMetadata } from "./metadata.js";
+import { createRemoteStatusResult } from "../remote/results.js";
+import { remoteStatusCommandMetadata } from "./metadata.js";
 import { option, singleTarget } from "./remote-command.js";
 
-export const remoteCheckCommand: MfCommandDefinition = {
-  metadata: remoteCheckCommandMetadata,
+export const remoteStatusCommand: MfCommandDefinition = {
+  metadata: remoteStatusCommandMetadata,
   async run({ options, positionals }) {
-    const remote = singleTarget(positionals, remoteCheckCommandMetadata, {
+    const remote = singleTarget(positionals, remoteStatusCommandMetadata, {
       required: true,
-      label: "remote check"
+      label: "remote status"
     });
     const name = option(options.args.options, "mf");
     const instanceRef = option(options.args.options, "instance");
     const snapshot = await readCommandSnapshot(options);
-    const result = createRemoteCheckResult(snapshot, remote as string, {
+    const result = createRemoteStatusResult(snapshot, remote as string, {
       ...(name === undefined ? {} : { name }),
       ...(instanceRef === undefined ? {} : { instanceRef })
     });
-    writeCommandResult(options, result, formatRemoteCheck(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };

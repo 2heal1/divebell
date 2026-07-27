@@ -39,7 +39,19 @@ function multiInstanceFixture() {
       name: "default",
       sharedCount: 1,
       sharedNames: ["react"],
-      shared: [{ name: "react", versions: [{ version: "18.3.1", loaded: true }] }]
+      shared: [{
+        name: "react",
+        versions: [
+          {
+            version: "18.3.1",
+            provider: "catalog",
+            loaded: true,
+            singleton: true,
+            strategy: "loaded-first"
+          },
+          { version: "17.0.2", provider: "legacy", loaded: false }
+        ]
+      }]
     }]
   });
   const state = runtimeState({
@@ -68,7 +80,7 @@ function multiInstanceFixture() {
   return { consumer, producer, state };
 }
 
-test("status keeps nested and cyclic relationships flat", () => {
+test("status returns compact instances, consumers, and loaded shared dependencies", () => {
   const { state } = multiInstanceFixture();
   state.relationships.push({
     consumerInstanceRef: "mf-2",
@@ -77,11 +89,108 @@ test("status keeps nested and cyclic relationships flat", () => {
     evidence: ["moduleCache.remoteInfo"],
     status: "resolved"
   });
-  const parsed = parseBrowserReadResult(browserRead(state));
+  const globalShared = {
+    default: {
+      react: {
+        "18.3.1": {
+          from: "catalog",
+          useIn: ["host"],
+          loaded: true,
+          scope: ["default"],
+          strategy: "loaded-first",
+          shareConfig: { singleton: true },
+          lib: {
+            source: "() => react",
+            location: {
+              url: "https://cdn.test/assets/main.js",
+              line: 120,
+              column: 18,
+              original: {
+                source: "src/shared/react.ts",
+                line: 14,
+                column: 2
+              }
+            }
+          },
+          get: {
+            source: "() => factory",
+            location: {
+              url: "https://cdn.test/remoteEntry.js",
+              line: 8,
+              column: 4
+            }
+          }
+        },
+        "17.0.2": {
+          from: "legacy",
+          useIn: [],
+          loaded: false,
+          get: { source: "() => legacyFactory" }
+        }
+      }
+    }
+  };
+  const parsed = parseBrowserReadResult(browserRead(state, [], {
+    globalShared
+  }));
   const result = createStatusResult(parsed.snapshot, {});
-  assert.equal(result.instances.length, 2);
-  assert.equal(result.relationships.length, 2);
+  assert.deepEqual(result.instances, [
+    {
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer",
+      consumers: [{ instanceRef: "mf-2", name: "catalog" }],
+      active: true
+    },
+    {
+      instanceRef: "mf-2",
+      name: "catalog",
+      role: "producer",
+      consumers: [{ instanceRef: "mf-1", name: "host" }],
+      active: true
+    }
+  ]);
+  assert.deepEqual(result.shared, {
+    default: {
+      react: {
+        "18.3.1": {
+          from: "catalog",
+          useIn: ["host"],
+          loaded: true,
+          scope: ["default"],
+          strategy: "loaded-first",
+          shareConfig: { singleton: true }
+        }
+      }
+    }
+  });
+  assert.equal(JSON.stringify(result).includes("17.0.2"), false);
+  assert.equal(JSON.stringify(result).includes("factory"), false);
+  assert.equal(JSON.stringify(result).includes("runtimeVersion"), false);
+  assert.equal(JSON.stringify(result).includes("remotes"), false);
+  assert.equal(JSON.stringify(result).includes("shareScopes"), false);
+  assert.equal(JSON.stringify(result).includes("relationships"), false);
+  assert.equal(JSON.stringify(result).includes("compatibility"), false);
   assert.doesNotThrow(() => JSON.stringify(result));
+
+  const verbose = createStatusResult(parsed.snapshot, {}, { verbose: true });
+  assert.equal(verbose.shared.default.react["17.0.2"].loaded, false);
+  assert.equal(
+    verbose.shared.default.react["17.0.2"].get.source,
+    "() => legacyFactory"
+  );
+  assert.equal(
+    verbose.shared.default.react["18.3.1"].lib.source,
+    "() => react"
+  );
+  assert.deepEqual(
+    verbose.shared.default.react["18.3.1"].lib.location.original,
+    {
+      source: "src/shared/react.ts",
+      line: 14,
+      column: 2
+    }
+  );
 });
 
 test("module-info reports loaded facts from the public state and reports", () => {
@@ -98,6 +207,47 @@ test("module-info reports loaded facts from the public state and reports", () =>
   assert.equal(result.remote.dependencyRemotes[0].name, "design-system");
   assert.equal(result.remote.cached, false);
   assert.equal(result.remote.firstLoadedAt, 10);
+});
+
+test("module-info prefers the resources that were actually loaded", () => {
+  const { state } = multiInstanceFixture();
+  const stale = report({
+    events: [
+      {
+        phase: "manifest",
+        status: "success",
+        timestamp: 11,
+        sanitizedUrl: "http://localhost:3000/mf-manifest.json",
+        resource: {
+          type: "manifest",
+          initiator: "loadRemote",
+          outcome: "success",
+          url: "http://localhost:3000/mf-manifest.json",
+          startedAt: 10,
+          endedAt: 11
+        }
+      },
+      {
+        phase: "remoteEntry",
+        status: "success",
+        timestamp: 12,
+        sanitizedUrl: "http://localhost:3000/remoteEntry.js",
+        resource: {
+          type: "remoteEntry",
+          initiator: "loadRemote",
+          outcome: "success",
+          url: "http://localhost:3000/remoteEntry.js",
+          startedAt: 11,
+          endedAt: 12
+        }
+      }
+    ]
+  });
+  const parsed = parseBrowserReadResult(browserRead(state, [stale]));
+  const result = createModuleInfoResult(parsed.snapshot, {}, "shop");
+
+  assert.equal(result.remote.manifestUrl, "http://localhost:3000/mf-manifest.json");
+  assert.equal(result.remote.remoteEntryUrl, "http://localhost:3000/remoteEntry.js");
 });
 
 test("declared remote is not presented as loaded", () => {

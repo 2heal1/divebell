@@ -194,6 +194,8 @@ importers:
 
   packages/extension-memory: {}
 
+  packages/extension-mf: {}
+
   packages/extension-troubleshooting: {}
 
   packages/modern-plugin:

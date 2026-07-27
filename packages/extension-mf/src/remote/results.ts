@@ -9,21 +9,22 @@ import type {
 } from "../types.js";
 import { RemoteCoreError } from "./errors.js";
 import {
+  isRemoteTraceReport,
   normalizeExpose,
   reportInstanceRef,
-  selectRemoteCheck,
+  selectRemoteStatus,
   selectRemoteTrace
 } from "./selection.js";
 import type {
   RemoteCapabilitySummary,
-  RemoteCheckResult,
   RemoteErrorEvidence,
   RemoteEvidenceStatus,
-  RemoteExposeCheck,
   RemoteLoadStageName,
   RemotePreloadStageName,
   RemoteResourceEvidence,
+  RemoteProxyStatus,
   RemoteStageEvidence,
+  RemoteStatusResult,
   RemoteTraceKind,
   RemoteTraceOutcome,
   RemoteTraceResult,
@@ -81,7 +82,7 @@ export function createRemoteTraceResult(
 ): RemoteTraceResult {
   const compatibility = createCompatibilitySummary(snapshot);
   const capability = remoteCapability(snapshot);
-  const command = kind === "load" ? "mf trace" : "mf preload trace";
+  const command = "mf remote trace";
   const common = remoteMessages(snapshot, capability);
   if (!capability.available) {
     return {
@@ -99,11 +100,18 @@ export function createRemoteTraceResult(
 
   const selected = selectRemoteTrace(snapshot, kind, selectors);
   if (!selected.ok) throw new RemoteCoreError(selected.issue);
-  const traces = selected.value.reports.map((report) =>
-    buildRemoteTrace(report, kind, selected.value.consumer === undefined
-      ? undefined
-      : visibleInstanceName(selected.value.consumer))
-  );
+  const traces = selected.value.reports.map((report) => {
+    const trace = buildRemoteTrace(
+      report,
+      kind,
+      selected.value.consumer === undefined
+        ? undefined
+        : visibleInstanceName(selected.value.consumer)
+    );
+    return kind === "load"
+      ? { ...trace, preload: matchingPreload(snapshot, report) }
+      : trace;
+  });
   const outcome = traceCollectionOutcome(traces, capability);
   const warnings = [...common.warnings];
   const actions = [...common.actions];
@@ -126,67 +134,42 @@ export function createRemoteTraceResult(
   };
 }
 
-export function createRemoteCheckResult(
+export function createRemoteStatusResult(
   snapshot: BrowserObservabilitySnapshot,
   remoteName: string,
   selectors: Omit<RemoteTraceSelectors, "target" | "traceId">
-): RemoteCheckResult {
+): RemoteStatusResult {
   const compatibility = createCompatibilitySummary(snapshot);
   const capability = remoteCapability(snapshot);
-  const selection = selectRemoteCheck(snapshot, { ...selectors, target: remoteName });
+  const selection = selectRemoteStatus(snapshot, { ...selectors, target: remoteName });
   if (!selection.ok) throw new RemoteCoreError(selection.issue);
   const { consumer, target, reports } = selection.value;
-  const events = reports.flatMap((report) => loadEvents(report));
   const declaredRemote = consumer.remotes.find((remote) => remotesMatch(remote, target.remote));
   const loadedRemote = consumer.loadedProducers.find((remote) =>
     remotesMatch(remote, target.remote)
   );
   const selectedRemote = mergeRemote(target.remote, declaredRemote, loadedRemote);
+  const proxy = createRemoteProxyStatus(
+    snapshot,
+    declaredRemote ?? selectedRemote,
+    reports
+  );
   const relationships = snapshot.state.relationships.filter((relationship) =>
     relationship.consumerInstanceRef === consumer.instanceRef &&
     remotesMatch(relationship.remote, selectedRemote)
   );
   const relationship = relationships.length === 1 ? relationships[0] : undefined;
-  const manifest = withFallbackUrl(aggregateStage(
-    events.filter((event) => event.phase === "manifest"),
-    "manifest",
-    "Manifest or snapshot"
-  ), firstDefined(
-    selectedRemote.entry !== undefined && isManifestUrl(selectedRemote.entry)
-      ? selectedRemote.entry
-      : undefined,
-    ...reports.map((report) => report.sanitizedUrl).filter((url) =>
-      url !== undefined && isManifestUrl(url)
-    )
-  ));
-  const remoteEntry = withFallbackUrl(aggregateStage(
-    events.filter((event) => event.phase === "remoteEntry"),
-    "remoteEntry",
-    "remoteEntry resource"
-  ), firstDefined(
-    ...reports.flatMap((report) => report.moduleInfo?.entries.map((entry) =>
-      entry.remoteEntry
-    ) ?? []),
-    selectedRemote.entry !== undefined && !isManifestUrl(selectedRemote.entry)
-      ? selectedRemote.entry
-      : undefined
-  ));
-  const containerInit = aggregateStage(
-    events.filter((event) => event.phase === "remoteEntryInit"),
-    "containerInit",
-    "Container init"
-  );
-  const traces = reports.map((report) =>
-    buildRemoteTrace(report, "load", visibleInstanceName(consumer))
-  );
-  const resources = mergeResources(events);
-  const latestTrace = traces.at(-1);
+  const successfulReports = reports.filter((report) => {
+    const outcome = reportOutcome(report);
+    return outcome === "success" || outcome === "recovered";
+  });
+  const latestReport = reports.at(-1);
   const common = remoteMessages(snapshot, capability);
   const warnings = [...common.warnings];
   const actions = [...common.actions];
   if (reports.length === 0) {
     warnings.push("No loading evidence was observed for this remote; declaration alone is not treated as a successful load.");
-    actions.push("Reopen or reproduce the page path that loads this remote, then run the check again.");
+    actions.push("Reopen or reproduce the page path that loads this remote, then run remote status again.");
   }
   if (declaredRemote === undefined) {
     warnings.push("The remote was not observed in the selected consumer declaration.");
@@ -199,18 +182,26 @@ export function createRemoteCheckResult(
 
   return {
     schemaVersion: 1,
-    command: "mf remote check",
+    command: "mf remote status",
     capability,
     compatibility,
     consumer: {
       instanceRef: consumer.instanceRef,
-      name: visibleInstanceName(consumer),
-      ...(consumer.optionsVersion === undefined ? {} : { version: consumer.optionsVersion })
+      name: visibleInstanceName(consumer)
     },
     remote: {
       name: selectedRemote.name,
       ...(selectedRemote.alias === undefined ? {} : { alias: selectedRemote.alias }),
       declared: declaredRemote !== undefined,
+      loaded: loadedRemote !== undefined ||
+        relationship?.status === "resolved" ||
+        successfulReports.length > 0,
+      loadedExposes: Array.from(new Set(
+        successfulReports
+          .map((report) => report.expose)
+          .filter((expose): expose is string => expose !== undefined)
+          .map(normalizeExpose)
+      )).sort(),
       relationship: relationships.length > 1
         ? "ambiguous"
         : relationship?.status ?? "unknown",
@@ -220,24 +211,113 @@ export function createRemoteCheckResult(
       ...(relationship?.candidateProducerInstanceRefs === undefined
         ? {}
         : { candidateProducerInstanceRefs: relationship.candidateProducerInstanceRefs }),
-      traceIds: reports.map((report) => report.traceId),
-      outcome: !capability.available
+      latestResult: !capability.available
         ? "unavailable"
-        : latestTrace?.outcome ?? "unknown",
-      resources: {
-        manifest,
-        remoteEntry,
-        observed: resources
-      },
-      containerInit,
-      exposes: createExposeChecks(reports),
-      cached: traces.some((trace) => trace.cached),
-      recovered: traces.some((trace) => trace.recovered),
-      timeout: traces.some((trace) => trace.timeout)
+        : latestReport === undefined
+          ? "unknown"
+          : reportOutcome(latestReport),
+      ...(latestReport === undefined
+        ? {}
+        : { latestTraceId: latestReport.traceId })
     },
+    ...(proxy === undefined ? {} : { proxy }),
     warnings: unique(warnings),
     recommendedActions: unique(actions)
   };
+}
+
+function createRemoteProxyStatus(
+  snapshot: BrowserObservabilitySnapshot,
+  remote: RuntimeRemote,
+  reports: RuntimeReport[]
+): RemoteProxyStatus | undefined {
+  const marker = snapshot.proxy;
+  if (marker === undefined) return undefined;
+  const nameTarget = marker.overrides[remote.name];
+  const aliasTarget = remote.alias === undefined
+    ? undefined
+    : marker.overrides[remote.alias];
+  const matchedBy = nameTarget !== undefined
+    ? "name"
+    : aliasTarget !== undefined
+      ? "alias"
+      : undefined;
+  const target = nameTarget ?? aliasTarget;
+  if (matchedBy === undefined || target === undefined) return undefined;
+
+  if (marker.status === "error") {
+    return {
+      target,
+      matchedBy,
+      applied: false,
+      error: marker.message ?? "MF proxy setup failed before the page runtime started."
+    };
+  }
+
+  const loadedFrom = isRemoteUrl(target)
+    ? latestManifestResourceUrl(reports)
+    : undefined;
+  if (loadedFrom !== undefined) {
+    return {
+      target,
+      matchedBy,
+      applied: normalizeProxyTarget(loadedFrom) === normalizeProxyTarget(target),
+      loadedFrom
+    };
+  }
+
+  const current = isRemoteUrl(target) ? remote.entry : remote.version;
+  return {
+    target,
+    matchedBy,
+    applied: current === undefined
+      ? "unknown"
+      : normalizeProxyTarget(current) === normalizeProxyTarget(target)
+  };
+}
+
+function latestManifestResourceUrl(
+  reports: RuntimeReport[]
+): string | undefined {
+  for (const report of [...reports].reverse()) {
+    for (const event of [...report.events].reverse()) {
+      if (
+        event.resource?.type === "manifest" &&
+        event.resource.initiator === "loadRemote"
+      ) {
+        return event.resource.url ?? event.sanitizedUrl;
+      }
+    }
+  }
+  return undefined;
+}
+
+function isRemoteUrl(value: string): boolean {
+  return /^(https?:)?\/\//i.test(value);
+}
+
+function normalizeProxyTarget(value: string): string {
+  if (!isRemoteUrl(value)) return value;
+  const queryIndex = value.indexOf("?");
+  const hashIndex = value.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), value.length);
+  const withoutQuery = value.slice(0, end);
+  try {
+    const protocolRelative = withoutQuery.startsWith("//");
+    const url = new URL(
+      withoutQuery,
+      protocolRelative ? "https://openruntime.invalid" : undefined
+    );
+    url.username = "";
+    url.password = "";
+    return protocolRelative
+      ? `//${url.host}${url.pathname}`
+      : url.toString();
+  } catch {
+    return withoutQuery;
+  }
 }
 
 export function buildRemoteTrace(
@@ -296,6 +376,65 @@ export function buildRemoteTrace(
   };
 }
 
+function matchingPreload(
+  snapshot: BrowserObservabilitySnapshot,
+  loadReport: RuntimeReport
+): NonNullable<RemoteTraceSummary["preload"]> {
+  const matches = snapshot.reports
+    .filter((report) => isRemoteTraceReport(report, "preload"))
+    .filter((report) => report.startedAt <= loadReport.startedAt)
+    .filter((report) => reportsShareTarget(loadReport, report))
+    .sort((left, right) =>
+      right.startedAt - left.startedAt ||
+      right.traceId.localeCompare(left.traceId)
+    );
+  const report = matches[0];
+  if (report === undefined) return { status: "not-observed" };
+  const trace = buildRemoteTrace(report, "preload");
+  return {
+    status: trace.outcome,
+    traceId: trace.traceId,
+    timing: trace.endedAt !== undefined &&
+      trace.endedAt <= loadReport.startedAt
+      ? "before-load"
+      : "overlapping",
+    startedAt: trace.startedAt,
+    ...(trace.endedAt === undefined ? {} : { endedAt: trace.endedAt }),
+    duration: trace.duration
+  };
+}
+
+function reportsShareTarget(
+  loadReport: RuntimeReport,
+  preloadReport: RuntimeReport
+): boolean {
+  if (
+    loadReport.remote === undefined ||
+    preloadReport.remote === undefined ||
+    !remotesMatch(loadReport.remote, preloadReport.remote)
+  ) {
+    return false;
+  }
+  const loadInstanceRef = reportInstanceRef(loadReport);
+  const preloadInstanceRef = reportInstanceRef(preloadReport);
+  if (
+    loadInstanceRef !== undefined ||
+    preloadInstanceRef !== undefined
+  ) {
+    if (loadInstanceRef !== preloadInstanceRef) return false;
+  } else if (
+    loadReport.hostName === undefined ||
+    preloadReport.hostName === undefined ||
+    loadReport.hostName !== preloadReport.hostName
+  ) {
+    return false;
+  }
+  return loadReport.expose === undefined ||
+    preloadReport.expose === undefined ||
+    normalizeExpose(loadReport.expose) ===
+      normalizeExpose(preloadReport.expose);
+}
+
 export function remoteCapability(
   snapshot: BrowserObservabilitySnapshot
 ): RemoteCapabilitySummary {
@@ -340,6 +479,12 @@ function aggregateStage(
   const startedAt = minimum(startTimes) ?? (events.length > 0 ? events[0]?.timestamp : undefined) ??
     report?.startedAt;
   const endedAt = maximum(endTimes) ?? (report?.status === "pending" ? undefined : report?.updatedAt);
+  const startedBy = events.find((event) =>
+    event.status === "start" && event.lifecycle !== undefined
+  )?.lifecycle;
+  const endedBy = [...events].reverse().find((event) =>
+    event.status !== "start" && event.lifecycle !== undefined
+  )?.lifecycle;
   const explicitDuration = [...events].reverse().find((event) =>
     event.duration !== undefined || event.resource?.duration !== undefined
   );
@@ -363,7 +508,11 @@ function aggregateStage(
     label,
     status,
     ...(startedAt === undefined ? {} : { startedAt }),
+    ...(startedBy === undefined ? {} : { startedBy }),
     ...(endedAt === undefined || status === "pending" ? {} : { endedAt }),
+    ...(endedAt === undefined || status === "pending" || endedBy === undefined
+      ? {}
+      : { endedBy }),
     ...(duration === undefined ? {} : { duration }),
     ...(remote === undefined ? {} : { remote }),
     ...(expose === undefined ? {} : { expose: normalizeExpose(expose) }),
@@ -427,30 +576,6 @@ function resourceEvidence(
     ...(resource.errorType === undefined ? {} : { errorType: resource.errorType }),
     ...(error === undefined ? {} : { error })
   };
-}
-
-function createExposeChecks(reports: RuntimeReport[]): RemoteExposeCheck[] {
-  const exposes = new Map<string, RuntimeReport[]>();
-  for (const report of reports) {
-    if (report.expose === undefined) continue;
-    const expose = normalizeExpose(report.expose);
-    exposes.set(expose, [...(exposes.get(expose) ?? []), report]);
-  }
-  return Array.from(exposes.entries()).sort(([left], [right]) => left.localeCompare(right))
-    .map(([name, exposeReports]) => {
-      const events = exposeReports.flatMap((report) =>
-        loadEvents(report).filter((event) => event.phase === "expose")
-      );
-      const stage = aggregateStage(events, "expose", "Expose get");
-      const latest = exposeReports.at(-1);
-      return {
-        name,
-        status: stage.status === "unknown" && latest !== undefined
-          ? reportOutcomeStatus(latest)
-          : stage.status,
-        traceIds: exposeReports.map((report) => report.traceId)
-      };
-    });
 }
 
 function loadEvents(report: RuntimeReport): RuntimeReportEvent[] {
@@ -609,21 +734,6 @@ function mergeRemote(
     ...loaded,
     name: loaded?.name ?? declared?.name ?? target.name
   };
-}
-
-function withFallbackUrl(
-  stage: RemoteStageEvidence,
-  url: string | undefined
-): RemoteStageEvidence {
-  return stage.url !== undefined || url === undefined ? stage : { ...stage, url };
-}
-
-function firstDefined<T>(...values: Array<T | undefined>): T | undefined {
-  return values.find((value): value is T => value !== undefined);
-}
-
-function isManifestUrl(value: string): boolean {
-  return /(?:mf-manifest|manifest)\.json(?:[?#]|$)/i.test(value);
 }
 
 function minimum(values: number[]): number | undefined {

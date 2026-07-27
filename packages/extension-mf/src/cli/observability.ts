@@ -5,11 +5,15 @@ import type { BrowserObservabilitySnapshot } from "../types.js";
 import { MfCommandError } from "./errors.js";
 
 export async function readCommandSnapshot(
-  options: CliExtensionRunOptions
+  options: CliExtensionRunOptions,
+  readOptions: { verbose?: boolean } = {}
 ): Promise<BrowserObservabilitySnapshot> {
   let readResult;
   try {
-    readResult = await readMfObservability(options.openruntime.browser);
+    readResult = await readMfObservability(
+      options.openruntime.browser,
+      readOptions
+    );
   } catch (error) {
     if (isOpenContextError(error)) {
       throw new MfCommandError({
@@ -32,14 +36,208 @@ export async function readCommandSnapshot(
 
 export function writeCommandResult(
   options: CliExtensionRunOptions,
-  result: unknown,
-  humanText: string
+  result: unknown
 ): void {
-  if (options.args.options.has("json")) {
-    options.output.ok(result);
-  } else {
-    options.stdout.write(humanText);
+  options.output.ok(presentCommandResult(result));
+}
+
+function presentCommandResult(result: unknown): unknown {
+  if (!isRecord(result)) return result;
+  const presented = { ...result };
+  delete presented.compatibility;
+  delete presented.capability;
+  if (
+    presented.command === "mf remote trace" &&
+    Array.isArray(presented.traces)
+  ) {
+    return presentRemoteTraceResult(presented);
   }
+  if (presented.command === "mf remote status") {
+    return presentRemoteStatusResult(presented);
+  }
+  return presented;
+}
+
+function presentRemoteStatusResult(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const warnings = stringArray(value.warnings);
+  const recommendedActions = stringArray(value.recommendedActions);
+  return {
+    consumer: value.consumer,
+    remote: value.remote,
+    ...(value.proxy === undefined ? {} : { proxy: value.proxy }),
+    ...(warnings.length === 0 ? {} : { warnings }),
+    ...(recommendedActions.length === 0
+      ? {}
+      : { recommendedActions })
+  };
+}
+
+function presentRemoteTraceResult(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const warnings = stringArray(value.warnings);
+  const recommendedActions = stringArray(value.recommendedActions);
+  return {
+    result: value.outcome,
+    traces: Array.isArray(value.traces)
+      ? value.traces.map(presentRemoteTrace)
+      : [],
+    ...(warnings.length === 0 ? {} : { warnings }),
+    ...(recommendedActions.length === 0
+      ? {}
+      : { recommendedActions })
+  };
+}
+
+function presentRemoteTrace(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    traceId: value.traceId,
+    ...(value.requestId === undefined ? {} : { requestId: value.requestId }),
+    instance: {
+      ref: value.instanceRef,
+      name: value.instanceName
+    },
+    ...presentRemoteTarget(value),
+    operation: value.kind === "preload"
+      ? "preloadRemote"
+      : "loadRemote",
+    ...(value.kind === "load"
+      ? { preload: presentPreload(value.preload) }
+      : {}),
+    result: presentTraceOutcome(value),
+    ...(Array.isArray(value.stages)
+      ? { lifecycle: value.stages.map(presentRemoteLifecycle) }
+      : { lifecycle: [] })
+  };
+}
+
+function presentRemoteTarget(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const remote = isRecord(value.remote) ? value.remote : undefined;
+  if (remote === undefined && value.expose === undefined) return {};
+  return {
+    target: {
+      ...(remote?.name === undefined ? {} : { remote: remote.name }),
+      ...(remote?.alias === undefined ? {} : { alias: remote.alias }),
+      ...(value.expose === undefined ? {} : { expose: value.expose })
+    }
+  };
+}
+
+function presentPreload(value: unknown): Record<string, unknown> {
+  if (!isRecord(value)) return { status: "not-observed" };
+  return {
+    status: value.status,
+    ...(value.traceId === undefined ? {} : { traceId: value.traceId }),
+    ...(value.timing === undefined ? {} : { timing: value.timing }),
+    ...readableTimeFields(value),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {})
+  };
+}
+
+function presentTraceOutcome(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    status: value.outcome,
+    ...readableTimeFields(value),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.cached === true ? { cached: true } : {}),
+    ...(value.recovered === true ? { recovered: true } : {}),
+    ...(value.timeout === true ? { timeout: true } : {}),
+    ...(isRecord(value.error) ? { error: value.error } : {})
+  };
+}
+
+function presentRemoteLifecycle(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const resources = Array.isArray(value.resources)
+    ? value.resources.map(presentRemoteResource)
+    : [];
+  return {
+    phase: value.name,
+    result: value.status,
+    ...readableTimeFields(value),
+    ...(value.startedBy === undefined
+      ? {}
+      : { startedBy: value.startedBy }),
+    ...(value.endedBy === undefined ? {} : { endedBy: value.endedBy }),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.cached === true ? { cached: true } : {}),
+    ...(value.recovered === true ? { recovered: true } : {}),
+    ...(value.timeout === true ? { timeout: true } : {}),
+    ...(resources.length === 0 ? {} : { resources }),
+    ...(isRecord(value.error) ? { error: value.error } : {})
+  };
+}
+
+function presentRemoteResource(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const rawError = isRecord(value.error) ? value.error : undefined;
+  const error = value.errorType === undefined && rawError === undefined
+    ? undefined
+    : {
+        ...(value.errorType === undefined ? {} : { type: value.errorType }),
+        ...(rawError ?? {})
+      };
+  return {
+    type: value.type,
+    loadedBy: value.initiator,
+    result: value.outcome ?? "pending",
+    ...(value.url === undefined ? {} : { url: value.url }),
+    ...readableTimeFields(value),
+    ...(typeof value.duration === "number"
+      ? { duration: value.duration }
+      : {}),
+    ...(value.httpStatus === undefined
+      ? {}
+      : { httpStatus: value.httpStatus }),
+    ...(value.mimeType === undefined ? {} : { mimeType: value.mimeType }),
+    ...(value.redirected === undefined
+      ? {}
+      : { redirected: value.redirected }),
+    ...(value.cacheSource === undefined
+      ? {}
+      : { cacheSource: value.cacheSource }),
+    ...(error === undefined ? {} : { error })
+  };
+}
+
+function readableTimeFields(
+  value: Record<string, unknown>
+): Record<string, string> {
+  return {
+    ...(typeof value.startedAt === "number"
+      ? { startedAt: readableTimestamp(value.startedAt) }
+      : {}),
+    ...(typeof value.endedAt === "number"
+      ? { endedAt: readableTimestamp(value.endedAt) }
+      : {})
+  };
+}
+
+function readableTimestamp(value: number): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toISOString()
+    .replace("T", " ")
+    .replace("Z", " UTC");
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function unavailableError(
@@ -93,4 +291,8 @@ function isOpenContextError(error: unknown): boolean {
   return error instanceof Error &&
     ((error as Error & { code?: string }).code === "OPEN_CONTEXT_REQUIRED" ||
       /No opened page context/i.test(error.message));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

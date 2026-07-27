@@ -4,7 +4,10 @@ import type {
   BridgeRouteSummary,
   Capability,
   CapabilityName,
+  GlobalSharedState,
+  GlobalSharedVersion,
   InjectionMarker,
+  ProxyInjectionMarker,
   RuntimeBridgeInfo,
   RuntimeBridgeState,
   RuntimeInstance,
@@ -19,9 +22,11 @@ import type {
   ShareScope,
   SharedCandidate,
   SharedConflict,
+  SharedFunctionLocation,
   SharedRegistration,
   SharedVersion
 } from "./types.js";
+import { enrichSharedFunctionLocations } from "./function-location.js";
 
 const capabilityNames: CapabilityName[] = [
   "instanceState",
@@ -31,8 +36,18 @@ const capabilityNames: CapabilityName[] = [
   "bridgeTrace"
 ];
 
-export const MF_BROWSER_READ_SCRIPT = `(() => {
+const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
+  const includeFunctionSource = __OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__;
+  const includeFunctionLocations = __OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__;
+  const locationTokenSymbol = "openruntime.mf.location-token";
+  const pageToken = includeFunctionLocations
+    ? \`\${Date.now().toString(36)}-\${Math.random().toString(36).slice(2)}\`
+    : undefined;
+  if (pageToken !== undefined) {
+    globalThis[Symbol.for(locationTokenSymbol)] = pageToken;
+  }
   const marker = globalThis.__MF_OBSERVABILITY_INJECTION__;
+  const proxyMarker = globalThis.__OPENRUNTIME_MF_PROXY_INJECTION__;
   const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__;
   const availableScopes = readers && typeof readers === "object"
     ? Object.keys(readers)
@@ -43,6 +58,151 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
       typeof reader.getRuntimeState === "function";
   });
   const applicationScopes = compatibleScopes.filter((scope) => scope !== "chrome_extension");
+  const isRecord = (value) =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+  const safeText = (value, limit = 240) =>
+    typeof value === "string" && value.length > 0
+      ? value.slice(0, limit)
+      : undefined;
+  const safeKey = (value, limit) => {
+    const key = safeText(value, limit);
+    return key === undefined ||
+        key === "__proto__" ||
+        key === "prototype" ||
+        key === "constructor"
+      ? undefined
+      : key;
+  };
+  const safeStringArray = (value) =>
+    Array.isArray(value)
+      ? Array.from(new Set(value
+          .map((item) => safeText(item, 160))
+          .filter((item) => item !== undefined)))
+          .slice(0, 100)
+          .sort()
+      : [];
+  const safeBooleanFlag = (value) =>
+    typeof value === "boolean"
+      ? value
+      : value === 1
+        ? true
+        : value === 0
+          ? false
+          : undefined;
+  const functionSource = (value, locator) => {
+    if (typeof value !== "function") return undefined;
+    const details = includeFunctionLocations
+      ? { __openruntimeFunctionLocator: locator }
+      : {};
+    if (!includeFunctionSource) {
+      return includeFunctionLocations ? details : undefined;
+    }
+    try {
+      return {
+        ...details,
+        source: Function.prototype.toString.call(value).slice(0, 1000)
+      };
+    } catch {
+      return { ...details, source: "[function source unavailable]" };
+    }
+  };
+  const safeShareConfig = (value) => {
+    if (!isRecord(value)) return undefined;
+    const requiredVersion = value.requiredVersion === false
+      ? false
+      : safeText(value.requiredVersion, 160);
+    const singleton = safeBooleanFlag(value.singleton);
+    const eager = safeBooleanFlag(value.eager);
+    const strictVersion = safeBooleanFlag(value.strictVersion);
+    const config = {
+      ...(requiredVersion === undefined ? {} : { requiredVersion }),
+      ...(singleton === undefined ? {} : { singleton }),
+      ...(eager === undefined ? {} : { eager }),
+      ...(strictVersion === undefined ? {} : { strictVersion }),
+      ...(typeof value.layer === "string" || value.layer === null
+        ? { layer: value.layer }
+        : {})
+    };
+    return Object.keys(config).length === 0 ? undefined : config;
+  };
+  const safeSharedValue = (value, locator) => {
+    if (!isRecord(value)) return undefined;
+    const from = safeText(value.from, 160);
+    const scope = safeStringArray(value.scope);
+    const deps = safeStringArray(value.deps);
+    const strategy = safeText(value.strategy, 80);
+    const shareConfig = safeShareConfig(value.shareConfig);
+    const eager = safeBooleanFlag(value.eager);
+    const lib = functionSource(value.lib, [...locator, "lib"]);
+    const get = functionSource(value.get, [...locator, "get"]);
+    const loaded = value.loaded === true || typeof value.lib === "function";
+    const loading = value.loading === undefined
+      ? undefined
+      : value.loading != null;
+    return {
+      ...(from === undefined ? {} : { from }),
+      useIn: safeStringArray(value.useIn),
+      loaded,
+      ...(loaded || loading === undefined ? {} : { loading }),
+      ...(scope.length === 0 ? {} : { scope }),
+      ...(deps.length === 0 ? {} : { deps }),
+      ...(eager === undefined ? {} : { eager }),
+      ...(strategy === undefined ? {} : { strategy }),
+      ...(shareConfig === undefined ? {} : { shareConfig }),
+      ...(lib === undefined ? {} : { lib }),
+      ...(get === undefined ? {} : { get })
+    };
+  };
+  const readGlobalShared = () => {
+    const root = globalThis.__FEDERATION__?.__SHARE__;
+    if (!isRecord(root)) return {};
+    const result = Object.create(null);
+    const seenInstanceMaps = new Set();
+    for (const [rawInstanceKey, instanceMap] of Object.entries(root).slice(0, 100)) {
+      const instanceKey = safeKey(rawInstanceKey, 240);
+      if (instanceKey === undefined) continue;
+      if (!isRecord(instanceMap) || seenInstanceMaps.has(instanceMap)) continue;
+      seenInstanceMaps.add(instanceMap);
+      for (const [rawScope, packages] of Object.entries(instanceMap).slice(0, 100)) {
+        const scope = safeKey(rawScope, 120);
+        if (scope === undefined || !isRecord(packages)) continue;
+        const scopeResult = result[scope] || (result[scope] = Object.create(null));
+        for (const [rawPackage, versions] of Object.entries(packages).slice(0, 200)) {
+          const packageName = safeKey(rawPackage, 240);
+          if (packageName === undefined || !isRecord(versions)) continue;
+          const packageResult =
+            scopeResult[packageName] ||
+            (scopeResult[packageName] = Object.create(null));
+          for (const [rawVersion, rawShared] of Object.entries(versions).slice(0, 50)) {
+            const version = safeKey(rawVersion, 120);
+            const shared = safeSharedValue(
+              rawShared,
+              [instanceKey, scope, packageName, version]
+            );
+            if (version === undefined || shared === undefined) continue;
+            const existing = packageResult[version];
+            if (existing === undefined) {
+              packageResult[version] = shared;
+              continue;
+            }
+            const preferExisting = existing.loaded && !shared.loaded;
+            const merged = {
+              ...(preferExisting ? shared : existing),
+              ...(preferExisting ? existing : shared),
+              useIn: Array.from(new Set([
+                ...existing.useIn,
+                ...shared.useIn
+              ])).sort(),
+              loaded: existing.loaded || shared.loaded
+            };
+            if (merged.loaded) delete merged.loading;
+            packageResult[version] = merged;
+          }
+        }
+      }
+    }
+    return result;
+  };
 
   if (applicationScopes.length > 1) {
     return {
@@ -97,8 +257,11 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
       availableScopes,
       compatibleScopes,
       marker,
+      proxyMarker,
+      pageToken,
       state,
-      reports
+      reports,
+      globalShared: readGlobalShared()
     };
   } catch (error) {
     return {
@@ -112,10 +275,43 @@ export const MF_BROWSER_READ_SCRIPT = `(() => {
   }
 })()`;
 
+export const MF_BROWSER_READ_SCRIPT = createBrowserReadScript(false);
+
+function createBrowserReadScript(
+  includeFunctionSource: boolean,
+  includeFunctionLocations = false
+): string {
+  return MF_BROWSER_READ_SCRIPT_TEMPLATE.replace(
+    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__",
+    includeFunctionSource ? "true" : "false"
+  ).replace(
+    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__",
+    includeFunctionLocations ? "true" : "false"
+  );
+}
+
 export async function readMfObservability(browser: {
   eval<T = unknown>(script: string): Promise<T>;
-}): Promise<BrowserReadResult> {
-  const value = await browser.eval<unknown>(MF_BROWSER_READ_SCRIPT);
+  raw?(
+    args: string[],
+    options?: { ui?: boolean }
+  ): Promise<{
+    exitCode: number;
+    stdout: string;
+    stderr: string;
+  }>;
+}, options: { verbose?: boolean } = {}): Promise<BrowserReadResult> {
+  const includeFunctionLocations =
+    options.verbose === true && browser.raw !== undefined;
+  const value = await browser.eval<unknown>(
+    createBrowserReadScript(
+      options.verbose === true,
+      includeFunctionLocations
+    )
+  );
+  if (includeFunctionLocations) {
+    await enrichSharedFunctionLocations(value, browser, options);
+  }
   return parseBrowserReadResult(value);
 }
 
@@ -151,6 +347,7 @@ function parseSnapshot(record: Record<string, unknown>): BrowserObservabilitySna
     throw new Error(`Unsupported observability mode: ${mode}`);
   }
   const injection = optionalInjection(record.marker);
+  const proxy = optionalProxyInjection(record.proxyMarker);
   return {
     observabilityMode: mode,
     observabilityVersion: requiredString(record.observabilityVersion, "observability version"),
@@ -158,8 +355,143 @@ function parseSnapshot(record: Record<string, unknown>): BrowserObservabilitySna
     availableScopes: stringArray(record.availableScopes, "available scopes"),
     compatibleScopes: stringArray(record.compatibleScopes, "compatible scopes"),
     ...(injection === undefined ? {} : { injection }),
+    ...(proxy === undefined ? {} : { proxy }),
     state: parseRuntimeState(record.state),
-    reports: array(record.reports, "reports").map(parseReport)
+    reports: array(record.reports, "reports").map(parseReport),
+    globalShared: parseGlobalShared(record.globalShared)
+  };
+}
+
+function parseGlobalShared(value: unknown): GlobalSharedState {
+  if (value === undefined) return {};
+  return Object.fromEntries(
+    Object.entries(asRecord(value, "global shared state")).map(
+      ([scope, rawPackages]) => [
+        scope,
+        Object.fromEntries(
+          Object.entries(asRecord(rawPackages, `shared scope ${scope}`)).map(
+            ([packageName, rawVersions]) => [
+              packageName,
+              Object.fromEntries(
+                Object.entries(
+                  asRecord(rawVersions, `shared package ${packageName}`)
+                ).map(([version, rawShared]) => [
+                  version,
+                  parseGlobalSharedVersion(rawShared)
+                ])
+              )
+            ]
+          )
+        )
+      ]
+    )
+  );
+}
+
+function parseGlobalSharedVersion(value: unknown): GlobalSharedVersion {
+  const record = asRecord(value, "global shared version");
+  const loaded = requiredBoolean(record.loaded, "global shared loaded");
+  const loading = optionalBoolean(record.loading, "global shared loading");
+  const shareConfigRecord = record.shareConfig === undefined
+    ? undefined
+    : asRecord(record.shareConfig, "global shared shareConfig");
+  const requiredVersion = shareConfigRecord?.requiredVersion === false
+    ? false
+    : optionalString(
+        shareConfigRecord?.requiredVersion,
+        "global shared requiredVersion"
+      );
+  const layer = shareConfigRecord?.layer;
+  if (layer !== undefined && layer !== null && typeof layer !== "string") {
+    throw new Error("global shared layer must be a string or null.");
+  }
+  const shareConfig = shareConfigRecord === undefined
+    ? undefined
+    : compact({
+        requiredVersion,
+        singleton: optionalBoolean(
+          shareConfigRecord.singleton,
+          "global shared singleton"
+        ),
+        eager: optionalBoolean(shareConfigRecord.eager, "global shared eager"),
+        strictVersion: optionalBoolean(
+          shareConfigRecord.strictVersion,
+          "global shared strictVersion"
+        ),
+        layer: layer as string | null | undefined
+      });
+  return compact({
+    from: optionalString(record.from, "global shared provider"),
+    useIn: stringArray(record.useIn, "global shared useIn"),
+    loaded,
+    loading: loaded ? undefined : loading,
+    scope: record.scope === undefined
+      ? undefined
+      : stringArray(record.scope, "global shared scope"),
+    deps: record.deps === undefined
+      ? undefined
+      : stringArray(record.deps, "global shared deps"),
+    eager: optionalBoolean(record.eager, "global shared eager"),
+    strategy: optionalString(record.strategy, "global shared strategy"),
+    shareConfig,
+    lib: parseFunctionSource(record.lib, "global shared lib"),
+    get: parseFunctionSource(record.get, "global shared get")
+  }) as GlobalSharedVersion;
+}
+
+function parseFunctionSource(
+  value: unknown,
+  label: string
+): GlobalSharedVersion["lib"] {
+  if (value === undefined) return undefined;
+  const record = asRecord(value, label);
+  const source = optionalString(record.source, `${label} source`);
+  const location = parseFunctionLocation(record.location, `${label} location`);
+  if (source === undefined && location === undefined) {
+    throw new Error(`${label} must include source or location.`);
+  }
+  return {
+    ...(source === undefined ? {} : { source }),
+    ...(location === undefined ? {} : { location })
+  };
+}
+
+function parseFunctionLocation(
+  value: unknown,
+  label: string
+): SharedFunctionLocation | undefined {
+  if (value === undefined) return undefined;
+  const record = asRecord(value, label);
+  const url = optionalFunctionLocationUrl(record.url, `${label} url`);
+  if (url === undefined) {
+    throw new Error(`${label} must include a URL.`);
+  }
+  const line = optionalNumber(record.line, `${label} line`);
+  const column = optionalNumber(record.column, `${label} column`);
+  const originalRecord = record.original === undefined
+    ? undefined
+    : asRecord(record.original, `${label} original`);
+  const original = originalRecord === undefined
+    ? undefined
+    : {
+        source: requiredFunctionSourceName(
+          originalRecord.source,
+          `${label} original source`
+        ),
+        line: requiredNumber(
+          originalRecord.line,
+          `${label} original line`
+        ),
+        column: requiredNumber(
+          originalRecord.column,
+          `${label} original column`
+        )
+      };
+  return {
+    url,
+    ...(line === undefined ? {} : { line }),
+    ...(column === undefined ? {} : { column }),
+    ...(original === undefined ? {} : { original })
   };
 }
 
@@ -289,27 +621,40 @@ function parseInstance(value: unknown): RuntimeInstance {
 
 function parseShareScope(value: unknown): ShareScope {
   const record = asRecord(value, "share scope");
-  return {
-    name: requiredString(record.name, "share scope name"),
-    sharedCount: requiredNumber(record.sharedCount, "shared count"),
-    sharedNames: stringArray(record.sharedNames, "shared names"),
-    shared: array(record.shared, "shared entries").map((entry) => {
+  const sharedEntries = array(record.shared, "shared entries")
+    .map((entry) => {
       const shared = asRecord(entry, "shared entry");
-      return {
-        name: requiredString(shared.name, "shared name"),
-        versions: array(shared.versions, "shared versions").map((version) => {
+      const versions = array(shared.versions, "shared versions")
+        .map((version) => {
           const item = asRecord(version, "shared version");
           return compact({
             version: requiredString(item.version, "shared version"),
             provider: optionalString(item.provider),
             loaded: optionalBoolean(item.loaded),
-            singleton: optionalBoolean(item.singleton),
-            eager: optionalBoolean(item.eager),
+            singleton: optionalBooleanFlag(item.singleton),
+            eager: optionalBooleanFlag(item.eager),
             strategy: optionalString(item.strategy, "shared strategy")
           }) as SharedVersion;
         })
+        .filter(
+          (version) =>
+            version.provider !== undefined ||
+            version.loaded !== undefined ||
+            version.singleton !== undefined ||
+            version.eager !== undefined ||
+            version.strategy !== undefined
+        );
+      return {
+        name: requiredString(shared.name, "shared name"),
+        versions
       };
     })
+    .filter((entry) => entry.versions.length > 0);
+  return {
+    name: requiredString(record.name, "share scope name"),
+    sharedCount: sharedEntries.length,
+    sharedNames: sharedEntries.map((entry) => entry.name),
+    shared: sharedEntries
   };
 }
 
@@ -549,9 +894,12 @@ function parseShared(value: unknown): RuntimeShared {
     ),
     provider: optionalString(record.provider, "shared provider"),
     useIn: optionalStringArrayStrict(record.useIn, "shared useIn"),
-    singleton: optionalBoolean(record.singleton, "shared singleton"),
-    strictVersion: optionalBoolean(record.strictVersion, "shared strictVersion"),
-    eager: optionalBoolean(record.eager, "shared eager"),
+    singleton: optionalBooleanFlag(record.singleton, "shared singleton"),
+    strictVersion: optionalBooleanFlag(
+      record.strictVersion,
+      "shared strictVersion"
+    ),
+    eager: optionalBooleanFlag(record.eager, "shared eager"),
     strategy: optionalString(record.strategy, "shared strategy"),
     loaded: optionalBoolean(record.loaded, "shared loaded"),
     loading: optionalBoolean(record.loading, "shared loading"),
@@ -637,7 +985,10 @@ function parseSharedConflict(value: unknown): SharedConflict {
       return compact({
         version: requiredString(item.version, "shared conflict version"),
         from: optionalString(item.from, "shared conflict provider"),
-        singleton: optionalBoolean(item.singleton, "shared conflict singleton"),
+        singleton: optionalBooleanFlag(
+          item.singleton,
+          "shared conflict singleton"
+        ),
         loaded: optionalBoolean(item.loaded, "shared conflict loaded")
       });
     })
@@ -775,6 +1126,78 @@ function optionalInjection(value: unknown): InjectionMarker | undefined {
   }) as InjectionMarker;
 }
 
+function optionalProxyInjection(
+  value: unknown
+): ProxyInjectionMarker | undefined {
+  if (value === undefined || value === null) return undefined;
+  const record = asRecord(value, "proxy injection marker");
+  if (record.schemaVersion !== 1 || record.source !== "openruntime/extension-mf") {
+    return undefined;
+  }
+  const status = requiredString(record.status, "proxy injection status");
+  if (status !== "installed" && status !== "error") return undefined;
+  const rawOverrides = asRecord(
+    record.overrides,
+    "proxy injection overrides"
+  );
+  const overrides = Object.fromEntries(
+    Object.entries(rawOverrides).slice(0, 100).map(([remote, target]) => [
+      requiredProxyRemote(remote),
+      requiredProxyTarget(target, `proxy target for ${remote}`)
+    ])
+  );
+  return compact({
+    schemaVersion: 1,
+    source: "openruntime/extension-mf",
+    status: status as ProxyInjectionMarker["status"],
+    installedAt: requiredNumber(
+      record.installedAt,
+      "proxy injection timestamp"
+    ),
+    overrides,
+    message: optionalString(record.message, "proxy injection message")
+  }) as ProxyInjectionMarker;
+}
+
+function requiredProxyRemote(value: string): string {
+  if (
+    value.length === 0 ||
+    value.length > 240 ||
+    ["__proto__", "prototype", "constructor"].includes(value)
+  ) {
+    throw new Error("proxy remote name is invalid.");
+  }
+  return value;
+}
+
+function requiredProxyTarget(value: unknown, label: string): string {
+  const target = requiredString(value, label).slice(0, 2048);
+  if (/[\u0000-\u001f\u007f]/.test(target)) {
+    throw new Error(`${label} must not include control characters.`);
+  }
+  if (!/^(https?:)?\/\//i.test(target)) return target;
+  const queryIndex = target.indexOf("?");
+  const hashIndex = target.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), target.length);
+  const withoutQuery = target.slice(0, end);
+  try {
+    const protocolRelative = withoutQuery.startsWith("//");
+    const url = new URL(
+      withoutQuery,
+      protocolRelative ? "https://openruntime.invalid" : undefined
+    );
+    url.username = "";
+    url.password = "";
+    return protocolRelative
+      ? `//${url.host}${url.pathname}`
+      : url.toString();
+  } catch {
+    return withoutQuery;
+  }
+}
+
 function asRecord(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${label} must be an object.`);
@@ -836,6 +1259,43 @@ function optionalSafeUrl(value: unknown, label: string): string | undefined {
   return url.slice(0, end);
 }
 
+function optionalFunctionLocationUrl(
+  value: unknown,
+  label: string
+): string | undefined {
+  const valueWithoutQuery = optionalSafeUrl(value, label);
+  if (valueWithoutQuery === undefined) return undefined;
+  try {
+    const url = new URL(valueWithoutQuery);
+    url.username = "";
+    url.password = "";
+    return url.toString();
+  } catch {
+    return valueWithoutQuery;
+  }
+}
+
+function requiredFunctionSourceName(value: unknown, label: string): string {
+  const source = requiredString(value, label);
+  if (/[\u0000-\u001f\u007f]/.test(source)) {
+    throw new Error(`${label} must not include control characters.`);
+  }
+  const queryIndex = source.indexOf("?");
+  const hashIndex = source.indexOf("#");
+  const end = [queryIndex, hashIndex]
+    .filter((index) => index >= 0)
+    .reduce((smallest, index) => Math.min(smallest, index), source.length);
+  const valueWithoutQuery = source.slice(0, end);
+  try {
+    const url = new URL(valueWithoutQuery);
+    url.username = "";
+    url.password = "";
+    return url.toString().slice(0, 2048);
+  } catch {
+    return valueWithoutQuery.slice(0, 2048);
+  }
+}
+
 function requiredNumber(value: unknown, label: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`${label} must be a finite number.`);
@@ -862,6 +1322,17 @@ function optionalBoolean(value: unknown, label = "optional boolean"): boolean | 
     throw new Error(`${label} must be a boolean when provided.`);
   }
   return value;
+}
+
+function optionalBooleanFlag(
+  value: unknown,
+  label = "optional boolean flag"
+): boolean | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "boolean") return value;
+  if (value === 1) return true;
+  if (value === 0) return false;
+  throw new Error(`${label} must be a boolean or 0/1 when provided.`);
 }
 
 function optionalStringOrNumber(

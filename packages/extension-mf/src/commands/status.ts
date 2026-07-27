@@ -1,5 +1,4 @@
 import type { RoleFilter } from "../types.js";
-import { formatStatus } from "../format.js";
 import { createStatusResult } from "../results.js";
 import { MfCommandError } from "../cli/errors.js";
 import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
@@ -23,13 +22,16 @@ export const statusCommand: MfCommandDefinition = {
     }
     const name = positionals[0];
     const instanceRef = option(options.args.options, "instance");
-    const snapshot = await readCommandSnapshot(options);
+    const verbose = booleanOption(options.args.options, "verbose");
+    const snapshot = await readCommandSnapshot(options, { verbose });
     const result = createStatusResult(snapshot, {
       ...(name === undefined ? {} : { name }),
       ...(rawRole === undefined ? {} : { role: rawRole as RoleFilter }),
       ...(instanceRef === undefined ? {} : { instanceRef })
+    }, {
+      verbose
     });
-    writeCommandResult(options, result, formatStatus(result));
+    writeCommandResult(options, result);
     return 0;
   }
 };
@@ -39,10 +41,22 @@ function usageError(message: string): MfCommandError {
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${statusCommandMetadata.usage.replace(" [--json]", "")}\`.`
+    hint: `Run \`${statusCommandMetadata.usage}\`.`
   });
 }
 
 function option(options: Map<string, string[]>, name: string): string | undefined {
   return options.get(name)?.at(-1);
+}
+
+function booleanOption(options: Map<string, string[]>, name: string): boolean {
+  const value = option(options, name);
+  if (value === undefined || value === "false") return false;
+  if (value === "true") return true;
+  throw new MfCommandError({
+    code: "MF_COMMAND_OPTION_INVALID",
+    kind: "validation",
+    message: `Invalid --${name} value ${JSON.stringify(value)}.`,
+    hint: `Use --${name} or --${name}=false.`
+  });
 }

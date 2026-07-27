@@ -1,17 +1,14 @@
 import type {
-  RemoteCheckResult,
   RemoteErrorEvidence,
   RemoteResourceEvidence,
   RemoteStageEvidence,
+  RemoteStatusResult,
   RemoteTraceResult
 } from "./types.js";
 
 export function formatRemoteTrace(result: RemoteTraceResult): string {
-  const title = result.command === "mf trace"
-    ? "Module Federation remote loading trace"
-    : "Module Federation preload trace";
   const lines = [
-    title,
+    "Module Federation remote trace",
     `Capability: ${result.capability.status}`,
     `History: ${result.capability.history}`,
     `Outcome: ${result.outcome}`,
@@ -41,38 +38,35 @@ export function formatRemoteTrace(result: RemoteTraceResult): string {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
-export function formatRemoteCheck(result: RemoteCheckResult): string {
+export function formatRemoteStatus(result: RemoteStatusResult): string {
   const remote = result.remote;
   const lines = [
-    "Module Federation remote check",
+    "Module Federation remote status",
     `Consumer: ${result.consumer.name} (${result.consumer.instanceRef})`,
     `Remote: ${remote.name}${remote.alias === undefined ? "" : ` (alias: ${remote.alias})`}`,
     `Capability: ${result.capability.status}`,
     `Declared: ${remote.declared}`,
+    `Loaded: ${remote.loaded}`,
+    `Loaded exposes: ${remote.loadedExposes.join(", ") || "none"}`,
     `Relationship: ${remote.relationship}`,
     `Producer: ${remote.producerInstanceRef ?? remote.candidateProducerInstanceRefs?.join(", ") ?? "unknown"}`,
-    `Outcome: ${remote.outcome}`,
-    `Observed traces: ${remote.traceIds.join(", ") || "none"}`,
-    `Flags: cached=${remote.cached} recovered=${remote.recovered} timeout=${remote.timeout}`,
-    "",
-    "Manifest"
+    `Latest result: ${remote.latestResult}`,
+    `Latest trace: ${remote.latestTraceId ?? "none"}`,
+    ...(result.proxy === undefined
+      ? []
+      : [
+          `Proxy target: ${result.proxy.target}`,
+          `Proxy matched by: ${result.proxy.matchedBy}`,
+          `Proxy applied: ${result.proxy.applied}`,
+          ...(result.proxy.loadedFrom === undefined
+            ? []
+            : [`Proxy loaded from: ${result.proxy.loadedFrom}`]),
+          ...(result.proxy.error === undefined
+            ? []
+            : [`Proxy error: ${result.proxy.error}`])
+        ]),
+    ""
   ];
-  appendStage(lines, remote.resources.manifest, "  ");
-  lines.push("remoteEntry");
-  appendStage(lines, remote.resources.remoteEntry, "  ");
-  lines.push("Container init");
-  appendStage(lines, remote.containerInit, "  ");
-  lines.push("Exposes");
-  if (remote.exposes.length === 0) lines.push("  none observed (unknown)");
-  for (const expose of remote.exposes) {
-    lines.push(`  ${expose.name}: ${expose.status} [${expose.traceIds.join(", ")}]`);
-  }
-  lines.push("", "Observed resources");
-  if (remote.resources.observed.length === 0) lines.push("  none observed");
-  for (const resource of remote.resources.observed) {
-    lines.push(`  - ${formatResource(resource)}`);
-  }
-  lines.push("");
   appendMessages(lines, result.warnings, result.recommendedActions);
   return `${lines.join("\n").trimEnd()}\n`;
 }

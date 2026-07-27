@@ -18,12 +18,14 @@ import type {
   RuntimeRemote,
   RuntimeReport,
   SelectionIssue,
+  StatusConsumer,
   StatusResult
 } from "./types.js";
 
 export function createStatusResult(
   snapshot: BrowserObservabilitySnapshot,
-  selectors: StatusSelectors
+  selectors: StatusSelectors,
+  options: { verbose?: boolean } = {}
 ): StatusResult {
   assertInstanceState(snapshot);
   if (snapshot.state.instances.length === 0) {
@@ -42,21 +44,114 @@ export function createStatusResult(
   const selected = selectStatusInstances(snapshot.state, selectors);
   if (!selected.ok) throw selectionError(selected.issue);
   return {
-    schemaVersion: 1,
-    command: "mf status",
-    compatibility: createCompatibilitySummary(snapshot),
-    selection: {
-      kind: selected.value.kind,
-      ...(selectors.name === undefined ? {} : { name: selectors.name }),
-      ...(selectors.role === undefined ? {} : { role: selectors.role }),
-      ...(selectors.instanceRef === undefined ? {} : { instanceRef: selectors.instanceRef })
-    },
-    instances: selected.value.instances,
-    relationships: filterRelationshipsForInstances(
-      snapshot.state.relationships,
-      selected.value.instances.map((instance) => instance.instanceRef)
-    )
+    instances: selected.value.instances.map((instance) => ({
+      instanceRef: instance.instanceRef,
+      name: visibleInstanceName(instance),
+      role: instance.role,
+      consumers: consumersForInstance(
+        instance.instanceRef,
+        snapshot.state.instances,
+        snapshot.state.relationships
+      ),
+      active: instance.active
+    })),
+    shared: filterGlobalShared(snapshot.globalShared, {
+      verbose: options.verbose === true
+    })
   };
+}
+
+function consumersForInstance(
+  producerInstanceRef: string,
+  instances: readonly RuntimeInstance[],
+  relationships: readonly RuntimeRelationship[]
+): StatusConsumer[] {
+  const byRef = new Map(
+    instances.map((instance) => [instance.instanceRef, instance] as const)
+  );
+  const consumers = new Map<string, StatusConsumer>();
+  for (const relationship of relationships) {
+    if (
+      relationship.status !== "resolved" ||
+      relationship.producerInstanceRef !== producerInstanceRef
+    ) {
+      continue;
+    }
+    const consumer = byRef.get(relationship.consumerInstanceRef);
+    consumers.set(relationship.consumerInstanceRef, {
+      instanceRef: relationship.consumerInstanceRef,
+      name: consumer === undefined
+        ? "unknown"
+        : visibleInstanceName(consumer)
+    });
+  }
+  return Array.from(consumers.values()).sort((left, right) =>
+    left.instanceRef.localeCompare(right.instanceRef)
+  );
+}
+
+export function filterGlobalShared(
+  shared: BrowserObservabilitySnapshot["globalShared"],
+  options: {
+    package?: string;
+    scope?: string;
+    version?: string;
+    verbose?: boolean;
+  } = {}
+): StatusResult["shared"] {
+  return Object.fromEntries(
+    Object.entries(shared).sort(byKey).flatMap(([scope, packages]) => {
+      if (options.scope !== undefined && scope !== options.scope) return [];
+      const filteredPackages = Object.fromEntries(
+        Object.entries(packages).sort(byKey).flatMap(([packageName, versions]) => {
+          if (
+            options.package !== undefined &&
+            packageName !== options.package
+          ) {
+            return [];
+          }
+          const filteredVersions = Object.fromEntries(
+            Object.entries(versions)
+              .sort(byKey)
+              .filter(([version, value]) =>
+                (options.version === undefined || version === options.version) &&
+                (options.verbose === true || value.loaded)
+              )
+              .map(([version, value]) => [
+                version,
+                normalizeGlobalSharedValue(value, options.verbose === true)
+              ])
+          );
+          return Object.keys(filteredVersions).length === 0
+            ? []
+            : [[packageName, filteredVersions]];
+        })
+      );
+      return Object.keys(filteredPackages).length === 0
+        ? []
+        : [[scope, filteredPackages]];
+    })
+  );
+}
+
+function normalizeGlobalSharedValue(
+  value: StatusResult["shared"][string][string][string],
+  verbose: boolean
+): StatusResult["shared"][string][string][string] {
+  const safeValue = { ...value };
+  if (safeValue.loaded) delete safeValue.loading;
+  if (!verbose) {
+    delete safeValue.lib;
+    delete safeValue.get;
+  }
+  return safeValue;
+}
+
+function byKey(
+  left: readonly [string, unknown],
+  right: readonly [string, unknown]
+): number {
+  return left[0].localeCompare(right[0]);
 }
 
 export function filterRelationshipsForInstances(
@@ -105,6 +200,7 @@ export function createModuleInfoResult(
       );
 
   const manifestUrl = firstDefined(
+    latestLoadedResourceUrl(reports, "manifest"),
     selected.remote.entry && isManifestUrl(selected.remote.entry)
       ? selected.remote.entry
       : undefined,
@@ -118,6 +214,7 @@ export function createModuleInfoResult(
     ))
   );
   const remoteEntryUrl = firstDefined(
+    latestLoadedResourceUrl(reports, "remoteEntry"),
     ...reportModuleInfo.map((entry) => entry.remoteEntry),
     selected.remote.entry && !isManifestUrl(selected.remote.entry)
       ? selected.remote.entry
@@ -287,6 +384,25 @@ function matchingReports(
     report.remote !== undefined &&
     remotesMatch(report.remote, remote)
   );
+}
+
+function latestLoadedResourceUrl(
+  reports: RuntimeReport[],
+  type: "manifest" | "remoteEntry"
+): string | undefined {
+  const events = reports
+    .flatMap((report) => report.events)
+    .filter((event) =>
+      event.resource?.type === type &&
+      event.resource.initiator === "loadRemote" &&
+      event.status !== "start" &&
+      event.status !== "error" &&
+      event.resource.outcome !== "error" &&
+      event.resource.outcome !== "timeout"
+    )
+    .sort((left, right) => right.timestamp - left.timestamp);
+  const latest = events[0];
+  return latest?.resource?.url ?? latest?.sanitizedUrl;
 }
 
 function matchingRuntimeModuleInfo(

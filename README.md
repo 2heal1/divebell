@@ -98,22 +98,24 @@ An Extension can identify applications, environments, and resources from the cur
 
 #### Official Extensions
 
-Focused capabilities are published as optional Extension packages and installed only when needed:
+Focused capabilities are published as optional packages and installed only when needed. CLI Extensions add commands outside the page; framework integrations run inside the application and expose facts that the framework already knows:
 
-| Package | Command | Purpose | Guide |
+| Package | Entry | Purpose | Guide |
 | --- | --- | --- | --- |
 | `@openruntime/extension-memory` | `openruntime memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
 | `@openruntime/extension-code-usage` | `openruntime code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
 | `@openruntime/extension-imitate` | `openruntime record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
 | `@openruntime/extension-troubleshooting` | `openruntime verify` | Verify that a page-declared business target reaches the expected result. | [Runtime Core API](./docs/runtime-core-api.md) |
+| `@openruntime/modern-plugin` | Modern.js runtime plugin | Expose application, route, loader, route-component, SSR, hydration, and navigation state that Modern.js already knows. | [Modern.js Integration](./docs/modernjs-integration.md) |
+| `@module-federation/observability-plugin` | Module Federation runtime plugin | Record consumer, remote, manifest, remoteEntry, expose, shared-dependency, and runtime-error evidence through MF observability. | [Module Federation Observability](./docs/module-federation-observability.md) |
 
-Install an Extension with:
+Install a CLI Extension with:
 
 ```bash
 openruntime extensions add @openruntime/extension-memory
 ```
 
-Installed Extension commands appear in `openruntime --help` and run through the same CLI, browser sessions, and login state as the built-in commands.
+Installed Extension commands appear in `openruntime --help` and run through the same CLI, browser sessions, and login state as the built-in commands. Framework integration packages are application dependencies and must be wired into the matching framework; they do not add a CLI command by themselves.
 
 ### Runtime Core
 

@@ -98,22 +98,24 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 
 #### 官方扩展
 
-专项能力以可选扩展包发布，需要时再单独安装：
+专项能力以可选包发布，需要时再单独安装。CLI Extension 在页面外增加命令；框架接入运行在应用内部，暴露框架本来就知道的事实：
 
-| 扩展包 | 命令 | 用途 | 指南 |
+| 扩展包 | 入口 | 用途 | 指南 |
 | --- | --- | --- | --- |
 | `@openruntime/extension-memory` | `openruntime memory` | 重复真实页面流程，检查内存、DOM 节点和监听器是否持续增长。 | [内存分析](./docs/memory-analysis.zh-CN.md) |
 | `@openruntime/extension-code-usage` | `openruntime code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
 | `@openruntime/extension-imitate` | `openruntime record` | 录制一次浏览器操作并生成可以继续检查的脚本草稿。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
 | `@openruntime/extension-troubleshooting` | `openruntime verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime Core API](./docs/runtime-core-api.zh-CN.md) |
+| `@openruntime/modern-plugin` | Modern.js runtime plugin | 暴露 Modern.js 已知的应用、路由、loader、路由组件、SSR、hydration 和导航状态。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
+| `@module-federation/observability-plugin` | Module Federation runtime plugin | 通过 MF observability 记录 consumer、remote、manifest、remoteEntry、expose、shared 依赖和运行时错误证据。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
 
-安装扩展：
+安装 CLI Extension：
 
 ```bash
 openruntime extensions add @openruntime/extension-memory
 ```
 
-安装后的扩展命令会出现在 `openruntime --help` 中，并复用同一个 CLI、浏览器会话和登录状态。
+安装后的扩展命令会出现在 `openruntime --help` 中，并复用同一个 CLI、浏览器会话和登录状态。框架接入包是应用依赖，需要在对应框架中配置，本身不会增加一条 CLI 命令。
 
 ### Runtime Core
 

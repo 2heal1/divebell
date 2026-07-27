@@ -253,16 +253,12 @@ function classifyVerifyTarget(target: RuntimeSnapshotTarget | RuntimeTargetDescr
   const id = target.id.toLowerCase();
   const type = target.type.toLowerCase();
   const source = target.source?.toLowerCase() ?? "";
-  const haystack = `${id} ${type} ${source}`;
 
   if (id.startsWith("modern:garfish") || type.includes("garfish") || source.includes("garfish")) {
     return "garfish";
   }
   if (id.startsWith("mf:") || type.startsWith("mf.") || source.includes("module-federation") || source === "mf") {
     return "module-federation";
-  }
-  if (haystack.includes("vmok")) {
-    return "vmok";
   }
   if (id.startsWith("modern:") || type.startsWith("modern.") || source.includes("modern")) {
     return "modern";

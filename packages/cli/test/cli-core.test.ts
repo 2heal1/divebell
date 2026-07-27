@@ -105,7 +105,6 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /openruntime goto /);
   assert.doesNotMatch(output.text(), /openruntime close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
-  assert.doesNotMatch(output.text(), /openruntime vmok /);
   assert.doesNotMatch(output.text(), /open[-]runtime/);
   assert.doesNotMatch(output.text(), /Examples:/);
   assert.doesNotMatch(output.text(), /Skill: available/);
@@ -239,7 +238,6 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /openruntime close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
   assert.doesNotMatch(markdown, /\p{Script=Han}/u);
-  assert.doesNotMatch(markdown, /openruntime vmok /);
   assert.doesNotMatch(markdown, /open[-]runtime/);
   assert.doesNotMatch(markdown, /## Examples/);
 });

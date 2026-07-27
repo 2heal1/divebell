@@ -1,12 +1,27 @@
-# 使用 OpenRuntime 排查并修复
+# Troubleshoot and Fix with OpenRuntime
 
-只在根 `SKILL.md` 把任务分流到“排查并修复”后读取本文件。目标是在与真实问题一致的账号、
-环境和用户路径中取得证据、修改源码并重新验证，同时尽量减少人的登录、授权和中途接管。
+Read this file only after the root `SKILL.md` routes the task to **Troubleshoot
+and fix**. Gather evidence, change source, and verify the result with the same
+account, environment, and user path as the real issue while minimizing manual
+login, authorization, and handoff.
 
-OpenRuntime 不要求页面先接入 Runtime Core。浏览器侧能力和 Extensions 是普通路径；页面已经提供
-相关 Runtime 信息时再用它增强诊断和验证。
+OpenRuntime does not require a page to integrate Runtime Core first. Browser
+capabilities and Extensions are the normal path. Use Runtime information as an
+additional source only when the page already exposes relevant state.
 
-## 1. 工作流程
+## Contents
+
+- [Workflow](#1-workflow)
+- [PREPARE_ACCESS](#2-prepare_access)
+- [OPEN_PAGE](#3-open_page)
+- [DISCOVER](#4-discover)
+- [OBSERVE](#5-observe)
+- [PATCH](#6-patch)
+- [VERIFY](#7-verify)
+- [BLOCKED Boundary](#8-blocked-boundary)
+- [References](#9-references)
+
+## 1. Workflow
 
 ```text
 PREPARE_ACCESS
@@ -20,45 +35,56 @@ OBSERVE
 PATCH
       ↓
 VERIFY
-      └──失败──> OBSERVE
+      └── failure ──> OBSERVE
 ```
 
-每一步都以实际命令输出、页面结果、诊断产物或测试结果为证据。不要用“应该已经好了”代替验证，
-也不要在结果已经足够时重复收集同一事实。
+Base every step on actual command output, page results, diagnostic artifacts,
+or test results. Do not replace verification with "it should be fixed." Stop
+collecting duplicate evidence once the result is sufficient.
 
 ## 2. PREPARE_ACCESS
 
-先确认目标 URL、运行环境和是否需要登录。受保护页面优先查看当前会话和可用的 Chrome Profile：
+Confirm the target URL, environment, and login requirement. For a protected
+page, inspect the current session and available Chrome Profiles first:
 
 ```bash
 pnpm exec openruntime profiles
 ```
 
-目标站点已经存在登录状态时先复用，并在页面中确认账号和权限符合任务。没有可用状态时：
+Reuse an existing login state for the target site and confirm that the account
+and permissions match the task. When no suitable state exists:
 
-- 用户已提供 agent-browser state 时通过 `open --state` 载入。
-- 用户允许使用本机 Chrome Profile 时通过 `open --profile` 复用。
-- 已安装的 Extension 明确提供测试账号或环境准备命令时，先读取 help 和命令 skill，再按说明执行。
-- 都没有时，只请求完成当前任务所需的最小授权或账号输入；不要扩大访问范围。
+- Load a user-provided agent-browser state with `open --state`.
+- Reuse a local Chrome Profile with `open --profile` when the user allows it.
+- When an installed Extension explicitly provides a test-account or environment
+  preparation command, read help and its command skill before running it.
+- Otherwise request only the minimum authorization or account input required
+  for this task. Do not widen access.
 
-测试账号和登录状态只用于授权范围内的环境。不要输出 cookie、token 或完整敏感配置。
+Use test accounts and login state only within their authorized environments.
+Never output cookies, tokens, or complete sensitive configuration.
 
 ## 3. OPEN_PAGE
 
-启动目标应用后，用固定 session 打开真实问题页面：
+After starting the target application, open the real problem page with a stable
+session:
 
 ```bash
 pnpm exec openruntime open <app-url> --session <debug-session>
 ```
 
-需要观察人工可见页面时加 `--ui`。CLI 通常自动准备本地 Bridge，不需要先单独运行 `start`。
+Add `--ui` only when a visible page is needed. The CLI normally prepares the
+local Bridge automatically, so do not run `start` first without a specific
+reason.
 
-后续命令复用当前 open context。不要因为一次查询完成就 stop，也不要为了连接 Runtime 使用浏览器
-`eval` 临时篡改页面。页面没有 connected runtime 不会阻止浏览器诊断。
+Reuse the current open context for later commands. Do not stop after a single
+query. Do not use browser `eval` to mutate the page into a temporary Runtime
+connection. A page without a connected runtime still supports browser
+diagnosis.
 
 ## 4. DISCOVER
 
-根据当前安装情况发现可用能力：
+Discover capabilities from the current installation:
 
 ```bash
 pnpm exec openruntime --help
@@ -66,25 +92,33 @@ pnpm exec openruntime extensions list
 pnpm exec openruntime stack
 ```
 
-扩展命令会出现在 `Extensions` 或 `External Extensions`。如果命令有 skill，先运行
-`openruntime <command> --skill`，完整读取后再执行。
+Find Extension commands under `Extensions` or `External Extensions`. If a
+command has a skill, run `openruntime <command> --skill`, read it completely,
+and follow it before invoking the command.
 
-只选择与当前问题直接匹配的能力：
+Select only capabilities that directly match the issue:
 
-- 登录或环境问题：agent-browser Profile/state/auth 或账号/环境 Extension。
-- 页面交互、报错或请求：page-snapshot、console、network、eval、wait-eval。
-- 内存、性能、代码使用或框架专项问题：对应 Extension。
-- 页面已经暴露相关内部状态：snapshot、events、actions 和 wait-for。
+- Login or environment issues: agent-browser Profile/state/auth or an account
+  or environment Extension.
+- Page interactions, errors, or requests: `page-snapshot`, `console`, `network`,
+  `eval`, or `wait-eval`.
+- Memory, performance, code-usage, or framework-specific issues: the matching
+  Extension.
+- Relevant internal state already exposed by the page: `snapshot`, `events`,
+  `actions`, and `wait-for`.
 
-不要为了“全面”而并发运行所有诊断，也不要因为项目安装了 OpenRuntime 就自动给源码增加接入。
+Do not run every diagnostic in parallel for completeness. Do not add a source
+integration merely because the project has OpenRuntime installed.
 
 ## 5. OBSERVE
 
-先复现用户实际遇到的路径，再收集能回答问题的最少证据。
+Reproduce the user's actual path first, then collect the minimum evidence that
+answers the problem.
 
-### 普通页面
+### Ordinary Pages
 
-页面没有 Runtime Core 时，直接使用浏览器和 Extension：
+When the page has no Runtime Core integration, use browser capabilities and
+Extensions directly:
 
 ```bash
 pnpm exec openruntime page-snapshot
@@ -93,77 +127,105 @@ pnpm exec openruntime network --url <relevant-query>
 pnpm exec openruntime screenshot debug-state
 ```
 
-按问题选择命令，不要求每项都运行。性能、内存和代码执行问题优先使用专项 Extension，让它负责
-采集、重复场景、报告和清理。
+Choose commands based on the issue; do not require every command. Prefer a
+specialized Extension for performance, memory, and code-execution issues so it
+can own collection, repeated scenarios, reports, and cleanup.
 
-### 已有 Runtime 信息
+### Existing Runtime Information
 
-如果页面已经 connected 且 target 与问题相关，先读取一次全量 snapshot：
+When the page is connected and its targets are relevant, start with one full
+snapshot:
 
 ```bash
 pnpm exec openruntime snapshot --session <debug-session>
 ```
 
-- snapshot 已经指向 route、loader、remote、shared、子应用或业务状态时，继续查对应源码、配置和依赖。
-- snapshot 没有相关线索时，立即回到浏览器或 Extension，不要反复换查询条件碰运气。
-- 只有要细化已经出现的线索时，才追加 `--id` 或 `--query`。
+- When the snapshot identifies route, loader, remote, shared, sub-application,
+  or business state, inspect the corresponding source, configuration, and
+  dependencies.
+- When the snapshot has no relevant clue, return to browser capabilities or an
+  Extension immediately. Do not keep trying arbitrary filters.
+- Add `--id` or `--query` only to narrow a clue that already appeared.
 
-需要变化过程时读取 events；需要执行页面明确允许的动作时先读取 actions、风险和输入，再运行 action。
+Read events when the state-change history matters. Before executing a declared
+page action, inspect its action definition, risk, and input options.
 
-### 何时补 Runtime Core
+### Add Runtime Core Only When Justified
 
-一次性排查默认不补接入。只有满足下面任一条件时，才读取 `integrate.md` 和 `core.md` 增加正式信号：
+Do not add an integration for a one-off investigation by default. Read
+`integrate.md` and `core.md` and add a durable signal only when one of these
+conditions applies:
 
-- 浏览器表面无法稳定判断真正的业务状态或阻塞原因。
-- 用户明确要求接入 OpenRuntime 或增加长期验收信号。
-- 同一结果会被多个 Agent、脚本或 CI 长期复用。
-- 页面需要声明允许动作、输入和风险边界。
+- Browser-visible evidence cannot reliably determine the real business state or
+  blocking cause.
+- The user explicitly requests OpenRuntime integration or a long-term
+  verification signal.
+- Multiple Agents, scripts, or CI jobs will reuse the same result.
+- The page needs to declare allowed actions, inputs, and risk boundaries.
 
-新增信号只暴露事实，不得改变业务行为。完成后回到本流程继续修复和验证。
+New signals must expose facts without changing business behavior. Return here
+after integration to continue the fix and verification.
 
 ## 6. PATCH
 
-根据 OBSERVE 的证据修改源码。修改范围应直接解释当前故障，不要把增加 OpenRuntime 接入本身当成
-修复结果。
+Change source based on OBSERVE evidence. The change should directly explain the
+failure; adding OpenRuntime integration is not itself the fix.
 
-如果修改了构建配置、依赖解析、路由、shared、remote、开发服务器或页面初始化，必须重启目标应用。
-普通页面代码只有在开发服务器正确应用热更新时才直接复用现有进程。
+Restart the target application after changing build configuration, dependency
+resolution, routes, shared dependencies, remotes, the development server, or
+page initialization. Reuse the existing process for ordinary page code only
+when the development server correctly applied hot updates.
 
-修改后保留原登录状态和 session，重新打开或刷新真实问题页面，再进入 VERIFY。
+Preserve the original authentication state and session. Reopen or refresh the
+real problem page, then continue to VERIFY.
 
 ## 7. VERIFY
 
-验证必须使用与原问题一致的账号、环境、入口和用户路径。按任务选择最可靠的现有证据：
+Use the same account, environment, entry point, and user path as the original
+issue. Choose the most reliable available evidence for the task:
 
-1. 与问题匹配的专项 Extension 检查，例如内存趋势、代码使用、性能或框架诊断。
-2. 页面已经提供的 Runtime Target、Snapshot 和 `waitFor`。
-3. 明确的页面结果、请求结果、交互结果和相关错误是否消失。
-4. 截图用于视觉确认或留档，不单独证明复杂状态或交互结果。
+1. A specialized Extension check that matches the issue, such as a memory
+   trend, code-usage report, performance check, or framework diagnosis.
+2. Runtime targets, snapshots, and `waitFor` conditions already provided by the
+   page.
+3. Explicit page, request, and interaction results, plus confirmation that
+   relevant errors disappeared.
+4. Screenshots for visual confirmation or records, not as sole proof of complex
+   state or interaction results.
 
-页面已有 business target 且适合当前目标时，可以使用 `wait-for` 或扩展提供的 `verify`。没有 business
-target 时，不要仅为了满足流程而新增一个；用可重复、与问题直接对应的页面或 Extension 结果完成验证。
+When the page already has a business target suited to the goal, use `wait-for`
+or an Extension-provided `verify`. When it has no business target, do not add
+one solely to satisfy this workflow. Verify with a repeatable page or Extension
+result that directly matches the issue.
 
-如果修改的是内存、性能或代码使用问题，必须重新运行同一诊断场景并比较对应指标或报告，不能用“页面能打开”代替。
+For memory, performance, or code-usage fixes, rerun the same diagnostic scenario
+and compare the relevant metric or report. A page opening successfully is not
+enough.
 
-验证失败且信息不足时保留 session 回到 OBSERVE。验证通过后停止重复取证，整理实际使用的账号范围、
-问题原因、修改结果和验证依据。
+If verification fails without enough evidence, preserve the session and return
+to OBSERVE. After verification succeeds, stop duplicate evidence collection and
+summarize the actual account scope, cause, change, and verification evidence.
 
-## 8. BLOCKED 边界
+## 8. BLOCKED Boundary
 
-只有下面情况才报告当前无法继续：
+Report that work cannot continue only when:
 
-- 目标应用无法启动或保持运行，且安全的本地排查已耗尽。
-- 受保护页面缺少必要授权，已有 Profile 和 Extension 都不能提供，必须由用户或系统授予。
-- 用户禁止修改需要修改的源码，或源码不可写。
-- 完成验证必须使用外部环境或数据，但当前没有访问权限。
+- The target application cannot start or stay running, and safe local
+  investigation is exhausted.
+- A protected page lacks required authorization, no available Profile or
+  Extension can provide it, and the user or system must grant access.
+- The user forbids a required source change, or the source is not writable.
+- Verification requires an external environment or data that is inaccessible.
 
-没有 connected runtime、没有 business target 或某一次诊断没有线索，都不是 blocker；继续使用浏览器、
-Extension、源码和实际测试推进。
+A missing connected runtime, missing business target, or inconclusive
+diagnostic step is not a blocker. Continue with browser evidence, Extensions,
+source inspection, and actual tests.
 
-## 9. Reference
+## 9. References
 
-- `@openruntime/core` 页面侧 target、snapshot、action：同目录的 `core.md`
-- Extension、自动化脚本和项目接入：同目录的 `integrate.md`
-- Modern.js / EdenX route、loader 和 hydration：同目录的 `modernjs.md`
-- Module Federation / Vmok remote、expose、shared 和 observability：同目录的 `module-federation.md`
-- Garfish 子应用生命周期和 custom loader：同目录的 `garfish.md`
+- Page-side `@openruntime/core` targets, snapshots, and actions: `core.md`
+- Extensions, automation scripts, and project integration: `integrate.md`
+- Modern.js routes, loaders, and hydration: `modernjs.md`
+- Module Federation remotes, exposes, shared dependencies, and observability:
+  `module-federation.md`
+- Garfish sub-application lifecycle and custom loaders: `garfish.md`

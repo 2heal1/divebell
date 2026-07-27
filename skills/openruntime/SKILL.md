@@ -1,90 +1,133 @@
 ---
 name: openruntime
 description: >-
-  使用、定制、评测或排查 OpenRuntime/@openruntime。OpenRuntime 是面向 Coding Agent
-  的 Web 开发调试工具，可通过 openruntime/opr 复用登录状态和浏览器会话、操作页面、
-  读取 Console/Network/性能/内存/代码执行和 Runtime 信息、调用扩展命令、完成修改后的
-  验证，以及为团队开发 Extension、自动化脚本或 Runtime Core 接入。Use when a task
-  explicitly mentions OpenRuntime, asks to use its CLI or Extensions, or needs OpenRuntime
-  evidence for a real web development debugging workflow.
+  Use, customize, evaluate, or troubleshoot OpenRuntime/@openruntime. OpenRuntime
+  is an extensible web development and debugging tool for Coding Agents. Use
+  openruntime/opr to reuse authenticated browser profiles and sessions, interact
+  with pages, inspect Console, Network, performance, memory, code execution, and
+  Runtime evidence, invoke Extension commands, verify changes, and develop
+  Extensions, automation scripts, or Runtime Core integrations. Use when a task
+  explicitly mentions OpenRuntime, asks to use its CLI or Extensions, or needs
+  OpenRuntime evidence for a real web development debugging workflow.
 ---
 
 # OpenRuntime
 
-OpenRuntime 帮助 Coding Agent 在真实、已授权、可重复的 Web 场景中复现、诊断和验证问题。
-Coding Agent 负责修改代码；OpenRuntime 负责准备和复用浏览器上下文、提供调试能力并保存验证依据。
+Use OpenRuntime to help Coding Agents reproduce, diagnose, and verify issues in
+real, authorized, and repeatable web scenarios. Let the Coding Agent change the
+code; use OpenRuntime to prepare and reuse browser context, provide debugging
+capabilities, and preserve verification evidence.
 
-先判断用户要“使用功能”、“排查并修复”还是“定制能力”，再只读取对应流程。不要因为任务涉及
-OpenRuntime 就预防性读取所有参考资料，也不要为了使用 OpenRuntime 强制给普通页面增加 Runtime 接入。
+First decide whether the user wants to use capabilities, troubleshoot and fix
+an issue, or customize capabilities. Then read only the corresponding workflow.
+Do not preload every reference merely because a task involves OpenRuntime. Do
+not require an ordinary page to integrate Runtime Core before using OpenRuntime.
 
-## 选择流程
+## Choose a workflow
 
-### 功能使用
+### Use capabilities
 
-遇到下面任一情况，读取 `references/use-cli.md`：
+Read `references/use-cli.md` when the task involves any of the following:
 
-- 询问 OpenRuntime 有哪些能力、命令或参数。
-- 查看或准备登录状态、测试账号和当前浏览器会话。
-- 调用内置命令或扩展命令完成一次查询、页面操作或专项检查。
-- 读取当前页面、Console、Network、runtime、target、snapshot、event 或 action。
-- 执行一次页面 action 或等待，但没有要求定位和修复故障。
+- Explain OpenRuntime capabilities, commands, or options.
+- Inspect or prepare authentication state, a test account, or the current
+  browser session.
+- Invoke a built-in or Extension command for a query, page interaction, or
+  specialized check.
+- Read the current page, Console, Network, runtime, target, snapshot, event, or
+  action.
+- Run a page action or wait without diagnosing and fixing a failure.
 
-普通命令失败时，先根据结构化错误修正输入、登录状态或页面上下文。只有用户要求修复故障，
-或故障不修就无法完成原任务时，才切换到“排查并修复”。
+When an ordinary command fails, first correct its input, authentication state,
+or page context from the structured error. Switch to troubleshooting only when
+the user asks for a fix or the original task cannot continue without one.
 
-### 排查并修复
+### Troubleshoot and fix
 
-用户要求使用 OpenRuntime 定位、修复或验证 Web 页面问题时，读取
-`references/troubleshoot.md`。流程应尽量复用已有登录状态和页面会话，先使用与问题匹配的
-浏览器证据或 Extension，再在页面已经提供有效 Runtime 信息时使用结构化状态。
+Read `references/troubleshoot.md` when the user asks to use OpenRuntime to
+diagnose, fix, or verify a web page issue. Reuse existing authentication state
+and page sessions where possible. Start with browser evidence or an Extension
+that matches the issue, then use structured state when the page already
+provides relevant Runtime information.
 
-普通页面没有 connected runtime 时仍可正常排查。只有浏览器表面无法稳定判断、用户明确要求接入，
-或同一能力值得长期复用时，才补 Runtime Core、框架插件或业务信号。
+Continue diagnosing an ordinary page when no runtime is connected. Add Runtime
+Core, a framework plugin, or a business signal only when browser-visible
+evidence is not reliable enough, the user explicitly requests integration, or
+the capability is worth reusing.
 
-### 定制能力
+### Customize capabilities
 
-遇到下面任一情况，读取 `references/integrate.md`：
+Read `references/integrate.md` when the task involves any of the following:
 
-- 开发或修改 OpenRuntime Extension，包括测试账号、环境准备、专项诊断和验证命令。
-- 编写管理完整浏览器流程的自动化脚本。
-- 给项目接入 Runtime Core、Modern plugin、MF observability 或 Garfish 能力。
-- 注册或设计 target、snapshot、event、action、waitFor 或长期业务验收信号。
+- Develop or modify an OpenRuntime Extension, including test-account setup,
+  environment preparation, specialized diagnostics, or verification commands.
+- Write an automation script that owns a complete browser workflow.
+- Integrate Runtime Core, the Modern plugin, MF observability, or Garfish into a
+  project.
+- Register or design targets, snapshots, events, actions, `waitFor` conditions,
+  or durable business verification signals.
 
-没有实际故障时，不进入问题排查流程。只实现用户需要的定制类型，不顺带改造整个应用。
+Do not enter the troubleshooting workflow when there is no actual failure.
+Implement only the requested customization; do not redesign the entire
+application as a side effect.
 
-## 多意图任务
+## Handle multi-intent tasks
 
-- 把用户的最终目标作为主流程；OpenRuntime 查询只是其中一步时，执行后立即回到主流程。
-- 功能查询发现真实故障，且修复属于用户目标时，明确切换到问题排查。
-- 排查过程中发现缺少登录状态时，先复用已有 Profile 或请求最小必要输入，不让用户反复登录。
-- 排查过程中发现 Runtime 信息不可用时，继续使用浏览器或 Extension；只有确实需要应用内部事实时才切换到接入。
-- 用户同时要求接入和排查时，以真实故障为主，接入只解决当前证据或长期复用需求。
+- Keep the user's final goal as the primary workflow. When an OpenRuntime query
+  is only one step, return to the primary workflow immediately afterward.
+- Switch explicitly to troubleshooting when a capability query reveals a real
+  failure and fixing it is part of the user's goal.
+- Reuse an existing Profile when authentication is missing during diagnosis, or
+  request only the minimum necessary input. Do not make the user log in
+  repeatedly.
+- Continue with browser evidence or an Extension when Runtime information is
+  unavailable. Switch to integration only when application-internal facts are
+  genuinely required.
+- When the user requests both integration and diagnosis, prioritize the real
+  failure. Integrate only what is needed for current evidence or durable reuse.
 
-## 共同规则
+## Common rules
 
-- 需要确认当前命令或扩展命令时，先运行当前环境实际可用的
-  `openruntime --help`、`opr --help` 或项目内等价命令；需要参数和详细用法时，再运行
-  `openruntime <command> --help`。以实际 help 为准，不根据旧文档猜测。
-- 扩展命令出现在 help 的 `Extensions` 或 `External Extensions`。只在命令描述明确匹配任务时使用。
-- 如果 help 显示某个命令有可用 skill，先运行 `openruntime <command> --skill` 获取路径，完整读取
-  并遵循后再执行该命令。命令 skill 只约束这段子任务。
-- 受保护页面优先查看当前 open context 和可用的 agent-browser Profile/state。已有正确账号、页面和会话时直接复用，
-  不要求用户再次授权。缺少授权时只请求完成任务所需的最小访问条件。
-- 页面已经暴露相关 target/action 时，优先使用结构化状态和声明动作；没有 Runtime 时正常使用
-  页面结果、Console、Network、截图和专项 Extension，不修改应用来制造证据。
-- 验证必须回到与问题一致的账号、环境和用户路径。根据问题选择最可靠的现有证据，不强制所有任务
-  使用 business target 或某一个固定 verify 命令。
-- 连接 Bridge、注册 target、更新 snapshot 和记录 event 只暴露事实，不得借此改变接口、路由、
-  业务状态或渲染分支。
-- 修改后尽量复用原来的登录状态、会话和页面上下文。只有完整流程结束或任务拥有浏览器生命周期时才 stop。
-- 登录状态和调试产物可能含敏感信息，只在可信环境中保存和使用。
+- To confirm current commands or Extension commands, first run the available
+  `openruntime --help`, `opr --help`, or project-local equivalent. Run
+  `openruntime <command> --help` for command-specific options and details.
+  Trust actual help output instead of guessing from stale documentation.
+- Find Extension commands under `Extensions` or `External Extensions` in help.
+  Use one only when its description clearly matches the task.
+- If help reports that a command has a skill, run
+  `openruntime <command> --skill`, read the returned file in full, and follow it
+  before invoking the command. That command skill governs only its subtask.
+- For protected pages, inspect the current open context and available
+  agent-browser Profile or state first. Reuse the correct account, page, and
+  session. When authorization is missing, request only the minimum access
+  needed for the task.
+- Prefer structured state and declared actions when the page already exposes a
+  relevant target or action. Without Runtime information, use page results,
+  Console, Network, screenshots, and specialized Extensions normally. Do not
+  modify an application merely to manufacture evidence.
+- Verify changes with the same account, environment, and user path as the
+  original issue. Choose the most reliable available evidence for the task; do
+  not force every task to use a business target or one fixed verify command.
+- Use Bridge connections, target registration, snapshot updates, and events
+  only to expose facts. Do not change APIs, routes, business state, or rendering
+  branches through observability wiring.
+- Reuse the original authentication state, session, and page context after a
+  change. Stop the browser only when the full workflow is complete or the task
+  owns the browser lifecycle.
+- Store and use authentication state and debugging artifacts only in trusted
+  environments because they may contain sensitive information.
 
-## 按需参考
+## Load references on demand
 
-- 普通 CLI 查询、账号、页面操作和扩展命令：`references/use-cli.md`
-- 故障定位、修复和修改后验证：`references/troubleshoot.md`
-- Extension、自动化脚本和 Runtime 接入：`references/integrate.md`
-- `@openruntime/core` 页面侧 API：`references/core.md`
-- Modern.js / EdenX 接入、route、loader：`references/modernjs.md`
-- Module Federation / Vmok observability、remote、shared：`references/module-federation.md`
-- Garfish 子应用生命周期和 custom loader：`references/garfish.md`
+- CLI queries, accounts, page interactions, and Extension commands:
+  `references/use-cli.md`
+- Diagnosis, fixes, and post-change verification:
+  `references/troubleshoot.md`
+- Extensions, automation scripts, and Runtime integration:
+  `references/integrate.md`
+- Page-side `@openruntime/core` API: `references/core.md`
+- Modern.js integration, routes, and loaders: `references/modernjs.md`
+- Module Federation observability, remotes, and shared dependencies:
+  `references/module-federation.md`
+- Garfish sub-application lifecycle and custom loaders:
+  `references/garfish.md`

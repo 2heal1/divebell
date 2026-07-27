@@ -1,61 +1,106 @@
 # OpenRuntime Core Reference
 
-本文档承接 `SKILL.md` 中不适合放在入口的细节。按需读取，不要在每个任务里完整加载。
+Use this reference for details that do not belong in the `SKILL.md` entry point.
+Load only the sections required by the current task.
 
-`@openruntime/core` 是 OpenRuntime 的可选页面侧 API 包，用来创建 runtime、连接 Bridge、注册 target、
-更新 snapshot、注册 action。普通页面不需要接入 Core 也能使用 OpenRuntime 的登录状态、浏览器调试和
-Extensions。只有任务需要应用内部事实或稳定的长期验证信号时，才补这些能力。接入时优先看本文件、项目里已有的 OpenRuntime
-初始化/连接代码和相邻页面示例。禁止预防性读取 `node_modules/@openruntime/**`
-下的安装包文件；`.d.ts` 也算内部文件。先按本文件和项目相邻写法 patch，再用
-typecheck/build 裁决。只有出现真实错误，且本文件、skill 和项目示例都无法解释时，
-才允许破例查看安装包内部文件。
+`@openruntime/core` is the optional page-side API package for creating a
+runtime, connecting it to Bridge, registering targets, updating snapshots, and
+registering actions. Ordinary pages can use OpenRuntime authentication,
+browser debugging, and Extensions without Core. Add Core only when the task
+requires application-internal facts or stable long-term verification signals.
 
-## OpenRuntime 是什么
+Start from this reference, existing OpenRuntime initialization or connection
+code in the project, and nearby page examples. Do not inspect installed
+`node_modules/@openruntime/**` package files preemptively; `.d.ts` files count
+as package internals. Patch from public guidance and adjacent project patterns,
+then let typecheck or build validate the result. Inspect package internals only
+after a real error cannot be explained by this reference, the skill, or project
+examples.
 
-OpenRuntime 是面向 Coding Agent 的 Web 开发调试工具。它帮助 Agent 复用登录状态和真实浏览器上下文，
-完成页面问题的复现、诊断和修改后验证，并通过 Extensions 适配团队自己的账号、环境和专项调试流程。
+## Contents
 
-Runtime Core 是其中的深度增强机制：当前页面需要提供浏览器表面无法稳定获得的内部事实时，应用可以把
-运行状态、事件、可等待目标和声明动作开放给 Agent。它不是所有 OpenRuntime 任务的前置条件。
+- [Concepts](#concepts)
+- [Public API](#public-api)
+  - [`createOpenRuntime`](#createopenruntime)
+  - [`installOpenRuntimeOnWindow`](#installopenruntimeonwindow)
+  - [`getOpenRuntimeFromWindow`](#getopenruntimefromwindow)
+  - [`registerTarget`](#registertarget)
+  - [`unregisterTarget`](#unregistertarget)
+  - [`getTargets`](#gettargets)
+  - [`updateSnapshot`](#updatesnapshot)
+  - [`getSnapshot`](#getsnapshot)
+  - [`getEvents`](#getevents)
+  - [`registerAction`](#registeraction)
+  - [`unregisterAction`](#unregisteraction)
+  - [`getActions`](#getactions)
+  - [`getInputOptions`](#getinputoptions)
+  - [`runAction`](#runaction)
+  - [`waitFor`](#waitfor)
+  - [`matchesRuntimeCondition`](#matchesruntimecondition)
+  - [`syncServerRuntimeBridge`](#syncserverruntimebridge)
+  - [`RuntimeCenter`](#runtimecenter)
+- [Agent-Side CLI Mapping](#agent-side-cli-mapping)
+- [Minimal Page-Side Sequence](#minimal-page-side-sequence)
+- [Bridge and Connections](#bridge-and-connections)
+- [Modeling Guidance](#modeling-guidance)
+- [Examples](#examples)
 
-OpenRuntime 的主要对象：
+## Concepts
 
-- Bridge：CLI 和页面 runtime 的连接通道。
-- Runtime：页面中的 OpenRuntime 实例，负责注册 target、更新 snapshot、记录 event 和执行 action。
-- Target：页面中可以被引用或等待的对象，例如业务组件、route、remote、shared 或子应用。
-- Snapshot：target 的当前事实。它回答“现在是什么状态”。
-- Event：状态变化、错误和 action 历史。它回答“状态怎么变成这样的”。
-- Action：页面声明给 Agent 的安全动作。它回答“Agent 可以让页面做什么”。
+OpenRuntime is an extensible web development and debugging tool for Coding
+Agents. It helps an Agent reuse authenticated, real browser context to
+reproduce, diagnose, and verify page issues, while Extensions adapt team
+accounts, environments, and specialized debugging workflows.
 
-Runtime Core 不根据 DOM、截图、Console 或 Network 反推应用内部事实。普通浏览器诊断仍是 OpenRuntime 的正常能力；
-只有标记为 Target、Snapshot、Event 或 Action 的信息，才必须由页面或正式框架插件主动提供。
+Runtime Core is the deeper integration layer. When browser-visible evidence
+cannot reliably provide an internal fact, an application can expose runtime
+state, events, waitable targets, and declared actions to an Agent. Core is not a
+prerequisite for every OpenRuntime task.
 
-## @openruntime/core 公开 API
+The primary objects are:
 
-页面代码从 `@openruntime/core` 导入 API。普通接入只需要这些公开 API，不需要读取
-`node_modules/@openruntime/**`；其中 `.d.ts` 也属于安装包内部文件。
+- **Bridge**: the connection channel between the CLI and page runtimes.
+- **Runtime**: an OpenRuntime instance inside the page. It registers targets,
+  updates snapshots, records events, and executes actions.
+- **Target**: an object the page makes referenceable or waitable, such as a
+  business component, route, remote, shared dependency, or sub-application.
+- **Snapshot**: the target's current fact. It answers "what is its state now?"
+- **Event**: state-change, error, and action history. It answers "how did the
+  state get here?"
+- **Action**: a safe operation declared by the page for an Agent. It answers
+  "what may the Agent ask the page to do?"
 
+Runtime Core does not infer application-internal facts from the DOM,
+screenshots, Console, or Network. Those remain normal browser-diagnosis
+evidence. Information labeled as a target, snapshot, event, or action must be
+provided directly by the page or a supported framework plugin.
+
+## Public API
+
+Import page APIs from `@openruntime/core`. Ordinary integrations need only
+these public APIs and should not inspect installed package internals.
 
 ### createOpenRuntime
 
-创建一个新的页面 runtime 实例。
+Create a page runtime instance.
 
-**什么时候使用**
+Use it when:
 
-- 项目还没有 OpenRuntime 初始化代码。
-- 测试或独立页面需要手动创建 runtime。
+- The project has no OpenRuntime initialization.
+- A test or isolated page needs to create a runtime manually.
 
-**行为说明**
+Behavior:
 
-- 每次调用都会创建新实例。
-- 不会自动挂载到 `window.__OPEN_RUNTIME__`。
-- 需要被 CLI、插件或业务代码共享时，继续调用 `installOpenRuntimeOnWindow`。
+- Every call creates a new instance.
+- The instance is not installed on `window.__OPEN_RUNTIME__` automatically.
+- Call `installOpenRuntimeOnWindow` when the CLI, plugins, or business modules
+  need to share it.
 
 ```ts
 import { createOpenRuntime } from "@openruntime/core";
 
 interface CreateOpenRuntimeOptions {
-  // 可选时钟，测试中可用固定时间；不传时使用真实时间。
+  // Optional clock. Tests may provide a fixed clock; the real clock is the default.
   clock?: { now(): number };
 }
 
@@ -68,32 +113,51 @@ const runtime = createOpenRuntime();
 
 ### installOpenRuntimeOnWindow
 
-把 runtime 安装到 `window.__OPEN_RUNTIME__`，并返回最终可复用的 runtime。
+Install a runtime on `window.__OPEN_RUNTIME__` and return the reusable runtime.
 
-**什么时候使用**
+Use it when:
 
-- 页面里需要让插件、业务代码和 CLI 访问同一个 runtime。
-- 已创建 runtime，但还没有挂到全局对象。
+- Plugins, business code, and the CLI must access the same page runtime.
+- A runtime exists but is not installed on the global host.
 
-**行为说明**
+Behavior:
 
-- 不传 `runtime` 时会创建并安装一个默认 runtime。
-- 默认安装到当前 `window`，也可以通过 `host` 指定其他 window-like 对象。
-- 已有初始化代码时优先复用已有入口，不要在多个位置重复安装。
+- When `runtime` is omitted, create and install a default runtime.
+- Install on the current `window` by default, or pass another window-like
+  object as `host`.
+- Reuse existing initialization. Do not install duplicate runtimes from
+  multiple locations.
 
 ```ts
 import { installOpenRuntimeOnWindow } from "@openruntime/core";
 
 function installOpenRuntimeOnWindow(
-  // 要安装的 runtime；不传时创建新 runtime。
+  // Runtime to install. Create a new runtime when omitted.
   runtime?: OpenRuntimeCore,
-  // window-like 宿主对象，默认是当前 window。
+  // Window-like host. Defaults to the current window.
   host?: OpenRuntimeWindowHost,
+  // Optional metadata for this runtime instance.
+  options?: OpenRuntimeInstanceOptions,
 ): OpenRuntimeCore;
 
 interface OpenRuntimeWindowHost {
-  // 挂载在宿主对象上的 runtime。
+  // Runtime installed on this host.
   __OPEN_RUNTIME__?: OpenRuntimeCore;
+  // Registry containing every runtime installed on this host.
+  __OPEN_RUNTIME_REGISTRY__?: OpenRuntimeRegistry;
+}
+
+interface OpenRuntimeInstanceOptions {
+  // Stable runtime ID. Generate one automatically when omitted.
+  runtimeId?: string;
+  // Human-readable runtime name.
+  name?: string;
+  // Runtime source.
+  source?: string;
+  // Parent runtime ID for nested runtimes.
+  parentRuntimeId?: string;
+  // Optional render instance ID.
+  renderId?: string;
 }
 ```
 
@@ -103,34 +167,39 @@ const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
 
 ### getOpenRuntimeFromWindow
 
-从 `window.__OPEN_RUNTIME__` 读取已经安装的 runtime。
+Read an installed runtime from `window.__OPEN_RUNTIME__`.
 
-**什么时候使用**
+Use it when:
 
-- 避免重复创建 runtime。
-- 在业务模块、框架插件或调试代码中复用页面已有 runtime。
+- Avoiding duplicate runtime creation.
+- Reusing an existing page runtime from business modules, framework plugins, or
+  debugging code.
 
-**行为说明**
+Behavior:
 
-- 找到时返回已有 runtime。
-- 找不到时返回 `undefined`，调用方应决定是否创建并安装新实例。
+- Return the existing runtime when found.
+- Return `undefined` when none is installed; the caller decides whether to
+  create and install one.
 
 ```ts
 import { getOpenRuntimeFromWindow } from "@openruntime/core";
 
 function getOpenRuntimeFromWindow(
-  // window-like 宿主对象，默认是当前 window。
+  // Window-like host. Defaults to the current window.
   host?: OpenRuntimeWindowHost,
 ): OpenRuntimeCore | undefined;
 ```
 
 ```ts
-const runtime = getOpenRuntimeFromWindow() ?? installOpenRuntimeOnWindow(createOpenRuntime());
+const runtime =
+  getOpenRuntimeFromWindow() ??
+  installOpenRuntimeOnWindow(createOpenRuntime());
 ```
 
-同一页面允许注册多个 runtime。主应用和子应用分别安装实例时，为每个实例提供稳定的
-`runtimeId`；子应用卸载时同步注销。第一个实例仍作为默认实例供旧代码读取，完整实例
-列表通过 registry 获取。
+A single page may register multiple runtimes. When a host and sub-application
+install separate instances, assign each a stable `runtimeId` and unregister the
+sub-application runtime during unmount. The first instance remains the default
+for legacy callers; obtain the complete list from the registry.
 
 ```ts
 import {
@@ -151,59 +220,63 @@ uninstallOpenRuntimeFromWindow(runtime);
 
 ### registerTarget
 
-声明一个页面可观察对象。Target 回答“页面里有什么可以被引用或等待”。
+Declare an observable page object. A target answers "what can be referenced or
+waited for on this page?"
 
-**什么时候使用**
+Use it when:
 
-- 业务组件、流程、加载链路或 debug 事实需要被 Agent 查询。
-- 要让后续 `updateSnapshot`、`waitFor`、`verify` 有稳定 target id。
+- A business component, flow, loading chain, or debugging fact must be queried
+  by an Agent.
+- `updateSnapshot`, `waitFor`, or `verify` needs a stable target ID.
 
-**行为说明**
+Behavior:
 
-- `id` 应稳定、唯一、可读。
-- `type` 和 `statuses` 由接入方声明，Core 不内置固定 target type 或 status。
-- 一个 target 应该只表达一个稳定能力或结果，不要重复注册同义 target。
+- Keep `id` stable, unique, and readable.
+- Let the integration declare `type` and `statuses`; Core does not provide a
+  fixed set of target types or statuses.
+- Model one stable capability or result per target. Do not register synonymous
+  duplicates.
 
 ```ts
 type RuntimeObjectType = string;
 type RuntimeStatus = string;
 
 interface RegisterTargetInput {
-  // 稳定唯一 ID，例如 business:orders:risk-panel。
+  // Stable unique ID, for example business:orders:risk-panel.
   id: string;
-  // target 类型，例如 business.component。
+  // Target type, for example business.component.
   type: RuntimeObjectType;
-  // target 来源，例如业务域、框架插件或 MF 插件名。
+  // Business domain, framework plugin, or other target source.
   source: string;
-  // 给人看的短标签。
+  // Short human-readable label.
   label?: string;
-  // 给人看的补充说明。
+  // Additional human-readable description.
   description?: string;
-  // target 允许出现的状态集合。
+  // Complete set of statuses allowed for this target.
   statuses: RuntimeStatus[];
-  // 可参数化 target 的参数声明。
+  // Parameter declarations for a parameterized target.
   params?: RuntimeTargetParam[];
-  // target 匹配规则。
+  // Target matching rule.
   matcher?: RuntimeTargetMatcher;
-  // 注册时附带的少量静态数据。
+  // Small amount of static registration data.
   data?: unknown;
 }
 
 interface RuntimeTargetParam {
-  // 参数名。
+  // Parameter name.
   name: string;
-  // 参数类型。
+  // Parameter type.
   type: "string" | "number" | "boolean";
-  // 是否必填。
+  // Whether the parameter is required.
   required?: boolean;
-  // 参数说明。
+  // Parameter description.
   description?: string;
 }
 
 interface RuntimeTargetMatcher {
-  // 精确匹配、路径模式匹配或自定义匹配。
+  // Exact, path-pattern, or custom matching.
   type: "exact" | "path-pattern" | "custom";
-  // 匹配模式。
+  // Matching pattern when applicable.
   pattern?: string;
 }
 
@@ -223,22 +296,22 @@ runtime.registerTarget({
 
 ### unregisterTarget
 
-移除 target 以及对应 snapshot。
+Remove a target and its current snapshot.
 
-**什么时候使用**
+Use it when:
 
-- 页面卸载、微应用卸载或动态能力不再存在。
-- 测试中需要清理临时 target。
+- A page, micro-application, or dynamic capability is unmounted or removed.
+- A test needs to clean up a temporary target.
 
-**行为说明**
+Behavior:
 
-- 移除后，Agent 不能再通过该 id 等待或验证。
-- 不要在 target 仍能证明业务事实时过早移除。
+- The Agent can no longer wait for or verify that ID after removal.
+- Do not remove a target while it still represents a relevant business fact.
 
 ```ts
 interface OpenRuntimeCore {
   unregisterTarget(
-    // 要移除的 target id。
+    // Target ID to remove.
     targetId: string,
   ): void;
 }
@@ -250,36 +323,36 @@ runtime.unregisterTarget("business:orders:risk-panel");
 
 ### getTargets
 
-在页面内读取 target 定义。
+Read target definitions inside the page.
 
-**什么时候使用**
+Use it when:
 
-- 调试页面侧注册结果。
-- 插件或测试需要确认某类 target 是否已经注册。
+- Debugging page-side registration.
+- A plugin or test must confirm that a target class has been registered.
 
-**行为说明**
+Behavior:
 
-- 只返回 target 定义，不代表当前状态。
-- Agent 侧通常使用 CLI 查询，而不是在页面代码里直接调用。
+- Return definitions only, not current state.
+- Agents normally query targets through the CLI instead of page code.
 
 ```ts
 interface RuntimeTargetDescriptor extends RegisterTargetInput {
-  // 首次注册时间。
+  // First registration time.
   registeredAt: number;
-  // 最近更新时间。
+  // Most recent definition update time.
   updatedAt: number;
 }
 
 interface GetTargetsQuery {
-  // 按 target 类型过滤。
+  // Filter by target type.
   type?: RuntimeObjectType | RuntimeObjectType[];
-  // 按来源过滤。
+  // Filter by source.
   source?: string | string[];
-  // 按 target id 过滤。
+  // Filter by target ID.
   id?: string | string[];
-  // 按状态过滤。
+  // Filter by current status.
   status?: RuntimeStatus | RuntimeStatus[];
-  // 文本搜索。
+  // Full-text search.
   query?: string;
 }
 
@@ -294,49 +367,50 @@ const targets = runtime.getTargets({ query: "orders" });
 
 ### updateSnapshot
 
-更新 target 的当前事实。Snapshot 回答“现在是什么状态”。
+Update a target's current fact. A snapshot answers "what is its state now?"
 
-**什么时候使用**
+Use it when:
 
-- target 进入 pending、ready、error 等状态。
-- action 执行前后需要把业务结果写成可验证事实。
-- 需要把 console、network 或框架错误转成结构化 debug snapshot。
+- A target moves through states such as `pending`, `ready`, or `error`.
+- Business results must become verifiable before or after an action.
+- A Console, Network, or framework error should become a structured debugging
+  snapshot.
 
-**行为说明**
+Behavior:
 
-- 必须先 `registerTarget`，再 `updateSnapshot`。
-- `status` 必须出现在 target 的 `statuses` 中。
-- 错误优先写 `error` 字段，必要上下文写 `data`。
-- `dependsOn` 只表达当前状态里的阻塞线索。
+- Call `registerTarget` before `updateSnapshot`.
+- Use a `status` declared in the target's `statuses`.
+- Put structured errors in `error`; place only necessary context in `data`.
+- Use `dependsOn` only for dependencies or blockers in the current state.
 
 ```ts
 interface RuntimeError {
-  // 错误消息。
+  // Error message.
   message: string;
-  // 可选错误码。
+  // Optional error code.
   code?: string;
-  // 可选堆栈。
+  // Optional stack trace.
   stack?: string;
-  // 附加错误数据。
+  // Additional structured error data.
   data?: unknown;
 }
 
 interface UpdateSnapshotInput {
-  // 要更新的 target id。
+  // Target ID to update.
   id: string;
-  // 当前状态，必须属于 target.statuses。
+  // Current status; must be declared in target.statuses.
   status: RuntimeStatus;
-  // 可选 target 类型；通常由已注册 target 决定。
+  // Optional type; normally inherited from the registered target.
   type?: RuntimeObjectType;
-  // 可选来源；通常由已注册 target 决定。
+  // Optional source; normally inherited from the registered target.
   source?: string;
-  // 当前状态说明。
+  // Current state description.
   description?: string;
-  // 能证明结论的少量结构化数据。
+  // Small amount of structured data required to prove the fact.
   data?: unknown;
-  // 错误状态的结构化错误。
+  // Structured error for an error state.
   error?: RuntimeError;
-  // 当前状态依赖或阻塞的 target id 列表。
+  // Target IDs that the current state depends on or is blocked by.
   dependsOn?: string[];
 }
 
@@ -354,64 +428,65 @@ runtime.updateSnapshot({
 ```
 
 :::warning
-不要把完整 DOM、完整接口响应或大量无关业务数据塞进 snapshot。只放能证明结论的必要字段。
+Do not store a complete DOM, full API response, or large unrelated business
+payload in a snapshot. Keep only fields required to prove the conclusion.
 :::
 
 ### getSnapshot
 
-在页面内读取当前 snapshot。
+Read the current snapshot inside the page.
 
-**什么时候使用**
+Use it when:
 
-- 调试页面当前事实。
-- action handler 中根据当前状态决定下一步。
+- Debugging current page facts.
+- An action handler needs current state to choose its next step.
 
-**行为说明**
+Behavior:
 
-- 返回的是当前事实，不包含完整历史。
-- 需要追溯变化过程时读取 `getEvents`。
+- Return current facts, not complete history.
+- Use `getEvents` when the state-change history matters.
 
 ```ts
 interface RuntimeSnapshotTarget {
-  // target id。
+  // Target ID.
   id: string;
-  // target 类型。
+  // Target type.
   type: RuntimeObjectType;
-  // 当前状态。
+  // Current status.
   status: RuntimeStatus;
-  // 来源。
+  // Target source.
   source?: string;
-  // 当前状态说明。
+  // Current state description.
   description?: string;
-  // 能证明结论的少量结构化数据。
+  // Small amount of structured proof data.
   data?: unknown;
-  // 错误状态的结构化错误。
+  // Structured error for an error state.
   error?: RuntimeError;
-  // 最近更新时间。
+  // Most recent update time.
   updatedAt: number;
-  // 当前状态依赖或阻塞的 target id 列表。
+  // Target IDs that the current state depends on or is blocked by.
   dependsOn?: string[];
 }
 
 interface RuntimeSnapshot {
-  // 按 target id 索引的当前状态。
+  // Current state indexed by target ID.
   targets: Record<string, RuntimeSnapshotTarget>;
-  // 当前 snapshot 对应的最新事件 ID。
+  // Latest event ID represented by this snapshot.
   latestEventId: number;
-  // 捕获时间。
+  // Snapshot capture time.
   capturedAt: number;
 }
 
 interface GetSnapshotQuery {
-  // 按 target id 过滤。
+  // Filter by target ID.
   id?: string | string[];
-  // 按 target 类型过滤。
+  // Filter by target type.
   type?: RuntimeObjectType | RuntimeObjectType[];
-  // 按来源过滤。
+  // Filter by source.
   source?: string | string[];
-  // 按状态过滤。
+  // Filter by status.
   status?: RuntimeStatus | RuntimeStatus[];
-  // 文本搜索。
+  // Full-text search.
   query?: string;
 }
 
@@ -421,70 +496,75 @@ interface OpenRuntimeCore {
 ```
 
 ```ts
-const snapshot = runtime.getSnapshot({ id: "business:orders:risk-panel" });
+const snapshot = runtime.getSnapshot({
+  id: "business:orders:risk-panel",
+});
 ```
 
 ### getEvents
 
-在页面内读取事件历史。Event 回答“状态和 action 是怎么变化过来的”。
+Read event history inside the page. Events answer "how did state and actions
+change?"
 
-**什么时候使用**
+Use it when:
 
-- `waitFor` 或 `verify` 失败，需要定位状态未更新、action 失败或 where 条件不匹配。
-- 需要追溯错误发生过程。
+- `waitFor` or `verify` fails and the cause may be a missing snapshot update,
+  failed action, or mismatched data condition.
+- The error sequence must be reconstructed.
 
-**行为说明**
+Behavior:
 
-- target 已知时优先用 `targetId` 收窄，不要默认读取完整 events。
-- `truncated` 为 `true` 表示结果被截断，需要缩小查询范围或提高 limit。
+- When a target is known, filter with `targetId` rather than reading all events.
+- `truncated: true` means the result was limited. Narrow the query or increase
+  `limit`.
 
 ```ts
 interface RuntimeEvent {
-  // 自增事件 ID。
+  // Monotonically increasing event ID.
   id: number;
-  // 事件类型，例如 snapshot.updated 或 action.finished。
+  // Event type, for example snapshot.updated or action.finished.
   type: string;
-  // 事件来源。
+  // Event source.
   source: string;
-  // 事件时间。
+  // Event time.
   timestamp: number;
-  // 关联 target id。
+  // Related target ID.
   targetId?: string;
-  // 关联 action name。
+  // Related action name.
   actionName?: string;
-  // 关联状态。
+  // Related status.
   status?: RuntimeStatus;
-  // 事件负载。
+  // Event payload.
   payload?: unknown;
-  // 错误信息。
+  // Structured event error.
   error?: RuntimeError;
 }
 
 interface GetEventsQuery {
-  // 只读取该事件 ID 之后的事件。
+  // Return events after this event ID.
   since?: number;
-  // 按 target id 过滤。
+  // Filter by target ID.
   targetId?: string | string[];
-  // 按 action name 过滤。
+  // Filter by action name.
   actionName?: string | string[];
-  // 按事件类型过滤。
+  // Filter by event type.
   type?: string | string[];
-  // 按来源过滤。
+  // Filter by source.
   source?: string | string[];
-  // 按状态过滤。
+  // Filter by status.
   status?: RuntimeStatus | RuntimeStatus[];
-  // 返回数量上限。
+  // Maximum number of returned events.
   limit?: number;
-  // 文本搜索。
+  // Full-text search.
   query?: string;
 }
 
 interface GetEventsResult {
-  // 事件列表。
+  // Matching events.
   events: RuntimeEvent[];
-  // 当前最新事件 ID。
+  // Current latest event ID.
   latestEventId: number;
-  // 是否被截断。
+  // Whether the result was truncated.
   truncated: boolean;
 }
 
@@ -494,89 +574,104 @@ interface OpenRuntimeCore {
 ```
 
 ```ts
-const result = runtime.getEvents({ targetId: "business:orders:risk-panel", limit: 50 });
+const result = runtime.getEvents({
+  targetId: "business:orders:risk-panel",
+  limit: 50,
+});
 ```
 
 ### registerAction
 
-声明页面可执行动作。Action 回答“Agent 可以让页面做什么”。
+Declare an action that the page permits an Agent to execute. An action answers
+"what may the Agent ask the page to do?"
 
-**什么时候使用**
+Use it when:
 
-- 页面需要暴露刷新、导航、登录、选择等确定动作给 Agent。
-- 需要让 Agent 执行动作后继续通过 snapshot、wait-for 或 verify 验收。
+- The page should expose a stable operation such as refresh, navigation, login,
+  or selection.
+- The Agent must perform an operation and then verify its result through a
+  snapshot, `wait-for`, or `verify`.
 
-**行为说明**
+Behavior:
 
-- action 应该最小、确定、可重复。
-- `runAction` 只证明 handler 被调用；业务结果仍要写入 target snapshot。
-- `availableWhen` 可限制 action 只在指定 runtime 条件满足时可用。
+- Keep actions small, deterministic, and repeatable.
+- `runAction` proves only that the handler ran. Write business results to a
+  target snapshot.
+- Use `availableWhen` to enable an action only under specific Runtime
+  conditions.
 
 ```ts
-type RuntimeActionRisk = "safe" | "state-changing" | "destructive" | "sensitive";
+type RuntimeActionRisk =
+  | "safe"
+  | "state-changing"
+  | "destructive"
+  | "sensitive";
 
 interface RegisterActionInput {
-  // action 名称，例如 orders.refreshRiskPanel。
+  // Action name, for example orders.refreshRiskPanel.
   name: string;
-  // action 描述。
+  // Human-readable action description.
   description?: string;
-  // action 来源。
+  // Action source.
   source?: string;
-  // 风险等级。
+  // Risk classification.
   risk?: RuntimeActionRisk;
-  // 可用条件。
+  // Conditions under which the action is enabled.
   availableWhen?: RuntimeCondition | RuntimeCondition[];
-  // 输入 JSON Schema。
+  // Input JSON Schema.
   inputSchema?: RuntimeJsonSchema;
-  // 动态输入候选项提供器。
+  // Dynamic input-options provider.
   getInputOptions?: RuntimeInputOptionsProvider;
-  // action 执行函数。
+  // Action implementation.
   handler: RuntimeActionHandler;
 }
 
 type RuntimeActionHandler = (
-  // Agent 传入的 action 参数。
+  // Action payload supplied by the Agent.
   payload: unknown,
-  // action 执行上下文。
+  // Action execution context.
   context: RuntimeActionContext,
 ) => Promise<unknown> | unknown;
 
 interface RuntimeActionContext {
-  // 当前 action 名称。
+  // Current action name.
   actionName: string;
-  // 读取当前 snapshot。
+  // Read the current snapshot.
   getSnapshot: () => RuntimeSnapshot;
-  // 更新 snapshot。
+  // Update a target snapshot.
   updateSnapshot: (input: UpdateSnapshotInput) => void;
-  // 等待 runtime 条件。
-  waitFor: (condition: RuntimeCondition, options?: RuntimeWaitOptions) => Promise<RuntimeWaitResult>;
+  // Wait for a Runtime condition.
+  waitFor: (
+    condition: RuntimeCondition,
+    options?: RuntimeWaitOptions,
+  ) => Promise<RuntimeWaitResult>;
 }
 
 interface RuntimeJsonSchema {
-  // 当前仅支持 object 作为顶层 schema。
+  // Only object is supported as the top-level schema.
   type: "object";
-  // 字段定义。
+  // Field definitions.
   properties?: Record<string, RuntimeJsonSchemaProperty>;
-  // 必填字段。
+  // Required fields.
   required?: string[];
-  // 是否允许额外字段。
+  // Whether undeclared fields are allowed.
   additionalProperties?: boolean;
 }
 
 interface RuntimeJsonSchemaProperty {
-  // 字段类型。
+  // Field type.
   type: "string" | "number" | "boolean" | "array" | "object";
-  // 字段说明。
+  // Field description.
   description?: string;
-  // 枚举值。
+  // Allowed enum values.
   enum?: Array<string | number | boolean>;
-  // 数组元素 schema。
+  // Array item schema.
   items?: RuntimeJsonSchemaProperty;
-  // 对象字段 schema。
+  // Object field schema.
   properties?: Record<string, RuntimeJsonSchemaProperty>;
-  // 对象必填字段。
+  // Required object fields.
   required?: string[];
-  // 是否允许额外字段。
+  // Whether undeclared object fields are allowed.
   additionalProperties?: boolean;
 }
 
@@ -604,22 +699,23 @@ runtime.registerAction({
 
 ### unregisterAction
 
-移除一个已注册 action。
+Remove a registered action.
 
-**什么时候使用**
+Use it when:
 
-- 页面卸载、微应用卸载或动态动作不再可用。
-- 测试中需要清理临时 action。
+- A page, micro-application, or dynamic action is unmounted or removed.
+- A test must clean up a temporary action.
 
-**行为说明**
+Behavior:
 
-- 移除后 Agent 不能再执行该 action。
-- 不要用移除 action 代替 `availableWhen`；只是临时不可用时优先用可用条件表达。
+- The Agent cannot run the action after removal.
+- Do not remove and re-register an action merely because it is temporarily
+  unavailable. Express temporary availability with `availableWhen`.
 
 ```ts
 interface OpenRuntimeCore {
   unregisterAction(
-    // 要移除的 action name。
+    // Action name to remove.
     actionName: string,
   ): void;
 }
@@ -631,54 +727,54 @@ runtime.unregisterAction("orders.refreshRiskPanel");
 
 ### getActions
 
-在页面内读取 action 定义。
+Read action definitions inside the page.
 
-**什么时候使用**
+Use it when:
 
-- 调试页面暴露了哪些动作。
-- 插件或测试需要确认 action 是否已经注册。
+- Debugging actions exposed by the page.
+- A plugin or test must confirm that an action is registered.
 
-**行为说明**
+Behavior:
 
-- 返回 action 描述，不会执行 action。
-- Agent 侧通常通过 CLI 或 Bridge 读取 actions。
+- Return action descriptions without executing them.
+- Agents normally read actions through the CLI or Bridge.
 
 ```ts
 interface GetActionsQuery {
-  // 按 action name 过滤。
+  // Filter by action name.
   name?: string | string[];
-  // 按来源过滤。
+  // Filter by source.
   source?: string | string[];
-  // 按风险等级过滤。
+  // Filter by risk.
   risk?: RuntimeActionRisk | RuntimeActionRisk[];
-  // 按当前是否可用过滤。
+  // Filter by current enabled state.
   enabled?: boolean;
-  // 文本搜索。
+  // Full-text search.
   query?: string;
 }
 
 interface RuntimeActionDescriptor {
-  // action name。
+  // Action name.
   name: string;
-  // action 描述。
+  // Action description.
   description?: string;
-  // action 来源。
+  // Action source.
   source: string;
-  // 风险等级。
+  // Risk classification.
   risk: RuntimeActionRisk;
-  // 可用条件。
+  // Availability conditions.
   availableWhen?: RuntimeCondition | RuntimeCondition[];
-  // 输入 JSON Schema。
+  // Input JSON Schema.
   inputSchema?: RuntimeJsonSchema;
-  // 是否注册了动态输入候选项提供器。
+  // Whether a dynamic input-options provider is registered.
   hasInputOptions: boolean;
-  // 当前是否满足可用条件。
+  // Whether current conditions enable the action.
   enabled: boolean;
-  // 不可用原因。
+  // Reason the action is disabled.
   reason?: string;
-  // 注册时间。
+  // Registration time.
   registeredAt: number;
-  // 最近更新时间。
+  // Most recent definition update time.
   updatedAt: number;
 }
 
@@ -693,49 +789,50 @@ const actions = runtime.getActions({ query: "orders" });
 
 ### getInputOptions
 
-读取某个 action 输入字段的动态候选项。
+Read dynamic options for one action input field.
 
-**什么时候使用**
+Use it when:
 
-- action 输入需要根据当前 payload、页面状态或业务数据生成候选项。
-- Agent 或 UI 需要为某个字段展示可选值。
+- Action input options depend on the current payload, page state, or business
+  data.
+- An Agent or UI must present selectable values for a field.
 
-**行为说明**
+Behavior:
 
-- 只有 action 注册了 `getInputOptions` 时才有动态候选项。
-- `currentPayload` 用于表达已经填写的其他字段。
+- Dynamic options exist only when the action registered `getInputOptions`.
+- Pass `currentPayload` to represent other fields already filled by the caller.
 
 ```ts
 interface RuntimeInputOption {
-  // 实际值。
+  // Actual option value.
   value: string | number | boolean;
-  // 候选项说明。
+  // Human-readable option description.
   description?: string;
 }
 
 interface RuntimeInputOptionsOptions {
-  // 候选项查询超时时间，单位毫秒。
+  // Query timeout in milliseconds.
   timeout?: number;
 }
 
 type RuntimeInputOptionsProvider = (
-  // 当前字段名。
+  // Current input field name.
   inputName: string,
-  // 当前已填写 payload。
+  // Other fields already present in the payload.
   currentPayload?: Record<string, unknown>,
-  // action 执行上下文。
+  // Action execution context.
   context?: RuntimeActionContext,
 ) => Promise<RuntimeInputOption[]> | RuntimeInputOption[];
 
 interface OpenRuntimeCore {
   getInputOptions(
-    // action name。
+    // Action name.
     actionName: string,
-    // 输入字段名。
+    // Input field name.
     inputName: string,
-    // 当前已填写 payload。
+    // Other fields already present in the payload.
     currentPayload?: Record<string, unknown>,
-    // 查询选项。
+    // Query options.
     options?: RuntimeInputOptionsOptions,
   ): Promise<RuntimeInputOption[]>;
 }
@@ -747,36 +844,39 @@ const owners = await runtime.getInputOptions("orders.assign", "owner");
 
 ### runAction
 
-在页面内执行一个已注册 action。
+Execute a registered action inside the page.
 
-**什么时候使用**
+Use it when:
 
-- 页面内部测试或调试需要直接触发 action。
-- action handler 需要被 CLI 或 Bridge 调用时，对应页面侧执行入口就是 `runAction`。
+- A page-side test or debugging flow must trigger an action directly.
+- The CLI or Bridge invokes an action handler through the page-side entry
+  point.
 
-**行为说明**
+Behavior:
 
-- 只执行 action 并记录 action event。
-- 不自动更新 Snapshot；handler 内需要显式 `updateSnapshot`。
-- 执行后仍应继续用 snapshot、events、wait-for 或 verify 观察业务结果。
+- Execute the handler and record action events.
+- Do not update snapshots automatically. The handler must call
+  `updateSnapshot` explicitly.
+- Continue observing the business result through snapshots, events, `wait-for`,
+  or `verify`.
 
 ```ts
 interface RuntimeActionResult {
-  // handler 是否成功完成。
+  // Whether the handler completed successfully.
   success: boolean;
-  // action name。
+  // Action name.
   actionName: string;
-  // handler 返回值。
+  // Handler return value.
   result?: unknown;
-  // handler 抛出的错误。
+  // Error thrown by the handler.
   error?: RuntimeError;
 }
 
 interface OpenRuntimeCore {
   runAction(
-    // action name。
+    // Action name.
     actionName: string,
-    // action 参数。
+    // Action payload.
     payload?: Record<string, unknown>,
   ): Promise<RuntimeActionResult>;
 }
@@ -787,63 +887,69 @@ const result = await runtime.runAction("orders.refreshRiskPanel", {});
 ```
 
 :::warning
-`runAction` 成功只表示动作处理完成，不等于结果已经满足。继续使用与动作对应的状态验证结果；
-页面已有 business target 时可以使用 snapshot、wait-for 或 verify。
+A successful `runAction` means only that action handling completed. It does not
+prove that the expected result is present. Verify the corresponding state; when
+the page has a business target, use its snapshot, `wait-for`, or `verify`.
 :::
 
 ### waitFor
 
-在页面内等待某个 target 达到指定状态和数据条件。
+Wait inside the page for a target to reach a requested status and data
+condition.
 
-**什么时候使用**
+Use it when:
 
-- action 后等待状态推进。
-- 页面内部测试需要等待业务 target ready。
-- 导航、加载、remote ready 等中间状态需要等待。
+- Waiting for state progress after an action.
+- A page-side test must wait for a business target to become ready.
+- Navigation, loading, or remote readiness is an intermediate condition.
 
-**行为说明**
+Behavior:
 
-- 条件成功时返回 `success: true` 和匹配 target。
-- 超时或条件不满足时返回失败原因和当前 snapshot。
-- Agent 侧通常使用 CLI `wait-for`；已有 business target 且安装了对应 Extension 时也可以使用 `verify`。
+- Return `success: true` and the matching target when the condition is met.
+- On timeout or mismatch, return a failure reason and the current snapshot.
+- Agents normally use CLI `wait-for`; when a suitable business target and
+  Extension exist, they may use `verify` for final verification.
 
 ```ts
 interface RuntimeCondition {
-  // 要等待的 target id。
+  // Target ID to wait for.
   id: string;
-  // 目标状态。
+  // Required status.
   status: RuntimeStatus;
-  // 可选数据条件。
+  // Optional data conditions.
   where?: RuntimeDataCondition[];
 }
 
 interface RuntimeDataCondition {
-  // data 内的路径。
+  // Path inside target.data.
   path: string;
-  // 期望值。
+  // Expected value.
   equals: unknown;
 }
 
 interface RuntimeWaitOptions {
-  // 超时时间，单位毫秒。
+  // Timeout in milliseconds.
   timeout?: number;
 }
 
 interface RuntimeWaitResult {
-  // 是否满足条件。
+  // Whether the condition matched.
   success: boolean;
-  // 原始等待条件。
+  // Original wait condition.
   condition: RuntimeCondition;
-  // 返回时的 snapshot。
+  // Snapshot at completion.
   snapshot: RuntimeSnapshot;
-  // 匹配到的 target。
+  // Matching target when available.
   target?: RuntimeSnapshotTarget;
-  // 失败原因。
+  // Failure reason.
   reason?: string;
 }
 
 interface OpenRuntimeCore {
-  waitFor(condition: RuntimeCondition, options?: RuntimeWaitOptions): Promise<RuntimeWaitResult>;
+  waitFor(
+    condition: RuntimeCondition,
+    options?: RuntimeWaitOptions,
+  ): Promise<RuntimeWaitResult>;
 }
 ```
 
@@ -856,23 +962,23 @@ const result = await runtime.waitFor(
 
 ### matchesRuntimeCondition
 
-判断 snapshot 是否满足 runtime 条件。
+Check synchronously whether a snapshot satisfies a Runtime condition.
 
-**什么时候使用**
+Use it when:
 
-- 测试 `RuntimeCondition` 是否符合预期。
-- 自定义逻辑需要在不触发等待的情况下判断条件。
+- Testing a `RuntimeCondition`.
+- Custom logic must evaluate a condition without starting a wait.
 
-**行为说明**
+Behavior:
 
-- 只做同步判断。
-- 普通页面接入很少需要直接调用。
+- Perform a synchronous check only.
+- Ordinary page integrations rarely need to call it directly.
 
 ```ts
 function matchesRuntimeCondition(
-  // 要判断的条件。
+  // Condition to evaluate.
   condition: RuntimeCondition,
-  // 当前 snapshot。
+  // Current snapshot.
   snapshot: RuntimeSnapshot,
 ): boolean;
 ```
@@ -886,78 +992,83 @@ const matched = matchesRuntimeCondition(
 
 ### syncServerRuntimeBridge
 
-服务端向 Bridge 同步 runtime 状态。
+Synchronize server-side Runtime state to Bridge.
 
-**什么时候使用**
+Use it when:
 
-- 服务端 runtime 或 SSR 场景需要把结构化状态同步给 Bridge。
-- 普通浏览器页面接入不需要调用。
+- A server runtime or SSR flow must publish structured state to Bridge.
+- Do not use it for an ordinary browser-page integration.
 
-**行为说明**
+Behavior:
 
-- 这是服务端同步入口，不是浏览器页面的默认接入方式。
-- 浏览器页面由 `openruntime open` 自动连接所有已注册实例。
+- This is the server synchronization entry point, not the default browser-page
+  integration.
+- `openruntime open` connects all registered browser runtimes automatically.
 
 ```ts
 function syncServerRuntimeBridge(
-  // 要同步的 runtime。
+  // Runtime to synchronize.
   runtime: OpenRuntimeCore,
-  // 服务端 Bridge 同步选项。
+  // Server-to-Bridge synchronization options.
   options: BridgeServerSyncOptions,
 ): Promise<BridgeServerRuntimeSyncResponse>;
 
 interface BridgeServerSyncOptions {
-  // Bridge 端口；不传时使用默认端口 17321。
+  // Bridge port. Defaults to 17321.
   port?: number;
-  // 服务端 runtime ID。
+  // Server runtime ID.
   runtimeId: string;
-  // session ID。
+  // Optional session ID.
   sessionId?: string;
-  // 渲染实例 ID。
+  // Optional render instance ID.
   renderId?: string;
-  // 对应页面 URL。
+  // Associated page URL.
   url: string;
-  // 来源。
+  // Optional source.
   source?: string;
 }
 
 interface BridgeServerRuntimeSyncResponse {
-  // 已接收的 runtime ID。
+  // Runtime ID accepted by Bridge.
   runtimeId: string;
-  // 渲染实例 ID。
+  // Render instance ID.
   renderId?: string;
-  // 是否已被 Bridge 接收。
+  // Bridge acceptance marker.
   accepted: true;
 }
 ```
 
 :::tip
-如果只是补页面可验证能力，不要优先引入 `syncServerRuntimeBridge`。先确认是否能在页面 runtime 里连接 Bridge、注册 target 并更新 snapshot。
+When adding page verification, do not start with
+`syncServerRuntimeBridge`. First determine whether the page runtime can connect
+to Bridge, register a target, and update its snapshot.
 :::
 
 ### RuntimeCenter
 
-`RuntimeCenter` 是 runtime 类。
+`RuntimeCenter` is the runtime class.
 
-**什么时候使用**
+Use it when:
 
-- 框架或库内部需要直接构造 runtime 类。
-- 普通业务接入不需要直接 `new RuntimeCenter()`。
+- Framework or library internals must construct the runtime class directly.
+- Ordinary business integrations should not call `new RuntimeCenter()`.
 
-**行为说明**
+Behavior:
 
-- 普通页面优先使用 `createOpenRuntime()`。
-- 直接构造时要自行负责安装、连接和生命周期。
+- Prefer `createOpenRuntime()` for ordinary pages.
+- Direct construction makes the caller responsible for installation,
+  connection, and lifecycle.
 
 ```ts
 class RuntimeCenter implements OpenRuntimeCore {
-  // RuntimeCenter 实现 OpenRuntimeCore 的全部实例方法。
+  // RuntimeCenter implements all OpenRuntimeCore instance methods.
 }
 ```
 
-### Agent 侧 CLI 对照
+## Agent-Side CLI Mapping
 
-Agent 侧通常不在页面代码里调用 `getSnapshot`、`getEvents`、`runAction`、`waitFor`，而是用 CLI：
+Agents normally use the CLI instead of calling `getSnapshot`, `getEvents`,
+`runAction`, or `waitFor` from page code:
 
 ```bash
 pnpm exec openruntime snapshot --id <target-id> --url <url>
@@ -966,9 +1077,9 @@ pnpm exec openruntime run-action <action-name> --url <url> --payload '{}'
 pnpm exec openruntime wait-for <target-id> ready --url <url> --timeout 10000
 ```
 
-### 最小调用顺序
+## Minimal Page-Side Sequence
 
-页面侧最常见顺序：
+A common page-side setup is:
 
 ```ts
 import {
@@ -978,7 +1089,8 @@ import {
 } from "@openruntime/core";
 
 const runtime =
-  getOpenRuntimeFromWindow() ?? installOpenRuntimeOnWindow(createOpenRuntime());
+  getOpenRuntimeFromWindow() ??
+  installOpenRuntimeOnWindow(createOpenRuntime());
 
 runtime.registerTarget({
   id: "business:orders:risk-panel",
@@ -993,7 +1105,7 @@ runtime.updateSnapshot({
 });
 ```
 
-业务成功或失败时再更新同一个 target：
+Update the same target when the business operation succeeds:
 
 ```ts
 runtime.updateSnapshot({
@@ -1003,37 +1115,47 @@ runtime.updateSnapshot({
 });
 ```
 
+Update it with a structured error when the operation fails:
+
 ```ts
 runtime.updateSnapshot({
   id: "business:orders:risk-panel",
   status: "error",
-  error: { message: error instanceof Error ? error.message : String(error) },
+  error: {
+    message: error instanceof Error ? error.message : String(error),
+  },
 });
 ```
 
-## Bridge 和连接
+## Bridge and Connections
 
-页面源码只负责注册 runtime。CLI 打开浏览器时会自动连接 Bridge。
+Page source registers the runtime. The CLI connects it to Bridge when opening
+the browser.
 
-Core 直接接入示例：
+Minimal Core setup:
 
 ```ts
-import { createOpenRuntime, installOpenRuntimeOnWindow } from "@openruntime/core";
+import {
+  createOpenRuntime,
+  installOpenRuntimeOnWindow,
+} from "@openruntime/core";
 
 const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
 ```
 
-连接确认：
+Confirm the connection:
 
 ```bash
 pnpm exec openruntime open <app-url> --bridge http://localhost:17321
 pnpm exec openruntime runtimes --bridge http://localhost:17321
 ```
 
-成功条件：至少一个 runtime 的 `status` 是 `"connected"`。如果 `runtimes` 为空，不要声称已经使用 targets、snapshot、events 或 verify。
+At least one runtime must have `status: "connected"`. When `runtimes` is empty,
+do not claim that targets, snapshots, events, or `verify` were used.
 
-如果项目还没有 OpenRuntime 初始化代码，可以用公开 API 创建并安装 runtime。已有初始化
-代码时复用已有函数，不要重复安装多个 runtime：
+When a project has no OpenRuntime initialization, create and install a runtime
+through public APIs. Reuse existing initialization instead of installing
+duplicates:
 
 ```ts
 import {
@@ -1048,9 +1170,12 @@ export function ensureOpenRuntimeInstalled() {
 }
 ```
 
-## Target
+## Modeling Guidance
 
-Target 是页面声明给 Agent 的可观察对象。一个 target 应该只表达一个稳定能力或结果。
+### Targets
+
+A target is an observable object declared by the page. Model one stable
+capability or result per target.
 
 ```ts
 runtime.registerTarget({
@@ -1062,19 +1187,22 @@ runtime.registerTarget({
 });
 ```
 
-命名建议：
+Naming guidance:
 
-- 业务 target：`business:<area>:<capability>`。
-- debug target：`debug:<area>:runtime-error`。
-- 框架 target：由 Modern/MF/Garfish 插件生成。
+- Business target: `business:<area>:<capability>`
+- Debug target: `debug:<area>:runtime-error`
+- Framework target: generated by the Modern, MF, or Garfish plugin
 
-不要重复注册同义 target。已有 target 能证明事实时，优先复用。
+Do not register synonymous duplicates. Reuse an existing target when it already
+proves the fact.
 
-## Snapshot
+### Snapshots
 
-Snapshot 是 target 的当前事实。只放能证明结论的必要字段，不要塞完整 DOM、完整接口响应或大量无关业务数据。
+A snapshot is the target's current fact. Store only fields needed to prove the
+conclusion.
 
-必须先 `registerTarget`，再 `updateSnapshot`。snapshot 的 `status` 必须出现在 target 的 `statuses` 中。
+Register the target before updating it, and use a status declared in
+`target.statuses`.
 
 ```ts
 runtime.updateSnapshot({
@@ -1088,7 +1216,7 @@ runtime.updateSnapshot({
 });
 ```
 
-错误写法：
+Avoid placing error details only in `data`:
 
 ```ts
 runtime.updateSnapshot({
@@ -1102,7 +1230,7 @@ runtime.updateSnapshot({
 });
 ```
 
-错误状态优先写 `error` 字段，必要的上下文放在 `data`：
+Prefer the structured `error` field and keep only necessary context in `data`:
 
 ```ts
 runtime.updateSnapshot({
@@ -1116,29 +1244,33 @@ runtime.updateSnapshot({
 });
 ```
 
-查询：
+Query snapshots with:
 
 ```bash
 pnpm exec openruntime snapshot --url <url> --id business:orders:risk-panel
 pnpm exec openruntime snapshot --url <url> --query runtime-error
 ```
 
-## Event
+### Events
 
-Event 用来追溯状态变化、action 历史和错误发生过程。只有需要历史时才读取 events。
+Use events to reconstruct state changes, action history, and error sequences.
+Read them only when history is required.
 
 ```bash
 pnpm exec openruntime events --url <url> --target-id business:orders:risk-panel --limit 50
 pnpm exec openruntime events --url <url> --query runtime-error --limit 50
 ```
 
-不要把完整 events 当成默认第一步。target 已知时收窄到 target id。
+Do not read every event as the default first step. Filter by target ID when it
+is known.
 
-## Action
+### Actions
 
-Action 是页面声明给 Agent 的动作。它应该最小、确定、可重复。
+An action is an operation declared by the page for an Agent. Keep it small,
+deterministic, and repeatable.
 
-执行 action 只证明 handler 被调用；业务结果仍要写入 target snapshot，并用 `wait-for` 或 `verify` 验收。
+Action execution proves only that the handler ran. Write business results to a
+target snapshot and verify them with `wait-for` or `verify`.
 
 ```ts
 runtime.registerAction({
@@ -1148,14 +1280,14 @@ runtime.registerAction({
 });
 ```
 
-执行：
+Run and verify it:
 
 ```bash
 pnpm exec openruntime run-action --url <url> orders.refreshRiskPanel --payload '{}'
 pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-需要验证 action 结果时，推荐写一个 action result target：
+For a complex action, use an action-result target:
 
 ```ts
 runtime.registerTarget({
@@ -1187,7 +1319,9 @@ runtime.registerAction({
       context.updateSnapshot({
         id: "business:orders:refresh-risk-panel",
         status: "error",
-        error: { message: error instanceof Error ? error.message : String(error) },
+        error: {
+          message: error instanceof Error ? error.message : String(error),
+        },
       });
       throw error;
     }
@@ -1195,35 +1329,41 @@ runtime.registerAction({
 });
 ```
 
-执行 action 后，继续通过 snapshot、events、wait-for 或 verify 观察结果。`run-action` 本身不等于验收成功。
+After the action, continue observing snapshots, events, `wait-for`, or `verify`.
+`run-action` is not final verification.
 
-## wait-for 和可选的 verify
+### wait-for and Optional verify
 
-`wait-for` 等待中间状态，适合导航、加载、action 后状态推进。
+Use `wait-for` for intermediate state such as navigation, loading, and
+post-action progress:
 
 ```bash
 pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-`verify` 是 troubleshooting Extension 提供的 business target 验收命令。页面已经有适合当前任务的
-business target 时，可以把它用在修改代码后的最后一步。
+`verify` is a business-target verification command provided by the
+troubleshooting Extension. Use it as a post-change final check only when the
+page already has a business target suited to the task:
 
 ```bash
 pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
-Modern/MF/Vmok/Garfish target ready 只能证明对应底层加载链路，不应直接解释成业务 UI 成功。
-普通页面没有 business target 时，应在 Runtime Core 之外使用与任务直接对应的页面结果、请求结果或专项
-Extension 验证；不要只为了运行 `verify` 增加没有长期价值的 target。
+A ready Modern, MF, or Garfish target proves only its underlying loading layer.
+It does not prove that the business UI succeeded. When an ordinary page has no
+business target, verify through a directly relevant page result, request
+result, or specialized Extension. Do not add a low-value target solely to run
+`verify`.
 
-## 示例
+## Examples
 
-### 验证登录
+### Verify Login
 
 ```ts
 runtime.registerTarget({
   id: "business:auth:login",
   type: "business.flow",
+  source: "auth",
   label: "Login flow",
   statuses: ["pending", "ready", "error"],
 });
@@ -1235,31 +1375,37 @@ pnpm exec openruntime snapshot --url http://localhost:3000/login --id business:a
 pnpm exec openruntime verify business:auth:login ready --url http://localhost:3000/login --timeout 10000
 ```
 
-### 读取发布说明
+### Read Release Notes
 
 ```bash
 pnpm exec openruntime snapshot --url <url> --query release-notes
 pnpm exec openruntime verify business:release-notes:content ready --url <url> --timeout 10000
 ```
 
-### 等待 remote ready
+### Wait for a Remote
 
 ```bash
 pnpm exec openruntime snapshot --url <url> --query opsConsoleProvider
 pnpm exec openruntime wait-for mf:remote:opsConsoleProvider ready --url <url> --timeout 10000
 ```
 
-remote ready 只证明底层加载链路。若任务目标是业务 UI，再使用已有 business target 或明确页面结果验证。
+Remote readiness proves only the loading layer. If the task requires business
+UI, verify an existing business target or an explicit page result as well.
 
-### console 错误转 debug snapshot
+### Convert a Console Error into a Debug Snapshot
+
+Register `debug:consumer:runtime-error` before installing the listener, then
+update it with a structured error:
 
 ```ts
 window.addEventListener("error", (event) => {
   runtime.updateSnapshot({
     id: "debug:consumer:runtime-error",
     status: "error",
-    data: {
+    error: {
       message: event.message,
+    },
+    data: {
       filename: event.filename,
       pathname: location.pathname,
     },

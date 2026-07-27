@@ -2,6 +2,12 @@
 
 Use this reference when diagnosing Modern.js route, loader, route component, SSR, hydration, or navigation state through OpenRuntime.
 
+## Contents
+
+- [Version Gate](#version-gate)
+- [Route, Loader, SSR, and Hydration](#route--loader--ssr--hydration)
+- [Business Ready Helper](#business-ready-helper)
+
 ## Version Gate
 
 Before recommending `@openruntime/modern-plugin`, run the resolver against the
@@ -42,12 +48,12 @@ business code needs `getOpenRuntimeFromWindow`, `registerTarget`,
 direct dependency too. Do not rely on the Modern plugin's transitive dependency.
 
 Do not recommend `@openruntime/modern-plugin` by default for older non-preview
-Modern/EdenX versions. Those versions can miss the hooks needed for current
+Modern.js versions. Those versions can miss the hooks needed for current
 route, loader, route component, SSR, and hydration state. A partial result such
 as base targets or `modern:app` stuck at `rendering` is not enough to decide
 route readiness or failure.
 
-For older non-preview Modern/EdenX versions, use `@openruntime/core` directly
+For older non-preview Modern.js versions, use `@openruntime/core` directly
 at a stable business point instead: register the smallest target that proves
 the task, update it to `pending`, `ready`, or `error`, install it on `window`, then
 open the page with the CLI and verify through `runtimes`, `targets`, `snapshot`, and `verify`. Use `wait-for`

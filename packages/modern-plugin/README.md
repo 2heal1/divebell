@@ -220,7 +220,7 @@ the earlier hydration failure.
 
 ## Garfish Targets
 
-The package also exports Garfish helpers for Modern.js / EdenX host
+The package also exports Garfish helpers for Modern.js host
 applications that use Garfish:
 
 - `createOpenRuntimeGarfishReporter`

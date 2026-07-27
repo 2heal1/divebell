@@ -24,12 +24,12 @@ node ../scripts/browser-capture.mjs "https://example.com" 20000 --vars __FEDERAT
 
 Capture deep path variables:
 ```bash
-node ../scripts/browser-capture.mjs "https://example.com" 20000 --vars __VMOK__.__INSTANCES__,window.__APP_STATE__.user
+node ../scripts/browser-capture.mjs "https://example.com" 20000 --vars __FEDERATION__.__INSTANCES__,window.__APP_STATE__.user
 ```
 
 Performance-first capture (skip heavy entries and avoid long waits):
 ```bash
-node ../scripts/browser-capture.mjs "https://example.com" 12000 --vars __VMOK__.__INSTANCES__ --action-wait none --no-entries
+node ../scripts/browser-capture.mjs "https://example.com" 12000 --vars __FEDERATION__.__INSTANCES__ --action-wait none --no-entries
 ```
 
 ## Output format

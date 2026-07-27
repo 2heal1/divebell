@@ -1,130 +1,187 @@
-# 定制和接入 OpenRuntime
+# Customize and Integrate OpenRuntime
 
-只在根 `SKILL.md` 把任务分流到“接入扩展”后读取本文件。目标是让新增能力能够被 CLI
-发现、查询或执行，并通过与改动相匹配的验证。
+Read this file only after the root `SKILL.md` routes the task to **Customize
+capabilities**. Make the new capability discoverable, queryable, or executable
+through the CLI, and verify it with checks that match the change.
 
-没有待修复故障时，不运行 troubleshooting 状态机，也不把“证明问题已经修好”当作完成条件。
+When there is no failure to fix, do not run the troubleshooting state machine
+or require proof that an unrelated problem was fixed.
 
-## 1. 判断定制类型
+## Contents
 
-先区分用户要增加哪一类能力：
+- [Identify the Customization Type](#1-identify-the-customization-type)
+- [Integrate a Project](#2-integrate-a-project)
+- [Design Targets, Snapshots, and Events](#3-design-targets-snapshots-and-events)
+- [Design Actions](#4-design-actions)
+- [Develop a CLI Extension](#5-develop-a-cli-extension)
+- [Write an Automation Script](#6-write-an-automation-script)
+- [Verify Completion](#7-verify-completion)
 
-- **Extension**：增加测试账号、环境准备、技术栈识别、专项诊断、验证命令或 Skill。
-- **自动化脚本**：由脚本自己打开页面、等待、操作、查询并按需停止浏览器和 Bridge。
-- **项目接入**：让页面 runtime 连接 Bridge，并暴露 Modern.js、MF、Vmok 或 Garfish 状态。
-- **业务能力**：增加 target、snapshot、event、action 或可等待的长期业务状态。
+## 1. Identify the Customization Type
 
-只实现用户需要的类型。页面外部能完成的需求优先使用 Extension；只有需要应用内部事实时才做项目或
-业务接入。不要因为要增加一个外部命令，就顺带改造整个应用的运行时接入。
+Determine which capability the user wants:
 
-## 2. 项目接入
+- **Extension**: add test-account selection, environment preparation, stack
+  detection, specialized diagnosis, a verification command, or a command skill.
+- **Automation script**: let the script open, wait for, interact with, and query
+  pages, then stop the browser and Bridge only when appropriate.
+- **Project integration**: connect a page runtime to Bridge and expose
+  Modern.js, MF, or Garfish state.
+- **Business capability**: add a target, snapshot, event, action, or durable
+  waitable business state.
 
-先检查项目已有的 OpenRuntime 初始化、框架配置、依赖和相邻代码。不要重复创建 runtime，
-也不要同时安装多条互相竞争的接入路径。
+Implement only the requested type. Prefer an Extension when the capability can
+live outside the page and is worth reusing. Integrate a project or business
+signal only when application-internal facts are required. Do not redesign an
+application's Runtime integration as a side effect of adding one external
+command.
 
-需要判断推荐接入时，运行当前 skill 的实际路径：
+## 2. Integrate a Project
+
+Inspect existing OpenRuntime initialization, framework configuration,
+dependencies, and nearby code first. Do not create a duplicate runtime or
+install competing integration paths.
+
+When selecting an integration, run the resolver from the actual installed skill
+path:
 
 ```bash
 node <openruntime-skill-dir>/scripts/resolve-integration.mjs <path-to-package.json>
 ```
 
-根据输出继续：
+Continue from its output:
 
-- Modern.js / EdenX 满足当前插件条件时，使用 `@openruntime/modern-plugin`；读取
-  同目录的 `modernjs.md`。
-- 较旧的 Modern.js / EdenX 或普通前端项目需要页面侧能力时，使用 `@openruntime/core`；
-  读取同目录的 `core.md`。
-- Module Federation 或 Vmok 项目使用 MF observability 接入；读取
-  同目录的 `module-federation.md`。任务涉及 MF 时，同时遵循当前环境提供的 MF skill。
-- Garfish 项目使用 Modern plugin 提供的 Garfish 能力；读取同目录的 `garfish.md`。
+- For a supported Modern.js version, use `@openruntime/modern-plugin` and read
+  `modernjs.md`.
+- For an older Modern.js version, or an ordinary frontend project that needs
+  page-side capabilities, use `@openruntime/core` and read `core.md`.
+- For Module Federation, use MF observability and read
+  `module-federation.md`. Also follow the MF skill provided by the current
+  environment.
+- For Garfish, use the Garfish capabilities provided by the Modern plugin and
+  read `garfish.md`.
 
-优先使用框架或 observability 已暴露的 hook。现有 hook 不够时，判断应该在框架、MF
-observability 或 OpenRuntime SDK 中补正式能力；不要用 DOM、Console 或 Network 探测伪造
-框架生命周期。
+Prefer hooks exposed by the framework or observability layer. When existing
+hooks are insufficient, decide whether the proper capability belongs in the
+framework, MF observability, or the OpenRuntime SDK. Do not fabricate framework
+lifecycle state by probing the DOM, Console, or Network.
 
-只通过源码或正式插件完成连接。不要用浏览器 `eval` 临时连接 Bridge 来冒充项目已经接入。
+Connect through source or a supported plugin only. Do not use browser `eval` to
+create a temporary Bridge connection and claim the project is integrated.
 
-## 3. 设计 target、snapshot 和 event
+## 3. Design Targets, Snapshots, and Events
 
-读取同目录的 `core.md`，并遵守这些边界：
+Read `core.md` and preserve these boundaries:
 
-- 用 target 回答“页面里有什么可以被引用或等待”。
-- 用 snapshot 回答“当前是什么状态”。
-- 用 event 回答“状态和 action 是怎么变化过来的”。
-- 由接入方声明 target 的 `type` 和 `statuses`，不要假设 Core 内置固定类型或状态。
-- 先注册 target，再更新 snapshot；只记录证明当前事实需要的数据。
-- 把 `dependsOn` 放在 snapshot 中表达当前阻塞线索。
-- 不要从 DOM、Console 或 Network 反推并伪装成页面主动声明的业务事实。
+- Use a target to answer "what can be referenced or waited for on this page?"
+- Use a snapshot to answer "what is its current state?"
+- Use an event to answer "how did state and actions change?"
+- Let each integration declare the target's `type` and `statuses`; do not assume
+  Core provides a fixed set.
+- Register a target before updating its snapshot, and record only the data
+  needed to prove the current fact.
+- Put `dependsOn` in the snapshot to describe current dependencies or blockers.
+- Do not infer facts from the DOM, Console, or Network and present them as
+  business state declared by the page.
 
-只有任务目标需要稳定的业务验收信号时才增加 `business:*` target。普通框架接入、命令开发
-或功能介绍不必为了满足 troubleshooting 规则补一个虚假的业务 target。
+Add a `business:*` target only when the goal needs a stable business
+verification signal. Framework integration, command development, and feature
+explanation do not need a fake business target to satisfy troubleshooting
+rules.
 
-## 4. 设计 action
+## 4. Design Actions
 
-读取同目录的 `core.md` 中的 action 和 input options 说明：
+Read the action and input-options sections in `core.md`:
 
-- 只声明页面允许 Agent 执行的稳定动作。
-- 明确动作风险、是否启用、输入约束和动态候选。
-- 让 `runAction` 只执行动作并记录 action event，不自动把执行结果写入 snapshot。
-- 需要验证动作结果时，继续使用 target 和 `waitFor`，不要把 action 返回值当作最终状态。
+- Declare only stable actions that the page permits an Agent to execute.
+- Define risk, enabled state, input constraints, and dynamic options clearly.
+- Let `runAction` execute the action and record action events only. Do not make
+  it update snapshots automatically.
+- Verify action results through a target and `waitFor`; do not treat the action
+  return value as final state.
 
-## 5. 开发 CLI 扩展
+## 5. Develop a CLI Extension
 
-页面命令只操作最近一次 `openruntime open <url>` 建立的当前页面，不自己打开、跳转、关闭
-或替换浏览器会话，也不自己选择 Bridge 或 Runtime。
+A page command operates only on the current page created by the latest
+`openruntime open <url>`. It must not open, navigate, close, or replace the
+browser session, and it must not select Bridge or Runtime itself.
 
-Extension 可以提供测试账号选择、环境准备、技术栈识别、性能/内存/代码使用分析和团队验收流程。
-Agent 通过 CLI 命令使用这些能力；扩展实现通过 `options.openruntime` 使用 Extension API。
+An Extension may provide test-account selection, environment preparation,
+stack detection, performance, memory, code-usage analysis, and team-specific
+verification workflows. Agents invoke these capabilities through CLI commands;
+Extension implementations use the Extension API through
+`options.openruntime`.
 
-如果当前仓库包含 CLI 扩展开发文档，优先读取 `docs/cli-extensions.md` 或对应中文版本。
-实现时必须：
+When the repository contains CLI Extension development documentation, prefer
+`docs/cli-extensions.md` or its localized equivalent. Implement the following:
 
-- 使用扩展入口声明 commands、hooks 和 skills，实际实现通过 `await import()` 按需加载。
-- 提供准确的命令说明和示例，让 `openruntime --help` 可以发现真实用法。
-- 校验当前页面是否存在、URL 是否受支持以及必要输入是否完整。
-- 用统一输出表示成功、需要输入和预期错误；数据类命令不要混入进度文本。
-- 页面已暴露与任务相关的稳定 target/action 时优先复用；没有 Runtime 时正常使用浏览器 API，
-  不要求命令为了读取页面而先改造应用。
-- 只加载可信的外部扩展。
+- Declare commands, hooks, and skills in the Extension entry point. Load command
+  implementations on demand with `await import()`.
+- Provide accurate command descriptions and examples so
+  `openruntime --help` exposes real usage.
+- Validate that the current page exists, its URL is supported, and required
+  input is complete.
+- Use consistent output for success, missing input, and expected errors. Keep
+  progress text out of data-command output.
+- Reuse stable, relevant targets and actions already exposed by the page.
+  Without Runtime information, use the browser API normally; do not require an
+  application integration before reading a page.
+- Load only trusted external Extensions.
 
-复杂命令需要专门的多步说明、领域知识或引用资料时，最多为它提供一个本地 `SKILL.md`：
+When a complex command needs dedicated multi-step instructions, domain
+knowledge, or reference material, give it at most one local `SKILL.md`:
 
-- 把命令、`SKILL.md` 和它引用的资料放在同一个命令目录中一起分发。
-- 通过命令定义中的 `skill.path` 声明指向现有 `SKILL.md` 的绝对路径。
-- 保证 `openruntime --help` 显示该命令有可用 skill。
-- 保证 `openruntime <command> --skill` 只输出路径，不执行命令业务逻辑。
-- 把 `--skill` 保留给 skill 发现，不要复用成业务参数。
-- 保持命令 skill 只描述完成该命令需要的内容，不复制整个 OpenRuntime 排查流程。
+- Distribute the command, `SKILL.md`, and referenced resources in the same
+  command directory.
+- Point the command definition's `skill.path` to the existing `SKILL.md` by
+  absolute path.
+- Ensure `openruntime --help` reports that the command has a skill.
+- Ensure `openruntime <command> --skill` prints only the path and does not
+  execute business logic.
+- Reserve `--skill` for skill discovery; do not reuse it as a business option.
+- Keep a command skill focused on that command. Do not copy the complete
+  OpenRuntime troubleshooting workflow into it.
 
-默认外部扩展目录是 `~/.openruntime/extensions`。在项目内开发和测试时，优先通过
-`OPENRUNTIME_EXTENSIONS_DIR` 指向受版本管理的临时目录，不要直接覆盖用户已有扩展。
+The default external Extension directory is `~/.openruntime/extensions`. During
+in-repository development and testing, point `OPENRUNTIME_EXTENSIONS_DIR` to a
+version-controlled temporary directory instead of overwriting a user's existing
+Extensions.
 
-## 6. 编写自动化脚本
+## 6. Write an Automation Script
 
-只有流程需要自己管理完整浏览器生命周期时才编写独立自动化脚本。如果任务只操作一个已经
-打开的页面，优先写页面命令。
+Write an independent automation script only when the workflow must own the
+complete browser lifecycle. Prefer a page command when the task operates on an
+already-open page.
 
-如果当前仓库包含自动化文档，读取 `docs/cli-automation-scripts.md` 或对应中文版本。把流程拆成：
+When the repository contains automation documentation, read
+`docs/cli-automation-scripts.md` or its localized equivalent. Structure the
+workflow as follows:
 
-1. 接收 URL、session 和 timeout 等输入。
-2. 打开页面并等待可操作状态。
-3. 执行页面操作或声明 action。
-4. 使用与任务匹配的 Extension、Runtime 状态或明确页面结果检查结果。
-5. 输出单一、稳定的结果对象。
-6. 只有脚本拥有本次浏览器生命周期时才执行 stop。
+1. Accept inputs such as URL, session, and timeout.
+2. Open the page and wait until it is operable.
+3. Perform page interactions or declared actions.
+4. Verify the result with a matching Extension, Runtime state, or explicit page
+   result.
+5. Output one stable result object.
+6. Stop only when the script owns this browser lifecycle.
 
-## 7. 验证完成
+## 7. Verify Completion
 
-根据改动类型实际运行：
+Run checks that match the change:
 
-- 项目接入：运行 typecheck/build，启动应用，执行 `openruntime open`，确认 runtime connected，
-  并读取至少一个由新增接入提供的 target 或 snapshot。
-- target/action：查询刚增加的定义和状态；对 action 使用代表性输入执行，并用 target/waitFor
-  验证结果。
-- 页面命令：运行定义校验和相关测试，再通过 `OPENRUNTIME_EXTENSIONS_DIR` 加载命令，确认 help
-  可发现，并用代表性页面执行一次成功路径和一次输入或页面错误路径。命令声明 skill 时，
-  额外确认 `--skill` 返回正确绝对路径且没有执行业务逻辑。
-- 自动化脚本：使用真实或有代表性的 URL 跑完整流程，检查退出码和最终输出。
+- **Project integration**: run typecheck/build, start the application, run
+  `openruntime open`, confirm that a runtime is connected, and read at least one
+  target or snapshot provided by the new integration.
+- **Target or action**: query the new definition and state. Run actions with
+  representative input and verify the result through a target and `waitFor`.
+- **Page command**: run definition validation and related tests, then load the
+  command through `OPENRUNTIME_EXTENSIONS_DIR`. Confirm that help discovers it,
+  and run one successful path plus one invalid-input or unsupported-page path.
+  When the command declares a skill, also confirm that `--skill` returns the
+  correct absolute path without executing business logic.
+- **Automation script**: run the complete workflow with a real or
+  representative URL, then inspect the exit code and final output.
 
-只有验证发现真实故障、且用户目标包含修复时，才返回根 `SKILL.md` 并切换到
-`references/troubleshoot.md`。
+Return to the root `SKILL.md` and switch to
+`references/troubleshoot.md` only when validation reveals a real failure and the
+user's goal includes fixing it.

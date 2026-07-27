@@ -325,7 +325,6 @@ function buildReadExpression({
       scope: selectedScope || requestedScope,
       scopes,
       hasFederation: Boolean(window.__FEDERATION__),
-      hasVmok: Boolean(window.__VMOK__),
       latestReport: null,
       reports: [],
       filters: {},

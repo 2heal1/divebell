@@ -99,7 +99,7 @@ Run a readiness check before using browser commands:
 openruntime check
 ```
 
-On CI and clean machines, use `openruntime check --fix` during environment setup to install the managed Chrome for Testing browser and, on Linux, its required system libraries. When the CLI connects to an existing Chrome instance, remote debugging must be enabled manually; `--fix` does not change Chrome security settings.
+Use `openruntime check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
 
 ## Script File Structure
 

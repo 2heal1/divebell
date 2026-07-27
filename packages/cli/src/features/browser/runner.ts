@@ -21,6 +21,7 @@ const AGENT_BROWSER_CDP_ENV = "AGENT_BROWSER_CDP";
 const AGENT_BROWSER_AUTO_CONNECT_ENV = "AGENT_BROWSER_AUTO_CONNECT";
 const AGENT_BROWSER_PROVIDER_ENV = "AGENT_BROWSER_PROVIDER";
 const AGENT_BROWSER_ENGINE_ENV = "AGENT_BROWSER_ENGINE";
+const AGENT_BROWSER_IDLE_TIMEOUT_ENV = "AGENT_BROWSER_IDLE_TIMEOUT_MS";
 const INITIAL_BLANK_PAGE_URL = "about:blank";
 
 export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions = {}): BrowserRunner {
@@ -159,6 +160,13 @@ export function createAgentBrowserEnvironment(
   };
   if (options.disableRestore === true) {
     delete env[AGENT_BROWSER_RESTORE_ENV];
+  }
+  if (options.autoConnect === true) {
+    env[AGENT_BROWSER_AUTO_CONNECT_ENV] = "1";
+    delete env[AGENT_BROWSER_CDP_ENV];
+  }
+  if (options.idleTimeoutMs !== undefined) {
+    env[AGENT_BROWSER_IDLE_TIMEOUT_ENV] = String(options.idleTimeoutMs);
   }
 
   if (options.ui === true) {

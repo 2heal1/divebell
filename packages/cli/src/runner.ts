@@ -19,6 +19,7 @@ import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
 import { runCheckCommand } from "./commands/check.js";
+import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import type {
   CliRunOptions,
   OpenRuntimeCliConfig
@@ -76,6 +77,11 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
         ...(options.bridgeProcessController === undefined
           ? {}
           : { bridgeProcessController: options.bridgeProcessController }),
+        remoteDebuggingPageOpener: options.remoteDebuggingPageOpener
+          ?? createRemoteDebuggingPageOpener({ env }),
+        ...(options.checkWaiter === undefined
+          ? {}
+          : { wait: options.checkWaiter }),
         env
       });
     }

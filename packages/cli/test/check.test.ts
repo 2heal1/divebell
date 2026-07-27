@@ -103,7 +103,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   assert.equal(browserCalls[2]?.options?.reuseInitialBlankPage, undefined);
 });
 
-test("installs browser requirements and retries only after browser startup fails", async () => {
+test("installs browser requirements only when Chrome is missing", async () => {
   const output = createOutput();
   const calls: string[][] = [];
   let openAttempts = 0;
@@ -115,7 +115,7 @@ test("installs browser requirements and retries only after browser startup fails
       if (args[0] === "open") {
         openAttempts += 1;
         return openAttempts === 1
-          ? failure("Chrome exited early (unknown code)")
+          ? failure("Chrome not found. Checked:\nRun `agent-browser install` to download Chrome.")
           : success("opened");
       }
       if (args[0] === "install") return success("installed");
@@ -166,9 +166,200 @@ test("installs browser requirements and retries only after browser startup fails
     fix: {
       attempted: true,
       status: "applied",
-      initialFailure: "Chrome exited early (unknown code)"
+      methods: [
+        "install-managed-browser"
+      ],
+      initialFailure: "Chrome not found. Checked:\nRun `agent-browser install` to download Chrome."
     }
   }, "OpenRuntime is ready. Browser requirements were installed."));
+});
+
+test("opens Chrome remote-debugging settings and connects instead of downloading over an existing Chrome", async () => {
+  const output = createOutput();
+  const calls: Array<{
+    args: string[];
+    options: BrowserRunOptions | undefined;
+  }> = [];
+  let connectAttempts = 0;
+  let settingsOpenCount = 0;
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    remoteDebuggingPageOpener: {
+      open: async () => {
+        settingsOpenCount += 1;
+        return {
+          opened: true
+        };
+      }
+    },
+    browserRun: async (args, options) => {
+      calls.push({ args, options });
+      if (args[0] === "open") {
+        return failure("Chrome exited early without writing DevToolsActivePort");
+      }
+      if (args[0] === "close") return success("closed");
+      if (args[0] === "tab" && args[1] === "new") {
+        connectAttempts += 1;
+        return connectAttempts === 1
+          ? failure("No running Chrome instance found")
+          : success("opened tab");
+      }
+      if (args[0] === "eval" && /const BRIDGE_URL/.test(args[1] ?? "")) {
+        return success("undefined");
+      }
+      if (args[0] === "eval") {
+        return success(JSON.stringify({
+          controlled: true,
+          bridgeInjected: true,
+          userAgent: CHROME_USER_AGENT
+        }));
+      }
+      if (args[0] === "tab" && args[1] === "close") {
+        return success("closed tab");
+      }
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 0);
+  assert.equal(settingsOpenCount, 1);
+  assert.equal(calls.some((call) => call.args[0] === "install"), false);
+  assert.deepEqual(calls.map((call) => call.args[0]), [
+    "open",
+    "close",
+    "tab",
+    "tab",
+    "eval",
+    "eval",
+    "tab"
+  ]);
+  const existingCalls = calls.filter((call) => call.args[0] === "tab" || call.options?.autoConnect);
+  assert.equal(existingCalls.every((call) => call.options?.autoConnect === true), true);
+  assert.equal(existingCalls.every((call) => call.options?.idleTimeoutMs === 5000), true);
+  assert.equal(existingCalls.every((call) => call.options?.session?.endsWith("-existing")), true);
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+    ready: true,
+    fixed: true,
+    environment: expectedEnvironment({
+      kind: "auto-connect"
+    }),
+    checks: [
+      {
+        id: "node",
+        status: "passed"
+      },
+      {
+        id: "bridge",
+        status: "passed"
+      },
+      {
+        id: "browser.open",
+        status: "passed"
+      },
+      {
+        id: "browser.control",
+        status: "passed"
+      }
+    ],
+    fix: {
+      attempted: true,
+      status: "applied",
+      methods: [
+        "connect-existing-chrome"
+      ],
+      openedRemoteDebuggingSettings: true,
+      initialFailure: "Chrome exited early without writing DevToolsActivePort"
+    }
+  }, "OpenRuntime is ready. Connected to the existing Chrome session."));
+});
+
+test("plain check reports the repair command without opening Chrome settings", async () => {
+  const output = createOutput();
+  let settingsOpenCount = 0;
+  const calls: string[][] = [];
+
+  const exitCode = await runCli(["check"], createCheckRunOptions({
+    output,
+    remoteDebuggingPageOpener: {
+      open: async () => {
+        settingsOpenCount += 1;
+        return {
+          opened: true
+        };
+      }
+    },
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") {
+        return failure("Chrome exited early without writing DevToolsActivePort");
+      }
+      if (args[0] === "close") return success("closed");
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  assert.equal(settingsOpenCount, 0);
+  assert.equal(calls.some((args) => args[0] === "install"), false);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BROWSER_NOT_READY");
+  assert.match(parsed.error.hint, /openruntime check --fix/);
+  assert.equal(parsed.data.fix, undefined);
+});
+
+test("reports required user approval when Chrome remote debugging is not enabled in time", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+  let settingsOpenCount = 0;
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    remoteDebuggingPageOpener: {
+      open: async () => {
+        settingsOpenCount += 1;
+        return {
+          opened: true
+        };
+      }
+    },
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "open") {
+        return failure("Chrome exited early without writing DevToolsActivePort");
+      }
+      if (args[0] === "close") return success("closed");
+      if (args[0] === "tab" && args[1] === "new") {
+        return failure("No running Chrome instance found");
+      }
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  assert.equal(settingsOpenCount, 1);
+  assert.equal(
+    calls.filter((args) => args[0] === "tab" && args[1] === "new").length,
+    31
+  );
+  assert.equal(calls.some((args) => args[0] === "install"), false);
+  const parsed = JSON.parse(output.text());
+  assert.equal(
+    parsed.error.code,
+    "OPENRUNTIME_CHECK_REMOTE_DEBUGGING_REQUIRED"
+  );
+  assert.equal(parsed.error.kind, "needs_input");
+  assert.equal(parsed.error.retryable, true);
+  assert.match(parsed.error.hint, /did not receive permission/);
+  assert.deepEqual(parsed.data.fix, {
+    attempted: true,
+    status: "failed",
+    methods: [
+      "connect-existing-chrome"
+    ],
+    openedRemoteDebuggingSettings: true,
+    initialFailure: "Chrome exited early without writing DevToolsActivePort"
+  });
 });
 
 test("does not install anything when a configured Chrome debugging port is unavailable", async () => {
@@ -182,14 +373,15 @@ test("does not install anything when a configured Chrome debugging port is unava
     },
     browserRun: async (args) => {
       calls.push(args);
-      if (args[0] === "open") return failure("Failed to connect to CDP");
-      if (args[0] === "close") return success("closed");
+      if (args[0] === "tab" && args[1] === "new") {
+        return failure("Failed to connect to CDP");
+      }
       throw new Error(`unexpected browser command: ${args.join(" ")}`);
     }
   }));
 
   assert.equal(exitCode, 1);
-  assert.deepEqual(calls.map((args) => args[0]), ["open", "close"]);
+  assert.deepEqual(calls.map((args) => args[0]), ["tab"]);
   const parsed = JSON.parse(output.text());
   assert.equal(parsed.status, "error");
   assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_DEBUG_CONNECTION_REQUIRED");
@@ -251,7 +443,9 @@ test("keeps browser installer errors in the check result", async () => {
   const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
     output,
     browserRun: async (args) => {
-      if (args[0] === "open") return failure("Chrome is missing");
+      if (args[0] === "open") {
+        return failure("Chrome not found. Checked:\nRun `agent-browser install` to download Chrome.");
+      }
       if (args[0] === "close") return success("closed");
       if (args[0] === "install") throw new Error("installer was blocked");
       throw new Error(`unexpected browser command: ${args.join(" ")}`);
@@ -265,8 +459,83 @@ test("keeps browser installer errors in the check result", async () => {
   assert.deepEqual(parsed.data.fix, {
     attempted: true,
     status: "failed",
-    initialFailure: "Chrome is missing"
+    methods: [
+      "install-managed-browser"
+    ],
+    initialFailure: "Chrome not found. Checked:\nRun `agent-browser install` to download Chrome."
   });
+});
+
+test("reports Chrome download timeouts as retryable network failures", async () => {
+  const output = createOutput();
+
+  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+    output,
+    browserRun: async (args) => {
+      if (args[0] === "open") {
+        return failure("Chrome not found. Checked:\nRun `agent-browser install` to download Chrome.");
+      }
+      if (args[0] === "close") return success("closed");
+      if (args[0] === "install") {
+        return failure("Failed to fetch version info: operation timed out");
+      }
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 1);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BROWSER_DOWNLOAD_FAILED");
+  assert.equal(parsed.error.retryable, true);
+  assert.match(parsed.error.hint, /googlechromelabs\.github\.io/);
+  assert.match(parsed.error.hint, /storage\.googleapis\.com/);
+});
+
+test("checks auto-connected Chrome in a temporary tab without closing the browser", async () => {
+  const output = createOutput();
+  const calls: string[][] = [];
+
+  const exitCode = await runCli(["check"], createCheckRunOptions({
+    output,
+    env: {
+      AGENT_BROWSER_AUTO_CONNECT: "1"
+    },
+    browserRun: async (args) => {
+      calls.push(args);
+      if (args[0] === "tab" && args[1] === "new") {
+        return success("opened tab");
+      }
+      if (args[0] === "eval" && /const BRIDGE_URL/.test(args[1] ?? "")) {
+        return success("undefined");
+      }
+      if (args[0] === "eval") {
+        return success(JSON.stringify({
+          controlled: true,
+          bridgeInjected: true,
+          userAgent: CHROME_USER_AGENT
+        }));
+      }
+      if (args[0] === "tab" && args[1] === "close") {
+        return success("closed tab");
+      }
+      throw new Error(`unexpected browser command: ${args.join(" ")}`);
+    }
+  }));
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(calls.map((args) => args[0]), [
+    "tab",
+    "eval",
+    "eval",
+    "tab"
+  ]);
+  assert.deepEqual(calls[0], ["tab", "new", "about:blank"]);
+  assert.match(calls[1]?.[1] ?? "", /const BRIDGE_URL/);
+  assert.match(calls[2]?.[1] ?? "", /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
+  assert.deepEqual(calls[3], ["tab", "close"]);
+  assert.equal(calls.some((args) => args[0] === "close"), false);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.data.environment.browser.source.kind, "auto-connect");
 });
 
 test("stops before touching the browser when the local Bridge cannot start", async () => {
@@ -347,7 +616,12 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
     browserRunner: createBrowserRunner(async () => {
       browserTouched = true;
       return success("browser should not start");
-    })
+    }),
+    remoteDebuggingPageOpener: {
+      open: async () => ({
+        opened: false
+      })
+    }
   });
 
   assert.equal(exitCode, 1);
@@ -458,6 +732,12 @@ function createCheckRunOptions(options: {
   ): Promise<BrowserRunResult>;
   lifecycle?: string[];
   env?: NodeJS.ProcessEnv;
+  remoteDebuggingPageOpener?: {
+    open(): Promise<{
+      opened: boolean;
+      reason?: string;
+    }>;
+  };
 }) {
   let bridgeStarted = false;
   const bridgePid = 41321;
@@ -494,7 +774,14 @@ function createCheckRunOptions(options: {
         options.lifecycle?.push("bridge stop");
       }
     },
-    browserRunner: createBrowserRunner(options.browserRun)
+    browserRunner: createBrowserRunner(options.browserRun),
+    remoteDebuggingPageOpener: options.remoteDebuggingPageOpener ?? {
+      open: async () => ({
+        opened: false,
+        reason: "test did not open Chrome"
+      })
+    },
+    checkWaiter: async () => {}
   };
 }
 

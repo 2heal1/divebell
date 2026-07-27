@@ -77,7 +77,7 @@ function createCliReferenceZhCNMarkdown(commandReferences) {
   };
   const categories = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const descriptions = new Map([
-    ["openruntime check [--fix]", "显示 Node 与浏览器信息，并通过隔离的空白页面检查 OpenRuntime 能否正常打开和控制浏览器；--fix 会安装缺失的托管浏览器环境并重试。"],
+    ["openruntime check [--fix]", "显示 Node 与浏览器信息，并检查 OpenRuntime 能否正常打开和控制浏览器；--fix 会连接已安装的 Chrome，只有未找到 Chrome 时才会安装。"],
     ["openruntime extensions add <package-or-path> [--extensions-dir <path>]", "检查并从 npm 包或本地路径安装一个不含运行依赖的 OpenRuntime Extension。"],
     ["openruntime extensions list [--extensions-dir <path>]", "列出已安装的 OpenRuntime 扩展包、命令和 Hook。"],
     ["openruntime extensions update <package> [--extensions-dir <path>]", "下载并启用扩展包的最新版本；更新失败时保留当前版本。"],

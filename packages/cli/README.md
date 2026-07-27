@@ -13,7 +13,9 @@ pnpm exec openruntime check --fix
 
 The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
-`openruntime check` reports the current Node.js version, browser source, and browser-reported version, then uses a temporary session to verify that OpenRuntime can start its Bridge, open a blank page, and control the browser without changing the current project session. Add `--fix` to install missing managed-browser requirements and retry. When OpenRuntime is configured to connect to an existing Chrome instance, the command reports missing remote debugging as a manual setup step instead of changing Chrome security settings.
+`openruntime check` reports the current Node.js version, browser source, and browser-reported version, then uses a temporary session to verify that OpenRuntime can start its Bridge, open a blank page, and control the browser without changing the current project session.
+
+Add `--fix` to repair browser startup. OpenRuntime first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, it opens `chrome://inspect/#remote-debugging`, waits for the user to enable remote debugging and approve Chrome's connection prompt, then continues automatically. The check uses and closes only its own temporary tab; it does not close the user's browser. OpenRuntime downloads a managed Chrome for Testing browser only when no Chrome installation is found. Chrome's security consent still requires the user to approve it.
 
 ## Real Development Debugging Flow
 

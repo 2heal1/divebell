@@ -15,7 +15,7 @@ English version: [OpenRuntime CLI Reference](cli-reference.md)
 
 ### Bridge 与浏览器
 
-- `openruntime check [--fix]` - 显示 Node 与浏览器信息，并通过隔离的空白页面检查 OpenRuntime 能否正常打开和控制浏览器；--fix 会安装缺失的托管浏览器环境并重试。
+- `openruntime check [--fix]` - 显示 Node 与浏览器信息，并检查 OpenRuntime 能否正常打开和控制浏览器；--fix 会连接已安装的 Chrome，只有未找到 Chrome 时才会安装。
 - `openruntime start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；大多数命令会自动准备它。
 - `openruntime stop [--port <port>]` - 关闭浏览器会话，然后停止 CLI 管理的 Bridge。
 - `openruntime profiles` - 列出 agent-browser 可以使用的本机 Chrome Profile。

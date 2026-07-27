@@ -48,6 +48,20 @@ test("configures an isolated restore name and headed mode", () => {
   assert.equal(env.AGENT_BROWSER_HEADED, "1");
 });
 
+test("configures automatic connection without inheriting an explicit CDP port", () => {
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_CDP: "9222"
+  }, undefined, "browser-check", {
+    autoConnect: true,
+    idleTimeoutMs: 5000
+  });
+
+  assert.equal(env.AGENT_BROWSER_AUTO_CONNECT, "1");
+  assert.equal(env.AGENT_BROWSER_CDP, undefined);
+  assert.equal(env.AGENT_BROWSER_IDLE_TIMEOUT_MS, "5000");
+  assert.equal(env.AGENT_BROWSER_SESSION, "browser-check");
+});
+
 test("adds a reusable blank startup page without dropping custom browser arguments", () => {
   const env = createAgentBrowserEnvironment({
     AGENT_BROWSER_ARGS: "--disable-features=Translate,--start-maximized"

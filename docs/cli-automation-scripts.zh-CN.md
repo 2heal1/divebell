@@ -99,7 +99,7 @@ openruntime --help
 openruntime check
 ```
 
-在 CI 或干净机器上，可以在准备环境时执行 `openruntime check --fix`，安装托管的 Chrome for Testing；Linux 还会安装浏览器需要的系统组件。连接已有 Chrome 时，远程调试需要手动开启，`--fix` 不会修改 Chrome 安全设置。
+准备环境时可以执行 `openruntime check --fix`。它会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
 
 ## 脚本文件结构
 

@@ -8,6 +8,8 @@ export interface BrowserRunOptions {
   ui?: boolean;
   input?: string;
   session?: string;
+  autoConnect?: boolean;
+  idleTimeoutMs?: number;
   disableRestore?: boolean;
   unencryptedStateOutput?: boolean;
   reuseInitialBlankPage?: boolean;

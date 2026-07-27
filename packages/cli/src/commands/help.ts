@@ -5,7 +5,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
     usage: "openruntime check [--fix]",
-    description: "Report Node and browser details, then open and control an isolated blank page; --fix installs missing managed-browser requirements and retries."
+    description: "Report Node and browser details, then verify browser startup and control; --fix connects an installed Chrome or installs one only when Chrome is missing."
   },
   {
     category: "Extensions",

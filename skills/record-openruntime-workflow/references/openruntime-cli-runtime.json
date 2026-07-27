@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "repository": "2heal1/openruntime",
-  "version": "0.1.6",
-  "tag": "recording-skill-runtime-v0.1.6",
+  "version": "0.1.7",
+  "tag": "recording-skill-runtime-v0.1.7",
   "asset": {
-    "name": "openruntime-recording-runtime-0.1.6.tgz",
-    "url": "https://github.com/2heal1/openruntime/releases/download/recording-skill-runtime-v0.1.6/openruntime-recording-runtime-0.1.6.tgz",
-    "checksumName": "openruntime-recording-runtime-0.1.6.tgz.sha256",
-    "checksumUrl": "https://github.com/2heal1/openruntime/releases/download/recording-skill-runtime-v0.1.6/openruntime-recording-runtime-0.1.6.tgz.sha256"
+    "name": "openruntime-recording-runtime-0.1.7.tgz",
+    "url": "https://github.com/2heal1/openruntime/releases/download/recording-skill-runtime-v0.1.7/openruntime-recording-runtime-0.1.7.tgz",
+    "checksumName": "openruntime-recording-runtime-0.1.7.tgz.sha256",
+    "checksumUrl": "https://github.com/2heal1/openruntime/releases/download/recording-skill-runtime-v0.1.7/openruntime-recording-runtime-0.1.7.tgz.sha256"
   },
   "packages": [
     {
@@ -20,25 +20,25 @@
       "name": "@openruntime/core",
       "source": "workspace",
       "directory": "packages/core",
-      "file": "openruntime-core-0.1.6.tgz"
+      "file": "openruntime-core-0.1.7.tgz"
     },
     {
       "name": "@openruntime/bridge",
       "source": "workspace",
       "directory": "packages/bridge",
-      "file": "openruntime-bridge-0.1.6.tgz"
+      "file": "openruntime-bridge-0.1.7.tgz"
     },
     {
       "name": "@openruntime/cli",
       "source": "workspace",
       "directory": "packages/cli",
-      "file": "openruntime-cli-0.1.6.tgz"
+      "file": "openruntime-cli-0.1.7.tgz"
     },
     {
       "name": "@openruntime/extension-imitate",
       "source": "workspace",
       "directory": "packages/extension-imitate",
-      "file": "openruntime-extension-imitate-0.1.6.tgz"
+      "file": "openruntime-extension-imitate-0.1.7.tgz"
     }
   ]
 }

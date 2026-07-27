@@ -5,6 +5,21 @@ English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
 这是一项可选的深度分析能力。它用来回答：线上页面加载了哪些分块，这些分块里的
 业务文件和第三方依赖实际执行了多少，哪些代码适合延后加载或重新分块。
 
+## 分析结果
+
+安装 `@openruntime/extension-code-usage` 后，你可以生成代码使用报告，按业务代码、
+第三方依赖、文件和分块查看映射体积与实际执行比例。例如，图 1 中选中的依赖体积为
+62.0 KB，但当前阶段只执行了 2.6%，可以继续判断它是否加载得过早。
+
+![图 1：依赖包的映射体积与实际执行比例](https://github.com/user-attachments/assets/a706172c-c348-431b-a911-c0ea5f4d0b88)
+
+从报告中打开具体文件，可以继续查看当前阶段实际执行了哪些代码，如图 2 所示。蓝色
+表示执行过的范围，未高亮的部分没有执行。
+
+![图 2：当前阶段实际执行的代码范围](https://github.com/user-attachments/assets/d9d9feea-a00c-48fe-a73a-304e41db5ebf)
+
+## 使用方法
+
 普通内存检查不需要安装任何构建插件，直接使用 OpenRuntime CLI 即可，见
 [内存分析指南](memory-analysis.zh-CN.md)。只有需要把浏览器中的代码记录还原到分块、
 源码文件和依赖包时，才需要下面的接入。

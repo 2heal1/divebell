@@ -414,7 +414,7 @@ function pickRuntime(runtimes, url) {
 function createOpenPageNextAction(bridge, url, options = {}) {
   const command = url === undefined
     ? null
-    : `pnpm exec openruntime open ${quoteShellArg(url)} --bridge ${quoteShellArg(bridge)}`;
+    : `openruntime open ${quoteShellArg(url)} --bridge ${quoteShellArg(bridge)}`;
   const summary = options.bridgeReachable === false
     ? "Bridge is not reachable. Open the target page with the OpenRuntime CLI so it can auto-start Bridge, then rerun this connected check."
     : "No openruntime open operation was recorded for this working directory. Open the target page with the CLI, then rerun this connected check.";
@@ -515,8 +515,8 @@ function createObserveNextAction() {
 
 function createSnapshotObserveNextAction(pluginSnapshot, url) {
   const commands = [
-    "pnpm exec openruntime --help",
-    "pnpm exec openruntime snapshot --url <app-url>"
+    "openruntime --help",
+    "openruntime snapshot --url <app-url>"
   ];
   return {
     type: "snapshot_observe",
@@ -542,7 +542,7 @@ function createBrowserDiagnoseNextAction(pluginSnapshot, url) {
     missingInstall: pluginSnapshot.missingInstall,
     url: url ?? null,
     commands: [
-      "pnpm exec openruntime --help"
+      "openruntime --help"
     ],
     rules: [
       "External extension commands are shown in --help under External Extensions.",

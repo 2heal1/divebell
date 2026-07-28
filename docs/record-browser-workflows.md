@@ -18,6 +18,14 @@ The video shows the complete recording, interaction, and script-generation workf
 
 ## Install
 
+Install OpenRuntime globally and add the recording Extension:
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime extensions add @openruntime/extension-imitate
+```
+
 Install this directory in an Agent that supports skills:
 
 ```text
@@ -30,9 +38,8 @@ For Codex, place the complete directory at:
 ~/.codex/skills/record-openruntime-workflow
 ```
 
-A global `openruntime` installation is not required. Before recording, the Agent checks for a compatible local CLI; otherwise the skill downloads the fixed runtime bundle from GitHub Releases, verifies SHA-256, and caches it by version.
-
-See the [OpenRuntime Release Process](./release.md) for coordinated package and runtime releases.
+The skill uses the global `openruntime` command and does not add the CLI to the
+application.
 
 ## Use
 

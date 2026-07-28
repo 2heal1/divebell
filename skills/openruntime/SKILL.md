@@ -96,8 +96,12 @@ application as a side effect.
 
 ## Common rules
 
+- Use the globally installed `openruntime` or `opr` command. Do not add
+  `@openruntime/cli` to the user's application. If the command is unavailable,
+  ask the user to install it with
+  `npm install --global @openruntime/cli` before continuing.
 - To confirm current commands or Extension commands, first run the available
-  `openruntime --help`, `opr --help`, or project-local equivalent. Run
+  `openruntime --help` or `opr --help`. Run
   `openruntime <command> --help` for command-specific options and details.
   Trust actual help output instead of guessing from stale documentation.
 - Find Extension commands under `Extensions` or `External Extensions` in help.

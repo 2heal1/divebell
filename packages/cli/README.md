@@ -4,11 +4,13 @@ OpenRuntime CLI is the main entry point for coding agents using OpenRuntime as a
 
 ## Install
 
+Install the CLI globally. OpenRuntime is a machine-level debugging tool and
+should not be added to each application as a development dependency.
 OpenRuntime CLI supports Node.js 24.
 
 ```sh
-pnpm add -D @openruntime/cli
-pnpm exec openruntime check --fix
+npm install --global @openruntime/cli
+openruntime check --fix
 ```
 
 The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.

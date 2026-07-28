@@ -49,16 +49,16 @@ The lifecycle plugin records Garfish state. The custom loader only records that 
 Aggregate target:
 
 ```bash
-pnpm exec openruntime snapshot --id modern:garfish
-pnpm exec openruntime snapshot --query garfish
+openruntime snapshot --id modern:garfish
+openruntime snapshot --query garfish
 ```
 
 Per-app target:
 
 ```bash
-pnpm exec openruntime snapshot --id modern:garfish:app:<appName>
-pnpm exec openruntime wait-for modern:garfish:app:<appName> mounted --timeout 30000
-pnpm exec openruntime wait-for modern:garfish:app:<appName> error --timeout 30000
+openruntime snapshot --id modern:garfish:app:<appName>
+openruntime wait-for modern:garfish:app:<appName> mounted --timeout 30000
+openruntime wait-for modern:garfish:app:<appName> error --timeout 30000
 ```
 
 Statuses:
@@ -81,8 +81,8 @@ Statuses:
 Start from the app target:
 
 ```bash
-pnpm exec openruntime snapshot --query <appName>
-pnpm exec openruntime events --target-id modern:garfish:app:<appName> --limit 50
+openruntime snapshot --query <appName>
+openruntime events --target-id modern:garfish:app:<appName> --limit 50
 ```
 
 If `modern:garfish:app:<appName>` is `error`, use the target error and recent events as the primary evidence. Do not keep clicking or waiting for UI elements that depend on the failed sub-application.

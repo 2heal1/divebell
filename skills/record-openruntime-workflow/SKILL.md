@@ -1,6 +1,6 @@
 ---
 name: record-openruntime-workflow
-description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器操作和可选麦克风语音，并在用户说结束后由 Agent 通过 skill 自带的 OpenRuntime CLI wrapper 收尾、关闭浏览器、读取 .orrec 录制包、转写语音时间轴并生成 JS 脚本草稿。Use when the user wants an agent-installable workflow skill for recording browser actions and optional microphone narration, converting recorded OpenRuntime evidence into an automation script, or drafting a reusable skill/script from a manual web workflow without assuming a global openruntime command.
+description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器操作和可选麦克风语音，并在用户说结束后由 Agent 通过全局 OpenRuntime CLI 收尾、关闭浏览器、读取 .orrec 录制包、转写语音时间轴并生成 JS 脚本草稿。Use when the user wants an agent-installable workflow skill for recording browser actions and optional microphone narration, converting recorded OpenRuntime evidence into an automation script, or drafting a reusable skill/script from a manual web workflow with the globally installed openruntime command.
 ---
 
 # 录制 OpenRuntime 流程
@@ -10,13 +10,13 @@ description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器
 
 ## 工作原则
 
-- 使用 OpenRuntime CLI 操作已接入 OpenRuntime 的页面。
-- 不要假设用户机器里有全局 `openruntime` 命令。先用快速探测脚本检查可复用 CLI；探测脚本只探测，不安装，不打开浏览器。
-- 如果探测到可用 CLI，向用户确认是否复用；如果没有，说明未发现可复用 CLI，并使用本 skill 自带入口：
-  `node <skill-dir>/scripts/openruntime-cli.mjs ...`。用户也可以选择自己安装指定版本后再继续。
-- 如果 CLI 启动、安装或缓存有问题，读取 `references/openruntime-cli.md`，按其中说明处理 `OPENRUNTIME_CLI` 或缓存目录。
-- skill 不在 Git 仓库中携带依赖 `.tgz`。自带入口会按 `references/openruntime-cli-runtime.json` 下载固定版本的 GitHub Release 运行包，校验 SHA-256，并按版本缓存。
-- 首次使用 Release 运行包需要网络。离线环境按 `references/openruntime-cli.md` 设置 `OPENRUNTIME_SKILL_RUNTIME_ARCHIVE`，或提供可用的 `OPENRUNTIME_CLI`。
+- 使用全局安装的 `openruntime` 命令操作页面，不要向当前业务项目添加
+  `@openruntime/cli`。
+- 开始前运行 `openruntime record --help`。如果命令不存在，先让用户执行
+  `npm install --global @openruntime/cli`；如果缺少 `record`，执行
+  `openruntime extensions add @openruntime/extension-imitate`。
+- 如果 CLI 或录制命令不可用，读取 `references/openruntime-cli.md`，不要回退到项目
+  本地依赖或临时下载的 CLI。
 - 默认先运行 `record start` 准备录制，再通过 `openruntime open about:blank --ui` 打开可见页面。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
 - 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
 - 用户说“结束”“完成”“done”后，再调用 stop。
@@ -27,26 +27,23 @@ description: 录制用户在已接入 OpenRuntime 的网页中的人工浏览器
 - 如果环境里存在 `OPENAI_API_KEY`，用户结束后优先调用 `record transcribe` 生成 `transcript.json`；没有 key 时先读取 `transcript.json`，如果它仍然没有文字，不能把只打开 URL 的脚本当成完成，必须告诉用户缺少语音意图文字，并请用户补一句文字需求或提供转写能力。
 - 生成脚本后必须读取脚本、`manifest.json`、`interactions.jsonl`、`transcript.json` 和 `dom-snapshots.jsonl`，再向用户说明产物路径和当前限制。
 
-## 快速探测 CLI
+## 确认 CLI
 
 录制前先运行：
 
 ```bash
-node <skill-dir>/scripts/probe-openruntime-cli.mjs
+openruntime record --help
 ```
 
-读取 JSON 输出：
-
-- `candidates` 里有 `usable: true` 时，告诉用户检测到可复用 CLI，询问是否复用。用户同意时设置 `OPENRUNTIME_CLI=<command>` 后继续。
-- 没有可用候选时，告诉用户未发现可复用 CLI，将使用 skill 指向的 Release 运行包。不要因为没有全局命令而中断。
-- 用户不想复用已检测到的 CLI 时，继续使用 Release 运行包；用户也可以先自己安装指定版本，再重新探测。
+如果 `openruntime` 不存在，先完成全局安装；如果顶层帮助中没有 `record`，安装录制
+Extension。确认帮助可读后再继续，不要使用项目本地 CLI。
 
 ## 启动录制
 
 1. 确认当前没有 OpenRuntime 页面仍在打开。如果有，先运行 `stop`。然后准备录制：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record start --mic
+openruntime record start --mic
 ```
 
 录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。如果不需要录音，去掉 `--mic`。
@@ -54,13 +51,13 @@ node <skill-dir>/scripts/openruntime-cli.mjs record start --mic
 2. 用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs open about:blank --ui
+openruntime open about:blank --ui
 ```
 
 用户已经主动给 URL 时，直接把它作为 `open` 的地址：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs open <url> --ui
+openruntime open <url> --ui
 ```
 
 `open` 会在同一次页面启动中注入 Bridge 和录制脚本。不要把 URL、Bridge 或页面显示参数传给 `record start`。
@@ -73,7 +70,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs open <url> --ui
 运行：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-path>
+openruntime record stop --out <start-output-path>
 ```
 
 这个命令会采集结束时的 OpenRuntime 状态和页面快照，并在录制包里生成：
@@ -93,7 +90,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs record stop --out <start-output-pat
 stop 成功后，再通过标准页面流程关闭浏览器：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs stop
+openruntime stop
 ```
 
 如果 stop 提示当前页面和录制页面不一致，不要强行继续或混入新页面数据；回到开始录制时的项目和页面后重试。
@@ -105,7 +102,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs stop
 如果 `segments` 为空，且环境里有 `OPENAI_API_KEY`，继续运行：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record transcribe --input <start-output-path>
+openruntime record transcribe --input <start-output-path>
 ```
 
 转写完成后重新读取 `transcript.json`。如果没有 `OPENAI_API_KEY`，告诉用户音频已经保存到 `audio.webm`，但当前没有文字意图；这时不要生成“只访问最后页面”的最终脚本。可以先基于浏览器操作生成导航草稿，但必须等待用户补充语音文字后再生成业务脚本。
@@ -115,13 +112,13 @@ node <skill-dir>/scripts/openruntime-cli.mjs record transcribe --input <start-ou
 如果已有 `.orrec` 录制包，只需要重新生成脚本，运行：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record generate-script --input <path>
+openruntime record generate-script --input <path>
 ```
 
 要把脚本写到指定位置：
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs record generate-script --input <path> --out <script-path>
+openruntime record generate-script --input <path> --out <script-path>
 ```
 
 ## 脚本修正规则
@@ -133,7 +130,7 @@ node <skill-dir>/scripts/openruntime-cli.mjs record generate-script --input <pat
 - 每个业务步骤之后都补一个明确的验证点，例如 `wait-for <target-id> ready` 或读取 `snapshot`。
 - 不要只依赖截图或 DOM 文本判断成功；如果页面已经暴露 OpenRuntime target，以 target/snapshot/event 为准。
 - 如果脚本还有 TODO，要明确告诉用户哪些步骤需要下一版录屏、文字输入或语音输入来补齐。
-- 运行 `generated-script.mjs` 时，设置 `OPENRUNTIME_CLI=<skill-dir>/scripts/openruntime-cli.mjs`，避免脚本里默认命令找不到。
+- 运行 `generated-script.mjs` 时直接使用全局 `openruntime`，不要设置项目本地 CLI 路径。
 
 ## 需要生成 skill 时
 

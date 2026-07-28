@@ -25,14 +25,15 @@ Start with the CLI help that is actually available in the current environment:
 openruntime --help
 ```
 
-If the project provides only a local dependency, use its local execution method:
+If the command is unavailable, ask the user to install OpenRuntime globally:
 
 ```bash
-pnpm exec openruntime --help
+npm install --global @openruntime/cli
 ```
 
-`opr --help` is equivalent. Top-level help discovers first-level commands. After
-finding a relevant command, read its scoped help:
+Do not add `@openruntime/cli` to the application. `opr --help` is equivalent.
+Top-level help discovers first-level commands. After finding a relevant command,
+read its scoped help:
 
 ```bash
 openruntime <command> --help
@@ -88,7 +89,7 @@ Choose the smallest preparation step from help and command output:
   goal.
 
 Do not start Bridge manually unless help, an error, or the user's task
-explicitly requires Bridge diagnosis. The local CLI normally prepares Bridge
+explicitly requires Bridge diagnosis. The CLI normally prepares Bridge
 automatically.
 
 ## 3. Run the Smallest Matching Command

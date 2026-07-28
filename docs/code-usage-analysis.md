@@ -22,11 +22,15 @@ Figure 2. Blue marks executed ranges; unhighlighted code did not execute.
 
 Basic memory checks do not need this setup. See the [Memory Analysis Guide](memory-analysis.md) when the question is whether a page journey causes sustained memory growth.
 
-Install the analysis command:
+Install OpenRuntime globally, then add the analysis command:
 
 ```bash
+npm install --global @openruntime/cli
 openruntime extensions add @openruntime/extension-code-usage
 ```
+
+Do not add the CLI to the application. Only the matching build integration
+belongs in the project.
 
 ## How it works
 

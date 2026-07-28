@@ -11,6 +11,19 @@ real interactions, a controlled failed request, a declared recovery action, an
 on-demand Insights view, and a repeatable memory lab. You do not need to clone
 this repository or obtain its source code.
 
+## Install OpenRuntime
+
+Install the CLI globally once, then confirm that it is available:
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
+OpenRuntime is a machine-level debugging tool. Do not add the CLI to the
+application's dependencies.
+
 ## Start with the Agent skill
 
 Install the complete `skills/openruntime` directory in an Agent that supports
@@ -28,9 +41,8 @@ trigger and diagnose the inventory failure, recover it through the
 page-declared action, and finish by opening a Code Usage report.
 ```
 
-The skill reuses an existing OpenRuntime CLI when available. Otherwise its
-wrapper launches a pinned official CLI through pnpm's package cache without
-adding a dependency to the current project.
+The skill uses the globally installed `openruntime` command and never adds the
+CLI to the current project.
 
 ## What the walkthrough demonstrates
 

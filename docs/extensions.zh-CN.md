@@ -18,6 +18,15 @@ Extension 适合团队会反复使用的开发调试流程。一次性的页面�
 
 ## 安装 Extension
 
+添加 Extension 前，先全局安装 OpenRuntime：
+
+```sh
+npm install --global @openruntime/cli
+openruntime --help
+```
+
+不要把 CLI 加到业务项目中。安装后的 Extension 由全局 OpenRuntime 命令共享。
+
 ### 从 npm 安装
 
 使用 npm 包名安装可信的 Extension：

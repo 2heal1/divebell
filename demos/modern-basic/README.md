@@ -18,7 +18,7 @@ pnpm build
 Start the Bridge in the first terminal:
 
 ```bash
-pnpm exec openruntime start
+openruntime start
 ```
 
 Start the Modern.js demo in a second terminal:
@@ -44,10 +44,10 @@ pnpm --filter @openruntime/demo-modern-basic verify
 You can also inspect the state manually:
 
 ```bash
-pnpm exec openruntime runtimes
-pnpm exec openruntime targets --url http://localhost:19081/
-pnpm exec openruntime snapshot --url http://localhost:19081/
-pnpm exec openruntime events --url http://localhost:19081/ --limit 12
+openruntime runtimes
+openruntime targets --url http://localhost:19081/
+openruntime snapshot --url http://localhost:19081/
+openruntime events --url http://localhost:19081/ --limit 12
 ```
 
 This demo does not enable SSR, so it does not expose a `modern:ssr` target.
@@ -56,7 +56,7 @@ CSR mode does not expose a `modern:hydration` target by default.
 Visit the `Orders` page, then run:
 
 ```bash
-pnpm exec openruntime snapshot
+openruntime snapshot
 ```
 
 The result should show the current `modern:route` state.
@@ -66,7 +66,7 @@ A route component that mounts normally does not appear in the snapshot; an error
 Visit the `Broken` page, then run:
 
 ```bash
-pnpm exec openruntime events --limit 20
+openruntime events --limit 20
 ```
 
 The result should show the loader error and route error.
@@ -84,7 +84,7 @@ The result should show `modern:route` as `error`, `/component-error` as the curr
 Leave the browser on the Home page, then run:
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --where pathname=/orders --timeout 30000
+openruntime wait-for modern:route ready --where pathname=/orders --timeout 30000
 ```
 
 After the command starts waiting, click `Orders` on the page. The command should succeed.
@@ -94,7 +94,7 @@ After the command starts waiting, click `Orders` on the page. The command should
 Leave the browser on the Home page and confirm that the page declares the click action:
 
 ```bash
-pnpm exec openruntime actions --url http://localhost:19081/
+openruntime actions --url http://localhost:19081/
 ```
 
 The result should include `demo.click-orders`.
@@ -102,13 +102,13 @@ The result should include `demo.click-orders`.
 Run the click action:
 
 ```bash
-pnpm exec openruntime run-action --url http://localhost:19081/ demo.click-orders
+openruntime run-action --url http://localhost:19081/ demo.click-orders
 ```
 
 Then wait for the route to reach Orders:
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders --timeout 30000
+openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders --timeout 30000
 ```
 
 ## Expected Results

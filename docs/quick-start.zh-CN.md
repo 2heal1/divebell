@@ -9,6 +9,18 @@ English version: [OpenRuntime Quick Start](quick-start.md)
 这个页面专门用于 Agent 引导体验，包含真实交互、可控的请求失败、页面声明的恢复动作、
 按需加载的 Insights 页面和可重复的内存场景。用户不需要克隆仓库，也不需要先获取源码。
 
+## 安装 OpenRuntime
+
+先全局安装一次 CLI，并确认命令可用：
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
+OpenRuntime 是本机调试工具，不要把 CLI 加入业务项目依赖。
+
 ## 从 Agent skill 开始
 
 把完整的 `skills/openruntime` 目录安装到支持 skill 的 Agent。Codex 中可以放到：
@@ -24,8 +36,7 @@ English version: [OpenRuntime Quick Start](quick-start.md)
 使用页面声明的重试动作恢复流程，并在最后打开 Code Usage 报告。
 ```
 
-skill 会优先复用本机已有的 OpenRuntime。没有可用命令时，它会通过 pnpm 的包缓存启动
-固定版本的官方 CLI，不会向当前项目添加依赖。
+skill 直接使用全局安装的 `openruntime` 命令，不会向当前项目添加 CLI 依赖。
 
 ## 这条流程能体验什么
 

@@ -4,11 +4,14 @@ Chinese version: [内存分析指南](memory-analysis.zh-CN.md)
 
 Memory analysis is provided by an optional Extension package. It works with any Chrome page that OpenRuntime can open and does not require Modern.js, Rspack, Runtime Core, or build metadata.
 
-Install it once:
+Install OpenRuntime globally, then add the Extension once:
 
 ```bash
+npm install --global @openruntime/cli
 openruntime extensions add @openruntime/extension-memory
 ```
+
+Do not add the CLI to the application.
 
 ## Recommended: run a complete check
 

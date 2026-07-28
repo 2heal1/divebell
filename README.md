@@ -30,13 +30,22 @@ The coding agent reads and modifies code. OpenRuntime prepares reusable browser 
 
 ## Quick Start
 
+Install the OpenRuntime CLI globally once:
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
 Try the hosted operations playground—no repository clone or source checkout
 required:
 
 [Open the playground](https://2heal1.github.io/openruntime/quickstart/) ·
 [Follow the Agent-guided walkthrough](./docs/quick-start.md)
 
-After installing the [OpenRuntime Skill](./skills/openruntime/SKILL.md), ask:
+After installing the CLI and the
+[OpenRuntime Skill](./skills/openruntime/SKILL.md), ask:
 
 ```text
 Use OpenRuntime to complete the official Quick Start. Operate the order page,

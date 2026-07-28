@@ -24,11 +24,14 @@ English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
 [内存分析指南](memory-analysis.zh-CN.md)。只有需要把浏览器中的代码记录还原到分块、
 源码文件和依赖包时，才需要下面的接入。
 
-先安装分析命令：
+先全局安装 OpenRuntime，再添加分析命令：
 
 ```bash
+npm install --global @openruntime/cli
 openruntime extensions add @openruntime/extension-code-usage
 ```
+
+不要把 CLI 加到业务项目中；只有对应的构建接入包需要安装在项目里。
 
 ## 整体流程
 
@@ -88,21 +91,21 @@ Rspack 插件也支持同一个 `filename` 选项。
 先打开要测试的页面。页面可以是本地地址，也可以是线上地址：
 
 ```bash
-pnpm exec openruntime open https://example.com/
-pnpm exec openruntime coverage start
+openruntime open https://example.com/
+openruntime coverage start
 ```
 
 等待首屏稳定后保存第一阶段：
 
 ```bash
-pnpm exec openruntime coverage take /tmp/first-screen.coverage.json \
+openruntime coverage take /tmp/first-screen.coverage.json \
   --label first-screen
 ```
 
 继续使用 `click`、`fill`、`goto` 或项目声明的动作完成下一段真实操作，然后保存并结束：
 
 ```bash
-pnpm exec openruntime coverage stop /tmp/orders.coverage.json \
+openruntime coverage stop /tmp/orders.coverage.json \
   --label orders
 ```
 
@@ -112,7 +115,7 @@ pnpm exec openruntime coverage stop /tmp/orders.coverage.json \
 ## 3. 指定 Chunk Map，让 CLI 完成分析
 
 ```bash
-pnpm exec openruntime code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map /path/to/production-dist/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
@@ -127,7 +130,7 @@ pnpm exec openruntime code-usage analyze \
 使用：
 
 ```bash
-pnpm exec openruntime code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map /path/to/metadata/openruntime-chunks.json \
   --assets /path/to/production-dist \
   --coverage /tmp/first-screen.coverage.json \
@@ -137,7 +140,7 @@ pnpm exec openruntime code-usage analyze \
 线上构建文件放在一起时，可以直接分析：
 
 ```bash
-pnpm exec openruntime code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map https://example.com/app/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
@@ -252,7 +255,7 @@ JavaScript 中对应的体积。它不是原始 `.tsx` 文件大小。这正是�
 ## 4. 打开可视化报告
 
 ```bash
-pnpm exec openruntime code-usage report /tmp/code-usage-report.json
+openruntime code-usage report /tmp/code-usage-report.json
 ```
 
 命令会在 JSON 旁生成 HTML 并打开。只生成文件时使用 `--no-open`，自定义保存位置时

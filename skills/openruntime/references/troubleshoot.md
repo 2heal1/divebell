@@ -48,7 +48,7 @@ Confirm the target URL, environment, and login requirement. For a protected
 page, inspect the current session and available Chrome Profiles first:
 
 ```bash
-pnpm exec openruntime profiles
+openruntime profiles
 ```
 
 Reuse an existing login state for the target site and confirm that the account
@@ -70,7 +70,7 @@ After starting the target application, open the real problem page with a stable
 session:
 
 ```bash
-pnpm exec openruntime open <app-url> --session <debug-session>
+openruntime open <app-url> --session <debug-session>
 ```
 
 Add `--ui` only when a visible page is needed. The CLI normally prepares the
@@ -87,9 +87,9 @@ diagnosis.
 Discover capabilities from the current installation:
 
 ```bash
-pnpm exec openruntime --help
-pnpm exec openruntime extensions list
-pnpm exec openruntime stack
+openruntime --help
+openruntime extensions list
+openruntime stack
 ```
 
 Find Extension commands under `Extensions` or `External Extensions`. If a
@@ -121,10 +121,10 @@ When the page has no Runtime Core integration, use browser capabilities and
 Extensions directly:
 
 ```bash
-pnpm exec openruntime page-snapshot
-pnpm exec openruntime console --level error
-pnpm exec openruntime network --url <relevant-query>
-pnpm exec openruntime screenshot debug-state
+openruntime page-snapshot
+openruntime console --level error
+openruntime network --url <relevant-query>
+openruntime screenshot debug-state
 ```
 
 Choose commands based on the issue; do not require every command. Prefer a
@@ -137,7 +137,7 @@ When the page is connected and its targets are relevant, start with one full
 snapshot:
 
 ```bash
-pnpm exec openruntime snapshot --session <debug-session>
+openruntime snapshot --session <debug-session>
 ```
 
 - When the snapshot identifies route, loader, remote, shared, sub-application,

@@ -22,10 +22,10 @@ export default openRuntimeModernPlugin();
 Open the page with the CLI so it can connect every registered runtime, then query it:
 
 ```sh
-pnpm exec openruntime open http://localhost:19081/
-pnpm exec openruntime targets --url http://localhost:19081/
-pnpm exec openruntime snapshot --url http://localhost:19081/
-pnpm exec openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
+openruntime open http://localhost:19081/
+openruntime targets --url http://localhost:19081/
+openruntime snapshot --url http://localhost:19081/
+openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
 ```
 
 For pages that expose multiple Runtime instances, including micro-frontend
@@ -114,8 +114,8 @@ route.
 Common waits:
 
 ```sh
-pnpm exec openruntime wait-for modern:route ready --where pathname=/orders
-pnpm exec openruntime wait-for modern:route error --where pathname=/broken
+openruntime wait-for modern:route ready --where pathname=/orders
+openruntime wait-for modern:route error --where pathname=/broken
 ```
 
 ## Optional Route Actions
@@ -139,7 +139,7 @@ This safe action returns the same known route manifest stored on the
 `modern:route` target.
 
 ```sh
-pnpm exec openruntime run-action modern.route.list
+openruntime run-action modern.route.list
 ```
 
 ### `modern.route.navigate`
@@ -151,9 +151,9 @@ input only accepts routes known by the current `modern:route` route manifest.
 Use input options to read the current candidate route pathnames:
 
 ```sh
-pnpm exec openruntime input-options --action modern.route.navigate --input to
-pnpm exec openruntime run-action modern.route.navigate --payload '{"to":"/orders"}'
-pnpm exec openruntime wait-for modern:route ready --where pathname=/orders
+openruntime input-options --action modern.route.navigate --input to
+openruntime run-action modern.route.navigate --payload '{"to":"/orders"}'
+openruntime wait-for modern:route ready --where pathname=/orders
 ```
 
 ### `modern:ssr`
@@ -188,7 +188,7 @@ Common snapshot data:
 Common wait:
 
 ```sh
-pnpm exec openruntime wait-for modern:ssr server-rendered --where environment=server
+openruntime wait-for modern:ssr server-rendered --where environment=server
 ```
 
 ### `modern:hydration`
@@ -282,8 +282,8 @@ Statuses:
 Common waits:
 
 ```sh
-pnpm exec openruntime wait-for modern:garfish:app:orders mounted
-pnpm exec openruntime events --target-id modern:garfish:app:orders --limit 50
+openruntime wait-for modern:garfish:app:orders mounted
+openruntime events --target-id modern:garfish:app:orders --limit 50
 ```
 
 ## Business Ready Target

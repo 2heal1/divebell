@@ -12,17 +12,20 @@ https://2heal1.github.io/openruntime/quickstart/
 
 ## 1. Resolve the CLI
 
-Run `openruntime --help` or a project-local equivalent first. If neither is
-available, use the skill wrapper for every command:
+Use the globally installed CLI:
 
 ```bash
-node <skill-dir>/scripts/openruntime-cli.mjs --help
+openruntime --help
 ```
 
-Replace `<skill-dir>` with the absolute path of this installed skill. The
-wrapper prefers an existing project or PATH command and otherwise launches the
-pinned official CLI through pnpm's package cache. Do not add dependencies to
-the user's project.
+If the command is unavailable, stop and ask the user to install it globally:
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+```
+
+Do not install `@openruntime/cli` in the user's application.
 
 Read scoped help before using commands whose arguments are not confirmed.
 
@@ -31,8 +34,8 @@ Read scoped help before using commands whose arguments are not confirmed.
 Open the playground visibly unless the user requested a headless run:
 
 ```bash
-<opr> open https://2heal1.github.io/openruntime/quickstart/ --ui
-<opr> page-snapshot
+openruntime open https://2heal1.github.io/openruntime/quickstart/ --ui
+openruntime page-snapshot
 ```
 
 Keep the `openedUrl` and connected Runtime ID from the command results. Later
@@ -48,13 +51,13 @@ depend on Runtime Core.
 Inspect `actions`, then run the page-declared failure:
 
 ```bash
-<opr> actions
-<opr> run-action quickstart.trigger-inventory-failure
-<opr> wait-for request:inventory error
-<opr> network --url inventory-missing
-<opr> console --level error --query "Inventory request failed"
-<opr> snapshot --id request:inventory
-<opr> snapshot --id business:fulfillment
+openruntime actions
+openruntime run-action quickstart.trigger-inventory-failure
+openruntime wait-for request:inventory error
+openruntime network --url inventory-missing
+openruntime console --level error --query "Inventory request failed"
+openruntime snapshot --id request:inventory
+openruntime snapshot --id business:fulfillment
 ```
 
 Report the combined evidence:
@@ -72,15 +75,15 @@ stable application meaning. Keep those roles distinct.
 Inspect the action choices before changing state:
 
 ```bash
-<opr> input-options --action quickstart.retry-inventory --input strategy
-<opr> run-action quickstart.retry-inventory --payload '{"strategy":"origin"}'
+openruntime input-options --action quickstart.retry-inventory --input strategy
+openruntime run-action quickstart.retry-inventory --payload '{"strategy":"origin"}'
 ```
 
 Read `nextAttempt` from the action result, then wait for
 `business:fulfillment` to become `ready` with that attempt:
 
 ```bash
-<opr> wait-for business:fulfillment ready --where attempt=<nextAttempt> --timeout 10000
+openruntime wait-for business:fulfillment ready --where attempt=<nextAttempt> --timeout 10000
 ```
 
 Confirm the final page and Network result. Do not treat successful action
@@ -92,29 +95,29 @@ Use this stage when the user asks for the complete or advanced Quick Start.
 Confirm `code-usage` through help; install the official Extension if missing:
 
 ```bash
-<opr> extensions add @openruntime/extension-code-usage
-<opr> code-usage --help
+openruntime extensions add @openruntime/extension-code-usage
+openruntime code-usage --help
 ```
 
 Record the initial view and the on-demand Insights view as separate phases:
 
 ```bash
-<opr> coverage start
-<opr> goto <openedUrl-from-open>
-<opr> wait-for --runtime runtime-openruntime-quickstart app:openruntime-quickstart ready --timeout 10000
-<opr> coverage take /tmp/openruntime-quickstart-initial.coverage.json --label initial
-<opr> run-action --runtime runtime-openruntime-quickstart quickstart.open-insights
-<opr> wait-for --runtime runtime-openruntime-quickstart analysis:code-usage ready --timeout 10000
-<opr> coverage stop /tmp/openruntime-quickstart-insights.coverage.json --label insights
+openruntime coverage start
+openruntime goto <openedUrl-from-open>
+openruntime wait-for --runtime runtime-openruntime-quickstart app:openruntime-quickstart ready --timeout 10000
+openruntime coverage take /tmp/openruntime-quickstart-initial.coverage.json --label initial
+openruntime run-action --runtime runtime-openruntime-quickstart quickstart.open-insights
+openruntime wait-for --runtime runtime-openruntime-quickstart analysis:code-usage ready --timeout 10000
+openruntime coverage stop /tmp/openruntime-quickstart-insights.coverage.json --label insights
 node <skill-dir>/scripts/download-quickstart-build.mjs \
   --output /tmp/openruntime-quickstart-build
-<opr> code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map /tmp/openruntime-quickstart-build/openruntime-chunks.json \
   --assets /tmp/openruntime-quickstart-build \
   --coverage /tmp/openruntime-quickstart-initial.coverage.json \
   --coverage /tmp/openruntime-quickstart-insights.coverage.json \
   --output /tmp/openruntime-quickstart-code-usage.json
-<opr> code-usage report /tmp/openruntime-quickstart-code-usage.json
+openruntime code-usage report /tmp/openruntime-quickstart-code-usage.json
 ```
 
 The deployed Chunk Map, JavaScript, and source maps come from the same build.
@@ -130,9 +133,9 @@ through help; install the official Extension if missing, then use the scenario
 bundled with this skill:
 
 ```bash
-<opr> extensions add @openruntime/extension-memory
-<opr> stop
-<opr> memory check \
+openruntime extensions add @openruntime/extension-memory
+openruntime stop
+openruntime memory check \
   --url https://2heal1.github.io/openruntime/quickstart/#memory \
   --scenario <skill-dir>/scripts/quickstart-memory-scenario.mjs \
   --warmup 2 \
@@ -150,7 +153,7 @@ by the earlier walkthrough before starting it.
 Stop the page after all requested stages are complete:
 
 ```bash
-<opr> stop
+openruntime stop
 ```
 
 Summarize the visible operation, browser evidence, Runtime Core explanation,

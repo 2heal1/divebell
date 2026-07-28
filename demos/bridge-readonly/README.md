@@ -23,7 +23,7 @@ pnpm --filter @openruntime/demo-bridge-readonly dev
 Open the page with the CLI in a second terminal. The CLI starts the Bridge automatically and installs the connection manager before the page loads:
 
 ```bash
-pnpm exec openruntime open http://localhost:19080/ --ui
+openruntime open http://localhost:19080/ --ui
 ```
 
 ## Walkthrough
@@ -33,49 +33,49 @@ Continue with the following commands.
 List connected pages:
 
 ```bash
-pnpm exec openruntime runtimes
+openruntime runtimes
 ```
 
 Read the targets declared by the page:
 
 ```bash
-pnpm exec openruntime targets --url http://localhost:19080/
+openruntime targets --url http://localhost:19080/
 ```
 
 Read the current page state:
 
 ```bash
-pnpm exec openruntime snapshot --url http://localhost:19080/
+openruntime snapshot --url http://localhost:19080/
 ```
 
 Read page events:
 
 ```bash
-pnpm exec openruntime events --url http://localhost:19080/ --limit 8
+openruntime events --url http://localhost:19080/ --limit 8
 ```
 
 Read the actions declared by the page:
 
 ```bash
-pnpm exec openruntime actions --url http://localhost:19080/
+openruntime actions --url http://localhost:19080/
 ```
 
 Read the input options for an action:
 
 ```bash
-pnpm exec openruntime input-options --url http://localhost:19080/ --action demo.refresh-orders --input source
+openruntime input-options --url http://localhost:19080/ --action demo.refresh-orders --input source
 ```
 
 Run the page-declared action:
 
 ```bash
-pnpm exec openruntime run-action --url http://localhost:19080/ demo.refresh-orders --payload '{"amount":2,"source":"cli"}'
+openruntime run-action --url http://localhost:19080/ demo.refresh-orders --payload '{"amount":2,"source":"cli"}'
 ```
 
 Wait for the post-action state:
 
 ```bash
-pnpm exec openruntime wait-for --url http://localhost:19080/ business:orders ready --timeout 5000
+openruntime wait-for --url http://localhost:19080/ business:orders ready --timeout 5000
 ```
 
 Click `Loading`, `Error`, `Ready`, or `Add order` on the page, then run `snapshot` and `events` again to see the state and event changes.

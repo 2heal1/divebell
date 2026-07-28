@@ -30,12 +30,20 @@ Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的�
 
 ## Quick Start
 
+先全局安装一次 OpenRuntime CLI：
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
 直接体验已经部署的订单工作台，不需要克隆仓库，也不需要先获取源码：
 
 [打开体验页](https://2heal1.github.io/openruntime/quickstart/) ·
 [查看 Agent 引导流程](./docs/quick-start.zh-CN.md)
 
-安装 [OpenRuntime Skill](./skills/openruntime/SKILL.md) 后，对 Agent 说：
+安装 CLI 和 [OpenRuntime Skill](./skills/openruntime/SKILL.md) 后，对 Agent 说：
 
 ```text
 使用 OpenRuntime 完成官方 Quick Start：操作订单页面，触发并定位库存失败，

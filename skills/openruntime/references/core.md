@@ -1071,10 +1071,10 @@ Agents normally use the CLI instead of calling `getSnapshot`, `getEvents`,
 `runAction`, or `waitFor` from page code:
 
 ```bash
-pnpm exec openruntime snapshot --id <target-id> --url <url>
-pnpm exec openruntime events --target-id <target-id> --url <url> --limit 50
-pnpm exec openruntime run-action <action-name> --url <url> --payload '{}'
-pnpm exec openruntime wait-for <target-id> ready --url <url> --timeout 10000
+openruntime snapshot --id <target-id> --url <url>
+openruntime events --target-id <target-id> --url <url> --limit 50
+openruntime run-action <action-name> --url <url> --payload '{}'
+openruntime wait-for <target-id> ready --url <url> --timeout 10000
 ```
 
 ## Minimal Page-Side Sequence
@@ -1146,8 +1146,8 @@ const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
 Confirm the connection:
 
 ```bash
-pnpm exec openruntime open <app-url> --bridge http://localhost:17321
-pnpm exec openruntime runtimes --bridge http://localhost:17321
+openruntime open <app-url> --bridge http://localhost:17321
+openruntime runtimes --bridge http://localhost:17321
 ```
 
 At least one runtime must have `status: "connected"`. When `runtimes` is empty,
@@ -1247,8 +1247,8 @@ runtime.updateSnapshot({
 Query snapshots with:
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --id business:orders:risk-panel
-pnpm exec openruntime snapshot --url <url> --query runtime-error
+openruntime snapshot --url <url> --id business:orders:risk-panel
+openruntime snapshot --url <url> --query runtime-error
 ```
 
 ### Events
@@ -1257,8 +1257,8 @@ Use events to reconstruct state changes, action history, and error sequences.
 Read them only when history is required.
 
 ```bash
-pnpm exec openruntime events --url <url> --target-id business:orders:risk-panel --limit 50
-pnpm exec openruntime events --url <url> --query runtime-error --limit 50
+openruntime events --url <url> --target-id business:orders:risk-panel --limit 50
+openruntime events --url <url> --query runtime-error --limit 50
 ```
 
 Do not read every event as the default first step. Filter by target ID when it
@@ -1283,8 +1283,8 @@ runtime.registerAction({
 Run and verify it:
 
 ```bash
-pnpm exec openruntime run-action --url <url> orders.refreshRiskPanel --payload '{}'
-pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
+openruntime run-action --url <url> orders.refreshRiskPanel --payload '{}'
+openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
 For a complex action, use an action-result target:
@@ -1338,7 +1338,7 @@ Use `wait-for` for intermediate state such as navigation, loading, and
 post-action progress:
 
 ```bash
-pnpm exec openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
+openruntime wait-for business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
 `verify` is a business-target verification command provided by the
@@ -1346,7 +1346,7 @@ troubleshooting Extension. Use it as a post-change final check only when the
 page already has a business target suited to the task:
 
 ```bash
-pnpm exec openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
+openruntime verify business:orders:risk-panel ready --url <url> --timeout 10000
 ```
 
 A ready Modern, MF, or Garfish target proves only its underlying loading layer.
@@ -1370,23 +1370,23 @@ runtime.registerTarget({
 ```
 
 ```bash
-pnpm exec openruntime run-action --url http://localhost:3000/login auth.login --payload '{"username":"demo"}'
-pnpm exec openruntime snapshot --url http://localhost:3000/login --id business:auth:login
-pnpm exec openruntime verify business:auth:login ready --url http://localhost:3000/login --timeout 10000
+openruntime run-action --url http://localhost:3000/login auth.login --payload '{"username":"demo"}'
+openruntime snapshot --url http://localhost:3000/login --id business:auth:login
+openruntime verify business:auth:login ready --url http://localhost:3000/login --timeout 10000
 ```
 
 ### Read Release Notes
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --query release-notes
-pnpm exec openruntime verify business:release-notes:content ready --url <url> --timeout 10000
+openruntime snapshot --url <url> --query release-notes
+openruntime verify business:release-notes:content ready --url <url> --timeout 10000
 ```
 
 ### Wait for a Remote
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --query opsConsoleProvider
-pnpm exec openruntime wait-for mf:remote:opsConsoleProvider ready --url <url> --timeout 10000
+openruntime snapshot --url <url> --query opsConsoleProvider
+openruntime wait-for mf:remote:opsConsoleProvider ready --url <url> --timeout 10000
 ```
 
 Remote readiness proves only the loading layer. If the task requires business
@@ -1414,5 +1414,5 @@ window.addEventListener("error", (event) => {
 ```
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --id debug:consumer:runtime-error
+openruntime snapshot --url <url> --id debug:consumer:runtime-error
 ```

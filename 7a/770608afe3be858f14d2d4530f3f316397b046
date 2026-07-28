@@ -1,0 +1,83 @@
+AGENTS.md
+  s_cbea3114c4ff66::t_eb118d71281626 40-41
+README.md
+  s_cbea3114c4ff66::t_68ceb181b0c537 112
+README.zh-CN.md
+  s_ed2372ca5b7688::t_1b38735f20a558 109
+demos/modern-basic/README.md
+  s_cbea3114c4ff66::t_f76e679f41bd9c 5-8
+demos/modern-ssr-stream/README.md
+  s_cbea3114c4ff66::t_1c4c39271c612a 5-8
+demos/modern-ssr/README.md
+  s_cbea3114c4ff66::t_7c15f14f7c60fd 5-8
+demos/stage6-evaluation/README.md
+  s_cbea3114c4ff66::t_7e1a05dc6d6788 11-12
+docs/code-usage-analysis.md
+  s_ed2372ca5b7688::t_eaed363f412889 53-56
+docs/code-usage-analysis.zh-CN.md
+  s_ed2372ca5b7688::t_014adac1b62759 55-57
+docs/modernjs-integration.md
+  s_ed2372ca5b7688::t_3daac00315e601 1,5,7-9,24,49,60,83
+docs/modernjs-integration.zh-CN.md
+  s_ed2372ca5b7688::t_fae5eab355300a 1,5,7-9,24,49,60,83
+docs/release.md
+  s_ed2372ca5b7688::t_a7ee04f2b07ade 11
+docs/release.zh-CN.md
+  s_ed2372ca5b7688::t_0deeca46ea8626 11
+docs/runtime-sdk-api.md
+  s_cbea3114c4ff66::t_d5ed01ffb54b85 132
+docs/runtime-sdk-api.zh-CN.md
+  s_ed2372ca5b7688::t_bcfd04b7c69bd6 132
+package.json
+  s_ed2372ca5b7688::t_7cb93bf9bc14f3 29
+packages/modern-plugin/README.md
+  s_ed2372ca5b7688::t_fa58de81f68aba 1,3-10,19,21-23
+scripts/resolve-divebell-integration.test.mjs
+  s_ed2372ca5b7688::t_08aaced4d927c5 1-77
+skills/divebell/SKILL.md
+  s_ed2372ca5b7688::t_e3ec081c7bb07a 73-74,126-129,147-148
+skills/divebell/references/garfish.md
+  s_ed2372ca5b7688::t_26db373599c09b 5-10,18,20-21
+skills/divebell/references/integrate.md
+  s_ed2372ca5b7688::t_49098f5ca6f53a 54-59,63-65
+skills/divebell/references/modernjs.md
+  s_ed2372ca5b7688::t_d684577981c940 7-8,12,14-19,25-31,33-35,37-50,69-71,78-79,81-83,94-97,120-123
+skills/divebell/scripts/resolve-integration.mjs
+  s_0658e270076e3c::t_99089e45a336e3 97-104,108-109,128,140
+skills/divebell/scripts/workflow.mjs
+  s_0658e270076e3c::t_d7c4aa30a54b8a 62-63,355-356,619-620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7a770608afe3be858f14d2d4530f3f316397b046",
+  "prompts": {},
+  "sessions": {
+    "s_0658e270076e3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa8b0-b7b1-78c3-979a-7e77b553614f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_cbea3114c4ff66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa82c-c5d1-7312-8905-e1c5e325769d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_ed2372ca5b7688": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa8aa-9138-7053-b6b7-69e8651902cf",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -2,14 +2,15 @@
 
 Chinese version: [OpenRuntime 快速体验](quick-start.zh-CN.md)
 
-Try OpenRuntime on the hosted operations playground:
+Try OpenRuntime on the hosted Northstar Supply operations app:
 
 [Open the Quick Start](https://2heal1.github.io/openruntime/quickstart/)
 
-The page is intentionally designed for agent-guided exploration. It includes
-real interactions, a controlled failed request, a declared recovery action, an
-on-demand Insights view, and a repeatable memory lab. You do not need to clone
-this repository or obtain its source code.
+The page is presented as a normal order-management product. It does not expose
+an OpenRuntime tutorial, agent steps, or debugging answers in the interface.
+Behind that application surface it includes a controlled failed request, a
+declared recovery action, an on-demand Analytics view, and a repeatable memory
+scenario. You do not need to clone this repository or obtain its source code.
 
 ## Install OpenRuntime
 
@@ -75,8 +76,9 @@ trend. It does not need application source, source maps, or Runtime Core.
 
 ## What this is—and is not
 
-The Quick Start is a capability playground: it lets a new user experience the
-browser, Runtime Core, and Extension layers against one stable public page.
-When diagnosing and fixing a real application, the Agent works in that
-application's own repository and returns to the same real page to verify the
-change.
+The Quick Start is a hosted reference application with OpenRuntime already
+connected. The Agent should treat it like an unfamiliar real product and reach
+its conclusions from browser evidence, Runtime Core, and Extensions instead of
+reading hints from the page. When diagnosing and fixing a real application, the
+Agent works in that application's own repository and returns to the same real
+page to verify the change.

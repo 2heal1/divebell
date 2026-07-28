@@ -1,10 +1,12 @@
 # Run the Official OpenRuntime Quick Start
 
 Use this workflow when the user wants a first experience and has not provided
-another page. The playground is already deployed with Runtime Core and build
-metadata. Do not clone the OpenRuntime repository and do not modify source.
+another page. The hosted Northstar Supply application is already deployed with
+Runtime Core and build metadata. Treat it like an unfamiliar real application:
+the page does not expose the walkthrough or debugging answers. Do not clone the
+OpenRuntime repository and do not modify source.
 
-Playground:
+Application:
 
 ```text
 https://2heal1.github.io/openruntime/quickstart/
@@ -31,7 +33,7 @@ Read scoped help before using commands whose arguments are not confirmed.
 
 ## 2. Open and operate the page
 
-Open the playground visibly unless the user requested a headless run:
+Open the application visibly unless the user requested a headless run:
 
 ```bash
 openruntime open https://2heal1.github.io/openruntime/quickstart/ --ui
@@ -143,10 +145,11 @@ openruntime memory check \
   --artifact-dir /tmp/openruntime-quickstart-memory
 ```
 
-Report the measured trend and verdict. The page's displayed retained-byte count
-describes the controlled lab input; only the Extension output is browser memory
-evidence. `memory check` owns and closes its browser page, so stop any page left
-by the earlier walkthrough before starting it.
+Report the measured trend and verdict. The Activity page presents a normal
+archive feed while the scenario intentionally retains earlier pages behind the
+interface; only the Extension output is browser memory evidence. `memory check`
+owns and closes its browser page, so stop any page left by the earlier workflow
+before starting it.
 
 ## 7. Finish
 

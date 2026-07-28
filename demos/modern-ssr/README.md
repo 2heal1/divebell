@@ -1,12 +1,12 @@
 # Modern.js SSR Demo
 
-This demo verifies the OpenRuntime state exposed by Modern.js during SSR and hydration.
+This demo verifies the Divebell state exposed by Modern.js during SSR and hydration.
 
 ## Prerequisites
 
-This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by OpenRuntime and has its dependencies installed.
+This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by Divebell and has its dependencies installed.
 
-Install dependencies and build from the OpenRuntime repository root:
+Install dependencies and build from the Divebell repository root:
 
 ```bash
 pnpm install
@@ -18,13 +18,13 @@ pnpm build
 Start the Bridge in the first terminal:
 
 ```bash
-openruntime start
+divebell start
 ```
 
 Start the SSR demo in a second terminal:
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr dev
+pnpm --filter @divebell/demo-modern-ssr dev
 ```
 
 Then open:
@@ -38,14 +38,14 @@ http://localhost:19082/
 Run the verification in a third terminal:
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr verify
+pnpm --filter @divebell/demo-modern-ssr verify
 ```
 
 You can also inspect the state manually:
 
 ```bash
-openruntime targets --url http://localhost:19082/
-openruntime snapshot --url http://localhost:19082/
+divebell targets --url http://localhost:19082/
+divebell snapshot --url http://localhost:19082/
 ```
 
 Expected results:
@@ -59,11 +59,11 @@ Expected results:
 You can also wait for the server SSR state directly:
 
 ```bash
-openruntime wait-for modern:ssr server-rendered --url http://localhost:19082/ --where environment=server --timeout 5000
+divebell wait-for modern:ssr server-rendered --url http://localhost:19082/ --where environment=server --timeout 5000
 ```
 
 ## Build Check
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr build
+pnpm --filter @divebell/demo-modern-ssr build
 ```

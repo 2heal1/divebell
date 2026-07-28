@@ -2,7 +2,7 @@
 
 Chinese version: [浏览器登录与状态复用](browser-auth.zh-CN.md)
 
-OpenRuntime composes agent-browser profiles, state, and auth to provide reusable browser sign-in environments for coding agents.
+Divebell composes agent-browser profiles, state, and auth to provide reusable browser sign-in environments for coding agents.
 
 ## What each capability stores
 
@@ -19,32 +19,32 @@ OpenRuntime composes agent-browser profiles, state, and auth to provide reusable
 List available profiles:
 
 ```bash
-openruntime profiles
+divebell profiles
 ```
 
-Close the existing OpenRuntime browser, then open the target page with a selected profile:
+Close the existing Divebell browser, then open the target page with a selected profile:
 
 ```bash
-openruntime stop
-openruntime open https://app.example.com/dashboard --profile "Work" --ui
+divebell stop
+divebell open https://app.example.com/dashboard --profile "Work" --ui
 ```
 
 When given a Chrome profile name, agent-browser uses a read-only copy and does not modify the original Chrome configuration. A directory path creates a long-lived custom profile:
 
 ```bash
-openruntime open https://app.example.com --profile ~/.openruntime-profiles/app
+divebell open https://app.example.com --profile ~/.divebell-profiles/app
 ```
 
 A Profile is a directory, not a single export file. Save state when a portable file is needed.
 
 ## Export only one URL's login state
 
-OpenRuntime adds this composition on top of agent-browser `state save`. First open the exact URL from the desired Chrome Profile, then save with the same URL:
+Divebell adds this composition on top of agent-browser `state save`. First open the exact URL from the desired Chrome Profile, then save with the same URL:
 
 ```bash
-openruntime stop
-openruntime open https://app.example.com/account --profile "Work" --ui
-openruntime state save ./app-state.json --url https://app.example.com/account
+divebell stop
+divebell open https://app.example.com/account --profile "Work" --ui
+divebell state save ./app-state.json --url https://app.example.com/account
 ```
 
 The resulting `app-state.json` remains a standard agent-browser state file and can be loaded directly. The filter:
@@ -59,7 +59,7 @@ Open the URL before saving so its web storage is present in the current browser 
 Without `--url`, this is the native agent-browser full-state save. It includes all cookies in the current session and storage for every origin visited in that session:
 
 ```bash
-openruntime state save ./full-state.json
+divebell state save ./full-state.json
 ```
 
 ## Load and manage state
@@ -67,27 +67,27 @@ openruntime state save ./full-state.json
 Load a state file while opening:
 
 ```bash
-openruntime open https://app.example.com/account --state ./app-state.json
+divebell open https://app.example.com/account --state ./app-state.json
 ```
 
 Or load it into the current session:
 
 ```bash
-openruntime state load ./app-state.json
-openruntime open https://app.example.com/account
+divebell state load ./app-state.json
+divebell open https://app.example.com/account
 ```
 
 Inspect and manage automatically saved state:
 
 ```bash
-openruntime state list
-openruntime state show <filename>
-openruntime state rename <old-name> <new-name>
-openruntime state clear [session-name]
-openruntime state clean --older-than 7
+divebell state list
+divebell state show <filename>
+divebell state rename <old-name> <new-name>
+divebell state clear [session-name]
+divebell state clean --older-than 7
 ```
 
-OpenRuntime automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
+Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
 
 ## Use the auth vault
 
@@ -95,7 +95,7 @@ Save a password through standard input so it does not appear in shell history:
 
 ```bash
 printf '%s\n' "$APP_PASSWORD" | \
-  openruntime auth save app \
+  divebell auth save app \
     --url https://app.example.com/login \
     --username tester@example.com \
     --password-stdin
@@ -104,7 +104,7 @@ printf '%s\n' "$APP_PASSWORD" | \
 Log in with:
 
 ```bash
-openruntime auth login app
+divebell auth login app
 ```
 
 agent-browser opens the saved login URL, waits for common username and password fields, fills them, and submits the form. For non-standard forms, pass `--username-selector`, `--password-selector`, and `--submit-selector` while saving or logging in.
@@ -112,9 +112,9 @@ agent-browser opens the saved login URL, waits for common username and password 
 Manage entries:
 
 ```bash
-openruntime auth list
-openruntime auth show app
-openruntime auth delete app
+divebell auth list
+divebell auth show app
+divebell auth delete app
 ```
 
 Lists and details never reveal passwords.

@@ -7,19 +7,19 @@ import {
   handleRouterStateChange,
   isServerRenderContext
 } from "../modern/handlers.js";
-import { createOpenRuntimeStreamSsrExtender } from "../modern/stream-ssr.js";
+import { createDivebellStreamSsrExtender } from "../modern/stream-ssr.js";
 import { ModernPluginRuntimeState } from "./runtime-state.js";
 import type {
   ModernRuntimePlugin,
   ModernRuntimePluginApi,
-  OpenRuntimeModernPluginOptions
+  DivebellModernPluginOptions
 } from "./types.js";
 
-export function openRuntimeModernPlugin(
-  options: OpenRuntimeModernPluginOptions = {}
+export function divebellModernPlugin(
+  options: DivebellModernPluginOptions = {}
 ): ModernRuntimePlugin {
   return {
-    name: "@openruntime/modern-plugin",
+    name: "@divebell/modern-plugin",
     setup(api: ModernRuntimePluginApi) {
       const state = new ModernPluginRuntimeState(options);
       state.getRuntime();
@@ -45,7 +45,7 @@ export function openRuntimeModernPlugin(
       api.onRouteComponent?.((event) => {
         handleRouteComponent(state, event);
       });
-      api.extendStreamSSR?.(() => createOpenRuntimeStreamSsrExtender());
+      api.extendStreamSSR?.(() => createDivebellStreamSsrExtender());
     }
   };
 }

@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
 const extension = {
   schemaVersion: 1,
@@ -7,11 +7,11 @@ const extension = {
     name: "verify",
     commandReferences: [{
       category: "Extensions",
-      usage: "openruntime verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
+      usage: "divebell verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
       description: "Verify a business target; framework targets such as Modern, MF, and Garfish are supporting evidence only."
     }],
     run: async (options) => await (await import("./index.js")).runVerifyCliCommand(options)
   }]
-} satisfies OpenRuntimeExtensionDefinition;
+} satisfies DivebellExtensionDefinition;
 
 export default extension;

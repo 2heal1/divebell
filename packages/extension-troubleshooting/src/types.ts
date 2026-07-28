@@ -1,4 +1,4 @@
-export type VerifyTargetClass = "business" | "modern" | "module-federation" | "garfish" | "openruntime" | "unknown";
+export type VerifyTargetClass = "business" | "modern" | "module-federation" | "garfish" | "divebell" | "unknown";
 
 export interface VerifyVisibilityResult {
   checked: boolean;

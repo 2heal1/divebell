@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock, registerRoute } from "../helpers/runtime.ts";
 
 test("registers actions and reports availability from current snapshot", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   runtime.registerAction({

@@ -2,45 +2,45 @@ import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
 import {
-  createOpenRuntime,
-  getOpenRuntimeFromWindow,
-  getOpenRuntimeRegistryFromWindow,
-  installOpenRuntimeOnWindow,
-  uninstallOpenRuntimeFromWindow,
-  type OpenRuntimeWindowHost
+  createDivebell,
+  getDivebellFromWindow,
+  getDivebellRegistryFromWindow,
+  installDivebellOnWindow,
+  uninstallDivebellFromWindow,
+  type DivebellWindowHost
 } from "../../dist/index.js";
 import { createClock } from "../helpers/runtime.ts";
 
 test("installs and reads the window API host", () => {
-  const host: OpenRuntimeWindowHost = {};
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const host: DivebellWindowHost = {};
+  const runtime = createDivebell({ clock: createClock() });
 
-  installOpenRuntimeOnWindow(runtime, host);
+  installDivebellOnWindow(runtime, host);
 
-  assert.equal(getOpenRuntimeFromWindow(host), runtime);
-  assert.equal(host.__OPEN_RUNTIME__, runtime);
-  assert.equal(getOpenRuntimeRegistryFromWindow(host)?.list()[0]?.runtime, runtime);
+  assert.equal(getDivebellFromWindow(host), runtime);
+  assert.equal(host.__DIVEBELL__, runtime);
+  assert.equal(getDivebellRegistryFromWindow(host)?.list()[0]?.runtime, runtime);
 });
 
 test("registers multiple window runtimes without replacing the default instance", () => {
-  const host: OpenRuntimeWindowHost = {};
-  const main = createOpenRuntime({ clock: createClock() });
-  const child = createOpenRuntime({ clock: createClock() });
+  const host: DivebellWindowHost = {};
+  const main = createDivebell({ clock: createClock() });
+  const child = createDivebell({ clock: createClock() });
   const events: string[] = [];
 
-  installOpenRuntimeOnWindow(main, host, {
+  installDivebellOnWindow(main, host, {
     runtimeId: "runtime-main",
     name: "main"
   });
-  const registry = getOpenRuntimeRegistryFromWindow(host);
+  const registry = getDivebellRegistryFromWindow(host);
   registry?.subscribe((event) => events.push(`${event.type}:${event.instance.runtimeId}`));
-  installOpenRuntimeOnWindow(child, host, {
+  installDivebellOnWindow(child, host, {
     runtimeId: "runtime-child",
     name: "orders",
     parentRuntimeId: "runtime-main"
   });
 
-  assert.equal(getOpenRuntimeFromWindow(host), main);
+  assert.equal(getDivebellFromWindow(host), main);
   assert.deepEqual(registry?.list().map((instance) => ({
     runtimeId: instance.runtimeId,
     name: instance.name,
@@ -51,31 +51,31 @@ test("registers multiple window runtimes without replacing the default instance"
   ]);
   assert.deepEqual(events, ["registered:runtime-child"]);
 
-  assert.equal(uninstallOpenRuntimeFromWindow(child, host), true);
+  assert.equal(uninstallDivebellFromWindow(child, host), true);
   assert.deepEqual(events, ["registered:runtime-child", "unregistered:runtime-child"]);
   assert.equal(registry?.list().length, 1);
 });
 
 test("promotes the next runtime when the default instance is uninstalled", () => {
-  const host: OpenRuntimeWindowHost = {};
-  const main = installOpenRuntimeOnWindow(createOpenRuntime(), host, { runtimeId: "runtime-main" });
-  const child = installOpenRuntimeOnWindow(createOpenRuntime(), host, { runtimeId: "runtime-child" });
+  const host: DivebellWindowHost = {};
+  const main = installDivebellOnWindow(createDivebell(), host, { runtimeId: "runtime-main" });
+  const child = installDivebellOnWindow(createDivebell(), host, { runtimeId: "runtime-child" });
 
-  assert.equal(uninstallOpenRuntimeFromWindow(main, host), true);
-  assert.equal(getOpenRuntimeFromWindow(host), child);
-  assert.equal(getOpenRuntimeRegistryFromWindow(host)?.list()[0]?.runtimeId, "runtime-child");
+  assert.equal(uninstallDivebellFromWindow(main, host), true);
+  assert.equal(getDivebellFromWindow(host), child);
+  assert.equal(getDivebellRegistryFromWindow(host)?.list()[0]?.runtimeId, "runtime-child");
 });
 
 test("rejects duplicate runtime ids and deduplicates the same instance", () => {
-  const host: OpenRuntimeWindowHost = {};
-  const first = createOpenRuntime();
-  const second = createOpenRuntime();
+  const host: DivebellWindowHost = {};
+  const first = createDivebell();
+  const second = createDivebell();
 
-  installOpenRuntimeOnWindow(first, host, { runtimeId: "runtime-fixed" });
-  installOpenRuntimeOnWindow(first, host, { runtimeId: "runtime-fixed" });
-  assert.equal(getOpenRuntimeRegistryFromWindow(host)?.list().length, 1);
+  installDivebellOnWindow(first, host, { runtimeId: "runtime-fixed" });
+  installDivebellOnWindow(first, host, { runtimeId: "runtime-fixed" });
+  assert.equal(getDivebellRegistryFromWindow(host)?.list().length, 1);
   assert.throws(
-    () => installOpenRuntimeOnWindow(second, host, { runtimeId: "runtime-fixed" }),
+    () => installDivebellOnWindow(second, host, { runtimeId: "runtime-fixed" }),
     /already registered/
   );
 });

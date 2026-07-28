@@ -1,22 +1,22 @@
-export const OPEN_RUNTIME_PHASE = "phase-0" as const;
+export const DIVEBELL_PHASE = "phase-0" as const;
 
-export type OpenRuntimePackageName = string;
+export type DivebellPackageName = string;
 
-export interface OpenRuntimePackageInfo {
-  name: OpenRuntimePackageName;
-  phase: typeof OPEN_RUNTIME_PHASE;
+export interface DivebellPackageInfo {
+  name: DivebellPackageName;
+  phase: typeof DIVEBELL_PHASE;
   role: string;
 }
 
 // Temporary scaffold marker for phase-0 package validation. Remove this once
-// each package has real OpenRuntime exports and tests.
+// each package has real Divebell exports and tests.
 export function createPackageInfo(
-  name: OpenRuntimePackageName,
+  name: DivebellPackageName,
   role: string
-): OpenRuntimePackageInfo {
+): DivebellPackageInfo {
   return {
     name,
-    phase: OPEN_RUNTIME_PHASE,
+    phase: DIVEBELL_PHASE,
     role
   };
 }

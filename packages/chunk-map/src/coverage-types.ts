@@ -1,89 +1,89 @@
 // Shared contract between browser coverage, build plugins, and the CLI.
 import type {
-  OpenRuntimeChunkMap,
-  OpenRuntimeChunkMapModuleOwner,
-  OpenRuntimeChunkMapSplitRule
+  DivebellChunkMap,
+  DivebellChunkMapModuleOwner,
+  DivebellChunkMapSplitRule
 } from "./types.js";
 
-export interface OpenRuntimeCoverageRange {
+export interface DivebellCoverageRange {
   startOffset: number;
   endOffset: number;
   count: number;
 }
 
-export interface OpenRuntimeCoverageFunction {
+export interface DivebellCoverageFunction {
   functionName: string;
-  ranges: OpenRuntimeCoverageRange[];
+  ranges: DivebellCoverageRange[];
 }
 
-export interface OpenRuntimeCoverageScript {
+export interface DivebellCoverageScript {
   scriptId: string;
   url: string;
-  functions: OpenRuntimeCoverageFunction[];
+  functions: DivebellCoverageFunction[];
 }
 
-export interface OpenRuntimeCoverageCheckpoint {
+export interface DivebellCoverageCheckpoint {
   schemaVersion: number;
   label?: string | null;
-  scripts: OpenRuntimeCoverageScript[];
+  scripts: DivebellCoverageScript[];
 }
 
-export interface OpenRuntimeSourceMap {
+export interface DivebellSourceMap {
   version: number;
   sourceRoot?: string;
   sources: string[];
   mappings: string;
 }
 
-export interface OpenRuntimeCodeUsageAsset {
+export interface DivebellCodeUsageAsset {
   file: string;
   code: string;
   sourceMapPath: string;
-  sourceMap: OpenRuntimeSourceMap;
+  sourceMap: DivebellSourceMap;
 }
 
-export interface OpenRuntimeCodeUsageExecutedRange {
+export interface DivebellCodeUsageExecutedRange {
   startOffset: number;
   endOffset: number;
 }
 
-export interface OpenRuntimeCodeUsageCodeFile {
+export interface DivebellCodeUsageCodeFile {
   file: string;
   code: string;
   totalBytes: number;
 }
 
-export interface OpenRuntimeCodeUsageCodeFileResult {
+export interface DivebellCodeUsageCodeFileResult {
   file: string;
   chunkIds: string[];
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
-  executedRanges: OpenRuntimeCodeUsageExecutedRange[];
+  executedRanges: DivebellCodeUsageExecutedRange[];
 }
 
-export interface OpenRuntimeCodeUsageInput {
-  chunkMap: OpenRuntimeChunkMap;
-  checkpoints: OpenRuntimeCoverageCheckpoint[];
-  assets: OpenRuntimeCodeUsageAsset[];
+export interface DivebellCodeUsageInput {
+  chunkMap: DivebellChunkMap;
+  checkpoints: DivebellCoverageCheckpoint[];
+  assets: DivebellCodeUsageAsset[];
 }
 
-export interface OpenRuntimeCodeUsageSourceResult {
+export interface DivebellCodeUsageSourceResult {
   sourcePath: string;
-  owner: OpenRuntimeChunkMapModuleOwner;
+  owner: DivebellChunkMapModuleOwner;
   chunkIds: string[];
   fileRanges: Array<{
     file: string;
-    mappedRanges: OpenRuntimeCodeUsageExecutedRange[];
-    executedRanges: OpenRuntimeCodeUsageExecutedRange[];
+    mappedRanges: DivebellCodeUsageExecutedRange[];
+    executedRanges: DivebellCodeUsageExecutedRange[];
   }>;
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
 }
 
-export interface OpenRuntimeCodeUsagePackageResult {
-  kind: OpenRuntimeChunkMapModuleOwner["kind"];
+export interface DivebellCodeUsagePackageResult {
+  kind: DivebellChunkMapModuleOwner["kind"];
   packageName: string;
   packageVersion: string | null;
   chunkIds: string[];
@@ -93,7 +93,7 @@ export interface OpenRuntimeCodeUsagePackageResult {
   usedRatio: number | null;
 }
 
-export interface OpenRuntimeCodeUsageChunkResult {
+export interface DivebellCodeUsageChunkResult {
   chunkId: string;
   files: string[];
   initial: boolean;
@@ -103,25 +103,25 @@ export interface OpenRuntimeCodeUsageChunkResult {
   groups?: string[];
   parents?: string[];
   children?: string[];
-  splitRule?: OpenRuntimeChunkMapSplitRule;
+  splitRule?: DivebellChunkMapSplitRule;
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
 }
 
-export interface OpenRuntimeCodeUsagePhaseResult {
+export interface DivebellCodeUsagePhaseResult {
   label: string;
   scriptsObserved: number;
   unmatchedScriptUrls: string[];
-  chunks: OpenRuntimeCodeUsageChunkResult[];
-  sources: OpenRuntimeCodeUsageSourceResult[];
-  packages: OpenRuntimeCodeUsagePackageResult[];
-  codeFiles?: OpenRuntimeCodeUsageCodeFileResult[];
+  chunks: DivebellCodeUsageChunkResult[];
+  sources: DivebellCodeUsageSourceResult[];
+  packages: DivebellCodeUsagePackageResult[];
+  codeFiles?: DivebellCodeUsageCodeFileResult[];
 }
 
-export interface OpenRuntimeCodeUsageReport {
+export interface DivebellCodeUsageReport {
   schemaVersion: 1;
   buildId: string;
-  phases: OpenRuntimeCodeUsagePhaseResult[];
-  codeFiles?: OpenRuntimeCodeUsageCodeFile[];
+  phases: DivebellCodeUsagePhaseResult[];
+  codeFiles?: DivebellCodeUsageCodeFile[];
 }

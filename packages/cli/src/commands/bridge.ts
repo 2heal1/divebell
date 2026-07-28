@@ -1,6 +1,6 @@
 import { once } from "node:events";
-import { createBridgeServer, type BridgeServer } from "@openruntime/bridge";
-import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
+import { createBridgeServer, type BridgeServer } from "@divebell/bridge";
+import { DIVEBELL_BRIDGE_DEFAULT_PORT } from "@divebell/core";
 import { getNumberOption, type ParsedCliArgs } from "../utils/args.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import {
@@ -83,16 +83,16 @@ export async function runBridgeServerCommand(
 ): Promise<number> {
   const server = createBridgeServer();
   const address = await server.listen({
-    port: getNumberOption(args, "port") ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT
+    port: getNumberOption(args, "port") ?? DIVEBELL_BRIDGE_DEFAULT_PORT
   });
   if (typeof process.send === "function") {
     process.send({
-      type: "openruntime.bridge.ready",
+      type: "divebell.bridge.ready",
       port: address.port,
       url: address.url
     });
   } else {
-    stdout.write(`OpenRuntime Bridge listening on ${address.url}\n`);
+    stdout.write(`Divebell Bridge listening on ${address.url}\n`);
   }
   if (waitUntilClosed !== undefined) await waitUntilClosed(server);
   else await waitForProcessExit(server);

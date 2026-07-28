@@ -15,24 +15,24 @@ const memoryExtensionDirectory = join(repositoryRoot, "packages/extension-memory
 const modernPluginDirectory = join(repositoryRoot, "packages/modern-plugin");
 const cliDirectory = join(repositoryRoot, "packages/cli");
 const distDirectory = join(demoDirectory, "dist");
-const chunkMapPath = join(distDirectory, "openruntime-chunks.json");
+const chunkMapPath = join(distDirectory, "divebell-chunks.json");
 const defaultReadyTarget = "modern:route";
 const options = parseOptions(process.argv.slice(2));
 const artifactDirectory = resolve(options.artifactDirectory ?? join(demoDirectory, ".page-experience-artifacts"));
-const workingDirectory = join(tmpdir(), `openruntime-page-experience-${process.pid}`);
+const workingDirectory = join(tmpdir(), `divebell-page-experience-${process.pid}`);
 const extensionsDirectory = join(workingDirectory, "extensions");
 const experienceInitScriptPath = join(workingDirectory, "page-experience-init.js");
 const progress = createProgress(12);
 const baseEnvironment = {
   ...process.env,
   HOME: workingDirectory,
-  OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
+  DIVEBELL_EXTENSIONS_DIR: extensionsDirectory,
   npm_config_cache: join(workingDirectory, ".npm-cache")
 };
-delete baseEnvironment.OPENRUNTIME_AGENT_BROWSER_EXECUTABLE;
+delete baseEnvironment.DIVEBELL_AGENT_BROWSER_EXECUTABLE;
 delete baseEnvironment.AGENT_BROWSER_INIT_SCRIPTS;
 if (options.agentBrowser !== undefined) {
-  baseEnvironment.OPENRUNTIME_AGENT_BROWSER_EXECUTABLE = options.agentBrowser;
+  baseEnvironment.DIVEBELL_AGENT_BROWSER_EXECUTABLE = options.agentBrowser;
 }
 
 const PAGE_EXPERIENCE_INIT_SCRIPT = `(() => {
@@ -49,7 +49,7 @@ const PAGE_EXPERIENCE_INIT_SCRIPT = `(() => {
   readMemory();
   const timer = setInterval(readMemory, 25);
   let finished;
-  globalThis.__OPENRUNTIME_PAGE_EXPERIENCE__ = {
+  globalThis.__DIVEBELL_PAGE_EXPERIENCE__ = {
     finish() {
       if (finished) return finished;
       clearInterval(timer);
@@ -199,7 +199,7 @@ async function main() {
 
   process.stdout.write(`${JSON.stringify(reportSummary, null, 2)}\n`);
   process.stdout.write(`\n页面体验数据: ${reportPath}\n`);
-  process.stdout.write("启动流式报告: pnpm --filter @openruntime/demo-modern-basic report:serve\n");
+  process.stdout.write("启动流式报告: pnpm --filter @divebell/demo-modern-basic report:serve\n");
   process.stdout.write("打开地址: http://127.0.0.1:4173/\n");
   process.stdout.write(`检查完成，总耗时 ${formatDuration(progress.elapsed())}。\n`);
 }
@@ -209,7 +209,7 @@ async function measureRouteExperience(route) {
     await navigateAndWait(route, environment);
     const captured = await runCli([
       "eval",
-      `(() => { const recorder = globalThis.__OPENRUNTIME_PAGE_EXPERIENCE__; if (!recorder) throw new Error("Page experience recorder is missing"); return recorder.finish(); })()`
+      `(() => { const recorder = globalThis.__DIVEBELL_PAGE_EXPERIENCE__; if (!recorder) throw new Error("Page experience recorder is missing"); return recorder.finish(); })()`
     ], { environment });
     const stableMemory = await runCli(["memory", "metrics"], { environment });
     return normalizeExperiencePhase({
@@ -277,8 +277,8 @@ async function withIsolatedBrowser(label, purpose, includeExperienceRecorder, ac
     HOME: profileDirectory,
     AGENT_BROWSER_SOCKET_DIR: socketDirectory,
     ...(includeExperienceRecorder ? { AGENT_BROWSER_INIT_SCRIPTS: experienceInitScriptPath } : {}),
-    OPENRUNTIME_AGENT_BROWSER_SESSION: `oc${process.pid}${routeKey}`,
-    OPENRUNTIME_BROWSER_PROFILE_DIR: profileDirectory
+    DIVEBELL_AGENT_BROWSER_SESSION: `oc${process.pid}${routeKey}`,
+    DIVEBELL_BROWSER_PROFILE_DIR: profileDirectory
   };
   let browserOpened = false;
   await mkdir(profileDirectory, { recursive: true });
@@ -356,7 +356,7 @@ async function assertServerMatchesBuild(url) {
     }
   } catch (error) {
     throw new Error(
-      `无法使用 ${url} 生成代码分析。请停止当前开发服务，先运行 pnpm --filter @openruntime/demo-modern-basic verify:chunk-map，再运行 pnpm --filter @openruntime/demo-modern-basic serve。`,
+      `无法使用 ${url} 生成代码分析。请停止当前开发服务，先运行 pnpm --filter @divebell/demo-modern-basic verify:chunk-map，再运行 pnpm --filter @divebell/demo-modern-basic serve。`,
       { cause: error }
     );
   }
@@ -373,7 +373,7 @@ function assertCodeUsagePresent(usage) {
   if (observedScripts > 0 && matchedChunks === 0) {
     const unmatchedScripts = phases.reduce((sum, phase) => sum + (phase.unmatchedScriptUrls?.length ?? 0), 0);
     throw new Error(
-      `代码分析没有匹配到页面文件（${unmatchedScripts} 个文件无法对应）。请确认页面服务与 dist/openruntime-chunks.json 来自同一次生产构建。`
+      `代码分析没有匹配到页面文件（${unmatchedScripts} 个文件无法对应）。请确认页面服务与 dist/divebell-chunks.json 来自同一次生产构建。`
     );
   }
 }
@@ -474,7 +474,7 @@ async function waitForPathname(pathname, environment) {
 }
 
 async function waitForReadyTarget(targetId, options = {}, environment) {
-  const targetExpression = `window.__OPEN_RUNTIME__?.getSnapshot()?.targets?.[${JSON.stringify(targetId)}]`;
+  const targetExpression = `window.__DIVEBELL__?.getSnapshot()?.targets?.[${JSON.stringify(targetId)}]`;
   const pathnameCheck = options.pathname === undefined
     ? "true"
     : `target.data?.pathname === ${JSON.stringify(options.pathname)}`;

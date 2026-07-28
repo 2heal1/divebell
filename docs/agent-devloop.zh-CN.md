@@ -2,7 +2,7 @@
 
 English version: [Coding Agent Development Debugging Loop](agent-devloop.md)
 
-OpenRuntime 用来帮助 Coding Agent 在真实 Web 场景中完成问题复现、诊断和验证。Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的浏览器上下文，并把页面操作、浏览器诊断和结果验证封装成 Agent 可以像调用普通开发工具一样直接使用的能力。团队还可以通过 Extension 将领域知识和已有服务接入这条开发闭环。
+Divebell 用来帮助 Coding Agent 在真实 Web 场景中完成问题复现、诊断和验证。Coding Agent 负责阅读和修改代码；Divebell 负责准备可复用的浏览器上下文，并把页面操作、浏览器诊断和结果验证封装成 Agent 可以像调用普通开发工具一样直接使用的能力。团队还可以通过 Extension 将领域知识和已有服务接入这条开发闭环。
 
 团队可以通过 Extension 从当前页面识别开发上下文，调用已有的 SDK、OpenAPI、CLI 或内部平台。
 
@@ -31,12 +31,12 @@ Coding Agent 修改代码
 受保护页面不应每次都要求人重新登录。团队可以直接复用测试账号的 Chrome Profile，或载入准备好的 agent-browser state：
 
 ```sh
-openruntime open https://example.com/orders --profile "Test Account" --ui
+divebell open https://example.com/orders --profile "Test Account" --ui
 # 或
-openruntime open https://example.com/orders --state /path/to/test-account.json --ui
+divebell open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
-后续 `openruntime open` 会自动恢复同一项目的浏览器状态。需要生成可迁移文件或只保留一个网址时，使用 `state save`；具体账号和权限仍应在目标页面中确认。
+后续 `divebell open` 会自动恢复同一项目的浏览器状态。需要生成可迁移文件或只保留一个网址时，使用 `state save`；具体账号和权限仍应在目标页面中确认。
 
 如果团队需要动态选择测试账号、切换环境、获取临时凭证或执行内部准备步骤，可以把它们封装成 Extension。Extension 应只提供授权范围内的账号和环境，不应绕过权限检查或输出敏感值。
 
@@ -47,21 +47,21 @@ openruntime open https://example.com/orders --state /path/to/test-account.json -
 使用固定 `session` 打开目标页面：
 
 ```sh
-openruntime open https://example.com/orders --session orders-debug --ui
+divebell open https://example.com/orders --session orders-debug --ui
 ```
 
 后续页面命令和 Extension 会默认复用**当前工作目录**最近一次打开的页面、会话和登录状态。除非任务拥有完整浏览器生命周期，否则不要在中间步骤随意 `stop`，避免丢失仍有价值的页面上下文。
 
-OpenRuntime 能调试没有接入 Runtime Core 的普通页面。页面没有 connected runtime 时，继续使用浏览器侧能力，不要为了开始排查而先修改应用。
+Divebell 能调试没有接入 Runtime Core 的普通页面。页面没有 connected runtime 时，继续使用浏览器侧能力，不要为了开始排查而先修改应用。
 
 ## 3. 发现可用能力
 
 先查看当前 CLI 和已安装的 Extensions：
 
 ```sh
-openruntime --help
-openruntime extensions list
-openruntime stack
+divebell --help
+divebell extensions list
+divebell stack
 ```
 
 `stack` 由 Extensions 提供技术栈识别。识别结果可以推荐更适合当前项目的专项 Extension。只有命令描述和当前问题匹配时才使用，避免无目的地运行所有诊断。
@@ -81,10 +81,10 @@ openruntime stack
 先选择与问题最直接相关的证据：
 
 ```sh
-openruntime page-snapshot
-openruntime console --level error
-openruntime network --url /api/orders
-openruntime screenshot orders-error --full-page
+divebell page-snapshot
+divebell console --level error
+divebell network --url /api/orders
+divebell screenshot orders-error --full-page
 ```
 
 页面性能、内存或代码执行问题应优先使用对应 Extension，让 Extension 负责采集、计算、报告和清理。例如内存检查可以重复同一段真实操作，比较清理后的内存、DOM 节点和监听器趋势，而不是只看某一个瞬间的数值。
@@ -92,8 +92,8 @@ openruntime screenshot orders-error --full-page
 如果页面已经接入 Runtime Core，可以补充读取：
 
 ```sh
-openruntime snapshot --session orders-debug
-openruntime events --session orders-debug --limit 30
+divebell snapshot --session orders-debug
+divebell events --session orders-debug --limit 30
 ```
 
 Runtime 信息是可选的深层证据。它有用时优先使用；没有接入或没有相关信号时，立即回到页面、Console、Network 或专项 Extension，不要反复查询空的 Runtime。
@@ -102,7 +102,7 @@ Runtime 信息是可选的深层证据。它有用时优先使用；没有接入
 
 ## 5. 修改代码
 
-Coding Agent 根据诊断证据修改源码。OpenRuntime 不负责替代代码编辑，但应保留打开的页面、登录状态和诊断产物，供修改后的复验使用。
+Coding Agent 根据诊断证据修改源码。Divebell 不负责替代代码编辑，但应保留打开的页面、登录状态和诊断产物，供修改后的复验使用。
 
 如果改动影响构建配置、依赖解析、开发服务器或页面初始化，重新启动目标应用。只有普通页面代码变化且开发服务器能够正确热更新时，才直接复用现有服务。
 
@@ -139,7 +139,7 @@ Coding Agent 根据诊断证据修改源码。OpenRuntime 不负责替代代码�
 | 暴露页面内部状态、事件和允许动作 | Runtime Core API |
 | 说明复杂命令的使用和判断方法 | Extension 附带的 Skill |
 
-不要为了展示 OpenRuntime 而给每个页面增加 Target，也不要把一次性的浏览器命令都包装成 Extension。只有能减少未来人工介入或提高稳定性的内容才值得沉淀。
+不要为了展示 Divebell 而给每个页面增加 Target，也不要把一次性的浏览器命令都包装成 Extension。只有能减少未来人工介入或提高稳定性的内容才值得沉淀。
 
 ## 完成标准
 
@@ -149,5 +149,5 @@ Coding Agent 根据诊断证据修改源码。OpenRuntime 不负责替代代码�
 - 诊断证据能解释为什么要修改这些代码。
 - 修改后的应用已经在真实浏览器中重新运行。
 - 验证依据与问题类型匹配，而不是只看页面是否能打开。
-- 没有为了使用 OpenRuntime 增加与任务无关的应用接入。
+- 没有为了使用 Divebell 增加与任务无关的应用接入。
 - 敏感登录状态和调试产物仍保存在可信环境中。

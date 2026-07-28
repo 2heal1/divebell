@@ -1,14 +1,14 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
-  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
-  OPEN_RUNTIME_SESSION_QUERY_PARAM,
+  DIVEBELL_BRIDGE_DEFAULT_PORT,
+  DIVEBELL_SESSION_QUERY_PARAM,
   matchesRuntimeCondition,
   type BridgeRuntimeCommandName,
   type BridgeRuntimeRequest,
   type BridgeRuntimeResponse,
   type BridgeServerRuntimeSyncPayload,
   type RuntimeDataCondition
-} from "@openruntime/core";
+} from "@divebell/core";
 import { BridgeHttpError, getPathSegments, readJson, writeCorsHeaders, writeError, writeJson } from "./http-utils.js";
 import { getCommandFromResource, parseRuntimeQuery } from "./query.js";
 import { RuntimeConnectionStore, type RuntimeStream } from "./runtime-store.js";
@@ -32,7 +32,7 @@ class NodeBridgeServer implements BridgeServer {
 
   listen(options: BridgeListenOptions = {}): Promise<BridgeServerAddress> {
     const hostname = options.hostname ?? "localhost";
-    const port = options.port ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT;
+    const port = options.port ?? DIVEBELL_BRIDGE_DEFAULT_PORT;
 
     return new Promise((resolve, reject) => {
       const onError = (error: Error) => {
@@ -179,7 +179,7 @@ class NodeBridgeServer implements BridgeServer {
     const pageInstanceId = normalizeOptionalQuery(url.searchParams.get("pageInstanceId"));
     const connectionId = normalizeOptionalQuery(url.searchParams.get("connectionId"));
     const runtimeId = normalizeOptionalQuery(url.searchParams.get("runtimeId"));
-    const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId")) ?? getOpenRuntimeSessionIdFromUrl(runtimeUrl);
+    const sessionId = normalizeOptionalQuery(url.searchParams.get("sessionId")) ?? getDivebellSessionIdFromUrl(runtimeUrl);
     const renderId = normalizeOptionalQuery(url.searchParams.get("renderId"));
     const source = normalizeOptionalQuery(url.searchParams.get("source"));
     const name = normalizeOptionalQuery(url.searchParams.get("name"));
@@ -629,9 +629,9 @@ function normalizeOptionalQuery(value: string | null): string | undefined {
   return value === null || value.length === 0 ? undefined : value;
 }
 
-function getOpenRuntimeSessionIdFromUrl(input: string): string | undefined {
+function getDivebellSessionIdFromUrl(input: string): string | undefined {
   try {
-    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    const sessionId = new URL(input).searchParams.get(DIVEBELL_SESSION_QUERY_PARAM);
     return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
   } catch {
     return undefined;

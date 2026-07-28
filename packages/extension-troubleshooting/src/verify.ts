@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionApi } from "@openruntime/cli";
+import type { DivebellExtensionApi } from "@divebell/cli";
 import type { VerifyTargetClass, VerifyVisibilityResult, VerifyCommandResult } from "./types.js";
 
 interface RuntimeTargetDescriptor {
@@ -20,13 +20,13 @@ interface RuntimeDataCondition {
   equals: unknown;
 }
 export async function runVerifyCommand(
-  openruntime: OpenRuntimeExtensionApi,
+  divebell: DivebellExtensionApi,
   targetId: string,
   status: string,
   where: RuntimeDataCondition[] | undefined,
   timeout: number | undefined
 ): Promise<VerifyCommandResult> {
-  const waitResult = await openruntime.waitFor(
+  const waitResult = await divebell.waitFor(
     targetId,
     status,
     {
@@ -34,7 +34,7 @@ export async function runVerifyCommand(
       ...(timeout === undefined ? {} : { timeout })
     }
   );
-  const targetDefinitions = await fetchVerifyTargetDefinitions(openruntime);
+  const targetDefinitions = await fetchVerifyTargetDefinitions(divebell);
   const waitPayload = waitResult.result;
   const target = getVerifyTarget(targetId, waitPayload, targetDefinitions);
   const targetClass = classifyVerifyTarget(target);
@@ -42,7 +42,7 @@ export async function runVerifyCommand(
   const hasBusinessTarget = businessTargetHints.length > 0 || targetClass === "business";
   const visibility = targetClass === "business" || hasBusinessTarget
     ? createSkippedVisibility("Business target evidence is available.")
-    : await readVerifyVisibility(openruntime);
+    : await readVerifyVisibility(divebell);
   const evidence = createVerifyEvidence({
     targetId,
     targetClass,
@@ -96,7 +96,7 @@ export function createVerifyCommandFailure(
         scope: "none",
         targetClass: "unknown",
         businessVerified: false,
-        message: "OpenRuntime could not read enough runtime evidence to verify the requested result.",
+        message: "Divebell could not read enough runtime evidence to verify the requested result.",
         nextStep: "Open or connect the page runtime first, then rerun verify; if no business target exists, use one one-time page check or add a minimal business target."
       },
       wait: waitFailure,
@@ -106,10 +106,10 @@ export function createVerifyCommandFailure(
 }
 
 async function fetchVerifyTargetDefinitions(
-  openruntime: OpenRuntimeExtensionApi
+  divebell: DivebellExtensionApi
 ): Promise<RuntimeTargetDescriptor[]> {
   try {
-    const result = await openruntime.targets<RuntimeTargetDescriptor[]>();
+    const result = await divebell.targets<RuntimeTargetDescriptor[]>();
     return Array.isArray(result.result) ? result.result : [];
   } catch {
     return [];
@@ -187,7 +187,7 @@ function createVerifyEvidence(options: {
     scope: "none",
     targetClass: "unknown",
     businessVerified: false,
-    message: "The requested target was not available as OpenRuntime evidence.",
+    message: "The requested target was not available as Divebell evidence.",
     nextStep: getVisibilityNextStep(options.visibility)
   };
 }
@@ -197,7 +197,7 @@ function getVisibilityNextStep(visibility: VerifyVisibilityResult): string {
     return "Treat the page as not verified; investigate the blank page or add a minimal business target before claiming success.";
   }
   if (visibility.status === "visible") {
-    return "For repeated verification, add a minimal business target; for a one-time check, label this as browser visibility evidence, not OpenRuntime business evidence.";
+    return "For repeated verification, add a minimal business target; for a one-time check, label this as browser visibility evidence, not Divebell business evidence.";
   }
   if (visibility.status === "unavailable") {
     return "Use one one-time page check or add a minimal business target; do not claim business success from runtime-layer evidence alone.";
@@ -263,16 +263,16 @@ function classifyVerifyTarget(target: RuntimeSnapshotTarget | RuntimeTargetDescr
   if (id.startsWith("modern:") || type.startsWith("modern.") || source.includes("modern")) {
     return "modern";
   }
-  if (id.startsWith("openruntime:") || type.startsWith("openruntime.") || source === "openruntime") {
-    return "openruntime";
+  if (id.startsWith("divebell:") || type.startsWith("divebell.") || source === "divebell") {
+    return "divebell";
   }
 
   return "business";
 }
 
-async function readVerifyVisibility(openruntime: OpenRuntimeExtensionApi): Promise<VerifyVisibilityResult> {
+async function readVerifyVisibility(divebell: DivebellExtensionApi): Promise<VerifyVisibilityResult> {
   try {
-    const parsed = await openruntime.browser.eval(createPageVisibilityScript());
+    const parsed = await divebell.browser.eval(createPageVisibilityScript());
     if (!isRecord(parsed)) {
       return {
         checked: true,
@@ -335,7 +335,7 @@ function createPageVisibilityScript(): string {
     "  };",
     "  const visibleElementCount = Array.from(body.querySelectorAll('*')).filter(isVisible).length;",
     "  const textLength = (body.innerText || '').replace(/\\s+/g, ' ').trim().length;",
-    "  const root = document.querySelector('#root, #app, [data-openruntime-root], main, [role=\"main\"]');",
+    "  const root = document.querySelector('#root, #app, [data-divebell-root], main, [role=\"main\"]');",
     "  const bodyChildElementCount = body.children.length;",
     "  const rootChildElementCount = root ? root.children.length : 0;",
     "  const blank = textLength === 0 && visibleElementCount <= 1 && bodyChildElementCount <= 1 && rootChildElementCount === 0;",

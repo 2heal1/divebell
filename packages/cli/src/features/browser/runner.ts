@@ -8,9 +8,9 @@ const require = createRequire(import.meta.url);
 import type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserJsonResponse, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
 export type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
 
-export const OPENRUNTIME_BROWSER_PROFILE_ENV = "OPENRUNTIME_BROWSER_PROFILE_DIR";
-export const OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV = "OPENRUNTIME_AGENT_BROWSER_EXECUTABLE";
-export const OPENRUNTIME_AGENT_BROWSER_SESSION_ENV = "OPENRUNTIME_AGENT_BROWSER_SESSION";
+export const DIVEBELL_BROWSER_PROFILE_ENV = "DIVEBELL_BROWSER_PROFILE_DIR";
+export const DIVEBELL_AGENT_BROWSER_EXECUTABLE_ENV = "DIVEBELL_AGENT_BROWSER_EXECUTABLE";
+export const DIVEBELL_AGENT_BROWSER_SESSION_ENV = "DIVEBELL_AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
 const AGENT_BROWSER_RESTORE_ENV = "AGENT_BROWSER_RESTORE";
@@ -42,7 +42,7 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
     options.cwd
   );
   const configuredExecutablePath = options.executablePath
-    ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV];
+    ?? baseEnv[DIVEBELL_AGENT_BROWSER_EXECUTABLE_ENV];
   const bundledEntryPath = configuredExecutablePath === undefined
     ? resolveBundledAgentBrowserEntryPath()
     : undefined;
@@ -89,7 +89,7 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
 
 export function resolveBundledAgentBrowserEntryPath(): string | undefined {
   try {
-    return require.resolve("@openruntime/agent-browser/bin/agent-browser.js");
+    return require.resolve("@divebell/agent-browser/bin/agent-browser.js");
   } catch {
     return undefined;
   }
@@ -127,7 +127,7 @@ function normalizeAgentBrowserRunResult(result: BrowserRunResult, args: string[]
 }
 
 export function createDefaultBrowserProfileDirectory(): string {
-  return join(homedir(), ".openruntime", "browser-profile");
+  return join(homedir(), ".divebell", "browser-profile");
 }
 
 export function resolveBrowserProfileDirectory(
@@ -135,7 +135,7 @@ export function resolveBrowserProfileDirectory(
   profileDirectory?: string
 ): string {
   return resolve(
-    profileDirectory ?? baseEnv[OPENRUNTIME_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
+    profileDirectory ?? baseEnv[DIVEBELL_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
   );
 }
 
@@ -253,7 +253,7 @@ export function resolveAgentBrowserSession(
   session?: string,
   workingDirectory = process.cwd()
 ): string {
-  const configuredSession = session ?? baseEnv[OPENRUNTIME_AGENT_BROWSER_SESSION_ENV];
+  const configuredSession = session ?? baseEnv[DIVEBELL_AGENT_BROWSER_SESSION_ENV];
   if (configuredSession !== undefined && configuredSession.length > 0) {
     return configuredSession;
   }
@@ -263,7 +263,7 @@ export function resolveAgentBrowserSession(
     .update(`${resolvedProfileDirectory}\0${resolve(workingDirectory)}`)
     .digest("hex")
     .slice(0, 12);
-  return `openruntime-${sessionKey}`;
+  return `divebell-${sessionKey}`;
 }
 
 export function createGetWindowScript(path: string): string {

@@ -1,9 +1,9 @@
 export function createBridgeInitScript(bridgeUrl: string): string {
   return `(() => {
   const BRIDGE_URL = ${JSON.stringify(trimTrailingSlash(bridgeUrl))};
-  const MANAGER_KEY = "__OPEN_RUNTIME_BRIDGE_MANAGER__";
-  const REGISTRY_KEY = "__OPEN_RUNTIME_REGISTRY__";
-  const SESSION_PARAM = "openruntimeSessionId";
+  const MANAGER_KEY = "__DIVEBELL_BRIDGE_MANAGER__";
+  const REGISTRY_KEY = "__DIVEBELL_REGISTRY__";
+  const SESSION_PARAM = "divebellSessionId";
   const reconnectDelays = [1000, 2000, 4000, 8000, 10000];
 
   if (globalThis[MANAGER_KEY] !== undefined) return;

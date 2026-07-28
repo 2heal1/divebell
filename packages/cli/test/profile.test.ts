@@ -22,9 +22,9 @@ test("uses agent-browser automatic restore while preserving native profile and s
 
   assert.equal(env.AGENT_BROWSER_PROFILE, "Work");
   assert.equal(env.AGENT_BROWSER_STATE, "/tmp/browser-state.json");
-  assert.match(env.AGENT_BROWSER_SESSION ?? "", /^openruntime-[a-f0-9]{12}$/);
+  assert.match(env.AGENT_BROWSER_SESSION ?? "", /^divebell-[a-f0-9]{12}$/);
   assert.equal(env.AGENT_BROWSER_RESTORE, env.AGENT_BROWSER_SESSION);
-  assert.equal(createDefaultBrowserProfileDirectory().endsWith(".openruntime/browser-profile"), true);
+  assert.equal(createDefaultBrowserProfileDirectory().endsWith(".divebell/browser-profile"), true);
 
   const exportEnv = createAgentBrowserEnvironment({
     AGENT_BROWSER_ENCRYPTION_KEY: "test-key"
@@ -39,8 +39,8 @@ test("uses agent-browser automatic restore while preserving native profile and s
 
 test("configures an isolated restore name and headed mode", () => {
   const env = createAgentBrowserEnvironment({
-    OPENRUNTIME_BROWSER_PROFILE_DIR: "/tmp/custom-openruntime-profile",
-    OPENRUNTIME_AGENT_BROWSER_SESSION: "browser-check"
+    DIVEBELL_BROWSER_PROFILE_DIR: "/tmp/custom-divebell-profile",
+    DIVEBELL_AGENT_BROWSER_SESSION: "browser-check"
   }, undefined, undefined, { ui: true });
 
   assert.equal(env.AGENT_BROWSER_SESSION, "browser-check");
@@ -104,14 +104,14 @@ test("uses a different browser session for each working directory", () => {
     undefined,
     undefined,
     {},
-    "/tmp/openruntime-project-a"
+    "/tmp/divebell-project-a"
   );
   const second = createAgentBrowserEnvironment(
     {},
     undefined,
     undefined,
     {},
-    "/tmp/openruntime-project-b"
+    "/tmp/divebell-project-b"
   );
 
   assert.notEqual(first.AGENT_BROWSER_SESSION, second.AGENT_BROWSER_SESSION);
@@ -126,7 +126,7 @@ test("runs agent-browser through a replaceable executable and forwards stdin", a
       "-e",
       "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(JSON.stringify({ success: true, data: { args: process.argv.slice(1), input } })))"
     ],
-    session: "openruntime-test"
+    session: "divebell-test"
   });
 
   const result = await runner.run(["auth", "save", "app", "--json"], { input: "secret\n" });
@@ -182,14 +182,14 @@ test("allows an isolated command to override the default browser session", async
   });
 });
 
-test("uses the packaged OpenRuntime agent-browser by default", async () => {
+test("uses the packaged Divebell agent-browser by default", async () => {
   const entryPath = resolveBundledAgentBrowserEntryPath();
-  assert.match(entryPath ?? "", /@openruntime[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
+  assert.match(entryPath ?? "", /@divebell[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
 
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.32\.0-openruntime\.1/);
+  assert.match(result.stdout, /agent-browser 0\.33\.1-divebell\.1/);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {
@@ -283,7 +283,7 @@ test("forwards Chrome profile and state launch options when opening a page", asy
     "/tmp/app-state.json",
     "open"
   ]);
-  assert.match(calls[0]?.at(-1) ?? "", /^https:\/\/app\.example\.com\/\?openruntimeSessionId=/);
+  assert.match(calls[0]?.at(-1) ?? "", /^https:\/\/app\.example\.com\/\?divebellSessionId=/);
   assert.deepEqual(launchOptions, {
     ui: false,
     disableRestore: true,
@@ -292,7 +292,7 @@ test("forwards Chrome profile and state launch options when opening a page", asy
 });
 
 test("saves only state that applies to the requested URL", async () => {
-  const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-state-test-"));
+  const tempDirectory = mkdtempSync(join(tmpdir(), "divebell-state-test-"));
   const outputPath = join(tempDirectory, "nested", "app-state.json");
   try {
     const output = createOutput();
@@ -365,7 +365,7 @@ test("requires a path and a valid URL for URL-scoped state saves", async () => {
     kind: "validation",
     message: "state save requires <path>.",
     retryable: false,
-    hint: "Use `openruntime state save ./app-state.json --url https://app.example.com`."
+    hint: "Use `divebell state save ./app-state.json --url https://app.example.com`."
   }));
 
   const invalidUrlOutput = createOutput();

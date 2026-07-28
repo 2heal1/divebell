@@ -11,7 +11,7 @@ function createOptions({ command, optionEntries = [], page } = {}) {
         options: new Map(optionEntries)
       },
       ...(page === undefined ? {} : { page }),
-      openruntime: {
+      divebell: {
         browser: {
           getWindow: async path => ({
             path,
@@ -47,7 +47,7 @@ test("需要页面时给出下一步，而不是直接失败", async () => {
   const fixture = createOptions({ command: ["extension-demo", "page"] });
   await assert.rejects(
     extension.commands[0].run(fixture.options),
-    /openruntime open/
+    /divebell open/
   );
 });
 
@@ -65,10 +65,10 @@ test("打开页面后读取标题和 open Hook 注入的标记", async () => {
 
 test("Hook 返回可验证的初始化脚本和技术栈识别结果", async () => {
   const openResult = await extension.hooks.open({});
-  assert.match(openResult.scripts[0], /__OPENRUNTIME_CLI_EXTENSION_DEMO__/);
+  assert.match(openResult.scripts[0], /__DIVEBELL_CLI_EXTENSION_DEMO__/);
 
   const fixture = createOptions();
   const detection = await extension.hooks.detectStack(fixture.options);
-  assert.equal(detection.id, "openruntime-cli-extension-demo");
+  assert.equal(detection.id, "divebell-cli-extension-demo");
   assert.equal(detection.version, "1");
 });

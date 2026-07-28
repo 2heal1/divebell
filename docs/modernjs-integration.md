@@ -2,9 +2,9 @@
 
 Chinese version: [Modern.js 接入指南](modernjs-integration.zh-CN.md)
 
-`@openruntime/modern-plugin` is the official page-side integration for Modern.js. It turns lifecycle information that Modern.js already owns into stable OpenRuntime facts, so a coding agent can inspect framework state instead of inferring it from DOM text, Console messages, or Network timing.
+`@divebell/modern-plugin` is the official page-side integration for Modern.js. It turns lifecycle information that Modern.js already owns into stable Divebell facts, so a coding agent can inspect framework state instead of inferring it from DOM text, Console messages, or Network timing.
 
-This package is a Modern.js runtime plugin, not a CLI Extension. Install it in the application and register it in `src/modern.runtime.ts`. OpenRuntime still works without the plugin; add it when a task needs framework-internal route, loader, SSR, or hydration evidence.
+This package is a Modern.js runtime plugin, not a CLI Extension. Install it in the application and register it in `src/modern.runtime.ts`. Divebell still works without the plugin; add it when a task needs framework-internal route, loader, SSR, or hydration evidence.
 
 ## What the plugin provides
 
@@ -24,18 +24,18 @@ The plugin reports framework lifecycle. A ready framework route does not prove t
 Install the package:
 
 ```bash
-pnpm add @openruntime/modern-plugin
+pnpm add @divebell/modern-plugin
 ```
 
 Register it in `src/modern.runtime.ts`:
 
 ```ts
 import { defineRuntimeConfig } from "@modern-js/runtime";
-import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
+import { divebellModernPlugin } from "@divebell/modern-plugin";
 
 export default defineRuntimeConfig({
   plugins: [
-    openRuntimeModernPlugin({
+    divebellModernPlugin({
       bridge: {
         port: 17321,
       },
@@ -44,12 +44,12 @@ export default defineRuntimeConfig({
 });
 ```
 
-The current integration guidance uses this plugin for Modern.js `>=3.4.0` and preview versions, where the required framework hooks are available. For an older version, expose the smallest stable business signal with [`@openruntime/core`](runtime-core-api.md) instead of attempting to reconstruct missing framework lifecycle through browser heuristics.
+The current integration guidance uses this plugin for Modern.js `>=3.4.0` and preview versions, where the required framework hooks are available. For an older version, expose the smallest stable business signal with [`@divebell/core`](runtime-core-api.md) instead of attempting to reconstruct missing framework lifecycle through browser heuristics.
 
 Route actions are opt-in because navigation changes page state:
 
 ```ts
-openRuntimeModernPlugin({
+divebellModernPlugin({
   injectRouteListAction: true,
   injectRouteNavigateAction: true,
 });
@@ -60,16 +60,16 @@ openRuntimeModernPlugin({
 Open the page through the CLI, then confirm that a Runtime and the Modern.js targets are present:
 
 ```bash
-openruntime open http://localhost:3000/
-openruntime runtimes
-openruntime targets --query modern
-openruntime snapshot --query modern
+divebell open http://localhost:3000/
+divebell runtimes
+divebell targets --query modern
+divebell snapshot --query modern
 ```
 
 Wait for a concrete route when the task depends on navigation:
 
 ```bash
-openruntime wait-for modern:route ready \
+divebell wait-for modern:route ready \
   --where pathname=/orders \
   --timeout 30000
 ```
@@ -78,6 +78,6 @@ If the page contains more than one Runtime, select the intended instance as desc
 
 ## Related capabilities
 
-The same package also provides `@openruntime/modern-plugin/chunk-map` for build-time Chunk Map generation. Use that separate entry only when a task needs to map browser execution back to source files and dependencies; see [Code-Usage Analysis](code-usage-analysis.md).
+The same package also provides `@divebell/modern-plugin/chunk-map` for build-time Chunk Map generation. Use that separate entry only when a task needs to map browser execution back to source files and dependencies; see [Code-Usage Analysis](code-usage-analysis.md).
 
-For complete target fields, route actions, Garfish helpers, and business-ready helpers, see the [`@openruntime/modern-plugin` package guide](../packages/modern-plugin/README.md).
+For complete target fields, route actions, Garfish helpers, and business-ready helpers, see the [`@divebell/modern-plugin` package guide](../packages/modern-plugin/README.md).

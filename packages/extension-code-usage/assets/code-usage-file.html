@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenRuntime Executed Code</title>
+  <title>Divebell Executed Code</title>
   <style>
     :root {
       color-scheme: light;
@@ -360,12 +360,12 @@
     <p class="footer-note" data-i18n="footerNote">This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.</p>
   </main>
 
-  <script id="openruntime-code-file-data" type="application/json">__OPENRUNTIME_CODE_FILE_DATA__</script>
+  <script id="divebell-code-file-data" type="application/json">__DIVEBELL_CODE_FILE_DATA__</script>
   <script>
     (() => {
       const messages = {
         en: {
-          pageTitle: "OpenRuntime Executed Code",
+          pageTitle: "Divebell Executed Code",
           backToReport: "← Back to code usage analysis",
           viewerOptions: "Code viewer options",
           recordedPhase: "Recorded phase",
@@ -402,7 +402,7 @@
           streamLoadError: "Code data request failed ({status})."
         },
         zh: {
-          pageTitle: "OpenRuntime 执行代码",
+          pageTitle: "Divebell 执行代码",
           backToReport: "← 返回代码使用分析",
           viewerOptions: "代码查看选项",
           recordedPhase: "记录阶段",
@@ -467,8 +467,8 @@
         if (detectBrowserLocale() !== locale) location.reload();
       });
 
-      const dataHref = __OPENRUNTIME_CODE_FILE_DATA_HREF__;
-      const dataMode = __OPENRUNTIME_CODE_FILE_DATA_MODE__;
+      const dataHref = __DIVEBELL_CODE_FILE_DATA_HREF__;
+      const dataMode = __DIVEBELL_CODE_FILE_DATA_MODE__;
       const renderCodeFile = async (data, streaming = false) => {
       const initialCode = typeof data.code === "string" ? data.code : "";
       let code = "";
@@ -554,7 +554,7 @@
       nextHighlight.addEventListener("click", () => jumpHighlight(1));
 
       applyPhase({ resetNavigation: true });
-      globalThis.__OPENRUNTIME_APPEND_CODE_FILE__ = (value, done = false) => {
+      globalThis.__DIVEBELL_APPEND_CODE_FILE__ = (value, done = false) => {
         if (typeof value === "string" && value.length > 0) code += value;
         indexAvailableRows(done);
         spacer.style.height = `${Math.max(1, rows.length) * rowHeight}px`;
@@ -574,10 +574,10 @@
       };
       if (!streaming) {
         for (let offset = 0; offset < initialCode.length; offset += 32 * 1024) {
-          globalThis.__OPENRUNTIME_APPEND_CODE_FILE__(initialCode.slice(offset, offset + 32 * 1024), false);
+          globalThis.__DIVEBELL_APPEND_CODE_FILE__(initialCode.slice(offset, offset + 32 * 1024), false);
           await nextPaint();
         }
-        globalThis.__OPENRUNTIME_APPEND_CODE_FILE__("", true);
+        globalThis.__DIVEBELL_APPEND_CODE_FILE__("", true);
       }
 
       function applyPhase(options = {}) {
@@ -895,7 +895,7 @@
       }
       };
 
-      globalThis.__OPENRUNTIME_RENDER_CODE_FILE__ = (data) => {
+      globalThis.__DIVEBELL_RENDER_CODE_FILE__ = (data) => {
         renderCodeFile(data, false).catch(showLoadError);
       };
       if (dataHref) {
@@ -904,8 +904,8 @@
           : loadDeferredData(dataHref));
       } else {
         try {
-          globalThis.__OPENRUNTIME_RENDER_CODE_FILE__(JSON.parse(
-            document.getElementById("openruntime-code-file-data").textContent || "{}"
+          globalThis.__DIVEBELL_RENDER_CODE_FILE__(JSON.parse(
+            document.getElementById("divebell-code-file-data").textContent || "{}"
           ));
         } catch (error) {
           showLoadError(error);
@@ -958,8 +958,8 @@
               if (!line) continue;
               const event = JSON.parse(line);
               if (event.type === "start") await renderCodeFile(event.data, true);
-              else if (event.type === "code") globalThis.__OPENRUNTIME_APPEND_CODE_FILE__?.(event.value, false);
-              else if (event.type === "done") globalThis.__OPENRUNTIME_APPEND_CODE_FILE__?.("", true);
+              else if (event.type === "code") globalThis.__DIVEBELL_APPEND_CODE_FILE__?.(event.value, false);
+              else if (event.type === "done") globalThis.__DIVEBELL_APPEND_CODE_FILE__?.("", true);
               await nextPaint();
             }
             if (result.done) break;

@@ -1,8 +1,8 @@
 import { validateCommandSkill } from "./skill.js";
 import type {
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeExtensionHooks,
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition,
+  DivebellExtensionHooks,
   ValidateExtensionOptions
 } from "../types/commands.js";
 
@@ -12,31 +12,31 @@ export type {
   CliExtensionRunOptionValue,
   CliExtensionRunOptions,
   CliExtensionRunRequest,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeCloseHook,
-  OpenRuntimeDetectStackHook,
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeExtensionHooks,
-  OpenRuntimeOpenHook,
-  OpenRuntimeOrderedHook,
+  DivebellExtensionCommand,
+  DivebellCloseHook,
+  DivebellDetectStackHook,
+  DivebellExtensionDefinition,
+  DivebellExtensionHooks,
+  DivebellOpenHook,
+  DivebellOrderedHook,
   ValidateExtensionOptions
 } from "../types/commands.js";
 
-export const OPENRUNTIME_EXTENSION_SCHEMA_VERSION = 1;
+export const DIVEBELL_EXTENSION_SCHEMA_VERSION = 1;
 
-export function defineExtension(extension: OpenRuntimeExtensionDefinition): OpenRuntimeExtensionDefinition {
+export function defineExtension(extension: DivebellExtensionDefinition): DivebellExtensionDefinition {
   return validateExtension(extension);
 }
 
 export function validateExtension(
   value: unknown,
   options: ValidateExtensionOptions = {}
-): OpenRuntimeExtensionDefinition {
+): DivebellExtensionDefinition {
   if (!isRecord(value)) {
     throw new Error(createValidationMessage("Extension must default-export an object.", options));
   }
-  if (value.schemaVersion !== OPENRUNTIME_EXTENSION_SCHEMA_VERSION) {
-    throw new Error(`Extension schemaVersion must be ${OPENRUNTIME_EXTENSION_SCHEMA_VERSION}.`);
+  if (value.schemaVersion !== DIVEBELL_EXTENSION_SCHEMA_VERSION) {
+    throw new Error(`Extension schemaVersion must be ${DIVEBELL_EXTENSION_SCHEMA_VERSION}.`);
   }
   const name = validateName(value.name, "Extension");
   const requires = validateExtensionReferences(
@@ -69,7 +69,7 @@ export function validateExtension(
   };
 }
 
-function validateCommands(value: unknown, extensionName: string): OpenRuntimeExtensionCommand[] {
+function validateCommands(value: unknown, extensionName: string): DivebellExtensionCommand[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) {
     throw new Error(`Extension "${extensionName}" commands must be an array.`);
@@ -103,14 +103,14 @@ function validateCommands(value: unknown, extensionName: string): OpenRuntimeExt
       ...(candidate.requiresOpenHook === true ? { requiresOpenHook: true } : {}),
       ...(skill === undefined ? {} : { skill }),
       ...(commandReferences === undefined ? {} : {
-        commandReferences: commandReferences as NonNullable<OpenRuntimeExtensionCommand["commandReferences"]>
+        commandReferences: commandReferences as NonNullable<DivebellExtensionCommand["commandReferences"]>
       }),
       run: async (runOptions) => await run(runOptions)
     };
   });
 }
 
-function validateHooks(value: unknown, extensionName: string): OpenRuntimeExtensionHooks | undefined {
+function validateHooks(value: unknown, extensionName: string): DivebellExtensionHooks | undefined {
   if (value === undefined) return undefined;
   if (!isRecord(value)) {
     throw new Error(`Extension "${extensionName}" hooks must be an object.`);
@@ -131,11 +131,11 @@ function validateHooks(value: unknown, extensionName: string): OpenRuntimeExtens
     throw new Error(`Extension "${extensionName}" hook "close" must be a function.`);
   }
   return {
-    ...(open === undefined ? {} : { open: open as NonNullable<OpenRuntimeExtensionHooks["open"]> }),
+    ...(open === undefined ? {} : { open: open as NonNullable<DivebellExtensionHooks["open"]> }),
     ...(detectStack === undefined
       ? {}
-      : { detectStack: detectStack as NonNullable<OpenRuntimeExtensionHooks["detectStack"]> }),
-    ...(close === undefined ? {} : { close: close as NonNullable<OpenRuntimeExtensionHooks["close"]> })
+      : { detectStack: detectStack as NonNullable<DivebellExtensionHooks["detectStack"]> }),
+    ...(close === undefined ? {} : { close: close as NonNullable<DivebellExtensionHooks["close"]> })
   };
 }
 

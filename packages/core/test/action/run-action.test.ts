@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock, registerRoute } from "../helpers/runtime.ts";
 
 test("runs actions and records started and success events", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   runtime.updateSnapshot({ id: "route:/home", status: "ready" });
@@ -61,7 +61,7 @@ test("runs actions and records started and success events", async () => {
 });
 
 test("records handler errors as action error events", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   runtime.registerAction({
     name: "danger.fail",
@@ -99,7 +99,7 @@ test("records handler errors as action error events", async () => {
 });
 
 test("rejects unavailable or invalid actions without calling handlers", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
   let called = false;
 
   registerRoute(runtime);

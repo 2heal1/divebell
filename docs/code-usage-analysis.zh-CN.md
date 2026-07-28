@@ -7,7 +7,7 @@ English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
 
 ## 分析结果
 
-安装 `@openruntime/extension-code-usage` 后，你可以生成代码使用报告，按业务代码、
+安装 `@divebell/extension-code-usage` 后，你可以生成代码使用报告，按业务代码、
 第三方依赖、文件和分块查看映射体积与实际执行比例。例如，图 1 中选中的依赖体积为
 62.0 KB，但当前阶段只执行了 2.6%，可以继续判断它是否加载得过早。
 
@@ -20,15 +20,15 @@ English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
 
 ## 使用方法
 
-普通内存检查不需要安装任何构建插件，直接使用 OpenRuntime CLI 即可，见
+普通内存检查不需要安装任何构建插件，直接使用 Divebell CLI 即可，见
 [内存分析指南](memory-analysis.zh-CN.md)。只有需要把浏览器中的代码记录还原到分块、
 源码文件和依赖包时，才需要下面的接入。
 
-先全局安装 OpenRuntime，再添加分析命令：
+先全局安装 Divebell，再添加分析命令：
 
 ```bash
-npm install --global @openruntime/cli
-openruntime extensions add @openruntime/extension-code-usage
+npm install --global @divebell/cli
+divebell extensions add @divebell/extension-code-usage
 ```
 
 不要把 CLI 加到业务项目中；只有对应的构建接入包需要安装在项目里。
@@ -38,50 +38,50 @@ openruntime extensions add @openruntime/extension-code-usage
 ```text
 构建插件生成 Chunk Map 和 source map
                   ↓
-OpenRuntime CLI 记录目标页面的代码执行情况
+Divebell CLI 记录目标页面的代码执行情况
                   ↓
-OpenRuntime CLI 读取指定的 Chunk Map 和构建目录
+Divebell CLI 读取指定的 Chunk Map 和构建目录
                   ↓
 生成 JSON 和可视化报告
 ```
 
-构建插件只负责提供准确的构建关系。记录、分析和报告都由 OpenRuntime CLI 完成，
+构建插件只负责提供准确的构建关系。记录、分析和报告都由 Divebell CLI 完成，
 项目不需要自己实现分析逻辑。
 
 ## 1. 安装对应的构建插件
 
 ### Modern.js 项目
 
-安装 `@openruntime/modern-plugin`，然后在 `modern.config.ts` 中加入：
+安装 `@divebell/modern-plugin`，然后在 `modern.config.ts` 中加入：
 
 ```ts
 import { appTools, defineConfig } from '@modern-js/app-tools';
-import { openRuntimeChunkMapPlugin } from '@openruntime/modern-plugin/chunk-map';
+import { divebellChunkMapPlugin } from '@divebell/modern-plugin/chunk-map';
 
 export default defineConfig({
-  plugins: [appTools(), openRuntimeChunkMapPlugin()],
+  plugins: [appTools(), divebellChunkMapPlugin()],
 });
 ```
 
 ### 普通 Rspack 项目
 
-安装 `@openruntime/rspack-plugin`，然后在 Rspack 配置中加入：
+安装 `@divebell/rspack-plugin`，然后在 Rspack 配置中加入：
 
 ```ts
-import { OpenRuntimeChunkMapRspackPlugin } from '@openruntime/rspack-plugin';
+import { DivebellChunkMapRspackPlugin } from '@divebell/rspack-plugin';
 
 export default {
-  plugins: [new OpenRuntimeChunkMapRspackPlugin()],
+  plugins: [new DivebellChunkMapRspackPlugin()],
 };
 ```
 
-两种插件会生成相同格式的 `openruntime-chunks.json`。生产构建还需要保留 JavaScript
+两种插件会生成相同格式的 `divebell-chunks.json`。生产构建还需要保留 JavaScript
 文件及对应的 `.js.map` 文件，否则只能知道分块关系，不能准确还原到源码和依赖包。
 
 可以改变 Chunk Map 的文件名：
 
 ```ts
-openRuntimeChunkMapPlugin({ filename: 'meta/chunks.json' })
+divebellChunkMapPlugin({ filename: 'meta/chunks.json' })
 ```
 
 Rspack 插件也支持同一个 `filename` 选项。
@@ -91,21 +91,21 @@ Rspack 插件也支持同一个 `filename` 选项。
 先打开要测试的页面。页面可以是本地地址，也可以是线上地址：
 
 ```bash
-openruntime open https://example.com/
-openruntime coverage start
+divebell open https://example.com/
+divebell coverage start
 ```
 
 等待首屏稳定后保存第一阶段：
 
 ```bash
-openruntime coverage take /tmp/first-screen.coverage.json \
+divebell coverage take /tmp/first-screen.coverage.json \
   --label first-screen
 ```
 
 继续使用 `click`、`fill`、`goto` 或项目声明的动作完成下一段真实操作，然后保存并结束：
 
 ```bash
-openruntime coverage stop /tmp/orders.coverage.json \
+divebell coverage stop /tmp/orders.coverage.json \
   --label orders
 ```
 
@@ -115,8 +115,8 @@ openruntime coverage stop /tmp/orders.coverage.json \
 ## 3. 指定 Chunk Map，让 CLI 完成分析
 
 ```bash
-openruntime code-usage analyze \
-  --chunk-map /path/to/production-dist/openruntime-chunks.json \
+divebell code-usage analyze \
+  --chunk-map /path/to/production-dist/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
   --output /tmp/code-usage-report.json
@@ -130,8 +130,8 @@ openruntime code-usage analyze \
 使用：
 
 ```bash
-openruntime code-usage analyze \
-  --chunk-map /path/to/metadata/openruntime-chunks.json \
+divebell code-usage analyze \
+  --chunk-map /path/to/metadata/divebell-chunks.json \
   --assets /path/to/production-dist \
   --coverage /tmp/first-screen.coverage.json \
   --output /tmp/code-usage-report.json
@@ -140,8 +140,8 @@ openruntime code-usage analyze \
 线上构建文件放在一起时，可以直接分析：
 
 ```bash
-openruntime code-usage analyze \
-  --chunk-map https://example.com/app/openruntime-chunks.json \
+divebell code-usage analyze \
+  --chunk-map https://example.com/app/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
   --output /tmp/code-usage-report.json
@@ -176,7 +176,7 @@ JavaScript 中的范围：
   是否执行，不会把体积乘以调用次数。
 
 函数范围可能嵌套。上面的例子表示函数整体调用了 3 次，但 1500～1600 的分支没有
-进入。OpenRuntime 会在所有范围边界处分段，并使用最小的内层范围判断这一段是否执行，
+进入。Divebell 会在所有范围边界处分段，并使用最小的内层范围判断这一段是否执行，
 因此不会因为外层函数执行过就把未进入的分支算进去。
 
 每次 `coverage take` 都会取得上一个阶段以来的数据并重置 Chrome 的执行计数。
@@ -184,7 +184,7 @@ JavaScript 中的范围：
 
 ### 2. 把字符范围换算成构建字节
 
-Chrome 的位置使用 JavaScript 字符位置，报告使用 UTF-8 字节。OpenRuntime 会先读取
+Chrome 的位置使用 JavaScript 字符位置，报告使用 UTF-8 字节。Divebell 会先读取
 本次构建的真实 JavaScript 文件，为每个字符位置建立对应的 UTF-8 字节位置，再计算
 执行范围覆盖了多少字节。这样包含中文或其他多字节字符时不会按字符数误算。
 
@@ -255,7 +255,7 @@ JavaScript 中对应的体积。它不是原始 `.tsx` 文件大小。这正是�
 ## 4. 打开可视化报告
 
 ```bash
-openruntime code-usage report /tmp/code-usage-report.json
+divebell code-usage report /tmp/code-usage-report.json
 ```
 
 命令会在 JSON 旁生成 HTML 并打开。只生成文件时使用 `--no-open`，自定义保存位置时
@@ -268,7 +268,7 @@ CLI 会在旁边创建一个 `<报告名>-code` 目录。主报告只展示文�
 
 报告默认使用英文；浏览器首选语言为中文时会自动显示中文，浏览器语言变化后页面会
 自动更新。分享固定语言的报告时，可以使用 `?lang=en` 或 `?lang=zh-CN`。CLI 默认
-跟随终端语言，并按 `OPENRUNTIME_LANG`、`LC_ALL`、`LC_MESSAGES`、`LANG`、
+跟随终端语言，并按 `DIVEBELL_LANG`、`LC_ALL`、`LC_MESSAGES`、`LANG`、
 `LANGUAGE` 的顺序判断；未识别为中文时使用英文。
 
 移动或分享报告时，需要让 HTML 与它旁边的 `-code` 目录保持在一起。旧的分析 JSON
@@ -301,15 +301,15 @@ CLI 会在旁边创建一个 `<报告名>-code` 目录。主报告只展示文�
 ## 仓库内的完整示例
 
 ```bash
-pnpm --filter @openruntime/demo-modern-basic verify:chunk-map
-pnpm --filter @openruntime/demo-modern-basic serve
+pnpm --filter @divebell/demo-modern-basic verify:chunk-map
+pnpm --filter @divebell/demo-modern-basic serve
 ```
 
 保持服务运行，在另一个终端执行：
 
 ```bash
-pnpm --filter @openruntime/demo-modern-basic verify:experience
-pnpm --filter @openruntime/demo-modern-basic report:serve
+pnpm --filter @divebell/demo-modern-basic verify:experience
+pnpm --filter @divebell/demo-modern-basic report:serve
 ```
 
 报告地址为 `http://127.0.0.1:4173/`。页面内容由本地服务分批发送，概要先显示，
@@ -319,11 +319,11 @@ pnpm --filter @openruntime/demo-modern-basic report:serve
 需要验证指定的浏览器版本时，显式追加
 `-- --agent-browser /path/to/agent-browser`。检查结束后会生成分析数据，再通过本地服务查看报告。
 
-首屏默认等待 OpenRuntime 中的 `modern:route` 进入 `ready`，不再根据页面元素和固定
+首屏默认等待 Divebell 中的 `modern:route` 进入 `ready`，不再根据页面元素和固定
 等待时间猜测结束时机。应用声明了自己的 ready target 时，可以把目标 ID 传给脚本：
 
 ```bash
-pnpm --filter @openruntime/demo-modern-basic verify:experience -- \
+pnpm --filter @divebell/demo-modern-basic verify:experience -- \
   --ready-target business:ready:modern-demo
 ```
 

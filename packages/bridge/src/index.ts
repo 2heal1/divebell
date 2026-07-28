@@ -1,6 +1,6 @@
-import { createPackageInfo } from "@openruntime/core";
+import { createPackageInfo } from "@divebell/core";
 
-export const bridgePackageInfo = createPackageInfo("@openruntime/bridge", "page bridge");
+export const bridgePackageInfo = createPackageInfo("@divebell/bridge", "page bridge");
 
 export { createBridgeServer } from "./server.js";
 export type {

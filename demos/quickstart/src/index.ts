@@ -1,7 +1,7 @@
 import {
-  createOpenRuntime,
-  installOpenRuntimeOnWindow
-} from "@openruntime/core";
+  createDivebell,
+  installDivebellOnWindow
+} from "@divebell/core";
 
 import type { OrderInsights } from "./insights";
 import "./styles.css";
@@ -51,8 +51,8 @@ interface AppState {
   memoryRetainedBytes: number;
 }
 
-const runtime = installOpenRuntimeOnWindow(createOpenRuntime(), window, {
-  runtimeId: "runtime-openruntime-quickstart",
+const runtime = installDivebellOnWindow(createDivebell(), window, {
+  runtimeId: "runtime-divebell-quickstart",
   name: "Northstar Supply Operations",
   source: "quickstart"
 });
@@ -131,7 +131,7 @@ void boot();
 
 function registerRuntime(): void {
   runtime.registerTarget({
-    id: "app:openruntime-quickstart",
+    id: "app:divebell-quickstart",
     type: "quickstart.app",
     source: "quickstart",
     label: "Northstar Supply Operations",
@@ -258,7 +258,7 @@ function registerRuntime(): void {
   });
 
   runtime.updateSnapshot({
-    id: "app:openruntime-quickstart",
+    id: "app:divebell-quickstart",
     status: "booting",
     data: {
       version: 1,
@@ -286,7 +286,7 @@ async function boot(): Promise<void> {
     state.fulfillmentStatus = "ready";
     state.message = `${payload.orders.length} orders loaded. The workspace is ready.`;
     runtime.updateSnapshot({
-      id: "app:openruntime-quickstart",
+      id: "app:divebell-quickstart",
       status: "ready",
       data: {
         version: 1,
@@ -299,7 +299,7 @@ async function boot(): Promise<void> {
   } catch (error) {
     state.message = errorMessage(error);
     runtime.updateSnapshot({
-      id: "app:openruntime-quickstart",
+      id: "app:divebell-quickstart",
       status: "error",
       error: {
         code: "quickstart_boot_failed",
@@ -415,7 +415,7 @@ async function triggerInventoryFailure(source: string): Promise<void> {
     const response = await fetch(state.lastRequestUrl, {
       cache: "no-store",
       headers: {
-        "x-openruntime-scenario": "inventory-failure"
+        "x-divebell-scenario": "inventory-failure"
       }
     });
     state.lastRequestStatus = response.status;
@@ -457,7 +457,7 @@ async function retryInventory(strategy: "origin" | "cache", source: string): Pro
     const response = await fetch(state.lastRequestUrl, {
       cache: "no-store",
       headers: {
-        "x-openruntime-scenario": "inventory-recovery"
+        "x-divebell-scenario": "inventory-recovery"
       }
     });
     state.lastRequestStatus = response.status;

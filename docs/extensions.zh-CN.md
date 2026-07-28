@@ -1,16 +1,16 @@
-# OpenRuntime Extension 使用指南
+# Divebell Extension 使用指南
 
-English version: [Using OpenRuntime Extensions](extensions.md)
+English version: [Using Divebell Extensions](extensions.md)
 
 本文面向安装和使用 Extension 的 Agent 与开发者。如果你要编写自己的 Extension，直接阅读 [CLI Extension 开发指南](cli-extensions.zh-CN.md)；查找字段和方法时，使用 [Extension API 参考](extension-api.zh-CN.md)。
 
 ## 什么是 Extension
 
-OpenRuntime 默认提供通用的页面操作、浏览器诊断和可选 Runtime 能力。不同团队还会有自己的账号准备、环境切换、技术栈识别、专项排查和验证流程。Extension 把这些可重复使用的知识和流程封装成 Agent 可以发现和调用的能力。
+Divebell 默认提供通用的页面操作、浏览器诊断和可选 Runtime 能力。不同团队还会有自己的账号准备、环境切换、技术栈识别、专项排查和验证流程。Extension 把这些可重复使用的知识和流程封装成 Agent 可以发现和调用的能力。
 
 一个 Extension 可以提供：
 
-- Commands：挂载到 `openruntime` 下的命令。
+- Commands：挂载到 `divebell` 下的命令。
 - Hooks：在 `open`、`detectStack` 和 `close` 阶段执行逻辑。
 - Skills：说明复杂命令的使用方式和判断标准。
 
@@ -18,21 +18,21 @@ Extension 适合团队会反复使用的开发调试流程。一次性的页面�
 
 ## 安装 Extension
 
-添加 Extension 前，先全局安装 OpenRuntime：
+添加 Extension 前，先全局安装 Divebell：
 
 ```sh
-npm install --global @openruntime/cli
-openruntime --help
+npm install --global @divebell/cli
+divebell --help
 ```
 
-不要把 CLI 加到业务项目中。安装后的 Extension 由全局 OpenRuntime 命令共享。
+不要把 CLI 加到业务项目中。安装后的 Extension 由全局 Divebell 命令共享。
 
 ### 从 npm 安装
 
 使用 npm 包名安装可信的 Extension：
 
 ```sh
-openruntime extensions add @scope/package
+divebell extensions add @scope/package
 ```
 
 官方 Extension 及其用途见 [README 的官方扩展列表](../README.zh-CN.md#官方扩展)。
@@ -42,8 +42,8 @@ openruntime extensions add @scope/package
 也可以直接传入本地 Extension 目录。相对路径和绝对路径都支持：
 
 ```sh
-openruntime extensions add ./path/to/my-extension
-openruntime extensions add /path/to/my-extension
+divebell extensions add ./path/to/my-extension
+divebell extensions add /path/to/my-extension
 ```
 
 本地目录安装常用于开发和调试 Extension，也可以用于安装没有发布到 npm 的 Extension。目录需要包含有效的 Extension 包声明和可加载入口。
@@ -51,17 +51,17 @@ openruntime extensions add /path/to/my-extension
 Extension 会执行本机代码，只安装来源明确、内容可信的包或本地目录。安装完成后，新命令会出现在：
 
 ```sh
-openruntime --help
+divebell --help
 ```
 
-这些命令会复用 OpenRuntime 最近打开的页面、浏览器会话和登录状态。
+这些命令会复用 Divebell 最近打开的页面、浏览器会话和登录状态。
 
 ## 管理 Extension
 
 ```sh
-openruntime extensions list
-openruntime extensions update @scope/package
-openruntime extensions remove @scope/package
+divebell extensions list
+divebell extensions update @scope/package
+divebell extensions remove @scope/package
 ```
 
 - `list` 查看已经安装的 Extension、命令和 Hook。
@@ -71,43 +71,43 @@ openruntime extensions remove @scope/package
 扩展默认安装到：
 
 ```text
-~/.openruntime/extensions
+~/.divebell/extensions
 ```
 
 需要使用独立目录时，可以设置：
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
+DIVEBELL_EXTENSIONS_DIR=/path/to/extensions divebell --help
 ```
 
 需要临时关闭外部 Extension 加载时，可以设置：
 
 ```sh
-OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
+DIVEBELL_DISABLE_EXTENSIONS=1 divebell --help
 ```
 
 ## 使用 Extension
 
-先通过 `openruntime --help` 发现可用的一级命令，再通过 `openruntime <command> --help` 查看该命令的详细用法和参数。按当前任务选择匹配的能力，不要无目的地运行所有诊断命令。
+先通过 `divebell --help` 发现可用的一级命令，再通过 `divebell <command> --help` 查看该命令的详细用法和参数。按当前任务选择匹配的能力，不要无目的地运行所有诊断命令。
 
-页面类命令通常操作最近一次通过 `openruntime open <url>` 打开的页面：
+页面类命令通常操作最近一次通过 `divebell open <url>` 打开的页面：
 
 ```sh
-openruntime open https://example.com
-openruntime <extension-command>
+divebell open https://example.com
+divebell <extension-command>
 ```
 
-`openruntime stack` 会运行 Extension 提供的技术栈识别器，并可能推荐更合适的专项 Extension：
+`divebell stack` 会运行 Extension 提供的技术栈识别器，并可能推荐更合适的专项 Extension：
 
 ```sh
-openruntime stack
-openruntime stack --refresh
+divebell stack
+divebell stack --refresh
 ```
 
 复杂命令可以附带 Skill。使用下面的形式读取 Skill 路径，不执行命令：
 
 ```sh
-openruntime <extension-command> --skill
+divebell <extension-command> --skill
 ```
 
 如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应使用[自动化脚本](cli-automation-scripts.zh-CN.md)，而不是依赖最近打开页面的 Extension 命令。

@@ -9,15 +9,15 @@ import {
 test("parses package names and normalizes a multiline changeset summary", () => {
   assert.deepEqual(
     parseChangeset(`---
-"@openruntime/core": minor
-'@openruntime/cli': patch
+"@divebell/core": minor
+'@divebell/cli': patch
 ---
 
 Add a new runtime capability
 and document how to use it.
 `, "example.md"),
     {
-      packages: ["@openruntime/core", "@openruntime/cli"],
+      packages: ["@divebell/core", "@divebell/cli"],
       summary: "Add a new runtime capability and document how to use it."
     }
   );
@@ -29,11 +29,11 @@ test("renders release changes and affected packages without attribution trailers
     tag: "recording-skill-runtime-v1.2.0",
     changesets: [
       {
-        packages: ["@openruntime/core", "@openruntime/cli"],
+        packages: ["@divebell/core", "@divebell/cli"],
         summary: "Add a new runtime capability."
       },
       {
-        packages: ["@openruntime/cli"],
+        packages: ["@divebell/cli"],
         summary: "Improve CLI output."
       }
     ]
@@ -42,7 +42,7 @@ test("renders release changes and affected packages without attribution trailers
   assert.match(body, /## Changes in 1\.2\.0/);
   assert.match(body, /- Add a new runtime capability\./);
   assert.match(body, /- Improve CLI output\./);
-  assert.equal(body.match(/`@openruntime\/cli`/g)?.length, 1);
+  assert.equal(body.match(/`@divebell\/cli`/g)?.length, 1);
   assert.match(body, /`recording-skill-runtime-v1\.2\.0`/);
   assert.doesNotMatch(body, /riff|co-authored-by/i);
 });
@@ -50,7 +50,7 @@ test("renders release changes and affected packages without attribution trailers
 test("rejects changesets without a usable summary", () => {
   assert.throws(
     () => parseChangeset(`---
-"@openruntime/core": patch
+"@divebell/core": patch
 ---
 `, "empty.md"),
     /frontmatter and a summary/

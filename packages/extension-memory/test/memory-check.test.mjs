@@ -5,9 +5,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import extension from "../dist/extension.js";
-import { createOpenRuntimeCli } from "../../cli/dist/index.js";
+import { createDivebellCli } from "../../cli/dist/index.js";
 
-const cli = createOpenRuntimeCli({ extensions: [extension] });
+const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;
 
 function createOutput() {
@@ -26,7 +26,7 @@ function createBrowserRunner(run) {
 }
 
 test("memory check runs a readable scenario and owns the full browser workflow", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-memory-check-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-memory-check-"));
   const scenarioPath = join(directory, "scenario.mjs");
   const artifactDirectory = join(directory, "artifacts");
   writeFileSync(scenarioPath, `

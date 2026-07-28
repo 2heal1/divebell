@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Outlet, useLocation } from "@modern-js/runtime/router";
-import { getOpenRuntimeFromWindow } from "@openruntime/core";
+import { getDivebellFromWindow } from "@divebell/core";
 import "./styles.css";
 
 const navItems = [
@@ -14,7 +14,7 @@ export default function Layout() {
   const location = useLocation();
 
   useEffect(() => {
-    const runtime = getOpenRuntimeFromWindow();
+    const runtime = getDivebellFromWindow();
     if (runtime === undefined) {
       return;
     }
@@ -29,7 +29,7 @@ export default function Layout() {
         status: "ready"
       },
       handler: () => {
-        const link = document.querySelector<HTMLAnchorElement>("[data-openruntime-action='orders-link']");
+        const link = document.querySelector<HTMLAnchorElement>("[data-divebell-action='orders-link']");
         if (link === null) {
           throw new Error("Orders navigation link was not found.");
         }
@@ -49,7 +49,7 @@ export default function Layout() {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">OpenRuntime Modern.js Demo</p>
+          <p className="eyebrow">Divebell Modern.js Demo</p>
           <h1>Modern.js Runtime Status</h1>
         </div>
         <nav className="nav">
@@ -57,7 +57,7 @@ export default function Layout() {
             <Link
               aria-current={location.pathname === item.to ? "page" : undefined}
               className="nav-link"
-              data-openruntime-action={item.to === "/orders" ? "orders-link" : undefined}
+              data-divebell-action={item.to === "/orders" ? "orders-link" : undefined}
               key={item.to}
               to={item.to}
             >

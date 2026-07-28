@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock, registerRoute } from "../helpers/runtime.ts";
 
 test("registers targets without adding them to the current snapshot", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
 
@@ -25,7 +25,7 @@ test("registers targets without adding them to the current snapshot", () => {
 });
 
 test("unregisters targets and removes their current snapshot entry", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   runtime.updateSnapshot({ id: "route:/home", status: "ready" });

@@ -111,7 +111,7 @@ test("uses the current directory open context when listing runtimes", async () =
 
 test("auto-starts a local bridge before listing runtimes", async () => {
   const output = createOutput();
-  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   const calls: string[] = [];
   let bridgeStarted = false;
 
@@ -166,7 +166,7 @@ test("auto-starts a local bridge before listing runtimes", async () => {
 
 test("auto-starts a local bridge before reading runtime resources", async () => {
   const output = createOutput();
-  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   const calls: string[] = [];
   let bridgeStarted = false;
 
@@ -401,7 +401,7 @@ test("matches localhost and IPv4 loopback runtime URLs for read commands", async
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-loopback");
 });
 
-test("matches runtime url when the runtime only adds the OpenRuntime session query", async () => {
+test("matches runtime url when the runtime only adds the Divebell session query", async () => {
   const output = createOutput();
   const exitCode = await runCli(["snapshot", "--bridge", "http://bridge.test", "--url", "http://app.test"], {
     stdout: output.stdout,
@@ -412,7 +412,7 @@ test("matches runtime url when the runtime only adds the OpenRuntime session que
           runtimes: [
             {
               runtimeId: "runtime-session-url",
-              url: "http://app.test/?openruntimeSessionId=session-orders",
+              url: "http://app.test/?divebellSessionId=session-orders",
               status: "connected",
               connectedAt: 1,
               lastSeenAt: 2
@@ -455,7 +455,7 @@ test("selects the latest matching runtime by session", async () => {
             },
             {
               runtimeId: "runtime-before-refresh",
-              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              url: "http://app.test/orders?divebellSessionId=session-orders",
               sessionId: "session-orders",
               status: "disconnected",
               connectedAt: 1,
@@ -464,7 +464,7 @@ test("selects the latest matching runtime by session", async () => {
             },
             {
               runtimeId: "runtime-after-refresh",
-              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              url: "http://app.test/orders?divebellSessionId=session-orders",
               sessionId: "session-orders",
               status: "connected",
               connectedAt: 4,
@@ -502,14 +502,14 @@ test("selects runtime by session from the runtime url when sessionId is not expo
           runtimes: [
             {
               runtimeId: "runtime-other",
-              url: "http://app.test/orders?openruntimeSessionId=session-other",
+              url: "http://app.test/orders?divebellSessionId=session-other",
               status: "connected",
               connectedAt: 1,
               lastSeenAt: 20
             },
             {
               runtimeId: "runtime-orders",
-              url: "http://app.test/orders?openruntimeSessionId=session-orders",
+              url: "http://app.test/orders?divebellSessionId=session-orders",
               status: "connected",
               connectedAt: 1,
               lastSeenAt: 30

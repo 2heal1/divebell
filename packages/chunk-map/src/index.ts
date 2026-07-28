@@ -1,35 +1,35 @@
-export { createOpenRuntimeChunkMap } from "./create.js";
-export type { OpenRuntimeChunkMapStats } from "./create.js";
-export { matchOpenRuntimeChunk } from "./match.js";
-export { analyzeOpenRuntimeCodeUsage } from "./analyze-coverage.js";
-export { OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION } from "./types.js";
+export { createDivebellChunkMap } from "./create.js";
+export type { DivebellChunkMapStats } from "./create.js";
+export { matchDivebellChunk } from "./match.js";
+export { analyzeDivebellCodeUsage } from "./analyze-coverage.js";
+export { DIVEBELL_CHUNK_MAP_SCHEMA_VERSION } from "./types.js";
 export type {
-  OpenRuntimeCodeUsageAsset,
-  OpenRuntimeCodeUsageCodeFile,
-  OpenRuntimeCodeUsageCodeFileResult,
-  OpenRuntimeCodeUsageChunkResult,
-  OpenRuntimeCodeUsageExecutedRange,
-  OpenRuntimeCodeUsageInput,
-  OpenRuntimeCodeUsagePackageResult,
-  OpenRuntimeCodeUsagePhaseResult,
-  OpenRuntimeCodeUsageReport,
-  OpenRuntimeCodeUsageSourceResult,
-  OpenRuntimeCoverageCheckpoint,
-  OpenRuntimeCoverageFunction,
-  OpenRuntimeCoverageRange,
-  OpenRuntimeCoverageScript,
-  OpenRuntimeSourceMap
+  DivebellCodeUsageAsset,
+  DivebellCodeUsageCodeFile,
+  DivebellCodeUsageCodeFileResult,
+  DivebellCodeUsageChunkResult,
+  DivebellCodeUsageExecutedRange,
+  DivebellCodeUsageInput,
+  DivebellCodeUsagePackageResult,
+  DivebellCodeUsagePhaseResult,
+  DivebellCodeUsageReport,
+  DivebellCodeUsageSourceResult,
+  DivebellCoverageCheckpoint,
+  DivebellCoverageFunction,
+  DivebellCoverageRange,
+  DivebellCoverageScript,
+  DivebellSourceMap
 } from "./coverage-types.js";
 export type {
-  OpenRuntimeChunkMap,
-  OpenRuntimeChunkMapAsset,
-  OpenRuntimeChunkMapChunk,
-  OpenRuntimeChunkMapCreateOptions,
-  OpenRuntimeChunkMapModule,
-  OpenRuntimeChunkMapModuleKind,
-  OpenRuntimeChunkMapModuleOwner,
-  OpenRuntimeChunkMapPackageSummary,
-  OpenRuntimeChunkMapSplitRule,
-  OpenRuntimeChunkMapSplitRuleKind,
-  OpenRuntimeChunkMatchResult
+  DivebellChunkMap,
+  DivebellChunkMapAsset,
+  DivebellChunkMapChunk,
+  DivebellChunkMapCreateOptions,
+  DivebellChunkMapModule,
+  DivebellChunkMapModuleKind,
+  DivebellChunkMapModuleOwner,
+  DivebellChunkMapPackageSummary,
+  DivebellChunkMapSplitRule,
+  DivebellChunkMapSplitRuleKind,
+  DivebellChunkMatchResult
 } from "./types.js";

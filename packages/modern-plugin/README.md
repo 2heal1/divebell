@@ -1,7 +1,7 @@
-# @openruntime/modern-plugin
+# @divebell/modern-plugin
 
-`@openruntime/modern-plugin` lets a Modern.js app expose framework runtime
-state to OpenRuntime. It records information that Modern.js already knows:
+`@divebell/modern-plugin` lets a Modern.js app expose framework runtime
+state to Divebell. It records information that Modern.js already knows:
 application render state, current route state, SSR state, hydration state, and
 optional business ready state.
 
@@ -14,18 +14,18 @@ ready helpers described below.
 Add the plugin in `src/modern.runtime.ts`:
 
 ```ts
-import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
+import { divebellModernPlugin } from "@divebell/modern-plugin";
 
-export default openRuntimeModernPlugin();
+export default divebellModernPlugin();
 ```
 
 Open the page with the CLI so it can connect every registered runtime, then query it:
 
 ```sh
-openruntime open http://localhost:19081/
-openruntime targets --url http://localhost:19081/
-openruntime snapshot --url http://localhost:19081/
-openruntime wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
+divebell open http://localhost:19081/
+divebell targets --url http://localhost:19081/
+divebell snapshot --url http://localhost:19081/
+divebell wait-for modern:route ready --url http://localhost:19081/ --where pathname=/orders
 ```
 
 For pages that expose multiple Runtime instances, including micro-frontend
@@ -81,7 +81,7 @@ Statuses:
 Target data from `targets`:
 
 - `routes`: route manifest for known routes.
-- `routes[].routeId`: stable OpenRuntime route id. When a pathname is known,
+- `routes[].routeId`: stable Divebell route id. When a pathname is known,
   this is the pathname, such as `/orders`.
 - `routes[].path`: Modern.js route path segment.
 - `routes[].pathname`: resolved pathname when available.
@@ -114,8 +114,8 @@ route.
 Common waits:
 
 ```sh
-openruntime wait-for modern:route ready --where pathname=/orders
-openruntime wait-for modern:route error --where pathname=/broken
+divebell wait-for modern:route ready --where pathname=/orders
+divebell wait-for modern:route error --where pathname=/broken
 ```
 
 ## Optional Route Actions
@@ -125,7 +125,7 @@ explicitly when the page should expose route list and route navigation actions
 to Agents:
 
 ```ts
-openRuntimeModernPlugin({
+divebellModernPlugin({
   injectRouteListAction: true,
   injectRouteNavigateAction: true,
 });
@@ -139,7 +139,7 @@ This safe action returns the same known route manifest stored on the
 `modern:route` target.
 
 ```sh
-openruntime run-action modern.route.list
+divebell run-action modern.route.list
 ```
 
 ### `modern.route.navigate`
@@ -151,9 +151,9 @@ input only accepts routes known by the current `modern:route` route manifest.
 Use input options to read the current candidate route pathnames:
 
 ```sh
-openruntime input-options --action modern.route.navigate --input to
-openruntime run-action modern.route.navigate --payload '{"to":"/orders"}'
-openruntime wait-for modern:route ready --where pathname=/orders
+divebell input-options --action modern.route.navigate --input to
+divebell run-action modern.route.navigate --payload '{"to":"/orders"}'
+divebell wait-for modern:route ready --where pathname=/orders
 ```
 
 ### `modern:ssr`
@@ -175,7 +175,7 @@ Statuses:
 Common snapshot data:
 
 - `environment`: `server` or `browser`.
-- `runtimeId`: OpenRuntime runtime id injected during SSR.
+- `runtimeId`: Divebell runtime id injected during SSR.
 - `renderId`: render id injected during SSR.
 - `requestPathname`: pathname for the SSR request when available.
 - `requestUrl`: full SSR request URL when available.
@@ -188,7 +188,7 @@ Common snapshot data:
 Common wait:
 
 ```sh
-openruntime wait-for modern:ssr server-rendered --where environment=server
+divebell wait-for modern:ssr server-rendered --where environment=server
 ```
 
 ### `modern:hydration`
@@ -223,31 +223,31 @@ the earlier hydration failure.
 The package also exports Garfish helpers for Modern.js host
 applications that use Garfish:
 
-- `createOpenRuntimeGarfishReporter`
-- `createOpenRuntimeGarfishPlugin`
-- `createOpenRuntimeGarfishCustomLoader`
+- `createDivebellGarfishReporter`
+- `createDivebellGarfishPlugin`
+- `createDivebellGarfishCustomLoader`
 
-Garfish is a singleton in the host page. Register the OpenRuntime Garfish
+Garfish is a singleton in the host page. Register the Divebell Garfish
 plugin in the host application before `Garfish.run()` or before the first
 `Garfish.loadApp()`:
 
 ```ts
 import {
-  createOpenRuntimeGarfishCustomLoader,
-  createOpenRuntimeGarfishPlugin,
-  createOpenRuntimeGarfishReporter,
-} from "@openruntime/modern-plugin";
+  createDivebellGarfishCustomLoader,
+  createDivebellGarfishPlugin,
+  createDivebellGarfishReporter,
+} from "@divebell/modern-plugin";
 
-const reporter = createOpenRuntimeGarfishReporter();
+const reporter = createDivebellGarfishReporter();
 
 export const garfishOptions = {
-  plugins: [createOpenRuntimeGarfishPlugin({ reporter })],
-  customLoader: createOpenRuntimeGarfishCustomLoader({ reporter }),
+  plugins: [createDivebellGarfishPlugin({ reporter })],
+  customLoader: createDivebellGarfishCustomLoader({ reporter }),
 };
 ```
 
 If the host already has a `customLoader`, pass it through `loader` so
-OpenRuntime can wrap it instead of replacing it.
+Divebell can wrap it instead of replacing it.
 
 ### `modern:garfish`
 
@@ -261,7 +261,7 @@ Type: `modern.garfish.app`
 
 Per-sub-application state. The target records Garfish lifecycle state and
 whether `provider.render` / `provider.destroy` was called through the
-OpenRuntime custom loader.
+Divebell custom loader.
 
 Statuses:
 
@@ -272,7 +272,7 @@ Statuses:
 - `evaluating`: a sub-application script started executing.
 - `evaluated`: a sub-application script executed.
 - `mounting`: Garfish started mounting the app.
-- `rendering`: `provider.render` was called through the OpenRuntime custom
+- `rendering`: `provider.render` was called through the Divebell custom
   loader.
 - `mounted`: Garfish mount completed.
 - `unmounting`: Garfish started unmounting or `provider.destroy` was called.
@@ -282,18 +282,18 @@ Statuses:
 Common waits:
 
 ```sh
-openruntime wait-for modern:garfish:app:orders mounted
-openruntime events --target-id modern:garfish:app:orders --limit 50
+divebell wait-for modern:garfish:app:orders mounted
+divebell events --target-id modern:garfish:app:orders --limit 50
 ```
 
 ## Business Ready Target
 
 The package also exports helpers for business-owned readiness:
 
-- `registerOpenRuntimeReady`
-- `markOpenRuntimeReady`
-- `markOpenRuntimeReadyError`
-- `unregisterOpenRuntimeReady`
+- `registerDivebellReady`
+- `markDivebellReady`
+- `markDivebellReadyError`
+- `unregisterDivebellReady`
 
 These helpers use target ids shaped as `business:ready:<id>` and type
 `business.ready`.
@@ -305,33 +305,33 @@ Statuses:
 - `error`: business code marked the target as failed.
 
 Business targets are owned by business code. If a route unmounts the business
-component, the component should call `unregisterOpenRuntimeReady` so stale
+component, the component should call `unregisterDivebellReady` so stale
 business targets do not stay in later route snapshots.
 
 Example:
 
 ```ts
 import {
-  markOpenRuntimeReady,
-  registerOpenRuntimeReady,
-  unregisterOpenRuntimeReady,
-} from "@openruntime/modern-plugin";
-import { getOpenRuntimeFromWindow } from "@openruntime/core";
+  markDivebellReady,
+  registerDivebellReady,
+  unregisterDivebellReady,
+} from "@divebell/modern-plugin";
+import { getDivebellFromWindow } from "@divebell/core";
 
-const runtime = getOpenRuntimeFromWindow();
+const runtime = getDivebellFromWindow();
 
 if (runtime) {
-  registerOpenRuntimeReady({
+  registerDivebellReady({
     runtime,
     id: "checkout",
   });
-  markOpenRuntimeReady(runtime, "checkout", {
+  markDivebellReady(runtime, "checkout", {
     screen: "checkout",
   });
 }
 
 // When the owning page or component unmounts:
 if (runtime) {
-  unregisterOpenRuntimeReady(runtime, "checkout");
+  unregisterDivebellReady(runtime, "checkout");
 }
 ```

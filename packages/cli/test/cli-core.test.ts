@@ -12,9 +12,9 @@ import { createCliReferenceMarkdown } from "../dist/commands/help.js";
 import { createBrowserRunner, createOutput } from "./helpers.js";
 
 test("exposes the cli package marker", () => {
-  assert.equal(getCliCommandName(), "openruntime");
+  assert.equal(getCliCommandName(), "divebell");
   assert.deepEqual(cliPackageInfo, {
-    name: "@openruntime/cli",
+    name: "@divebell/cli",
     phase: "phase-0",
     role: "agent command line"
   });
@@ -23,7 +23,7 @@ test("exposes the cli package marker", () => {
 test("exposes only canonical cli binaries", () => {
   const packageJson = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"));
 
-  assert.deepEqual(Object.keys(packageJson.bin), ["openruntime", "opr"]);
+  assert.deepEqual(Object.keys(packageJson.bin), ["divebell"]);
 });
 
 test("defines and validates extension exports", () => {
@@ -34,7 +34,7 @@ test("defines and validates extension exports", () => {
       name: "demo",
       commandReferences: [{
         category: "Extensions",
-        usage: "openruntime demo ping",
+        usage: "divebell demo ping",
         description: "Runs demo."
       }],
       async run() { return 0; }
@@ -64,7 +64,7 @@ test("defines and validates extension exports", () => {
       name: "missing-skill",
       commands: [{
         name: "missing-skill",
-        skill: { path: join(tmpdir(), "openruntime-missing-skill", "SKILL.md") },
+        skill: { path: join(tmpdir(), "divebell-missing-skill", "SKILL.md") },
         async run() { return 0; }
       }]
     }),
@@ -81,29 +81,29 @@ test("prints compact top-level help", async () => {
 
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
-  assert.match(output.text(), /^Usage: openruntime <command> \[options\]/);
-  assert.match(output.text(), /openruntime snapshot - Read the current snapshot state/);
-  assert.match(output.text(), /openruntime open - Open a directory-scoped page/);
-  assert.match(output.text(), /openruntime profiles - List Chrome profiles/);
-  assert.match(output.text(), /openruntime state - Inspect and manage/);
-  assert.match(output.text(), /openruntime auth - Inspect or delete/);
-  assert.match(output.text(), /openruntime extensions - Install, list, update, or remove/);
-  assert.match(output.text(), /Run `openruntime <command> --help` for detailed usage\./);
-  assert.doesNotMatch(output.text(), /openruntime extensions (add|list|update|remove)/);
-  assert.doesNotMatch(output.text(), /openruntime state (save|load)/);
-  assert.doesNotMatch(output.text(), /openruntime auth (save|login)/);
+  assert.match(output.text(), /^Usage: divebell <command> \[options\]/);
+  assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
+  assert.match(output.text(), /divebell open - Open a directory-scoped page/);
+  assert.match(output.text(), /divebell profiles - List Chrome profiles/);
+  assert.match(output.text(), /divebell state - Inspect and manage/);
+  assert.match(output.text(), /divebell auth - Inspect or delete/);
+  assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
+  assert.match(output.text(), /Run `divebell <command> --help` for detailed usage\./);
+  assert.doesNotMatch(output.text(), /divebell extensions (add|list|update|remove)/);
+  assert.doesNotMatch(output.text(), /divebell state (save|load)/);
+  assert.doesNotMatch(output.text(), /divebell auth (save|login)/);
   assert.doesNotMatch(output.text(), /--id <id>/);
   assert.doesNotMatch(output.text(), /--target-id <id>/);
   assert.doesNotMatch(output.text(), /--ui/);
-  assert.doesNotMatch(output.text(), /openruntime auth export/);
-  assert.doesNotMatch(output.text(), /openruntime auth import/);
-  assert.doesNotMatch(output.text(), /openruntime export-profile /);
-  assert.doesNotMatch(output.text(), /openruntime import-profile /);
-  assert.doesNotMatch(output.text(), /openruntime profile /);
-  assert.doesNotMatch(output.text(), /openruntime verify /);
-  assert.match(output.text(), /openruntime stack/);
-  assert.doesNotMatch(output.text(), /openruntime goto /);
-  assert.doesNotMatch(output.text(), /openruntime close/);
+  assert.doesNotMatch(output.text(), /divebell auth export/);
+  assert.doesNotMatch(output.text(), /divebell auth import/);
+  assert.doesNotMatch(output.text(), /divebell export-profile /);
+  assert.doesNotMatch(output.text(), /divebell import-profile /);
+  assert.doesNotMatch(output.text(), /divebell profile /);
+  assert.doesNotMatch(output.text(), /divebell verify /);
+  assert.match(output.text(), /divebell stack/);
+  assert.doesNotMatch(output.text(), /divebell goto /);
+  assert.doesNotMatch(output.text(), /divebell close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
   assert.doesNotMatch(output.text(), /open[-]runtime/);
   assert.doesNotMatch(output.text(), /Examples:/);
@@ -118,12 +118,12 @@ test("prints progressively scoped command help", async () => {
     stderr: extensionsOutput.stderr
   }), 0);
   assert.equal(extensionsOutput.errorText(), "");
-  assert.match(extensionsOutput.text(), /openruntime extensions add <package-or-path>/);
+  assert.match(extensionsOutput.text(), /divebell extensions add <package-or-path>/);
   assert.doesNotMatch(extensionsOutput.text(), /<npm-package>/);
-  assert.match(extensionsOutput.text(), /openruntime extensions list/);
-  assert.match(extensionsOutput.text(), /openruntime extensions update <package>/);
-  assert.match(extensionsOutput.text(), /openruntime extensions remove <package>/);
-  assert.doesNotMatch(extensionsOutput.text(), /openruntime snapshot/);
+  assert.match(extensionsOutput.text(), /divebell extensions list/);
+  assert.match(extensionsOutput.text(), /divebell extensions update <package>/);
+  assert.match(extensionsOutput.text(), /divebell extensions remove <package>/);
+  assert.doesNotMatch(extensionsOutput.text(), /divebell snapshot/);
 
   const addOutput = createOutput();
   assert.equal(await runCli(["extensions", "add", "--help"], {
@@ -131,17 +131,17 @@ test("prints progressively scoped command help", async () => {
     stderr: addOutput.stderr
   }), 0);
   assert.equal(addOutput.errorText(), "");
-  assert.match(addOutput.text(), /openruntime extensions add <package-or-path>/);
+  assert.match(addOutput.text(), /divebell extensions add <package-or-path>/);
   assert.doesNotMatch(addOutput.text(), /<npm-package>/);
-  assert.doesNotMatch(addOutput.text(), /openruntime extensions (list|update|remove)/);
+  assert.doesNotMatch(addOutput.text(), /divebell extensions (list|update|remove)/);
 
   const stateOutput = createOutput();
   assert.equal(await runCli(["state", "list", "--help"], {
     stdout: stateOutput.stdout,
     stderr: stateOutput.stderr
   }), 0);
-  assert.match(stateOutput.text(), /openruntime state <list\|show\|rename\|clear\|clean>/);
-  assert.doesNotMatch(stateOutput.text(), /openruntime state (save|load)/);
+  assert.match(stateOutput.text(), /divebell state <list\|show\|rename\|clear\|clean>/);
+  assert.doesNotMatch(stateOutput.text(), /divebell state (save|load)/);
 });
 
 test("rejects the removed close command", async () => {
@@ -188,8 +188,8 @@ test("prints help for command help without executing the command", async () => {
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
     assert.match(output.text(), /Usage:/);
-    assert.match(output.text(), new RegExp(`openruntime ${command}(?: |$)`));
-    assert.doesNotMatch(output.text(), /openruntime extensions/);
+    assert.match(output.text(), new RegExp(`divebell ${command}(?: |$)`));
+    assert.doesNotMatch(output.text(), /divebell extensions/);
     assert.equal(touchedSideEffect, false);
   }
 });
@@ -210,32 +210,32 @@ test("rejects unknown scoped help", async () => {
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
-  assert.match(markdown, /openruntime open <url>/);
-  assert.match(markdown, /openruntime open <url> \[--headers <json>\]/);
-  assert.match(markdown, /openruntime profiles/);
-  assert.match(markdown, /openruntime state save <path> \[--url <url>\]/);
-  assert.match(markdown, /openruntime state load <path>/);
-  assert.match(markdown, /openruntime auth save <name>/);
-  assert.match(markdown, /openruntime auth login <name>/);
-  assert.doesNotMatch(markdown, /openruntime auth export/);
-  assert.doesNotMatch(markdown, /openruntime auth import/);
-  assert.doesNotMatch(markdown, /openruntime export-profile /);
-  assert.doesNotMatch(markdown, /openruntime import-profile /);
-  assert.doesNotMatch(markdown, /openruntime profile /);
-  assert.match(markdown, /openruntime get-window <path>/);
-  assert.match(markdown, /openruntime network \[--url <query>\]/);
-  assert.doesNotMatch(markdown, /openruntime memory /);
-  assert.doesNotMatch(markdown, /openruntime code-usage /);
-  assert.doesNotMatch(markdown, /openruntime record /);
-  assert.match(markdown, /openruntime coverage <status\|start\|take\|stop\|cancel>/);
-  assert.doesNotMatch(markdown, /openruntime verify /);
-  assert.match(markdown, /openruntime wait-for .*<target-id> <status>.*--next/);
-  assert.match(markdown, /openruntime extensions add <package-or-path>/);
+  assert.match(markdown, /divebell open <url>/);
+  assert.match(markdown, /divebell open <url> \[--headers <json>\]/);
+  assert.match(markdown, /divebell profiles/);
+  assert.match(markdown, /divebell state save <path> \[--url <url>\]/);
+  assert.match(markdown, /divebell state load <path>/);
+  assert.match(markdown, /divebell auth save <name>/);
+  assert.match(markdown, /divebell auth login <name>/);
+  assert.doesNotMatch(markdown, /divebell auth export/);
+  assert.doesNotMatch(markdown, /divebell auth import/);
+  assert.doesNotMatch(markdown, /divebell export-profile /);
+  assert.doesNotMatch(markdown, /divebell import-profile /);
+  assert.doesNotMatch(markdown, /divebell profile /);
+  assert.match(markdown, /divebell get-window <path>/);
+  assert.match(markdown, /divebell network \[--url <query>\]/);
+  assert.doesNotMatch(markdown, /divebell memory /);
+  assert.doesNotMatch(markdown, /divebell code-usage /);
+  assert.doesNotMatch(markdown, /divebell record /);
+  assert.match(markdown, /divebell coverage <status\|start\|take\|stop\|cancel>/);
+  assert.doesNotMatch(markdown, /divebell verify /);
+  assert.match(markdown, /divebell wait-for .*<target-id> <status>.*--next/);
+  assert.match(markdown, /divebell extensions add <package-or-path>/);
   assert.doesNotMatch(markdown, /<npm-package>/);
-  assert.match(markdown, /openruntime extensions list/);
-  assert.match(markdown, /openruntime stack/);
-  assert.doesNotMatch(markdown, /openruntime goto /);
-  assert.doesNotMatch(markdown, /openruntime close/);
+  assert.match(markdown, /divebell extensions list/);
+  assert.match(markdown, /divebell stack/);
+  assert.doesNotMatch(markdown, /divebell goto /);
+  assert.doesNotMatch(markdown, /divebell close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
   assert.doesNotMatch(markdown, /\p{Script=Han}/u);
   assert.doesNotMatch(markdown, /open[-]runtime/);
@@ -243,10 +243,10 @@ test("generates CLI reference markdown from the help table", () => {
 });
 
 test("recognizes a bin symlink as the cli entrypoint", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-cli-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-cli-"));
   try {
     const entry = join(process.cwd(), "dist", "index.js");
-    const bin = join(tempDir, "openruntime");
+    const bin = join(tempDir, "divebell");
     symlinkSync(entry, bin);
 
     assert.equal(isEntryPoint(bin, pathToFileURL(entry).href), true);

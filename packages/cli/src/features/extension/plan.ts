@@ -1,7 +1,7 @@
 import type {
-  OpenRuntimeDetectStackHook,
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeOpenHook
+  DivebellDetectStackHook,
+  DivebellExtensionDefinition,
+  DivebellOpenHook
 } from "../../types/commands.js";
 
 export type ExtensionOrderedHookName = "open" | "detectStack";
@@ -30,7 +30,7 @@ interface HookNode {
 }
 
 export function createExtensionHookPlans(
-  extensions: readonly OpenRuntimeExtensionDefinition[]
+  extensions: readonly DivebellExtensionDefinition[]
 ): ExtensionHookPlans {
   return {
     open: createExtensionHookPlan(extensions, "open"),
@@ -39,7 +39,7 @@ export function createExtensionHookPlans(
 }
 
 export function createExtensionHookPlan(
-  extensions: readonly OpenRuntimeExtensionDefinition[],
+  extensions: readonly DivebellExtensionDefinition[],
   hook: ExtensionOrderedHookName
 ): ExtensionHookPlan {
   const order = new Map(extensions.map((extension, index) => [extension.name, index]));
@@ -101,16 +101,16 @@ export function createExtensionHookPlan(
 }
 
 export function getOpenHook(
-  extension: OpenRuntimeExtensionDefinition
-): OpenRuntimeOpenHook | undefined {
+  extension: DivebellExtensionDefinition
+): DivebellOpenHook | undefined {
   const hook = extension.hooks?.open;
   if (hook === undefined) return undefined;
   return typeof hook === "function" ? hook : hook.run;
 }
 
 export function getDetectStackHook(
-  extension: OpenRuntimeExtensionDefinition
-): OpenRuntimeDetectStackHook | undefined {
+  extension: DivebellExtensionDefinition
+): DivebellDetectStackHook | undefined {
   const hook = extension.hooks?.detectStack;
   if (hook === undefined) return undefined;
   return typeof hook === "function" ? hook : hook.run;

@@ -1,4 +1,4 @@
-name: Publish OpenRuntime Release
+name: Publish Divebell Release
 
 on:
   pull_request:
@@ -13,15 +13,15 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: openruntime-release-${{ github.event.pull_request.number }}
+  group: divebell-release-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
   publish:
     if: >-
-      github.repository == '2heal1/openruntime' &&
+      github.repository == '2heal1/divebell' &&
       github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'release/openruntime-v')
+      startsWith(github.event.pull_request.head.ref, 'release/divebell-v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -54,10 +54,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
           RELEASE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          RELEASE_FILES: ${{ runner.temp }}/openruntime-release-files.txt
+          RELEASE_FILES: ${{ runner.temp }}/divebell-release-files.txt
         run: |
           gh pr diff "${{ github.event.pull_request.number }}" --name-only > "$RELEASE_FILES"
-          node scripts/validate-openruntime-release.mjs \
+          node scripts/validate-divebell-release.mjs \
             --branch "$RELEASE_BRANCH" \
             --base "$RELEASE_BASE_SHA" \
             --changed-files "$RELEASE_FILES"
@@ -88,7 +88,7 @@ jobs:
           node - <<'NODE'
           const { appendFileSync } = require('node:fs');
           const { join } = require('node:path');
-          const manifest = require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json');
+          const manifest = require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json');
           appendFileSync(process.env.GITHUB_OUTPUT, [
             `version=${manifest.version}`,
             `tag=${manifest.tag}`,
@@ -126,7 +126,7 @@ jobs:
             gh release create "$TAG" "$ASSET" "$CHECKSUM" \
               --draft \
               --target "$RELEASE_SHA" \
-              --title "OpenRuntime ${VERSION}" \
-              --notes "Publishes all @openruntime npm packages through OIDC and provides the versioned runtime bundle used by record-openruntime-workflow."
+              --title "Divebell ${VERSION}" \
+              --notes "Publishes all @divebell npm packages through OIDC and provides the versioned runtime bundle used by record-divebell-workflow."
           fi
           gh release edit "$TAG" --draft=false --latest=false

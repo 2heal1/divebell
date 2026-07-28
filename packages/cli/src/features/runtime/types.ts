@@ -1,4 +1,4 @@
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
 
 export type Fetcher = typeof fetch;
 

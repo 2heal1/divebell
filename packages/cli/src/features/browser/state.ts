@@ -30,12 +30,12 @@ export async function saveUrlScopedBrowserState(
       code: "STATE_SAVE_PATH_REQUIRED",
       kind: "validation",
       message: "state save requires <path>.",
-      hint: "Use `openruntime state save ./app-state.json --url https://app.example.com`."
+      hint: "Use `divebell state save ./app-state.json --url https://app.example.com`."
     });
   }
 
   const outputPath = resolve(options.outputPath);
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "openruntime-state-export-"));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-state-export-"));
   const temporaryPath = join(temporaryDirectory, "browser-state.json");
   try {
     const saveResult = await browserRunner.run(

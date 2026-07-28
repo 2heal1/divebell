@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { getOpenRuntimeFromWindow } from "@openruntime/core";
+import { getDivebellFromWindow } from "@divebell/core";
 import {
-  markOpenRuntimeReady,
-  markOpenRuntimeReadyError,
-  registerOpenRuntimeReady,
-  unregisterOpenRuntimeReady
-} from "@openruntime/modern-plugin";
+  markDivebellReady,
+  markDivebellReadyError,
+  registerDivebellReady,
+  unregisterDivebellReady
+} from "@divebell/modern-plugin";
 
 type ReadyStatus = "pending" | "ready" | "error";
 
@@ -13,12 +13,12 @@ export default function HomePage() {
   const [readyStatus, setReadyStatus] = useState<ReadyStatus>("pending");
 
   useEffect(() => {
-    const runtime = getOpenRuntimeFromWindow();
+    const runtime = getDivebellFromWindow();
     if (runtime === undefined) {
       return;
     }
 
-    registerOpenRuntimeReady({
+    registerDivebellReady({
       runtime,
       id: "modern-demo",
       label: "Modern.js demo business ready",
@@ -28,7 +28,7 @@ export default function HomePage() {
     });
 
     const timer = window.setTimeout(() => {
-      markOpenRuntimeReady(runtime, "modern-demo", {
+      markDivebellReady(runtime, "modern-demo", {
         screen: "home",
         message: "business ready"
       });
@@ -37,17 +37,17 @@ export default function HomePage() {
 
     return () => {
       window.clearTimeout(timer);
-      unregisterOpenRuntimeReady(runtime, "modern-demo");
+      unregisterDivebellReady(runtime, "modern-demo");
     };
   }, []);
 
   const markError = () => {
-    const runtime = getOpenRuntimeFromWindow();
+    const runtime = getDivebellFromWindow();
     if (runtime === undefined) {
       return;
     }
 
-    markOpenRuntimeReadyError(runtime, "manual business error", "modern-demo");
+    markDivebellReadyError(runtime, "manual business error", "modern-demo");
     setReadyStatus("error");
   };
 

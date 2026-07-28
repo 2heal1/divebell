@@ -18,23 +18,23 @@ const otp = getOption("--otp");
 if (otp !== undefined && mode !== "publish") throw new Error("--otp is only supported in publish mode.");
 
 const packageDefinitions = [
-  { directory: "packages/core", filePrefix: "openruntime-core" },
-  { directory: "packages/bridge", filePrefix: "openruntime-bridge" },
-  { directory: "packages/chunk-map", filePrefix: "openruntime-chunk-map" },
-  { directory: "packages/rspack-plugin", filePrefix: "openruntime-rspack-plugin" },
-  { directory: "packages/modern-plugin", filePrefix: "openruntime-modern-plugin" },
-  { directory: "packages/cli", filePrefix: "openruntime-cli" },
-  { directory: "packages/extension-code-usage", filePrefix: "openruntime-extension-code-usage" },
-  { directory: "packages/extension-troubleshooting", filePrefix: "openruntime-extension-troubleshooting" },
-  { directory: "packages/extension-imitate", filePrefix: "openruntime-extension-imitate" },
-  { directory: "packages/extension-memory", filePrefix: "openruntime-extension-memory" }
+  { directory: "packages/core", filePrefix: "divebell-core" },
+  { directory: "packages/bridge", filePrefix: "divebell-bridge" },
+  { directory: "packages/chunk-map", filePrefix: "divebell-chunk-map" },
+  { directory: "packages/rspack-plugin", filePrefix: "divebell-rspack-plugin" },
+  { directory: "packages/modern-plugin", filePrefix: "divebell-modern-plugin" },
+  { directory: "packages/cli", filePrefix: "divebell-cli" },
+  { directory: "packages/extension-code-usage", filePrefix: "divebell-extension-code-usage" },
+  { directory: "packages/extension-troubleshooting", filePrefix: "divebell-extension-troubleshooting" },
+  { directory: "packages/extension-imitate", filePrefix: "divebell-extension-imitate" },
+  { directory: "packages/extension-memory", filePrefix: "divebell-extension-memory" }
 ];
 const packages = await Promise.all(packageDefinitions.map(async (definition) => ({
   ...definition,
   packageJson: JSON.parse(await readFile(resolve(repositoryRoot, definition.directory, "package.json"), "utf8"))
 })));
 const versions = new Set(packages.map((item) => item.packageJson.version));
-if (versions.size !== 1) throw new Error("All OpenRuntime packages must use the same release version.");
+if (versions.size !== 1) throw new Error("All Divebell packages must use the same release version.");
 const version = packages[0].packageJson.version;
 
 if (mode === "check") {
@@ -102,7 +102,7 @@ async function validateArchive(archive, expectedName, expectedVersion) {
   if (dependencyValues.some((value) => typeof value === "string" && value.startsWith("workspace:"))) {
     throw new Error(`${expectedName} still contains a workspace dependency after packing.`);
   }
-  if (packed.openruntime?.extensions !== undefined && dependencyValues.length > 0) {
+  if (packed.divebell?.extensions !== undefined && dependencyValues.length > 0) {
     throw new Error(`${expectedName} extension packages must not declare runtime dependencies.`);
   }
 }

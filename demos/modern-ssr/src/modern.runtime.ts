@@ -1,9 +1,9 @@
 import { defineRuntimeConfig } from "@modern-js/runtime";
-import { openRuntimeModernPlugin } from "@openruntime/modern-plugin";
+import { divebellModernPlugin } from "@divebell/modern-plugin";
 
 export default defineRuntimeConfig({
   plugins: [
-    openRuntimeModernPlugin({
+    divebellModernPlugin({
       bridge: {
         port: 17321
       }

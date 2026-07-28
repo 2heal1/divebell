@@ -17,19 +17,19 @@ import { promisify } from "node:util";
 import { getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { requireCommandArgument } from "../utils/command.js";
 import { createError } from "../utils/output.js";
-import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
+import type { DivebellExtensionDefinition } from "../types/commands.js";
 import { validateExtension } from "./definition.js";
 import { createBuiltInCommandNameSet } from "./names.js";
 
 const execFileAsync = promisify(execFile);
 
-export const OPENRUNTIME_EXTENSION_PACKAGE_SCHEMA_VERSION = 1;
-export const OPENRUNTIME_EXTENSIONS_DIRECTORY_ENV = "OPENRUNTIME_EXTENSIONS_DIR";
+export const DIVEBELL_EXTENSION_PACKAGE_SCHEMA_VERSION = 1;
+export const DIVEBELL_EXTENSIONS_DIRECTORY_ENV = "DIVEBELL_EXTENSIONS_DIR";
 
 const REGISTRY_FILE_NAME = ".installed-packages.json";
 const PACKAGES_DIRECTORY_NAME = ".packages";
 
-export interface OpenRuntimeExtensionPackageManifest {
+export interface DivebellExtensionPackageManifest {
   schemaVersion: 1;
   extensions: string[];
 }
@@ -107,7 +107,7 @@ export async function runExtensionsCommand(options: RunExtensionsCommandOptions)
         code: "EXTENSION_PACKAGE_NOT_INSTALLED",
         kind: "not_found",
         message: `Extension package "${packageName}" is not installed.`,
-        hint: `Run \`openruntime extensions add ${packageName}\` first.`
+        hint: `Run \`divebell extensions add ${packageName}\` first.`
       });
     }
     const result = await addExtensionPackage({
@@ -123,7 +123,7 @@ export async function runExtensionsCommand(options: RunExtensionsCommandOptions)
     code: "EXTENSIONS_ACTION_INVALID",
     kind: "validation",
     message: "extensions requires add, list, update, or remove.",
-    hint: "Run `openruntime extensions add <package-or-path>`, `openruntime extensions list`, `openruntime extensions update <package>`, or `openruntime extensions remove <package>`."
+    hint: "Run `divebell extensions add <package-or-path>`, `divebell extensions list`, `divebell extensions update <package>`, or `divebell extensions remove <package>`."
   });
 }
 
@@ -137,7 +137,7 @@ export async function addExtensionPackage(options: {
 }> {
   const extensionsDirectory = resolve(options.extensionsDirectory);
   await mkdir(extensionsDirectory, { recursive: true });
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "openruntime-extension-package-"));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-extension-package-"));
 
   try {
     const archive = await options.downloader.download(options.spec, temporaryDirectory);
@@ -263,7 +263,7 @@ export async function getInstalledExtensionEntryPaths(extensionsDirectory: strin
   for (const installed of registry.packages) {
     const packageDirectory = resolveInstalledDirectory(directory, installed.directory);
     const packageJson = await readPackageJson(packageDirectory);
-    const manifest = validateExtensionPackageManifest(packageJson.openruntime, packageJson.name);
+    const manifest = validateExtensionPackageManifest(packageJson.divebell, packageJson.name);
     for (const entry of manifest.extensions) {
       paths.push(resolvePackageEntry(packageDirectory, entry));
     }
@@ -272,7 +272,7 @@ export async function getInstalledExtensionEntryPaths(extensionsDirectory: strin
 }
 
 export function resolveExtensionsDirectory(input?: string): string {
-  return resolve(input ?? process.env[OPENRUNTIME_EXTENSIONS_DIRECTORY_ENV] ?? join(homedir(), ".openruntime", "extensions"));
+  return resolve(input ?? process.env[DIVEBELL_EXTENSIONS_DIRECTORY_ENV] ?? join(homedir(), ".divebell", "extensions"));
 }
 
 export function createNpmExtensionPackageDownloader(): ExtensionPackageDownloader {
@@ -319,7 +319,7 @@ async function inspectExtensionPackage(packageDirectory: string): Promise<{
   const name = requirePackageString(packageJson.name, "name");
   const version = requirePackageString(packageJson.version, "version");
   ensureNoRuntimeDependencies(packageJson, name);
-  const manifest = validateExtensionPackageManifest(packageJson.openruntime, name);
+  const manifest = validateExtensionPackageManifest(packageJson.divebell, name);
   const extensions: InstalledExtensionSummary[] = [];
   const extensionNames = new Set<string>();
   for (const entry of manifest.extensions) {
@@ -390,12 +390,12 @@ async function readPackageJson(packageDirectory: string): Promise<Record<string,
   return value;
 }
 
-function validateExtensionPackageManifest(value: unknown, packageName: unknown): OpenRuntimeExtensionPackageManifest {
-  if (!isRecord(value) || value.schemaVersion !== OPENRUNTIME_EXTENSION_PACKAGE_SCHEMA_VERSION) {
-    throw new Error(`Extension package "${String(packageName)}" must declare openruntime.schemaVersion 1.`);
+function validateExtensionPackageManifest(value: unknown, packageName: unknown): DivebellExtensionPackageManifest {
+  if (!isRecord(value) || value.schemaVersion !== DIVEBELL_EXTENSION_PACKAGE_SCHEMA_VERSION) {
+    throw new Error(`Extension package "${String(packageName)}" must declare divebell.schemaVersion 1.`);
   }
   if (!Array.isArray(value.extensions) || value.extensions.length === 0 || value.extensions.some((entry) => typeof entry !== "string")) {
-    throw new Error(`Extension package "${String(packageName)}" must declare at least one openruntime.extensions entry.`);
+    throw new Error(`Extension package "${String(packageName)}" must declare at least one divebell.extensions entry.`);
   }
   return {
     schemaVersion: 1,
@@ -527,7 +527,7 @@ function writeJson(stdout: { write(chunk: string): void }, value: unknown): void
   stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-export async function loadInstalledExtensionDefinitions(extensionsDirectory: string): Promise<OpenRuntimeExtensionDefinition[]> {
+export async function loadInstalledExtensionDefinitions(extensionsDirectory: string): Promise<DivebellExtensionDefinition[]> {
   const entries = await getInstalledExtensionEntryPaths(extensionsDirectory);
   return await Promise.all(entries.map(async (path) => {
     const module = await import(pathToFileURL(path).href) as { default?: unknown };

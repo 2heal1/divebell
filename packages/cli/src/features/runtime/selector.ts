@@ -8,7 +8,7 @@ import {
 import type { Fetcher, RuntimeSelector } from "./client.js";
 import { createBridgeUrl } from "../bridge/config.js";
 import { createOptionalNumberProperty } from "../../utils/command.js";
-import { withOpenRuntimeSession } from "../../utils/url.js";
+import { withDivebellSession } from "../../utils/url.js";
 
 export function createRuntimeSelector(
   args: ParsedCliArgs,
@@ -20,7 +20,7 @@ export function createRuntimeSelector(
   const url = getOptionValue(args, "url");
   if (runtimeId !== undefined && options.ignoreRuntimeId !== true) selector.runtimeId = runtimeId;
   if (sessionId !== undefined) selector.sessionId = sessionId;
-  if (url !== undefined) selector.url = withOpenRuntimeSession(url, sessionId);
+  if (url !== undefined) selector.url = withDivebellSession(url, sessionId);
   return selector;
 }
 

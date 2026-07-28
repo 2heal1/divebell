@@ -1,4 +1,4 @@
-import type { OpenRuntimeWindowHost } from "@openruntime/core";
+import type { DivebellWindowHost } from "@divebell/core";
 import type {
   ModernHydrationEvent,
   ModernRenderContext,
@@ -19,10 +19,10 @@ import {
   updateTargetStatus
 } from "../runtime/targets.js";
 import {
-  injectOpenRuntimeRenderContext,
-  readOpenRuntimeRenderContext
+  injectDivebellRenderContext,
+  readDivebellRenderContext
 } from "../runtime/render-context.js";
-import { attachOpenRuntimeStreamSsrState } from "./stream-ssr.js";
+import { attachDivebellStreamSsrState } from "./stream-ssr.js";
 
 export function handleBeforeRender(state: ModernPluginRuntimeState, context: ModernRenderContext): void {
   const serverRenderContext = isServerRenderContext(context) ? state.startServerRender() : undefined;
@@ -50,10 +50,10 @@ export function handleBeforeRender(state: ModernPluginRuntimeState, context: Mod
       updateServerSsrSnapshot(state, context, "server-rendered");
       state.syncServerBridge(getRequestUrl(context));
     };
-    attachOpenRuntimeStreamSsrState(context, serverRenderContext, complete);
+    attachDivebellStreamSsrState(context, serverRenderContext, complete);
     context.ssrContext?.htmlModifiers?.push((html) => {
       complete();
-      return injectOpenRuntimeRenderContext(html, serverRenderContext);
+      return injectDivebellRenderContext(html, serverRenderContext);
     });
     return;
   }
@@ -175,7 +175,7 @@ function getRouteFailureData(state: ModernPluginRuntimeState): Record<string, un
 }
 
 function shouldInvalidateSsrFromRoute(state: ModernPluginRuntimeState): boolean {
-  return state.hasSsrTarget() || readOpenRuntimeRenderContext() !== undefined;
+  return state.hasSsrTarget() || readDivebellRenderContext() !== undefined;
 }
 
 export function handleRouterCreated(state: ModernPluginRuntimeState, event: ModernRouterCreatedEvent): void {
@@ -309,7 +309,7 @@ function getRouteReadyData(state: ModernPluginRuntimeState): Record<string, unkn
 }
 
 function updateBrowserSsrSnapshot(state: ModernPluginRuntimeState, context: ModernRenderContext): void {
-  if (readOpenRuntimeRenderContext() !== undefined) {
+  if (readDivebellRenderContext() !== undefined) {
     return;
   }
 
@@ -335,7 +335,7 @@ function shouldMarkSsrFallback(event: ModernHydrationEvent): boolean {
 }
 
 function getBrowserSsrHydrationData(data: HydrationData): Record<string, unknown> {
-  const renderContext = readOpenRuntimeRenderContext();
+  const renderContext = readDivebellRenderContext();
   return {
     environment: "browser",
     ...(renderContext === undefined ? {} : {
@@ -355,7 +355,7 @@ function getSsrInvalidationData(data: HydrationData): Record<string, unknown> {
 }
 
 function getSsrErrorFromRoute(state: ModernPluginRuntimeState): Record<string, unknown> {
-  const renderContext = readOpenRuntimeRenderContext();
+  const renderContext = readDivebellRenderContext();
   const errorRouteIds = state.getCurrentRouteErrorIds();
   return {
     environment: "browser",
@@ -427,12 +427,12 @@ function getHydrationStatus(type: ModernHydrationEvent["type"]): "running" | "su
   return type;
 }
 
-function getSsrData(host: OpenRuntimeWindowHost | undefined): unknown {
+function getSsrData(host: DivebellWindowHost | undefined): unknown {
   const candidate = host ?? getDefaultHost();
   return (candidate as { _SSR_DATA?: unknown } | undefined)?._SSR_DATA;
 }
 
-function getDefaultHost(): OpenRuntimeWindowHost | undefined {
+function getDefaultHost(): DivebellWindowHost | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }

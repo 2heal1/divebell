@@ -3,8 +3,8 @@ import { join, resolve } from "node:path";
 
 const demoDirectory = resolve(import.meta.dirname, "..");
 const distDirectory = join(demoDirectory, "dist");
-const chunkMapPath = join(distDirectory, "openruntime-chunks.json");
-const expectedBase = process.env.OPENRUNTIME_PAGES_BASE;
+const chunkMapPath = join(distDirectory, "divebell-chunks.json");
+const expectedBase = process.env.DIVEBELL_PAGES_BASE;
 
 const [html, chunkMapSource] = await Promise.all([
   readFile(join(distDirectory, "index.html"), "utf8"),

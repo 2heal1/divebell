@@ -2,7 +2,7 @@ import type { ParsedCliArgs } from "./utils/args.js";
 import type { CliOperationLogEntry } from "./utils/operation-log.js";
 import { createError } from "./utils/output.js";
 import { hasOption } from "./utils/command.js";
-import { withOpenRuntimeSession } from "./utils/url.js";
+import { withDivebellSession } from "./utils/url.js";
 import type { CliExtensionPageContext } from "./types/commands.js";
 export function applyOpenContextDefaults(
   args: ParsedCliArgs,
@@ -36,7 +36,7 @@ export function applyOpenContextDefaults(
 export function createExtensionPageContext(openContext: CliOperationLogEntry): CliExtensionPageContext {
   return {
     url: openContext.url,
-    openedUrl: withOpenRuntimeSession(openContext.url, openContext.sessionId ?? undefined),
+    openedUrl: withDivebellSession(openContext.url, openContext.sessionId ?? undefined),
     normalizedUrl: openContext.normalizedUrl,
     bridgeUrl: openContext.bridgeUrl,
     sessionId: openContext.sessionId,
@@ -64,20 +64,20 @@ export function applyOpenContextDefaultsOrThrow(
       kind: "validation",
       message: "The opened page context was created without a Bridge.",
       retryable: false,
-      hint: "Run `openruntime open <url>` without `--no-bridge`, or pass `--bridge <url>` explicitly."
+      hint: "Run `divebell open <url>` without `--no-bridge`, or pass `--bridge <url>` explicitly."
     });
   }
   return applyOpenContextDefaults(args, openContext);
 }
 
 function createOpenContextRequiredError(args: ParsedCliArgs): Error {
-  const command = args.command.join(" ") || "openruntime";
+  const command = args.command.join(" ") || "divebell";
   return createError({
     code: "OPEN_CONTEXT_REQUIRED",
     kind: "validation",
     message: "No opened page context was found.",
     retryable: false,
-    hint: `Run \`openruntime open <url>\` before \`openruntime ${command}\`.`,
+    hint: `Run \`divebell open <url>\` before \`divebell ${command}\`.`,
     details: {
       command
     }

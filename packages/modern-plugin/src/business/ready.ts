@@ -1,16 +1,16 @@
-import type { OpenRuntimeCore } from "@openruntime/core";
+import type { DivebellCore } from "@divebell/core";
 
 const businessReadyStatuses = ["pending", "ready", "error"] as const;
 
-export interface RegisterOpenRuntimeReadyOptions {
-  runtime: OpenRuntimeCore;
+export interface RegisterDivebellReadyOptions {
+  runtime: DivebellCore;
   id?: string;
   label?: string;
   source?: string;
   data?: unknown;
 }
 
-export function registerOpenRuntimeReady(options: RegisterOpenRuntimeReadyOptions): string {
+export function registerDivebellReady(options: RegisterDivebellReadyOptions): string {
   const targetId = getBusinessReadyTargetId(options.id);
   const source = options.source ?? "business";
 
@@ -34,8 +34,8 @@ export function registerOpenRuntimeReady(options: RegisterOpenRuntimeReadyOption
   return targetId;
 }
 
-export function markOpenRuntimeReady(
-  runtime: OpenRuntimeCore,
+export function markDivebellReady(
+  runtime: DivebellCore,
   id?: string,
   data?: unknown
 ): void {
@@ -47,8 +47,8 @@ export function markOpenRuntimeReady(
   });
 }
 
-export function markOpenRuntimeReadyError(
-  runtime: OpenRuntimeCore,
+export function markDivebellReadyError(
+  runtime: DivebellCore,
   error: Error | string,
   id?: string
 ): void {
@@ -63,7 +63,7 @@ export function markOpenRuntimeReadyError(
   });
 }
 
-export function unregisterOpenRuntimeReady(runtime: OpenRuntimeCore, id?: string): void {
+export function unregisterDivebellReady(runtime: DivebellCore, id?: string): void {
   runtime.unregisterTarget(getBusinessReadyTargetId(id));
 }
 

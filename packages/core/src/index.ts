@@ -1,19 +1,19 @@
-export { createPackageInfo, OPEN_RUNTIME_PHASE } from "./shared/package-info.js";
-export type { OpenRuntimePackageInfo, OpenRuntimePackageName } from "./shared/package-info.js";
+export { createPackageInfo, DIVEBELL_PHASE } from "./shared/package-info.js";
+export type { DivebellPackageInfo, DivebellPackageName } from "./shared/package-info.js";
 
-export { createOpenRuntime, RuntimeCenter } from "./runtime/center.js";
+export { createDivebell, RuntimeCenter } from "./runtime/center.js";
 export {
-  getOpenRuntimeFromWindow,
-  getOpenRuntimeRegistryFromWindow,
-  installOpenRuntimeOnWindow,
-  uninstallOpenRuntimeFromWindow
+  getDivebellFromWindow,
+  getDivebellRegistryFromWindow,
+  installDivebellOnWindow,
+  uninstallDivebellFromWindow
 } from "./runtime/window.js";
 export type {
-  OpenRuntimeInstance,
-  OpenRuntimeInstanceOptions,
-  OpenRuntimeRegistry,
-  OpenRuntimeRegistryEvent,
-  OpenRuntimeWindowHost
+  DivebellInstance,
+  DivebellInstanceOptions,
+  DivebellRegistry,
+  DivebellRegistryEvent,
+  DivebellWindowHost
 } from "./runtime/window.js";
 export type {
   BridgeServerRuntimeSyncPayload,
@@ -25,13 +25,13 @@ export type {
   BridgeRuntimeResponse
 } from "./bridge/types.js";
 export {
-  OPEN_RUNTIME_BRIDGE_DEFAULT_PORT,
-  OPEN_RUNTIME_SESSION_QUERY_PARAM
+  DIVEBELL_BRIDGE_DEFAULT_PORT,
+  DIVEBELL_SESSION_QUERY_PARAM
 } from "./bridge/types.js";
 export { syncServerRuntimeBridge } from "./bridge/server.js";
 export type {
-  CreateOpenRuntimeOptions,
-  OpenRuntimeCore,
+  CreateDivebellOptions,
+  DivebellCore,
   RuntimeClock,
   RuntimeError
 } from "./runtime/types.js";

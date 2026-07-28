@@ -1,4 +1,4 @@
-import type { OpenRuntimeCore, OpenRuntimeWindowHost } from "@openruntime/core";
+import type { DivebellCore, DivebellWindowHost } from "@divebell/core";
 import type {
   ModernHydrationEvent,
   ModernRenderContext,
@@ -9,16 +9,16 @@ import type {
   ModernStreamSsrExtender
 } from "../modern/events.js";
 
-export interface OpenRuntimeModernPluginOptions {
-  runtime?: OpenRuntimeCore;
+export interface DivebellModernPluginOptions {
+  runtime?: DivebellCore;
   source?: string;
-  bridge?: false | OpenRuntimeServerBridgeOptions;
-  host?: OpenRuntimeWindowHost;
+  bridge?: false | DivebellServerBridgeOptions;
+  host?: DivebellWindowHost;
   injectRouteListAction?: boolean;
   injectRouteNavigateAction?: boolean;
 }
 
-export interface OpenRuntimeServerBridgeOptions {
+export interface DivebellServerBridgeOptions {
   port?: number;
 }
 

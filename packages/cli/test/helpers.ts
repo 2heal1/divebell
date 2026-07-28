@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { BrowserRunOptions, BrowserRunner } from "../dist/features/browser/runner.js";
 import { createOperationLogKey } from "../dist/utils/operation-log.js";
 
-process.env.OPENRUNTIME_DISABLE_EXTENSIONS = "1";
+process.env.DIVEBELL_DISABLE_EXTENSIONS = "1";
 
 export function createOutput(): {
   stdout: { write(chunk: string): void };
@@ -108,7 +108,7 @@ export function createOpenContextFixture(overrides: Partial<{
   sessionId: string | null;
   activeExtensions: string[];
 }> = {}): { operationLogDirectory: string; cleanup(): void } {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
   const entry = {
     schemaVersion: 3,

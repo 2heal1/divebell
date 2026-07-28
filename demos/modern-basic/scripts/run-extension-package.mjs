@@ -15,10 +15,10 @@ if (packageInput === undefined || commandArgs.length === 0) {
 }
 
 const packageDirectory = resolve(demoDirectory, packageInput);
-const extensionsDirectory = await mkdtemp(join(tmpdir(), "openruntime-demo-extensions-"));
+const extensionsDirectory = await mkdtemp(join(tmpdir(), "divebell-demo-extensions-"));
 const environment = {
   ...process.env,
-  OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
+  DIVEBELL_EXTENSIONS_DIR: extensionsDirectory,
   npm_config_cache: join(extensionsDirectory, ".npm-cache")
 };
 
@@ -39,7 +39,7 @@ function runCli(args, env, stdio) {
   });
   if (result.error !== undefined) throw result.error;
   if (result.status !== 0 && stdio === "pipe") {
-    throw new Error(result.stderr?.trim() || result.stdout?.trim() || `OpenRuntime exited with ${result.status}.`);
+    throw new Error(result.stderr?.trim() || result.stdout?.trim() || `Divebell exited with ${result.status}.`);
   }
   return result;
 }

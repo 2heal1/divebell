@@ -1,20 +1,20 @@
 {
-  "name": "@openruntime/demo-quickstart",
+  "name": "@divebell/demo-quickstart",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "rsbuild dev",
     "build": "pnpm --dir ../../packages/core build && pnpm --dir ../../packages/chunk-map build && pnpm --dir ../../packages/rspack-plugin build && rsbuild build",
-    "build:pages": "OPENRUNTIME_PAGES_BASE=/openruntime/quickstart/ pnpm run build",
+    "build:pages": "DIVEBELL_PAGES_BASE=/divebell/quickstart/ pnpm run build",
     "preview": "rsbuild preview",
     "verify:build": "node ./scripts/verify-build.mjs"
   },
   "dependencies": {
-    "@openruntime/core": "workspace:^"
+    "@divebell/core": "workspace:^"
   },
   "devDependencies": {
-    "@openruntime/rspack-plugin": "workspace:^",
+    "@divebell/rspack-plugin": "workspace:^",
     "@rsbuild/core": "2.0.11"
   }
 }

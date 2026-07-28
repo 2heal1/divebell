@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
 const extension = {
   schemaVersion: 1,
@@ -8,22 +8,22 @@ const extension = {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "openruntime code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
+        usage: "divebell code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--assets <dir>] [--output <report.json>]",
         description: "Analyze actual chunk, source file, and dependency usage from a Chunk Map, build assets, and page coverage."
       },
       {
         category: "Extensions",
-        usage: "openruntime code-usage report <report.json> [--output <report.html>] [--no-open]",
+        usage: "divebell code-usage report <report.json> [--output <report.html>] [--no-open]",
         description: "Generate and open an interactive code-usage report; use --no-open to create the file only."
       },
       {
         category: "Extensions",
-        usage: "openruntime code-usage serve <report.json> [--port <port>]",
+        usage: "divebell code-usage serve <report.json> [--port <port>]",
         description: "Start a local streaming report server for page experience and code-usage data."
       }
     ],
     run: async (options) => await (await import("./index.js")).runCodeUsageCommand(options)
   }]
-} satisfies OpenRuntimeExtensionDefinition;
+} satisfies DivebellExtensionDefinition;
 
 export default extension;

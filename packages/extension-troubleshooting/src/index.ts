@@ -1,7 +1,7 @@
 import type {
   CliExtensionRunOptions,
   ParsedCliArgs
-} from "@openruntime/cli";
+} from "@divebell/cli";
 
 import { runVerifyCommand } from "./verify.js";
 
@@ -10,7 +10,7 @@ export async function runVerifyCliCommand(options: CliExtensionRunOptions): Prom
   const status = requireArgument(options.args, 2, "status");
   const where = parseWhereOptions(options.args);
   const result = await runVerifyCommand(
-    options.openruntime,
+    options.divebell,
     targetId,
     status,
     where,

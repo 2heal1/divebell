@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock } from "../helpers/runtime.ts";
 
 test("returns async input options from registered actions", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   runtime.registerAction({
     name: "region.select",
@@ -29,7 +29,7 @@ test("returns async input options from registered actions", async () => {
 });
 
 test("fails input option reads when the provider times out", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   runtime.registerAction({
     name: "region.slow-select",

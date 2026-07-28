@@ -1,13 +1,13 @@
-# @openruntime/extension-troubleshooting
+# @divebell/extension-troubleshooting
 
-This OpenRuntime Extension adds `openruntime verify`, a focused command for checking that a page-declared business target reaches the expected status and optional data conditions.
+This Divebell Extension adds `divebell verify`, a focused command for checking that a page-declared business target reaches the expected status and optional data conditions.
 
 The package requires a page connected to Runtime Core. Framework targets such as Modern.js, Module Federation, or Garfish provide supporting evidence, but they do not by themselves prove that the business result is correct.
 
 ## Install
 
 ```bash
-openruntime extensions add @openruntime/extension-troubleshooting
+divebell extensions add @divebell/extension-troubleshooting
 ```
 
 ## Verify a business result
@@ -15,13 +15,13 @@ openruntime extensions add @openruntime/extension-troubleshooting
 Open or select the real page, then verify a business target:
 
 ```bash
-openruntime verify business:orders ready --timeout 5000
+divebell verify business:orders ready --timeout 5000
 ```
 
 Select a specific page, session, Bridge, or Runtime when needed:
 
 ```bash
-openruntime verify \
+divebell verify \
   --session orders-debug \
   business:orders ready \
   --timeout 5000
@@ -30,7 +30,7 @@ openruntime verify \
 Add one or more data conditions with `--where <path=value>`:
 
 ```bash
-openruntime verify \
+divebell verify \
   business:orders ready \
   --where data.count=3 \
   --where data.region=eu

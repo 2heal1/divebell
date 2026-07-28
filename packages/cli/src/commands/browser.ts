@@ -16,7 +16,7 @@ import {
 import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
-import { normalizeOpenRuntimeUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
+import { normalizeDivebellUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
 import { createGetWindowScript, createInteractiveTextClickScript, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
 import {
   createOptionalNumberProperty,
@@ -25,7 +25,7 @@ import {
   requireCommandArgument,
   writeJson
 } from "../utils/command.js";
-import { withOpenRuntimeSession } from "../utils/url.js";
+import { withDivebellSession } from "../utils/url.js";
 import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
 import { createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, normalizeAgentBrowserTarget, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
@@ -33,7 +33,7 @@ import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
-import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
+import { createDivebellExtensionApi } from "../features/extension/api.js";
 import {
   runCloseHooks,
   runOpenHooks,
@@ -41,7 +41,7 @@ import {
   type ExtensionOpenHookScript
 } from "../features/extension/hooks.js";
 import type { ExtensionHookPlan } from "../features/extension/plan.js";
-import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
+import type { DivebellExtensionDefinition } from "../types/commands.js";
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -51,14 +51,14 @@ export async function runBrowserCliCommand(
   bridgeStarter: BridgeStarter,
   bridgeStateDirectory: string | undefined,
   operationLogStore: CliOperationLogStore,
-  extensions: readonly OpenRuntimeExtensionDefinition[],
+  extensions: readonly DivebellExtensionDefinition[],
   openHookPlan: ExtensionHookPlan
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
     const sessionId = getOpenCommandSessionId(args);
-    const openedUrl = withOpenRuntimeSession(url, sessionId);
+    const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     const previousOpenContext = await operationLogStore.read();
     const bridge = await prepareOpenBridge(args, fetcher, bridgeStarter, bridgeStateDirectory);
@@ -114,7 +114,7 @@ export async function runBrowserCliCommand(
         kind: "browser",
         message: result.stderr.trim() || result.stdout.trim() || "Could not open the page.",
         retryable: true,
-        hint: "Run `openruntime check` to verify browser startup, or `openruntime check --fix` to install missing browser requirements.",
+        hint: "Run `divebell check` to verify browser startup, or `divebell check --fix` to install missing browser requirements.",
         details: {
           url,
           openedUrl,
@@ -125,7 +125,7 @@ export async function runBrowserCliCommand(
     }
 
     const openedAt = Date.now();
-    const normalizedUrl = normalizeOpenRuntimeUrlForMatch(openedUrl);
+    const normalizedUrl = normalizeDivebellUrlForMatch(openedUrl);
     await operationLogStore.write({
       command: "open",
       url,
@@ -199,7 +199,7 @@ export async function runExtensionCloseHooks(options: {
   bridgeStarter: BridgeStarter;
   bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
-  extensions: readonly OpenRuntimeExtensionDefinition[];
+  extensions: readonly DivebellExtensionDefinition[];
   openHookPlan: ExtensionHookPlan;
 }): Promise<void> {
   const openContext = await options.operationLogStore.read();
@@ -208,7 +208,7 @@ export async function runExtensionCloseHooks(options: {
   const failures = await runCloseHooks(options.extensions, openContext.activeExtensions, {
     args: closeArgs,
     page: createExtensionPageContext(openContext),
-    openruntime: createOpenRuntimeExtensionApi({
+    divebell: createDivebellExtensionApi({
       args: closeArgs,
       fetcher: options.fetcher,
       browserRunner: options.browserRunner,
@@ -373,7 +373,7 @@ async function ensureBrowserInitScript(
   bridgeUrl: string | null,
   hookScripts: readonly ExtensionOpenHookScript[]
 ): Promise<string> {
-  const directory = join(tmpdir(), "openruntime-bridge-init");
+  const directory = join(tmpdir(), "divebell-bridge-init");
   const script = [
     ...hookScripts.map(createIsolatedHookScript),
     ...(bridgeUrl === null ? [] : [createBridgeInitScript(bridgeUrl)])
@@ -386,7 +386,7 @@ async function ensureBrowserInitScript(
 }
 
 function createIsolatedHookScript(hookScript: ExtensionOpenHookScript): string {
-  const message = `OpenRuntime Extension "${hookScript.extension}" open hook script failed.`;
+  const message = `Divebell Extension "${hookScript.extension}" open hook script failed.`;
   return `try {
 ${hookScript.script}
 } catch (error) {
@@ -399,6 +399,6 @@ function writeHookFailures(
   failures: readonly ExtensionHookFailure[]
 ): void {
   for (const failure of failures) {
-    stderr.write(`OpenRuntime extension ${failure.extension} ${failure.hook} hook failed: ${failure.message}\n`);
+    stderr.write(`Divebell extension ${failure.extension} ${failure.hook} hook failed: ${failure.message}\n`);
   }
 }

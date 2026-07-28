@@ -1,32 +1,32 @@
-# @openruntime/extension-code-usage
+# @divebell/extension-code-usage
 
-This OpenRuntime Extension maps browser code coverage back to build chunks, application source files, workspace packages, and third-party dependencies. It can create a JSON result, a standalone interactive report, or a local streaming report for larger page-experience results.
+This Divebell Extension maps browser code coverage back to build chunks, application source files, workspace packages, and third-party dependencies. It can create a JSON result, a standalone interactive report, or a local streaming report for larger page-experience results.
 
 ## Install
 
 ```bash
-openruntime extensions add @openruntime/extension-code-usage
+divebell extensions add @divebell/extension-code-usage
 ```
 
-The target build must produce an `openruntime-chunks.json` file through `@openruntime/modern-plugin/chunk-map` or `@openruntime/rspack-plugin`. Keep the matching JavaScript files and source maps from the exact deployed build.
+The target build must produce an `divebell-chunks.json` file through `@divebell/modern-plugin/chunk-map` or `@divebell/rspack-plugin`. Keep the matching JavaScript files and source maps from the exact deployed build.
 
 ## Analyze recorded coverage
 
 Record one or more representative phases with the base CLI:
 
 ```bash
-openruntime open https://example.com/
-openruntime coverage start
-openruntime coverage take /tmp/first-screen.coverage.json --label first-screen
+divebell open https://example.com/
+divebell coverage start
+divebell coverage take /tmp/first-screen.coverage.json --label first-screen
 # Perform the next page journey.
-openruntime coverage stop /tmp/orders.coverage.json --label orders
+divebell coverage stop /tmp/orders.coverage.json --label orders
 ```
 
 Combine the recordings with build metadata:
 
 ```bash
-openruntime code-usage analyze \
-  --chunk-map /path/to/dist/openruntime-chunks.json \
+divebell code-usage analyze \
+  --chunk-map /path/to/dist/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
   --output /tmp/code-usage-report.json
@@ -41,13 +41,13 @@ or URL with `--assets`.
 Create and open a standalone report:
 
 ```bash
-openruntime code-usage report /tmp/code-usage-report.json
+divebell code-usage report /tmp/code-usage-report.json
 ```
 
 Use `--no-open` to create the report without opening it. For a large report, start the local streaming viewer:
 
 ```bash
-openruntime code-usage serve /tmp/code-usage-report.json --port 4173
+divebell code-usage serve /tmp/code-usage-report.json --port 4173
 ```
 
 “Unused” means that code did not execute during the recorded journeys. It does not prove that the code can be removed.

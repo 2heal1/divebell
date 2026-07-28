@@ -5,11 +5,11 @@ import { clearRecordingControlFile, writeRecordingControlFile } from "./session.
 import { createManifestPath, writeGeneratedScript } from "./script.js";
 import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
 import { join, resolve } from "node:path";
-import type { CliExtensionPageContext, CliExtensionRunOptions, ParsedCliArgs } from "@openruntime/cli";
+import type { CliExtensionPageContext, CliExtensionRunOptions, ParsedCliArgs } from "@divebell/cli";
 
 import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "./types.js";
 export type * from "./types.js";
-const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
+const DIVEBELL_SESSION_QUERY_PARAM = "divebellSessionId";
 
 interface RuntimeSelector {
   runtimeId?: string;
@@ -18,7 +18,7 @@ interface RuntimeSelector {
 }
 const DEFAULT_RECORD_DURATION_MS = 10_000;
 const DEFAULT_RECORD_INTERVAL_MS = 1_000;
-const RECORDING_FORMAT = "openruntime-recording";
+const RECORDING_FORMAT = "divebell-recording";
 const RECORDING_VERSION = 1;
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
 
@@ -27,7 +27,7 @@ export async function runRecordCliCommand(options: CliExtensionRunOptions): Prom
     args: options.args,
     fetcher: options.fetcher,
     ...(options.page === undefined ? {} : { page: options.page }),
-    openruntime: options.openruntime
+    divebell: options.divebell
   });
 }
 
@@ -102,7 +102,7 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<unk
     status: "prepared",
     output: outputDirectory,
     manifest: join(outputDirectory, files.manifest),
-    next: "openruntime open <url> --ui"
+    next: "divebell open <url> --ui"
   };
 }
 
@@ -111,7 +111,7 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const recording = await readRecordingData(outputDirectory);
   if (recording.manifest.status !== "recording") {
-    throw new Error("This recording has not been attached to a page. Run `openruntime open <url>` after `record start`.");
+    throw new Error("This recording has not been attached to a page. Run `divebell open <url>` after `record start`.");
   }
   if (recording.manifest.invalidated !== undefined) {
     throw new Error(recording.manifest.invalidated.reason);
@@ -127,15 +127,15 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
 
   const sampledAt = new Date();
   const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-    sampleRuntimeForPage(options.openruntime, runtimeSelector, page, sampledAt),
-    samplePageSnapshot(options.openruntime.browser, sampledAt),
-    sampleDomSnapshot(options.openruntime.browser, sampledAt)
+    sampleRuntimeForPage(options.divebell, runtimeSelector, page, sampledAt),
+    samplePageSnapshot(options.divebell.browser, sampledAt),
+    sampleDomSnapshot(options.divebell.browser, sampledAt)
   ]);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.runtime), runtimeSample);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.pageSnapshots), pageSnapshot);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.domSnapshots), domSnapshot);
 
-  const interactionCollection = await collectInteractionEvents(outputDirectory, options.openruntime.browser);
+  const interactionCollection = await collectInteractionEvents(outputDirectory, options.divebell.browser);
   await writeJsonLines(join(outputDirectory, recording.manifest.files.interactions), interactionCollection.interactions);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), interactionCollection.operation);
 
@@ -310,9 +310,9 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
   do {
     const sampledAt = new Date();
     const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
-      sampleRuntimeForPage(options.openruntime, runtimeSelector, page, sampledAt),
-      samplePageSnapshot(options.openruntime.browser, sampledAt),
-      sampleDomSnapshot(options.openruntime.browser, sampledAt)
+      sampleRuntimeForPage(options.divebell, runtimeSelector, page, sampledAt),
+      samplePageSnapshot(options.divebell.browser, sampledAt),
+      sampleDomSnapshot(options.divebell.browser, sampledAt)
     ]);
     runtimeSamples.push(runtimeSample);
     pageSnapshots.push(pageSnapshot);
@@ -390,7 +390,7 @@ function createRecordingManifest(input: {
       video: {
         requested: !hasOption(input.args, "headless"),
         status: "not-captured",
-        reason: "This prototype records browser snapshots and OpenRuntime state; continuous video capture is reserved for the next stage."
+        reason: "This prototype records browser snapshots and Divebell state; continuous video capture is reserved for the next stage."
       },
       audio: createInitialAudioCapture(input.args, input.files, input.status)
     },
@@ -481,7 +481,7 @@ function createCompletedAudioCapture(files: RecordingFiles, summary: AudioCaptur
 function resolveRecordStartOutputDirectory(args: ParsedCliArgs, startedAt: Date): string {
   const output = getOptionValue(args, "out");
   if (output !== undefined && output.length > 0) return resolve(output);
-  return resolve("recordings", `openruntime-${formatTimestampForPath(startedAt)}.orrec`);
+  return resolve("recordings", `divebell-${formatTimestampForPath(startedAt)}.orrec`);
 }
 
 function formatTimestampForPath(date: Date): string {
@@ -516,12 +516,12 @@ function createRecordRuntimeSelector(
     ...createOptionalStringProperty("sessionId", sessionId),
     ...createOptionalStringProperty("url", sessionId !== undefined || url === undefined
       ? undefined
-      : withOpenRuntimeSession(url, sessionId))
+      : withDivebellSession(url, sessionId))
   };
 }
 
 function sampleRuntimeForPage(
-  openruntime: RecordCommandOptions["openruntime"],
+  divebell: RecordCommandOptions["divebell"],
   selector: RuntimeSelector,
   page: CliExtensionPageContext,
   sampledAt: Date
@@ -533,12 +533,12 @@ function sampleRuntimeForPage(
       error: "The current page was opened without a Bridge."
     });
   }
-  return sampleRuntime(openruntime, selector, sampledAt);
+  return sampleRuntime(divebell, selector, sampledAt);
 }
 
 function requireCurrentPage(options: RecordCommandOptions): CliExtensionPageContext {
   if (options.page === undefined) {
-    throw new Error("No current OpenRuntime page is available. Run `openruntime open <url>` before recording.");
+    throw new Error("No current Divebell page is available. Run `divebell open <url>` before recording.");
   }
   assertNoLegacyPageLifecycleOptions(options.args);
   assertCommandPageMatches(options.args, options.page);
@@ -547,14 +547,14 @@ function requireCurrentPage(options: RecordCommandOptions): CliExtensionPageCont
 
 function requireNoCurrentPage(options: RecordCommandOptions): void {
   if (options.page === undefined) return;
-  throw new Error("A current OpenRuntime page is already open. Run `openruntime stop`, then prepare the recording before opening the page again.");
+  throw new Error("A current Divebell page is already open. Run `divebell stop`, then prepare the recording before opening the page again.");
 }
 
 function assertNoLegacyPageLifecycleOptions(args: ParsedCliArgs): void {
   for (const option of ["headless", "no-open", "no-close", "port"]) {
     if (hasOption(args, option)) {
       throw new Error(
-        `Recording no longer accepts --${option}. Configure and open the page with \`openruntime open <url>\`, then run record.`
+        `Recording no longer accepts --${option}. Configure and open the page with \`divebell open <url>\`, then run record.`
       );
     }
   }
@@ -564,7 +564,7 @@ function assertNoPageSelectionOptions(args: ParsedCliArgs): void {
   for (const option of ["url", "bridge", "session", "runtime"]) {
     if (hasOption(args, option)) {
       throw new Error(
-        `Recording no longer accepts --${option}. Put page and Bridge options on the following \`openruntime open <url>\` command.`
+        `Recording no longer accepts --${option}. Put page and Bridge options on the following \`divebell open <url>\` command.`
       );
     }
   }
@@ -580,7 +580,7 @@ function assertCommandPageMatches(args: ParsedCliArgs, page: CliExtensionPageCon
     normalizeOptionalUrl(selectedBridge) !== normalizeOptionalUrl(page.bridgeUrl)
   ) {
     throw new Error(
-      "Recording only operates on the current OpenRuntime page. Put URL, session, and Bridge options on `openruntime open`, not on record."
+      "Recording only operates on the current Divebell page. Put URL, session, and Bridge options on `divebell open`, not on record."
     );
   }
 }
@@ -596,7 +596,7 @@ function assertRecordingPageMatches(page: CliExtensionPageContext, manifest: Rec
     return;
   }
   throw new Error(
-    "The current OpenRuntime page does not match this recording. Return to the project and page used by `record start`, then retry."
+    "The current Divebell page does not match this recording. Return to the project and page used by `record start`, then retry."
   );
 }
 
@@ -613,12 +613,12 @@ function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {
   return args.options.get(name)?.at(-1);
 }
 
-function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {
+function withDivebellSession(input: string, sessionId: string | undefined): string {
   if (sessionId === undefined || sessionId.length === 0) return input;
 
   try {
     const url = new URL(input);
-    url.searchParams.set(OPEN_RUNTIME_SESSION_QUERY_PARAM, sessionId);
+    url.searchParams.set(DIVEBELL_SESSION_QUERY_PARAM, sessionId);
     return url.toString();
   } catch {
     return input;

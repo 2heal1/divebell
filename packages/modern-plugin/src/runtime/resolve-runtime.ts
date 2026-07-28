@@ -1,31 +1,31 @@
 import {
-  createOpenRuntime,
-  getOpenRuntimeFromWindow,
-  installOpenRuntimeOnWindow,
-  type OpenRuntimeCore,
-  type OpenRuntimeWindowHost
-} from "@openruntime/core";
-import { readOpenRuntimeRenderContext } from "./render-context.js";
+  createDivebell,
+  getDivebellFromWindow,
+  installDivebellOnWindow,
+  type DivebellCore,
+  type DivebellWindowHost
+} from "@divebell/core";
+import { readDivebellRenderContext } from "./render-context.js";
 
 export interface ResolveRuntimeOptions {
-  runtime?: OpenRuntimeCore;
-  host?: OpenRuntimeWindowHost;
+  runtime?: DivebellCore;
+  host?: DivebellWindowHost;
   name?: string;
   source?: string;
   parentRuntimeId?: string;
-  beforeConnect?: (runtime: OpenRuntimeCore) => void;
+  beforeConnect?: (runtime: DivebellCore) => void;
 }
 
-export function resolveOpenRuntime(options: ResolveRuntimeOptions = {}): OpenRuntimeCore {
+export function resolveDivebell(options: ResolveRuntimeOptions = {}): DivebellCore {
   const host = options.host ?? getDefaultHost();
-  const runtime = options.runtime ?? getOpenRuntimeFromWindow(host) ?? createOpenRuntime();
+  const runtime = options.runtime ?? getDivebellFromWindow(host) ?? createDivebell();
 
   options.beforeConnect?.(runtime);
 
   if (host !== undefined) {
-    const context = readOpenRuntimeRenderContext();
+    const context = readDivebellRenderContext();
     const source = options.source ?? context?.source;
-    installOpenRuntimeOnWindow(runtime, host, {
+    installDivebellOnWindow(runtime, host, {
       ...(context?.runtimeId === undefined ? {} : { runtimeId: context.runtimeId }),
       ...(context?.renderId === undefined ? {} : { renderId: context.renderId }),
       ...(options.name === undefined ? {} : { name: options.name }),
@@ -37,7 +37,7 @@ export function resolveOpenRuntime(options: ResolveRuntimeOptions = {}): OpenRun
   return runtime;
 }
 
-function getDefaultHost(): OpenRuntimeWindowHost | undefined {
+function getDefaultHost(): DivebellWindowHost | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }

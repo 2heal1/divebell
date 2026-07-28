@@ -1,14 +1,14 @@
 import type {
-  OpenRuntimeCore,
-  OpenRuntimeWindowHost,
+  DivebellCore,
+  DivebellWindowHost,
   RuntimeError,
   RuntimeInputOption,
   RuntimeStatus
-} from "@openruntime/core";
+} from "@divebell/core";
 import {
-  createOpenRuntime,
+  createDivebell,
   syncServerRuntimeBridge
-} from "@openruntime/core";
+} from "@divebell/core";
 import type {
   ModernDataRouter,
   ModernRouteMatch,
@@ -27,12 +27,12 @@ import {
   type RouteManifestEntry,
   type RouteTargetInfo
 } from "../runtime/targets.js";
-import { resolveOpenRuntime } from "../runtime/resolve-runtime.js";
+import { resolveDivebell } from "../runtime/resolve-runtime.js";
 import {
-  createOpenRuntimeRenderContext,
-  type OpenRuntimeRenderContext
+  createDivebellRenderContext,
+  type DivebellRenderContext
 } from "../runtime/render-context.js";
-import type { OpenRuntimeModernPluginOptions } from "./types.js";
+import type { DivebellModernPluginOptions } from "./types.js";
 
 export interface RouteRuntimeData {
   pathname?: string;
@@ -71,17 +71,17 @@ type NavigableRouteManifestEntry = RouteManifestEntry & {
 
 export class ModernPluginRuntimeState {
   readonly source: string;
-  readonly #options: OpenRuntimeModernPluginOptions;
+  readonly #options: DivebellModernPluginOptions;
   readonly #routes = new Map<string, RouteTargetInfo>();
   readonly #routeAliases = new Map<string, string>();
   readonly #loaderStates = new Map<string, RouteLoaderState>();
   readonly #componentStates = new Map<string, RouteComponentState>();
   readonly #routeErrors = new Map<string, RuntimeError>();
-  readonly #routeListActionRuntimes = new WeakSet<OpenRuntimeCore>();
-  readonly #routeNavigateActionRuntimes = new WeakSet<OpenRuntimeCore>();
-  #runtime?: OpenRuntimeCore;
+  readonly #routeListActionRuntimes = new WeakSet<DivebellCore>();
+  readonly #routeNavigateActionRuntimes = new WeakSet<DivebellCore>();
+  #runtime?: DivebellCore;
   #router?: ModernDataRouter;
-  #serverRenderContext?: OpenRuntimeRenderContext;
+  #serverRenderContext?: DivebellRenderContext;
   #serverSyncQueue: Promise<void> = Promise.resolve();
   #currentMatches: RouteRuntimeMatch[] = [];
   #pathname: string | undefined;
@@ -89,13 +89,13 @@ export class ModernPluginRuntimeState {
   #hydrationFailed = false;
   #hydrationSuppressed = false;
 
-  constructor(options: OpenRuntimeModernPluginOptions) {
+  constructor(options: DivebellModernPluginOptions) {
     this.#options = options;
     this.source = options.source ?? "modern.js";
   }
 
-  getRuntime(): OpenRuntimeCore {
-    this.#runtime ??= resolveOpenRuntime({
+  getRuntime(): DivebellCore {
+    this.#runtime ??= resolveDivebell({
       ...this.#options,
       beforeConnect: (runtime) => this.#ensureBaseTargets(runtime)
     });
@@ -103,7 +103,7 @@ export class ModernPluginRuntimeState {
     return this.#runtime;
   }
 
-  getHost(): OpenRuntimeWindowHost | undefined {
+  getHost(): DivebellWindowHost | undefined {
     return this.#options.host;
   }
 
@@ -111,13 +111,13 @@ export class ModernPluginRuntimeState {
     this.#router = router;
   }
 
-  startServerRender(): OpenRuntimeRenderContext {
-    this.#runtime = createOpenRuntime();
-    this.#serverRenderContext = createOpenRuntimeRenderContext(this.source);
+  startServerRender(): DivebellRenderContext {
+    this.#runtime = createDivebell();
+    this.#serverRenderContext = createDivebellRenderContext(this.source);
     return this.#serverRenderContext;
   }
 
-  getServerRenderContext(): OpenRuntimeRenderContext | undefined {
+  getServerRenderContext(): DivebellRenderContext | undefined {
     return this.#serverRenderContext;
   }
 
@@ -273,14 +273,14 @@ export class ModernPluginRuntimeState {
     });
   }
 
-  #ensureBaseTargets(runtime: OpenRuntimeCore): void {
+  #ensureBaseTargets(runtime: DivebellCore): void {
     registerBaseTargets(runtime, this.source);
     registerRouteTargetInfos(runtime, this.source, [...this.#routes.values()]);
     this.#ensureRouteActions(runtime);
     updateInitialSnapshot(runtime, this.source, modernTargetIds.app, "initializing");
   }
 
-  #ensureRouteActions(runtime: OpenRuntimeCore): void {
+  #ensureRouteActions(runtime: DivebellCore): void {
     if (this.#serverRenderContext !== undefined) {
       return;
     }
@@ -554,7 +554,7 @@ function createFallbackManifest(
 }
 
 function updateInitialSnapshot(
-  runtime: OpenRuntimeCore,
+  runtime: DivebellCore,
   source: string,
   targetId: string,
   status: RuntimeStatus

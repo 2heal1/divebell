@@ -1,6 +1,6 @@
 import type { BrowserRunner } from "../features/browser/types.js";
 import type { BridgeStarter } from "../features/bridge/types.js";
-import type { OpenRuntimeExtensionApi } from "../features/extension/types.js";
+import type { DivebellExtensionApi } from "../features/extension/types.js";
 import type { Fetcher } from "../features/runtime/types.js";
 import type {
   CliOperationLogStore,
@@ -37,36 +37,36 @@ export interface CliExtensionRunOptions {
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
-  openruntime: OpenRuntimeExtensionApi;
+  divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
 }
 
-export interface OpenRuntimeExtensionCommand {
+export interface DivebellExtensionCommand {
   name: string;
   requiresOpenHook?: boolean;
-  skill?: OpenRuntimeCommandSkill;
+  skill?: DivebellCommandSkill;
   commandReferences?: readonly CliCommandReference[];
   run(options: CliExtensionRunOptions): Promise<unknown>;
 }
 
-export interface OpenRuntimeOpenHookOptions {
+export interface DivebellOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
   headers?: Readonly<Record<string, string>>;
 }
 
-export interface OpenRuntimeOpenHookResult {
+export interface DivebellOpenHookResult {
   scripts?: readonly string[];
 }
 
-export interface OpenRuntimePageHookOptions {
+export interface DivebellPageHookOptions {
   args: ParsedCliArgs;
   page: CliExtensionPageContext;
-  openruntime: OpenRuntimeExtensionApi;
+  divebell: DivebellExtensionApi;
 }
 
-export interface OpenRuntimeStackDetection {
+export interface DivebellStackDetection {
   id: string;
   name: string;
   version?: string;
@@ -74,38 +74,38 @@ export interface OpenRuntimeStackDetection {
   recommendedExtensions?: readonly string[];
 }
 
-export interface OpenRuntimeOrderedHook<Handler> {
+export interface DivebellOrderedHook<Handler> {
   run: Handler;
   before?: readonly string[];
   after?: readonly string[];
 }
 
-export type OpenRuntimeOpenHook = (
-  options: OpenRuntimeOpenHookOptions
-) => Promise<OpenRuntimeOpenHookResult | void>;
+export type DivebellOpenHook = (
+  options: DivebellOpenHookOptions
+) => Promise<DivebellOpenHookResult | void>;
 
-export type OpenRuntimeDetectStackHook = (
-  options: OpenRuntimePageHookOptions
-) => Promise<OpenRuntimeStackDetection | readonly OpenRuntimeStackDetection[] | void>;
+export type DivebellDetectStackHook = (
+  options: DivebellPageHookOptions
+) => Promise<DivebellStackDetection | readonly DivebellStackDetection[] | void>;
 
-export type OpenRuntimeCloseHook = (
-  options: OpenRuntimePageHookOptions
+export type DivebellCloseHook = (
+  options: DivebellPageHookOptions
 ) => Promise<void>;
 
-export interface OpenRuntimeExtensionHooks {
-  open?: OpenRuntimeOpenHook | OpenRuntimeOrderedHook<OpenRuntimeOpenHook>;
-  detectStack?: OpenRuntimeDetectStackHook | OpenRuntimeOrderedHook<OpenRuntimeDetectStackHook>;
-  close?: OpenRuntimeCloseHook;
+export interface DivebellExtensionHooks {
+  open?: DivebellOpenHook | DivebellOrderedHook<DivebellOpenHook>;
+  detectStack?: DivebellDetectStackHook | DivebellOrderedHook<DivebellDetectStackHook>;
+  close?: DivebellCloseHook;
 }
 
-export interface OpenRuntimeExtensionDefinition {
+export interface DivebellExtensionDefinition {
   schemaVersion: 1;
   name: string;
   requires?: readonly string[];
   displayName?: string;
   description?: string;
-  commands?: readonly OpenRuntimeExtensionCommand[];
-  hooks?: OpenRuntimeExtensionHooks;
+  commands?: readonly DivebellExtensionCommand[];
+  hooks?: DivebellExtensionHooks;
 }
 
 export interface ExtensionCliCommandOptions {
@@ -116,10 +116,10 @@ export interface ExtensionCliCommandOptions {
   bridgeStarter: BridgeStarter;
   bridgeStateDirectory: string | undefined;
   operationLogStore: CliOperationLogStore;
-  extensionRegistry: Map<string, OpenRuntimeExtensionDefinition>;
+  extensionRegistry: Map<string, DivebellExtensionDefinition>;
   commandRegistry: Map<string, {
-    extension: OpenRuntimeExtensionDefinition;
-    command: OpenRuntimeExtensionCommand;
+    extension: DivebellExtensionDefinition;
+    command: DivebellExtensionCommand;
   }>;
 }
 
@@ -136,13 +136,13 @@ export interface ValidateExtensionOptions {
 }
 
 
-export interface OpenRuntimeCommandSkill {
+export interface DivebellCommandSkill {
   path: string;
 }
 
 
 export interface ExternalExtensionLoadResult {
-  extensions: OpenRuntimeExtensionDefinition[];
+  extensions: DivebellExtensionDefinition[];
   records: ExtensionLoadRecord[];
 }
 

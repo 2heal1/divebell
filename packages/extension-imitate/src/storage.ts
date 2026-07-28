@@ -12,7 +12,7 @@ import type {
   TranscriptData
 } from "./types.js";
 
-const RECORDING_FORMAT = "openruntime-recording";
+const RECORDING_FORMAT = "divebell-recording";
 const RECORDING_VERSION = 1;
 export function createRecordingFiles(): RecordingFiles {
   return {

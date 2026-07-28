@@ -2,13 +2,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import {
-  analyzeOpenRuntimeCodeUsage,
-  matchOpenRuntimeChunk,
-  type OpenRuntimeChunkMap,
-  type OpenRuntimeCodeUsageAsset,
-  type OpenRuntimeCoverageCheckpoint,
-  type OpenRuntimeSourceMap
-} from "@openruntime/chunk-map";
+  analyzeDivebellCodeUsage,
+  matchDivebellChunk,
+  type DivebellChunkMap,
+  type DivebellCodeUsageAsset,
+  type DivebellCoverageCheckpoint,
+  type DivebellSourceMap
+} from "@divebell/chunk-map";
 
 import type { AnalyzeCodeUsageFilesOptions, AnalyzeCodeUsageFilesResult } from "./types.js";
 export type { AnalyzeCodeUsageFilesOptions, AnalyzeCodeUsageFilesResult } from "./types.js";
@@ -38,8 +38,8 @@ export async function analyzeCodeUsageFiles(
   }
   const assets = await readAnalysisAssets(chunkMap, checkpoints, assetBase);
 
-  const report = analyzeOpenRuntimeCodeUsage({ chunkMap, checkpoints, assets });
-  const output = resolve(options.output ?? "openruntime-code-usage.json");
+  const report = analyzeDivebellCodeUsage({ chunkMap, checkpoints, assets });
+  const output = resolve(options.output ?? "divebell-code-usage.json");
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return {
@@ -53,13 +53,13 @@ export async function analyzeCodeUsageFiles(
 }
 
 async function readAnalysisAssets(
-  chunkMap: OpenRuntimeChunkMap,
-  checkpoints: OpenRuntimeCoverageCheckpoint[],
+  chunkMap: DivebellChunkMap,
+  checkpoints: DivebellCoverageCheckpoint[],
   assetBase: string
-): Promise<OpenRuntimeCodeUsageAsset[]> {
+): Promise<DivebellCodeUsageAsset[]> {
   const observedFiles = new Set(checkpoints.flatMap((checkpoint) =>
     checkpoint.scripts.flatMap((script) => {
-      const match = matchOpenRuntimeChunk(chunkMap, script.url);
+      const match = matchDivebellChunk(chunkMap, script.url);
       return match.status === "matched" ? [match.asset.file] : [];
     })));
   const entries = new Map<string, { file: string; sourceMap: string }>();
@@ -146,24 +146,24 @@ async function readText(location: string): Promise<string> {
   }
 }
 
-function validateChunkMap(value: unknown): OpenRuntimeChunkMap {
+function validateChunkMap(value: unknown): DivebellChunkMap {
   if (!isRecord(value) || typeof value.buildId !== "string" || !Array.isArray(value.chunks)) {
     throw new Error("The Chunk Map must contain a buildId and chunks array.");
   }
-  return value as unknown as OpenRuntimeChunkMap;
+  return value as unknown as DivebellChunkMap;
 }
 
 function validateCoverageCheckpoint(
   value: unknown,
   location: string
-): OpenRuntimeCoverageCheckpoint {
+): DivebellCoverageCheckpoint {
   if (!isRecord(value) || !Array.isArray(value.scripts)) {
     throw new Error(`Coverage checkpoint ${location} must contain a scripts array.`);
   }
-  return value as unknown as OpenRuntimeCoverageCheckpoint;
+  return value as unknown as DivebellCoverageCheckpoint;
 }
 
-function validateSourceMap(value: unknown, location: string): OpenRuntimeSourceMap {
+function validateSourceMap(value: unknown, location: string): DivebellSourceMap {
   if (
     !isRecord(value)
     || typeof value.version !== "number"
@@ -172,7 +172,7 @@ function validateSourceMap(value: unknown, location: string): OpenRuntimeSourceM
   ) {
     throw new Error(`Source map ${location} is missing version, sources, or mappings.`);
   }
-  return value as unknown as OpenRuntimeSourceMap;
+  return value as unknown as DivebellSourceMap;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

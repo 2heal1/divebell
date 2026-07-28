@@ -2,23 +2,23 @@ import { dirname, resolve } from "node:path";
 
 // Framework-independent analysis; build plugins only produce its inputs.
 
-import { matchOpenRuntimeChunk } from "./match.js";
+import { matchDivebellChunk } from "./match.js";
 import type {
-  OpenRuntimeCodeUsageAsset,
-  OpenRuntimeCodeUsageChunkResult,
-  OpenRuntimeCodeUsageCodeFileResult,
-  OpenRuntimeCodeUsageInput,
-  OpenRuntimeCodeUsagePackageResult,
-  OpenRuntimeCodeUsagePhaseResult,
-  OpenRuntimeCodeUsageReport,
-  OpenRuntimeCodeUsageSourceResult,
-  OpenRuntimeCoverageRange,
-  OpenRuntimeCoverageScript
+  DivebellCodeUsageAsset,
+  DivebellCodeUsageChunkResult,
+  DivebellCodeUsageCodeFileResult,
+  DivebellCodeUsageInput,
+  DivebellCodeUsagePackageResult,
+  DivebellCodeUsagePhaseResult,
+  DivebellCodeUsageReport,
+  DivebellCodeUsageSourceResult,
+  DivebellCoverageRange,
+  DivebellCoverageScript
 } from "./coverage-types.js";
 import type {
-  OpenRuntimeChunkMapChunk,
-  OpenRuntimeChunkMapModule,
-  OpenRuntimeChunkMapModuleOwner
+  DivebellChunkMapChunk,
+  DivebellChunkMapModule,
+  DivebellChunkMapModuleOwner
 } from "./types.js";
 
 interface OffsetRange {
@@ -33,9 +33,9 @@ interface MappedRange extends OffsetRange {
 const BASE64_DIGITS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const BASE64_VALUES = new Map([...BASE64_DIGITS].map((character, index) => [character, index]));
 
-export function analyzeOpenRuntimeCodeUsage(
-  input: OpenRuntimeCodeUsageInput
-): OpenRuntimeCodeUsageReport {
+export function analyzeDivebellCodeUsage(
+  input: DivebellCodeUsageInput
+): DivebellCodeUsageReport {
   const assets = new Map(input.assets.map((asset) => [asset.file, asset]));
   const phases = input.checkpoints.map((checkpoint, index) => analyzePhase(
     input,
@@ -61,25 +61,25 @@ export function analyzeOpenRuntimeCodeUsage(
 }
 
 function analyzePhase(
-  input: OpenRuntimeCodeUsageInput,
-  assets: Map<string, OpenRuntimeCodeUsageAsset>,
-  scripts: OpenRuntimeCoverageScript[],
+  input: DivebellCodeUsageInput,
+  assets: Map<string, DivebellCodeUsageAsset>,
+  scripts: DivebellCoverageScript[],
   label: string
-): OpenRuntimeCodeUsagePhaseResult {
-  const chunkTotals = new Map<string, OpenRuntimeCodeUsageChunkResult>();
-  const sourceTotals = new Map<string, OpenRuntimeCodeUsageSourceResult>();
-  const codeFileTotals = new Map<string, OpenRuntimeCodeUsageCodeFileResult>();
+): DivebellCodeUsagePhaseResult {
+  const chunkTotals = new Map<string, DivebellCodeUsageChunkResult>();
+  const sourceTotals = new Map<string, DivebellCodeUsageSourceResult>();
+  const codeFileTotals = new Map<string, DivebellCodeUsageCodeFileResult>();
   const unmatchedScriptUrls: string[] = [];
   const matchedScripts = new Map<string, {
-    chunk: OpenRuntimeChunkMapChunk;
-    asset: OpenRuntimeCodeUsageAsset;
+    chunk: DivebellChunkMapChunk;
+    asset: DivebellCodeUsageAsset;
     file: string;
-    scripts: OpenRuntimeCoverageScript[];
+    scripts: DivebellCoverageScript[];
   }>();
 
   for (const script of scripts) {
     if (script.url.length === 0) continue;
-    const match = matchOpenRuntimeChunk(input.chunkMap, script.url, {
+    const match = matchDivebellChunk(input.chunkMap, script.url, {
       expectedBuildId: input.chunkMap.buildId
     });
     if (match.status !== "matched") {
@@ -139,8 +139,8 @@ function analyzePhase(
 }
 
 function addCodeFileUsage(
-  totals: Map<string, OpenRuntimeCodeUsageCodeFileResult>,
-  chunk: OpenRuntimeChunkMapChunk,
+  totals: Map<string, DivebellCodeUsageCodeFileResult>,
+  chunk: DivebellChunkMapChunk,
   file: string,
   codeLength: number,
   executedRanges: OffsetRange[],
@@ -173,7 +173,7 @@ function addCodeFileUsage(
   });
 }
 
-function createMappedRanges(asset: OpenRuntimeCodeUsageAsset): MappedRange[] {
+function createMappedRanges(asset: DivebellCodeUsageAsset): MappedRange[] {
   const lineStarts = createLineStarts(asset.code);
   const mappings = decodeMappings(asset.sourceMap.mappings);
   const result: MappedRange[] = [];
@@ -202,8 +202,8 @@ function createMappedRanges(asset: OpenRuntimeCodeUsageAsset): MappedRange[] {
 }
 
 function addChunkUsage(
-  totals: Map<string, OpenRuntimeCodeUsageChunkResult>,
-  chunk: OpenRuntimeChunkMapChunk,
+  totals: Map<string, DivebellCodeUsageChunkResult>,
+  chunk: DivebellChunkMapChunk,
   file: string,
   mappedRanges: MappedRange[],
   executedRanges: OffsetRange[],
@@ -239,8 +239,8 @@ function addChunkUsage(
 }
 
 function addSourceUsage(
-  totals: Map<string, OpenRuntimeCodeUsageSourceResult>,
-  chunk: OpenRuntimeChunkMapChunk,
+  totals: Map<string, DivebellCodeUsageSourceResult>,
+  chunk: DivebellChunkMapChunk,
   file: string,
   mappedRanges: MappedRange[],
   executedRanges: OffsetRange[],
@@ -294,9 +294,9 @@ function addSourceUsage(
 }
 
 function createPackageUsage(
-  sources: OpenRuntimeCodeUsageSourceResult[]
-): OpenRuntimeCodeUsagePackageResult[] {
-  const totals = new Map<string, OpenRuntimeCodeUsagePackageResult>();
+  sources: DivebellCodeUsageSourceResult[]
+): DivebellCodeUsagePackageResult[] {
+  const totals = new Map<string, DivebellCodeUsagePackageResult>();
   for (const source of sources) {
     const packageName = source.owner.packageName ?? fallbackPackageName(source);
     const key = `${source.owner.kind}\u0000${packageName}\u0000${source.owner.packageVersion ?? ""}`;
@@ -331,9 +331,9 @@ function createPackageUsage(
 }
 
 function findModule(
-  modules: OpenRuntimeChunkMapModule[],
+  modules: DivebellChunkMapModule[],
   sourcePath: string
-): OpenRuntimeChunkMapModule | undefined {
+): DivebellChunkMapModule | undefined {
   const normalizedSource = normalizePath(sourcePath);
   return modules.find((module) => module.sourcePath !== null && normalizePath(module.sourcePath) === normalizedSource)
     ?? modules.find((module) => {
@@ -343,7 +343,7 @@ function findModule(
     });
 }
 
-function resolveSourcePath(asset: OpenRuntimeCodeUsageAsset, source: string): string {
+function resolveSourcePath(asset: DivebellCodeUsageAsset, source: string): string {
   const sourceRoot = asset.sourceMap.sourceRoot ?? "";
   const value = `${sourceRoot}${source}`.replace(/^webpack:\/\/+/, "");
   return normalizePath(resolve(dirname(asset.sourceMapPath), value));
@@ -357,14 +357,14 @@ function createLineStarts(code: string): number[] {
   return result;
 }
 
-function normalizeCoverageRange(range: OpenRuntimeCoverageRange): OffsetRange | null {
+function normalizeCoverageRange(range: DivebellCoverageRange): OffsetRange | null {
   if (!Number.isFinite(range.startOffset) || !Number.isFinite(range.endOffset)) return null;
   const start = Math.max(0, Math.trunc(range.startOffset));
   const end = Math.max(start, Math.trunc(range.endOffset));
   return end > start ? { start, end } : null;
 }
 
-function createExecutedRanges(script: OpenRuntimeCoverageScript): OffsetRange[] {
+function createExecutedRanges(script: DivebellCoverageScript): OffsetRange[] {
   const coverageRanges = script.functions.flatMap((fn) => fn.ranges)
     .map((range) => ({ range: normalizeCoverageRange(range), count: range.count }))
     .filter((item): item is { range: OffsetRange; count: number } => item.range !== null);
@@ -495,7 +495,7 @@ function decodeVlq(value: string): number[] {
   return result;
 }
 
-function withSourceRatio(source: OpenRuntimeCodeUsageSourceResult): OpenRuntimeCodeUsageSourceResult {
+function withSourceRatio(source: DivebellCodeUsageSourceResult): DivebellCodeUsageSourceResult {
   return {
     ...source,
     chunkIds: source.chunkIds.sort(),
@@ -512,7 +512,7 @@ function withSourceRatio(source: OpenRuntimeCodeUsageSourceResult): OpenRuntimeC
   };
 }
 
-function withChunkRatio(chunk: OpenRuntimeCodeUsageChunkResult): OpenRuntimeCodeUsageChunkResult {
+function withChunkRatio(chunk: DivebellCodeUsageChunkResult): DivebellCodeUsageChunkResult {
   return {
     ...chunk,
     files: chunk.files.sort(),
@@ -524,11 +524,11 @@ function ratio(usedBytes: number, totalBytes: number): number | null {
   return totalBytes === 0 ? null : usedBytes / totalBytes;
 }
 
-function fallbackPackageName(source: OpenRuntimeCodeUsageSourceResult): string {
+function fallbackPackageName(source: DivebellCodeUsageSourceResult): string {
   return source.owner.kind === "application" ? "(application)" : "(unmatched)";
 }
 
-function unknownOwner(): OpenRuntimeChunkMapModuleOwner {
+function unknownOwner(): DivebellChunkMapModuleOwner {
   return {
     kind: "unknown",
     packageName: null,

@@ -3,16 +3,16 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  analyzeOpenRuntimeCodeUsage,
-  matchOpenRuntimeChunk
-} from "@openruntime/modern-plugin/chunk-map";
+  analyzeDivebellCodeUsage,
+  matchDivebellChunk
+} from "@divebell/modern-plugin/chunk-map";
 
 const demoDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = resolve(demoDirectory, "../..");
 const distDirectory = join(demoDirectory, "dist");
-const mapPath = join(distDirectory, "openruntime-chunks.json");
+const mapPath = join(distDirectory, "divebell-chunks.json");
 const chunkMap = JSON.parse(await readFile(mapPath, "utf8"));
-const openRuntimeVersion = JSON.parse(
+const divebellVersion = JSON.parse(
   await readFile(join(repositoryRoot, "packages/core/package.json"), "utf8")
 ).version;
 const javascriptFiles = await findJavaScriptFiles(join(distDirectory, "static", "js"));
@@ -20,7 +20,7 @@ const matches = [];
 const coverageAssets = [];
 const fullyExecutedScripts = [];
 
-const staleBuild = matchOpenRuntimeChunk(
+const staleBuild = matchDivebellChunk(
   chunkMap,
   "/static/js/unknown.js",
   { expectedBuildId: `${chunkMap.buildId}-stale` }
@@ -31,7 +31,7 @@ if (staleBuild.status !== "build-mismatch") {
 
 for (const absolutePath of javascriptFiles) {
   const file = relative(distDirectory, absolutePath).replaceAll("\\", "/");
-  const result = matchOpenRuntimeChunk(
+  const result = matchDivebellChunk(
     chunkMap,
     `https://cdn.example.test/release/${chunkMap.buildId}/${file}?verify=1`,
     { expectedBuildId: chunkMap.buildId }
@@ -94,8 +94,8 @@ for (const [chunkName, ruleName] of [["lib-react", "react"], ["lib-router", "rou
   }
 }
 
-assertPackage("application", "@openruntime/demo-modern-basic", "0.0.0");
-assertPackage("workspace", "@openruntime/core", openRuntimeVersion);
+assertPackage("application", "@divebell/demo-modern-basic", "0.0.0");
+assertPackage("workspace", "@divebell/core", divebellVersion);
 assertPackage("workspace", "@modern-js/runtime");
 assertPackage("third-party", "react");
 assertPackage("third-party", "react-dom");
@@ -115,7 +115,7 @@ if (generatedEntry?.owner.kind !== "application") {
   throw new Error("Modern.js generated application modules were misclassified.");
 }
 
-const usage = analyzeOpenRuntimeCodeUsage({
+const usage = analyzeDivebellCodeUsage({
   chunkMap,
   checkpoints: [{
     schemaVersion: 1,
@@ -129,7 +129,7 @@ const usageReactChunk = usage.phases[0]?.chunks.find((chunk) => chunk.names?.inc
 if (usageReactChunk?.splitRule?.configPath !== "optimization.splitChunks.cacheGroups.react") {
   throw new Error("Code usage report did not preserve the React split rule mapping.");
 }
-for (const packageName of ["@openruntime/demo-modern-basic", "react", "react-dom"]) {
+for (const packageName of ["@divebell/demo-modern-basic", "react", "react-dom"]) {
   const packageUsage = usagePackages.find((item) => item.packageName === packageName);
   if (packageUsage === undefined || packageUsage.usedBytes <= 0) {
     throw new Error(`Source map coverage did not resolve ${packageName}.`);

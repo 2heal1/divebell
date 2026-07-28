@@ -48,17 +48,17 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
   assertOpenOutput(output.text(), {
     command: "open http://app.test/",
     url: "http://app.test/",
-    openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+    openedUrl: `http://app.test/?divebellSessionId=${sessionId}`,
     normalizedUrl: "http://app.test/",
     bridgeUrl: "http://localhost:18080",
     bridgePort: 18080,
     sessionId
   });
   assert.equal(output.errorText(), "");
-  assertBridgeOpenCalls(browserCalls, `http://app.test/?openruntimeSessionId=${sessionId}`, "http://localhost:18080");
+  assertBridgeOpenCalls(browserCalls, `http://app.test/?divebellSessionId=${sessionId}`, "http://localhost:18080");
 });
 
-test("opens a browser page with a stable OpenRuntime session", async () => {
+test("opens a browser page with a stable Divebell session", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
 
@@ -90,7 +90,7 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
   assertOpenOutput(output.text(), {
     command: "open http://app.test/orders?region=cn#details",
     url: "http://app.test/orders?region=cn#details",
-    openedUrl: "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
+    openedUrl: "http://app.test/orders?region=cn&divebellSessionId=session-orders#details",
     normalizedUrl: "http://app.test/orders?region=cn#details",
     bridgeUrl: "http://localhost:18123",
     bridgePort: 18123,
@@ -98,7 +98,7 @@ test("opens a browser page with a stable OpenRuntime session", async () => {
   });
   assertBridgeOpenCalls(
     browserCalls,
-    "http://app.test/orders?region=cn&openruntimeSessionId=session-orders#details",
+    "http://app.test/orders?region=cn&divebellSessionId=session-orders#details",
     "http://localhost:18123"
   );
 });
@@ -135,17 +135,17 @@ test("forwards headers alongside the Bridge initialization script", async () => 
   assert.equal(browserCalls.length, 1);
   assert.deepEqual(browserCalls[0]?.slice(0, 2), [
     "open",
-    "http://app.test/orders?openruntimeSessionId=session-headers"
+    "http://app.test/orders?divebellSessionId=session-headers"
   ]);
   assert.equal(browserCalls[0]?.[2], "--init-script");
-  assert.match(browserCalls[0]?.[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+  assert.match(browserCalls[0]?.[3] ?? "", /divebell-bridge-init\/bridge-[a-f0-9]+\.js$/);
   assert.deepEqual(browserCalls[0]?.slice(4), ["--headers", headers]);
   assert.doesNotMatch(output.text(), /secret-token/);
 });
 
 test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
-  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const browserRunner = createBrowserRunner(async () => ({
     exitCode: 0,
     stdout: "ok\n",
@@ -265,13 +265,13 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assertOpenOutput(output.text(), {
     command: "open http://app.test/",
     url: "http://app.test/",
-    openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+    openedUrl: `http://app.test/?divebellSessionId=${sessionId}`,
     normalizedUrl: "http://app.test/",
     bridgeUrl: null,
     bridgePort: null,
     sessionId
   });
-  assert.deepEqual(browserCalls, [["open", `http://app.test/?openruntimeSessionId=${sessionId}`]]);
+  assert.deepEqual(browserCalls, [["open", `http://app.test/?divebellSessionId=${sessionId}`]]);
   assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
 });
 
@@ -298,10 +298,10 @@ test("points browser startup failures to the readiness check", async () => {
     kind: "browser",
     message: "Chrome exited early (unknown code)",
     retryable: true,
-    hint: "Run `openruntime check` to verify browser startup, or `openruntime check --fix` to install missing browser requirements.",
+    hint: "Run `divebell check` to verify browser startup, or `divebell check --fix` to install missing browser requirements.",
     details: {
       url: "http://app.test/",
-      openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+      openedUrl: `http://app.test/?divebellSessionId=${sessionId}`,
       stderr: "Chrome exited early (unknown code)"
     }
   }));
@@ -339,7 +339,7 @@ test("forwards origin-scoped headers to the first page request", async () => {
   assert.equal(exitCode, 0);
   assert.deepEqual(browserCalls, [[
     "open",
-    "http://app.test/orders?openruntimeSessionId=session-headers",
+    "http://app.test/orders?divebellSessionId=session-headers",
     "--headers",
     headers
   ]]);
@@ -420,7 +420,7 @@ test("keeps headers on the first navigation when cookies are staged before openi
     ["cookies", "set", "--curl", "Cookie: session=test"],
     [
       "goto",
-      "http://app.test/orders?openruntimeSessionId=session-headers",
+      "http://app.test/orders?divebellSessionId=session-headers",
       "--headers",
       headers
     ]
@@ -450,18 +450,18 @@ test("opens a visible browser page when ui is set and keeps the session query", 
   assertOpenOutput(output.text(), {
     command: "open http://app.test/orders",
     url: "http://app.test/orders",
-    openedUrl: "http://app.test/orders?openruntimeSessionId=session-orders",
+    openedUrl: "http://app.test/orders?divebellSessionId=session-orders",
     normalizedUrl: "http://app.test/orders",
     bridgeUrl: null,
     bridgePort: null,
     sessionId: "session-orders"
   });
-  assert.deepEqual(browserCalls, [["open", "http://app.test/orders?openruntimeSessionId=session-orders"]]);
+  assert.deepEqual(browserCalls, [["open", "http://app.test/orders?divebellSessionId=session-orders"]]);
   assert.deepEqual(browserOptions, [{ ui: true, reuseInitialBlankPage: true }]);
 });
 
 test("records the latest open operation by working directory and removes it on stop", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const browserCalls: string[][] = [];
 
   try {
@@ -505,12 +505,12 @@ test("records the latest open operation by working directory and removes it on s
     assert.equal(operation.exitCode, 0);
     assertBridgeOpenCalls(
       browserCalls.slice(0, 1),
-      "http://127.0.0.1:3000/orders?openruntimeSessionId=session-orders",
+      "http://127.0.0.1:3000/orders?divebellSessionId=session-orders",
       "http://bridge.test"
     );
     assertBridgeOpenCalls(
       browserCalls.slice(1),
-      "http://localhost:3000/users?openruntimeSessionId=session-orders",
+      "http://localhost:3000/users?divebellSessionId=session-orders",
       "http://bridge.test"
     );
 
@@ -541,7 +541,7 @@ function assertBridgeOpenCalls(calls: string[][], openedUrl: string, bridgeUrl: 
   assert.equal(calls[0]?.[0], "open");
   assert.equal(calls[0]?.[1], openedUrl);
   assert.equal(calls[0]?.[2], "--init-script");
-  assert.match(calls[0]?.[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+  assert.match(calls[0]?.[3] ?? "", /divebell-bridge-init\/bridge-[a-f0-9]+\.js$/);
   assert.equal(typeof bridgeUrl, "string");
 }
 
@@ -567,7 +567,7 @@ test("uses the latest open context as the default runtime selector", async () =>
             runtimes: [
               {
                 runtimeId: "runtime-open",
-                url: "http://app.test/orders?openruntimeSessionId=session-open",
+                url: "http://app.test/orders?divebellSessionId=session-open",
                 sessionId: "session-open",
                 status: "connected",
                 connectedAt: 1,
@@ -593,7 +593,7 @@ test("uses the latest open context as the default runtime selector", async () =>
     assert.deepEqual(JSON.parse(output.text()), {
       runtime: {
         runtimeId: "runtime-open",
-        url: "http://app.test/orders?openruntimeSessionId=session-open",
+        url: "http://app.test/orders?divebellSessionId=session-open",
         sessionId: "session-open",
         status: "connected",
         connectedAt: 1,
@@ -640,7 +640,7 @@ test("keeps directory context written by the previous operation schema", async (
 });
 
 test("requires an open context before browser page commands", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const output = createOutput();
   try {
     const exitCode = await runCli(["click", "Refresh order"], {
@@ -659,7 +659,7 @@ test("requires an open context before browser page commands", async () => {
       kind: "validation",
       message: "No opened page context was found.",
       retryable: false,
-      hint: "Run `openruntime open <url>` before `openruntime click Refresh order`.",
+      hint: "Run `divebell open <url>` before `divebell click Refresh order`.",
       details: {
         command: "click Refresh order"
       }
@@ -770,7 +770,7 @@ test("reports interactive text click errors without broad text fallback", async 
 
 test("starts the bridge in the background and returns after it is reachable", async () => {
   const output = createOutput();
-  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
+  const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   let bridgeStarted = false;
 
   try {
@@ -809,8 +809,8 @@ test("starts the bridge in the background and returns after it is reachable", as
 });
 
 test("stops by closing the browser session before stopping the bridge", async () => {
-  const stateDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-state-"));
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-cli-operations-"));
+  const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const order: string[] = [];
   let bridgeStarted = false;
 

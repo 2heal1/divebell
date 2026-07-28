@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
 import {
-  createOpenRuntimeGarfishCustomLoader,
-  createOpenRuntimeGarfishPlugin,
-  createOpenRuntimeGarfishReporter,
+  createDivebellGarfishCustomLoader,
+  createDivebellGarfishPlugin,
+  createDivebellGarfishReporter,
   modernGarfishTargetIds
 } from "../../dist/index.js";
 
@@ -31,9 +31,9 @@ interface GarfishRootData {
   mountedAppNames: string[];
 }
 
-test("records Garfish app lifecycle state in OpenRuntime targets", () => {
-  const runtime = createOpenRuntime();
-  const plugin = createOpenRuntimeGarfishPlugin({ runtime })({});
+test("records Garfish app lifecycle state in Divebell targets", () => {
+  const runtime = createDivebell();
+  const plugin = createDivebellGarfishPlugin({ runtime })({});
 
   plugin.registerApp?.({
     orders: {
@@ -83,8 +83,8 @@ test("records Garfish app lifecycle state in OpenRuntime targets", () => {
 });
 
 test("records Garfish errors on app and aggregate targets", () => {
-  const runtime = createOpenRuntime();
-  const plugin = createOpenRuntimeGarfishPlugin({ runtime })({});
+  const runtime = createDivebell();
+  const plugin = createDivebellGarfishPlugin({ runtime })({});
 
   plugin.errorExecCode?.(
     new Error("script failed"),
@@ -106,9 +106,9 @@ test("records Garfish errors on app and aggregate targets", () => {
 });
 
 test("custom loader records provider render and destroy calls without treating render as business ready", async () => {
-  const runtime = createOpenRuntime();
-  const reporter = createOpenRuntimeGarfishReporter({ runtime });
-  const loader = createOpenRuntimeGarfishCustomLoader({ reporter });
+  const runtime = createDivebell();
+  const reporter = createDivebellGarfishReporter({ runtime });
+  const loader = createDivebellGarfishCustomLoader({ reporter });
   let renderCalls = 0;
   let destroyCalls = 0;
 

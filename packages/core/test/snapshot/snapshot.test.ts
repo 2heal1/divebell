@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock, registerRoute } from "../helpers/runtime.ts";
 
 test("updates snapshot and records accepted snapshot events", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   runtime.updateSnapshot({
@@ -53,7 +53,7 @@ test("updates snapshot and records accepted snapshot events", () => {
 });
 
 test("rejects updates for unregistered targets without changing snapshot", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   runtime.updateSnapshot({
     id: "route:/missing",
@@ -84,7 +84,7 @@ test("rejects updates for unregistered targets without changing snapshot", () =>
 });
 
 test("rejects undeclared statuses and mismatched target types", () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   runtime.updateSnapshot({ id: "route:/home", status: "ready" });

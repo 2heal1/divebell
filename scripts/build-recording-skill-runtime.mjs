@@ -9,11 +9,11 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = resolve(repositoryRoot, getOption("--manifest") ??
-  "skills/record-openruntime-workflow/references/openruntime-cli-runtime.json");
+  "skills/record-divebell-workflow/references/divebell-cli-runtime.json");
 const outputDirectory = resolve(repositoryRoot, getOption("--output-dir") ?? "dist/recording-skill-runtime");
 const packageSourceDirectory = getOption("--package-dir");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-const workingDirectory = await mkdtemp(join(tmpdir(), "openruntime-recording-runtime-"));
+const workingDirectory = await mkdtemp(join(tmpdir(), "divebell-recording-runtime-"));
 const stagingDirectory = join(workingDirectory, "staging");
 const stagingPackages = join(stagingDirectory, "packages");
 const archivePath = join(outputDirectory, manifest.asset.name);

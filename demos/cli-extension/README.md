@@ -5,7 +5,7 @@ This demo accompanies [CLI Extension Development](../../docs/cli-extensions.md).
 - keeping the entry declaration-only and loading Command and Hook implementations on demand;
 - reading subcommands and repeated options from `options.args`;
 - returning successful results directly and throwing clear errors;
-- checking `options.page` and reading the current page through `options.openruntime.browser`; and
+- checking `options.page` and reading the current page through `options.divebell.browser`; and
 - using the `open`, `detectStack`, and `close` Hooks.
 
 ## Run in the repository
@@ -14,34 +14,34 @@ Install dependencies and build the CLI from the repository root:
 
 ```sh
 pnpm install
-pnpm --filter @openruntime/cli build
+pnpm --filter @divebell/cli build
 ```
 
 Load the demo and confirm that its Command appears:
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
+DIVEBELL_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
   node packages/cli/dist/bin.js --help
 ```
 
 Run the Command path that does not require a page:
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
+DIVEBELL_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs" \
   node packages/cli/dist/bin.js extension-demo hello --name Codex
 ```
 
 Then verify the page flow:
 
 ```sh
-export OPENRUNTIME_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs"
+export DIVEBELL_EXTENSIONS_DIR="$PWD/demos/cli-extension/index.mjs"
 node packages/cli/dist/bin.js open https://example.com --no-bridge
 node packages/cli/dist/bin.js extension-demo page
 node packages/cli/dist/bin.js stack --refresh
 node packages/cli/dist/bin.js close
 ```
 
-`page` returns the page URL, title, and marker injected by the `open` Hook. `stack` detects `OpenRuntime CLI Extension Demo`.
+`page` returns the page URL, title, and marker injected by the `open` Hook. `stack` detects `Divebell CLI Extension Demo`.
 
 ## Run the demo tests
 

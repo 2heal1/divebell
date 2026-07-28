@@ -3,7 +3,7 @@
     "sourceDemos": [
       {
         "path": "demos/modern-basic",
-        "verifyScript": "demos/modern-basic/scripts/verify-openruntime.mjs",
+        "verifyScript": "demos/modern-basic/scripts/verify-divebell.mjs",
         "features": [
           "route",
           "loader",
@@ -13,7 +13,7 @@
       },
       {
         "path": "demos/modern-ssr",
-        "verifyScript": "demos/modern-ssr/scripts/verify-openruntime.mjs",
+        "verifyScript": "demos/modern-ssr/scripts/verify-divebell.mjs",
         "features": [
           "ssr",
           "hydration"
@@ -21,7 +21,7 @@
       },
       {
         "path": "demos/modern-ssr-stream",
-        "verifyScript": "demos/modern-ssr-stream/scripts/verify-openruntime.mjs",
+        "verifyScript": "demos/modern-ssr-stream/scripts/verify-divebell.mjs",
         "features": [
           "route",
           "loader",

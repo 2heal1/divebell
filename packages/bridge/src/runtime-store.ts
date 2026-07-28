@@ -4,7 +4,7 @@ import type {
   BridgeRuntimeQuery,
   BridgeRuntimeRequest,
   BridgeRuntimeResponse
-} from "@openruntime/core";
+} from "@divebell/core";
 import type {
   GetActionsQuery,
   GetEventsQuery,
@@ -14,7 +14,7 @@ import type {
   RuntimeActionDescriptor,
   RuntimeSnapshot,
   RuntimeTargetDescriptor
-} from "@openruntime/core";
+} from "@divebell/core";
 import { BridgeHttpError } from "./http-utils.js";
 import type { BridgeRuntimeInfo } from "./types.js";
 

@@ -6,11 +6,11 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "@openruntime/core": ["packages/core/src/index.ts"],
-      "@openruntime/bridge": ["packages/bridge/src/index.ts"],
-      "@openruntime/chunk-map": ["packages/chunk-map/src/index.ts"],
-      "@openruntime/cli": ["packages/cli/src/index.ts"],
-      "@openruntime/modern-plugin": ["packages/modern-plugin/src/index.ts"]
+      "@divebell/core": ["packages/core/src/index.ts"],
+      "@divebell/bridge": ["packages/bridge/src/index.ts"],
+      "@divebell/chunk-map": ["packages/chunk-map/src/index.ts"],
+      "@divebell/cli": ["packages/cli/src/index.ts"],
+      "@divebell/modern-plugin": ["packages/modern-plugin/src/index.ts"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,

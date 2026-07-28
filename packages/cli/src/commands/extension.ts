@@ -14,18 +14,18 @@ import type {
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
   ExtensionCliCommandOptions,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition
 } from "../types/commands.js";
 import type { CliOperationLogEntry, ParsedCliArgs } from "../types/shared.js";
-import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
+import { createDivebellExtensionApi } from "../features/extension/api.js";
 
 const MAX_EXTENSION_CALL_DEPTH = 16;
 const INHERITED_CONTEXT_OPTIONS = ["bridge", "port", "runtime", "session", "url"] as const;
 
 interface RegisteredExtensionCommand {
-  extension: OpenRuntimeExtensionDefinition;
-  command: OpenRuntimeExtensionCommand;
+  extension: DivebellExtensionDefinition;
+  command: DivebellExtensionCommand;
 }
 
 interface ExtensionCall {
@@ -73,7 +73,7 @@ export async function runExtensionCliCommand(
         code: "CLI_COMMAND_SKILL_USAGE_INVALID",
         kind: "validation",
         message: "Command skill lookup only accepts the command name.",
-        hint: `Run \`openruntime ${command} --skill\`.`
+        hint: `Run \`divebell ${command} --skill\`.`
       });
     }
     if (registered.command.skill === undefined) {
@@ -81,7 +81,7 @@ export async function runExtensionCliCommand(
         code: "CLI_COMMAND_SKILL_UNAVAILABLE",
         kind: "not_found",
         message: `Command "${command}" does not provide a skill.`,
-        hint: "Run `openruntime --help` to see commands with available skills."
+        hint: "Run `divebell --help` to see commands with available skills."
       });
     }
     const skill = validateCommandSkill(registered.command.skill, registered.command.name);
@@ -169,7 +169,7 @@ async function executeExtensionCommand<T = unknown>(
     ...(executor.openContext?.headers === undefined
       ? {}
       : { headers: executor.openContext.headers }),
-    openruntime: createOpenRuntimeExtensionApi({
+    divebell: createDivebellExtensionApi({
       args,
       fetcher: executor.fetcher,
       browserRunner: executor.browserRunner,

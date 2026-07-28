@@ -1,12 +1,12 @@
-import { createOpenRuntime } from "./center.js";
-import type { OpenRuntimeCore } from "./types.js";
+import { createDivebell } from "./center.js";
+import type { DivebellCore } from "./types.js";
 
-export interface OpenRuntimeWindowHost {
-  __OPEN_RUNTIME__?: OpenRuntimeCore;
-  __OPEN_RUNTIME_REGISTRY__?: OpenRuntimeRegistry;
+export interface DivebellWindowHost {
+  __DIVEBELL__?: DivebellCore;
+  __DIVEBELL_REGISTRY__?: DivebellRegistry;
 }
 
-export interface OpenRuntimeInstanceOptions {
+export interface DivebellInstanceOptions {
   runtimeId?: string;
   name?: string;
   source?: string;
@@ -14,99 +14,99 @@ export interface OpenRuntimeInstanceOptions {
   renderId?: string;
 }
 
-export interface OpenRuntimeInstance extends OpenRuntimeInstanceOptions {
+export interface DivebellInstance extends DivebellInstanceOptions {
   runtimeId: string;
-  runtime: OpenRuntimeCore;
+  runtime: DivebellCore;
 }
 
-export type OpenRuntimeRegistryEvent =
-  | { type: "registered"; instance: OpenRuntimeInstance }
-  | { type: "unregistered"; instance: OpenRuntimeInstance };
+export type DivebellRegistryEvent =
+  | { type: "registered"; instance: DivebellInstance }
+  | { type: "unregistered"; instance: DivebellInstance };
 
-export interface OpenRuntimeRegistry {
-  register(runtime: OpenRuntimeCore, options?: OpenRuntimeInstanceOptions): OpenRuntimeInstance;
-  unregister(runtimeOrId: OpenRuntimeCore | string): boolean;
-  list(): OpenRuntimeInstance[];
-  subscribe(listener: (event: OpenRuntimeRegistryEvent) => void): () => void;
+export interface DivebellRegistry {
+  register(runtime: DivebellCore, options?: DivebellInstanceOptions): DivebellInstance;
+  unregister(runtimeOrId: DivebellCore | string): boolean;
+  list(): DivebellInstance[];
+  subscribe(listener: (event: DivebellRegistryEvent) => void): () => void;
 }
 
-export function installOpenRuntimeOnWindow(
-  runtime: OpenRuntimeCore = createOpenRuntime(),
-  host: OpenRuntimeWindowHost | undefined = getDefaultWindowHost(),
-  options: OpenRuntimeInstanceOptions = {}
-): OpenRuntimeCore {
+export function installDivebellOnWindow(
+  runtime: DivebellCore = createDivebell(),
+  host: DivebellWindowHost | undefined = getDefaultWindowHost(),
+  options: DivebellInstanceOptions = {}
+): DivebellCore {
   if (host === undefined) {
     return runtime;
   }
 
-  const registry = getOrCreateOpenRuntimeRegistry(host);
+  const registry = getOrCreateDivebellRegistry(host);
   registry.register(runtime, options);
-  host.__OPEN_RUNTIME__ ??= runtime;
+  host.__DIVEBELL__ ??= runtime;
   return runtime;
 }
 
-export function uninstallOpenRuntimeFromWindow(
-  runtimeOrId: OpenRuntimeCore | string,
-  host: OpenRuntimeWindowHost | undefined = getDefaultWindowHost()
+export function uninstallDivebellFromWindow(
+  runtimeOrId: DivebellCore | string,
+  host: DivebellWindowHost | undefined = getDefaultWindowHost()
 ): boolean {
-  if (host?.__OPEN_RUNTIME_REGISTRY__ === undefined) {
+  if (host?.__DIVEBELL_REGISTRY__ === undefined) {
     return false;
   }
 
   const removedDefault = typeof runtimeOrId === "string"
-    ? host.__OPEN_RUNTIME_REGISTRY__.list().find((instance) => instance.runtimeId === runtimeOrId)?.runtime === host.__OPEN_RUNTIME__
-    : runtimeOrId === host.__OPEN_RUNTIME__;
-  const removed = host.__OPEN_RUNTIME_REGISTRY__.unregister(runtimeOrId);
+    ? host.__DIVEBELL_REGISTRY__.list().find((instance) => instance.runtimeId === runtimeOrId)?.runtime === host.__DIVEBELL__
+    : runtimeOrId === host.__DIVEBELL__;
+  const removed = host.__DIVEBELL_REGISTRY__.unregister(runtimeOrId);
   if (removed && removedDefault) {
-    const nextDefault = host.__OPEN_RUNTIME_REGISTRY__.list()[0]?.runtime;
+    const nextDefault = host.__DIVEBELL_REGISTRY__.list()[0]?.runtime;
     if (nextDefault === undefined) {
-      delete host.__OPEN_RUNTIME__;
+      delete host.__DIVEBELL__;
     } else {
-      host.__OPEN_RUNTIME__ = nextDefault;
+      host.__DIVEBELL__ = nextDefault;
     }
   }
   return removed;
 }
 
-export function getOpenRuntimeFromWindow(
-  host: OpenRuntimeWindowHost | undefined = getDefaultWindowHost()
-): OpenRuntimeCore | undefined {
-  return host?.__OPEN_RUNTIME__;
+export function getDivebellFromWindow(
+  host: DivebellWindowHost | undefined = getDefaultWindowHost()
+): DivebellCore | undefined {
+  return host?.__DIVEBELL__;
 }
 
-export function getOpenRuntimeRegistryFromWindow(
-  host: OpenRuntimeWindowHost | undefined = getDefaultWindowHost()
-): OpenRuntimeRegistry | undefined {
-  return host?.__OPEN_RUNTIME_REGISTRY__;
+export function getDivebellRegistryFromWindow(
+  host: DivebellWindowHost | undefined = getDefaultWindowHost()
+): DivebellRegistry | undefined {
+  return host?.__DIVEBELL_REGISTRY__;
 }
 
-function getOrCreateOpenRuntimeRegistry(host: OpenRuntimeWindowHost): OpenRuntimeRegistry {
-  host.__OPEN_RUNTIME_REGISTRY__ ??= new WindowRuntimeRegistry();
-  return host.__OPEN_RUNTIME_REGISTRY__;
+function getOrCreateDivebellRegistry(host: DivebellWindowHost): DivebellRegistry {
+  host.__DIVEBELL_REGISTRY__ ??= new WindowRuntimeRegistry();
+  return host.__DIVEBELL_REGISTRY__;
 }
 
-class WindowRuntimeRegistry implements OpenRuntimeRegistry {
-  readonly #instances = new Map<string, OpenRuntimeInstance>();
-  readonly #runtimeIds = new WeakMap<OpenRuntimeCore, string>();
-  readonly #listeners = new Set<(event: OpenRuntimeRegistryEvent) => void>();
+class WindowRuntimeRegistry implements DivebellRegistry {
+  readonly #instances = new Map<string, DivebellInstance>();
+  readonly #runtimeIds = new WeakMap<DivebellCore, string>();
+  readonly #listeners = new Set<(event: DivebellRegistryEvent) => void>();
 
-  register(runtime: OpenRuntimeCore, options: OpenRuntimeInstanceOptions = {}): OpenRuntimeInstance {
+  register(runtime: DivebellCore, options: DivebellInstanceOptions = {}): DivebellInstance {
     const existingId = this.#runtimeIds.get(runtime);
     if (existingId !== undefined) {
-      return this.#instances.get(existingId) as OpenRuntimeInstance;
+      return this.#instances.get(existingId) as DivebellInstance;
     }
 
     const runtimeId = normalizeRuntimeId(options.runtimeId) ?? createRuntimeId();
     const collision = this.#instances.get(runtimeId);
     if (collision !== undefined && collision.runtime !== runtime) {
-      throw new Error(`OpenRuntime instance id "${runtimeId}" is already registered.`);
+      throw new Error(`Divebell instance id "${runtimeId}" is already registered.`);
     }
 
     const name = normalizeOptional(options.name);
     const source = normalizeOptional(options.source);
     const parentRuntimeId = normalizeOptional(options.parentRuntimeId);
     const renderId = normalizeOptional(options.renderId);
-    const instance: OpenRuntimeInstance = {
+    const instance: DivebellInstance = {
       runtimeId,
       runtime,
       ...(name === undefined ? {} : { name }),
@@ -120,7 +120,7 @@ class WindowRuntimeRegistry implements OpenRuntimeRegistry {
     return instance;
   }
 
-  unregister(runtimeOrId: OpenRuntimeCore | string): boolean {
+  unregister(runtimeOrId: DivebellCore | string): boolean {
     const runtimeId = typeof runtimeOrId === "string" ? runtimeOrId : this.#runtimeIds.get(runtimeOrId);
     if (runtimeId === undefined) return false;
     const instance = this.#instances.get(runtimeId);
@@ -132,16 +132,16 @@ class WindowRuntimeRegistry implements OpenRuntimeRegistry {
     return true;
   }
 
-  list(): OpenRuntimeInstance[] {
+  list(): DivebellInstance[] {
     return [...this.#instances.values()];
   }
 
-  subscribe(listener: (event: OpenRuntimeRegistryEvent) => void): () => void {
+  subscribe(listener: (event: DivebellRegistryEvent) => void): () => void {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
 
-  #emit(event: OpenRuntimeRegistryEvent): void {
+  #emit(event: DivebellRegistryEvent): void {
     for (const listener of this.#listeners) {
       listener(event);
     }
@@ -163,7 +163,7 @@ function normalizeOptional(value: string | undefined): string | undefined {
   return normalized === undefined || normalized.length === 0 ? undefined : normalized;
 }
 
-function getDefaultWindowHost(): OpenRuntimeWindowHost | undefined {
+function getDefaultWindowHost(): DivebellWindowHost | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
@@ -173,7 +173,7 @@ function getDefaultWindowHost(): OpenRuntimeWindowHost | undefined {
 
 declare global {
   interface Window {
-    __OPEN_RUNTIME__?: OpenRuntimeCore;
-    __OPEN_RUNTIME_REGISTRY__?: OpenRuntimeRegistry;
+    __DIVEBELL__?: DivebellCore;
+    __DIVEBELL_REGISTRY__?: DivebellRegistry;
   }
 }

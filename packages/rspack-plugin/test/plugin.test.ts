@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { OpenRuntimeChunkMapRspackPlugin } from "../dist/index.js";
+import { DivebellChunkMapRspackPlugin } from "../dist/index.js";
 
 test("emits a Rspack Chunk Map without depending on Modern.js", () => {
   let compilationHandler: ((compilation: unknown) => void) | undefined;
@@ -13,7 +13,7 @@ test("emits a Rspack Chunk Map without depending on Modern.js", () => {
     constructor(readonly value: string) {}
   }
 
-  const plugin = new OpenRuntimeChunkMapRspackPlugin();
+  const plugin = new DivebellChunkMapRspackPlugin();
   plugin.apply({
     context: "/repo",
     options: {
@@ -88,9 +88,9 @@ test("emits a Rspack Chunk Map without depending on Modern.js", () => {
 
   assert.ok(processAssetsHandler);
   processAssetsHandler();
-  assert.equal(emittedName, "openruntime-chunks.json");
+  assert.equal(emittedName, "divebell-chunks.json");
   const chunkMap = JSON.parse(emittedValue ?? "");
-  assert.equal(chunkMap.generator, "@openruntime/rspack-plugin");
+  assert.equal(chunkMap.generator, "@divebell/rspack-plugin");
   assert.equal(chunkMap.buildId, "rspack-build-1");
   assert.deepEqual(chunkMap.chunks[0].splitRule, {
     kind: "cache-group",

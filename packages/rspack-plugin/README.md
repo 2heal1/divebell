@@ -1,23 +1,23 @@
-# @openruntime/rspack-plugin
+# @divebell/rspack-plugin
 
-This optional Rspack plugin emits `openruntime-chunks.json` for deeper code
-usage analysis. Basic OpenRuntime memory commands do not require this plugin.
+This optional Rspack plugin emits `divebell-chunks.json` for deeper code
+usage analysis. Basic Divebell memory commands do not require this plugin.
 
 ```ts
-import { OpenRuntimeChunkMapRspackPlugin } from "@openruntime/rspack-plugin";
+import { DivebellChunkMapRspackPlugin } from "@divebell/rspack-plugin";
 
 export default {
-  plugins: [new OpenRuntimeChunkMapRspackPlugin()]
+  plugins: [new DivebellChunkMapRspackPlugin()]
 };
 ```
 
 Keep JavaScript source maps in the same build output. Record the target page
-with `openruntime coverage`, then pass the exact build metadata path to the CLI:
+with `divebell coverage`, then pass the exact build metadata path to the CLI:
 
 ```sh
-openruntime extensions add @openruntime/extension-code-usage
-openruntime code-usage analyze \
-  --chunk-map /path/to/dist/openruntime-chunks.json \
+divebell extensions add @divebell/extension-code-usage
+divebell code-usage analyze \
+  --chunk-map /path/to/dist/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --output /tmp/code-usage-report.json
 ```

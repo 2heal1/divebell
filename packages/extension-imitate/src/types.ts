@@ -1,4 +1,4 @@
-import type { CliExtensionPageContext, OpenRuntimeExtensionApi, ParsedCliArgs } from "@openruntime/cli";
+import type { CliExtensionPageContext, DivebellExtensionApi, ParsedCliArgs } from "@divebell/cli";
 
 interface BridgeRuntimeInfo {
   runtimeId: string;
@@ -13,7 +13,7 @@ export interface RecordCommandOptions {
   args: ParsedCliArgs;
   fetcher: typeof fetch;
   page?: CliExtensionPageContext;
-  openruntime: OpenRuntimeExtensionApi;
+  divebell: DivebellExtensionApi;
 }
 
 export interface RecordingFiles {

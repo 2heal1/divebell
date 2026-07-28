@@ -5,7 +5,7 @@ import { bridgePackageInfo } from "../dist/index.js";
 
 test("exposes the bridge package marker", () => {
   assert.deepEqual(bridgePackageInfo, {
-    name: "@openruntime/bridge",
+    name: "@divebell/bridge",
     phase: "phase-0",
     role: "page bridge"
   });

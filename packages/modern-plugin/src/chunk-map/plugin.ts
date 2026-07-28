@@ -1,10 +1,10 @@
 import {
-  OpenRuntimeChunkMapRspackPlugin,
-  type OpenRuntimeChunkMapPluginOptions
-} from "@openruntime/rspack-plugin";
+  DivebellChunkMapRspackPlugin,
+  type DivebellChunkMapPluginOptions
+} from "@divebell/rspack-plugin";
 
-export type { OpenRuntimeChunkMapPluginOptions } from "@openruntime/rspack-plugin";
-export { OpenRuntimeChunkMapRspackPlugin } from "@openruntime/rspack-plugin";
+export type { DivebellChunkMapPluginOptions } from "@divebell/rspack-plugin";
+export { DivebellChunkMapRspackPlugin } from "@divebell/rspack-plugin";
 
 export interface ModernCliPluginApiLike {
   modifyRspackConfig(handler: (config: RspackConfigLike) => void): void;
@@ -20,19 +20,19 @@ interface RspackConfigLike {
   plugins?: unknown[];
 }
 
-export function openRuntimeChunkMapPlugin(
-  options: OpenRuntimeChunkMapPluginOptions = {}
+export function divebellChunkMapPlugin(
+  options: DivebellChunkMapPluginOptions = {}
 ): ModernCliPluginLike {
   return {
-    name: "@openruntime/modern-plugin/chunk-map",
+    name: "@divebell/modern-plugin/chunk-map",
     post: ["@modern-js/app-tools"],
     setup(api) {
       api.modifyRspackConfig((config) => {
         config.plugins = [
           ...(config.plugins ?? []),
-          new OpenRuntimeChunkMapRspackPlugin({
+          new DivebellChunkMapRspackPlugin({
             ...options,
-            generator: "@openruntime/modern-plugin"
+            generator: "@divebell/modern-plugin"
           })
         ];
       });

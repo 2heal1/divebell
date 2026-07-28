@@ -1,4 +1,4 @@
-import type { OpenRuntimeBrowserApi } from "@openruntime/cli";
+import type { DivebellBrowserApi } from "@divebell/cli";
 
 export interface MemoryCheckPage {
   eval(script: string): Promise<unknown>;
@@ -22,7 +22,7 @@ export interface RunMemoryCheckOptions {
   artifactDirectory: string;
   warmup: number;
   iterations: number;
-  browser: OpenRuntimeBrowserApi;
+  browser: DivebellBrowserApi;
   ui?: boolean;
 }
 

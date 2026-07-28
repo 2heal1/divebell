@@ -1,6 +1,6 @@
 node_modules/
 dist/
-skills/record-openruntime-workflow/references/openruntime-cli/*.tgz
+skills/record-divebell-workflow/references/divebell-cli/*.tgz
 *.tsbuildinfo
 .DS_Store
 demos/modern-basic/.memory-artifacts/

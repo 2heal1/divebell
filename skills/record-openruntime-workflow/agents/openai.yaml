@@ -1,4 +1,0 @@
-interface:
-  display_name: "录制 OpenRuntime 流程"
-  short_description: "录制点击输入、语音和页面状态并生成脚本"
-  default_prompt: "使用 $record-openruntime-workflow 直接打开浏览器录制点击输入和语音说明，并生成可验证的 JS 脚本草稿。"

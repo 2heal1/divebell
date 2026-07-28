@@ -1,6 +1,6 @@
-import { OPEN_RUNTIME_SESSION_QUERY_PARAM, type RuntimeDataCondition } from "@openruntime/core";
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
-import { normalizeOpenRuntimeUrlForMatch } from "../../utils/operation-log.js";
+import { DIVEBELL_SESSION_QUERY_PARAM, type RuntimeDataCondition } from "@divebell/core";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
+import { normalizeDivebellUrlForMatch } from "../../utils/operation-log.js";
 
 import type { Fetcher, RuntimeSelector, RuntimeResourceResult } from "./types.js";
 export type { Fetcher, RuntimeSelector, RuntimeResourceResult } from "./types.js";
@@ -126,12 +126,12 @@ export function selectRuntime(
     return runtime;
   }
 
-  const selectorSessionId = selector.sessionId ?? getOpenRuntimeSessionIdFromUrl(selector.url);
-  const selectorUrl = selector.url === undefined ? undefined : normalizeOpenRuntimeUrlForMatch(selector.url);
+  const selectorSessionId = selector.sessionId ?? getDivebellSessionIdFromUrl(selector.url);
+  const selectorUrl = selector.url === undefined ? undefined : normalizeDivebellUrlForMatch(selector.url);
   const candidates = runtimes.filter((runtime) =>
     runtime.status === "connected" &&
     (selectorSessionId === undefined || runtimeMatchesSession(runtime, selectorSessionId)) &&
-    (selectorUrl === undefined || normalizeOpenRuntimeUrlForMatch(runtime.url) === selectorUrl)
+    (selectorUrl === undefined || normalizeDivebellUrlForMatch(runtime.url) === selectorUrl)
   );
 
   if (candidates.length === 0) {
@@ -144,13 +144,13 @@ export function selectRuntime(
 }
 
 function runtimeMatchesSession(runtime: BridgeRuntimeInfo, sessionId: string): boolean {
-  return runtime.sessionId === sessionId || getOpenRuntimeSessionIdFromUrl(runtime.url) === sessionId;
+  return runtime.sessionId === sessionId || getDivebellSessionIdFromUrl(runtime.url) === sessionId;
 }
 
-function getOpenRuntimeSessionIdFromUrl(input: string | undefined): string | undefined {
+function getDivebellSessionIdFromUrl(input: string | undefined): string | undefined {
   if (input === undefined) return undefined;
   try {
-    const sessionId = new URL(input).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    const sessionId = new URL(input).searchParams.get(DIVEBELL_SESSION_QUERY_PARAM);
     return sessionId === null || sessionId.length === 0 ? undefined : sessionId;
   } catch {
     return undefined;

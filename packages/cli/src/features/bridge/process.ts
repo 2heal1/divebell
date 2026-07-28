@@ -3,8 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { OPEN_RUNTIME_BRIDGE_DEFAULT_PORT } from "@openruntime/core";
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
+import { DIVEBELL_BRIDGE_DEFAULT_PORT } from "@divebell/core";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
 import type { Fetcher } from "../runtime/client.js";
 import { fetchRuntimes, selectRuntime } from "../runtime/client.js";
 
@@ -41,7 +41,7 @@ async function startDetachedBridge(entryModuleUrl: string, port: number): Promis
       cleanup();
       stopStartingBridge(child.pid);
       releaseChild();
-      reject(new Error("OpenRuntime Bridge did not report its listening address."));
+      reject(new Error("Divebell Bridge did not report its listening address."));
     }, 5000);
 
     const cleanup = () => {
@@ -65,7 +65,7 @@ async function startDetachedBridge(entryModuleUrl: string, port: number): Promis
       releaseChild();
       const detail = stderr.trim();
       reject(new Error(
-        `OpenRuntime Bridge exited before startup completed${code === null ? "." : ` with code ${code}.`}` +
+        `Divebell Bridge exited before startup completed${code === null ? "." : ` with code ${code}.`}` +
         (detail.length === 0 ? "" : ` ${detail}`)
       ));
     };
@@ -87,13 +87,13 @@ async function startDetachedBridge(entryModuleUrl: string, port: number): Promis
 }
 
 function isBridgeReadyMessage(value: unknown): value is {
-  type: "openruntime.bridge.ready";
+  type: "divebell.bridge.ready";
   port: number;
   url: string;
 } {
   if (value === null || typeof value !== "object") return false;
   const message = value as Record<string, unknown>;
-  return message.type === "openruntime.bridge.ready" &&
+  return message.type === "divebell.bridge.ready" &&
     typeof message.port === "number" &&
     typeof message.url === "string";
 }
@@ -107,7 +107,7 @@ function stopStartingBridge(pid: number | undefined): void {
 
 export function createFileBridgeStateStore(
   bridgeUrl: string,
-  stateDirectory = join(homedir(), ".openruntime")
+  stateDirectory = join(homedir(), ".divebell")
 ): BridgeStateStore {
   const stateFile = join(stateDirectory, `${createStateFileName(bridgeUrl)}.json`);
   return {
@@ -139,12 +139,12 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<Ensure
     };
   }
   if (firstProbe === "wrong-service") {
-    throw new Error(`A non-OpenRuntime service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
+    throw new Error(`A non-Divebell service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
   }
 
   const port = options.port ?? getBridgePort(options.bridgeUrl);
   if (port === undefined || !canAutoStartBridge(options.bridgeUrl)) {
-    throw new Error(`OpenRuntime Bridge is not reachable at ${options.bridgeUrl}. Use a local --bridge URL for automatic startup, or start the remote Bridge yourself.`);
+    throw new Error(`Divebell Bridge is not reachable at ${options.bridgeUrl}. Use a local --bridge URL for automatic startup, or start the remote Bridge yourself.`);
   }
 
   const startResult = await options.starter.start({ port });
@@ -167,12 +167,12 @@ export async function ensureBridge(options: EnsureBridgeOptions): Promise<Ensure
       };
     }
     if (probe === "wrong-service") {
-      throw new Error(`A non-OpenRuntime service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
+      throw new Error(`A non-Divebell service is responding at ${options.bridgeUrl}. Use --bridge or --port to choose another Bridge.`);
     }
     await sleep(100);
   }
 
-  throw new Error(`OpenRuntime Bridge did not become available at ${options.bridgeUrl}.`);
+  throw new Error(`Divebell Bridge did not become available at ${options.bridgeUrl}.`);
 }
 
 export async function startDedicatedBridge(
@@ -192,7 +192,7 @@ export async function startDedicatedBridge(
   const bridgeUrl = startResult?.bridgeUrl ?? (port === undefined ? undefined : `http://localhost:${port}`);
   if (port === undefined || bridgeUrl === undefined) {
     stopStartingBridge(startResult?.pid);
-    throw new Error("OpenRuntime Bridge did not return its assigned port.");
+    throw new Error("Divebell Bridge did not return its assigned port.");
   }
 
   const deadline = Date.now() + (options.timeout ?? 5000);
@@ -216,13 +216,13 @@ export async function startDedicatedBridge(
     }
     if (probe === "wrong-service") {
       stopStartingBridge(startResult?.pid);
-      throw new Error(`A non-OpenRuntime service is responding at ${bridgeUrl}.`);
+      throw new Error(`A non-Divebell service is responding at ${bridgeUrl}.`);
     }
     await sleep(100);
   }
 
   stopStartingBridge(startResult?.pid);
-  throw new Error(`OpenRuntime Bridge did not become available at ${bridgeUrl}.`);
+  throw new Error(`Divebell Bridge did not become available at ${bridgeUrl}.`);
 }
 
 export async function stopManagedBridge(options: StopBridgeOptions): Promise<StopBridgeResult> {
@@ -232,7 +232,7 @@ export async function stopManagedBridge(options: StopBridgeOptions): Promise<Sto
     return {
       bridgeUrl: options.bridgeUrl,
       stopped: false,
-      reason: "No OpenRuntime Bridge process started by this CLI was found."
+      reason: "No Divebell Bridge process started by this CLI was found."
     };
   }
 
@@ -250,7 +250,7 @@ export async function stopManagedBridge(options: StopBridgeOptions): Promise<Sto
       bridgeUrl: options.bridgeUrl,
       pid: state.pid,
       stopped: false,
-      reason: "Tracked OpenRuntime Bridge process is no longer running."
+      reason: "Tracked Divebell Bridge process is no longer running."
     };
   }
 
@@ -280,9 +280,9 @@ export async function waitForSelectedRuntime(
   }
 
   if (lastError instanceof Error) {
-    throw new Error(`${lastError.message} Make sure the page service is running and the page connects to OpenRuntime Bridge.`);
+    throw new Error(`${lastError.message} Make sure the page service is running and the page connects to Divebell Bridge.`);
   }
-  throw new Error("No connected runtime was found. Make sure the page service is running and the page connects to OpenRuntime Bridge.");
+  throw new Error("No connected runtime was found. Make sure the page service is running and the page connects to Divebell Bridge.");
 }
 
 export function getBridgePort(bridgeUrl: string): number | undefined {
@@ -292,7 +292,7 @@ export function getBridgePort(bridgeUrl: string): number | undefined {
       return Number(url.port);
     }
     if (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]") {
-      return OPEN_RUNTIME_BRIDGE_DEFAULT_PORT;
+      return DIVEBELL_BRIDGE_DEFAULT_PORT;
     }
     return undefined;
   } catch {

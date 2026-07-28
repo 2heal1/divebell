@@ -18,7 +18,7 @@ export interface RuntimeError {
   data?: unknown;
 }
 
-export interface OpenRuntimeCore {
+export interface DivebellCore {
   registerTarget(target: RegisterTargetInput): void;
   unregisterTarget(targetId: string): void;
   getTargets(query?: GetTargetsQuery): RuntimeTargetDescriptor[];
@@ -42,6 +42,6 @@ export interface RuntimeClock {
   now(): number;
 }
 
-export interface CreateOpenRuntimeOptions {
+export interface CreateDivebellOptions {
   clock?: RuntimeClock;
 }

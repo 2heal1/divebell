@@ -19,7 +19,7 @@ export default function Layout() {
     <main className="shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">OpenRuntime Modern.js SSR Demo</p>
+          <p className="eyebrow">Divebell Modern.js SSR Demo</p>
           <h1>SSR and Hydration Status</h1>
         </div>
         <nav className="nav">
@@ -36,7 +36,7 @@ export default function Layout() {
         </nav>
       </header>
       <section className="content">
-        <div className="metric" data-openruntime-hydration={hydrationState}>
+        <div className="metric" data-divebell-hydration={hydrationState}>
           <span>Hydration marker</span>
           <strong>{hydrationState}</strong>
         </div>

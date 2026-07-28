@@ -1,7 +1,7 @@
 import { getOptionValue, type ParsedCliArgs } from "../../utils/args.js";
 import { createOperationSessionId } from "../../utils/operation-log.js";
 import { hasOption, requireCommandArgument } from "../../utils/command.js";
-import { withOpenRuntimeSession } from "../../utils/url.js";
+import { withDivebellSession } from "../../utils/url.js";
 export function normalizeAgentBrowserTarget(target: string): string {
   const trimmed = target.trim();
   return /^e\d+$/.test(trimmed) ? `@${trimmed}` : target;
@@ -23,7 +23,7 @@ export function getOpenCommandSessionId(args: ParsedCliArgs): string {
 export function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
   const command = args.command[0];
   if (command === "goto") {
-    return ["goto", withOpenRuntimeSession(requireCommandArgument(args, 1, "URL"), getOptionValue(args, "session"))];
+    return ["goto", withDivebellSession(requireCommandArgument(args, 1, "URL"), getOptionValue(args, "session"))];
   }
   if (command === "page-snapshot") {
     return ["snapshot"];
@@ -66,7 +66,7 @@ function createCoverageBrowserArgs(args: ParsedCliArgs): string[] {
     if (label !== undefined) browserArgs.push("--label", label);
     appendBrowserNumberOption(browserArgs, args, "max-size");
   } else {
-    throw new Error("Invalid coverage command. Run `openruntime --help` to see the supported forms.");
+    throw new Error("Invalid coverage command. Run `divebell --help` to see the supported forms.");
   }
   browserArgs.push("--json");
   return browserArgs;

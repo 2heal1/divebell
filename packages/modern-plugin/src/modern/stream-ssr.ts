@@ -3,21 +3,21 @@ import type {
   ModernStreamSsrExtender
 } from "./events.js";
 import {
-  createOpenRuntimeRenderContextScript,
-  type OpenRuntimeRenderContext
+  createDivebellRenderContextScript,
+  type DivebellRenderContext
 } from "../runtime/render-context.js";
 
-const streamSsrStateKey = "__OPEN_RUNTIME_MODERN_STREAM_SSR_STATE__";
+const streamSsrStateKey = "__DIVEBELL_MODERN_STREAM_SSR_STATE__";
 
-interface OpenRuntimeStreamSsrState {
-  renderContext: OpenRuntimeRenderContext;
+interface DivebellStreamSsrState {
+  renderContext: DivebellRenderContext;
   complete: () => void;
   completed: boolean;
 }
 
-export function attachOpenRuntimeStreamSsrState(
+export function attachDivebellStreamSsrState(
   context: ModernRenderContext,
-  renderContext: OpenRuntimeRenderContext,
+  renderContext: DivebellRenderContext,
   complete: () => void
 ): void {
   if (context.ssrContext === undefined) {
@@ -29,16 +29,16 @@ export function attachOpenRuntimeStreamSsrState(
       renderContext,
       complete,
       completed: false
-    } satisfies OpenRuntimeStreamSsrState
+    } satisfies DivebellStreamSsrState
   });
 }
 
-export function createOpenRuntimeStreamSsrExtender(): ModernStreamSsrExtender {
-  let streamState: OpenRuntimeStreamSsrState | undefined;
+export function createDivebellStreamSsrExtender(): ModernStreamSsrExtender {
+  let streamState: DivebellStreamSsrState | undefined;
 
   return {
     init(params) {
-      streamState = findOpenRuntimeStreamSsrState(params.rootElement);
+      streamState = findDivebellStreamSsrState(params.rootElement);
     },
     getStyleTags() {
       if (streamState === undefined || streamState.completed) {
@@ -47,18 +47,18 @@ export function createOpenRuntimeStreamSsrExtender(): ModernStreamSsrExtender {
 
       streamState.completed = true;
       streamState.complete();
-      return createOpenRuntimeRenderContextScript(streamState.renderContext);
+      return createDivebellRenderContextScript(streamState.renderContext);
     }
   };
 }
 
-function findOpenRuntimeStreamSsrState(value: unknown, seen = new Set<unknown>()): OpenRuntimeStreamSsrState | undefined {
+function findDivebellStreamSsrState(value: unknown, seen = new Set<unknown>()): DivebellStreamSsrState | undefined {
   if (!isRecord(value) || seen.has(value)) {
     return undefined;
   }
   seen.add(value);
 
-  const direct = readOpenRuntimeStreamSsrState(value);
+  const direct = readDivebellStreamSsrState(value);
   if (direct !== undefined) {
     return direct;
   }
@@ -70,7 +70,7 @@ function findOpenRuntimeStreamSsrState(value: unknown, seen = new Set<unknown>()
 
   const propsValue = props.value;
   if (isRecord(propsValue)) {
-    const fromPropsValue = readOpenRuntimeStreamSsrState(propsValue);
+    const fromPropsValue = readDivebellStreamSsrState(propsValue);
     if (fromPropsValue !== undefined) {
       return fromPropsValue;
     }
@@ -79,7 +79,7 @@ function findOpenRuntimeStreamSsrState(value: unknown, seen = new Set<unknown>()
   const children = props.children;
   if (Array.isArray(children)) {
     for (const child of children) {
-      const childState = findOpenRuntimeStreamSsrState(child, seen);
+      const childState = findDivebellStreamSsrState(child, seen);
       if (childState !== undefined) {
         return childState;
       }
@@ -87,20 +87,20 @@ function findOpenRuntimeStreamSsrState(value: unknown, seen = new Set<unknown>()
     return undefined;
   }
 
-  return findOpenRuntimeStreamSsrState(children, seen);
+  return findDivebellStreamSsrState(children, seen);
 }
 
-function readOpenRuntimeStreamSsrState(value: Record<string, unknown>): OpenRuntimeStreamSsrState | undefined {
+function readDivebellStreamSsrState(value: Record<string, unknown>): DivebellStreamSsrState | undefined {
   const ssrContext = value.ssrContext;
   if (!isRecord(ssrContext)) {
     return undefined;
   }
 
   const candidate = ssrContext[streamSsrStateKey];
-  return isOpenRuntimeStreamSsrState(candidate) ? candidate : undefined;
+  return isDivebellStreamSsrState(candidate) ? candidate : undefined;
 }
 
-function isOpenRuntimeStreamSsrState(value: unknown): value is OpenRuntimeStreamSsrState {
+function isDivebellStreamSsrState(value: unknown): value is DivebellStreamSsrState {
   if (!isRecord(value)) {
     return false;
   }
@@ -110,7 +110,7 @@ function isOpenRuntimeStreamSsrState(value: unknown): value is OpenRuntimeStream
     && typeof value.completed === "boolean";
 }
 
-function isRenderContext(value: unknown): value is OpenRuntimeRenderContext {
+function isRenderContext(value: unknown): value is DivebellRenderContext {
   if (!isRecord(value)) {
     return false;
   }

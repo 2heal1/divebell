@@ -1,14 +1,14 @@
 // URL matching is shared by local and deployed-page analysis.
 import type {
-  OpenRuntimeChunkMap,
-  OpenRuntimeChunkMatchResult
+  DivebellChunkMap,
+  DivebellChunkMatchResult
 } from "./types.js";
 
-export function matchOpenRuntimeChunk(
-  chunkMap: OpenRuntimeChunkMap,
+export function matchDivebellChunk(
+  chunkMap: DivebellChunkMap,
   requestUrl: string,
   options: { expectedBuildId?: string } = {}
-): OpenRuntimeChunkMatchResult {
+): DivebellChunkMatchResult {
   if (
     options.expectedBuildId !== undefined
     && options.expectedBuildId !== chunkMap.buildId
@@ -49,7 +49,7 @@ export function matchOpenRuntimeChunk(
 
   const candidate = candidates[0];
   if (candidate === undefined) {
-    throw new Error("OpenRuntime Chunk Map candidate disappeared unexpectedly.");
+    throw new Error("Divebell Chunk Map candidate disappeared unexpectedly.");
   }
   return {
     status: "matched",
@@ -62,7 +62,7 @@ export function matchOpenRuntimeChunk(
 
 function normalizeRequestPath(requestUrl: string): string {
   try {
-    return decodePathname(new URL(requestUrl, "http://openruntime.invalid").pathname);
+    return decodePathname(new URL(requestUrl, "http://divebell.invalid").pathname);
   } catch {
     const withoutHash = requestUrl.split("#", 1)[0] ?? requestUrl;
     return decodePathname((withoutHash.split("?", 1)[0] ?? withoutHash));

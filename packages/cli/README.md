@@ -1,35 +1,35 @@
-# @openruntime/cli
+# @divebell/cli
 
-OpenRuntime CLI is the main entry point for coding agents using OpenRuntime as a web development debugging tool. It preserves login state and browser sessions, operates real pages, collects debugging evidence, loads team Extensions, and reads Runtime Core information when the application provides it.
+Divebell CLI is the main entry point for coding agents using Divebell as a web development debugging tool. It preserves login state and browser sessions, operates real pages, collects debugging evidence, loads team Extensions, and reads Runtime Core information when the application provides it.
 
 ## Install
 
-Install the CLI globally. OpenRuntime is a machine-level debugging tool and
+Install the CLI globally. Divebell is a machine-level debugging tool and
 should not be added to each application as a development dependency.
-OpenRuntime CLI supports Node.js 24.
+Divebell CLI supports Node.js 24.
 
 ```sh
-npm install --global @openruntime/cli
-openruntime check --fix
+npm install --global @divebell/cli
+divebell check --fix
 ```
 
-The package provides both `openruntime` and `opr` binaries. It currently includes `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by OpenRuntime. Set `OPENRUNTIME_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.1-divebell.1`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
-`openruntime check` reports the current Node.js version, browser source, and browser-reported version, then uses a temporary session to verify that OpenRuntime can start its Bridge, open a blank page, and control the browser without changing the current project session.
+`divebell check` reports the current Node.js version, browser source, and browser-reported version, then uses a temporary session to verify that Divebell can start its Bridge, open a blank page, and control the browser without changing the current project session.
 
-Add `--fix` to repair browser startup. OpenRuntime first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, it opens `chrome://inspect/#remote-debugging`, waits for the user to enable remote debugging and approve Chrome's connection prompt, then continues automatically. The check uses and closes only its own temporary tab; it does not close the user's browser. OpenRuntime downloads a managed Chrome for Testing browser only when no Chrome installation is found. Chrome's security consent still requires the user to approve it.
+Add `--fix` to repair browser startup. Divebell first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, it opens `chrome://inspect/#remote-debugging`, waits for the user to enable remote debugging and approve Chrome's connection prompt, then continues automatically. The check uses and closes only its own temporary tab; it does not close the user's browser. Divebell downloads a managed Chrome for Testing browser only when no Chrome installation is found. Chrome's security consent still requires the user to approve it.
 
 ## Real Development Debugging Flow
 
 Reuse a prepared Chrome Profile or agent-browser state in a named debugging session:
 
 ```sh
-openruntime open http://localhost:19080/orders --profile "Test Account" --session orders-debug
-# Or: openruntime open http://localhost:19080/orders --state /path/to/test-account.json --session orders-debug
-openruntime stack
-openruntime console --level error
-openruntime network --url /api/orders
-openruntime page-snapshot
+divebell open http://localhost:19080/orders --profile "Test Account" --session orders-debug
+# Or: divebell open http://localhost:19080/orders --state /path/to/test-account.json --session orders-debug
+divebell stack
+divebell console --level error
+divebell network --url /api/orders
+divebell page-snapshot
 ```
 
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
@@ -37,23 +37,23 @@ After the coding agent changes source code, reuse the same login state and sessi
 When a page already provides Runtime Core information, the same session can add internal evidence:
 
 ```sh
-openruntime snapshot --session orders-debug
-openruntime actions --session orders-debug
-openruntime wait-for --session orders-debug business:orders ready --timeout 5000
+divebell snapshot --session orders-debug
+divebell actions --session orders-debug
+divebell wait-for --session orders-debug business:orders ready --timeout 5000
 ```
 
 Runtime Core is optional. Do not add it merely to start debugging a regular page.
 
 ## Extensions
 
-Optional team and focused workflows install as Extension packages and appear under the same `openruntime` executable:
+Optional team and focused workflows install as Extension packages and appear under the same `divebell` executable:
 
 ```sh
-openruntime extensions add @openruntime/extension-code-usage
-openruntime extensions add @openruntime/extension-troubleshooting
-openruntime extensions add @openruntime/extension-imitate
-openruntime extensions add @openruntime/extension-memory
-openruntime extensions list
+divebell extensions add @divebell/extension-code-usage
+divebell extensions add @divebell/extension-troubleshooting
+divebell extensions add @divebell/extension-imitate
+divebell extensions add @divebell/extension-memory
+divebell extensions list
 ```
 
 To an agent, an Extension is a CLI command. Extension authors use the exported Extension API to compose the current page, browser diagnostics, memory, coverage, and optional Runtime information. Use `extensions update <package>` or `extensions remove <package>` to manage installed packages.
@@ -63,8 +63,8 @@ To an agent, an Extension is a CLI command. Extension authors use the exported E
 The memory Extension works without a framework or build plugin:
 
 ```sh
-openruntime extensions add @openruntime/extension-memory
-openruntime memory check \
+divebell extensions add @divebell/extension-memory
+divebell memory check \
   --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
@@ -75,23 +75,23 @@ The scenario describes only the real page journey. The Extension owns browser li
 
 ## Code-Usage Analysis
 
-Mapping browser execution back to chunks, source files, and packages requires matching build metadata from `@openruntime/modern-plugin` or `@openruntime/rspack-plugin`:
+Mapping browser execution back to chunks, source files, and packages requires matching build metadata from `@divebell/modern-plugin` or `@divebell/rspack-plugin`:
 
 ```sh
-openruntime extensions add @openruntime/extension-code-usage
-openruntime code-usage analyze \
-  --chunk-map /path/to/deployed-build/openruntime-chunks.json \
+divebell extensions add @divebell/extension-code-usage
+divebell code-usage analyze \
+  --chunk-map /path/to/deployed-build/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --output /tmp/code-usage-report.json
 ```
 
 ## Documentation
 
-- [Coding Agent Development Debugging Loop](https://github.com/2heal1/openruntime/blob/main/docs/agent-devloop.md)
-- [Browser Authentication and State](https://github.com/2heal1/openruntime/blob/main/docs/browser-auth.md)
-- [CLI Extension Development](https://github.com/2heal1/openruntime/blob/main/docs/cli-extensions.md)
-- [Runtime Core API](https://github.com/2heal1/openruntime/blob/main/docs/runtime-core-api.md)
-- [Standalone Automation](https://github.com/2heal1/openruntime/blob/main/docs/cli-automation-scripts.md)
-- [Generated CLI Reference](https://github.com/2heal1/openruntime/blob/main/docs/cli-reference.md)
+- [Coding Agent Development Debugging Loop](https://github.com/2heal1/divebell/blob/main/docs/agent-devloop.md)
+- [Browser Authentication and State](https://github.com/2heal1/divebell/blob/main/docs/browser-auth.md)
+- [CLI Extension Development](https://github.com/2heal1/divebell/blob/main/docs/cli-extensions.md)
+- [Runtime Core API](https://github.com/2heal1/divebell/blob/main/docs/runtime-core-api.md)
+- [Standalone Automation](https://github.com/2heal1/divebell/blob/main/docs/cli-automation-scripts.md)
+- [Generated CLI Reference](https://github.com/2heal1/divebell/blob/main/docs/cli-reference.md)
 
 Extensions execute local code. Load only trusted content. Login-state files contain sensitive information and must remain in trusted environments.

@@ -1,24 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
-import { openRuntimeModernPlugin, type ModernDataRouter } from "../../dist/index.js";
+import { divebellModernPlugin, type ModernDataRouter } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
 
 const routeListActionName = "modern.route.list";
 const routeNavigateActionName = "modern.route.navigate";
 
 test("does not register route actions by default", () => {
-  const runtime = createOpenRuntime();
-  createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  createModernApiHarness(divebellModernPlugin({ runtime }));
 
   assert.equal(runtime.getActions({ name: routeListActionName }).length, 0);
   assert.equal(runtime.getActions({ name: routeNavigateActionName }).length, 0);
 });
 
 test("registers route list action when enabled", async () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({
     runtime,
     injectRouteListAction: true
   }));
@@ -76,7 +76,7 @@ test("registers route list action when enabled", async () => {
 });
 
 test("registers route navigate action when enabled", async () => {
-  const runtime = createOpenRuntime();
+  const runtime = createDivebell();
   const navigations: Array<{ to: string; options: { replace?: boolean } | undefined }> = [];
   const router: ModernDataRouter = {
     state: {
@@ -89,7 +89,7 @@ test("registers route navigate action when enabled", async () => {
       return { ok: true };
     }
   };
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({
+  const { handlers } = createModernApiHarness(divebellModernPlugin({
     runtime,
     injectRouteNavigateAction: true
   }));

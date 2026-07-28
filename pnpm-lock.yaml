@@ -11,7 +11,7 @@ importers:
       '@changesets/cli':
         specifier: 2.31.0
         version: 2.31.0(@types/node@24.13.1)
-      '@openruntime/cli':
+      '@divebell/cli':
         specifier: workspace:^
         version: link:packages/cli
       '@types/node':
@@ -26,7 +26,7 @@ importers:
 
   demos/bridge-readonly:
     dependencies:
-      '@openruntime/core':
+      '@divebell/core':
         specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
@@ -38,15 +38,15 @@ importers:
 
   demos/modern-basic:
     dependencies:
+      '@divebell/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@divebell/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
       '@modern-js/runtime':
         specifier: link:../../../../work/modern.js/packages/runtime/plugin-runtime
         version: link:../../../../work/modern.js/packages/runtime/plugin-runtime
-      '@openruntime/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@openruntime/modern-plugin':
-        specifier: workspace:^
-        version: link:../../packages/modern-plugin
       react:
         specifier: link:../../../../work/modern.js/node_modules/.pnpm/react@19.2.7/node_modules/react
         version: link:../../../../work/modern.js/node_modules/.pnpm/react@19.2.7/node_modules/react
@@ -54,12 +54,12 @@ importers:
         specifier: link:../../../../work/modern.js/node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom
         version: link:../../../../work/modern.js/node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom
     devDependencies:
+      '@divebell/cli':
+        specifier: workspace:^
+        version: link:../../packages/cli
       '@modern-js/app-tools':
         specifier: link:../../../../work/modern.js/packages/solutions/app-tools
         version: link:../../../../work/modern.js/packages/solutions/app-tools
-      '@openruntime/cli':
-        specifier: workspace:^
-        version: link:../../packages/cli
       '@types/react':
         specifier: link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react
         version: link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react
@@ -72,18 +72,18 @@ importers:
 
   demos/modern-ssr:
     dependencies:
+      '@divebell/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@divebell/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
       '@modern-js/runtime':
         specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
         version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
       '@modern-js/server-runtime':
         specifier: link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime
         version: link:../../../../fork_repo/modern.js/packages/server/server-runtime
-      '@openruntime/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@openruntime/modern-plugin':
-        specifier: workspace:^
-        version: link:../../packages/modern-plugin
       react:
         specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
         version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
@@ -106,18 +106,18 @@ importers:
 
   demos/modern-ssr-stream:
     dependencies:
+      '@divebell/core':
+        specifier: workspace:^
+        version: link:../../packages/core
+      '@divebell/modern-plugin':
+        specifier: workspace:^
+        version: link:../../packages/modern-plugin
       '@modern-js/runtime':
         specifier: link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime
         version: link:../../../../fork_repo/modern.js/packages/runtime/plugin-runtime
       '@modern-js/server-runtime':
         specifier: link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime
         version: link:../../../../fork_repo/modern.js/packages/server/server-runtime
-      '@openruntime/core':
-        specifier: workspace:^
-        version: link:../../packages/core
-      '@openruntime/modern-plugin':
-        specifier: workspace:^
-        version: link:../../packages/modern-plugin
       react:
         specifier: link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
         version: link:../../../../fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react
@@ -140,11 +140,11 @@ importers:
 
   demos/quickstart:
     dependencies:
-      '@openruntime/core':
+      '@divebell/core':
         specifier: workspace:^
         version: link:../../packages/core
     devDependencies:
-      '@openruntime/rspack-plugin':
+      '@divebell/rspack-plugin':
         specifier: workspace:^
         version: link:../../packages/rspack-plugin
       '@rsbuild/core':
@@ -153,7 +153,7 @@ importers:
 
   packages/bridge:
     dependencies:
-      '@openruntime/core':
+      '@divebell/core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
@@ -165,13 +165,13 @@ importers:
 
   packages/cli:
     dependencies:
-      '@openruntime/agent-browser':
-        specifier: 0.32.0-openruntime.1
-        version: 0.32.0-openruntime.1
-      '@openruntime/bridge':
+      '@divebell/agent-browser':
+        specifier: 0.33.1-divebell.1
+        version: 0.33.1-divebell.1
+      '@divebell/bridge':
         specifier: workspace:^
         version: link:../bridge
-      '@openruntime/core':
+      '@divebell/core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
@@ -195,13 +195,13 @@ importers:
 
   packages/modern-plugin:
     dependencies:
-      '@openruntime/chunk-map':
+      '@divebell/chunk-map':
         specifier: workspace:^
         version: link:../chunk-map
-      '@openruntime/core':
+      '@divebell/core':
         specifier: workspace:^
         version: link:../core
-      '@openruntime/rspack-plugin':
+      '@divebell/rspack-plugin':
         specifier: workspace:^
         version: link:../rspack-plugin
     devDependencies:
@@ -211,7 +211,7 @@ importers:
 
   packages/rspack-plugin:
     dependencies:
-      '@openruntime/chunk-map':
+      '@divebell/chunk-map':
         specifier: workspace:^
         version: link:../chunk-map
     devDependencies:
@@ -280,6 +280,11 @@ packages:
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
 
+  '@divebell/agent-browser@0.33.1-divebell.1':
+    resolution: {integrity: sha512-Fyrb6R+uyOJcf1dOgYsAqcc/0V1h/BCdoXpxjVA6boiyZUq6H9zP4ceQem5TWJPNfXVF4aSnS49FrJxriOB+jQ==}
+    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
+    hasBin: true
+
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
 
@@ -321,11 +326,6 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
-
-  '@openruntime/agent-browser@0.32.0-openruntime.1':
-    resolution: {integrity: sha512-U7OGEFeuO7M/DFmxiGqxnAi4CS7bjeS2srnJI7TkV5c74L7eEuCorAbcTLfu5R40XRHeQYrvixa487xFbYIixA==}
-    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
-    hasBin: true
 
   '@rsbuild/core@2.0.11':
     resolution: {integrity: sha512-Mpp/viUSkVdSWJkFipdZxM2nUztrBwSnMm6Q86bPzLHtHnXqQ3VFpSMlA4wWRyySNddP6s6efKiVpx0ZOCf7Gg==}
@@ -880,6 +880,8 @@ snapshots:
       human-id: 4.2.0
       prettier: 2.8.8
 
+  '@divebell/agent-browser@0.33.1-divebell.1': {}
+
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
@@ -937,8 +939,6 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
-
-  '@openruntime/agent-browser@0.32.0-openruntime.1': {}
 
   '@rsbuild/core@2.0.11':
     dependencies:

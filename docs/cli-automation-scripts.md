@@ -1,31 +1,31 @@
-# Automating with OpenRuntime CLI
+# Automating with Divebell CLI
 
-Chinese version: [使用 OpenRuntime CLI 编写自动化脚本](cli-automation-scripts.zh-CN.md)
+Chinese version: [使用 Divebell CLI 编写自动化脚本](cli-automation-scripts.zh-CN.md)
 
-This guide is for standalone automation scripts: a script opens the page, waits for it, runs page operations, reads Runtime information, and optionally stops the browser and Bridge managed by the CLI. Unlike page Commands in [OpenRuntime CLI Extension Development](cli-extensions.md), automation scripts can manage the browser lifecycle.
+This guide is for standalone automation scripts: a script opens the page, waits for it, runs page operations, reads Runtime information, and optionally stops the browser and Bridge managed by the CLI. Unlike page Commands in [Divebell CLI Extension Development](cli-extensions.md), automation scripts can manage the browser lifecycle.
 
 ## When To Use
 
-OpenRuntime CLI automation scripts are useful when a complete page workflow should become a repeatable local script, CI script, or agent tool script.
+Divebell CLI automation scripts are useful when a complete page workflow should become a repeatable local script, CI script, or agent tool script.
 
 Typical use cases:
 
 - Reuse a test account through an agent-browser Profile, state file, or auth entry while running a protected flow in the same session.
 - Open a local or remote page and wait until it is usable.
 - Run browser checks such as click, fill, screenshot, Console, or Network inspection.
-- Read structured state or run business actions from a page that exposes OpenRuntime Targets or Actions.
+- Read structured state or run business actions from a page that exposes Divebell Targets or Actions.
 - Run stable page validation in CI or local tasks.
-- Compose multiple OpenRuntime CLI commands into a higher-level automation entrypoint.
+- Compose multiple Divebell CLI commands into a higher-level automation entrypoint.
 
 If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, `wait-for`, or `verify` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime Core first.
 
 When a script specifically needs to verify an existing business Target, install the Extension that provides `verify`:
 
 ```sh
-openruntime extensions add @openruntime/extension-troubleshooting
+divebell extensions add @divebell/extension-troubleshooting
 ```
 
-## Why Use OpenRuntime For Scripts
+## Why Use Divebell For Scripts
 
 The main benefits are stability and offline reuse.
 
@@ -37,10 +37,10 @@ The main benefits are stability and offline reuse.
 
 ## From Fixed Flow To Script
 
-Start by breaking the manual workflow into OpenRuntime CLI steps:
+Start by breaking the manual workflow into Divebell CLI steps:
 
 1. Confirm inputs: page URL, session, timeout.
-2. Open the page: `openruntime open <url>`.
+2. Open the page: `divebell open <url>`.
 3. Wait for the page to become stable: `wait-eval` or `wait-for`.
 4. Run operations: `click`, `fill`, `eval`, or `run-action`.
 5. Validate the result with a matching Extension, Runtime state, page result, or request outcome.
@@ -50,14 +50,14 @@ Every step should have a clear success condition. Do not click immediately after
 
 ## Install And Run
 
-Install OpenRuntime globally before running local or CI scripts:
+Install Divebell globally before running local or CI scripts:
 
 ```sh
-npm install --global @openruntime/cli
-openruntime --help
+npm install --global @divebell/cli
+divebell --help
 ```
 
-Shell and Node.js scripts should invoke the global `openruntime` command by
+Shell and Node.js scripts should invoke the global `divebell` command by
 default. Do not add the CLI to the application just to run a debugging script.
 The later Node.js API section is an explicit exception for an automation
 package that intentionally embeds the CLI API.
@@ -79,51 +79,51 @@ node scripts/check-home.mjs http://localhost:3000
 
 ## Dependency Handling
 
-OpenRuntime CLI is a global machine tool. Local scripts use the same global
+Divebell CLI is a global machine tool. Local scripts use the same global
 command and should check it before running:
 
-OpenRuntime CLI supports Node.js 24.
+Divebell CLI supports Node.js 24.
 
 ```sh
-openruntime --help
+divebell --help
 ```
 
 Run a readiness check before using browser commands:
 
 ```sh
-openruntime check
+divebell check
 ```
 
-Use `openruntime check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
+Use `divebell check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
 
 CI should install the chosen CLI version globally in its setup step, then
 prepare the browser runtime. Application dependencies should contain only
 page-side packages such as Runtime Core or framework integrations.
 
-Only add `@openruntime/cli` to a separate automation package when its Node.js
+Only add `@divebell/cli` to a separate automation package when its Node.js
 code intentionally imports `runCli`. That library use case is different from
-installing the OpenRuntime command for normal use.
+installing the Divebell command for normal use.
 
 ## Script File Structure
 
 A Shell script usually contains:
 
 - Input parsing.
-- `openruntime open <url>`.
+- `divebell open <url>`.
 - Wait and page operations.
 - Runtime queries or browser checks.
 - One final output object.
-- Optional `openruntime stop`.
+- Optional `divebell stop`.
 
 A Node.js script should usually call the global command through a small
-`opr(args)` helper that captures stdout, stderr, and the exit code:
+`runDivebell(args)` helper that captures stdout, stderr, and the exit code:
 
 ```js
 import { spawn } from "node:child_process";
 
-async function opr(args) {
+async function runDivebell(args) {
   return await new Promise((resolve, reject) => {
-    const child = spawn("openruntime", args, {
+    const child = spawn("divebell", args, {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let stdout = "";
@@ -134,7 +134,7 @@ async function opr(args) {
     child.on("close", exitCode => {
       if (exitCode !== 0) {
         reject(new Error(stderr.trim() || stdout.trim() ||
-          `openruntime ${args.join(" ")} failed`));
+          `divebell ${args.join(" ")} failed`));
         return;
       }
       resolve(stdout.trim());
@@ -165,13 +165,13 @@ Automation scripts usually work with these inputs:
 Basic form:
 
 ```sh
-openruntime open http://localhost:3000
+divebell open http://localhost:3000
 ```
 
 With headers on the first request:
 
 ```sh
-openruntime open http://localhost:3000 --headers '{"Authorization":"Bearer test-token"}'
+divebell open http://localhost:3000 --headers '{"Authorization":"Bearer test-token"}'
 ```
 
 These headers are sent only to the opened URL's origin.
@@ -179,13 +179,13 @@ These headers are sent only to the opened URL's origin.
 With session:
 
 ```sh
-openruntime open http://localhost:3000 --session check-home
+divebell open http://localhost:3000 --session check-home
 ```
 
 Visible browser:
 
 ```sh
-openruntime open http://localhost:3000 --ui
+divebell open http://localhost:3000 --ui
 ```
 
 On success, `open` prints unified JSON. `data` contains:
@@ -193,7 +193,7 @@ On success, `open` prints unified JSON. `data` contains:
 | Field | Meaning |
 | --- | --- |
 | `url` | Original URL passed to `open`. |
-| `openedUrl` | Actual opened URL, possibly with an OpenRuntime session parameter. |
+| `openedUrl` | Actual opened URL, possibly with a Divebell session parameter. |
 | `normalizedUrl` | Normalized URL used to match the current page. |
 | `bridgeUrl` | Bridge URL used by this open command; `null` with `--no-bridge`. |
 | `bridgePort` | Port assigned to this open command; `null` with `--no-bridge`. |
@@ -205,32 +205,32 @@ On success, `open` prints unified JSON. `data` contains:
 Wait for the page to finish basic loading:
 
 ```sh
-openruntime wait-eval "document.readyState === 'complete'" --timeout 10000
+divebell wait-eval "document.readyState === 'complete'" --timeout 10000
 ```
 
 Wait for specific visible text:
 
 ```sh
-openruntime wait-eval "document.body.innerText.includes('Ready')" --timeout 10000
+divebell wait-eval "document.body.innerText.includes('Ready')" --timeout 10000
 ```
 
 Screenshot:
 
 ```sh
-openruntime screenshot home-ready
+divebell screenshot home-ready
 ```
 
 Read page interactables:
 
 ```sh
-openruntime page-snapshot
+divebell page-snapshot
 ```
 
 Click and fill:
 
 ```sh
-openruntime click "Submit"
-openruntime fill "#email" "dev@example.com"
+divebell click "Submit"
+divebell fill "#email" "dev@example.com"
 ```
 
 ### Optional Runtime Queries and Actions
@@ -240,30 +240,30 @@ The commands below apply only when the page uses Runtime Core and the signals ar
 Read the current page snapshot:
 
 ```sh
-openruntime snapshot --session check-home
+divebell snapshot --session check-home
 ```
 
 Wait for a business Target:
 
 ```sh
-openruntime wait-for business:home ready --session check-home --timeout 10000
+divebell wait-for business:home ready --session check-home --timeout 10000
 ```
 
 Run a business Action:
 
 ```sh
-openruntime run-action release-note.list-latest --session check-home --payload '{"limit":3}'
+divebell run-action release-note.list-latest --session check-home --payload '{"limit":3}'
 ```
 
 When the page already has a business Target and the troubleshooting Extension is installed:
 
 ```sh
-openruntime verify business:home ready --session check-home --timeout 10000
+divebell verify business:home ready --session check-home --timeout 10000
 ```
 
 ### Output And Errors
 
-A script may call multiple `openruntime` commands internally, but the final script output should usually be one JSON object.
+A script may call multiple `divebell` commands internally, but the final script output should usually be one JSON object.
 
 Success example:
 
@@ -280,14 +280,14 @@ On failure, return a non-zero exit code and write the error to stderr. Shell scr
 
 ## Node.js API
 
-Normal Node.js scripts should invoke the globally installed `openruntime`
+Normal Node.js scripts should invoke the globally installed `divebell`
 command. Use this API only when a separate automation package deliberately
-embeds OpenRuntime and declares `@openruntime/cli` as its own dependency.
+embeds Divebell and declares `@divebell/cli` as its own dependency.
 `runCli(args, options)` uses the same arguments as the CLI, but avoids spawning
 a subprocess and lets the script capture output directly.
 
 ```js
-import { runCli } from "@openruntime/cli";
+import { runCli } from "@divebell/cli";
 
 const exitCode = await runCli(["open", "http://localhost:3000"]);
 ```
@@ -295,9 +295,9 @@ const exitCode = await runCli(["open", "http://localhost:3000"]);
 Recommended helper:
 
 ```js
-import { runCli } from "@openruntime/cli";
+import { runCli } from "@divebell/cli";
 
-async function opr(args) {
+async function runDivebell(args) {
   let stdout = "";
   let stderr = "";
   const exitCode = await runCli(args, {
@@ -314,22 +314,22 @@ async function opr(args) {
   });
 
   if (exitCode !== 0) {
-    throw new Error(stderr.trim() || stdout.trim() || `openruntime ${args.join(" ")} failed`);
+    throw new Error(stderr.trim() || stdout.trim() || `divebell ${args.join(" ")} failed`);
   }
 
   return stdout.trim();
 }
 
-const opened = JSON.parse(await opr(["open", "http://localhost:3000"]));
+const opened = JSON.parse(await runDivebell(["open", "http://localhost:3000"]));
 ```
 
 `args` matches CLI arguments:
 
 ```js
-await opr(["open", url, "--session", session]);
-await opr(["wait-eval", "document.readyState === 'complete'", "--timeout", "10000"]);
-await opr(["snapshot", "--session", session]);
-await opr(["run-action", "release-note.list-latest", "--payload", "{\"limit\":3}"]);
+await runDivebell(["open", url, "--session", session]);
+await runDivebell(["wait-eval", "document.readyState === 'complete'", "--timeout", "10000"]);
+await runDivebell(["snapshot", "--session", session]);
+await runDivebell(["run-action", "release-note.list-latest", "--payload", "{\"limit\":3}"]);
 ```
 
 There is no separate `open()` function today. Use `runCli(["open", url])` to open a page from Node.js scripts.
@@ -339,9 +339,9 @@ There is no separate `open()` function today. Use `runCli(["open", url])` to ope
 Create `scripts/check-home.mjs`:
 
 ```js
-import { runCli } from "@openruntime/cli";
+import { runCli } from "@divebell/cli";
 
-async function opr(args) {
+async function runDivebell(args) {
   let stdout = "";
   let stderr = "";
   const exitCode = await runCli(args, {
@@ -358,7 +358,7 @@ async function opr(args) {
   });
 
   if (exitCode !== 0) {
-    throw new Error(stderr.trim() || stdout.trim() || `openruntime ${args.join(" ")} failed`);
+    throw new Error(stderr.trim() || stdout.trim() || `divebell ${args.join(" ")} failed`);
   }
 
   return stdout.trim();
@@ -368,19 +368,19 @@ async function main() {
   const url = process.argv[2] ?? "http://localhost:3000";
   const session = `check-home-${Date.now()}`;
 
-  const opened = JSON.parse(await opr(["open", url, "--session", session]));
-  const ready = JSON.parse(await opr([
+  const opened = JSON.parse(await runDivebell(["open", url, "--session", session]));
+  const ready = JSON.parse(await runDivebell([
     "wait-eval",
     "document.readyState === 'complete'",
     "--timeout",
     "10000"
   ]));
 
-  await opr(["screenshot", "home-ready"]);
+  await runDivebell(["screenshot", "home-ready"]);
 
   let targetCount = null;
   try {
-    const snapshot = JSON.parse(await opr(["snapshot", "--session", session]));
+    const snapshot = JSON.parse(await runDivebell(["snapshot", "--session", session]));
     targetCount = Object.keys(snapshot.result?.targets ?? {}).length;
   } catch {
     targetCount = null;
@@ -419,11 +419,11 @@ Example output:
 }
 ```
 
-If the page does not expose OpenRuntime Runtime data, `targetCount` is `null`, and the browser-level checks can still work.
+If the page does not expose Divebell Runtime data, `targetCount` is `null`, and the browser-level checks can still work.
 
 ## Shell / CI Minimal Form
 
-For a simple CI or local check, a Shell script can just chain a few `openruntime` commands. This script opens the page, waits for basic loading, captures a screenshot, and prints final JSON.
+For a simple CI or local check, a Shell script can just chain a few `divebell` commands. This script opens the page, waits for basic loading, captures a screenshot, and prints final JSON.
 
 Create `scripts/check-home.sh`:
 
@@ -434,9 +434,9 @@ set -euo pipefail
 URL="${1:-http://localhost:3000}"
 SESSION="check-home-$(date +%s)"
 
-openruntime open "$URL" --session "$SESSION"
-openruntime wait-eval "document.readyState === 'complete'" --timeout 10000
-openruntime screenshot home-ready
+divebell open "$URL" --session "$SESSION"
+divebell wait-eval "document.readyState === 'complete'" --timeout 10000
+divebell screenshot home-ready
 
 printf '{"status":"ok","url":"%s","session":"%s"}\n' "$URL" "$SESSION"
 ```

@@ -2,13 +2,13 @@
 
 Chinese version: [内存分析指南](memory-analysis.zh-CN.md)
 
-Memory analysis is provided by an optional Extension package. It works with any Chrome page that OpenRuntime can open and does not require Modern.js, Rspack, Runtime Core, or build metadata.
+Memory analysis is provided by an optional Extension package. It works with any Chrome page that Divebell can open and does not require Modern.js, Rspack, Runtime Core, or build metadata.
 
-Install OpenRuntime globally, then add the Extension once:
+Install Divebell globally, then add the Extension once:
 
 ```bash
-npm install --global @openruntime/cli
-openruntime extensions add @openruntime/extension-memory
+npm install --global @divebell/cli
+divebell extensions add @divebell/extension-memory
 ```
 
 Do not add the CLI to the application.
@@ -35,7 +35,7 @@ export default {
 Save it as `scripts/memory-scenario.mjs`, then run:
 
 ```bash
-openruntime memory check \
+divebell memory check \
   --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
@@ -55,8 +55,8 @@ The output directory contains:
 ## Inspect the current page
 
 ```bash
-openruntime open https://example.com/
-openruntime memory metrics
+divebell open https://example.com/
+divebell memory metrics
 ```
 
 `metrics` requests garbage collection first, then reports JavaScript heap use, document count, DOM-node count, and listener count. Use `--no-gc` only when an advanced investigation needs the temporary pre-collection value.
@@ -64,9 +64,9 @@ openruntime memory metrics
 ## Record allocations
 
 ```bash
-openruntime memory sampling start --sampling-interval 32768
-# Perform the page journey with OpenRuntime commands.
-openruntime memory sampling stop /tmp/page.heapprofile --top 20
+divebell memory sampling start --sampling-interval 32768
+# Perform the page journey with Divebell commands.
+divebell memory sampling stop /tmp/page.heapprofile --top 20
 ```
 
 The result includes the functions responsible for the most allocations and saves the complete profile for deeper inspection.
@@ -74,7 +74,7 @@ The result includes the functions responsible for the most allocations and saves
 ## Save a heap snapshot
 
 ```bash
-openruntime memory snapshot /tmp/page.heapsnapshot --timeout 120000
+divebell memory snapshot /tmp/page.heapsnapshot --timeout 120000
 ```
 
 The snapshot can be used to inspect retained objects and reference paths. It requests garbage collection first unless `--no-gc` is provided.

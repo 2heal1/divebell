@@ -2,7 +2,7 @@
 
 Chinese version: [录制浏览器操作并生成脚本](record-browser-workflows.zh-CN.md)
 
-`record-openruntime-workflow` is an installable Agent skill that turns one manual browser walkthrough into a reusable JavaScript automation draft. The Agent combines browser interactions, page context, OpenRuntime state, and optional spoken instructions instead of treating the final URL as the entire workflow.
+`record-divebell-workflow` is an installable Agent skill that turns one manual browser walkthrough into a reusable JavaScript automation draft. The Agent combines browser interactions, page context, Divebell state, and optional spoken instructions instead of treating the final URL as the entire workflow.
 
 Use it when a task is easier to demonstrate than to specify from scratch, such as:
 
@@ -18,27 +18,27 @@ The video shows the complete recording, interaction, and script-generation workf
 
 ## Install
 
-Install OpenRuntime globally and add the recording Extension:
+Install Divebell globally and add the recording Extension:
 
 ```bash
-npm install --global @openruntime/cli
-openruntime check --fix
-openruntime extensions add @openruntime/extension-imitate
+npm install --global @divebell/cli
+divebell check --fix
+divebell extensions add @divebell/extension-imitate
 ```
 
 Install this directory in an Agent that supports skills:
 
 ```text
-skills/record-openruntime-workflow
+skills/record-divebell-workflow
 ```
 
 For Codex, place the complete directory at:
 
 ```text
-~/.codex/skills/record-openruntime-workflow
+~/.codex/skills/record-divebell-workflow
 ```
 
-The skill uses the global `openruntime` command and does not add the CLI to the
+The skill uses the global `divebell` command and does not add the CLI to the
 application.
 
 ## Use
@@ -46,19 +46,19 @@ application.
 After installation, ask the Agent:
 
 ```text
-Use record-openruntime-workflow and start recording my browser workflow.
+Use record-divebell-workflow and start recording my browser workflow.
 ```
 
-The Agent first runs `openruntime record start` to prepare recording files, cross-page interaction capture, and optional microphone audio. It then runs `openruntime open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
+The Agent first runs `divebell record start` to prepare recording files, cross-page interaction capture, and optional microphone audio. It then runs `divebell open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
 
 Then:
 
 1. Navigate, click, type, and move through the target workflow normally.
 2. Use the microphone to describe the intended result when additional context is useful.
 3. Tell the Agent “done” when the walkthrough is complete.
-4. The Agent stops recording, closes the current page through `openruntime stop`, reads the recorded evidence and transcript, then generates and checks a script.
+4. The Agent stops recording, closes the current page through `divebell stop`, reads the recorded evidence and transcript, then generates and checks a script.
 
-The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `openruntime open`. Recording refuses to mix evidence if another `openruntime open` replaces that page before `record stop`.
+The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `divebell open`. Recording refuses to mix evidence if another `divebell open` replaces that page before `record stop`.
 
 For example, while working on a GitHub Issues page, say:
 
@@ -76,7 +76,7 @@ The current version records:
 - clicks, input, and keyboard actions
 - action timestamps relative to recording start
 - navigation and DOM summaries
-- page state, events, and actions exposed through OpenRuntime
+- page state, events, and actions exposed through Divebell
 - optional microphone audio, transcript text, and time ranges
 
 Continuous screen video is not yet a reliable recording artifact. In this workflow, “recording” primarily means browser actions, page context, and spoken intent.

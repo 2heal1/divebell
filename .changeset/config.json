@@ -4,16 +4,16 @@
   "commit": false,
   "fixed": [
     [
-      "@openruntime/core",
-      "@openruntime/bridge",
-      "@openruntime/chunk-map",
-      "@openruntime/cli",
-      "@openruntime/modern-plugin",
-      "@openruntime/rspack-plugin",
-      "@openruntime/extension-code-usage",
-      "@openruntime/extension-troubleshooting",
-      "@openruntime/extension-imitate",
-      "@openruntime/extension-memory"
+      "@divebell/core",
+      "@divebell/bridge",
+      "@divebell/chunk-map",
+      "@divebell/cli",
+      "@divebell/modern-plugin",
+      "@divebell/rspack-plugin",
+      "@divebell/extension-code-usage",
+      "@divebell/extension-troubleshooting",
+      "@divebell/extension-imitate",
+      "@divebell/extension-memory"
     ]
   ],
   "linked": [],

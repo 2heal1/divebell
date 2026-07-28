@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime, type OpenRuntimeWindowHost } from "@openruntime/core";
+import { createDivebell, type DivebellWindowHost } from "@divebell/core";
 
-import { openRuntimeModernPlugin } from "../../dist/index.js";
+import { divebellModernPlugin } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
 
 test("updates hydration status from Modern.js hydration lifecycle events", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onBeforeRender?.({});
   handlers.onHydration?.({
@@ -26,14 +26,14 @@ test("updates hydration status from Modern.js hydration lifecycle events", () =>
 });
 
 test("keeps hydration error details on hydration target when hydration errors", () => {
-  const runtime = createOpenRuntime();
+  const runtime = createDivebell();
   const host = {
-    __OPEN_RUNTIME__: runtime,
+    __DIVEBELL__: runtime,
     _SSR_DATA: {
       renderMode: "string"
     }
-  } satisfies OpenRuntimeWindowHost & { _SSR_DATA: { renderMode: string } };
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({
+  } satisfies DivebellWindowHost & { _SSR_DATA: { renderMode: string } };
+  const { handlers } = createModernApiHarness(divebellModernPlugin({
     runtime,
     host
   }));
@@ -69,8 +69,8 @@ test("keeps hydration error details on hydration target when hydration errors", 
 });
 
 test("keeps hydration failed after a recoverable hydration error", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onHydration?.({
     type: "recoverable-error",
@@ -110,8 +110,8 @@ test("keeps hydration failed after a recoverable hydration error", () => {
 });
 
 test("marks SSR as fallback when Modern.js downgrades to client render", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onHydration?.({
     type: "fallback",

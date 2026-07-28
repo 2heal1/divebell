@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
-import { openRuntimeModernPlugin } from "../../dist/index.js";
+import { divebellModernPlugin } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
 
 test("stores loader status on the current route match", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "profile",
@@ -74,8 +74,8 @@ test("stores loader status on the current route match", () => {
 });
 
 test("marks matched data loaders as successful when no loader event is emitted", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "profile",
@@ -102,8 +102,8 @@ test("marks matched data loaders as successful when no loader event is emitted",
 });
 
 test("stores only route component errors on the current route match", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "dashboard",
@@ -160,8 +160,8 @@ test("stores only route component errors on the current route match", () => {
 });
 
 test("stores route component render errors on the current route match", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "dashboard",
@@ -206,8 +206,8 @@ test("stores route component render errors on the current route match", () => {
 });
 
 test("keeps route metadata when loader events arrive after the route table", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onBeforeRender?.({
     routes: [
@@ -241,8 +241,8 @@ test("keeps route metadata when loader events arrive after the route table", () 
 });
 
 test("maps Modern.js internal route ids to readable route match ids", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "1",
@@ -279,7 +279,7 @@ test("maps Modern.js internal route ids to readable route match ids", () => {
   assert.equal(getFirstMatch(runtime).loader, "success");
 });
 
-function getFirstMatch(runtime: ReturnType<typeof createOpenRuntime>): Record<string, unknown> {
+function getFirstMatch(runtime: ReturnType<typeof createDivebell>): Record<string, unknown> {
   const data = runtime.getSnapshot().targets["modern:route"]?.data as { matches?: Array<Record<string, unknown>> } | undefined;
   const match = data?.matches?.[0];
   assert.ok(match);

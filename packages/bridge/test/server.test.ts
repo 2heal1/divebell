@@ -10,7 +10,7 @@ test("lists connected runtimes and forwards target reads", async () => {
     clock: createClock(1000)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-1" });
@@ -64,7 +64,7 @@ test("keeps the last snapshot after a runtime disconnects", async () => {
     clock: createClock(2000)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     await stream.next("connected");
@@ -100,14 +100,14 @@ test("creates a fresh runtime when the same URL reconnects", async () => {
     clock: createClock(2500)
   });
   const address = await server.listen({ port: 0 });
-  const firstStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const firstStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     assert.deepEqual(await firstStream.next("connected"), { runtimeId: "runtime-1" });
     firstStream.close();
     await waitForDisconnect();
 
-    const secondStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+    const secondStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
     try {
       assert.deepEqual(await secondStream.next("connected"), { runtimeId: "runtime-2" });
       const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
@@ -130,14 +130,14 @@ test("creates a fresh runtime when a page instance reconnects on another URL", a
     clock: createClock(2700)
   });
   const address = await server.listen({ port: 0 });
-  const ordersStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders")}&pageInstanceId=page-1`);
+  const ordersStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders")}&pageInstanceId=page-1`);
 
   try {
     assert.deepEqual(await ordersStream.next("connected"), { runtimeId: "runtime-orders" });
     ordersStream.close();
     await waitForDisconnect();
 
-    const homeStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1`);
+    const homeStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1`);
     try {
       assert.deepEqual(await homeStream.next("connected"), { runtimeId: "runtime-home" });
       const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
@@ -162,8 +162,8 @@ test("keeps same-url page instances separate", async () => {
     clock: createClock(2800)
   });
   const address = await server.listen({ port: 0 });
-  const tabA = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=tab-a`);
-  const tabB = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=tab-b`);
+  const tabA = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=tab-a`);
+  const tabB = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=tab-b`);
 
   try {
     assert.deepEqual(await tabA.next("connected"), { runtimeId: "runtime-tab-a" });
@@ -186,10 +186,10 @@ test("keeps same-url page instances separate", async () => {
 test("tracks multiple runtimes in one page and disconnects one instance explicitly", async () => {
   const server = createBridgeServer({ clock: createClock(2820) });
   const address = await server.listen({ port: 0 });
-  const main = await openRuntimeStream(
+  const main = await divebellStream(
     `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-main&runtimeId=runtime-main&name=main&source=demo`
   );
-  const child = await openRuntimeStream(
+  const child = await divebellStream(
     `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-child&runtimeId=runtime-child&name=checkout&source=demo&parentRuntimeId=runtime-main`
   );
   let replacementChild: TestRuntimeStream | undefined;
@@ -211,7 +211,7 @@ test("tracks multiple runtimes in one page and disconnects one instance explicit
       ]
     );
 
-    replacementChild = await openRuntimeStream(
+    replacementChild = await divebellStream(
       `${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&connectionId=connection-child-new&runtimeId=runtime-child&name=checkout&source=demo&parentRuntimeId=runtime-main`
     );
     await replacementChild.next("connected");
@@ -243,21 +243,21 @@ test("tracks a stable session across refreshed runtimes", async () => {
     clock: createClock(2850)
   });
   const address = await server.listen({ port: 0 });
-  const firstStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-before&sessionId=session-orders`);
+  const firstStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?divebellSessionId=session-orders")}&pageInstanceId=page-before&sessionId=session-orders`);
 
   try {
     assert.deepEqual(await firstStream.next("connected"), { runtimeId: "runtime-before-refresh" });
     firstStream.close();
     await waitForDisconnect();
 
-    const secondStream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-after&sessionId=session-orders`);
+    const secondStream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?divebellSessionId=session-orders")}&pageInstanceId=page-after&sessionId=session-orders`);
     try {
       assert.deepEqual(await secondStream.next("connected"), { runtimeId: "runtime-after-refresh" });
       const runtimes = await readJson<{ runtimes: BridgeRuntimeInfo[] }>(`${address.url}/runtimes`);
       assert.deepEqual(runtimes.runtimes, [
         {
           runtimeId: "runtime-after-refresh",
-          url: "http://app.test/orders?openruntimeSessionId=session-orders",
+          url: "http://app.test/orders?divebellSessionId=session-orders",
           sessionId: "session-orders",
           pageInstanceId: "page-after",
           status: "connected",
@@ -280,7 +280,7 @@ test("derives session id from the runtime url when connect omits sessionId", asy
     clock: createClock(2860)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?openruntimeSessionId=session-orders")}&pageInstanceId=page-orders`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/orders?divebellSessionId=session-orders")}&pageInstanceId=page-orders`);
 
   try {
     assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-session-url" });
@@ -288,7 +288,7 @@ test("derives session id from the runtime url when connect omits sessionId", asy
     assert.deepEqual(runtimes.runtimes, [
       {
         runtimeId: "runtime-session-url",
-        url: "http://app.test/orders?openruntimeSessionId=session-orders",
+        url: "http://app.test/orders?divebellSessionId=session-orders",
         sessionId: "session-orders",
         pageInstanceId: "page-orders",
         status: "connected",
@@ -398,7 +398,7 @@ test("links server-rendered runtime state with the later browser connection", as
       }
     ]);
 
-    const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&runtimeId=runtime-ssr&renderId=render-1`);
+    const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&pageInstanceId=page-1&runtimeId=runtime-ssr&renderId=render-1`);
     try {
       assert.deepEqual(await stream.next("connected"), { runtimeId: "runtime-ssr" });
 
@@ -492,7 +492,7 @@ test("forwards input options, action runs, and wait requests", async () => {
     clock: createClock(3000)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     await stream.next("connected");
@@ -655,7 +655,7 @@ test("forwards wait requests to connected runtimes even when a cached target exi
       actions: []
     });
 
-    const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&runtimeId=runtime-ssr&renderId=render-1`);
+    const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}&runtimeId=runtime-ssr&renderId=render-1`);
     try {
       await stream.next("connected");
 
@@ -729,7 +729,7 @@ test("rejects execution requests for disconnected runtimes", async () => {
     clock: createClock(4000)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     await stream.next("connected");
@@ -761,7 +761,7 @@ test("rejects pending wait requests when the runtime disconnects", async () => {
     clock: createClock(4500)
   });
   const address = await server.listen({ port: 0 });
-  const stream = await openRuntimeStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
+  const stream = await divebellStream(`${address.url}/connect?url=${encodeURIComponent("http://app.test/")}`);
 
   try {
     await stream.next("connected");
@@ -855,7 +855,7 @@ class TestRuntimeStream {
   }
 }
 
-function openRuntimeStream(url: string): Promise<TestRuntimeStream> {
+function divebellStream(url: string): Promise<TestRuntimeStream> {
   return new Promise((resolve, reject) => {
     const request = httpRequest(url, { method: "GET" }, (response) => {
       resolve(new TestRuntimeStream(request, response));

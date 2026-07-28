@@ -45,7 +45,7 @@ export function renderReleasePullRequestBody({ version, tag, changesets }) {
     "",
     "## Release",
     "",
-    `This PR bumps all OpenRuntime packages and the recording runtime to \`${version}\`.`,
+    `This PR bumps all Divebell packages and the recording runtime to \`${version}\`.`,
     `After it passes CI and is merged, the trusted release workflow publishes the npm packages and creates \`${tag}\` with the recording runtime assets.`,
     ""
   ];

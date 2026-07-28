@@ -1,11 +1,11 @@
 {
-  "name": "@openruntime/rspack-plugin",
+  "name": "@divebell/rspack-plugin",
   "version": "0.1.7",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/2heal1/openruntime.git",
+    "url": "git+https://github.com/2heal1/divebell.git",
     "directory": "packages/rspack-plugin"
   },
   "author": "2heal1",
@@ -31,7 +31,7 @@
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
-    "@openruntime/chunk-map": "workspace:^"
+    "@divebell/chunk-map": "workspace:^"
   },
   "devDependencies": {
     "@rstest/core": "0.10.3"

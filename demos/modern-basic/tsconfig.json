@@ -4,8 +4,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@openruntime/core": ["../../packages/core/src/index.ts"],
-      "@openruntime/modern-plugin": ["../../packages/modern-plugin/src/index.ts"]
+      "@divebell/core": ["../../packages/core/src/index.ts"],
+      "@divebell/modern-plugin": ["../../packages/modern-plugin/src/index.ts"]
     },
     "types": ["@modern-js/app-tools/types", "node"]
   },

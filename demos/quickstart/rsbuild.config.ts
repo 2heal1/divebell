@@ -1,7 +1,7 @@
 import { defineConfig } from "@rsbuild/core";
-import { OpenRuntimeChunkMapRspackPlugin } from "@openruntime/rspack-plugin";
+import { DivebellChunkMapRspackPlugin } from "@divebell/rspack-plugin";
 
-const pagesBase = process.env.OPENRUNTIME_PAGES_BASE ?? "/";
+const pagesBase = process.env.DIVEBELL_PAGES_BASE ?? "/";
 
 export default defineConfig({
   html: {
@@ -19,7 +19,7 @@ export default defineConfig({
   },
   tools: {
     rspack(config) {
-      config.plugins.push(new OpenRuntimeChunkMapRspackPlugin());
+      config.plugins.push(new DivebellChunkMapRspackPlugin());
     }
   }
 });

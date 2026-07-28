@@ -1,14 +1,14 @@
-# OpenRuntime CLI Extension 开发指南
+# Divebell CLI Extension 开发指南
 
-English version: [OpenRuntime CLI Extension Development](cli-extensions.md)
+English version: [Divebell CLI Extension Development](cli-extensions.md)
 
-本文面向 Extension 开发者，按创建、注册能力、本地调试、发布和验证的顺序说明如何完成一个 Extension。Extension 是团队将领域知识接入 OpenRuntime 的主要机制，可以复用当前页面、登录状态和浏览器诊断，也可以连接已有的 SDK、OpenAPI、CLI 和内部平台。
+本文面向 Extension 开发者，按创建、注册能力、本地调试、发布和验证的顺序说明如何完成一个 Extension。Extension 是团队将领域知识接入 Divebell 的主要机制，可以复用当前页面、登录状态和浏览器诊断，也可以连接已有的 SDK、OpenAPI、CLI 和内部平台。
 
 安装和管理已有 Extension 见 [Extension 使用指南](extensions.zh-CN.md)；查询完整字段和类型见 [Extension API 参考](extension-api.zh-CN.md)。
 
 ## Extension 开发模型
 
-Extension 用于把团队会反复使用的账号与环境准备、技术栈识别、领域资源查询、专项诊断和验证流程，封装成 Agent 可以通过 OpenRuntime CLI 发现和调用的能力。例如，它可以从当前页面识别应用、环境或部署 ID，再将这些信息交给团队已有的服务能力。
+Extension 用于把团队会反复使用的账号与环境准备、技术栈识别、领域资源查询、专项诊断和验证流程，封装成 Agent 可以通过 Divebell CLI 发现和调用的能力。例如，它可以从当前页面识别应用、环境或部署 ID，再将这些信息交给团队已有的服务能力。
 
 一个 Extension 由以下部分组成：
 
@@ -21,7 +21,7 @@ Extension 不要求团队重写已经存在的服务能力。它可以只负责�
 
 Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
 
-页面类 Command 操作当前工作目录最近一次通过 `openruntime open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
+页面类 Command 操作当前工作目录最近一次通过 `divebell open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
 
 ## 创建 Extension
 
@@ -48,13 +48,13 @@ my-extension/
 
 ### 定义扩展包
 
-`package.json` 使用 `openruntime.extensions` 声明一个或多个入口：
+`package.json` 使用 `divebell.extensions` 声明一个或多个入口：
 
 ```json
 {
   "name": "@scope/my-extension",
   "version": "1.0.0",
-  "description": "OpenRuntime CLI Extension",
+  "description": "Divebell CLI Extension",
   "type": "module",
   "main": "./dist/extension.mjs",
   "types": "./dist/extension.d.mts",
@@ -74,11 +74,11 @@ my-extension/
     "node": ">=24.0.0 <25"
   },
   "devDependencies": {
-    "@openruntime/cli": "^0.1.3",
+    "@divebell/cli": "^0.1.3",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   },
-  "openruntime": {
+  "divebell": {
     "schemaVersion": 1,
     "extensions": ["./dist/extension.mjs"]
   },
@@ -91,11 +91,11 @@ my-extension/
 这份模板同时声明两类入口：
 
 - `main`、`types` 和 `exports` 是标准 npm 包入口，让其他代码可以通过 `import "@scope/my-extension"` 使用这个包。
-- `openruntime.extensions` 是 OpenRuntime 的加载清单，明确列出需要作为 Extension 加载的文件。一个包可以声明多个 Extension，因此这里使用数组。
+- `divebell.extensions` 是 Divebell 的加载清单，明确列出需要作为 Extension 加载的文件。一个包可以声明多个 Extension，因此这里使用数组。
 - `files` 限制发布内容，确保构建产物进入 npm 包，同时排除源码和无关文件。
 - `publishConfig.access` 让 scoped package 默认按公开包发布；私有包应按团队策略调整或删除这一项。
 
-单 Extension 包可以让标准 npm 入口和 OpenRuntime 入口指向同一个文件。包含多个 Extension 时，标准入口通常指向统一的 `index.mjs`，`openruntime.extensions` 再分别列出各个 Extension 文件。
+单 Extension 包可以让标准 npm 入口和 Divebell 入口指向同一个文件。包含多个 Extension 时，标准入口通常指向统一的 `index.mjs`，`divebell.extensions` 再分别列出各个 Extension 文件。
 
 `tsconfig.json` 可以从下面的最小配置开始：
 
@@ -122,9 +122,9 @@ my-extension/
 入口只声明这个 Extension 提供什么。真正的 Command 和 Hook 实现通过动态导入按需加载：
 
 ```ts
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
-const extension: OpenRuntimeExtensionDefinition = {
+const extension: DivebellExtensionDefinition = {
   schemaVersion: 1,
   name: "my-extension",
   displayName: "My Extension",
@@ -133,7 +133,7 @@ const extension: OpenRuntimeExtensionDefinition = {
     name: "foo",
     commandReferences: [{
       category: "Extensions",
-      usage: "openruntime foo inspect [--name <name>]",
+      usage: "divebell foo inspect [--name <name>]",
       description: "执行团队页面检查。"
     }],
     run: async options =>
@@ -163,7 +163,7 @@ export default extension;
 Command 是 Agent 调用 Extension 的主要入口。它接收已经解析的命令参数、最近页面上下文、请求入口和 Extension API。
 
 ```ts
-import type { CliExtensionRunOptions } from "@openruntime/cli";
+import type { CliExtensionRunOptions } from "@divebell/cli";
 
 export async function runFoo(
   options: CliExtensionRunOptions
@@ -175,7 +175,7 @@ export async function runFoo(
 }
 ```
 
-成功时直接返回结果，OpenRuntime 会自动包裹并格式化为统一输出；失败时直接抛出错误，OpenRuntime 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
+成功时直接返回结果，Divebell 会自动包裹并格式化为统一输出；失败时直接抛出错误，Divebell 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
 Extension 可以在基础定义的 `requires` 中统一声明依赖，再通过 `runExtension` 复用对方的 Command：
 
@@ -198,39 +198,39 @@ Extension 可以在基础定义的 `requires` 中统一声明依赖，再通过 
 }
 ```
 
-OpenRuntime 会在加载 Extension 列表时检查依赖，并明确提示还需要安装哪个 Extension。被调用的 Command 会复用当前页面和会话，直接返回原始结果，不会额外输出一份 CLI 结果，也不会触发 Hook。如果 Command 必须依赖自己 Extension 的 `open` 准备工作，可以加 `requiresOpenHook: true`。
+Divebell 会在加载 Extension 列表时检查依赖，并明确提示还需要安装哪个 Extension。被调用的 Command 会复用当前页面和会话，直接返回原始结果，不会额外输出一份 CLI 结果，也不会触发 Hook。如果 Command 必须依赖自己 Extension 的 `open` 准备工作，可以加 `requiresOpenHook: true`。
 
 ### Hooks
 
-Hooks 在 OpenRuntime 页面打开、技术栈识别和关闭阶段执行。Hook 应只完成当前阶段必要的工作，不要把完整诊断流程塞进入口或 Hook。
+Hooks 在 Divebell 页面打开、技术栈识别和关闭阶段执行。Hook 应只完成当前阶段必要的工作，不要把完整诊断流程塞进入口或 Hook。
 
 #### `open`
 
 `open` 在浏览器真正打开 URL 前运行，可以返回页面初始化脚本：
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
-export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => {
+export const open: NonNullable<DivebellExtensionHooks["open"]> = async () => {
   return {
     scripts: ["globalThis.__TEAM_MARKER__ = true;"]
   };
 };
 ```
 
-Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。后续 Extension Command 会收到同一个对象。多个 Extension 的脚本会与 OpenRuntime 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
+Hook 可以通过 `options.headers` 读取解析后的 `open --headers` 对象；命令没有传入 header 时为 `undefined`。后续 Extension Command 会收到同一个对象。多个 Extension 的脚本会与 Divebell 自身脚本合并。某个 Extension 失败不会阻止其他 Extension 或页面继续打开。
 
 #### `detectStack`
 
-`detectStack` 只在执行 `openruntime stack` 时运行，不会拖慢 `openruntime open`：
+`detectStack` 只在执行 `divebell stack` 时运行，不会拖慢 `divebell open`：
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
 export const detectStack: NonNullable<
-  OpenRuntimeExtensionHooks["detectStack"]
-> = async ({ openruntime }) => {
-  const detected = await openruntime.browser.eval(
+  DivebellExtensionHooks["detectStack"]
+> = async ({ divebell }) => {
+  const detected = await divebell.browser.eval(
     "globalThis._MODERNJS_ROUTE_MANIFEST != null"
   );
   if (!detected) return;
@@ -244,16 +244,16 @@ export const detectStack: NonNullable<
 };
 ```
 
-识别结果只返回简短证据，不要包含完整页面配置或敏感值。相同页面和相同识别器集合会复用最近结果；`openruntime stack --refresh` 会强制重新识别。
+识别结果只返回简短证据，不要包含完整页面配置或敏感值。相同页面和相同识别器集合会复用最近结果；`divebell stack --refresh` 会强制重新识别。
 
 #### `close`
 
 `close` 用于清理同一次 `open` 中创建的页面外资源：
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
-export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () => {
+export const close: NonNullable<DivebellExtensionHooks["close"]> = async () => {
   // 关闭这个 Extension 自己创建的资源。
 };
 ```
@@ -273,7 +273,7 @@ hooks: {
 }
 ```
 
-`before` 和 `after` 只控制先后顺序；必需的 Extension 统一放在 Extension 基础定义的 `requires` 中。OpenRuntime 会根据已加载的 Extension 列表算出并行批次，`close` 按 `open` 的相反顺序执行。Hook 结果不会传给后续 Hook，一个 Hook 失败也不会停止无关 Hook。
+`before` 和 `after` 只控制先后顺序；必需的 Extension 统一放在 Extension 基础定义的 `requires` 中。Divebell 会根据已加载的 Extension 列表算出并行批次，`close` 按 `open` 的相反顺序执行。Hook 结果不会传给后续 Hook，一个 Hook 失败也不会停止无关 Hook。
 
 Hook 参数和返回类型见 [Hooks API](extension-api.zh-CN.md#hooks)。
 
@@ -294,16 +294,16 @@ import { fileURLToPath } from "node:url";
 }
 ```
 
-`openruntime foo --skill` 只输出 Skill 路径，不执行 Command。Skill 应说明适用场景、参数、判断方法和验证标准，不要重复可以从 `--help` 直接得到的内容。
+`divebell foo --skill` 只输出 Skill 路径，不执行 Command。Skill 应说明适用场景、参数、判断方法和验证标准，不要重复可以从 `--help` 直接得到的内容。
 
 ## 使用 Extension API
 
-Command 通过 `options.openruntime` 访问 OpenRuntime 能力：
+Command 通过 `options.divebell` 访问 Divebell 能力：
 
 | 任务 | 优先使用 |
 | --- | --- |
-| 读取和操作当前页面 | `openruntime.browser` |
-| 收集截图、Network、Console、内存和代码执行证据 | `openruntime.browser` 下的对应能力 |
+| 读取和操作当前页面 | `divebell.browser` |
+| 收集截图、Network、Console、内存和代码执行证据 | `divebell.browser` 下的对应能力 |
 | 读取应用主动声明的内部状态 | `targets`、`snapshot`、`events`、`actions` |
 | 执行页面声明的动作并等待结果 | `runAction`、`waitFor` |
 
@@ -311,26 +311,26 @@ Command 通过 `options.openruntime` 访问 OpenRuntime 能力：
 
 执行动作后继续读取页面结果或使用 `waitFor` 等待明确状态。不要仅凭 `page` 存在或动作已经运行就宣布验证成功。
 
-完整方法、字段和边界见 [`OpenRuntimeExtensionApi`](extension-api.zh-CN.md#openruntimeextensionapi)。
+完整方法、字段和边界见 [`DivebellExtensionApi`](extension-api.zh-CN.md#divebellextensionapi)。
 
 ## 本地开发
 
 ### 直接加载本地入口
 
-先完成构建，再让 `OPENRUNTIME_EXTENSIONS_DIR` 直接指向生成的 `.mjs` 入口。这样不会污染正式扩展目录：
+先完成构建，再让 `DIVEBELL_EXTENSIONS_DIR` 直接指向生成的 `.mjs` 入口。这样不会污染正式扩展目录：
 
 ```sh
 cd my-extension
 pnpm build
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime --help
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell --help
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime foo --help
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell foo --help
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime foo inspect --name demo
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell foo inspect --name demo
 ```
 
 先确认顶层 help 中出现了 Command，并通过该 Command 自己的 help 检查详细用法，再运行无需页面的路径。实现文件通过动态导入加载，因此修改后直接重跑命令即可，不需要常驻开发进程。
@@ -340,11 +340,11 @@ OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
 页面类 Command 先处理没有最近页面的情况，再使用代表性页面验证：
 
 ```sh
-export OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
-openruntime open https://example.com --no-bridge
-openruntime foo inspect
-openruntime stack --refresh
-openruntime stop
+export DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
+divebell open https://example.com --no-bridge
+divebell foo inspect
+divebell stack --refresh
+divebell stop
 ```
 
 修改后始终回到相同账号、环境和用户路径验证结果。
@@ -372,19 +372,19 @@ npm pack --dry-run
 打包后先安装本地 `.tgz` 做最终验证：
 
 ```sh
-openruntime extensions add ./scope-my-extension-1.0.0.tgz
-openruntime extensions list
-openruntime --help
-openruntime foo --help
+divebell extensions add ./scope-my-extension-1.0.0.tgz
+divebell extensions list
+divebell --help
+divebell foo --help
 ```
 
 ## 验证 Extension
 
 交付前至少确认：
 
-1. `openruntime --help` 能发现 Command，入口没有加载错误，并且 `openruntime <command> --help` 能展示详细用法。
+1. `divebell --help` 能发现 Command，入口没有加载错误，并且 `divebell <command> --help` 能展示详细用法。
 2. 运行无关命令时，实际实现文件没有被提前加载。
-3. 无需页面的 Command 在没有执行 `openruntime open` 时也能运行。
+3. 无需页面的 Command 在没有执行 `divebell open` 时也能运行。
 4. 需要页面的 Command 在没有页面时返回明确下一步。
 5. 缺少参数、重复选项、未知子命令和失败路径都有确定结果。
 6. `open`、`stack` 和 `stop` 分别触发对应的 `open`、`detectStack` 和 `close` Hook。
@@ -392,4 +392,4 @@ openruntime foo --help
 8. 在真实或代表性页面上完成操作，并验证最终页面或 Runtime 结果。
 9. `npm pack --dry-run` 中只包含预期文件。
 
-仓库内开发还应运行 Extension 自己的测试和 `@openruntime/cli` 的扩展测试，确认加载、Hook 隔离和结构化输出没有被破坏。
+仓库内开发还应运行 Extension 自己的测试和 `@divebell/cli` 的扩展测试，确认加载、Hook 隔离和结构化输出没有被破坏。

@@ -8,7 +8,7 @@ It has two parts:
    - `demos/modern-basic`: route, loader, business ready, declared action.
    - `demos/modern-ssr`: SSR and hydration.
    - `demos/modern-ssr-stream`: streaming SSR, hydration, route loader.
-2. Module Federation coverage rebuilds the old `agent-runtime-mf` cases as OpenRuntime evaluation scenarios. The local Modern.js checkout only has built artifacts for those cases, so this demo keeps the case names and manifest shapes, but does not duplicate MF loading instrumentation inside OpenRuntime.
+2. Module Federation coverage rebuilds the old `agent-runtime-mf` cases as Divebell evaluation scenarios. The local Modern.js checkout only has built artifacts for those cases, so this demo keeps the case names and manifest shapes, but does not duplicate MF loading instrumentation inside Divebell.
 
 Run it with:
 

@@ -1,22 +1,22 @@
 export async function open() {
   return {
     scripts: [
-      "globalThis.__OPENRUNTIME_CLI_EXTENSION_DEMO__ = { loaded: true, version: 1 };"
+      "globalThis.__DIVEBELL_CLI_EXTENSION_DEMO__ = { loaded: true, version: 1 };"
     ]
   };
 }
 
-export async function detectStack({ openruntime }) {
-  const marker = await openruntime.browser.getWindow(
-    "__OPENRUNTIME_CLI_EXTENSION_DEMO__"
+export async function detectStack({ divebell }) {
+  const marker = await divebell.browser.getWindow(
+    "__DIVEBELL_CLI_EXTENSION_DEMO__"
   );
   if (marker?.found !== true) return;
 
   return {
-    id: "openruntime-cli-extension-demo",
-    name: "OpenRuntime CLI Extension Demo",
+    id: "divebell-cli-extension-demo",
+    name: "Divebell CLI Extension Demo",
     version: String(marker.value?.version ?? "unknown"),
-    evidence: ["window.__OPENRUNTIME_CLI_EXTENSION_DEMO__"]
+    evidence: ["window.__DIVEBELL_CLI_EXTENSION_DEMO__"]
   };
 }
 

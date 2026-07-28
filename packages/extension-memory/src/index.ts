@@ -2,15 +2,15 @@ import type {
   CliExtensionRunOptions,
   CommandErrorKind,
   ParsedCliArgs
-} from "@openruntime/cli";
+} from "@divebell/cli";
 
 import { runMemoryCheck } from "./memory-check.js";
 
 export async function runMemoryCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
   if (options.args.command[1] === "check") {
-    return await runMemoryCheckCommand(options.args, options.openruntime.browser);
+    return await runMemoryCheckCommand(options.args, options.divebell.browser);
   }
-  return await runRawMemoryCommand(options.args, options.openruntime.browser.raw);
+  return await runRawMemoryCommand(options.args, options.divebell.browser.raw);
 }
 export { runMemoryCheck } from "./memory-check.js";
 export type * from "./types.js";
@@ -24,7 +24,7 @@ async function runMemoryCheckCommand(
       code: "MEMORY_CHECK_USAGE_INVALID",
       kind: "validation",
       message: "Memory check accepts options instead of positional paths.",
-      hint: "Run `openruntime memory check --url <url> --scenario <path>`."
+      hint: "Run `divebell memory check --url <url> --scenario <path>`."
     });
   }
   const url = requireOption(args, "url");
@@ -99,7 +99,7 @@ function createMemoryBrowserArgs(args: ParsedCliArgs): string[] {
       code: "MEMORY_COMMAND_INVALID",
       kind: "validation",
       message: "Invalid memory command.",
-      hint: "Run `openruntime --help` to see the supported forms."
+      hint: "Run `divebell --help` to see the supported forms."
     });
   }
   browserArgs.push("--json");

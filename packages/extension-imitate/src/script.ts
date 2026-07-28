@@ -46,13 +46,13 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const cli = process.env.OPENRUNTIME_CLI ?? "openruntime";
+const cli = process.env.DIVEBELL_CLI ?? "divebell";
 const bridgeUrl = ${JSON.stringify(manifest.bridgeUrl ?? null)};
 const bridgeArgs = bridgeUrl === null ? [] : ["--bridge", bridgeUrl];
 const url = ${JSON.stringify(scriptUrl)};
 const waitTarget = ${waitTargetLiteral};
 
-// Generated from an OpenRuntime recording.
+// Generated from a Divebell recording.
 // ${pageComment}
 // ${actionsComment}
 // ${interactionComment}

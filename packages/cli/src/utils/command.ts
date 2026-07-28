@@ -1,4 +1,4 @@
-import type { RuntimeDataCondition } from "@openruntime/core";
+import type { RuntimeDataCondition } from "@divebell/core";
 import { getOptionValue, getOptionValues, type ParsedCliArgs } from "./args.js";
 import { createError } from "./output.js";
 

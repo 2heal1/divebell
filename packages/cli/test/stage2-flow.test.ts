@@ -7,21 +7,21 @@ import { test } from "@rstest/core";
 
 import { createBridgeServer } from "../../bridge/dist/index.js";
 import {
-  createOpenRuntime,
-  installOpenRuntimeOnWindow,
-  uninstallOpenRuntimeFromWindow
+  createDivebell,
+  installDivebellOnWindow,
+  uninstallDivebellFromWindow
 } from "../../core/dist/index.js";
 import { runCli } from "../dist/index.js";
 
-process.env.OPENRUNTIME_DISABLE_EXTENSIONS = "1";
+process.env.DIVEBELL_DISABLE_EXTENSIONS = "1";
 
 test("runs the stage 2 cli flow against a connected runtime", async () => {
   const previousEventSource = globalThis.EventSource;
   const previousLocation = globalThis.location;
-  const previousRuntime = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME__;
-  const previousRegistry = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME_REGISTRY__;
-  const previousManager = (globalThis as unknown as Record<string, unknown>).__OPEN_RUNTIME_BRIDGE_MANAGER__;
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-stage2-flow-"));
+  const previousRuntime = (globalThis as unknown as Record<string, unknown>).__DIVEBELL__;
+  const previousRegistry = (globalThis as unknown as Record<string, unknown>).__DIVEBELL_REGISTRY__;
+  const previousManager = (globalThis as unknown as Record<string, unknown>).__DIVEBELL_BRIDGE_MANAGER__;
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-stage2-flow-"));
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
 
@@ -32,7 +32,7 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       href: "http://app.test/"
     } as Location;
 
-    const runtime = createOpenRuntime();
+    const runtime = createDivebell();
     runtime.registerTarget({
       id: "business:orders",
       type: "demo.business",
@@ -83,7 +83,7 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       }
     });
 
-    const childRuntime = createOpenRuntime();
+    const childRuntime = createDivebell();
     childRuntime.registerTarget({
       id: "microfrontend:checkout",
       type: "demo.microfrontend",
@@ -96,7 +96,7 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
     });
 
     const host = globalThis as unknown as Window;
-    installOpenRuntimeOnWindow(runtime, host, {
+    installDivebellOnWindow(runtime, host, {
       runtimeId: "runtime-orders",
       name: "orders",
       source: "demo"
@@ -129,7 +129,7 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
     assert.equal(openExitCode, 0, openOutput.errorText());
     await waitForConnectedRuntimes(address.url, 1);
 
-    installOpenRuntimeOnWindow(childRuntime, host, {
+    installDivebellOnWindow(childRuntime, host, {
       runtimeId: "runtime-checkout",
       name: "checkout",
       source: "demo",
@@ -239,24 +239,24 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       "action.success"
     ]);
 
-    assert.equal(uninstallOpenRuntimeFromWindow(childRuntime, host), true);
+    assert.equal(uninstallDivebellFromWindow(childRuntime, host), true);
     assert.equal(
-      (globalThis as unknown as { __OPEN_RUNTIME_BRIDGE_MANAGER__?: { connectionCount: number } })
-        .__OPEN_RUNTIME_BRIDGE_MANAGER__?.connectionCount,
+      (globalThis as unknown as { __DIVEBELL_BRIDGE_MANAGER__?: { connectionCount: number } })
+        .__DIVEBELL_BRIDGE_MANAGER__?.connectionCount,
       1
     );
     await waitForRuntimeMissing(address.url, "runtime-checkout");
   } finally {
-    (globalThis as unknown as { __OPEN_RUNTIME_BRIDGE_MANAGER__?: { close(): void } })
-      .__OPEN_RUNTIME_BRIDGE_MANAGER__?.close();
+    (globalThis as unknown as { __DIVEBELL_BRIDGE_MANAGER__?: { close(): void } })
+      .__DIVEBELL_BRIDGE_MANAGER__?.close();
     for (const source of NodeEventSource.instances) {
       source.close();
     }
     restoreGlobal("EventSource", previousEventSource);
     restoreLocation(previousLocation);
-    restoreOptionalGlobal("__OPEN_RUNTIME__", previousRuntime);
-    restoreOptionalGlobal("__OPEN_RUNTIME_REGISTRY__", previousRegistry);
-    restoreOptionalGlobal("__OPEN_RUNTIME_BRIDGE_MANAGER__", previousManager);
+    restoreOptionalGlobal("__DIVEBELL__", previousRuntime);
+    restoreOptionalGlobal("__DIVEBELL_REGISTRY__", previousRegistry);
+    restoreOptionalGlobal("__DIVEBELL_BRIDGE_MANAGER__", previousManager);
     rmSync(operationLogDirectory, { recursive: true, force: true });
     await bridge.close();
   }

@@ -1,11 +1,11 @@
 import {
-  createOpenRuntime,
-  installOpenRuntimeOnWindow
-} from "@openruntime/core";
+  createDivebell,
+  installDivebellOnWindow
+} from "@divebell/core";
 import "./styles.css";
 
-const runtime = createOpenRuntime();
-installOpenRuntimeOnWindow(runtime);
+const runtime = createDivebell();
+installDivebellOnWindow(runtime);
 
 const state = {
   orders: 3
@@ -14,7 +14,7 @@ const state = {
 document.querySelector("#root")!.innerHTML = `
   <main class="shell">
     <section class="hero">
-      <p class="eyebrow">OpenRuntime Demo</p>
+      <p class="eyebrow">Divebell Demo</p>
       <h1>Bridge readonly runtime</h1>
       <p class="summary">A Rsbuild page exposing targets, snapshot, events, and actions to the local Bridge.</p>
     </section>

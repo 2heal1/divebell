@@ -8,10 +8,10 @@ import {
 } from "./npm-release-utils.mjs";
 
 test("adds an OTP to npm publish arguments only when provided", () => {
-  const withoutOtp = createNpmPublishArgs("/tmp/openruntime.tgz");
+  const withoutOtp = createNpmPublishArgs("/tmp/divebell.tgz");
   assert.equal(withoutOtp.includes("--otp"), false);
 
-  const withOtp = createNpmPublishArgs("/tmp/openruntime.tgz", "123456");
+  const withOtp = createNpmPublishArgs("/tmp/divebell.tgz", "123456");
   assert.deepEqual(withOtp.slice(-2), ["--otp", "123456"]);
 });
 

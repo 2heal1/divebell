@@ -2,9 +2,9 @@
 
 Chinese version: [Module Federation 可观测接入指南](module-federation-observability.zh-CN.md)
 
-`@module-federation/observability-plugin` is the official Module Federation-side integration path used by OpenRuntime. It records structured loading evidence from Module Federation's own runtime hooks, allowing a coding agent to identify the exact loading phase and likely owner without reconstructing MF state from DOM or Network results.
+`@module-federation/observability-plugin` is the official Module Federation-side integration path used by Divebell. It records structured loading evidence from Module Federation's own runtime hooks, allowing a coding agent to identify the exact loading phase and likely owner without reconstructing MF state from DOM or Network results.
 
-This package is a Module Federation runtime plugin, not a CLI Extension. It belongs in the MF consumer and does not add a standalone `openruntime` command. OpenRuntime reuses its reports and framework-owned facts in the same page debugging workflow.
+This package is a Module Federation runtime plugin, not a CLI Extension. It belongs in the MF consumer and does not add a standalone `divebell` command. Divebell reuses its reports and framework-owned facts in the same page debugging workflow.
 
 ## What the plugin provides
 
@@ -64,13 +64,13 @@ window.__FEDERATION__.__OBSERVABILITY__.host.findReports({
 
 Start with `diagnosis`, `summary.outcome`, `summary.phases`, and the `traceId`, then inspect the event timeline only when more detail is needed. A missing field means that the plugin did not observe that fact; it should not be treated as a successful or failed phase.
 
-When the MF integration exposes OpenRuntime targets and report actions, the same evidence can be selected and waited on through the normal Runtime workflow:
+When the MF integration exposes Divebell targets and report actions, the same evidence can be selected and waited on through the normal Runtime workflow:
 
 ```bash
-openruntime targets --type mf.remote
-openruntime targets --type mf.remote.expose
-openruntime targets --type mf.shared
-openruntime run-action mf:list-reports \
+divebell targets --type mf.remote
+divebell targets --type mf.remote.expose
+divebell targets --type mf.shared
+divebell run-action mf:list-reports \
   --payload '{"remote":"remote1"}'
 ```
 
@@ -78,7 +78,7 @@ Wait for the concrete expose or shared dependency required by the user flow inst
 
 ## Boundaries
 
-- Keep the integration in the Module Federation observability plugin. If a required signal is missing, add a formal MF runtime hook instead of adding an OpenRuntime-side detector.
+- Keep the integration in the Module Federation observability plugin. If a required signal is missing, add a formal MF runtime hook instead of adding a Divebell-side detector.
 - Do not infer shared-provider selection from `window.__FEDERATION__` alone. Use an observability report, an `mf.shared` target, or clearly labeled browser fallback evidence.
 - Do not treat runtime success as proof of business UI success. Verify the consuming page separately or add an explicit application-owned ready signal.
 - Console, Network, screenshots, and runtime error codes remain valid fallback evidence when source changes are not allowed, but they should be identified as fallback evidence rather than MF structured state.

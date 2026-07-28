@@ -1,4 +1,4 @@
-import type { OpenRuntimeCore, RuntimeClock } from "../../dist/index.js";
+import type { DivebellCore, RuntimeClock } from "../../dist/index.js";
 
 export function createClock(start = 1000): RuntimeClock {
   let current = start;
@@ -10,7 +10,7 @@ export function createClock(start = 1000): RuntimeClock {
   };
 }
 
-export function registerRoute(runtime: Pick<OpenRuntimeCore, "registerTarget">): void {
+export function registerRoute(runtime: Pick<DivebellCore, "registerTarget">): void {
   runtime.registerTarget({
     id: "route:/home",
     type: "modern.route",

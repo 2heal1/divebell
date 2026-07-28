@@ -1,8 +1,8 @@
 import type {
-  OpenRuntimeCore,
-  OpenRuntimeWindowHost,
+  DivebellCore,
+  DivebellWindowHost,
   RuntimeError
-} from "@openruntime/core";
+} from "@divebell/core";
 
 export const modernGarfishTargetTypes = {
   root: "modern.garfish",
@@ -33,33 +33,33 @@ export const modernGarfishStatuses = [
 
 export type ModernGarfishStatus = typeof modernGarfishStatuses[number];
 
-export interface OpenRuntimeGarfishReporterOptions {
-  runtime?: OpenRuntimeCore;
+export interface DivebellGarfishReporterOptions {
+  runtime?: DivebellCore;
   source?: string;
-  host?: OpenRuntimeWindowHost;
+  host?: DivebellWindowHost;
 }
 
-export interface OpenRuntimeGarfishPluginOptions extends OpenRuntimeGarfishReporterOptions {
-  reporter?: OpenRuntimeGarfishReporter;
+export interface DivebellGarfishPluginOptions extends DivebellGarfishReporterOptions {
+  reporter?: DivebellGarfishReporter;
 }
 
-export interface OpenRuntimeGarfishCustomLoaderOptions extends OpenRuntimeGarfishReporterOptions {
-  reporter?: OpenRuntimeGarfishReporter;
+export interface DivebellGarfishCustomLoaderOptions extends DivebellGarfishReporterOptions {
+  reporter?: DivebellGarfishReporter;
   loader?: GarfishCustomLoader;
 }
 
-export interface OpenRuntimeGarfishReporter {
+export interface DivebellGarfishReporter {
   registerApp(appInfo: GarfishAppInfoLike): void;
   updateApp(
     appInfo: GarfishAppInfoLike,
     status: ModernGarfishStatus,
-    details?: OpenRuntimeGarfishUpdateDetails
+    details?: DivebellGarfishUpdateDetails
   ): void;
   markProviderRenderCalled(appInfo: GarfishAppInfoLike, payload?: unknown): void;
   markProviderDestroyCalled(appInfo: GarfishAppInfoLike, payload?: unknown): void;
 }
 
-export interface OpenRuntimeGarfishUpdateDetails {
+export interface DivebellGarfishUpdateDetails {
   lifecycle?: string;
   phase?: string;
   basename?: string;
@@ -133,7 +133,7 @@ export type GarfishCustomLoader = (
   basename?: string
 ) => GarfishLoaderResult | undefined | Promise<GarfishLoaderResult | undefined>;
 
-export interface OpenRuntimeGarfishPlugin {
+export interface DivebellGarfishPlugin {
   name: string;
   version?: string;
   beforeRegisterApp?: (appInfo: GarfishAppInfoLike | GarfishAppInfoLike[]) => void;
@@ -171,4 +171,4 @@ export interface OpenRuntimeGarfishPlugin {
   errorUnmountApp?: (error: unknown, appInfo: GarfishAppInfoLike) => void;
 }
 
-export type OpenRuntimeGarfishPluginFactory = (context: unknown) => OpenRuntimeGarfishPlugin;
+export type DivebellGarfishPluginFactory = (context: unknown) => DivebellGarfishPlugin;

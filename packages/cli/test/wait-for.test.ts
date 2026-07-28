@@ -506,12 +506,12 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
         id: "modern:route",
         status: "ready"
       },
-      reason: "No connected runtime matched URL \"http://app.test/route-a\".\nRun `openruntime open <url>` before waiting."
+      reason: "No connected runtime matched URL \"http://app.test/route-a\".\nRun `divebell open <url>` before waiting."
     }
   });
   assert.equal(
     output.errorText(),
-    "No connected runtime matched URL \"http://app.test/route-a\".\nRun `openruntime open <url>` before waiting.\n"
+    "No connected runtime matched URL \"http://app.test/route-a\".\nRun `divebell open <url>` before waiting.\n"
   );
 });
 
@@ -667,7 +667,7 @@ test("opens and follows a session before wait-for when open is set", async () =>
             ? [
                 {
                   runtimeId: "runtime-session",
-                  url: "http://app.test/route-a?openruntimeSessionId=session-route-a",
+                  url: "http://app.test/route-a?divebellSessionId=session-route-a",
                   sessionId: "session-route-a",
                   status: "connected",
                   connectedAt: 1,
@@ -707,7 +707,7 @@ test("opens and follows a session before wait-for when open is set", async () =>
   assert.equal(exitCode, 0);
   assert.deepEqual(browserCalls, [[
     "open",
-    "http://app.test/route-a?openruntimeSessionId=session-route-a"
+    "http://app.test/route-a?divebellSessionId=session-route-a"
   ]]);
   assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-session");
 });

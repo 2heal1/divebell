@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url);
@@ -18,6 +18,9 @@ for (const entry of readdirSync(packagesRoot, { withFileTypes: true })) {
   }
 
   const packagePath = join(packagesRoot, entry.name, "package.json");
+  if (!existsSync(packagePath)) {
+    continue;
+  }
   const pkg = JSON.parse(readFileSync(packagePath, "utf8"));
   packageMetaByName.set(pkg.name, {
     dir: `packages/${entry.name}`,
@@ -51,7 +54,7 @@ if (versions.size > 1) {
   const details = Array.from(versions.entries())
     .map(([version, packages]) => `- ${version}: ${packages.join(", ")}`)
     .join("\n");
-  throw new Error(`OpenRuntime package versions must stay aligned:\n${details}`);
+  throw new Error(`Divebell package versions must stay aligned:\n${details}`);
 }
 
 const [version] = versions.keys();

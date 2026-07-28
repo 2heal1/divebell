@@ -22,22 +22,22 @@ import type {
   RuntimeWaitResult
 } from "../wait/types.js";
 import type {
-  CreateOpenRuntimeOptions,
-  OpenRuntimeCore,
+  CreateDivebellOptions,
+  DivebellCore,
   RuntimeClock,
   RuntimeError
 } from "./types.js";
 
-const systemSource = "openruntime";
+const systemSource = "divebell";
 
-export class RuntimeCenter implements OpenRuntimeCore {
+export class RuntimeCenter implements DivebellCore {
   readonly #targets: TargetRegistry;
   readonly #snapshot: SnapshotStore;
   readonly #events: EventLog;
   readonly #actions: ActionRegistry;
   readonly #waits = new WaitManager();
 
-  constructor(options: CreateOpenRuntimeOptions = {}) {
+  constructor(options: CreateDivebellOptions = {}) {
     const clock = options.clock ?? systemClock;
     this.#targets = new TargetRegistry(clock);
     this.#snapshot = new SnapshotStore(clock);
@@ -112,7 +112,7 @@ export class RuntimeCenter implements OpenRuntimeCore {
     this.#actions.unregister(actionName);
   }
 
-  getActions(query?: GetActionsQuery): ReturnType<OpenRuntimeCore["getActions"]> {
+  getActions(query?: GetActionsQuery): ReturnType<DivebellCore["getActions"]> {
     return this.#actions.list(query, this.getSnapshot());
   }
 
@@ -253,7 +253,7 @@ export class RuntimeCenter implements OpenRuntimeCore {
   }
 }
 
-export function createOpenRuntime(options?: CreateOpenRuntimeOptions): RuntimeCenter {
+export function createDivebell(options?: CreateDivebellOptions): RuntimeCenter {
   return new RuntimeCenter(options);
 }
 

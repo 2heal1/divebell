@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenRuntime Page Experience Report</title>
+  <title>Divebell Page Experience Report</title>
   <style>
     :root {
       color-scheme: light;
@@ -418,7 +418,7 @@
   </style>
 </head>
 <body>
-  <main id="openruntime-code-usage-report" class="shell">
+  <main id="divebell-code-usage-report" class="shell">
     <header class="heading">
       <div>
         <h1 data-i18n="reportTitle">Page experience report</h1>
@@ -581,7 +581,7 @@
     <div id="report-error" class="card error" hidden></div>
   </main>
 
-  <script id="openruntime-report-data" type="application/json">__OPENRUNTIME_REPORT_DATA__</script>
+  <script id="divebell-report-data" type="application/json">__DIVEBELL_REPORT_DATA__</script>
   <script>
     (() => {
       const chineseMessages = {
@@ -648,8 +648,8 @@
       const applyDocumentLocale = () => {
         document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
         document.title = locale === "zh"
-          ? "OpenRuntime 页面体验报告"
-          : "OpenRuntime Page Experience Report";
+          ? "Divebell 页面体验报告"
+          : "Divebell Page Experience Report";
         if (locale !== "zh") return;
         document.querySelectorAll("[data-i18n]").forEach((element) => {
           element.textContent = chineseMessages[element.dataset.i18n] || element.textContent;
@@ -674,11 +674,11 @@
         if (detectBrowserLocale() !== locale) location.reload();
       });
 
-      const dataHref = __OPENRUNTIME_REPORT_DATA_HREF__;
-      const dataMode = __OPENRUNTIME_REPORT_DATA_MODE__;
+      const dataHref = __DIVEBELL_REPORT_DATA_HREF__;
+      const dataMode = __DIVEBELL_REPORT_DATA_MODE__;
       const renderReport = (report) => {
-      const root = document.getElementById("openruntime-code-usage-report");
-      const dataElement = document.getElementById("openruntime-report-data");
+      const root = document.getElementById("divebell-code-usage-report");
+      const dataElement = document.getElementById("divebell-report-data");
       const phaseSelect = document.getElementById("phase-select");
       const sortSelect = document.getElementById("sort-select");
       const searchInput = document.getElementById("search-input");
@@ -1221,7 +1221,7 @@
           render();
         }));
         let streamRenderFrame = 0;
-        globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__ = (event) => {
+        globalThis.__DIVEBELL_APPEND_REPORT_DATA__ = (event) => {
           const phase = usage.phases[Number(event && event.phaseIndex)];
           const field = event && event.field;
           if (!phase || !["chunks", "sources", "packages"].includes(field) || !Array.isArray(event.items)) return;
@@ -1300,7 +1300,7 @@
       }
       function normalizeUrlPath(value) {
         try {
-          return decodeURIComponent(new URL(String(value), "http://openruntime.local").pathname).replace(/^\/+/, "");
+          return decodeURIComponent(new URL(String(value), "http://divebell.local").pathname).replace(/^\/+/, "");
         } catch {
           return String(value || "").split(/[?#]/)[0].replace(/^\/+/, "");
         }
@@ -1477,14 +1477,14 @@
       }
       };
 
-      globalThis.__OPENRUNTIME_RENDER_REPORT__ = renderReport;
+      globalThis.__DIVEBELL_RENDER_REPORT__ = renderReport;
       if (dataHref) {
         afterFirstPaint(() => dataMode === "stream"
           ? loadReportStream(dataHref)
           : loadDeferredData(dataHref));
       } else {
         try {
-          renderReport(JSON.parse(document.getElementById("openruntime-report-data").textContent || "{}"));
+          renderReport(JSON.parse(document.getElementById("divebell-report-data").textContent || "{}"));
         } catch (error) {
           showLoadError(error);
         }
@@ -1543,14 +1543,14 @@
               if (!line) continue;
               const event = JSON.parse(line);
               if (event.type === "start") renderReport(event.report);
-              else if (event.type === "batch") globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__?.(event);
+              else if (event.type === "batch") globalThis.__DIVEBELL_APPEND_REPORT_DATA__?.(event);
               await nextPaint();
             }
             if (result.done) break;
           }
           if (buffer.trim()) {
             const event = JSON.parse(buffer);
-            if (event.type === "batch") globalThis.__OPENRUNTIME_APPEND_REPORT_DATA__?.(event);
+            if (event.type === "batch") globalThis.__DIVEBELL_APPEND_REPORT_DATA__?.(event);
           }
         } catch (error) {
           showLoadError(error);

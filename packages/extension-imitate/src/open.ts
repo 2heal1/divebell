@@ -1,13 +1,13 @@
-import type { OpenRuntimeOpenHook } from "@openruntime/cli";
+import type { DivebellOpenHook } from "@divebell/cli";
 import { createInteractionRecorderScript } from "./capture.js";
 import { clearRecordingControlFile, readRecordingControlFile } from "./session.js";
 import { appendJsonLine, readRecordingManifest, writeJsonFile } from "./storage.js";
 import type { RecordingManifest } from "./types.js";
 import { join } from "node:path";
 
-const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
-type OpenHookOptions = Parameters<OpenRuntimeOpenHook>[0];
-type OpenHookResult = Awaited<ReturnType<OpenRuntimeOpenHook>>;
+const DIVEBELL_SESSION_QUERY_PARAM = "divebellSessionId";
+type OpenHookOptions = Parameters<DivebellOpenHook>[0];
+type OpenHookResult = Awaited<ReturnType<DivebellOpenHook>>;
 
 export async function runRecordingOpenHook(
   options: OpenHookOptions
@@ -31,7 +31,7 @@ export async function runRecordingOpenHook(
     await writeJsonFile(join(control.outputDirectory, manifest.files.manifest), {
       ...manifest,
       invalidated: {
-        reason: "Another openruntime open replaced the page while recording was active.",
+        reason: "Another divebell open replaced the page while recording was active.",
         url: page.url,
         openedUrl: page.openedUrl,
         invalidatedAt
@@ -79,7 +79,7 @@ function createBridgeUrl(args: OpenHookOptions["args"]): string | null {
 
 function readSessionId(openedUrl: string): string | null {
   try {
-    return new URL(openedUrl).searchParams.get(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    return new URL(openedUrl).searchParams.get(DIVEBELL_SESSION_QUERY_PARAM);
   } catch {
     return null;
   }

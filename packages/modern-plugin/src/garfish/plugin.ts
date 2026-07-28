@@ -1,5 +1,5 @@
 import {
-  createOpenRuntimeGarfishReporter,
+  createDivebellGarfishReporter,
   resolveRenderPayloadAppInfo,
   toGarfishRuntimeError
 } from "./reporter.js";
@@ -12,20 +12,20 @@ import type {
   GarfishProviderDestroyPayload,
   GarfishProviderLike,
   GarfishProviderRenderPayload,
-  OpenRuntimeGarfishCustomLoaderOptions,
-  OpenRuntimeGarfishPlugin,
-  OpenRuntimeGarfishPluginFactory,
-  OpenRuntimeGarfishPluginOptions,
-  OpenRuntimeGarfishReporter
+  DivebellGarfishCustomLoaderOptions,
+  DivebellGarfishPlugin,
+  DivebellGarfishPluginFactory,
+  DivebellGarfishPluginOptions,
+  DivebellGarfishReporter
 } from "./types.js";
 
-export function createOpenRuntimeGarfishPlugin(
-  options: OpenRuntimeGarfishPluginOptions = {}
-): OpenRuntimeGarfishPluginFactory {
+export function createDivebellGarfishPlugin(
+  options: DivebellGarfishPluginOptions = {}
+): DivebellGarfishPluginFactory {
   const reporter = resolveReporter(options);
 
   return () => ({
-    name: "@openruntime/garfish-plugin",
+    name: "@divebell/garfish-plugin",
     version: "0.1.0",
     beforeRegisterApp(appInfo) {
       for (const info of normalizeAppInfos(appInfo)) {
@@ -141,8 +141,8 @@ export function createOpenRuntimeGarfishPlugin(
   });
 }
 
-export function createOpenRuntimeGarfishCustomLoader(
-  options: OpenRuntimeGarfishCustomLoaderOptions = {}
+export function createDivebellGarfishCustomLoader(
+  options: DivebellGarfishCustomLoaderOptions = {}
 ): GarfishCustomLoader {
   const reporter = resolveReporter(options);
 
@@ -155,15 +155,15 @@ export function createOpenRuntimeGarfishCustomLoader(
 }
 
 function resolveReporter(
-  options: OpenRuntimeGarfishPluginOptions | OpenRuntimeGarfishCustomLoaderOptions
-): OpenRuntimeGarfishReporter {
-  return options.reporter ?? createOpenRuntimeGarfishReporter(options);
+  options: DivebellGarfishPluginOptions | DivebellGarfishCustomLoaderOptions
+): DivebellGarfishReporter {
+  return options.reporter ?? createDivebellGarfishReporter(options);
 }
 
 function wrapLoaderResult(
   result: GarfishLoaderResult,
   appInfo: GarfishAppInfoLike,
-  reporter: OpenRuntimeGarfishReporter
+  reporter: DivebellGarfishReporter
 ): GarfishLoaderResult {
   return {
     ...(result.mount === undefined
@@ -229,9 +229,9 @@ export type {
   GarfishExecOptionsLike,
   GarfishLoaderResult,
   GarfishProviderLike,
-  OpenRuntimeGarfishCustomLoaderOptions,
-  OpenRuntimeGarfishPlugin,
-  OpenRuntimeGarfishPluginFactory,
-  OpenRuntimeGarfishPluginOptions,
-  OpenRuntimeGarfishReporter
+  DivebellGarfishCustomLoaderOptions,
+  DivebellGarfishPlugin,
+  DivebellGarfishPluginFactory,
+  DivebellGarfishPluginOptions,
+  DivebellGarfishReporter
 } from "./types.js";

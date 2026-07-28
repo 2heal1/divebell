@@ -1,15 +1,15 @@
 import { createBridgeStateStore } from "../features/bridge/config.js";
-import { createOpenRuntimeExtensionApi } from "../features/extension/api.js";
+import { createDivebellExtensionApi } from "../features/extension/api.js";
 import { runDetectStackHooks } from "../features/extension/hooks.js";
 import type { ExtensionHookPlan } from "../features/extension/plan.js";
 import { applyOpenContextDefaultsOrThrow, createExtensionPageContext } from "../open-context.js";
-import type { OpenRuntimeExtensionDefinition } from "../types/commands.js";
+import type { DivebellExtensionDefinition } from "../types/commands.js";
 import type { RuntimeCliCommandOptions } from "../types/cli.js";
 import { createCommandOutput, createError } from "../utils/output.js";
 
 export async function runStackCommand(
   options: RuntimeCliCommandOptions & {
-    extensions: readonly OpenRuntimeExtensionDefinition[];
+    extensions: readonly DivebellExtensionDefinition[];
     detectStackHookPlan: ExtensionHookPlan;
   }
 ): Promise<number> {
@@ -18,14 +18,14 @@ export async function runStackCommand(
       code: "STACK_USAGE_INVALID",
       kind: "validation",
       message: "stack does not accept a subcommand.",
-      hint: "Run `openruntime stack`."
+      hint: "Run `divebell stack`."
     });
   }
   const openContext = await options.operationLogStore.read();
   const args = applyOpenContextDefaultsOrThrow(options.args, openContext, "always");
   if (openContext === undefined) throw new Error("Open context is required.");
   const page = createExtensionPageContext(openContext);
-  const openruntime = createOpenRuntimeExtensionApi({
+  const divebell = createDivebellExtensionApi({
     args,
     fetcher: options.fetcher,
     browserRunner: options.browserRunner,
@@ -33,7 +33,7 @@ export async function runStackCommand(
     bridgeStateStore: createBridgeStateStore(args, options.bridgeStateDirectory),
     openContext
   });
-  const currentUrl = await openruntime.browser.eval<string>("globalThis.location.href");
+  const currentUrl = await divebell.browser.eval<string>("globalThis.location.href");
   if (typeof currentUrl !== "string" || currentUrl.length === 0) {
     throw createError({
       code: "STACK_PAGE_URL_UNAVAILABLE",
@@ -63,7 +63,7 @@ export async function runStackCommand(
   }
   const result = await runDetectStackHooks(
     options.extensions,
-    { args, page, openruntime },
+    { args, page, divebell },
     options.detectStackHookPlan
   );
   const stackDetection = {

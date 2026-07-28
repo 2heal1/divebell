@@ -1,12 +1,12 @@
 import { access, appendFile, readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
-import { createOpenRuntime } from "../packages/core/dist/index.js";
+import { createDivebell } from "../packages/core/dist/index.js";
 
 const scenarioUrl = new URL("../demos/stage6-evaluation/scenarios.json", import.meta.url);
 const repoRootUrl = new URL("../", import.meta.url);
 const data = JSON.parse(await readFile(scenarioUrl, "utf8"));
 const runStartedAt = performance.now();
-const summaryFile = process.env.OPENRUNTIME_STAGE6_SUMMARY ?? process.env.GITHUB_STEP_SUMMARY;
+const summaryFile = process.env.DIVEBELL_STAGE6_SUMMARY ?? process.env.GITHUB_STEP_SUMMARY;
 
 const requiredModernFeatures = ["route", "loader", "ssr", "hydration", "business-ready"];
 const requiredMfCoverage = [
@@ -137,7 +137,7 @@ async function evaluateScenario(group, scenario) {
 }
 
 async function runRuntimeRound(scenario) {
-  const center = createOpenRuntime();
+  const center = createDivebell();
 
   for (const target of scenario.runtime.targetDefinitions) {
     center.registerTarget(target);

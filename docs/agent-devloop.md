@@ -2,7 +2,7 @@
 
 Chinese version: [Coding Agent 开发调试闭环](agent-devloop.zh-CN.md)
 
-OpenRuntime helps coding agents reproduce, diagnose, and verify problems in real web scenarios. The coding agent reads and changes source code; OpenRuntime prepares reusable browser context and packages page operations, browser diagnostics, and result verification as capabilities the agent can invoke like any other development tool. Teams can also use Extensions to connect domain knowledge and existing services to the development loop.
+Divebell helps coding agents reproduce, diagnose, and verify problems in real web scenarios. The coding agent reads and changes source code; Divebell prepares reusable browser context and packages page operations, browser diagnostics, and result verification as capabilities the agent can invoke like any other development tool. Teams can also use Extensions to connect domain knowledge and existing services to the development loop.
 
 Teams can use Extensions to identify development context from the current page and call existing SDKs, OpenAPIs, CLIs, or internal platforms.
 
@@ -31,12 +31,12 @@ Keep only reusable debugging capabilities
 Protected pages should not require a person to sign in again for every task. A team can reuse a test account's Chrome Profile directly or load a prepared agent-browser state:
 
 ```sh
-openruntime open https://example.com/orders --profile "Test Account" --ui
+divebell open https://example.com/orders --profile "Test Account" --ui
 # or
-openruntime open https://example.com/orders --state /path/to/test-account.json --ui
+divebell open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
-Later `openruntime open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
+Later `divebell open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
 
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
@@ -47,21 +47,21 @@ See [Browser Authentication and State](browser-auth.md) for details.
 Open the target page with a named session:
 
 ```sh
-openruntime open https://example.com/orders --session orders-debug --ui
+divebell open https://example.com/orders --session orders-debug --ui
 ```
 
 Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
-OpenRuntime can debug a regular page without Runtime Core. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
+Divebell can debug a regular page without Runtime Core. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 
 ## 3. Discover Available Capabilities
 
 Inspect the current CLI and installed Extensions:
 
 ```sh
-openruntime --help
-openruntime extensions list
-openruntime stack
+divebell --help
+divebell extensions list
+divebell stack
 ```
 
 `stack` runs detectors supplied by Extensions. A detector may recommend a focused Extension for the current project. Use a command only when its description matches the problem; do not run every diagnostic without a reason.
@@ -81,10 +81,10 @@ Common team Extensions may provide:
 Start with evidence directly related to the problem:
 
 ```sh
-openruntime page-snapshot
-openruntime console --level error
-openruntime network --url /api/orders
-openruntime screenshot orders-error --full-page
+divebell page-snapshot
+divebell console --level error
+divebell network --url /api/orders
+divebell screenshot orders-error --full-page
 ```
 
 For performance, memory, or code-execution problems, prefer a matching Extension so it owns capture, calculation, reporting, and cleanup. A memory check, for example, can repeat a real user journey and compare post-cleanup memory, DOM-node, and listener trends rather than relying on one instantaneous value.
@@ -92,8 +92,8 @@ For performance, memory, or code-execution problems, prefer a matching Extension
 If the page already uses Runtime Core, add internal evidence when useful:
 
 ```sh
-openruntime snapshot --session orders-debug
-openruntime events --session orders-debug --limit 30
+divebell snapshot --session orders-debug
+divebell events --session orders-debug --limit 30
 ```
 
 Runtime information is optional deep evidence. Prefer it when it is relevant. If no runtime or useful signal exists, move back to page state, Console, Network, or a focused Extension instead of repeatedly querying an empty Runtime.
@@ -102,7 +102,7 @@ A completed diagnosis should narrow the problem to specific source code, configu
 
 ## 5. Change the Code
 
-The coding agent changes source code based on the evidence. OpenRuntime does not replace code editing, but it should preserve the page, login state, and diagnostic artifacts needed for verification after the change.
+The coding agent changes source code based on the evidence. Divebell does not replace code editing, but it should preserve the page, login state, and diagnostic artifacts needed for verification after the change.
 
 Restart the target application when the change affects build configuration, dependency resolution, the development server, or page initialization. Reuse hot reload only for ordinary page-code changes when the development server applies them correctly.
 
@@ -139,7 +139,7 @@ An isolated problem does not require permanent integration. Keep the appropriate
 | Expose internal state, events, and allowed actions | Runtime Core API |
 | Explain a complex command and its decision process | Skill shipped by the Extension |
 
-Do not add Targets to every page merely to demonstrate OpenRuntime, and do not turn every one-off browser command into an Extension. Preserve only work that reduces future human intervention or improves reliability.
+Do not add Targets to every page merely to demonstrate Divebell, and do not turn every one-off browser command into an Extension. Preserve only work that reduces future human intervention or improves reliability.
 
 ## Completion Criteria
 
@@ -149,5 +149,5 @@ A development debugging task is complete when:
 - the evidence explains why the source change was needed;
 - the changed application ran again in a real browser;
 - verification evidence matches the problem instead of checking only that a page opens;
-- no unrelated application integration was added merely to use OpenRuntime; and
+- no unrelated application integration was added merely to use Divebell; and
 - sensitive login state and debugging artifacts remain in trusted environments.

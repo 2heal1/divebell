@@ -9,16 +9,16 @@ import type {
   ExternalExtensionCandidate,
   ExternalExtensionLoadResult,
   ExternalExtensionModule,
-  OpenRuntimeExtensionDefinition
+  DivebellExtensionDefinition
 } from "../types/commands.js";
 import { validateExtension } from "./definition.js";
 import { getInstalledExtensionEntryPaths } from "./installed.js";
 
 export type { ExtensionLoadRecord, ExternalExtensionLoadResult } from "../types/commands.js";
 
-const DEFAULT_EXTERNAL_EXTENSION_DIR = join(homedir(), ".openruntime", "extensions");
-const EXTERNAL_EXTENSION_DIR_ENV = "OPENRUNTIME_EXTENSIONS_DIR";
-const DISABLE_EXTERNAL_EXTENSIONS_ENV = "OPENRUNTIME_DISABLE_EXTENSIONS";
+const DEFAULT_EXTERNAL_EXTENSION_DIR = join(homedir(), ".divebell", "extensions");
+const EXTERNAL_EXTENSION_DIR_ENV = "DIVEBELL_EXTENSIONS_DIR";
+const DISABLE_EXTERNAL_EXTENSIONS_ENV = "DIVEBELL_DISABLE_EXTENSIONS";
 
 export async function loadExternalCliExtensions(options: {
   reservedExtensionNames: readonly string[];
@@ -60,7 +60,7 @@ export async function loadExternalCliExtensions(options: {
 
   const reservedExtensionNames = new Set(options.reservedExtensionNames);
   const reservedCommandNames = new Set(options.reservedCommandNames);
-  const extensions: OpenRuntimeExtensionDefinition[] = [];
+  const extensions: DivebellExtensionDefinition[] = [];
   const records: ExtensionLoadRecord[] = [];
   for (const candidate of candidates) {
     const loaded = await loadExternalExtension(candidate, reservedExtensionNames, reservedCommandNames);
@@ -74,7 +74,7 @@ export async function loadExternalCliExtensions(options: {
 }
 
 export function createInternalExtensionRecords(
-  extensions: readonly OpenRuntimeExtensionDefinition[]
+  extensions: readonly DivebellExtensionDefinition[]
 ): ExtensionLoadRecord[] {
   return extensions.map((extension) => ({
     name: extension.name,
@@ -113,7 +113,7 @@ async function loadExternalExtension(
   candidate: ExternalExtensionCandidate,
   reservedExtensionNames: ReadonlySet<string>,
   reservedCommandNames: ReadonlySet<string>
-): Promise<{ extension?: OpenRuntimeExtensionDefinition; record: ExtensionLoadRecord }> {
+): Promise<{ extension?: DivebellExtensionDefinition; record: ExtensionLoadRecord }> {
   try {
     const module = await importExternalModule(candidate.path);
     const definition = validateExtension(module.default, { path: candidate.path });
@@ -124,7 +124,7 @@ async function loadExternalExtension(
     if (conflictingCommand !== undefined) {
       return skipped(definition.name, candidate.path, `Command "${conflictingCommand.name}" conflicts with an existing command.`);
     }
-    const extension: OpenRuntimeExtensionDefinition = {
+    const extension: DivebellExtensionDefinition = {
       ...definition,
       ...(definition.commands === undefined ? {} : {
         commands: definition.commands.map((command) => ({

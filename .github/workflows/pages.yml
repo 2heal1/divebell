@@ -35,9 +35,9 @@ jobs:
         with:
           node-version: 24.13.0
           cache: pnpm
-      - run: pnpm --filter @openruntime/demo-quickstart... install --frozen-lockfile
-      - run: pnpm --filter @openruntime/demo-quickstart build:pages
-      - run: OPENRUNTIME_PAGES_BASE=/openruntime/quickstart/ pnpm --filter @openruntime/demo-quickstart verify:build
+      - run: pnpm --filter @divebell/demo-quickstart... install --frozen-lockfile
+      - run: pnpm --filter @divebell/demo-quickstart build:pages
+      - run: DIVEBELL_PAGES_BASE=/divebell/quickstart/ pnpm --filter @divebell/demo-quickstart verify:build
       - uses: actions/configure-pages@v5
       - run: |
           mkdir -p .pages/quickstart

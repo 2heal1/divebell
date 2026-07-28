@@ -1,8 +1,8 @@
 import type {
-  OpenRuntimeCore,
+  DivebellCore,
   RuntimeError
-} from "@openruntime/core";
-import { resolveOpenRuntime } from "../runtime/resolve-runtime.js";
+} from "@divebell/core";
+import { resolveDivebell } from "../runtime/resolve-runtime.js";
 import {
   modernGarfishStatuses,
   modernGarfishTargetIds,
@@ -13,9 +13,9 @@ import {
   type GarfishProviderDestroyPayload,
   type GarfishProviderRenderPayload,
   type ModernGarfishStatus,
-  type OpenRuntimeGarfishReporter,
-  type OpenRuntimeGarfishReporterOptions,
-  type OpenRuntimeGarfishUpdateDetails
+  type DivebellGarfishReporter,
+  type DivebellGarfishReporterOptions,
+  type DivebellGarfishUpdateDetails
 } from "./types.js";
 
 interface GarfishAppRuntimeData {
@@ -66,19 +66,19 @@ type GarfishAppRuntimeDataUpdate = Pick<GarfishAppRuntimeData, "status" | "phase
   appInstance?: GarfishAppRuntimeData["appInstance"];
 };
 
-export function createOpenRuntimeGarfishReporter(
-  options: OpenRuntimeGarfishReporterOptions = {}
-): OpenRuntimeGarfishReporter {
-  return new OpenRuntimeGarfishReporterImpl(options);
+export function createDivebellGarfishReporter(
+  options: DivebellGarfishReporterOptions = {}
+): DivebellGarfishReporter {
+  return new DivebellGarfishReporterImpl(options);
 }
 
-class OpenRuntimeGarfishReporterImpl implements OpenRuntimeGarfishReporter {
-  readonly #options: OpenRuntimeGarfishReporterOptions;
+class DivebellGarfishReporterImpl implements DivebellGarfishReporter {
+  readonly #options: DivebellGarfishReporterOptions;
   readonly #source: string;
   readonly #apps = new Map<string, GarfishAppRuntimeData>();
-  #runtime?: OpenRuntimeCore;
+  #runtime?: DivebellCore;
 
-  constructor(options: OpenRuntimeGarfishReporterOptions) {
+  constructor(options: DivebellGarfishReporterOptions) {
     this.#options = options;
     this.#source = options.source ?? "modern.js";
   }
@@ -93,7 +93,7 @@ class OpenRuntimeGarfishReporterImpl implements OpenRuntimeGarfishReporter {
   updateApp(
     appInfo: GarfishAppInfoLike,
     status: ModernGarfishStatus,
-    details: OpenRuntimeGarfishUpdateDetails = {}
+    details: DivebellGarfishUpdateDetails = {}
   ): void {
     const name = getAppName(appInfo);
     if (name === undefined) {
@@ -194,8 +194,8 @@ class OpenRuntimeGarfishReporterImpl implements OpenRuntimeGarfishReporter {
     });
   }
 
-  #getRuntime(): OpenRuntimeCore {
-    this.#runtime ??= resolveOpenRuntime({
+  #getRuntime(): DivebellCore {
+    this.#runtime ??= resolveDivebell({
       ...this.#options,
       beforeConnect: (runtime) => registerGarfishRootTarget(runtime, this.#source)
     });
@@ -274,7 +274,7 @@ export function toGarfishRuntimeError(error: unknown, code: string): RuntimeErro
   };
 }
 
-function registerGarfishRootTarget(runtime: OpenRuntimeCore, source: string): void {
+function registerGarfishRootTarget(runtime: DivebellCore, source: string): void {
   runtime.registerTarget({
     id: modernGarfishTargetIds.root,
     type: modernGarfishTargetTypes.root,
@@ -286,7 +286,7 @@ function registerGarfishRootTarget(runtime: OpenRuntimeCore, source: string): vo
 }
 
 function registerGarfishAppTarget(
-  runtime: OpenRuntimeCore,
+  runtime: DivebellCore,
   source: string,
   name: string,
   targetId: string

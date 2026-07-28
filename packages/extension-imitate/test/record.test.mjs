@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 import extension from "../dist/extension.js";
-import { createOpenRuntimeCli } from "../../cli/dist/index.js";
+import { createDivebellCli } from "../../cli/dist/index.js";
 
-const cli = createOpenRuntimeCli({ extensions: [extension] });
+const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;
 
-test("records the current OpenRuntime page without reopening or closing the browser", async () => {
-  const fixture = createRecordingFixture("openruntime-recording-");
+test("records the current Divebell page without reopening or closing the browser", async () => {
+  const fixture = createRecordingFixture("divebell-recording-");
   const output = createOutput();
 
   try {
@@ -43,7 +43,7 @@ test("records the current OpenRuntime page without reopening or closing the brow
     }
 
     const manifest = readJson(join(fixture.outputDir, "manifest.json"));
-    assert.equal(manifest.format, "openruntime-recording");
+    assert.equal(manifest.format, "divebell-recording");
     assert.equal(manifest.url, "http://app.test/");
     assert.equal(manifest.bridgeUrl, "http://bridge.test");
     assert.equal(manifest.sessionId, fixture.sessionId);
@@ -59,12 +59,12 @@ test("records the current OpenRuntime page without reopening or closing the brow
 });
 
 test("starts and stops a manual recording on the same current page", async () => {
-  const fixture = createRecordingFixture("openruntime-manual-recording-", {
+  const fixture = createRecordingFixture("divebell-manual-recording-", {
     browserLogs: [
-      "[INFO ] __OPENRUNTIME_RECORD_EVENT__{\"type\":\"recorder-ready\",\"timeMs\":10,\"url\":\"http://app.test/\",\"title\":\"Orders\"}",
-      "[INFO ] __OPENRUNTIME_RECORD_EVENT__{\"type\":\"input\",\"timeMs\":120,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"target\":{\"selector\":\"input[name=q]\",\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
-      "[INFO ] __OPENRUNTIME_RECORD_EVENT__{\"type\":\"keydown\",\"timeMs\":180,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"key\":\"Enter\",\"code\":\"Enter\",\"target\":{\"selector\":\"input[name=q]\",\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
-      "[INFO ] __OPENRUNTIME_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":420,\"url\":\"http://app.test/issues\",\"title\":\"Issues\",\"target\":{\"selector\":\"a[href=\\\"/issues\\\"]\",\"tagName\":\"a\",\"text\":\"Issues\"}}"
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"recorder-ready\",\"timeMs\":10,\"url\":\"http://app.test/\",\"title\":\"Orders\"}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"input\",\"timeMs\":120,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"target\":{\"selector\":\"input[name=q]\",\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"keydown\",\"timeMs\":180,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"key\":\"Enter\",\"code\":\"Enter\",\"target\":{\"selector\":\"input[name=q]\",\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":420,\"url\":\"http://app.test/issues\",\"title\":\"Issues\",\"target\":{\"selector\":\"a[href=\\\"/issues\\\"]\",\"tagName\":\"a\",\"text\":\"Issues\"}}"
     ].join("\n")
   });
 
@@ -87,8 +87,8 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.equal(recordingManifest.capture.audio.requested, true);
     assert.equal(fixture.controlPresentWhenOpened[0], true);
     const initScript = readFileSync(fixture.browserCalls[0].args[3], "utf8");
-    assert.match(initScript, /__OPENRUNTIME_RECORD_EVENT__/);
-    assert.match(initScript, /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
+    assert.match(initScript, /__DIVEBELL_RECORD_EVENT__/);
+    assert.match(initScript, /__DIVEBELL_BRIDGE_MANAGER__/);
 
     const stopOutput = createOutput();
     assert.equal(await fixture.run([
@@ -148,7 +148,7 @@ test("starts and stops a manual recording on the same current page", async () =>
 });
 
 test("keeps persisted interactions after navigation", async () => {
-  const fixture = createRecordingFixture("openruntime-persisted-recording-", {
+  const fixture = createRecordingFixture("divebell-persisted-recording-", {
     domUrl: "https://github.com/module-federation/core/issues"
   });
 
@@ -222,7 +222,7 @@ test("keeps persisted interactions after navigation", async () => {
 });
 
 test("captures audio chunks and transcribes a recording", async () => {
-  const fixture = createRecordingFixture("openruntime-audio-recording-");
+  const fixture = createRecordingFixture("divebell-audio-recording-");
 
   try {
     const startOutput = createOutput();
@@ -303,7 +303,7 @@ test("captures audio chunks and transcribes a recording", async () => {
 });
 
 test("uses the current blank page and the default recording output", async () => {
-  const fixture = createRecordingFixture("openruntime-default-recording-");
+  const fixture = createRecordingFixture("divebell-default-recording-");
   const originalCwd = process.cwd();
 
   try {
@@ -312,13 +312,13 @@ test("uses the current blank page and the default recording output", async () =>
     assert.equal(await fixture.run(["record", "start"], output), 0);
     const result = commandData(output);
     assert.equal(result.status, "prepared");
-    assert.match(result.output, /recordings\/openruntime-/);
+    assert.match(result.output, /recordings\/divebell-/);
     assert.equal(result.output.endsWith(".orrec"), true);
     await fixture.open("about:blank");
     const manifest = readJson(join(result.output, "manifest.json"));
     assert.equal(manifest.status, "recording");
     assert.equal(manifest.url, "about:blank");
-    assert.match(manifest.openedUrl, /openruntimeSessionId=/);
+    assert.match(manifest.openedUrl, /divebellSessionId=/);
     assert.equal(fixture.browserCalls.filter((call) => call.args[0] === "open").length, 1);
   } finally {
     process.chdir(originalCwd);
@@ -326,14 +326,14 @@ test("uses the current blank page and the default recording output", async () =>
   }
 });
 
-test("requires a page opened by openruntime for fixed-duration recording", async () => {
-  const fixture = createRecordingFixture("openruntime-no-page-");
+test("requires a page opened by divebell for fixed-duration recording", async () => {
+  const fixture = createRecordingFixture("divebell-no-page-");
   const output = createOutput();
 
   try {
     const exitCode = await fixture.run(["record", "--out", fixture.outputDir], output);
     assert.equal(exitCode, 1);
-    assert.match(output.text(), /Run `openruntime open <url>` before recording/);
+    assert.match(output.text(), /Run `divebell open <url>` before recording/);
     assert.equal(existsSync(fixture.outputDir), false);
     assert.deepEqual(fixture.browserCalls, []);
   } finally {
@@ -342,7 +342,7 @@ test("requires a page opened by openruntime for fixed-duration recording", async
 });
 
 test("records a page opened without Bridge without starting one during stop", async () => {
-  const fixture = createRecordingFixture("openruntime-recording-without-bridge-");
+  const fixture = createRecordingFixture("divebell-recording-without-bridge-");
 
   try {
     const startOutput = createOutput();
@@ -362,7 +362,7 @@ test("records a page opened without Bridge without starting one during stop", as
 });
 
 test("rejects browser lifecycle options on record commands", async () => {
-  const fixture = createRecordingFixture("openruntime-legacy-record-options-");
+  const fixture = createRecordingFixture("divebell-legacy-record-options-");
 
   try {
     const output = createOutput();
@@ -374,15 +374,15 @@ test("rejects browser lifecycle options on record commands", async () => {
       "--no-open"
     ], output);
     assert.equal(exitCode, 1);
-    assert.match(output.text(), /Configure and open the page with `openruntime open <url>`/);
+    assert.match(output.text(), /Configure and open the page with `divebell open <url>`/);
     assert.equal(existsSync(fixture.outputDir), false);
   } finally {
     fixture.cleanup();
   }
 });
 
-test("refuses to stop a recording from a different OpenRuntime page", async () => {
-  const fixture = createRecordingFixture("openruntime-page-mismatch-");
+test("refuses to stop a recording from a different Divebell page", async () => {
+  const fixture = createRecordingFixture("divebell-page-mismatch-");
 
   try {
     const startOutput = createOutput();
@@ -392,13 +392,13 @@ test("refuses to stop a recording from a different OpenRuntime page", async () =
     assert.equal(existsSync(join(fixture.profileDirectory, "recording-session.json")), false);
     assert.doesNotMatch(
       readFileSync(fixture.browserCalls[1].args[3], "utf8"),
-      /__OPENRUNTIME_RECORD_EVENT__/
+      /__DIVEBELL_RECORD_EVENT__/
     );
 
     const stopOutput = createOutput();
     const stopExitCode = await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput);
     assert.equal(stopExitCode, 1);
-    assert.match(stopOutput.text(), /Another openruntime open replaced the page/);
+    assert.match(stopOutput.text(), /Another divebell open replaced the page/);
     assert.equal(readJson(join(fixture.outputDir, "manifest.json")).status, "recording");
     assert.equal(fixture.browserCalls.some((call) => call.args[0] === "close"), false);
   } finally {
@@ -411,8 +411,8 @@ function createRecordingFixture(prefix, options = {}) {
   const outputDir = join(tempDir, "demo.orrec");
   const operationLogDirectory = join(tempDir, "operations");
   const profileDirectory = join(tempDir, "browser-profile");
-  const originalProfileDirectory = process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
-  process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = profileDirectory;
+  const originalProfileDirectory = process.env.DIVEBELL_BROWSER_PROFILE_DIR;
+  process.env.DIVEBELL_BROWSER_PROFILE_DIR = profileDirectory;
   const browserCalls = [];
   const controlPresentWhenOpened = [];
   const fetchUrls = [];
@@ -512,9 +512,9 @@ function createRecordingFixture(prefix, options = {}) {
     }),
     cleanup: () => {
       if (originalProfileDirectory === undefined) {
-        delete process.env.OPENRUNTIME_BROWSER_PROFILE_DIR;
+        delete process.env.DIVEBELL_BROWSER_PROFILE_DIR;
       } else {
-        process.env.OPENRUNTIME_BROWSER_PROFILE_DIR = originalProfileDirectory;
+        process.env.DIVEBELL_BROWSER_PROFILE_DIR = originalProfileDirectory;
       }
       rmSync(tempDir, { recursive: true, force: true });
     }

@@ -1,13 +1,13 @@
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
-import type { RuntimeDataCondition } from "@openruntime/core";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
+import type { RuntimeDataCondition } from "@divebell/core";
 import { getNumberOption, type ParsedCliArgs } from "../../utils/args.js";
 import type { BrowserRunner } from "../browser/runner.js";
 import { createFileBridgeStateStore, ensureBridge, waitForSelectedRuntime, type BridgeStarter } from "../bridge/process.js";
 import { fetchRuntimes, selectRuntime, waitForRuntime, type Fetcher, type RuntimeResourceResult, type RuntimeSelector } from "./client.js";
-import { normalizeOpenRuntimeUrlForMatch } from "../../utils/operation-log.js";
+import { normalizeDivebellUrlForMatch } from "../../utils/operation-log.js";
 import { runBrowserOrThrow } from "../browser/execution.js";
 import { createOptionalNumberProperty, hasOption, requireOption, sleep } from "../../utils/command.js";
-import { getOpenRuntimeSessionId, withOpenRuntimeSession } from "../../utils/url.js";
+import { getDivebellSessionId, withDivebellSession } from "../../utils/url.js";
 import { createRuntimeSelector } from "./selector.js";
 export function createWaitForFailure(
   targetId: string,
@@ -98,7 +98,7 @@ async function selectRuntimeForWait(
       stateStore: bridgeStateStore,
       ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
     });
-    await runBrowserOrThrow(browserRunner, ["open", withOpenRuntimeSession(url, selector.sessionId)]);
+    await runBrowserOrThrow(browserRunner, ["open", withDivebellSession(url, selector.sessionId)]);
     return await waitForSelectedRuntime({
       fetcher,
       bridgeUrl,
@@ -168,7 +168,7 @@ async function waitForLatestRuntime(
           stateStore: bridgeStateStore,
           ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
         });
-        await runBrowserOrThrow(browserRunner, ["open", withOpenRuntimeSession(url, selector.sessionId)]);
+        await runBrowserOrThrow(browserRunner, ["open", withDivebellSession(url, selector.sessionId)]);
       }
     }
 
@@ -202,19 +202,19 @@ function filterConnectedRuntimes(runtimes: BridgeRuntimeInfo[], selector: Runtim
   }
 
   const sessionId = selector.sessionId ?? (
-    selector.url === undefined ? undefined : getOpenRuntimeSessionId(selector.url)
+    selector.url === undefined ? undefined : getDivebellSessionId(selector.url)
   );
-  const normalizedUrl = selector.url === undefined ? undefined : normalizeUrlWithoutOpenRuntimeSession(selector.url);
+  const normalizedUrl = selector.url === undefined ? undefined : normalizeUrlWithoutDivebellSession(selector.url);
 
   return runtimes.filter((runtime) =>
     runtime.status === "connected" &&
-    (sessionId === undefined || runtime.sessionId === sessionId || getOpenRuntimeSessionId(runtime.url) === sessionId) &&
-    (normalizedUrl === undefined || normalizeUrlWithoutOpenRuntimeSession(runtime.url) === normalizedUrl)
+    (sessionId === undefined || runtime.sessionId === sessionId || getDivebellSessionId(runtime.url) === sessionId) &&
+    (normalizedUrl === undefined || normalizeUrlWithoutDivebellSession(runtime.url) === normalizedUrl)
   );
 }
 
-function normalizeUrlWithoutOpenRuntimeSession(input: string): string {
-  return normalizeOpenRuntimeUrlForMatch(input);
+function normalizeUrlWithoutDivebellSession(input: string): string {
+  return normalizeDivebellUrlForMatch(input);
 }
 
 
@@ -242,7 +242,7 @@ function isRetryableWaitError(error: unknown): boolean {
 
 function addOpenHint(error: unknown, selector: { sessionId?: string; url?: string }): Error {
   if (error instanceof Error && selector.url !== undefined && error.message.startsWith("No connected runtime matched")) {
-    return new Error(`${error.message}\nRun \`openruntime open <url>\` before waiting.`);
+    return new Error(`${error.message}\nRun \`divebell open <url>\` before waiting.`);
   }
   return error instanceof Error ? error : new Error(String(error));
 }

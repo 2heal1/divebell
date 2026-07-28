@@ -1,5 +1,5 @@
 {
-  "name": "@openruntime/demo-modern-ssr-stream",
+  "name": "@divebell/demo-modern-ssr-stream",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,13 +7,13 @@
     "dev": "modern dev",
     "build": "modern build",
     "serve": "modern serve",
-    "verify": "node ./scripts/verify-openruntime.mjs"
+    "verify": "node ./scripts/verify-divebell.mjs"
   },
   "dependencies": {
     "@modern-js/runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/runtime/plugin-runtime",
     "@modern-js/server-runtime": "link:/Users/bytedance/fork_repo/modern.js/packages/server/server-runtime",
-    "@openruntime/core": "workspace:^",
-    "@openruntime/modern-plugin": "workspace:^",
+    "@divebell/core": "workspace:^",
+    "@divebell/modern-plugin": "workspace:^",
     "react": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react@19.2.6/node_modules/react",
     "react-dom": "link:/Users/bytedance/fork_repo/modern.js/node_modules/.pnpm/react-dom@19.2.6_react@19.2.6/node_modules/react-dom"
   },

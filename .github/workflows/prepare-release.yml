@@ -1,10 +1,10 @@
-name: Prepare OpenRuntime Release
+name: Prepare Divebell Release
 
 on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version increment for all OpenRuntime packages and the recording runtime
+        description: Version increment for all Divebell packages and the recording runtime
         required: true
         default: patch
         type: choice
@@ -19,12 +19,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: prepare-openruntime-release
+  group: prepare-divebell-release
   cancel-in-progress: false
 
 jobs:
   prepare-release-pr:
-    if: github.repository == '2heal1/openruntime' && github.ref == 'refs/heads/main'
+    if: github.repository == '2heal1/divebell' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -46,7 +46,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          current_tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
+          current_tag=$(node -p "require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json').tag")
           gh release view "$current_tag" >/dev/null
           node scripts/npm-release.mjs check
           echo "tag=$current_tag" >> "$GITHUB_OUTPUT"
@@ -57,8 +57,8 @@ jobs:
       - name: Read release metadata
         id: metadata
         run: |
-          version=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').version")
-          tag=$(node -p "require('./skills/record-openruntime-workflow/references/openruntime-cli-runtime.json').tag")
+          version=$(node -p "require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json').version")
+          tag=$(node -p "require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json').tag")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
@@ -67,7 +67,7 @@ jobs:
           BASE_TAG: ${{ steps.baseline.outputs.tag }}
           VERSION: ${{ steps.metadata.outputs.version }}
           TAG: ${{ steps.metadata.outputs.tag }}
-          PR_BODY: ${{ runner.temp }}/openruntime-release-pr.md
+          PR_BODY: ${{ runner.temp }}/divebell-release-pr.md
         run: |
           node scripts/generate-release-pr-body.mjs \
             --base "$BASE_TAG" \
@@ -79,9 +79,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.metadata.outputs.version }}
-          PR_BODY: ${{ runner.temp }}/openruntime-release-pr.md
+          PR_BODY: ${{ runner.temp }}/divebell-release-pr.md
         run: |
-          branch="release/openruntime-v${VERSION}"
+          branch="release/divebell-v${VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
             existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
             echo "Release branch already exists: $branch"
@@ -103,12 +103,12 @@ jobs:
             packages/extension-troubleshooting/package.json \
             packages/extension-imitate/package.json \
             packages/extension-memory/package.json \
-            skills/record-openruntime-workflow/references/openruntime-cli-runtime.json
-          git commit -m "chore: prepare OpenRuntime ${VERSION}"
+            skills/record-divebell-workflow/references/divebell-cli-runtime.json
+          git commit -m "chore: prepare Divebell ${VERSION}"
           git push origin "$branch"
           gh pr create \
             --base main \
             --head "$branch" \
-            --title "chore: release OpenRuntime ${VERSION}" \
+            --title "chore: release Divebell ${VERSION}" \
             --body-file "$PR_BODY"
           gh workflow run ci.yml --ref "$branch"

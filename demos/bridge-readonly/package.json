@@ -1,5 +1,5 @@
 {
-  "name": "@openruntime/demo-bridge-readonly",
+  "name": "@divebell/demo-bridge-readonly",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@openruntime/core": "workspace:^"
+    "@divebell/core": "workspace:^"
   },
   "devDependencies": {
     "@rsbuild/core": "2.0.11"

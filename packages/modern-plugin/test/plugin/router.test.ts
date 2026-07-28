@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
-import { openRuntimeModernPlugin } from "../../dist/index.js";
+import { divebellModernPlugin } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
 
 test("stores current route matches in the aggregate route snapshot", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "root",
@@ -49,8 +49,8 @@ test("stores current route matches in the aggregate route snapshot", () => {
 });
 
 test("dedupes repeated current route matches", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "page",
@@ -88,8 +88,8 @@ test("dedupes repeated current route matches", () => {
 });
 
 test("marks aggregate route loading during navigation and error on router errors", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
   const routes = [
     {
       id: "settings",
@@ -140,14 +140,14 @@ test("marks aggregate route loading during navigation and error on router errors
 });
 
 test("marks SSR as errored when the initial route state has loader errors", () => {
-  const runtime = createOpenRuntime();
+  const runtime = createDivebell();
   const host = {
-    __OPEN_RUNTIME__: runtime,
+    __DIVEBELL__: runtime,
     _SSR_DATA: {
       renderMode: "stream"
     }
   };
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime, host }));
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime, host }));
   const routes = [
     {
       id: "details",

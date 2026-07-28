@@ -1,13 +1,13 @@
-# @openruntime/extension-memory
+# @divebell/extension-memory
 
-This OpenRuntime Extension checks whether a repeatable browser journey causes sustained growth in JavaScript memory, DOM nodes, or event listeners. It also exposes lower-level memory metrics, allocation sampling, and heap snapshots for focused investigation.
+This Divebell Extension checks whether a repeatable browser journey causes sustained growth in JavaScript memory, DOM nodes, or event listeners. It also exposes lower-level memory metrics, allocation sampling, and heap snapshots for focused investigation.
 
 It works with regular Chrome pages and does not require Runtime Core, a framework plugin, or build metadata.
 
 ## Install
 
 ```bash
-openruntime extensions add @openruntime/extension-memory
+divebell extensions add @divebell/extension-memory
 ```
 
 ## Run a complete check
@@ -15,7 +15,7 @@ openruntime extensions add @openruntime/extension-memory
 Create a scenario module with a `run` function that performs one iteration of the target page journey, then run:
 
 ```bash
-openruntime memory check \
+divebell memory check \
   --url http://localhost:3000/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
@@ -34,16 +34,16 @@ It writes:
 
 ## Focused commands
 
-Inspect the current page after opening it with OpenRuntime:
+Inspect the current page after opening it with Divebell:
 
 ```bash
-openruntime memory metrics
-openruntime memory sampling start --sampling-interval 32768
+divebell memory metrics
+divebell memory sampling start --sampling-interval 32768
 # Perform the page journey.
-openruntime memory sampling stop /tmp/page.heapprofile --top 20
-openruntime memory snapshot /tmp/page.heapsnapshot --timeout 120000
-openruntime memory status
-openruntime memory cancel
+divebell memory sampling stop /tmp/page.heapprofile --top 20
+divebell memory snapshot /tmp/page.heapsnapshot --timeout 120000
+divebell memory status
+divebell memory cancel
 ```
 
 Use a repeated `memory check` for leak decisions. A single high reading or one temporary peak is not enough evidence of sustained growth.

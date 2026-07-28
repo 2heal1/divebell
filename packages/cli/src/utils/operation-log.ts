@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { OPEN_RUNTIME_SESSION_QUERY_PARAM } from "@openruntime/core";
+import { DIVEBELL_SESSION_QUERY_PARAM } from "@divebell/core";
 
 import type { CliOperationLogEntry, CliOperationLogStore } from "../types/shared.js";
 export type { CliOperationLogEntry, CliOperationLogStore } from "../types/shared.js";
@@ -40,7 +40,7 @@ export function createFileOperationLogStore(
 }
 
 export function createDefaultOperationLogDirectory(): string {
-  return join(homedir(), ".openruntime", "operations");
+  return join(homedir(), ".divebell", "operations");
 }
 
 export function createOperationLogKey(cwd: string): string {
@@ -51,10 +51,10 @@ export function createOperationSessionId(cwd = process.cwd()): string {
   return createOperationLogKey(cwd);
 }
 
-export function normalizeOpenRuntimeUrlForMatch(input: string): string {
+export function normalizeDivebellUrlForMatch(input: string): string {
   try {
     const url = new URL(input);
-    url.searchParams.delete(OPEN_RUNTIME_SESSION_QUERY_PARAM);
+    url.searchParams.delete(DIVEBELL_SESSION_QUERY_PARAM);
     if (isLoopbackHostname(url.hostname)) {
       url.hostname = "localhost";
     }

@@ -1,8 +1,8 @@
 import type {
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeOpenHookOptions,
-  OpenRuntimePageHookOptions,
-  OpenRuntimeStackDetection
+  DivebellExtensionDefinition,
+  DivebellOpenHookOptions,
+  DivebellPageHookOptions,
+  DivebellStackDetection
 } from "../../types/commands.js";
 import {
   createExtensionHookPlan,
@@ -25,8 +25,8 @@ export interface ExtensionOpenHookScript {
 const EXTENSION_HOOK_TIMEOUT_MS = 5_000;
 
 export async function runOpenHooks(
-  extensions: readonly OpenRuntimeExtensionDefinition[],
-  options: OpenRuntimeOpenHookOptions,
+  extensions: readonly DivebellExtensionDefinition[],
+  options: DivebellOpenHookOptions,
   plan: ExtensionHookPlan = createExtensionHookPlan(extensions, "open")
 ): Promise<{
   activeExtensions: string[];
@@ -74,15 +74,15 @@ export async function runOpenHooks(
 }
 
 export async function runDetectStackHooks(
-  extensions: readonly OpenRuntimeExtensionDefinition[],
-  options: OpenRuntimePageHookOptions,
+  extensions: readonly DivebellExtensionDefinition[],
+  options: DivebellPageHookOptions,
   plan: ExtensionHookPlan = createExtensionHookPlan(extensions, "detectStack")
 ): Promise<{
-  detections: Array<OpenRuntimeStackDetection & { extension: string }>;
+  detections: Array<DivebellStackDetection & { extension: string }>;
   failures: ExtensionHookFailure[];
 }> {
   const registry = new Map(extensions.map((extension) => [extension.name, extension]));
-  const detections: Array<OpenRuntimeStackDetection & { extension: string }> = [];
+  const detections: Array<DivebellStackDetection & { extension: string }> = [];
   const failures: ExtensionHookFailure[] = [...plan.failures];
 
   for (const batch of plan.batches) {
@@ -123,9 +123,9 @@ export async function runDetectStackHooks(
 }
 
 export async function runCloseHooks(
-  extensions: readonly OpenRuntimeExtensionDefinition[],
+  extensions: readonly DivebellExtensionDefinition[],
   activeExtensions: readonly string[],
-  options: OpenRuntimePageHookOptions,
+  options: DivebellPageHookOptions,
   openPlan: ExtensionHookPlan = createExtensionHookPlan(extensions, "open")
 ): Promise<ExtensionHookFailure[]> {
   const active = new Set(activeExtensions);
@@ -152,7 +152,7 @@ export async function runCloseHooks(
   return failures;
 }
 
-function validateDetection(value: OpenRuntimeStackDetection): OpenRuntimeStackDetection {
+function validateDetection(value: DivebellStackDetection): DivebellStackDetection {
   if (value === null || typeof value !== "object") {
     throw new Error("detectStack must return an object, an array of objects, or undefined.");
   }

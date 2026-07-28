@@ -1,59 +1,59 @@
 <p align="center">
-  <img src="./assets/openruntime.svg" width="120" alt="OpenRuntime" />
+  <img src="./assets/divebell.png" width="160" alt="Divebell" />
 </p>
 
-<h1 align="center">OpenRuntime</h1>
+<h1 align="center">Divebell</h1>
 
 <p align="center">
-<b>Help coding agents reproduce, diagnose, and verify issues in real web scenarios.</b>
+<b>Go below the surface.</b>
 <br/>
-A web development debugging tool for coding agents.
+An extensible toolkit for coding agents to debug, understand, and verify real web applications.
 </p>
 
 ---
 
 English | [中文](./README.zh-CN.md)
 
-Agent entry point: [OpenRuntime Skill](./skills/openruntime/SKILL.md)
+Agent entry point: [Divebell Skill](./skills/divebell/SKILL.md)
 
-# OpenRuntime
+# Divebell
 
-OpenRuntime is a **web development debugging tool** for coding agents.
+Divebell is an **extensible toolkit for coding agents to debug, understand, and verify real web applications**.
 
-OpenRuntime makes the web page the coding agent's point of entry. It connects page context, browser capabilities, and the team's existing development and debugging tools so the agent can reproduce, diagnose, and verify issues directly in real web scenarios.
+Divebell makes the web page the coding agent's point of entry. It connects page context, browser capabilities, and the team's existing development and debugging tools so the agent can reproduce, diagnose, and verify issues directly in real web scenarios.
 
 Starting from the current page, an agent can call existing SDKs, OpenAPIs, CLIs, and diagnostic capabilities without requiring a person to extract page information and connect the tools first.
 
-The coding agent reads and modifies code. OpenRuntime prepares reusable browser context and exposes page operations, browser diagnostics, and result verification as directly callable capabilities. Teams can use Extensions to connect their own accounts, environments, internal platforms, focused diagnostics, and verification workflows.
+The coding agent reads and modifies code. Divebell prepares reusable browser context and exposes page operations, browser diagnostics, and result verification as directly callable capabilities. Teams can use Extensions to connect their own accounts, environments, internal platforms, focused diagnostics, and verification workflows.
 
 ---
 
 ## Quick Start
 
-Install the OpenRuntime CLI globally once:
+Install the Divebell CLI globally once:
 
 ```bash
-npm install --global @openruntime/cli
-openruntime check --fix
-openruntime --help
+npm install --global @divebell/cli
+divebell check --fix
+divebell --help
 ```
 
 Try the hosted operations playground—no repository clone or source checkout
 required:
 
-[Open the playground](https://2heal1.github.io/openruntime/quickstart/) ·
+[Open the playground](https://2heal1.github.io/divebell/quickstart/) ·
 [Follow the Agent-guided walkthrough](./docs/quick-start.md)
 
 After installing the CLI and the
-[OpenRuntime Skill](./skills/openruntime/SKILL.md), ask:
+[Divebell Skill](./skills/divebell/SKILL.md), ask:
 
 ```text
-Use OpenRuntime to complete the official Quick Start. Operate the order page,
+Use Divebell to complete the official Quick Start. Operate the order page,
 trigger and diagnose the inventory failure, recover it through the
 page-declared action, and finish by opening a Code Usage report.
 ```
 
-## Why OpenRuntime
+## Why Divebell
 
 Coding agents can already read and modify code, and they can call many development tools. But real web development issues usually happen in the page itself: users see a page, while diagnosing the problem requires its state, runtime environment, business context, and the team's existing diagnostic capabilities.
 
@@ -65,29 +65,29 @@ That information and those capabilities are usually scattered across:
 
 An agent often still needs a person to explain what the current page represents and which capability to call next.
 
-OpenRuntime makes the web page the agent's point of entry, connecting page context, browser diagnostics, and the team's existing tools so the agent can reproduce, diagnose, and verify issues directly in the real scenario.
+Divebell makes the web page the agent's point of entry, connecting page context, browser diagnostics, and the team's existing tools so the agent can reproduce, diagnose, and verify issues directly in the real scenario.
 
 Teams can use Extensions to bring existing capabilities into the current page scenario without rebuilding a separate tool system for agents. Once a workflow works, other agents and CI can keep using it as a durable team asset.
 
-## What OpenRuntime Changes
+## What Divebell Changes
 
 <p align="center">
-  <img src="./assets/openruntime-workflow.svg" width="900" alt="OpenRuntime workflow" />
+  <img src="./assets/divebell-workflow.svg" width="900" alt="Divebell workflow" />
 </p>
 
-OpenRuntime reduces the cost of connecting web pages with agent capabilities. Users no longer need to carry context between the page, development tools, and the agent.
+Divebell reduces the cost of connecting web pages with agent capabilities. Users no longer need to carry context between the page, development tools, and the agent.
 
 ## A Real Web Issue Debugging Flow
 
 Consider a user reporting, "The page shows an error after I click Submit":
 
 1. The agent opens the real web page, follows the relevant user journey, and reproduces the issue.
-2. OpenRuntime collects page context and diagnostic evidence such as Console, Network, screenshots, and runtime state.
+2. Divebell collects page context and diagnostic evidence such as Console, Network, screenshots, and runtime state.
 3. When business information is needed, an Extension uses the current page to connect existing SDKs, OpenAPIs, CLIs, or internal platforms.
 4. The coding agent modifies the source code based on the diagnosis.
-5. OpenRuntime returns to the same page scenario to verify the change.
+5. Divebell returns to the same page scenario to verify the change.
 
-The point of OpenRuntime is not to teach an agent how to operate a browser. It is to make the web page a scenario where the agent can work directly.
+The point of Divebell is not to teach an agent how to operate a browser. It is to make the web page a scenario where the agent can work directly.
 
 See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the complete workflow.
 
@@ -95,23 +95,23 @@ See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the c
 
 | Module | Responsibility | Entry point | Page integration required |
 | --- | --- | --- | --- |
-| Web Context & Diagnostics | Make a real web page the agent's point of entry and provide page context, browser diagnostics, and same-scenario verification | OpenRuntime CLI | No |
+| Web Context & Diagnostics | Make a real web page the agent's point of entry and provide page context, browser diagnostics, and same-scenario verification | Divebell CLI | No |
 | Extensions | Connect the web page with the team's existing development and debugging capabilities | CLI commands, Extension API | No |
-| Runtime Core | Expose application-internal facts that browser information cannot represent reliably | `@openruntime/core`, framework plugins | Yes |
+| Runtime Core | Expose application-internal facts that browser information cannot represent reliably | `@divebell/core`, framework plugins | Yes |
 
 ### Web Context & Diagnostics
 
-OpenRuntime makes a real web page the agent's point of entry, providing page context, page operations, browser diagnostics, and same-scenario verification after a code change.
+Divebell makes a real web page the agent's point of entry, providing page context, page operations, browser diagnostics, and same-scenario verification after a code change.
 
-These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, and diagnostic evidence from Console, Network, Screenshot, and Coverage. Agents can call them directly through the OpenRuntime CLI without Runtime Core.
+These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, and diagnostic evidence from Console, Network, Screenshot, and Coverage. Agents can call them directly through the Divebell CLI without Runtime Core.
 
 [CLI Reference](./docs/cli-reference.md)
 
-For protected pages, OpenRuntime can reuse an existing Chrome profile, browser state, or encrypted credentials explicitly supplied by the user, and work within the account's existing permissions.
+For protected pages, Divebell can reuse an existing Chrome profile, browser state, or encrypted credentials explicitly supplied by the user, and work within the account's existing permissions.
 
 [Browser Authentication and State](./docs/browser-auth.md)
 
-When a script must manage the complete browser flow, see [Automating with OpenRuntime CLI](./docs/cli-automation-scripts.md).
+When a script must manage the complete browser flow, see [Automating with Divebell CLI](./docs/cli-automation-scripts.md).
 
 ### Extensions
 
@@ -127,26 +127,26 @@ Focused capabilities are published as optional packages and installed only when 
 
 | Package | Entry | Purpose | Guide |
 | --- | --- | --- | --- |
-| `@openruntime/extension-memory` | `openruntime memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
-| `@openruntime/extension-code-usage` | `openruntime code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
-| `@openruntime/extension-imitate` | `openruntime record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
-| `@openruntime/extension-troubleshooting` | `openruntime verify` | Verify that a page-declared business target reaches the expected result. | [Runtime Core API](./docs/runtime-core-api.md) |
-| `@openruntime/modern-plugin` | Modern.js runtime plugin | Expose application, route, loader, route-component, SSR, hydration, and navigation state that Modern.js already knows. | [Modern.js Integration](./docs/modernjs-integration.md) |
+| `@divebell/extension-memory` | `divebell memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
+| `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
+| `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
+| `@divebell/extension-troubleshooting` | `divebell verify` | Verify that a page-declared business target reaches the expected result. | [Runtime Core API](./docs/runtime-core-api.md) |
+| `@divebell/modern-plugin` | Modern.js runtime plugin | Expose application, route, loader, route-component, SSR, hydration, and navigation state that Modern.js already knows. | [Modern.js Integration](./docs/modernjs-integration.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | Record consumer, remote, manifest, remoteEntry, expose, shared-dependency, and runtime-error evidence through MF observability. | [Module Federation Observability](./docs/module-federation-observability.md) |
 
 Install a CLI Extension with:
 
 ```bash
-openruntime extensions add @openruntime/extension-memory
+divebell extensions add @divebell/extension-memory
 ```
 
-Installed Extension commands appear in `openruntime --help` and run through the same CLI, browser sessions, and login state as the built-in commands. Framework integration packages are application dependencies and must be wired into the matching framework; they do not add a CLI command by themselves.
+Installed Extension commands appear in `divebell --help` and run through the same CLI, browser sessions, and login state as the built-in commands. Framework integration packages are application dependencies and must be wired into the matching framework; they do not add a CLI command by themselves.
 
 ### Runtime Core
 
 Runtime Core is an optional page-side API. When the DOM, Console, Network, and other browser information cannot represent application state reliably, Runtime Core can expose more granular application-internal facts to the agent.
 
-It supports registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. OpenRuntime works without Runtime Core, and regular pages do not need to integrate it.
+It supports registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Divebell works without Runtime Core, and regular pages do not need to integrate it.
 
 [Runtime Core API](./docs/runtime-core-api.md)
 
@@ -154,7 +154,7 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 These examples are organized around the result a user can experience. Start with the example closest to your task, run the complete workflow, and then explore the commands and integrations behind it.
 
-### Try OpenRuntime
+### Try Divebell
 
 #### [Complete the hosted Quick Start](./docs/quick-start.md)
 
@@ -178,7 +178,7 @@ Repeat the same user journey and determine whether JavaScript memory, DOM nodes,
 
 Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
-### Build with OpenRuntime
+### Build with Divebell
 
 #### [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md)
 
@@ -194,7 +194,7 @@ Create a local Extension that reads the current page and participates in page op
                   Coding Agent
                        │
                        ▼
-                  OpenRuntime
+                  Divebell
        ┌──────────────────────────────────┐
        │ Web page: the agent's entry point│
        │                                  │
@@ -227,14 +227,14 @@ Create a local Extension that reads the current page and participates in page op
 
 ## Contribution
 
-Please read the [contributing guide](./CONTRIBUTING.md) and let's build OpenRuntime together.
+Please read the [contributing guide](./CONTRIBUTING.md) and let's build Divebell together.
 
 ## Credits
 
-OpenRuntime uses [agent-browser](https://github.com/vercel-labs/agent-browser) as its default browser execution layer. Thanks to the agent-browser authors and contributors.
+Divebell uses [agent-browser](https://github.com/vercel-labs/agent-browser) as its default browser execution layer. Thanks to the agent-browser authors and contributors.
 
 Extensions execute local code. Install and load only trusted content. Login-state files contain sensitive data and should remain in trusted environments.
 
 ## License
 
-OpenRuntime is [MIT licensed](./LICENSE).
+Divebell is [MIT licensed](./LICENSE).

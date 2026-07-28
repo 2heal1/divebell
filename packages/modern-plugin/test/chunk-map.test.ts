@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
 import {
-  analyzeOpenRuntimeCodeUsage,
-  createOpenRuntimeChunkMap,
-  matchOpenRuntimeChunk
+  analyzeDivebellCodeUsage,
+  createDivebellChunkMap,
+  matchDivebellChunk
 } from "../dist/chunk-map/index.js";
 
 const stats = {
@@ -62,7 +62,7 @@ const stats = {
               identifier: "/workspace/packages/core/src/index.ts",
               name: "../packages/core/src/index.ts",
               nameForCondition: "/workspace/packages/core/src/index.ts",
-              descriptionFileData: { name: "@openruntime/core", version: "0.1.0" },
+              descriptionFileData: { name: "@divebell/core", version: "0.1.0" },
               descriptionFilePath: "/workspace/packages/core/package.json",
               moduleType: "javascript/auto",
               size: 70
@@ -102,7 +102,7 @@ const stats = {
 };
 
 test("creates a complete and deterministic chunk map", () => {
-  const chunkMap = createOpenRuntimeChunkMap(stats, { context: "/repo" });
+  const chunkMap = createDivebellChunkMap(stats, { context: "/repo" });
 
   assert.equal(chunkMap.schemaVersion, 3);
   assert.equal(chunkMap.buildId, "build-123");
@@ -154,13 +154,13 @@ test("creates a complete and deterministic chunk map", () => {
   assert.deepEqual(chunkMap.packages.map((item) => [item.kind, item.packageName]), [
     ["application", "example-app"],
     ["third-party", "react"],
-    ["workspace", "@openruntime/core"]
+    ["workspace", "@divebell/core"]
   ]);
 });
 
 test("matches a loaded URL to its chunk without depending on host or query", () => {
-  const chunkMap = createOpenRuntimeChunkMap(stats);
-  const result = matchOpenRuntimeChunk(
+  const chunkMap = createDivebellChunkMap(stats);
+  const result = matchDivebellChunk(
     chunkMap,
     "https://cdn.example.com/releases/42/static/js/orders.def.js?cache=1",
     { expectedBuildId: "build-123" }
@@ -174,9 +174,9 @@ test("matches a loaded URL to its chunk without depending on host or query", () 
 });
 
 test("refuses to analyze a request against a different build", () => {
-  const chunkMap = createOpenRuntimeChunkMap(stats);
+  const chunkMap = createDivebellChunkMap(stats);
   assert.deepEqual(
-    matchOpenRuntimeChunk(chunkMap, "/static/js/main.abc.js", {
+    matchDivebellChunk(chunkMap, "/static/js/main.abc.js", {
       expectedBuildId: "build-older"
     }),
     {
@@ -189,9 +189,9 @@ test("refuses to analyze a request against a different build", () => {
 });
 
 test("reports missing and ambiguous assets instead of guessing", () => {
-  const chunkMap = createOpenRuntimeChunkMap(stats);
+  const chunkMap = createDivebellChunkMap(stats);
   assert.equal(
-    matchOpenRuntimeChunk(chunkMap, "/static/js/missing.js").status,
+    matchDivebellChunk(chunkMap, "/static/js/missing.js").status,
     "not-found"
   );
 
@@ -199,12 +199,12 @@ test("reports missing and ambiguous assets instead of guessing", () => {
   const second = duplicate.chunks[1];
   assert.ok(second);
   second.assets = [{ file: "static/js/main.abc.js", size: 1200, sourceMap: null }];
-  const ambiguous = matchOpenRuntimeChunk(duplicate, "/static/js/main.abc.js");
+  const ambiguous = matchDivebellChunk(duplicate, "/static/js/main.abc.js");
   assert.equal(ambiguous.status, "ambiguous");
 });
 
 test("attributes executed bytes to application and third-party sources", () => {
-  const chunkMap = createOpenRuntimeChunkMap({
+  const chunkMap = createDivebellChunkMap({
     hash: "coverage-build",
     assets: [
       { name: "static/js/main.js", size: 10 },
@@ -235,7 +235,7 @@ test("attributes executed bytes to application and third-party sources", () => {
     }]
   }, { context: "/repo" });
 
-  const report = analyzeOpenRuntimeCodeUsage({
+  const report = analyzeDivebellCodeUsage({
     chunkMap,
     checkpoints: [{
       schemaVersion: 1,

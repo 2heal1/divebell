@@ -1,10 +1,10 @@
 import { join } from "node:path";
-import type { OpenRuntimeBrowserApi, OpenRuntimeExtensionApi } from "@openruntime/cli";
+import type { DivebellBrowserApi, DivebellExtensionApi } from "@divebell/cli";
 import { readJsonLinesIfExists } from "./storage.js";
 import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
 
-const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
-export async function collectInteractionEvents(outputDirectory: string, browser: OpenRuntimeBrowserApi): Promise<{
+const RECORD_EVENT_CONSOLE_MARKER = "__DIVEBELL_RECORD_EVENT__";
+export async function collectInteractionEvents(outputDirectory: string, browser: DivebellBrowserApi): Promise<{
   operation: OperationEntry;
   interactions: InteractionEvent[];
 }> {
@@ -34,16 +34,16 @@ export async function collectInteractionEvents(outputDirectory: string, browser:
 }
 
 export async function sampleRuntime(
-  openruntime: OpenRuntimeExtensionApi,
+  divebell: DivebellExtensionApi,
   selector: { runtimeId?: string; sessionId?: string; url?: string },
   sampledAt: Date
 ): Promise<RuntimeSample> {
   try {
     const [targets, snapshot, actions, events] = await Promise.all([
-      openruntime.targets({}, selector),
-      openruntime.snapshot({}, selector),
-      openruntime.actions({}, selector),
-      openruntime.events({ limit: 50 }, selector)
+      divebell.targets({}, selector),
+      divebell.snapshot({}, selector),
+      divebell.actions({}, selector),
+      divebell.events({ limit: 50 }, selector)
     ]);
     const runtime = targets.runtime;
     return {
@@ -68,7 +68,7 @@ export async function sampleRuntime(
 }
 
 export async function samplePageSnapshot(
-  browser: OpenRuntimeBrowserApi,
+  browser: DivebellBrowserApi,
   sampledAt: Date
 ): Promise<PageSnapshotSample> {
   const result = await browser.raw(["snapshot"]);
@@ -101,7 +101,7 @@ export async function samplePageSnapshot(
 }
 
 export async function sampleDomSnapshot(
-  browser: OpenRuntimeBrowserApi,
+  browser: DivebellBrowserApi,
   sampledAt: Date
 ): Promise<DomSnapshotSample> {
   const result = await browser.raw(["eval", createDomSnapshotScript()]);
@@ -153,8 +153,8 @@ export function createInteractionRecorderScript(recordingStartedAtMs: number): s
     "(() => {",
     "  const marker = " + JSON.stringify(RECORD_EVENT_CONSOLE_MARKER) + ";",
     "  const startedAt = " + JSON.stringify(recordingStartedAtMs) + ";",
-    "  if (window.__OPENRUNTIME_INTERACTION_RECORDER_INSTALLED__) return;",
-    "  window.__OPENRUNTIME_INTERACTION_RECORDER_INSTALLED__ = true;",
+    "  if (window.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__) return;",
+    "  window.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__ = true;",
     "  const textOf = (value, max = 160) => String(value ?? '').replace(/\\s+/g, ' ').trim().slice(0, max);",
     "  const cssEscape = (value) => {",
     "    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);",

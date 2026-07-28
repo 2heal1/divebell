@@ -7,22 +7,22 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = resolve(repositoryRoot, getOption("--manifest") ??
-  "skills/record-openruntime-workflow/references/openruntime-cli-runtime.json");
+  "skills/record-divebell-workflow/references/divebell-cli-runtime.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const outputDirectory = resolve(repositoryRoot, getOption("--output-dir") ?? "dist/recording-skill-runtime");
 const archivePath = join(outputDirectory, manifest.asset.name);
 const checksumPath = join(outputDirectory, manifest.asset.checksumName);
-const wrapperPath = join(repositoryRoot, "skills", "record-openruntime-workflow", "scripts", "openruntime-cli.mjs");
-const tempDirectory = await mkdtemp(join(tmpdir(), "openruntime-recording-runtime-verify-"));
+const wrapperPath = join(repositoryRoot, "skills", "record-divebell-workflow", "scripts", "divebell-cli.mjs");
+const tempDirectory = await mkdtemp(join(tmpdir(), "divebell-recording-runtime-verify-"));
 
 try {
   await requireFile(archivePath);
   await requireFile(checksumPath);
   const baseEnv = {
     ...process.env,
-    OPENRUNTIME_CLI: "",
-    OPENRUNTIME_SKILL_CLI_HOME: join(tempDirectory, "cache"),
-    OPENRUNTIME_SKILL_RUNTIME_ARCHIVE: archivePath,
+    DIVEBELL_CLI: "",
+    DIVEBELL_SKILL_CLI_HOME: join(tempDirectory, "cache"),
+    DIVEBELL_SKILL_RUNTIME_ARCHIVE: archivePath,
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
   };
 
@@ -31,7 +31,7 @@ try {
 
   const second = runWrapper(wrapperPath, {
     ...baseEnv,
-    OPENRUNTIME_SKILL_RUNTIME_ARCHIVE: join(tempDirectory, "missing-runtime.tgz")
+    DIVEBELL_SKILL_RUNTIME_ARCHIVE: join(tempDirectory, "missing-runtime.tgz")
   });
   assertRecordHelp(second, "cached runtime reuse");
 

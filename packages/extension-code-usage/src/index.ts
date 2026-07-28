@@ -2,7 +2,7 @@ import type {
   CliExtensionRunOptions,
   CommandErrorKind,
   ParsedCliArgs
-} from "@openruntime/cli";
+} from "@divebell/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
 import { cliText } from "./locale.js";
@@ -28,8 +28,8 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
     kind: "validation",
     message: t("code-usage requires analyze, report, or serve.", "code-usage 需要 analyze、report 或 serve。"),
     hint: t(
-      "Run `openruntime code-usage analyze ...`, `openruntime code-usage report ...`, or `openruntime code-usage serve ...`.",
-      "请运行 `openruntime code-usage analyze ...`、`openruntime code-usage report ...` 或 `openruntime code-usage serve ...`。"
+      "Run `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`.",
+      "请运行 `divebell code-usage analyze ...`、`divebell code-usage report ...` 或 `divebell code-usage serve ...`。"
     )
   });
 }
@@ -58,8 +58,8 @@ async function runAnalyze(
         "代码使用分析需要使用选项传入路径。"
       ),
       hint: t(
-        "Run `openruntime code-usage analyze --chunk-map <path> --coverage <path>`.",
-        "请运行 `openruntime code-usage analyze --chunk-map <路径> --coverage <路径>`。"
+        "Run `divebell code-usage analyze --chunk-map <path> --coverage <path>`.",
+        "请运行 `divebell code-usage analyze --chunk-map <路径> --coverage <路径>`。"
       )
     });
   }
@@ -110,8 +110,8 @@ export async function runCodeUsageReportCommand(
       kind: "validation",
       message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
       hint: t(
-        "Run `openruntime code-usage report <report.json>`.",
-        "请运行 `openruntime code-usage report <report.json>`。"
+        "Run `divebell code-usage report <report.json>`.",
+        "请运行 `divebell code-usage report <report.json>`。"
       )
     });
   }
@@ -163,8 +163,8 @@ export async function runCodeUsageServeCommand(
       kind: "validation",
       message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
       hint: t(
-        "Run `openruntime code-usage serve <report.json>`.",
-        "请运行 `openruntime code-usage serve <report.json>`。"
+        "Run `divebell code-usage serve <report.json>`.",
+        "请运行 `divebell code-usage serve <report.json>`。"
       )
     });
   }

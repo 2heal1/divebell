@@ -1,4 +1,4 @@
-import type { RuntimeError } from "@openruntime/core";
+import type { RuntimeError } from "@divebell/core";
 import type {
   ModernNavigationState,
   ModernRouterLocation,

@@ -1,4 +1,4 @@
-import type { RuntimeDataCondition, RuntimeSnapshot, RuntimeTargetDescriptor } from "@openruntime/core";
+import type { RuntimeDataCondition, RuntimeSnapshot, RuntimeTargetDescriptor } from "@divebell/core";
 import type { BrowserRunner } from "../browser/runner.js";
 import {
   type BridgeStarter,
@@ -12,7 +12,7 @@ import {
 import type { ParsedCliArgs } from "../../utils/args.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
 
-export type OpenRuntimeQueryValue =
+export type DivebellQueryValue =
   | string
   | number
   | boolean
@@ -20,42 +20,42 @@ export type OpenRuntimeQueryValue =
   | undefined
   | readonly (string | number | boolean | null | undefined)[];
 
-export type OpenRuntimeResourceQuery = Record<string, OpenRuntimeQueryValue>;
+export type DivebellResourceQuery = Record<string, DivebellQueryValue>;
 
-export interface OpenRuntimeWaitOptions {
+export interface DivebellWaitOptions {
   timeout?: number;
   where?: RuntimeDataCondition[];
 }
 
-export interface OpenRuntimeInputOptionsRequest {
+export interface DivebellInputOptionsRequest {
   payload?: Record<string, unknown>;
   timeout?: number;
 }
 
-export interface OpenRuntimeBrowserScreenshotOptions {
+export interface DivebellBrowserScreenshotOptions {
   fullPage?: boolean;
 }
 
-export interface OpenRuntimeBrowserNetworkOptions {
+export interface DivebellBrowserNetworkOptions {
   url?: string;
 }
 
-export type OpenRuntimeBrowserConsoleLevel = "log" | "info" | "warn" | "error";
+export type DivebellBrowserConsoleLevel = "log" | "info" | "warn" | "error";
 
-export interface OpenRuntimeBrowserConsoleOptions {
-  levels?: OpenRuntimeBrowserConsoleLevel[] | Set<OpenRuntimeBrowserConsoleLevel>;
+export interface DivebellBrowserConsoleOptions {
+  levels?: DivebellBrowserConsoleLevel[] | Set<DivebellBrowserConsoleLevel>;
   query?: string;
   limit?: number;
 }
 
-export interface OpenRuntimeBrowserConsoleEntry {
-  level: OpenRuntimeBrowserConsoleLevel;
+export interface DivebellBrowserConsoleEntry {
+  level: DivebellBrowserConsoleLevel;
   args: string;
   timestamp?: number;
 }
 
-export interface OpenRuntimeBrowserConsoleResult {
-  entries: OpenRuntimeBrowserConsoleEntry[];
+export interface DivebellBrowserConsoleResult {
+  entries: DivebellBrowserConsoleEntry[];
   summary: {
     total: number;
     log: number;
@@ -65,18 +65,18 @@ export interface OpenRuntimeBrowserConsoleResult {
   };
 }
 
-export interface OpenRuntimeBrowserWaitEvalResult {
+export interface DivebellBrowserWaitEvalResult {
   success: boolean;
   condition: { script: string };
   value?: unknown;
   reason?: string;
 }
 
-export interface OpenRuntimeBrowserMemoryBaseResult {
+export interface DivebellBrowserMemoryBaseResult {
   memoryApiVersion: number;
 }
 
-export interface OpenRuntimeBrowserMemoryMetricsResult extends OpenRuntimeBrowserMemoryBaseResult {
+export interface DivebellBrowserMemoryMetricsResult extends DivebellBrowserMemoryBaseResult {
   browserSession: string;
   targetId: string;
   url: string;
@@ -88,7 +88,7 @@ export interface OpenRuntimeBrowserMemoryMetricsResult extends OpenRuntimeBrowse
   jsEventListeners: number | null;
 }
 
-export type OpenRuntimeBrowserMemoryStatusResult = OpenRuntimeBrowserMemoryBaseResult & (
+export type DivebellBrowserMemoryStatusResult = DivebellBrowserMemoryBaseResult & (
   | { active: false }
   | {
       active: true;
@@ -104,7 +104,7 @@ export type OpenRuntimeBrowserMemoryStatusResult = OpenRuntimeBrowserMemoryBaseR
     }
 );
 
-export interface OpenRuntimeBrowserMemoryCaptureResult extends OpenRuntimeBrowserMemoryBaseResult {
+export interface DivebellBrowserMemoryCaptureResult extends DivebellBrowserMemoryBaseResult {
   captureId: string;
   captureType: "sampling" | "snapshot";
   browserSession: string;
@@ -113,7 +113,7 @@ export interface OpenRuntimeBrowserMemoryCaptureResult extends OpenRuntimeBrowse
   startedAt: string;
 }
 
-export interface OpenRuntimeBrowserMemorySamplingStopResult extends OpenRuntimeBrowserMemoryCaptureResult {
+export interface DivebellBrowserMemorySamplingStopResult extends DivebellBrowserMemoryCaptureResult {
   finishedAt: string;
   samplingInterval: number;
   path: string;
@@ -128,7 +128,7 @@ export interface OpenRuntimeBrowserMemorySamplingStopResult extends OpenRuntimeB
   }>;
 }
 
-export interface OpenRuntimeBrowserMemorySnapshotResult extends OpenRuntimeBrowserMemoryCaptureResult {
+export interface DivebellBrowserMemorySnapshotResult extends DivebellBrowserMemoryCaptureResult {
   finishedAt: string;
   path: string;
   fileSize: number;
@@ -138,52 +138,52 @@ export interface OpenRuntimeBrowserMemorySnapshotResult extends OpenRuntimeBrows
   valid: boolean;
 }
 
-export interface OpenRuntimeBrowserMemorySamplingStartOptions {
+export interface DivebellBrowserMemorySamplingStartOptions {
   samplingInterval?: number;
 }
 
-export interface OpenRuntimeBrowserMemoryMetricsOptions {
+export interface DivebellBrowserMemoryMetricsOptions {
   collectGarbage?: boolean;
 }
 
-export interface OpenRuntimeBrowserMemorySamplingStopOptions {
+export interface DivebellBrowserMemorySamplingStopOptions {
   path?: string;
   top?: number;
   maxSize?: number;
 }
 
-export interface OpenRuntimeBrowserMemorySnapshotOptions {
+export interface DivebellBrowserMemorySnapshotOptions {
   path?: string;
   collectGarbage?: boolean;
   timeout?: number;
   maxSize?: number;
 }
 
-export interface OpenRuntimeBrowserMemoryApi {
-  metrics<T = OpenRuntimeBrowserMemoryMetricsResult>(
-    options?: OpenRuntimeBrowserMemoryMetricsOptions
+export interface DivebellBrowserMemoryApi {
+  metrics<T = DivebellBrowserMemoryMetricsResult>(
+    options?: DivebellBrowserMemoryMetricsOptions
   ): Promise<T>;
-  status<T = OpenRuntimeBrowserMemoryStatusResult>(): Promise<T>;
+  status<T = DivebellBrowserMemoryStatusResult>(): Promise<T>;
   sampling: {
-    start<T = OpenRuntimeBrowserMemoryCaptureResult>(
-      options?: OpenRuntimeBrowserMemorySamplingStartOptions
+    start<T = DivebellBrowserMemoryCaptureResult>(
+      options?: DivebellBrowserMemorySamplingStartOptions
     ): Promise<T>;
-    stop<T = OpenRuntimeBrowserMemorySamplingStopResult>(
-      options?: OpenRuntimeBrowserMemorySamplingStopOptions
+    stop<T = DivebellBrowserMemorySamplingStopResult>(
+      options?: DivebellBrowserMemorySamplingStopOptions
     ): Promise<T>;
   };
-  snapshot<T = OpenRuntimeBrowserMemorySnapshotResult>(
-    options?: OpenRuntimeBrowserMemorySnapshotOptions
+  snapshot<T = DivebellBrowserMemorySnapshotResult>(
+    options?: DivebellBrowserMemorySnapshotOptions
   ): Promise<T>;
   collectGarbage<T = unknown>(): Promise<T>;
   cancel<T = unknown>(): Promise<T>;
 }
 
-export interface OpenRuntimeBrowserCoverageBaseResult {
+export interface DivebellBrowserCoverageBaseResult {
   coverageApiVersion: number;
 }
 
-export type OpenRuntimeBrowserCoverageStatusResult = OpenRuntimeBrowserCoverageBaseResult & (
+export type DivebellBrowserCoverageStatusResult = DivebellBrowserCoverageBaseResult & (
   | { active: false }
   | {
       active: true;
@@ -197,17 +197,17 @@ export type OpenRuntimeBrowserCoverageStatusResult = OpenRuntimeBrowserCoverageB
     }
 );
 
-export interface OpenRuntimeBrowserCoverageStartOptions {
+export interface DivebellBrowserCoverageStartOptions {
   callCount?: boolean;
 }
 
-export interface OpenRuntimeBrowserCoverageCheckpointOptions {
+export interface DivebellBrowserCoverageCheckpointOptions {
   path?: string;
   label?: string;
   maxSize?: number;
 }
 
-export interface OpenRuntimeBrowserCoverageCheckpointResult extends OpenRuntimeBrowserCoverageBaseResult {
+export interface DivebellBrowserCoverageCheckpointResult extends DivebellBrowserCoverageBaseResult {
   captureId: string;
   checkpoint: number;
   label: string | null;
@@ -222,21 +222,21 @@ export interface OpenRuntimeBrowserCoverageCheckpointResult extends OpenRuntimeB
   rangeCount: number;
 }
 
-export interface OpenRuntimeBrowserCoverageApi {
-  status<T = OpenRuntimeBrowserCoverageStatusResult>(): Promise<T>;
-  start<T = OpenRuntimeBrowserCoverageStatusResult>(
-    options?: OpenRuntimeBrowserCoverageStartOptions
+export interface DivebellBrowserCoverageApi {
+  status<T = DivebellBrowserCoverageStatusResult>(): Promise<T>;
+  start<T = DivebellBrowserCoverageStatusResult>(
+    options?: DivebellBrowserCoverageStartOptions
   ): Promise<T>;
-  take<T = OpenRuntimeBrowserCoverageCheckpointResult>(
-    options?: OpenRuntimeBrowserCoverageCheckpointOptions
+  take<T = DivebellBrowserCoverageCheckpointResult>(
+    options?: DivebellBrowserCoverageCheckpointOptions
   ): Promise<T>;
-  stop<T = OpenRuntimeBrowserCoverageCheckpointResult>(
-    options?: OpenRuntimeBrowserCoverageCheckpointOptions
+  stop<T = DivebellBrowserCoverageCheckpointResult>(
+    options?: DivebellBrowserCoverageCheckpointOptions
   ): Promise<T>;
   cancel<T = unknown>(): Promise<T>;
 }
 
-export interface OpenRuntimeBrowserApi {
+export interface DivebellBrowserApi {
   raw(args: string[], options?: { ui?: boolean }): Promise<{
     exitCode: number;
     stdout: string;
@@ -248,24 +248,24 @@ export interface OpenRuntimeBrowserApi {
   fill(target: string, value: string): Promise<string>;
   eval<T = unknown>(script: string): Promise<T>;
   evalFile<T = unknown>(path: string): Promise<T>;
-  waitEval(script: string, options?: { timeout?: number }): Promise<OpenRuntimeBrowserWaitEvalResult>;
+  waitEval(script: string, options?: { timeout?: number }): Promise<DivebellBrowserWaitEvalResult>;
   getWindow<T = unknown>(path: string): Promise<T>;
-  screenshot(name?: string, options?: OpenRuntimeBrowserScreenshotOptions): Promise<string>;
-  network(options?: OpenRuntimeBrowserNetworkOptions): Promise<string>;
-  console(options?: OpenRuntimeBrowserConsoleOptions): Promise<OpenRuntimeBrowserConsoleResult>;
-  memory: OpenRuntimeBrowserMemoryApi;
-  coverage: OpenRuntimeBrowserCoverageApi;
+  screenshot(name?: string, options?: DivebellBrowserScreenshotOptions): Promise<string>;
+  network(options?: DivebellBrowserNetworkOptions): Promise<string>;
+  console(options?: DivebellBrowserConsoleOptions): Promise<DivebellBrowserConsoleResult>;
+  memory: DivebellBrowserMemoryApi;
+  coverage: DivebellBrowserCoverageApi;
 }
 
-export interface OpenRuntimeExtensionApi {
-  targets<T = RuntimeTargetDescriptor[]>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  snapshot<T = RuntimeSnapshot>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  events<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  actions<T = unknown>(query?: OpenRuntimeResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+export interface DivebellExtensionApi {
+  targets<T = RuntimeTargetDescriptor[]>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  snapshot<T = RuntimeSnapshot>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  events<T = unknown>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
+  actions<T = unknown>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   inputOptions<T = unknown>(
     actionName: string,
     inputName: string,
-    options?: OpenRuntimeInputOptionsRequest
+    options?: DivebellInputOptionsRequest
   ): Promise<RuntimeResourceResult<T>>;
   runAction<T = unknown>(
     actionName: string,
@@ -274,12 +274,12 @@ export interface OpenRuntimeExtensionApi {
   waitFor<T = unknown>(
     targetId: string,
     status: string,
-    options?: OpenRuntimeWaitOptions
+    options?: DivebellWaitOptions
   ): Promise<RuntimeResourceResult<T>>;
-  browser: OpenRuntimeBrowserApi;
+  browser: DivebellBrowserApi;
 }
 
-export interface CreateOpenRuntimeExtensionApiOptions {
+export interface CreateDivebellExtensionApiOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   browserRunner: BrowserRunner;

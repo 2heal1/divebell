@@ -1,5 +1,5 @@
-import type { BridgeServer } from "@openruntime/bridge";
-import type { OpenRuntimePackageInfo } from "@openruntime/core";
+import type { BridgeServer } from "@divebell/bridge";
+import type { DivebellPackageInfo } from "@divebell/core";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import type { RemoteDebuggingPageOpener } from "../features/browser/remote-debugging.js";
 import type { BridgeProcessController, BridgeStarter } from "../features/bridge/process.js";
@@ -12,8 +12,8 @@ import type {
   CliCommandReference,
   CliCommandSkillReference,
   ExtensionLoadRecord,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition
 } from "./commands.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
 import type { ExtensionPackageDownloader } from "../commands/installed.js";
@@ -26,8 +26,8 @@ export type {
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
   CliExtensionRunOptions,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition
 } from "./commands.js";
 
 export interface CliRunOptions {
@@ -63,34 +63,34 @@ export interface RuntimeCliCommandOptions {
   operationLogStore: CliOperationLogStore;
 }
 
-export interface CreateOpenRuntimeCliOptions {
-  packageInfo?: OpenRuntimePackageInfo;
-  extensions?: readonly OpenRuntimeExtensionDefinition[];
+export interface CreateDivebellCliOptions {
+  packageInfo?: DivebellPackageInfo;
+  extensions?: readonly DivebellExtensionDefinition[];
   extensionLoadRecords?: readonly ExtensionLoadRecord[];
 }
 
-export interface OpenRuntimeCli {
-  packageInfo: OpenRuntimePackageInfo;
-  extensions: readonly OpenRuntimeExtensionDefinition[];
+export interface DivebellCli {
+  packageInfo: DivebellPackageInfo;
+  extensions: readonly DivebellExtensionDefinition[];
   run(argv?: string[], options?: CliRunOptions): Promise<number>;
   createHelpText(): string;
   getCommandReferences(): CliCommandReference[];
 }
 
-export interface OpenRuntimeCliWithExternalExtensions {
-  cli: OpenRuntimeCli;
+export interface DivebellCliWithExternalExtensions {
+  cli: DivebellCli;
   extensionLoadRecords: readonly ExtensionLoadRecord[];
 }
 
-export interface OpenRuntimeCliConfig {
+export interface DivebellCliConfig {
   commandReferences: readonly CliCommandReference[];
   commandSkillReferences: readonly CliCommandSkillReference[];
-  extensions: readonly OpenRuntimeExtensionDefinition[];
+  extensions: readonly DivebellExtensionDefinition[];
   hookPlans: ExtensionHookPlans;
-  extensionRegistry: Map<string, OpenRuntimeExtensionDefinition>;
+  extensionRegistry: Map<string, DivebellExtensionDefinition>;
   commandRegistry: Map<string, {
-    extension: OpenRuntimeExtensionDefinition;
-    command: OpenRuntimeExtensionCommand;
+    extension: DivebellExtensionDefinition;
+    command: DivebellExtensionCommand;
   }>;
   extensionLoadRecords: readonly ExtensionLoadRecord[];
 }

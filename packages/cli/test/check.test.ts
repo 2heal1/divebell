@@ -37,12 +37,12 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
       if (args[0] === "open") {
         assert.equal(args[1], "about:blank");
         assert.equal(args[2], "--init-script");
-        assert.match(args[3] ?? "", /openruntime-bridge-init\/bridge-[a-f0-9]+\.js$/);
+        assert.match(args[3] ?? "", /divebell-bridge-init\/bridge-[a-f0-9]+\.js$/);
         lifecycle.push("browser open");
         return success("opened");
       }
       if (args[0] === "eval") {
-        assert.match(args[1] ?? "", /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
+        assert.match(args[1] ?? "", /__DIVEBELL_BRIDGE_MANAGER__/);
         lifecycle.push("browser control");
         return success(JSON.stringify({
           controlled: true,
@@ -82,7 +82,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
         status: "passed"
       }
     ]
-  }, "OpenRuntime is ready."));
+  }, "Divebell is ready."));
   assert.deepEqual(lifecycle, [
     "bridge start",
     "browser open",
@@ -93,7 +93,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   assert.equal(browserCalls.length, 3);
   const sessions = new Set(browserCalls.map((call) => call.options?.session));
   assert.equal(sessions.size, 1);
-  assert.match(String([...sessions][0]), /^openruntime-check-[a-f0-9]+$/);
+  assert.match(String([...sessions][0]), /^divebell-check-[a-f0-9]+$/);
   assert.deepEqual(
     browserCalls.map((call) => call.options?.disableRestore),
     [true, true, true]
@@ -171,7 +171,7 @@ test("installs browser requirements only when Chrome is missing", async () => {
       ],
       initialFailure: "Chrome not found. Checked:\nRun `agent-browser install` to download Chrome."
     }
-  }, "OpenRuntime is ready. Browser requirements were installed."));
+  }, "Divebell is ready. Browser requirements were installed."));
 });
 
 test("opens Chrome remote-debugging settings and connects instead of downloading over an existing Chrome", async () => {
@@ -271,7 +271,7 @@ test("opens Chrome remote-debugging settings and connects instead of downloading
       openedRemoteDebuggingSettings: true,
       initialFailure: "Chrome exited early without writing DevToolsActivePort"
     }
-  }, "OpenRuntime is ready. Connected to the existing Chrome session."));
+  }, "Divebell is ready. Connected to the existing Chrome session."));
 });
 
 test("plain check reports the repair command without opening Chrome settings", async () => {
@@ -303,8 +303,8 @@ test("plain check reports the repair command without opening Chrome settings", a
   assert.equal(settingsOpenCount, 0);
   assert.equal(calls.some((args) => args[0] === "install"), false);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BROWSER_NOT_READY");
-  assert.match(parsed.error.hint, /openruntime check --fix/);
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BROWSER_NOT_READY");
+  assert.match(parsed.error.hint, /divebell check --fix/);
   assert.equal(parsed.data.fix, undefined);
 });
 
@@ -346,7 +346,7 @@ test("reports required user approval when Chrome remote debugging is not enabled
   const parsed = JSON.parse(output.text());
   assert.equal(
     parsed.error.code,
-    "OPENRUNTIME_CHECK_REMOTE_DEBUGGING_REQUIRED"
+    "DIVEBELL_CHECK_REMOTE_DEBUGGING_REQUIRED"
   );
   assert.equal(parsed.error.kind, "needs_input");
   assert.equal(parsed.error.retryable, true);
@@ -384,7 +384,7 @@ test("does not install anything when a configured Chrome debugging port is unava
   assert.deepEqual(calls.map((args) => args[0]), ["tab"]);
   const parsed = JSON.parse(output.text());
   assert.equal(parsed.status, "error");
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_DEBUG_CONNECTION_REQUIRED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED");
   assert.equal(parsed.error.kind, "needs_input");
   assert.match(parsed.message, /Chrome DevTools port 9222/);
   assert.match(parsed.error.hint, /--remote-debugging-port=9222/);
@@ -415,7 +415,7 @@ test("reports browser control failures without trying to reinstall Chrome", asyn
   assert.equal(exitCode, 1);
   assert.deepEqual(calls.map((args) => args[0]), ["open", "eval", "close"]);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_CONTROL_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_CONTROL_FAILED");
   assert.deepEqual(parsed.data.checks, [
     {
       id: "node",
@@ -454,7 +454,7 @@ test("keeps browser installer errors in the check result", async () => {
 
   assert.equal(exitCode, 1);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_FIX_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_FIX_FAILED");
   assert.match(parsed.message, /installer was blocked/);
   assert.deepEqual(parsed.data.fix, {
     attempted: true,
@@ -485,7 +485,7 @@ test("reports Chrome download timeouts as retryable network failures", async () 
 
   assert.equal(exitCode, 1);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BROWSER_DOWNLOAD_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BROWSER_DOWNLOAD_FAILED");
   assert.equal(parsed.error.retryable, true);
   assert.match(parsed.error.hint, /googlechromelabs\.github\.io/);
   assert.match(parsed.error.hint, /storage\.googleapis\.com/);
@@ -531,7 +531,7 @@ test("checks auto-connected Chrome in a temporary tab without closing the browse
   ]);
   assert.deepEqual(calls[0], ["tab", "new", "about:blank"]);
   assert.match(calls[1]?.[1] ?? "", /const BRIDGE_URL/);
-  assert.match(calls[2]?.[1] ?? "", /__OPEN_RUNTIME_BRIDGE_MANAGER__/);
+  assert.match(calls[2]?.[1] ?? "", /__DIVEBELL_BRIDGE_MANAGER__/);
   assert.deepEqual(calls[3], ["tab", "close"]);
   assert.equal(calls.some((args) => args[0] === "close"), false);
   const parsed = JSON.parse(output.text());
@@ -560,7 +560,7 @@ test("stops before touching the browser when the local Bridge cannot start", asy
   assert.equal(exitCode, 1);
   assert.equal(browserTouched, false);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_BRIDGE_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BRIDGE_FAILED");
   assert.deepEqual(parsed.data.checks, [
     {
       id: "node",
@@ -628,7 +628,7 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
   assert.equal(bridgeTouched, false);
   assert.equal(browserTouched, false);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_NODE_UNSUPPORTED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_NODE_UNSUPPORTED");
   assert.deepEqual(parsed.data.environment, {
     node: {
       version: "22.14.0",
@@ -693,7 +693,7 @@ test("does not install over a configured browser executable", async () => {
   assert.equal(exitCode, 1);
   assert.deepEqual(calls.map((args) => args[0]), ["open", "close"]);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "OPENRUNTIME_CHECK_CONFIGURED_BROWSER_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_CHECK_CONFIGURED_BROWSER_FAILED");
   assert.deepEqual(parsed.data.environment.browser, {
     source: {
       kind: "executable"

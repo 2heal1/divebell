@@ -1,4 +1,4 @@
-import type { OpenRuntimeCore, RuntimeStatus } from "@openruntime/core";
+import type { DivebellCore, RuntimeStatus } from "@divebell/core";
 import type { ModernRouteObject } from "../modern/events.js";
 
 export const modernTargetTypes = {
@@ -40,7 +40,7 @@ export interface RouteManifestEntry {
   parentRouteId?: string;
 }
 
-export function registerBaseTargets(runtime: OpenRuntimeCore, source: string): void {
+export function registerBaseTargets(runtime: DivebellCore, source: string): void {
   runtime.registerTarget({
     id: modernTargetIds.app,
     type: modernTargetTypes.app,
@@ -51,7 +51,7 @@ export function registerBaseTargets(runtime: OpenRuntimeCore, source: string): v
   });
 }
 
-export function registerHydrationTarget(runtime: OpenRuntimeCore, source: string): void {
+export function registerHydrationTarget(runtime: DivebellCore, source: string): void {
   runtime.registerTarget({
     id: modernTargetIds.hydration,
     type: modernTargetTypes.hydration,
@@ -62,7 +62,7 @@ export function registerHydrationTarget(runtime: OpenRuntimeCore, source: string
   });
 }
 
-export function registerSsrTarget(runtime: OpenRuntimeCore, source: string): void {
+export function registerSsrTarget(runtime: DivebellCore, source: string): void {
   runtime.registerTarget({
     id: modernTargetIds.ssr,
     type: modernTargetTypes.ssr,
@@ -74,7 +74,7 @@ export function registerSsrTarget(runtime: OpenRuntimeCore, source: string): voi
 }
 
 export function registerRouteTargetInfos(
-  runtime: OpenRuntimeCore,
+  runtime: DivebellCore,
   source: string,
   routeInfos: RouteTargetInfo[]
 ): void {
@@ -92,7 +92,7 @@ export function registerRouteTargetInfos(
 }
 
 export function updateTargetStatus(
-  runtime: OpenRuntimeCore,
+  runtime: DivebellCore,
   source: string,
   targetId: string,
   status: RuntimeStatus,

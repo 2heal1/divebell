@@ -1,12 +1,12 @@
 import {
-  createOpenRuntimeChunkMap,
-  type OpenRuntimeChunkMap,
-  type OpenRuntimeChunkMapStats
-} from "@openruntime/chunk-map";
+  createDivebellChunkMap,
+  type DivebellChunkMap,
+  type DivebellChunkMapStats
+} from "@divebell/chunk-map";
 
-const PLUGIN_NAME = "OpenRuntimeChunkMapPlugin";
+const PLUGIN_NAME = "DivebellChunkMapPlugin";
 
-export interface OpenRuntimeChunkMapPluginOptions {
+export interface DivebellChunkMapPluginOptions {
   filename?: string;
   buildId?: string;
   generator?: string;
@@ -56,7 +56,7 @@ interface CompilationLike {
     };
   };
   getStats(): {
-    toJson(options: Record<string, unknown>): OpenRuntimeChunkMapStats;
+    toJson(options: Record<string, unknown>): DivebellChunkMapStats;
   };
   getAssets?: () => ArrayLike<{
     name: string;
@@ -86,22 +86,22 @@ interface CompilationModuleLike {
   };
 }
 
-export class OpenRuntimeChunkMapRspackPlugin {
+export class DivebellChunkMapRspackPlugin {
   readonly #filename: string;
   readonly #buildId: string | undefined;
   readonly #generator: string;
 
-  constructor(options: OpenRuntimeChunkMapPluginOptions = {}) {
-    this.#filename = options.filename ?? "openruntime-chunks.json";
+  constructor(options: DivebellChunkMapPluginOptions = {}) {
+    this.#filename = options.filename ?? "divebell-chunks.json";
     this.#buildId = options.buildId;
-    this.#generator = options.generator ?? "@openruntime/rspack-plugin";
+    this.#generator = options.generator ?? "@divebell/rspack-plugin";
   }
 
   apply(compiler: CompilerLike): void {
     if (!isBrowserTarget(compiler.options.target)) return;
     const runtime = compiler.webpack ?? compiler.rspack;
     if (runtime === undefined) {
-      throw new Error("OpenRuntime Chunk Map requires a Rspack-compatible compiler.");
+      throw new Error("Divebell Chunk Map requires a Rspack-compatible compiler.");
     }
 
     compiler.hooks.thisCompilation.tap(PLUGIN_NAME, (compilation) => {
@@ -129,7 +129,7 @@ export class OpenRuntimeChunkMapRspackPlugin {
           });
           addCompilationDetails(stats, compilation);
           const buildId = this.#buildId ?? compilation.fullHash ?? compilation.hash;
-          const chunkMap = createOpenRuntimeChunkMap(
+          const chunkMap = createDivebellChunkMap(
             stats,
             {
               ...(buildId === undefined ? {} : { buildId }),
@@ -151,7 +151,7 @@ export class OpenRuntimeChunkMapRspackPlugin {
 }
 
 function addSplitRuleDetails(
-  chunkMap: OpenRuntimeChunkMap,
+  chunkMap: DivebellChunkMap,
   optimization: CompilerLike["options"]["optimization"]
 ): void {
   const runtimeName = readRuleName(optimization?.runtimeChunk);
@@ -223,7 +223,7 @@ function cacheGroupPath(key: string): string {
 }
 
 function addCompilationDetails(
-  stats: OpenRuntimeChunkMapStats,
+  stats: DivebellChunkMapStats,
   compilation: CompilationLike
 ): void {
   if (compilation.getAssets !== undefined) {

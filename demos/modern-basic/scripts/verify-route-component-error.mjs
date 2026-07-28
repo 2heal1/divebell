@@ -1,5 +1,5 @@
-const bridge = process.env.OPENRUNTIME_BRIDGE ?? "http://localhost:17321";
-const pageUrl = process.env.OPENRUNTIME_PAGE ?? "http://localhost:19081/";
+const bridge = process.env.DIVEBELL_BRIDGE ?? "http://localhost:17321";
+const pageUrl = process.env.DIVEBELL_PAGE ?? "http://localhost:19081/";
 
 const { runtimes } = await readJson(`${bridge}/runtimes`);
 const runtime = runtimes.find((item) => item.status === "connected" && isSameOrigin(item.url, pageUrl));

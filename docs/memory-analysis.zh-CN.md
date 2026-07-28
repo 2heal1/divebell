@@ -3,12 +3,12 @@
 English version: [Memory Analysis Guide](memory-analysis.md)
 
 普通内存分析由独立扩展包提供，不依赖 Modern.js、Rspack 或 Chunk Map，也不要求项目
-安装构建插件。任何能由 OpenRuntime 打开的 Chrome 页面都可以使用。先全局安装
-OpenRuntime，再添加一次 Extension：
+安装构建插件。任何能由 Divebell 打开的 Chrome 页面都可以使用。先全局安装
+Divebell，再添加一次 Extension：
 
 ```bash
-npm install --global @openruntime/cli
-openruntime extensions add @openruntime/extension-memory
+npm install --global @divebell/cli
+divebell extensions add @divebell/extension-memory
 ```
 
 不要把 CLI 加到业务项目中。
@@ -35,7 +35,7 @@ export default {
 保存为 `scripts/memory-scenario.mjs`，然后执行：
 
 ```bash
-openruntime memory check \
+divebell memory check \
   --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
@@ -59,8 +59,8 @@ CLI 会自动完成打开页面、预热、前后指标、分配记录、重复�
 ## 快速检查当前页面
 
 ```bash
-openruntime open https://example.com/
-openruntime memory metrics
+divebell open https://example.com/
+divebell memory metrics
 ```
 
 `metrics` 会先自动清理已经不用的临时内存，再返回当前 JavaScript 内存、文档数量、
@@ -75,14 +75,14 @@ DOM 节点数量和事件监听器数量。用户不需要单独执行清理命�
 开始记录：
 
 ```bash
-openruntime memory sampling start --sampling-interval 32768
+divebell memory sampling start --sampling-interval 32768
 ```
 
-接着使用 OpenRuntime CLI 操作页面，例如点击、输入、跳转或执行页面声明的动作。
+接着使用 Divebell CLI 操作页面，例如点击、输入、跳转或执行页面声明的动作。
 完成后停止记录：
 
 ```bash
-openruntime memory sampling stop /tmp/page.heapprofile --top 20
+divebell memory sampling stop /tmp/page.heapprofile --top 20
 ```
 
 命令会保存完整记录，并返回分配内存最多的函数。这个过程不需要知道页面如何分块。
@@ -90,7 +90,7 @@ openruntime memory sampling stop /tmp/page.heapprofile --top 20
 ## 保存堆快照
 
 ```bash
-openruntime memory snapshot /tmp/page.heapsnapshot \
+divebell memory snapshot /tmp/page.heapsnapshot \
   --timeout 120000
 ```
 
@@ -110,12 +110,12 @@ openruntime memory snapshot /tmp/page.heapsnapshot \
 仓库中的 `modern-basic` 提供了一个自动往返首页和 Orders 页面的示例：
 
 ```bash
-OPENRUNTIME_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
-pnpm --filter @openruntime/demo-modern-basic verify:memory
+DIVEBELL_AGENT_BROWSER_EXECUTABLE=/path/to/agent-browser \
+pnpm --filter @divebell/demo-modern-basic verify:memory
 ```
 
-它直接执行 `openruntime memory check`。项目中只保留一份很短的页面场景文件；内存
-采集、状态管理、结果计算和浏览器清理由 OpenRuntime CLI 完成。项目不需要 Chunk Map，
+它直接执行 `divebell memory check`。项目中只保留一份很短的页面场景文件；内存
+采集、状态管理、结果计算和浏览器清理由 Divebell CLI 完成。项目不需要 Chunk Map，
 也不需要安装构建分析插件。
 
 ## 什么时候才需要分块插件

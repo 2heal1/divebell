@@ -1,8 +1,8 @@
 import { appTools, defineConfig } from "@modern-js/app-tools";
-import { openRuntimeChunkMapPlugin } from "@openruntime/modern-plugin/chunk-map";
+import { divebellChunkMapPlugin } from "@divebell/modern-plugin/chunk-map";
 
 export default defineConfig({
-  plugins: [appTools(), openRuntimeChunkMapPlugin()],
+  plugins: [appTools(), divebellChunkMapPlugin()],
   output: {
     polyfill: "off",
     disableTsChecker: true,

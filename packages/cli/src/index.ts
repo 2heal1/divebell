@@ -3,9 +3,9 @@ import { isEntryPoint } from "./utils/entry.js";
 
 export {
   cliPackageInfo,
-  createOpenRuntimeCli,
-  createOpenRuntimeCliWithExternalExtensions,
-  defaultOpenRuntimeCli,
+  createDivebellCli,
+  createDivebellCliWithExternalExtensions,
+  defaultDivebellCli,
   getCliCommandName,
   runCli
 } from "./create.js";
@@ -17,11 +17,11 @@ export type {
   CliExtensionRunOptions,
   CliExtensionRunRequest,
   CliRunOptions,
-  CreateOpenRuntimeCliOptions,
-  OpenRuntimeCli,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeCliWithExternalExtensions
+  CreateDivebellCliOptions,
+  DivebellCli,
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition,
+  DivebellCliWithExternalExtensions
 } from "./types/cli.js";
 
 export {
@@ -31,12 +31,12 @@ export {
   parseCliArgs
 } from "./utils/args.js";
 export type { ParsedCliArgs } from "./utils/args.js";
-export { createOpenRuntimeExtensionApi } from "./features/extension/api.js";
+export { createDivebellExtensionApi } from "./features/extension/api.js";
 export type * from "./features/extension/api.js";
 export {
-  OPENRUNTIME_AGENT_BROWSER_EXECUTABLE_ENV,
-  OPENRUNTIME_AGENT_BROWSER_SESSION_ENV,
-  OPENRUNTIME_BROWSER_PROFILE_ENV,
+  DIVEBELL_AGENT_BROWSER_EXECUTABLE_ENV,
+  DIVEBELL_AGENT_BROWSER_SESSION_ENV,
+  DIVEBELL_BROWSER_PROFILE_ENV,
   createAgentBrowserEnvironment,
   createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
@@ -62,13 +62,13 @@ export {
   createHelpText
 } from "./commands/help.js";
 export type * from "./commands/help.js";
-export type { OpenRuntimeCommandSkill } from "./commands/skill.js";
+export type { DivebellCommandSkill } from "./commands/skill.js";
 export { defineExtension, validateExtension } from "./commands/definition.js";
 export type * from "./commands/definition.js";
 export type { ExtensionLoadRecord } from "./commands/external.js";
 export {
-  OPENRUNTIME_EXTENSION_PACKAGE_SCHEMA_VERSION,
-  OPENRUNTIME_EXTENSIONS_DIRECTORY_ENV,
+  DIVEBELL_EXTENSION_PACKAGE_SCHEMA_VERSION,
+  DIVEBELL_EXTENSIONS_DIRECTORY_ENV,
   addExtensionPackage,
   createNpmExtensionPackageDownloader,
   getInstalledExtensionEntryPaths,
@@ -80,7 +80,7 @@ export type {
   ExtensionPackageDownloader,
   InstalledExtensionPackage,
   InstalledExtensionPackageRegistry,
-  OpenRuntimeExtensionPackageManifest
+  DivebellExtensionPackageManifest
 } from "./commands/installed.js";
 export {
   createCommandOutput,

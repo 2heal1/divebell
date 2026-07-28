@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
 const extension = {
   schemaVersion: 1,
@@ -8,27 +8,27 @@ const extension = {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "openruntime record --out <path> [--duration <ms>] [--interval <ms>]",
-        description: "Record the current OpenRuntime page for a fixed duration and create an .orrec package."
+        usage: "divebell record --out <path> [--duration <ms>] [--interval <ms>]",
+        description: "Record the current Divebell page for a fixed duration and create an .orrec package."
       },
       {
         category: "Extensions",
-        usage: "openruntime record start [--out <path>] [--interval <ms>] [--mic]",
-        description: "Prepare a manual recording before the next openruntime open; write under ./recordings when out is omitted."
+        usage: "divebell record start [--out <path>] [--interval <ms>] [--mic]",
+        description: "Prepare a manual recording before the next divebell open; write under ./recordings when out is omitted."
       },
       {
         category: "Extensions",
-        usage: "openruntime record stop --out <path> [--script-out <path>] [--no-script]",
+        usage: "divebell record stop --out <path> [--script-out <path>] [--no-script]",
         description: "Stop a manual recording on the current page, capture final evidence, and draft a script by default."
       },
       {
         category: "Extensions",
-        usage: "openruntime record generate-script --input <path> [--out <path>]",
+        usage: "divebell record generate-script --input <path> [--out <path>]",
         description: "Regenerate a JavaScript script draft from an existing .orrec recording."
       },
       {
         category: "Extensions",
-        usage: "openruntime record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
+        usage: "divebell record transcribe --input <path> [--audio <path>] [--model <model>] [--api-key <key>]",
         description: "Transcribe microphone audio from an .orrec recording into timestamped text."
       }
     ],
@@ -37,6 +37,6 @@ const extension = {
   hooks: {
     open: async (options) => await (await import("./open.js")).runRecordingOpenHook(options)
   }
-} satisfies OpenRuntimeExtensionDefinition;
+} satisfies DivebellExtensionDefinition;
 
 export default extension;

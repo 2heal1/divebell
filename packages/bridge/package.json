@@ -1,11 +1,11 @@
 {
-  "name": "@openruntime/bridge",
+  "name": "@divebell/bridge",
   "version": "0.1.7",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/2heal1/openruntime.git",
+    "url": "git+https://github.com/2heal1/divebell.git",
     "directory": "packages/bridge"
   },
   "author": "2heal1",
@@ -31,7 +31,7 @@
     "test": "pnpm run build && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
-    "@openruntime/core": "workspace:^"
+    "@divebell/core": "workspace:^"
   },
   "devDependencies": {
     "@rstest/core": "0.10.3"

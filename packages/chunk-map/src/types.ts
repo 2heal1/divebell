@@ -1,38 +1,38 @@
 // Framework-independent format emitted by supported build plugins.
-export const OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION = 3 as const;
+export const DIVEBELL_CHUNK_MAP_SCHEMA_VERSION = 3 as const;
 
-export type OpenRuntimeChunkMapModuleKind =
+export type DivebellChunkMapModuleKind =
   | "application"
   | "workspace"
   | "third-party"
   | "runtime"
   | "unknown";
 
-export interface OpenRuntimeChunkMapModuleOwner {
-  kind: OpenRuntimeChunkMapModuleKind;
+export interface DivebellChunkMapModuleOwner {
+  kind: DivebellChunkMapModuleKind;
   packageName: string | null;
   packageVersion: string | null;
   packageSubpath: string | null;
 }
 
-export interface OpenRuntimeChunkMapAsset {
+export interface DivebellChunkMapAsset {
   file: string;
   size: number | null;
   sourceMap: string | null;
 }
 
-export interface OpenRuntimeChunkMapModule {
+export interface DivebellChunkMapModule {
   id: string | null;
   identifier: string;
   name: string;
   sourcePath: string | null;
   moduleType: string | null;
   size: number;
-  owner: OpenRuntimeChunkMapModuleOwner;
+  owner: DivebellChunkMapModuleOwner;
 }
 
-export interface OpenRuntimeChunkMapPackageSummary {
-  kind: Exclude<OpenRuntimeChunkMapModuleKind, "runtime" | "unknown">;
+export interface DivebellChunkMapPackageSummary {
+  kind: Exclude<DivebellChunkMapModuleKind, "runtime" | "unknown">;
   packageName: string;
   packageVersion: string | null;
   chunks: string[];
@@ -43,7 +43,7 @@ export interface OpenRuntimeChunkMapPackageSummary {
   moduleSize: number;
 }
 
-export type OpenRuntimeChunkMapSplitRuleKind =
+export type DivebellChunkMapSplitRuleKind =
   | "entry"
   | "runtime"
   | "cache-group"
@@ -51,50 +51,50 @@ export type OpenRuntimeChunkMapSplitRuleKind =
   | "split-chunks"
   | "unknown";
 
-export interface OpenRuntimeChunkMapSplitRule {
-  kind: OpenRuntimeChunkMapSplitRuleKind;
+export interface DivebellChunkMapSplitRule {
+  kind: DivebellChunkMapSplitRuleKind;
   name: string;
   configPath: string | null;
   inferred: boolean;
 }
 
-export interface OpenRuntimeChunkMapChunk {
+export interface DivebellChunkMapChunk {
   id: string;
   names: string[];
-  assets: OpenRuntimeChunkMapAsset[];
+  assets: DivebellChunkMapAsset[];
   initial: boolean;
   entry: boolean;
   entrypoints: string[];
   groups: string[];
   parents: string[];
   children: string[];
-  splitRule: OpenRuntimeChunkMapSplitRule;
-  modules: OpenRuntimeChunkMapModule[];
+  splitRule: DivebellChunkMapSplitRule;
+  modules: DivebellChunkMapModule[];
   moduleSize: number;
 }
 
-export interface OpenRuntimeChunkMap {
-  schemaVersion: typeof OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION;
+export interface DivebellChunkMap {
+  schemaVersion: typeof DIVEBELL_CHUNK_MAP_SCHEMA_VERSION;
   generator: string;
   buildId: string;
   publicPath: string | null;
-  chunks: OpenRuntimeChunkMapChunk[];
-  packages: OpenRuntimeChunkMapPackageSummary[];
+  chunks: DivebellChunkMapChunk[];
+  packages: DivebellChunkMapPackageSummary[];
 }
 
-export interface OpenRuntimeChunkMapCreateOptions {
+export interface DivebellChunkMapCreateOptions {
   buildId?: string;
   context?: string;
   generator?: string;
 }
 
-export type OpenRuntimeChunkMatchResult =
+export type DivebellChunkMatchResult =
   | {
       status: "matched";
       requestUrl: string;
       requestPath: string;
-      chunk: OpenRuntimeChunkMapChunk;
-      asset: OpenRuntimeChunkMapAsset;
+      chunk: DivebellChunkMapChunk;
+      asset: DivebellChunkMapAsset;
     }
   | {
       status: "not-found";

@@ -1,9 +1,9 @@
 # Northstar Supply Quick Start app
 
 This is the source for the hosted
-[OpenRuntime Quick Start](https://2heal1.github.io/openruntime/quickstart/).
+[Divebell Quick Start](https://2heal1.github.io/divebell/quickstart/).
 It is presented as a normal operations product: the page does not display an
-OpenRuntime walkthrough, agent instructions, or debugging answers. Runtime
+Divebell walkthrough, agent instructions, or debugging answers. Runtime
 Core and the controlled analysis scenarios remain available behind the
 application surface. Users do not need to clone this repository.
 
@@ -12,7 +12,7 @@ application surface. Users do not need to clone this repository.
 From the repository root:
 
 ```bash
-pnpm --filter @openruntime/demo-quickstart dev
+pnpm --filter @divebell/demo-quickstart dev
 ```
 
 Open `http://localhost:19084/`.
@@ -20,9 +20,9 @@ Open `http://localhost:19084/`.
 Build the GitHub Pages form and verify its analysis assets:
 
 ```bash
-pnpm --filter @openruntime/demo-quickstart build:pages
-OPENRUNTIME_PAGES_BASE=/openruntime/quickstart/ \
-  pnpm --filter @openruntime/demo-quickstart verify:build
+pnpm --filter @divebell/demo-quickstart build:pages
+DIVEBELL_PAGES_BASE=/divebell/quickstart/ \
+  pnpm --filter @divebell/demo-quickstart verify:build
 ```
 
 ## Scenarios
@@ -36,5 +36,5 @@ OPENRUNTIME_PAGES_BASE=/openruntime/quickstart/ \
   listeners for a repeatable memory Extension check.
 
 The production build publishes full JavaScript source maps and
-`openruntime-chunks.json`. Code-usage analysis combines those exact build files
+`divebell-chunks.json`. Code-usage analysis combines those exact build files
 with browser coverage; source maps by themselves do not record execution.

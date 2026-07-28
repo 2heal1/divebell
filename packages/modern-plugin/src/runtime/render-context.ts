@@ -1,12 +1,12 @@
-export const openRuntimeContextScriptId = "__OPEN_RUNTIME_CONTEXT__";
+export const divebellContextScriptId = "__DIVEBELL_CONTEXT__";
 
-export interface OpenRuntimeRenderContext {
+export interface DivebellRenderContext {
   runtimeId: string;
   renderId: string;
   source: string;
 }
 
-export function createOpenRuntimeRenderContext(source: string): OpenRuntimeRenderContext {
+export function createDivebellRenderContext(source: string): DivebellRenderContext {
   return {
     runtimeId: createId("runtime"),
     renderId: createId("render"),
@@ -14,11 +14,11 @@ export function createOpenRuntimeRenderContext(source: string): OpenRuntimeRende
   };
 }
 
-export function injectOpenRuntimeRenderContext(
+export function injectDivebellRenderContext(
   html: string,
-  context: OpenRuntimeRenderContext
+  context: DivebellRenderContext
 ): string {
-  const script = createOpenRuntimeRenderContextScript(context);
+  const script = createDivebellRenderContextScript(context);
   if (html.includes("</head>")) {
     return html.replace("</head>", `${script}</head>`);
   }
@@ -26,18 +26,18 @@ export function injectOpenRuntimeRenderContext(
   return `${script}${html}`;
 }
 
-export function createOpenRuntimeRenderContextScript(context: OpenRuntimeRenderContext): string {
-  return `<script id="${openRuntimeContextScriptId}" type="application/json">${escapeJsonForHtml(context)}</script>`;
+export function createDivebellRenderContextScript(context: DivebellRenderContext): string {
+  return `<script id="${divebellContextScriptId}" type="application/json">${escapeJsonForHtml(context)}</script>`;
 }
 
-export function readOpenRuntimeRenderContext(): OpenRuntimeRenderContext | undefined {
-  const element = globalThis.document?.getElementById(openRuntimeContextScriptId);
+export function readDivebellRenderContext(): DivebellRenderContext | undefined {
+  const element = globalThis.document?.getElementById(divebellContextScriptId);
   if (element?.textContent === undefined || element.textContent.length === 0) {
     return undefined;
   }
 
   try {
-    const value = JSON.parse(element.textContent) as Partial<OpenRuntimeRenderContext>;
+    const value = JSON.parse(element.textContent) as Partial<DivebellRenderContext>;
     if (
       typeof value.runtimeId !== "string" ||
       typeof value.renderId !== "string" ||

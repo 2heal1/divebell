@@ -1,5 +1,5 @@
 {
-  "name": "@openruntime/demo-modern-basic",
+  "name": "@divebell/demo-modern-basic",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,7 @@
     "build": "modern build",
     "verify:chunk-map": "pnpm --dir ../../packages/modern-plugin build && modern build && node ./scripts/verify-chunk-map.mjs",
     "serve": "modern serve",
-    "verify": "node ./scripts/verify-openruntime.mjs",
+    "verify": "node ./scripts/verify-divebell.mjs",
     "verify:memory": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extension-memory build && node ./scripts/run-extension-package.mjs ../../packages/extension-memory memory check --url http://localhost:19081/ --scenario ./scripts/memory-scenario.mjs --artifact-dir ./.memory-artifacts",
     "verify:experience": "node ./scripts/verify-experience.mjs",
     "report:serve": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extension-code-usage build && node ./scripts/run-extension-package.mjs ../../packages/extension-code-usage code-usage serve ./.page-experience-artifacts/report.json --port 4173",
@@ -16,14 +16,14 @@
   },
   "dependencies": {
     "@modern-js/runtime": "link:../../../../work/modern.js/packages/runtime/plugin-runtime",
-    "@openruntime/core": "workspace:^",
-    "@openruntime/modern-plugin": "workspace:^",
+    "@divebell/core": "workspace:^",
+    "@divebell/modern-plugin": "workspace:^",
     "react": "link:../../../../work/modern.js/node_modules/.pnpm/react@19.2.7/node_modules/react",
     "react-dom": "link:../../../../work/modern.js/node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom"
   },
   "devDependencies": {
     "@modern-js/app-tools": "link:../../../../work/modern.js/packages/solutions/app-tools",
-    "@openruntime/cli": "workspace:^",
+    "@divebell/cli": "workspace:^",
     "@types/react": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react",
     "@types/react-dom": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.17/node_modules/@types/react-dom",
     "typescript": "5.9.3"

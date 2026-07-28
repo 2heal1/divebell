@@ -1,16 +1,16 @@
 {
-  "name": "@openruntime/extension-memory",
+  "name": "@divebell/extension-memory",
   "version": "0.1.7",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/2heal1/openruntime.git",
+    "url": "git+https://github.com/2heal1/divebell.git",
     "directory": "packages/extension-memory"
   },
   "author": "2heal1",
   "main": "./dist/index.js",
-  "openruntime": {
+  "divebell": {
     "schemaVersion": 1,
     "extensions": [
       "./dist/extension.js"

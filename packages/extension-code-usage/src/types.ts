@@ -1,4 +1,4 @@
-import type { OpenRuntimeCodeUsageReport } from "@openruntime/chunk-map";
+import type { DivebellCodeUsageReport } from "@divebell/chunk-map";
 
 export interface AnalyzeCodeUsageFilesOptions {
   chunkMap: string;
@@ -13,7 +13,7 @@ export interface AnalyzeCodeUsageFilesResult {
   assets: string;
   output: string;
   phaseCount: number;
-  report: OpenRuntimeCodeUsageReport;
+  report: DivebellCodeUsageReport;
 }
 
 export interface CodeUsageReportWriteOptions {

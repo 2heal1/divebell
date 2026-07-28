@@ -1,9 +1,9 @@
 {
-  "name": "@openruntime/demo-cli-extension",
+  "name": "@divebell/demo-cli-extension",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "openruntime": {
+  "divebell": {
     "schemaVersion": 1,
     "extensions": [
       "./index.mjs"

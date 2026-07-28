@@ -1,5 +1,5 @@
-import { OPEN_RUNTIME_SESSION_QUERY_PARAM } from "@openruntime/core";
-import type { BridgeRuntimeInfo } from "@openruntime/bridge";
+import { DIVEBELL_SESSION_QUERY_PARAM } from "@divebell/core";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
 import { readFile } from "node:fs/promises";
 import {
   createGetWindowScript,
@@ -11,7 +11,7 @@ import {
 import {
   canAutoStartBridge,
   createFileBridgeStateStore,
-  ensureBridge as ensureOpenRuntimeBridge,
+  ensureBridge as ensureDivebellBridge,
   type EnsureBridgeResult
 } from "../bridge/process.js";
 import { waitForRuntimeCommand } from "../runtime/wait.js";
@@ -30,21 +30,21 @@ import { createError } from "../../utils/output.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
 
 import type {
-  CreateOpenRuntimeExtensionApiOptions,
-  OpenRuntimeBrowserApi,
-  OpenRuntimeBrowserConsoleEntry,
-  OpenRuntimeBrowserConsoleLevel,
-  OpenRuntimeBrowserConsoleOptions,
-  OpenRuntimeBrowserConsoleResult,
-  OpenRuntimeBrowserCoverageCheckpointOptions,
-  OpenRuntimeBrowserWaitEvalResult,
-  OpenRuntimeExtensionApi,
-  OpenRuntimeResourceQuery,
-  OpenRuntimeWaitOptions
+  CreateDivebellExtensionApiOptions,
+  DivebellBrowserApi,
+  DivebellBrowserConsoleEntry,
+  DivebellBrowserConsoleLevel,
+  DivebellBrowserConsoleOptions,
+  DivebellBrowserConsoleResult,
+  DivebellBrowserCoverageCheckpointOptions,
+  DivebellBrowserWaitEvalResult,
+  DivebellExtensionApi,
+  DivebellResourceQuery,
+  DivebellWaitOptions
 } from "./types.js";
 export type * from "./types.js";
 
-export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensionApiOptions): OpenRuntimeExtensionApi {
+export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOptions): DivebellExtensionApi {
   const bridgeUrl = createBridgeUrl(options.args);
   const runtimeSelector = createRuntimeSelector(options.args);
 
@@ -57,7 +57,7 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
         status: "remote"
       };
     }
-    return await ensureOpenRuntimeBridge({
+    return await ensureDivebellBridge({
       fetcher: options.fetcher,
       bridgeUrl,
       starter: options.bridgeStarter,
@@ -81,7 +81,7 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
 
   const fetchResource = async <T>(
     resource: "targets" | "snapshot" | "events" | "actions",
-    query: OpenRuntimeResourceQuery | undefined,
+    query: DivebellResourceQuery | undefined,
     selector: RuntimeSelector | undefined
   ): Promise<RuntimeResourceResult<T>> => {
     const runtime = await chooseRuntime(selector);
@@ -115,7 +115,7 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
       const runtime = await chooseRuntime();
       return await runRuntimeAction(options.fetcher, bridgeUrl, runtime, actionName, payload);
     },
-    waitFor: async <T = unknown>(targetId: string, status: string, waitOptions: OpenRuntimeWaitOptions = {}) => {
+    waitFor: async <T = unknown>(targetId: string, status: string, waitOptions: DivebellWaitOptions = {}) => {
       const waitArgs = withNumberOption(options.args, "timeout", waitOptions.timeout);
       return await waitForRuntimeCommand(
         waitArgs,
@@ -129,7 +129,7 @@ export function createOpenRuntimeExtensionApi(options: CreateOpenRuntimeExtensio
         waitOptions.where
       ) as RuntimeResourceResult<T>;
     },
-    browser: createOpenRuntimeBrowserApi({
+    browser: createDivebellBrowserApi({
       browserRunner: options.browserRunner,
       allowWithoutOpenContext: hasRuntimeSelectorValue(runtimeSelector),
       ...(options.openContext === undefined ? {} : { openContext: options.openContext })
@@ -147,11 +147,11 @@ function withNumberOption(args: ParsedCliArgs, name: string, value: number | und
   };
 }
 
-function createOpenRuntimeBrowserApi(options: {
+function createDivebellBrowserApi(options: {
   browserRunner: BrowserRunner;
   allowWithoutOpenContext: boolean;
   openContext?: CliOperationLogEntry;
-}): OpenRuntimeBrowserApi {
+}): DivebellBrowserApi {
   const runText = async (args: string[]): Promise<string> => {
     if (options.openContext === undefined && !options.allowWithoutOpenContext) {
       throw createOpenContextRequiredError();
@@ -273,7 +273,7 @@ function createOpenRuntimeBrowserApi(options: {
 
 function createCoverageCheckpointArgs(
   operation: "take" | "stop",
-  options: OpenRuntimeBrowserCoverageCheckpointOptions
+  options: DivebellBrowserCoverageCheckpointOptions
 ): string[] {
   const args = ["coverage", operation];
   if (options.path !== undefined) args.push(options.path);
@@ -299,7 +299,7 @@ function createOpenContextRequiredError(): Error {
     kind: "validation",
     message: "No opened page context was found.",
     retryable: false,
-    hint: "Run `openruntime open <url>` before running page commands."
+    hint: "Run `divebell open <url>` before running page commands."
   });
 }
 
@@ -310,7 +310,7 @@ function createRuntimeSelector(args: ParsedCliArgs): RuntimeSelector {
   const url = getOptionValue(args, "url");
   if (runtimeId !== undefined) selector.runtimeId = runtimeId;
   if (sessionId !== undefined) selector.sessionId = sessionId;
-  if (url !== undefined) selector.url = withOpenRuntimeSession(url, sessionId);
+  if (url !== undefined) selector.url = withDivebellSession(url, sessionId);
   return selector;
 }
 
@@ -328,7 +328,7 @@ function createBridgeUrl(args: ParsedCliArgs): string {
   return normalizeBridgeUrl(undefined);
 }
 
-function createSearchParams(query: OpenRuntimeResourceQuery | undefined): URLSearchParams {
+function createSearchParams(query: DivebellResourceQuery | undefined): URLSearchParams {
   const params = new URLSearchParams();
   if (query === undefined) return params;
 
@@ -348,12 +348,12 @@ function normalizeQueryName(name: string): string {
   return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
-function withOpenRuntimeSession(input: string, sessionId: string | undefined): string {
+function withDivebellSession(input: string, sessionId: string | undefined): string {
   if (sessionId === undefined || sessionId.length === 0) return input;
 
   try {
     const url = new URL(input);
-    url.searchParams.set(OPEN_RUNTIME_SESSION_QUERY_PARAM, sessionId);
+    url.searchParams.set(DIVEBELL_SESSION_QUERY_PARAM, sessionId);
     return url.toString();
   } catch {
     return input;
@@ -364,7 +364,7 @@ async function waitForBrowserEval(
   browserRunner: BrowserRunner,
   script: string,
   timeout: number | undefined
-): Promise<OpenRuntimeBrowserWaitEvalResult> {
+): Promise<DivebellBrowserWaitEvalResult> {
   const deadline = Date.now() + (timeout ?? 5000);
   let lastValue: unknown;
   let lastError: string | undefined;
@@ -400,14 +400,14 @@ async function waitForBrowserEval(
   };
 }
 
-function parseConsoleEntries(value: unknown): OpenRuntimeBrowserConsoleEntry[] {
+function parseConsoleEntries(value: unknown): DivebellBrowserConsoleEntry[] {
   const rawEntries = Array.isArray(value)
     ? value
     : isRecord(value) && Array.isArray(value.messages)
       ? value.messages
       : [];
 
-  return rawEntries.flatMap((entry): OpenRuntimeBrowserConsoleEntry[] => {
+  return rawEntries.flatMap((entry): DivebellBrowserConsoleEntry[] => {
     if (entry === null || typeof entry !== "object") return [];
     const item = entry as Record<string, unknown>;
     const level = normalizeConsoleLevel(item.level ?? item.type);
@@ -429,13 +429,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeConsoleLevels(
-  levels: OpenRuntimeBrowserConsoleOptions["levels"] | undefined
-): Set<OpenRuntimeBrowserConsoleLevel> | undefined {
+  levels: DivebellBrowserConsoleOptions["levels"] | undefined
+): Set<DivebellBrowserConsoleLevel> | undefined {
   if (levels === undefined) return undefined;
   return levels instanceof Set ? levels : new Set(levels);
 }
 
-function normalizeConsoleLevel(value: unknown): OpenRuntimeBrowserConsoleLevel | undefined {
+function normalizeConsoleLevel(value: unknown): DivebellBrowserConsoleLevel | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.toLowerCase();
   if (normalized === "warning") return "warn";
@@ -446,13 +446,13 @@ function normalizeConsoleLevel(value: unknown): OpenRuntimeBrowserConsoleLevel |
 }
 
 function filterConsoleEntries(
-  entries: OpenRuntimeBrowserConsoleEntry[],
+  entries: DivebellBrowserConsoleEntry[],
   options: {
-    levels?: Set<OpenRuntimeBrowserConsoleLevel>;
+    levels?: Set<DivebellBrowserConsoleLevel>;
     query?: string;
     limit?: number;
   }
-): OpenRuntimeBrowserConsoleEntry[] {
+): DivebellBrowserConsoleEntry[] {
   const normalizedQuery = options.query?.toLowerCase();
   const filtered = entries.filter((entry) =>
     (options.levels === undefined || options.levels.has(entry.level)) &&
@@ -465,7 +465,7 @@ function filterConsoleEntries(
   return filtered.slice(-options.limit);
 }
 
-function summarizeConsoleEntries(entries: OpenRuntimeBrowserConsoleEntry[]): OpenRuntimeBrowserConsoleResult["summary"] {
+function summarizeConsoleEntries(entries: DivebellBrowserConsoleEntry[]): DivebellBrowserConsoleResult["summary"] {
   const summary = {
     total: entries.length,
     log: 0,

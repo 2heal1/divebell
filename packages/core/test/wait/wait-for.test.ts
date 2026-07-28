@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
 
-import { createOpenRuntime } from "../../dist/index.js";
+import { createDivebell } from "../../dist/index.js";
 import { createClock, registerRoute } from "../helpers/runtime.ts";
 
 test("waits for target status changes", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   registerRoute(runtime);
   const wait = runtime.waitFor({ id: "route:/home", status: "ready" }, { timeout: 100 });
@@ -18,7 +18,7 @@ test("waits for target status changes", async () => {
 });
 
 test("waits for target status and data conditions", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   runtime.registerTarget({
     id: "modern:route",
@@ -61,7 +61,7 @@ test("waits for target status and data conditions", async () => {
 });
 
 test("returns wait failures for unknown, unregistered and timed out targets", async () => {
-  const runtime = createOpenRuntime({ clock: createClock() });
+  const runtime = createDivebell({ clock: createClock() });
 
   const unknown = await runtime.waitFor({ id: "route:/missing", status: "ready" });
   assert.deepEqual(

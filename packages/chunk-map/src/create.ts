@@ -1,14 +1,14 @@
 // Chunk Map creation is shared by every supported build integration.
 import {
-  OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION,
-  type OpenRuntimeChunkMap,
-  type OpenRuntimeChunkMapAsset,
-  type OpenRuntimeChunkMapChunk,
-  type OpenRuntimeChunkMapCreateOptions,
-  type OpenRuntimeChunkMapModule,
-  type OpenRuntimeChunkMapModuleOwner,
-  type OpenRuntimeChunkMapPackageSummary,
-  type OpenRuntimeChunkMapSplitRule
+  DIVEBELL_CHUNK_MAP_SCHEMA_VERSION,
+  type DivebellChunkMap,
+  type DivebellChunkMapAsset,
+  type DivebellChunkMapChunk,
+  type DivebellChunkMapCreateOptions,
+  type DivebellChunkMapModule,
+  type DivebellChunkMapModuleOwner,
+  type DivebellChunkMapPackageSummary,
+  type DivebellChunkMapSplitRule
 } from "./types.js";
 
 interface StatsAssetLike {
@@ -46,7 +46,7 @@ interface StatsChunkGroupLike {
   chunks?: unknown;
 }
 
-export interface OpenRuntimeChunkMapStats {
+export interface DivebellChunkMapStats {
   hash?: unknown;
   publicPath?: unknown;
   assets?: unknown;
@@ -56,13 +56,13 @@ export interface OpenRuntimeChunkMapStats {
   namedChunkGroups?: unknown;
 }
 
-export function createOpenRuntimeChunkMap(
-  stats: OpenRuntimeChunkMapStats,
-  options: OpenRuntimeChunkMapCreateOptions = {}
-): OpenRuntimeChunkMap {
+export function createDivebellChunkMap(
+  stats: DivebellChunkMapStats,
+  options: DivebellChunkMapCreateOptions = {}
+): DivebellChunkMap {
   const buildId = nonEmptyString(options.buildId) ?? nonEmptyString(stats.hash);
   if (buildId === null) {
-    throw new Error("Cannot create an OpenRuntime Chunk Map without a build id.");
+    throw new Error("Cannot create a Divebell Chunk Map without a build id.");
   }
 
   const assetsByName = createAssetIndex(asArray<StatsAssetLike>(stats.assets));
@@ -81,8 +81,8 @@ export function createOpenRuntimeChunkMap(
     .sort(compareChunks);
 
   return {
-    schemaVersion: OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION,
-    generator: options.generator ?? "@openruntime/chunk-map",
+    schemaVersion: DIVEBELL_CHUNK_MAP_SCHEMA_VERSION,
+    generator: options.generator ?? "@divebell/chunk-map",
     buildId,
     publicPath: normalizePublicPath(stats.publicPath),
     chunks,
@@ -92,15 +92,15 @@ export function createOpenRuntimeChunkMap(
 
 function createChunk(input: {
   chunk: StatsChunkLike;
-  assetsByName: Map<string, OpenRuntimeChunkMapAsset>;
+  assetsByName: Map<string, DivebellChunkMapAsset>;
   topLevelModules: StatsModuleLike[];
   entrypointChunks: Map<string, Set<string>>;
   namedGroupChunks: Map<string, Set<string>>;
   context: string | undefined;
-}): OpenRuntimeChunkMapChunk {
+}): DivebellChunkMapChunk {
   const id = valueId(input.chunk.id);
   if (id === null) {
-    throw new Error("Cannot create an OpenRuntime Chunk Map for a chunk without an id.");
+    throw new Error("Cannot create a Divebell Chunk Map for a chunk without an id.");
   }
 
   const entrypoints = groupsContaining(input.entrypointChunks, id);
@@ -142,7 +142,7 @@ function createBaseSplitRule(input: {
   entry: boolean;
   initial: boolean;
   groups: string[];
-}): OpenRuntimeChunkMapSplitRule {
+}): DivebellChunkMapSplitRule {
   if (input.entry) {
     return {
       kind: "entry",
@@ -167,8 +167,8 @@ function createBaseSplitRule(input: {
   };
 }
 
-function createAssetIndex(assets: StatsAssetLike[]): Map<string, OpenRuntimeChunkMapAsset> {
-  const result = new Map<string, OpenRuntimeChunkMapAsset>();
+function createAssetIndex(assets: StatsAssetLike[]): Map<string, DivebellChunkMapAsset> {
+  const result = new Map<string, DivebellChunkMapAsset>();
   const assetNames = new Set(
     assets.map((asset) => nonEmptyString(asset.name)).filter((file): file is string => file !== null)
   );
@@ -218,8 +218,8 @@ function flattenModules(modules: StatsModuleLike[]): StatsModuleLike[] {
 function normalizeModules(
   modules: StatsModuleLike[],
   context: string | undefined
-): OpenRuntimeChunkMapModule[] {
-  const result = new Map<string, OpenRuntimeChunkMapModule>();
+): DivebellChunkMapModule[] {
+  const result = new Map<string, DivebellChunkMapModule>();
   for (const module of modules) {
     const identifier = nonEmptyString(module.identifier) ?? nonEmptyString(module.name);
     if (identifier === null) continue;
@@ -227,7 +227,7 @@ function normalizeModules(
       nonEmptyString(module.resource) ?? module.nameForCondition,
       identifier
     );
-    const normalized: OpenRuntimeChunkMapModule = {
+    const normalized: DivebellChunkMapModule = {
       id: valueId(module.id),
       identifier,
       name: nonEmptyString(module.name) ?? identifier,
@@ -252,7 +252,7 @@ function createModuleOwner(
   sourcePath: string | null,
   identifier: string,
   context: string | undefined
-): OpenRuntimeChunkMapModuleOwner {
+): DivebellChunkMapModuleOwner {
   if (isRuntimeModule(identifier, sourcePath)) {
     return emptyOwner("runtime");
   }
@@ -307,10 +307,10 @@ function createModuleOwner(
 }
 
 function createPackageSummaries(
-  chunks: OpenRuntimeChunkMapChunk[]
-): OpenRuntimeChunkMapPackageSummary[] {
+  chunks: DivebellChunkMapChunk[]
+): DivebellChunkMapPackageSummary[] {
   const summaries = new Map<string, {
-    summary: OpenRuntimeChunkMapPackageSummary;
+    summary: DivebellChunkMapPackageSummary;
     modules: Set<string>;
   }>();
   for (const chunk of chunks) {
@@ -381,7 +381,7 @@ function isRuntimeModule(identifier: string, sourcePath: string | null): boolean
     || (sourcePath === null && identifier.startsWith("runtime "));
 }
 
-function emptyOwner(kind: "runtime" | "unknown"): OpenRuntimeChunkMapModuleOwner {
+function emptyOwner(kind: "runtime" | "unknown"): DivebellChunkMapModuleOwner {
   return {
     kind,
     packageName: null,
@@ -492,7 +492,7 @@ function normalizePublicPath(value: unknown): string | null {
   return publicPath;
 }
 
-function compareChunks(left: OpenRuntimeChunkMapChunk, right: OpenRuntimeChunkMapChunk): number {
+function compareChunks(left: DivebellChunkMapChunk, right: DivebellChunkMapChunk): number {
   return left.id.localeCompare(right.id, undefined, { numeric: true });
 }
 

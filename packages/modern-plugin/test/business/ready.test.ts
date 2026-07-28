@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
 import {
-  markOpenRuntimeReady,
-  markOpenRuntimeReadyError,
-  registerOpenRuntimeReady,
-  unregisterOpenRuntimeReady
+  markDivebellReady,
+  markDivebellReadyError,
+  registerDivebellReady,
+  unregisterDivebellReady
 } from "../../dist/index.js";
 
 test("registers and marks a business ready target", () => {
-  const runtime = createOpenRuntime();
+  const runtime = createDivebell();
 
-  const targetId = registerOpenRuntimeReady({
+  const targetId = registerDivebellReady({
     runtime,
     id: "checkout",
     label: "Checkout ready",
@@ -23,22 +23,22 @@ test("registers and marks a business ready target", () => {
   assert.equal(targetId, "business:ready:checkout");
   assert.equal(runtime.getSnapshot().targets[targetId]?.status, "pending");
 
-  markOpenRuntimeReady(runtime, "checkout", {
+  markDivebellReady(runtime, "checkout", {
     step: "payment"
   });
   assert.equal(runtime.getSnapshot().targets[targetId]?.status, "ready");
 
-  registerOpenRuntimeReady({
+  registerDivebellReady({
     runtime,
     id: "checkout"
   });
   assert.equal(runtime.getSnapshot().targets[targetId]?.status, "ready");
 
-  markOpenRuntimeReadyError(runtime, "checkout failed", "checkout");
+  markDivebellReadyError(runtime, "checkout failed", "checkout");
   assert.equal(runtime.getSnapshot().targets[targetId]?.status, "error");
   assert.equal(runtime.getSnapshot().targets[targetId]?.error?.message, "checkout failed");
 
-  unregisterOpenRuntimeReady(runtime, "checkout");
+  unregisterDivebellReady(runtime, "checkout");
   assert.equal(runtime.getTargets({ id: targetId }).length, 0);
   assert.equal(runtime.getSnapshot().targets[targetId], undefined);
 });

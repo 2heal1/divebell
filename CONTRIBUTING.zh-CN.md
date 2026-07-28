@@ -1,8 +1,8 @@
-# 为 OpenRuntime 做贡献
+# 为 Divebell 做贡献
 
 [English](./CONTRIBUTING.md) | 中文
 
-感谢你参与 OpenRuntime。本指南说明如何准备开发环境、开发各个包、运行当前仓库里的 CLI，以及提交
+感谢你参与 Divebell。本指南说明如何准备开发环境、开发各个包、运行当前仓库里的 CLI，以及提交
 Pull Request 前如何验证改动。
 
 ## 环境要求
@@ -23,8 +23,8 @@ corepack prepare pnpm@10.18.1 --activate
 克隆仓库，并安装根目录和各个正式包的依赖：
 
 ```bash
-git clone https://github.com/2heal1/openruntime.git
-cd openruntime
+git clone https://github.com/2heal1/divebell.git
+cd divebell
 pnpm --filter . --filter "./packages/*" install --frozen-lockfile
 pnpm build
 ```
@@ -36,31 +36,31 @@ pnpm build
 在仓库根目录执行：
 
 ```bash
-./openruntime --help
+./divebell --help
 ```
 
-`./openruntime` 直接指向当前仓库的 `packages/cli/dist/bin.js`，不会误用电脑上全局安装或已经发布的
-`openruntime` 命令。
+`./divebell` 直接指向当前仓库的 `packages/cli/dist/bin.js`，不会误用电脑上全局安装或已经发布的
+`divebell` 命令。
 
 修改 CLI、Core 或 Bridge 后，先重新构建 CLI 及其引用的包，再运行命令：
 
 ```bash
-pnpm --filter @openruntime/cli build
-./openruntime <command> [options]
+pnpm --filter @divebell/cli build
+./divebell <command> [options]
 ```
 
 CLI 会按当前工作目录保存页面和浏览器上下文。一般的 CLI 开发可以在仓库根目录使用
-`./openruntime`。如果测试场景需要使用其他工作目录，可以在那个目录直接运行同一个入口：
+`./divebell`。如果测试场景需要使用其他工作目录，可以在那个目录直接运行同一个入口：
 
 ```bash
-/absolute/path/to/openruntime/openruntime <command> [options]
+/absolute/path/to/divebell/divebell <command> [options]
 ```
 
 ## 目录结构
 
 - `packages/core`：可选的页面侧 Runtime Core API。
 - `packages/bridge`：连接页面 Runtime 和 CLI。
-- `packages/cli`：提供 `openruntime` 和 `opr` 命令。
+- `packages/cli`：提供 `divebell` 命令。
 - `packages/extension-*`：各类专项 Extension。
 - `packages/chunk-map`、`packages/modern-plugin` 和 `packages/rspack-plugin`：构建和框架接入。
 - `demos`：有代表性的应用和 Extension 示例。
@@ -83,10 +83,10 @@ CLI 会按当前工作目录保存页面和浏览器上下文。一般的 CLI �
 pnpm build
 
 # 构建单个包
-pnpm --filter @openruntime/cli build
+pnpm --filter @divebell/cli build
 
 # 测试单个包
-pnpm --filter @openruntime/cli test
+pnpm --filter @divebell/cli test
 
 # 测试所有包
 pnpm test
@@ -113,7 +113,7 @@ pnpm docs:cli:check -- --no-build
 
 ## 设计边界
 
-- OpenRuntime 是面向 Coding Agent 的 Web 开发调试工具。不要重新使用旧的 “Agent Runtime”
+- Divebell 是面向 Coding Agent 的 Web 开发调试工具。不要重新使用旧的 “Agent Runtime”
   产品名。
 - Runtime Core 是可选能力。没有接入 Runtime Core 的页面仍然必须可以使用浏览器操作、诊断、
   登录状态复用和 Extension。
@@ -137,7 +137,7 @@ pnpm docs:cli:check -- --no-build
 pnpm changeset
 ```
 
-选择受影响的包，并用一句话说明用户可以感知到的结果。只改文档，或只增加 `./openruntime` 这类
+选择受影响的包，并用一句话说明用户可以感知到的结果。只改文档，或只增加 `./divebell` 这类
 仓库内部入口时，不需要 changeset。
 
 ## Pull Request 提交清单

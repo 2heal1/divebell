@@ -17,5 +17,5 @@ for (const entry of await readdir(distDirectory, { withFileTypes: true })) {
   if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
   const path = resolve(distDirectory, entry.name);
   const source = await readFile(path, "utf8");
-  await writeFile(path, source.replaceAll('from "@openruntime/chunk-map"', 'from "./vendor/chunk-map/index.js"'), "utf8");
+  await writeFile(path, source.replaceAll('from "@divebell/chunk-map"', 'from "./vendor/chunk-map/index.js"'), "utf8");
 }

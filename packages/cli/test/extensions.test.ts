@@ -6,20 +6,20 @@ import { spawnSync } from "node:child_process";
 import { test } from "@rstest/core";
 
 import {
-  createOpenRuntimeCliWithExternalExtensions,
-  createOpenRuntimeCli,
+  createDivebellCliWithExternalExtensions,
+  createDivebellCli,
   runCli,
-  type OpenRuntimeExtensionCommand,
-  type OpenRuntimeExtensionDefinition
+  type DivebellExtensionCommand,
+  type DivebellExtensionDefinition
 } from "../dist/index.js";
 import { runOpenHooks } from "../dist/features/extension/hooks.js";
 
 import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
 
 function createCommandExtension(
-  command: OpenRuntimeExtensionCommand,
+  command: DivebellExtensionCommand,
   extensionName = command.name
-): OpenRuntimeExtensionDefinition {
+): DivebellExtensionDefinition {
   return {
     schemaVersion: 1,
     name: extensionName,
@@ -28,21 +28,21 @@ function createCommandExtension(
 }
 
 test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-hooks-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-hooks-"));
   const calls: string[] = [];
   let closeCount = 0;
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "modern-detector",
       hooks: {
         open: async () => {
           calls.push("open");
-          return { scripts: ["globalThis.__OPENRUNTIME_HOOK_TEST__ = true;"] };
+          return { scripts: ["globalThis.__DIVEBELL_HOOK_TEST__ = true;"] };
         },
-        detectStack: async ({ openruntime }) => {
+        detectStack: async ({ divebell }) => {
           calls.push("detectStack");
-          const detected = await openruntime.browser.eval<boolean>("globalThis._MODERNJS_ROUTE_MANIFEST != null");
+          const detected = await divebell.browser.eval<boolean>("globalThis._MODERNJS_ROUTE_MANIFEST != null");
           return detected ? {
             id: "modernjs",
             name: "Modern.js",
@@ -63,7 +63,7 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       const scriptPath = args[3];
       assert.equal(args[2], "--init-script");
       assert.equal(typeof scriptPath, "string");
-      assert.match(readFileSync(scriptPath as string, "utf8"), /__OPENRUNTIME_HOOK_TEST__/);
+      assert.match(readFileSync(scriptPath as string, "utf8"), /__DIVEBELL_HOOK_TEST__/);
       return { exitCode: 0, stdout: "", stderr: "" };
     }
     if (args[0] === "eval") {
@@ -127,12 +127,12 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
 });
 
 test("returns the opened page headers unchanged to extension commands", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-command-headers-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-command-headers-"));
   const headers = JSON.stringify({
     Authorization: "Bearer secret-token",
     "Get-Svc": "1"
   });
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "goofy",
@@ -223,14 +223,14 @@ test("returns the opened page headers unchanged to extension commands", async ()
 });
 
 test("provides the effective request headers to open hooks", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-headers-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-headers-"));
   const browserCalls: string[][] = [];
   let receivedHeaders: Readonly<Record<string, string>> | undefined;
   const headers = JSON.stringify({
     Authorization: "Bearer secret-token",
     "X-Debug-User": "agent"
   });
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "header-aware",
@@ -271,7 +271,7 @@ test("provides the effective request headers to open hooks", async () => {
     assert.equal(Object.isFrozen(receivedHeaders), true);
     assert.deepEqual(browserCalls, [[
       "open",
-      "http://app.test/?openruntimeSessionId=session-headers",
+      "http://app.test/?divebellSessionId=session-headers",
       "--headers",
       headers
     ]]);
@@ -282,9 +282,9 @@ test("provides the effective request headers to open hooks", async () => {
 });
 
 test("runs the previous page close hook before opening its replacement", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-reopen-hooks-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-reopen-hooks-"));
   const calls: string[] = [];
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "page-lifecycle",
@@ -342,7 +342,7 @@ test("runs the previous page close hook before opening its replacement", async (
 });
 
 test("installs, loads, lists, and removes a self-contained npm extension package", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-package-test-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-extension-package-test-"));
   const extensionsDirectory = join(tempDir, "extensions");
   const packageRoot = join(tempDir, "fixture", "package");
   const archivePath = join(tempDir, "demo-command-1.0.0.tgz");
@@ -353,7 +353,7 @@ test("installs, loads, lists, and removes a self-contained npm extension package
     name: "@demo/command-hello",
     version: "1.0.0",
     type: "module",
-    openruntime: {
+    divebell: {
       schemaVersion: 1,
       extensions: ["./index.mjs"]
     }
@@ -363,12 +363,12 @@ test("installs, loads, lists, and removes a self-contained npm extension package
   name: "hello-installed",
   commands: [{
     name: "hello-installed",
-    commandReferences: [{ category: "Extensions", usage: "openruntime hello-installed", description: "Runs installed command." }],
+    commandReferences: [{ category: "Extensions", usage: "divebell hello-installed", description: "Runs installed command." }],
     async run(options) { return await (await import("./run.mjs")).run(options); }
   }]
 };\n`, "utf8");
   writeFileSync(join(packageRoot, "run.mjs"), `
-globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ = (globalThis.__OPENRUNTIME_LAZY_EXTENSION_TEST__ ?? 0) + 1;
+globalThis.__DIVEBELL_LAZY_EXTENSION_TEST__ = (globalThis.__DIVEBELL_LAZY_EXTENSION_TEST__ ?? 0) + 1;
 export async function run() { return { installed: true }; }
 `, "utf8");
   const tarResult = spawnSync("tar", ["-czf", archivePath, "-C", join(tempDir, "fixture"), "package"], {
@@ -380,7 +380,7 @@ export async function run() { return { installed: true }; }
     name: "@demo/command-hello",
     version: "1.1.0",
     type: "module",
-    openruntime: {
+    divebell: {
       schemaVersion: 1,
       extensions: ["./index.mjs"]
     }
@@ -390,7 +390,7 @@ export async function run() { return { installed: true }; }
   name: "hello-installed",
   commands: [{
     name: "hello-installed",
-    commandReferences: [{ category: "Extensions", usage: "openruntime hello-installed", description: "Runs updated command." }],
+    commandReferences: [{ category: "Extensions", usage: "divebell hello-installed", description: "Runs updated command." }],
     async run() { return { installed: true, updated: true }; }
   }]
 };\n`, "utf8");
@@ -400,7 +400,7 @@ export async function run() { return { installed: true }; }
   assert.equal(updatedTarResult.status, 0, updatedTarResult.stderr);
 
   try {
-    const cli = createOpenRuntimeCli();
+    const cli = createDivebellCli();
     const addOutput = createOutput();
     const addExitCode = await cli.run([
       "extensions",
@@ -417,13 +417,13 @@ export async function run() { return { installed: true }; }
     assert.equal(addExitCode, 0);
     assert.equal(JSON.parse(addOutput.text()).package.name, "@demo/command-hello");
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0"
+      DIVEBELL_EXTENSIONS_DIR: extensionsDirectory,
+      DIVEBELL_DISABLE_EXTENSIONS: "0"
     });
     assert.deepEqual(loaded.cli.extensions.map((item) => item.name), ["hello-installed"]);
-    assert.equal((globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__, undefined);
+    assert.equal((globalThis as { __DIVEBELL_LAZY_EXTENSION_TEST__?: number }).__DIVEBELL_LAZY_EXTENSION_TEST__, undefined);
     const commandOutputBuffer = createOutput();
     assert.equal(await loaded.cli.run(["hello-installed"], {
       stdout: commandOutputBuffer.stdout,
@@ -432,7 +432,7 @@ export async function run() { return { installed: true }; }
     assert.deepEqual(JSON.parse(commandOutputBuffer.text()), commandOutput("hello-installed", {
       installed: true
     }));
-    assert.equal((globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__, 1);
+    assert.equal((globalThis as { __DIVEBELL_LAZY_EXTENSION_TEST__?: number }).__DIVEBELL_LAZY_EXTENSION_TEST__, 1);
 
     const listOutput = createOutput();
     assert.equal(await cli.run(["extensions", "list"], {
@@ -480,10 +480,10 @@ export async function run() { return { installed: true }; }
     }), 0);
     assert.equal(JSON.parse(updateOutput.text()).package.version, "1.1.0");
 
-    const updated = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const updated = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0"
+      DIVEBELL_EXTENSIONS_DIR: extensionsDirectory,
+      DIVEBELL_DISABLE_EXTENSIONS: "0"
     });
     const updatedOutput = createOutput();
     assert.equal(await updated.cli.run(["hello-installed"], {
@@ -503,13 +503,13 @@ export async function run() { return { installed: true }; }
     }), 0);
     assert.equal(JSON.parse(removeOutput.text()).status, "removed");
   } finally {
-    delete (globalThis as { __OPENRUNTIME_LAZY_EXTENSION_TEST__?: number }).__OPENRUNTIME_LAZY_EXTENSION_TEST__;
+    delete (globalThis as { __DIVEBELL_LAZY_EXTENSION_TEST__?: number }).__DIVEBELL_LAZY_EXTENSION_TEST__;
     rmSync(tempDir, { recursive: true, force: true });
   }
 });
 
 test("rejects npm extension packages that declare runtime dependencies", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-package-dependency-test-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-extension-package-dependency-test-"));
   const extensionsDirectory = join(tempDir, "extensions");
   const packageRoot = join(tempDir, "fixture", "package");
   const archivePath = join(tempDir, "dependent-command-1.0.0.tgz");
@@ -521,7 +521,7 @@ test("rejects npm extension packages that declare runtime dependencies", async (
     dependencies: {
       "left-pad": "1.3.0"
     },
-    openruntime: {
+    divebell: {
       schemaVersion: 1,
       extensions: ["./index.mjs"]
     }
@@ -538,7 +538,7 @@ test("rejects npm extension packages that declare runtime dependencies", async (
 
   try {
     const output = createOutput();
-    const exitCode = await createOpenRuntimeCli().run([
+    const exitCode = await createDivebellCli().run([
       "extensions",
       "add",
       "@demo/command-dependent"
@@ -555,7 +555,7 @@ test("rejects npm extension packages that declare runtime dependencies", async (
     assert.equal(output.errorText(), "");
 
     const listOutput = createOutput();
-    assert.equal(await createOpenRuntimeCli().run(["extensions", "list"], {
+    assert.equal(await createDivebellCli().run(["extensions", "list"], {
       stdout: listOutput.stdout,
       stderr: listOutput.stderr,
       extensionsDirectory
@@ -572,14 +572,14 @@ test("registers a command and merges its help entries", async () => {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "openruntime demo ping [--url <url>]",
+        usage: "divebell demo ping [--url <url>]",
         description: "Runs a demo command."
       }
     ],
     run: async (options) => {
-      const { args, page, openruntime } = options;
-      const snapshot = await openruntime.snapshot({ id: "target-1" });
-      const browserValue = await openruntime.browser.eval("window.answer");
+      const { args, page, divebell } = options;
+      const snapshot = await divebell.snapshot({ id: "target-1" });
+      const browserValue = await divebell.browser.eval("window.answer");
       return {
         command: args.command,
         hasOutputOption: "output" in options,
@@ -587,20 +587,20 @@ test("registers a command and merges its help entries", async () => {
         hasStderrOption: "stderr" in options,
         hasBridgeUrlOption: "bridgeUrl" in options,
         hasRuntimeSelectorOption: "runtimeSelector" in options,
-        hasEnsureBridgeApi: "ensureBridge" in openruntime,
-        hasScopeApi: "scope" in openruntime,
-        hasRuntimesApi: "runtimes" in openruntime,
-        hasSelectRuntimeApi: "selectRuntime" in openruntime,
+        hasEnsureBridgeApi: "ensureBridge" in divebell,
+        hasScopeApi: "scope" in divebell,
+        hasRuntimesApi: "runtimes" in divebell,
+        hasSelectRuntimeApi: "selectRuntime" in divebell,
         page,
         snapshot: snapshot.result,
         browserValue
       };
     }
   });
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const cli = createDivebellCli({ extensions: [extension] });
 
-  assert.match(cli.createHelpText(), /openruntime demo - Runs a demo command\./);
-  assert.doesNotMatch(cli.createHelpText(), /openruntime demo ping/);
+  assert.match(cli.createHelpText(), /divebell demo - Runs a demo command\./);
+  assert.doesNotMatch(cli.createHelpText(), /divebell demo ping/);
   assert.deepEqual(cli.getCommandReferences().at(-1), extension.commands?.[0]?.commandReferences?.[0]);
 
   const helpOutput = createOutput();
@@ -608,8 +608,8 @@ test("registers a command and merges its help entries", async () => {
     stdout: helpOutput.stdout,
     stderr: helpOutput.stderr
   }), 0);
-  assert.match(helpOutput.text(), /openruntime demo ping \[--url <url>\] - Runs a demo command\./);
-  assert.doesNotMatch(helpOutput.text(), /openruntime snapshot/);
+  assert.match(helpOutput.text(), /divebell demo ping \[--url <url>\] - Runs a demo command\./);
+  assert.doesNotMatch(helpOutput.text(), /divebell snapshot/);
 
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
@@ -685,7 +685,7 @@ test("registers a command and merges its help entries", async () => {
       hasSelectRuntimeApi: false,
       page: {
         url: "http://app.test/",
-        openedUrl: "http://app.test/?openruntimeSessionId=session-1",
+        openedUrl: "http://app.test/?divebellSessionId=session-1",
         normalizedUrl: "http://app.test/",
         bridgeUrl: "http://bridge.test",
         sessionId: "session-1",
@@ -724,7 +724,7 @@ test("formats errors thrown by extension commands", async () => {
   });
   const output = createOutput();
 
-  const exitCode = await createOpenRuntimeCli({ extensions: [extension] }).run([
+  const exitCode = await createDivebellCli({ extensions: [extension] }).run([
     "failing-demo"
   ], {
     stdout: output.stdout,
@@ -741,7 +741,7 @@ test("formats errors thrown by extension commands", async () => {
 
 test("lets a command call declared Extension commands with shared page context", async () => {
   const calls: unknown[] = [];
-  const target: OpenRuntimeExtensionDefinition = {
+  const target: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "shared-tools",
     commands: [{
@@ -761,7 +761,7 @@ test("lets a command call declared Extension commands with shared page context",
       }
     }]
   };
-  const caller: OpenRuntimeExtensionDefinition = {
+  const caller: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "workflow",
     requires: ["shared-tools"],
@@ -789,7 +789,7 @@ test("lets a command call declared Extension commands with shared page context",
       }
     }]
   };
-  const cli = createOpenRuntimeCli({ extensions: [caller, target] });
+  const cli = createDivebellCli({ extensions: [caller, target] });
   const context = createOpenContextFixture();
 
   try {
@@ -803,7 +803,7 @@ test("lets a command call declared Extension commands with shared page context",
       command: ["inspect-shared"],
       page: {
         url: "http://app.test/",
-        openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+        openedUrl: "http://app.test/?divebellSessionId=session-open",
         normalizedUrl: "http://app.test/",
         bridgeUrl: "http://bridge.test",
         sessionId: "session-open",
@@ -822,7 +822,7 @@ test("lets a command call declared Extension commands with shared page context",
         url: ["http://app.test/"],
         page: {
           url: "http://app.test/",
-          openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+          openedUrl: "http://app.test/?divebellSessionId=session-open",
           normalizedUrl: "http://app.test/",
           bridgeUrl: "http://bridge.test",
           sessionId: "session-open",
@@ -839,7 +839,7 @@ test("lets a command call declared Extension commands with shared page context",
         url: ["http://app.test/"],
         page: {
           url: "http://app.test/",
-          openedUrl: "http://app.test/?openruntimeSessionId=session-open",
+          openedUrl: "http://app.test/?divebellSessionId=session-open",
           normalizedUrl: "http://app.test/",
           bridgeUrl: "http://bridge.test",
           sessionId: "session-open",
@@ -854,7 +854,7 @@ test("lets a command call declared Extension commands with shared page context",
 });
 
 test("detects missing Extension dependencies when the Extension list loads", () => {
-  assert.throws(() => createOpenRuntimeCli({
+  assert.throws(() => createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "dependent-workflow",
@@ -868,7 +868,7 @@ test("detects missing Extension dependencies when the Extension list loads", () 
 });
 
 test("rejects undeclared Extension calls and nested command cycles", async () => {
-  const target: OpenRuntimeExtensionDefinition = {
+  const target: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "target-tools",
     requires: ["caller-tools"],
@@ -878,7 +878,7 @@ test("rejects undeclared Extension calls and nested command cycles", async () =>
         await runExtension("caller-tools", { command: "cycle-command" })
     }]
   };
-  const caller: OpenRuntimeExtensionDefinition = {
+  const caller: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "caller-tools",
     requires: ["target-tools"],
@@ -888,7 +888,7 @@ test("rejects undeclared Extension calls and nested command cycles", async () =>
         await runExtension("target-tools", { command: "target-command" })
     }]
   };
-  const undeclaredCaller: OpenRuntimeExtensionDefinition = {
+  const undeclaredCaller: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "undeclared-caller",
     commands: [{
@@ -897,7 +897,7 @@ test("rejects undeclared Extension calls and nested command cycles", async () =>
         await runExtension("target-tools", { command: "target-command" })
     }]
   };
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [caller, target, undeclaredCaller]
   });
 
@@ -926,7 +926,7 @@ test("rejects undeclared Extension calls and nested command cycles", async () =>
 });
 
 test("enforces requiresOpenHook for direct and composed commands", async () => {
-  const openAware: OpenRuntimeExtensionDefinition = {
+  const openAware: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "open-aware",
     commands: [{
@@ -938,7 +938,7 @@ test("enforces requiresOpenHook for direct and composed commands", async () => {
       open: async () => {}
     }
   };
-  const caller: OpenRuntimeExtensionDefinition = {
+  const caller: DivebellExtensionDefinition = {
     schemaVersion: 1,
     name: "open-aware-caller",
     requires: ["open-aware"],
@@ -948,7 +948,7 @@ test("enforces requiresOpenHook for direct and composed commands", async () => {
         await runExtension("open-aware", { command: "open-aware-command" })
     }]
   };
-  const cli = createOpenRuntimeCli({ extensions: [caller, openAware] });
+  const cli = createDivebellCli({ extensions: [caller, openAware] });
   const inactiveContext = createOpenContextFixture();
   const activeContext = createOpenContextFixture({
     activeExtensions: ["open-aware"]
@@ -1103,9 +1103,9 @@ test("isolates hook failures and ordering cycles", async () => {
 });
 
 test("runs close hooks in reverse open order", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-ordered-close-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-ordered-close-"));
   const calls: string[] = [];
-  const cli = createOpenRuntimeCli({
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "base-close",
@@ -1177,8 +1177,8 @@ test("runs close hooks in reverse open order", async () => {
 });
 
 test("isolates page initialization scripts returned by open hooks", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-hook-scripts-"));
-  const cli = createOpenRuntimeCli({
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-hook-scripts-"));
+  const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
       name: "throwing-script",
@@ -1192,7 +1192,7 @@ test("isolates page initialization scripts returned by open hooks", async () => 
       name: "working-script",
       hooks: {
         open: async () => ({
-          scripts: ["globalThis.__OPENRUNTIME_SCRIPT_ISOLATION__ = 'worked';"]
+          scripts: ["globalThis.__DIVEBELL_SCRIPT_ISOLATION__ = 'worked';"]
         })
       }
     }]
@@ -1215,14 +1215,14 @@ test("isolates page initialization scripts returned by open hooks", async () => 
       })
     }), 0);
     assert.equal(
-      (globalThis as { __OPENRUNTIME_SCRIPT_ISOLATION__?: string })
-        .__OPENRUNTIME_SCRIPT_ISOLATION__,
+      (globalThis as { __DIVEBELL_SCRIPT_ISOLATION__?: string })
+        .__DIVEBELL_SCRIPT_ISOLATION__,
       "worked"
     );
   } finally {
     console.error = originalConsoleError;
-    delete (globalThis as { __OPENRUNTIME_SCRIPT_ISOLATION__?: string })
-      .__OPENRUNTIME_SCRIPT_ISOLATION__;
+    delete (globalThis as { __DIVEBELL_SCRIPT_ISOLATION__?: string })
+      .__DIVEBELL_SCRIPT_ISOLATION__;
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
 });
@@ -1230,28 +1230,28 @@ test("isolates page initialization scripts returned by open hooks", async () => 
 test("exposes memory capture commands to CLI extensions", async () => {
   const extension = createCommandExtension({
     name: "memory-demo",
-    run: async ({ openruntime }) => {
+    run: async ({ divebell }) => {
       return {
-        metrics: await openruntime.browser.memory.metrics(),
-        status: await openruntime.browser.memory.status(),
-        started: await openruntime.browser.memory.sampling.start({ samplingInterval: 1024 }),
-        stopped: await openruntime.browser.memory.sampling.stop({
-          path: "/tmp/openruntime.heapprofile",
+        metrics: await divebell.browser.memory.metrics(),
+        status: await divebell.browser.memory.status(),
+        started: await divebell.browser.memory.sampling.start({ samplingInterval: 1024 }),
+        stopped: await divebell.browser.memory.sampling.stop({
+          path: "/tmp/divebell.heapprofile",
           top: 10,
           maxSize: 4096
         }),
-        snapshot: await openruntime.browser.memory.snapshot({
-          path: "/tmp/openruntime.heapsnapshot",
+        snapshot: await divebell.browser.memory.snapshot({
+          path: "/tmp/divebell.heapsnapshot",
           collectGarbage: false,
           timeout: 5000,
           maxSize: 8192
         }),
-        garbageCollected: await openruntime.browser.memory.collectGarbage(),
-        cancelled: await openruntime.browser.memory.cancel()
+        garbageCollected: await divebell.browser.memory.collectGarbage(),
+        cancelled: await divebell.browser.memory.cancel()
       };
     }
   });
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const cli = createDivebellCli({ extensions: [extension] });
   const context = createOpenContextFixture();
   const calls: string[][] = [];
 
@@ -1278,8 +1278,8 @@ test("exposes memory capture commands to CLI extensions", async () => {
       ["memory", "metrics", "--json"],
       ["memory", "status", "--json"],
       ["memory", "sampling", "start", "--sampling-interval", "1024", "--json"],
-      ["memory", "sampling", "stop", "/tmp/openruntime.heapprofile", "--top", "10", "--max-size", "4096", "--json"],
-      ["memory", "snapshot", "/tmp/openruntime.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192", "--json"],
+      ["memory", "sampling", "stop", "/tmp/divebell.heapprofile", "--top", "10", "--max-size", "4096", "--json"],
+      ["memory", "snapshot", "/tmp/divebell.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192", "--json"],
       ["memory", "collect-garbage", "--json"],
       ["memory", "cancel", "--json"]
     ]);
@@ -1287,8 +1287,8 @@ test("exposes memory capture commands to CLI extensions", async () => {
       metrics: { name: "memory metrics" },
       status: { name: "memory status" },
       started: { name: "memory sampling start --sampling-interval 1024" },
-      stopped: { name: "memory sampling stop /tmp/openruntime.heapprofile --top 10 --max-size 4096" },
-      snapshot: { name: "memory snapshot /tmp/openruntime.heapsnapshot --no-gc --timeout 5000 --max-size 8192" },
+      stopped: { name: "memory sampling stop /tmp/divebell.heapprofile --top 10 --max-size 4096" },
+      snapshot: { name: "memory snapshot /tmp/divebell.heapsnapshot --no-gc --timeout 5000 --max-size 8192" },
       garbageCollected: { name: "memory collect-garbage" },
       cancelled: { name: "memory cancel" }
     }));
@@ -1300,24 +1300,24 @@ test("exposes memory capture commands to CLI extensions", async () => {
 test("exposes coverage commands to CLI extensions", async () => {
   const extension = createCommandExtension({
     name: "coverage-demo",
-    run: async ({ openruntime }) => {
+    run: async ({ divebell }) => {
       return {
-        status: await openruntime.browser.coverage.status(),
-        started: await openruntime.browser.coverage.start({ callCount: true }),
-        taken: await openruntime.browser.coverage.take({
+        status: await divebell.browser.coverage.status(),
+        started: await divebell.browser.coverage.start({ callCount: true }),
+        taken: await divebell.browser.coverage.take({
           path: "/tmp/first.coverage.json",
           label: "first-screen",
           maxSize: 4096
         }),
-        stopped: await openruntime.browser.coverage.stop({
+        stopped: await divebell.browser.coverage.stop({
           path: "/tmp/orders.coverage.json",
           label: "orders"
         }),
-        cancelled: await openruntime.browser.coverage.cancel()
+        cancelled: await divebell.browser.coverage.cancel()
       };
     }
   });
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const cli = createDivebellCli({ extensions: [extension] });
   const context = createOpenContextFixture();
   const calls: string[][] = [];
 
@@ -1359,13 +1359,13 @@ test("exposes coverage commands to CLI extensions", async () => {
 });
 
 test("shows and resolves command skills without running commands", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-extension-skill-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-extension-skill-"));
   const skillPath = join(tempDir, "SKILL.md");
   writeFileSync(skillPath, "# Demo skill\n", "utf8");
   let runCount = 0;
 
   try {
-    const cli = createOpenRuntimeCli({
+    const cli = createDivebellCli({
       extensions: [
         createCommandExtension({
           name: "demo",
@@ -1373,7 +1373,7 @@ test("shows and resolves command skills without running commands", async () => {
           commandReferences: [
             {
               category: "Extensions",
-              usage: "openruntime demo ping",
+              usage: "divebell demo ping",
               description: "Runs demo."
             }
           ],
@@ -1387,7 +1387,7 @@ test("shows and resolves command skills without running commands", async () => {
           commandReferences: [
             {
               category: "Extensions",
-              usage: "openruntime plain ping",
+              usage: "divebell plain ping",
               description: "Runs without a skill."
             }
           ],
@@ -1400,12 +1400,12 @@ test("shows and resolves command skills without running commands", async () => {
     });
 
     const help = cli.createHelpText();
-    assert.match(help, /openruntime demo - Runs demo\./);
-    assert.match(help, /openruntime plain - Runs without a skill\./);
-    assert.doesNotMatch(help, /openruntime demo ping/);
-    assert.doesNotMatch(help, /openruntime plain ping/);
+    assert.match(help, /divebell demo - Runs demo\./);
+    assert.match(help, /divebell plain - Runs without a skill\./);
+    assert.doesNotMatch(help, /divebell demo ping/);
+    assert.doesNotMatch(help, /divebell plain ping/);
     assert.match(help, /Skill: available for demo\./);
-    assert.match(help, /Skill usage: `openruntime <command> --skill`/);
+    assert.match(help, /Skill usage: `divebell <command> --skill`/);
     assert.doesNotMatch(help, /Examples:/);
 
     const commandHelpOutput = createOutput();
@@ -1413,9 +1413,9 @@ test("shows and resolves command skills without running commands", async () => {
       stdout: commandHelpOutput.stdout,
       stderr: commandHelpOutput.stderr
     }), 0);
-    assert.match(commandHelpOutput.text(), /openruntime demo ping - Runs demo\./);
-    assert.match(commandHelpOutput.text(), /Skill: available via `openruntime demo --skill`\./);
-    assert.doesNotMatch(commandHelpOutput.text(), /openruntime plain/);
+    assert.match(commandHelpOutput.text(), /divebell demo ping - Runs demo\./);
+    assert.match(commandHelpOutput.text(), /Skill: available via `divebell demo --skill`\./);
+    assert.doesNotMatch(commandHelpOutput.text(), /divebell plain/);
     assert.equal(runCount, 0);
 
     const skillOutput = createOutput();
@@ -1459,12 +1459,12 @@ test("commands can wait for targets in the opened page context", async () => {
     commandReferences: [
       {
         category: "Extensions",
-        usage: "openruntime demo wait",
+        usage: "divebell demo wait",
         description: "Waits for a demo target."
       }
     ],
-    run: async ({ openruntime }) => {
-      const result = await openruntime.waitFor("business:demo", "ready", {
+    run: async ({ divebell }) => {
+      const result = await divebell.waitFor("business:demo", "ready", {
         timeout: 250
       });
       return {
@@ -1472,7 +1472,7 @@ test("commands can wait for targets in the opened page context", async () => {
       };
     }
   });
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const cli = createDivebellCli({ extensions: [extension] });
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
     sessionId: "session-1",
@@ -1503,7 +1503,7 @@ test("commands can wait for targets in the opened page context", async () => {
             runtimes: [
               {
                 runtimeId: "runtime-1",
-                url: "http://app.test/?openruntimeSessionId=session-1",
+                url: "http://app.test/?divebellSessionId=session-1",
                 sessionId: "session-1",
                 status: "connected",
                 connectedAt: 1,
@@ -1548,7 +1548,7 @@ test("commands can wait for targets in the opened page context", async () => {
       result: {
         runtime: {
           runtimeId: "runtime-1",
-          url: "http://app.test/?openruntimeSessionId=session-1",
+          url: "http://app.test/?divebellSessionId=session-1",
           sessionId: "session-1",
           status: "connected",
           connectedAt: 1,
@@ -1574,7 +1574,7 @@ test("commands can wait for targets in the opened page context", async () => {
 });
 
 test("loads external extensions from the configured directory", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-external-extensions-"));
   const context = createOpenContextFixture();
   const skillPath = join(tempDir, "SKILL.md");
   try {
@@ -1590,15 +1590,15 @@ test("loads external extensions from the configured directory", async () => {
       `  skill: { path: ${JSON.stringify(skillPath)} },`,
       "  commandReferences: [{",
       "    category: 'Extensions',",
-      "    usage: 'openruntime foo ping',",
+      "    usage: 'divebell foo ping',",
       "    description: 'Runs Foo.'",
       "  }],",
       "  exampleReferences: [{",
-      "    command: 'openruntime foo ping',",
+      "    command: 'divebell foo ping',",
       "    description: 'Runs Foo example.'",
       "  }],",
-      "  async run({ args, openruntime }) {",
-      "    const value = await openruntime.browser.eval('window.foo');",
+      "  async run({ args, divebell }) {",
+      "    const value = await divebell.browser.eval('window.foo');",
       "    return { command: args.command, value };",
       "  }",
       "  }],",
@@ -1606,10 +1606,10 @@ test("loads external extensions from the configured directory", async () => {
       ""
     ].join("\n"));
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      DIVEBELL_DISABLE_EXTENSIONS: "0",
+      DIVEBELL_EXTENSIONS_DIR: tempDir
     });
 
     assert.deepEqual(loaded.extensionLoadRecords.map((record) => ({
@@ -1624,13 +1624,13 @@ test("loads external extensions from the configured directory", async () => {
       }
     ]);
     assert.match(loaded.cli.createHelpText(), /External Extensions/);
-    assert.match(loaded.cli.createHelpText(), /openruntime foo - Runs Foo\./);
-    assert.doesNotMatch(loaded.cli.createHelpText(), /openruntime foo ping/);
+    assert.match(loaded.cli.createHelpText(), /divebell foo - Runs Foo\./);
+    assert.doesNotMatch(loaded.cli.createHelpText(), /divebell foo ping/);
     assert.doesNotMatch(loaded.cli.createHelpText(), /\[external: foo\]/);
     assert.match(loaded.cli.createHelpText(), /Runs Foo\./);
     assert.doesNotMatch(loaded.cli.createHelpText(), /Runs Foo example\./);
     assert.match(loaded.cli.createHelpText(), /Skill: available for foo\./);
-    assert.match(loaded.cli.createHelpText(), /Skill usage: `openruntime <command> --skill`/);
+    assert.match(loaded.cli.createHelpText(), /Skill usage: `divebell <command> --skill`/);
 
     const output = createOutput();
     const exitCode = await loaded.cli.run(["foo", "ping"], {
@@ -1674,8 +1674,8 @@ test("loads external extensions from the configured directory", async () => {
     assert.equal(helpExitCode, 0);
     assert.equal(helpOutput.errorText(), "");
     assert.match(helpOutput.text(), /External Extensions:/);
-    assert.match(helpOutput.text(), /openruntime foo - Runs Foo\./);
-    assert.doesNotMatch(helpOutput.text(), /openruntime foo ping/);
+    assert.match(helpOutput.text(), /divebell foo - Runs Foo\./);
+    assert.doesNotMatch(helpOutput.text(), /divebell foo ping/);
     assert.match(helpOutput.text(), /Skill: available for foo\./);
     assert.doesNotMatch(helpOutput.text(), /Examples:/);
 
@@ -1686,9 +1686,9 @@ test("loads external extensions from the configured directory", async () => {
     });
     assert.equal(commandHelpExitCode, 0);
     assert.equal(commandHelpOutput.errorText(), "");
-    assert.match(commandHelpOutput.text(), /openruntime foo ping - Runs Foo\./);
-    assert.match(commandHelpOutput.text(), /Skill: available via `openruntime foo --skill`\./);
-    assert.doesNotMatch(commandHelpOutput.text(), /openruntime extensions/);
+    assert.match(commandHelpOutput.text(), /divebell foo ping - Runs Foo\./);
+    assert.match(commandHelpOutput.text(), /Skill: available via `divebell foo --skill`\./);
+    assert.doesNotMatch(commandHelpOutput.text(), /divebell extensions/);
   } finally {
     rmSync(tempDir, {
       recursive: true,
@@ -1699,7 +1699,7 @@ test("loads external extensions from the configured directory", async () => {
 });
 
 test("skips external Extensions whose declared dependencies are unavailable", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-dependencies-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-external-dependencies-"));
   try {
     writeFileSync(join(tempDir, "dependent.mjs"), [
       "export default {",
@@ -1711,10 +1711,10 @@ test("skips external Extensions whose declared dependencies are unavailable", as
       ""
     ].join("\n"));
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      DIVEBELL_DISABLE_EXTENSIONS: "0",
+      DIVEBELL_EXTENSIONS_DIR: tempDir
     });
 
     assert.deepEqual(loaded.cli.extensions, []);
@@ -1732,7 +1732,7 @@ test("skips external Extensions whose declared dependencies are unavailable", as
 });
 
 test("skips conflicting or invalid external extensions without crashing", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-conflict-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-external-extensions-conflict-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -1744,10 +1744,10 @@ test("skips conflicting or invalid external extensions without crashing", async 
     ].join("\n"));
     writeFileSync(join(tempDir, "broken.mjs"), "export default { schemaVersion: 1, name: 'broken' };\n");
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      DIVEBELL_DISABLE_EXTENSIONS: "0",
+      DIVEBELL_EXTENSIONS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -1776,7 +1776,7 @@ test("skips conflicting or invalid external extensions without crashing", async 
 });
 
 test("honors disabled external extensions", async () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-disabled-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-external-extensions-disabled-"));
   try {
     writeFileSync(join(tempDir, "foo.mjs"), [
       "export default {",
@@ -1787,10 +1787,10 @@ test("honors disabled external extensions", async () => {
       ""
     ].join("\n"));
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "1",
-      OPENRUNTIME_EXTENSIONS_DIR: tempDir
+      DIVEBELL_DISABLE_EXTENSIONS: "1",
+      DIVEBELL_EXTENSIONS_DIR: tempDir
     });
 
     assert.equal(loaded.cli.extensions.length, 0);
@@ -1804,7 +1804,7 @@ test("honors disabled external extensions", async () => {
 });
 
 test("warns when runCli skips an external extension", () => {
-  const tempDir = mkdtempSync(join(tmpdir(), "openruntime-external-extensions-warning-"));
+  const tempDir = mkdtempSync(join(tmpdir(), "divebell-external-extensions-warning-"));
   try {
     writeFileSync(join(tempDir, "snapshot.mjs"), [
       "export default {",
@@ -1819,13 +1819,13 @@ test("warns when runCli skips an external extension", () => {
       encoding: "utf8",
       env: {
         ...process.env,
-        OPENRUNTIME_DISABLE_EXTENSIONS: "0",
-        OPENRUNTIME_EXTENSIONS_DIR: tempDir
+        DIVEBELL_DISABLE_EXTENSIONS: "0",
+        DIVEBELL_EXTENSIONS_DIR: tempDir
       }
     });
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /Skipped external OpenRuntime extension/);
+    assert.match(result.stderr, /Skipped external Divebell extension/);
     assert.match(result.stderr, /conflicts with an existing command/);
   } finally {
     rmSync(tempDir, {
@@ -1837,7 +1837,7 @@ test("warns when runCli skips an external extension", () => {
 
 test("rejects commands that conflict with built-in commands", () => {
   assert.throws(
-    () => createOpenRuntimeCli({
+    () => createDivebellCli({
       extensions: [
         createCommandExtension({
           name: "snapshot",
@@ -1851,7 +1851,7 @@ test("rejects commands that conflict with built-in commands", () => {
 
 test("rejects duplicate command names", () => {
   assert.throws(
-    () => createOpenRuntimeCli({
+    () => createDivebellCli({
       extensions: [
         createCommandExtension({
           name: "demo",

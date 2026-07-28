@@ -5,9 +5,9 @@ import { resolve } from "node:path";
 import { ensureJsonLinesFile, writeJsonFile } from "./storage.js";
 import type { OperationEntry, RecordingFiles } from "./types.js";
 
-const RECORD_EVENT_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_EVENT__";
-const RECORD_AUDIO_CONSOLE_MARKER = "__OPENRUNTIME_RECORD_AUDIO__";
-const OPENRUNTIME_RECORDING_CONTROL_FILE = "recording-session.json";
+const RECORD_EVENT_CONSOLE_MARKER = "__DIVEBELL_RECORD_EVENT__";
+const RECORD_AUDIO_CONSOLE_MARKER = "__DIVEBELL_RECORD_AUDIO__";
+const DIVEBELL_RECORDING_CONTROL_FILE = "recording-session.json";
 
 export interface RecordingControl {
   outputDirectory: string;
@@ -22,7 +22,7 @@ export async function writeRecordingControlFile(
 ): Promise<OperationEntry> {
   const operationStartedAt = new Date();
   const profileDirectory = resolveBrowserProfileDirectory();
-  const controlFile = join(profileDirectory, OPENRUNTIME_RECORDING_CONTROL_FILE);
+  const controlFile = join(profileDirectory, DIVEBELL_RECORDING_CONTROL_FILE);
   const eventsFile = join(outputDirectory, "interaction-events.raw.jsonl");
   const audioFile = join(outputDirectory, files.audio);
   const audioChunksFile = join(outputDirectory, files.audioChunks);
@@ -48,7 +48,7 @@ export async function writeRecordingControlFile(
         chunksFile: audioChunksFile,
         eventsFile: audioEventsFile,
         chunksDirectory: audioChunksDirectory,
-        recorderUrl: "https://openruntime-recorder.localhost/recorder",
+        recorderUrl: "https://divebell-recorder.localhost/recorder",
         startedAt: startedAt.toISOString(),
         chunkMs: 1000
       }
@@ -73,7 +73,7 @@ export async function writeRecordingControlFile(
 }
 
 export async function clearRecordingControlFile(): Promise<void> {
-  await rm(join(resolveBrowserProfileDirectory(), OPENRUNTIME_RECORDING_CONTROL_FILE), {
+  await rm(join(resolveBrowserProfileDirectory(), DIVEBELL_RECORDING_CONTROL_FILE), {
     force: true
   });
 }
@@ -81,7 +81,7 @@ export async function clearRecordingControlFile(): Promise<void> {
 export async function readRecordingControlFile(): Promise<RecordingControl | undefined> {
   try {
     const value: unknown = JSON.parse(await readFile(
-      join(resolveBrowserProfileDirectory(), OPENRUNTIME_RECORDING_CONTROL_FILE),
+      join(resolveBrowserProfileDirectory(), DIVEBELL_RECORDING_CONTROL_FILE),
       "utf8"
     ));
     if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -97,5 +97,5 @@ export async function readRecordingControlFile(): Promise<RecordingControl | und
 }
 
 function resolveBrowserProfileDirectory(): string {
-  return resolve(process.env.OPENRUNTIME_BROWSER_PROFILE_DIR ?? join(homedir(), ".openruntime", "browser-profile"));
+  return resolve(process.env.DIVEBELL_BROWSER_PROFILE_DIR ?? join(homedir(), ".divebell", "browser-profile"));
 }

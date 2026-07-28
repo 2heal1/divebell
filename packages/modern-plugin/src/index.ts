@@ -1,11 +1,11 @@
-import { createPackageInfo } from "@openruntime/core";
+import { createPackageInfo } from "@divebell/core";
 
-export { openRuntimeModernPlugin } from "./plugin/create-plugin.js";
+export { divebellModernPlugin } from "./plugin/create-plugin.js";
 export type {
   ModernRuntimePlugin,
   ModernRuntimePluginApi,
-  OpenRuntimeModernPluginOptions,
-  OpenRuntimeServerBridgeOptions
+  DivebellModernPluginOptions,
+  DivebellServerBridgeOptions
 } from "./plugin/types.js";
 export type {
   ModernDataRouter,
@@ -23,17 +23,17 @@ export type {
   ModernStreamSsrExtender
 } from "./modern/events.js";
 export {
-  markOpenRuntimeReady,
-  markOpenRuntimeReadyError,
-  registerOpenRuntimeReady,
-  unregisterOpenRuntimeReady
+  markDivebellReady,
+  markDivebellReadyError,
+  registerDivebellReady,
+  unregisterDivebellReady
 } from "./business/ready.js";
-export type { RegisterOpenRuntimeReadyOptions } from "./business/ready.js";
+export type { RegisterDivebellReadyOptions } from "./business/ready.js";
 export {
-  createOpenRuntimeGarfishCustomLoader,
-  createOpenRuntimeGarfishPlugin
+  createDivebellGarfishCustomLoader,
+  createDivebellGarfishPlugin
 } from "./garfish/plugin.js";
-export { createOpenRuntimeGarfishReporter } from "./garfish/reporter.js";
+export { createDivebellGarfishReporter } from "./garfish/reporter.js";
 export {
   modernGarfishStatuses,
   modernGarfishTargetIds,
@@ -47,15 +47,15 @@ export type {
   GarfishLoaderResult,
   GarfishProviderLike,
   ModernGarfishStatus,
-  OpenRuntimeGarfishCustomLoaderOptions,
-  OpenRuntimeGarfishPlugin,
-  OpenRuntimeGarfishPluginFactory,
-  OpenRuntimeGarfishPluginOptions,
-  OpenRuntimeGarfishReporter,
-  OpenRuntimeGarfishReporterOptions
+  DivebellGarfishCustomLoaderOptions,
+  DivebellGarfishPlugin,
+  DivebellGarfishPluginFactory,
+  DivebellGarfishPluginOptions,
+  DivebellGarfishReporter,
+  DivebellGarfishReporterOptions
 } from "./garfish/types.js";
 
 export const modernPluginPackageInfo = createPackageInfo(
-  "@openruntime/modern-plugin",
+  "@divebell/modern-plugin",
   "modern.js plugin"
 );

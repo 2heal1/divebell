@@ -1,14 +1,14 @@
-/** @satisfies {import("@openruntime/cli").OpenRuntimeExtensionDefinition} */
+/** @satisfies {import("@divebell/cli").DivebellExtensionDefinition} */
 const extension = {
   schemaVersion: 1,
   name: "cli-extension-demo",
   displayName: "CLI Extension Demo",
-  description: "演示本地开发 OpenRuntime CLI Extension。",
+  description: "演示本地开发 Divebell CLI Extension。",
   commands: [{
     name: "extension-demo",
     commandReferences: [{
       category: "Extensions",
-      usage: "openruntime extension-demo <hello|page> [--name <name>]",
+      usage: "divebell extension-demo <hello|page> [--name <name>]",
       description: "运行本地 CLI Extension 开发示例。"
     }],
     run: async options =>

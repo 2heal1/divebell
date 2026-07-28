@@ -4,8 +4,8 @@ import type { GetSnapshotQuery, RuntimeSnapshot } from "../snapshot/types.js";
 import type { GetTargetsQuery, RuntimeTargetDescriptor } from "../target/types.js";
 import type { RuntimeDataCondition, RuntimeWaitOptions } from "../wait/types.js";
 
-export const OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
-export const OPEN_RUNTIME_SESSION_QUERY_PARAM = "openruntimeSessionId";
+export const DIVEBELL_BRIDGE_DEFAULT_PORT = 17321;
+export const DIVEBELL_SESSION_QUERY_PARAM = "divebellSessionId";
 
 export interface BridgeServerSyncOptions {
   port?: number;

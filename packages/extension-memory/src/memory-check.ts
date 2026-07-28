@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { OpenRuntimeBrowserApi } from "@openruntime/cli";
+import type { DivebellBrowserApi } from "@divebell/cli";
 
 import type { MemoryCheckPage, MemoryCheckScenario, RunMemoryCheckOptions, MemoryMetricPoint, MemoryCheckReport, RunMemoryCheckResult } from "./types.js";
 export type { MemoryCheckPage, MemoryCheckScenarioContext, MemoryCheckScenario, RunMemoryCheckOptions, MemoryMetricPoint, MemoryCheckReport, RunMemoryCheckResult } from "./types.js";
@@ -113,7 +113,7 @@ async function loadMemoryCheckScenario(path: string): Promise<MemoryCheckScenari
   return scenario as unknown as MemoryCheckScenario;
 }
 
-function createMemoryCheckPage(browser: OpenRuntimeBrowserApi): MemoryCheckPage {
+function createMemoryCheckPage(browser: DivebellBrowserApi): MemoryCheckPage {
   return {
     eval: async (script) => await runJson(browser, ["eval", script], false),
     waitEval: async (script, options = {}) => {
@@ -138,7 +138,7 @@ function createMemoryCheckPage(browser: OpenRuntimeBrowserApi): MemoryCheckPage 
 }
 
 async function readComparableMetrics(
-  browser: OpenRuntimeBrowserApi,
+  browser: DivebellBrowserApi,
   iteration: number
 ): Promise<MemoryMetricPoint> {
   await runJson(browser, ["memory", "collect-garbage"]);
@@ -154,7 +154,7 @@ async function readComparableMetrics(
 }
 
 async function runJson(
-  browser: OpenRuntimeBrowserApi,
+  browser: DivebellBrowserApi,
   args: string[],
   appendJson = true
 ): Promise<Record<string, unknown>> {
@@ -173,7 +173,7 @@ async function runJson(
 }
 
 async function runBrowserOrThrow(
-  browser: OpenRuntimeBrowserApi,
+  browser: DivebellBrowserApi,
   args: string[],
   options: { ui?: boolean }
 ): Promise<void> {

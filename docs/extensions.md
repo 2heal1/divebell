@@ -1,16 +1,16 @@
-# Using OpenRuntime Extensions
+# Using Divebell Extensions
 
-Chinese version: [OpenRuntime Extension 使用指南](extensions.zh-CN.md)
+Chinese version: [Divebell Extension 使用指南](extensions.zh-CN.md)
 
 This guide is for agents and developers who install and use Extensions. To build your own Extension, go directly to [CLI Extension Development](cli-extensions.md). To look up fields and methods, use the [Extension API Reference](extension-api.md).
 
 ## What is an Extension?
 
-OpenRuntime provides general page operations, browser diagnostics, and optional Runtime capabilities. Teams also have their own account preparation, environment switching, stack detection, focused troubleshooting, and verification workflows. An Extension packages that reusable knowledge and those workflows as capabilities that agents can discover and invoke.
+Divebell provides general page operations, browser diagnostics, and optional Runtime capabilities. Teams also have their own account preparation, environment switching, stack detection, focused troubleshooting, and verification workflows. An Extension packages that reusable knowledge and those workflows as capabilities that agents can discover and invoke.
 
 An Extension may provide:
 
-- Commands mounted under `openruntime`.
+- Commands mounted under `divebell`.
 - Hooks that run during `open`, `detectStack`, and `close`.
 - Skills that explain how to use complex commands and interpret their results.
 
@@ -18,22 +18,22 @@ Extensions are appropriate for development debugging workflows that a team will 
 
 ## Install an Extension
 
-Install OpenRuntime globally before adding Extensions:
+Install Divebell globally before adding Extensions:
 
 ```sh
-npm install --global @openruntime/cli
-openruntime --help
+npm install --global @divebell/cli
+divebell --help
 ```
 
 Do not add the CLI to the application. Installed Extensions are shared by the
-global OpenRuntime command.
+global Divebell command.
 
 ### Install from npm
 
 Install a trusted Extension by npm package name:
 
 ```sh
-openruntime extensions add @scope/package
+divebell extensions add @scope/package
 ```
 
 See the [official Extensions in the README](../README.md#official-extensions) for available packages and their purposes.
@@ -43,8 +43,8 @@ See the [official Extensions in the README](../README.md#official-extensions) fo
 You can also pass a local Extension directory directly. Both relative and absolute paths are supported:
 
 ```sh
-openruntime extensions add ./path/to/my-extension
-openruntime extensions add /path/to/my-extension
+divebell extensions add ./path/to/my-extension
+divebell extensions add /path/to/my-extension
 ```
 
 Installing from a local directory is commonly useful when developing and debugging an Extension, and it can also install an Extension that is not published to npm. The directory must contain a valid Extension package declaration and a loadable entry.
@@ -52,17 +52,17 @@ Installing from a local directory is commonly useful when developing and debuggi
 Extensions execute local code, so install only packages or local directories with a known, trusted source. After installation, new commands appear in:
 
 ```sh
-openruntime --help
+divebell --help
 ```
 
-These commands reuse the page, browser session, and login state most recently opened by OpenRuntime.
+These commands reuse the page, browser session, and login state most recently opened by Divebell.
 
 ## Manage Extensions
 
 ```sh
-openruntime extensions list
-openruntime extensions update @scope/package
-openruntime extensions remove @scope/package
+divebell extensions list
+divebell extensions update @scope/package
+divebell extensions remove @scope/package
 ```
 
 - `list` shows installed Extensions, commands, and hooks.
@@ -72,43 +72,43 @@ openruntime extensions remove @scope/package
 Extensions are installed by default in:
 
 ```text
-~/.openruntime/extensions
+~/.divebell/extensions
 ```
 
 Set a separate directory when needed:
 
 ```sh
-OPENRUNTIME_EXTENSIONS_DIR=/path/to/extensions openruntime --help
+DIVEBELL_EXTENSIONS_DIR=/path/to/extensions divebell --help
 ```
 
 Temporarily disable external Extension loading with:
 
 ```sh
-OPENRUNTIME_DISABLE_EXTENSIONS=1 openruntime --help
+DIVEBELL_DISABLE_EXTENSIONS=1 divebell --help
 ```
 
 ## Use an Extension
 
-Use `openruntime --help` to discover the available top-level commands, then run `openruntime <command> --help` for that command's detailed usage and arguments. Select only the capability that matches the current task; do not run every diagnostic without a reason.
+Use `divebell --help` to discover the available top-level commands, then run `divebell <command> --help` for that command's detailed usage and arguments. Select only the capability that matches the current task; do not run every diagnostic without a reason.
 
-Page commands generally operate on the page most recently opened with `openruntime open <url>`:
+Page commands generally operate on the page most recently opened with `divebell open <url>`:
 
 ```sh
-openruntime open https://example.com
-openruntime <extension-command>
+divebell open https://example.com
+divebell <extension-command>
 ```
 
-`openruntime stack` runs stack detectors supplied by Extensions and may recommend a more appropriate focused Extension:
+`divebell stack` runs stack detectors supplied by Extensions and may recommend a more appropriate focused Extension:
 
 ```sh
-openruntime stack
-openruntime stack --refresh
+divebell stack
+divebell stack --refresh
 ```
 
 A complex command may include a Skill. Print the Skill path without running the command with:
 
 ```sh
-openruntime <extension-command> --skill
+divebell <extension-command> --skill
 ```
 
 When a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, use an [automation script](cli-automation-scripts.md) instead of an Extension command that depends on the most recently opened page.

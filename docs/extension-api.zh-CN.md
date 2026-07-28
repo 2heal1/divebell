@@ -1,22 +1,22 @@
-# OpenRuntime CLI Extension API 参考
+# Divebell CLI Extension API 参考
 
-English version: [OpenRuntime CLI Extension API Reference](extension-api.md)
+English version: [Divebell CLI Extension API Reference](extension-api.md)
 
 本文用于查询 Extension 定义、Command、Hook 和 `options` 的当前类型与使用约定。完整开发流程见 [CLI Extension 开发指南](cli-extensions.zh-CN.md)。
 
-开发时通常直接从 `@openruntime/cli` 导入 `OpenRuntimeExtensionDefinition`、`OpenRuntimeExtensionHooks`、`CliExtensionRunOptions` 和 `OpenRuntimeExtensionApi`。下文还会展开它们引用的子结构，便于查询字段；这些子结构不需要单独导入，可以由上层公开类型推导。
+开发时通常直接从 `@divebell/cli` 导入 `DivebellExtensionDefinition`、`DivebellExtensionHooks`、`CliExtensionRunOptions` 和 `DivebellExtensionApi`。下文还会展开它们引用的子结构，便于查询字段；这些子结构不需要单独导入，可以由上层公开类型推导。
 
 ## Extension 定义
 
 ```ts
-interface OpenRuntimeExtensionDefinition {
+interface DivebellExtensionDefinition {
   schemaVersion: 1;
   name: string;
   requires?: readonly string[];
   displayName?: string;
   description?: string;
-  commands?: readonly OpenRuntimeExtensionCommand[];
-  hooks?: OpenRuntimeExtensionHooks;
+  commands?: readonly DivebellExtensionCommand[];
+  hooks?: DivebellExtensionHooks;
 }
 ```
 
@@ -30,12 +30,12 @@ interface OpenRuntimeExtensionDefinition {
 | `commands` | 这个 Extension 注册的 Commands。命令名不能与内置或其他扩展命令重复。 |
 | `hooks` | `open`、`detectStack` 和 `close` Hook。 |
 
-定义必须至少包含一个 Command 或 Hook。OpenRuntime 会在加载 Extension 列表时检查 `requires`；缺少依赖时不会加载这个 Extension，并明确提示需要安装哪个 Extension。TypeScript 入口建议直接标注为 `OpenRuntimeExtensionDefinition`；如果不生成声明文件，也可以使用 `satisfies OpenRuntimeExtensionDefinition`。测试和 CI 可以调用 `validateExtension(...)` 检查默认导出。
+定义必须至少包含一个 Command 或 Hook。Divebell 会在加载 Extension 列表时检查 `requires`；缺少依赖时不会加载这个 Extension，并明确提示需要安装哪个 Extension。TypeScript 入口建议直接标注为 `DivebellExtensionDefinition`；如果不生成声明文件，也可以使用 `satisfies DivebellExtensionDefinition`。测试和 CI 可以调用 `validateExtension(...)` 检查默认导出。
 
 ## Commands
 
 ```ts
-interface OpenRuntimeExtensionCommand {
+interface DivebellExtensionCommand {
   name: string;
   requiresOpenHook?: boolean;
   skill?: { path: string };
@@ -54,9 +54,9 @@ interface CliCommandReference {
 }
 ```
 
-- `name` 是挂载到 `openruntime` 下的命令名。
+- `name` 是挂载到 `divebell` 下的命令名。
 - `requiresOpenHook` 表示只有自己的 Extension 已在当前页面成功完成 `open`，这个 Command 才能执行。
-- `commandReferences` 控制 `openruntime <command> --help` 中展示的详细用法和说明。顶层 `openruntime --help` 只展示命令名和简要说明。
+- `commandReferences` 控制 `divebell <command> --help` 中展示的详细用法和说明。顶层 `divebell --help` 只展示命令名和简要说明。
 - `skill.path` 必须是现有 `SKILL.md` 的绝对路径。
 - `run` 成功时直接返回结果，失败时直接抛出错误。
 
@@ -68,7 +68,7 @@ interface CliExtensionRunOptions {
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
-  openruntime: OpenRuntimeExtensionApi;
+  divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
 }
 ```
@@ -76,10 +76,10 @@ interface CliExtensionRunOptions {
 | 字段 | 类型 | 使用说明 |
 | --- | --- | --- |
 | `options.args` | `ParsedCliArgs` | 当前命令解析后的参数。`command` 是命令名和位置参数组成的数组；`options` 是 `Map<string, string[]>`，同名选项可以出现多次。 |
-| `options.page` | `CliExtensionPageContext \| undefined` | 最近一次成功执行 `openruntime open` 后保存的页面上下文。无需页面的命令不要强制检查它；需要页面时必须先处理 `undefined`。 |
-| `options.headers` | `Readonly<Record<string, string>> \| undefined` | 最近一次成功执行 `openruntime open --headers` 时实际使用的完整 headers；打开页面时未传 headers 则为 `undefined`。 |
-| `options.openruntime` | `OpenRuntimeExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
-| `options.fetcher` | `Fetcher` | OpenRuntime 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.openruntime`。 |
+| `options.page` | `CliExtensionPageContext \| undefined` | 最近一次成功执行 `divebell open` 后保存的页面上下文。无需页面的命令不要强制检查它；需要页面时必须先处理 `undefined`。 |
+| `options.headers` | `Readonly<Record<string, string>> \| undefined` | 最近一次成功执行 `divebell open --headers` 时实际使用的完整 headers；打开页面时未传 headers 则为 `undefined`。 |
+| `options.divebell` | `DivebellExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
+| `options.fetcher` | `Fetcher` | Divebell 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.divebell`。 |
 | `options.runExtension` | `CliExtensionRunFunction` | 调用当前 Extension 或已声明依赖中的 Command，并直接拿到原始结果。 |
 
 ### `options.args`
@@ -94,7 +94,7 @@ interface ParsedCliArgs {
 例如执行：
 
 ```sh
-openruntime foo inspect order-42 --format=json --tag smoke --tag checkout --verbose
+divebell foo inspect order-42 --format=json --tag smoke --tag checkout --verbose
 ```
 
 得到：
@@ -113,7 +113,7 @@ import {
   getNumberOption,
   getOptionValue,
   getOptionValues
-} from "@openruntime/cli";
+} from "@divebell/cli";
 
 const format = getOptionValue(options.args, "format");
 const tags = getOptionValues(options.args, "tag");
@@ -184,10 +184,10 @@ interface CliExtensionPageContext {
 }
 ```
 
-- `url` 是最近一次记录到的页面地址；`openedUrl` 是传给 `openruntime open` 的原始地址。
+- `url` 是最近一次记录到的页面地址；`openedUrl` 是传给 `divebell open` 的原始地址。
 - `normalizedUrl` 用于稳定比较页面；`openedAt` 是毫秒时间戳。
 - `bridgeUrl` 和 `sessionId` 可能为空，不能据此假设页面一定接入 Runtime Core。
-- 这个对象是最近打开页面的历史上下文。需要确认页面此刻的真实状态时，继续使用 `options.openruntime.browser` 读取。
+- 这个对象是最近打开页面的历史上下文。需要确认页面此刻的真实状态时，继续使用 `options.divebell.browser` 读取。
 
 ### Command 返回值和错误
 
@@ -202,48 +202,48 @@ Command 失败时直接抛出错误。CLI 会把错误转换成统一错误输�
 ## Skills
 
 ```ts
-interface OpenRuntimeCommandSkill {
+interface DivebellCommandSkill {
   path: string;
 }
 ```
 
-`path` 必须是现有 `SKILL.md` 的绝对路径。执行 `openruntime <command> --skill` 时，CLI 只输出这个路径，不运行 Command。
+`path` 必须是现有 `SKILL.md` 的绝对路径。执行 `divebell <command> --skill` 时，CLI 只输出这个路径，不运行 Command。
 
 ## Hooks
 
-实现独立 Hook 文件时，通过 `OpenRuntimeExtensionHooks` 推导参数和返回值：
+实现独立 Hook 文件时，通过 `DivebellExtensionHooks` 推导参数和返回值：
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
-export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> =
+export const open: NonNullable<DivebellExtensionHooks["open"]> =
   async options => ({ scripts: [] });
 ```
 
 下面是三个 Hook 对应结构的展开说明：
 
 ```ts
-interface OpenRuntimeExtensionHooks {
-  open?: OpenRuntimeOpenHook | OpenRuntimeOrderedHook<OpenRuntimeOpenHook>;
+interface DivebellExtensionHooks {
+  open?: DivebellOpenHook | DivebellOrderedHook<DivebellOpenHook>;
   detectStack?:
-    | OpenRuntimeDetectStackHook
-    | OpenRuntimeOrderedHook<OpenRuntimeDetectStackHook>;
-  close?(options: OpenRuntimePageHookOptions): Promise<void>;
+    | DivebellDetectStackHook
+    | DivebellOrderedHook<DivebellDetectStackHook>;
+  close?(options: DivebellPageHookOptions): Promise<void>;
 }
 
-type OpenRuntimeOpenHook = (
-  options: OpenRuntimeOpenHookOptions
-) => Promise<OpenRuntimeOpenHookResult | void>;
+type DivebellOpenHook = (
+  options: DivebellOpenHookOptions
+) => Promise<DivebellOpenHookResult | void>;
 
-type OpenRuntimeDetectStackHook = (
-  options: OpenRuntimePageHookOptions
+type DivebellDetectStackHook = (
+  options: DivebellPageHookOptions
 ) => Promise<
-  OpenRuntimeStackDetection |
-  readonly OpenRuntimeStackDetection[] |
+  DivebellStackDetection |
+  readonly DivebellStackDetection[] |
   void
 >;
 
-interface OpenRuntimeOrderedHook<Handler> {
+interface DivebellOrderedHook<Handler> {
   run: Handler;
   before?: readonly string[];
   after?: readonly string[];
@@ -263,37 +263,37 @@ hooks: {
 }
 ```
 
-没有顺序关系的 Hook 默认并行执行。OpenRuntime 会在用当前 Extension 列表创建 CLI 时算好执行批次。`before` 和 `after` 只控制顺序：引用的 Hook 不存在或执行失败时，当前 Hook 仍可继续。必需的 Extension 统一在 Extension 基础定义上声明。出现顺序循环时，只停用循环中的 Hook。前一个 Hook 的返回值不会传给后一个 Hook。
+没有顺序关系的 Hook 默认并行执行。Divebell 会在用当前 Extension 列表创建 CLI 时算好执行批次。`before` 和 `after` 只控制顺序：引用的 Hook 不存在或执行失败时，当前 Hook 仍可继续。必需的 Extension 统一在 Extension 基础定义上声明。出现顺序循环时，只停用循环中的 Hook。前一个 Hook 的返回值不会传给后一个 Hook。
 
 `close` 不单独声明顺序。它按 `open` 批次的相反顺序执行；`open` 时并行的 Hook，在 `close` 时也并行。
 
 ### `open`
 
 ```ts
-interface OpenRuntimeOpenHookOptions {
+interface DivebellOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
   headers?: Readonly<Record<string, string>>;
 }
 
-interface OpenRuntimeOpenHookResult {
+interface DivebellOpenHookResult {
   scripts?: readonly string[];
 }
 ```
 
-`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。OpenRuntime 会把同一份 headers 保存在当前目录对应的页面记录中，并通过 `options.headers` 传给后续 Extension Command。如果其中包含账号凭据或 Token，也会一并保存，因此需要妥善保护本地 OpenRuntime 状态目录。多个 Extension 的脚本会按 Hook 执行顺序合并并各自隔离；一个脚本抛错不会阻断后续 Extension 脚本或 OpenRuntime 自己的页面初始化。某个 Hook 失败不会阻止无关 Extension 或页面继续打开。
+`open` 在浏览器真正打开 URL 前执行，可以返回一个或多个页面初始化脚本。`headers` 是 `open --headers` 最终生效值解析后的对象；命令没有传入 header 时为 `undefined`。Divebell 会把同一份 headers 保存在当前目录对应的页面记录中，并通过 `options.headers` 传给后续 Extension Command。如果其中包含账号凭据或 Token，也会一并保存，因此需要妥善保护本地 Divebell 状态目录。多个 Extension 的脚本会按 Hook 执行顺序合并并各自隔离；一个脚本抛错不会阻断后续 Extension 脚本或 Divebell 自己的页面初始化。某个 Hook 失败不会阻止无关 Extension 或页面继续打开。
 
 ### `detectStack` 与 `close`
 
 ```ts
-interface OpenRuntimePageHookOptions {
+interface DivebellPageHookOptions {
   args: ParsedCliArgs;
   page: CliExtensionPageContext;
-  openruntime: OpenRuntimeExtensionApi;
+  divebell: DivebellExtensionApi;
 }
 
-interface OpenRuntimeStackDetection {
+interface DivebellStackDetection {
   id: string;
   name: string;
   version?: string;
@@ -302,15 +302,15 @@ interface OpenRuntimeStackDetection {
 }
 ```
 
-`detectStack` 只在执行 `openruntime stack` 时运行，可以返回一个结果、多个结果或不返回结果。不要在 `evidence` 中包含完整页面配置或敏感值。
+`detectStack` 只在执行 `divebell stack` 时运行，可以返回一个结果、多个结果或不返回结果。不要在 `evidence` 中包含完整页面配置或敏感值。
 
 `close` 只会通知在同一次 `open` 中成功参与过的 Extension。当这个页面被 `stop`，或被同一工作目录中的另一次 `open` 替换时，它都会运行。清理失败会被记录，但不会阻止页面生命周期继续。
 
 每个 Hook 最长运行 5 秒。超时会被记录为该 Extension 的 Hook 失败，不会阻塞其他 Extension。
 
-## `OpenRuntimeExtensionApi`
+## `DivebellExtensionApi`
 
-`options.openruntime` 是 Command 和页面 Hook 访问 OpenRuntime 能力的主要入口。
+`options.divebell` 是 Command 和页面 Hook 访问 Divebell 能力的主要入口。
 
 | 能力 | API |
 | --- | --- |
@@ -322,4 +322,4 @@ interface OpenRuntimeStackDetection {
 
 页面没有接入 Runtime Core 时，`browser` 下的页面操作和诊断仍然可用。只有 Command 确实需要应用内部状态时，才要求 connected runtime。
 
-Coding Agent 仍负责读取和修改项目代码。Extension API 没有统一的代码工作区或开发服务器管理接口；不要把扩展自己的文件访问包装成 OpenRuntime 已经提供的通用代码能力。
+Coding Agent 仍负责读取和修改项目代码。Extension API 没有统一的代码工作区或开发服务器管理接口；不要把扩展自己的文件访问包装成 Divebell 已经提供的通用代码能力。

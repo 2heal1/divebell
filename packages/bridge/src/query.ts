@@ -7,7 +7,7 @@ import type {
   GetTargetsQuery,
   RuntimeActionRisk,
   RuntimeStatus
-} from "@openruntime/core";
+} from "@divebell/core";
 
 export function getCommandFromResource(resource: string): BridgeRuntimeCommandName | undefined {
   if (resource === "targets") return "getTargets";

@@ -2,9 +2,9 @@
 
 English version: [Module Federation Observability](module-federation-observability.md)
 
-`@module-federation/observability-plugin` 是 OpenRuntime 复用的 Module Federation 官方接入路径。它从 MF 自己的 runtime hook 记录结构化加载证据，让 Coding Agent 找到具体失败阶段和可能的负责方，不必根据 DOM 或 Network 结果反推 MF 内部状态。
+`@module-federation/observability-plugin` 是 Divebell 复用的 Module Federation 官方接入路径。它从 MF 自己的 runtime hook 记录结构化加载证据，让 Coding Agent 找到具体失败阶段和可能的负责方，不必根据 DOM 或 Network 结果反推 MF 内部状态。
 
-这个包是 Module Federation runtime plugin，不是 CLI Extension。它应安装在 MF consumer 中，本身不会增加一条独立的 `openruntime` 命令。OpenRuntime 会在同一套页面调试流程中复用它的报告和框架内部事实。
+这个包是 Module Federation runtime plugin，不是 CLI Extension。它应安装在 MF consumer 中，本身不会增加一条独立的 `divebell` 命令。Divebell 会在同一套页面调试流程中复用它的报告和框架内部事实。
 
 ## 插件提供什么
 
@@ -64,13 +64,13 @@ window.__FEDERATION__.__OBSERVABILITY__.host.findReports({
 
 先看 `diagnosis`、`summary.outcome`、`summary.phases` 和 `traceId`，只有需要更多细节时再展开事件时间线。字段缺失表示插件没有观察到这项事实，不能把它当成成功或失败。
 
-MF 接入向 OpenRuntime 暴露 Target 和报告 Action 后，同一份证据可以通过普通 Runtime 流程选择和等待：
+MF 接入向 Divebell 暴露 Target 和报告 Action 后，同一份证据可以通过普通 Runtime 流程选择和等待：
 
 ```bash
-openruntime targets --type mf.remote
-openruntime targets --type mf.remote.expose
-openruntime targets --type mf.shared
-openruntime run-action mf:list-reports \
+divebell targets --type mf.remote
+divebell targets --type mf.remote.expose
+divebell targets --type mf.shared
+divebell run-action mf:list-reports \
   --payload '{"remote":"remote1"}'
 ```
 
@@ -78,7 +78,7 @@ openruntime run-action mf:list-reports \
 
 ## 使用边界
 
-- 接入应保留在 Module Federation observability plugin 中。缺少正式信号时，应在 MF runtime 补 hook，而不是在 OpenRuntime 一侧增加探测逻辑。
+- 接入应保留在 Module Federation observability plugin 中。缺少正式信号时，应在 MF runtime 补 hook，而不是在 Divebell 一侧增加探测逻辑。
 - 不要只根据 `window.__FEDERATION__` 判断 shared provider。应使用 observability 报告、`mf.shared` Target，或者明确标注为浏览器兜底的证据。
 - 不要把 runtime 加载成功当成业务页面成功。应单独验证消费方页面，或者增加由应用负责的明确 ready 信号。
 - 不允许修改源码时，Console、Network、截图和运行时错误码仍可作为兜底证据，但不能把它们写成 MF 结构化状态。

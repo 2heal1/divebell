@@ -1,14 +1,14 @@
-# OpenRuntime CLI Extension Development
+# Divebell CLI Extension Development
 
-Chinese version: [OpenRuntime CLI Extension 开发指南](cli-extensions.zh-CN.md)
+Chinese version: [Divebell CLI Extension 开发指南](cli-extensions.zh-CN.md)
 
 This guide is for Extension developers. It follows the workflow for creating an Extension, registering capabilities, developing locally, publishing, and verification. For installing and managing existing Extensions, see [Using Extensions](extensions.md). For complete fields and types, see the [Extension API Reference](extension-api.md).
 
-Extensions connect a team's domain knowledge and existing development capabilities to OpenRuntime. They can reuse the current page and browser diagnostics while calling existing SDKs, OpenAPIs, CLIs, and internal platforms.
+Extensions connect a team's domain knowledge and existing development capabilities to Divebell. They can reuse the current page and browser diagnostics while calling existing SDKs, OpenAPIs, CLIs, and internal platforms.
 
 ## Extension development model
 
-An Extension packages reusable account and environment preparation, context recognition, stack detection, focused diagnostics, and verification workflows as capabilities that agents can discover and invoke through OpenRuntime CLI. Common examples include:
+An Extension packages reusable account and environment preparation, context recognition, stack detection, focused diagnostics, and verification workflows as capabilities that agents can discover and invoke through Divebell CLI. Common examples include:
 
 - selecting a test account, preparing an environment, or checking access;
 - identifying the application, environment, deployment ID, and other domain resources from the current page;
@@ -29,7 +29,7 @@ An Extension does not require the team to rebuild a service capability that alre
 
 Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
 
-A page Command operates on the page most recently opened by `openruntime open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
+A page Command operates on the page most recently opened by `divebell open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
 ## Create an Extension
 
@@ -62,7 +62,7 @@ This `package.json` is a copyable template for a public, single-Extension packag
 {
   "name": "@scope/my-extension",
   "version": "1.0.0",
-  "description": "OpenRuntime CLI Extension",
+  "description": "Divebell CLI Extension",
   "type": "module",
   "main": "./dist/extension.mjs",
   "types": "./dist/extension.d.mts",
@@ -82,11 +82,11 @@ This `package.json` is a copyable template for a public, single-Extension packag
     "node": ">=24.0.0 <25"
   },
   "devDependencies": {
-    "@openruntime/cli": "^0.1.3",
+    "@divebell/cli": "^0.1.3",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   },
-  "openruntime": {
+  "divebell": {
     "schemaVersion": 1,
     "extensions": ["./dist/extension.mjs"]
   },
@@ -99,11 +99,11 @@ This `package.json` is a copyable template for a public, single-Extension packag
 The template declares two kinds of entry point:
 
 - `main`, `types`, and `exports` are standard npm package entry points. They allow other code to use the package through `import "@scope/my-extension"`.
-- `openruntime.extensions` is the OpenRuntime loading manifest. It explicitly lists the files that OpenRuntime should load as Extensions. A package may declare more than one Extension, so this field is an array.
+- `divebell.extensions` is the Divebell loading manifest. It explicitly lists the files that Divebell should load as Extensions. A package may declare more than one Extension, so this field is an array.
 - `files` limits published content so the build output is included while source and unrelated files are excluded.
 - `publishConfig.access` publishes a scoped package publicly by default. Adjust or remove it for private packages according to team policy.
 
-For a single-Extension package, the standard npm entry and OpenRuntime entry may point to the same file. For a package with multiple Extensions, the standard entry normally points to a shared `index.mjs`, while `openruntime.extensions` lists each Extension file separately.
+For a single-Extension package, the standard npm entry and Divebell entry may point to the same file. For a package with multiple Extensions, the standard entry normally points to a shared `index.mjs`, while `divebell.extensions` lists each Extension file separately.
 
 Start `tsconfig.json` with:
 
@@ -130,9 +130,9 @@ A published Extension package cannot declare `dependencies`, `optionalDependenci
 The entry only declares what the Extension provides. Load the real Command and Hook implementations on demand through dynamic imports:
 
 ```ts
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
-const extension: OpenRuntimeExtensionDefinition = {
+const extension: DivebellExtensionDefinition = {
   schemaVersion: 1,
   name: "my-extension",
   displayName: "My Extension",
@@ -141,7 +141,7 @@ const extension: OpenRuntimeExtensionDefinition = {
     name: "foo",
     commandReferences: [{
       category: "Extensions",
-      usage: "openruntime foo inspect [--name <name>]",
+      usage: "divebell foo inspect [--name <name>]",
       description: "Run a team page inspection."
     }],
     run: async options =>
@@ -171,7 +171,7 @@ Tests and CI may call `validateExtension(...)` on the default export. See the [E
 A Command is the main way an agent invokes an Extension. It receives parsed command arguments, the latest page context, a request function, and the Extension API.
 
 ```ts
-import type { CliExtensionRunOptions } from "@openruntime/cli";
+import type { CliExtensionRunOptions } from "@divebell/cli";
 
 export async function runFoo(
   options: CliExtensionRunOptions
@@ -183,7 +183,7 @@ export async function runFoo(
 }
 ```
 
-Return the result directly on success. OpenRuntime wraps and formats it as the standard successful output. Throw an error on failure; OpenRuntime formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
+Return the result directly on success. Divebell wraps and formats it as the standard successful output. Throw an error on failure; Divebell formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
 An Extension can reuse another Extension's Commands by declaring it once in the Extension-level `requires` list and calling `runExtension`:
 
@@ -206,39 +206,39 @@ An Extension can reuse another Extension's Commands by declaring it once in the 
 }
 ```
 
-OpenRuntime checks dependencies when it loads the Extension list and reports any Extension that must be installed. The nested Command shares the current page and session and returns its raw result without producing separate CLI output or triggering Hooks. Add `requiresOpenHook: true` when a Command depends on setup completed by its own Extension's `open` Hook.
+Divebell checks dependencies when it loads the Extension list and reports any Extension that must be installed. The nested Command shares the current page and session and returns its raw result without producing separate CLI output or triggering Hooks. Add `requiresOpenHook: true` when a Command depends on setup completed by its own Extension's `open` Hook.
 
 ### Hooks
 
-Hooks run while OpenRuntime opens a page, detects its stack, and closes it. A Hook should perform only the work required for its stage. Do not place a complete diagnostic workflow in the entry or a Hook.
+Hooks run while Divebell opens a page, detects its stack, and closes it. A Hook should perform only the work required for its stage. Do not place a complete diagnostic workflow in the entry or a Hook.
 
 #### `open`
 
 `open` runs before the browser opens the URL and may return a page initialization script:
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
-export const open: NonNullable<OpenRuntimeExtensionHooks["open"]> = async () => {
+export const open: NonNullable<DivebellExtensionHooks["open"]> = async () => {
   return {
     scripts: ["globalThis.__TEAM_MARKER__ = true;"]
   };
 };
 ```
 
-The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Later Extension Commands receive the same object. Scripts from multiple Extensions are combined with OpenRuntime's own script. One failed Extension does not block the page or other Extensions.
+The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Later Extension Commands receive the same object. Scripts from multiple Extensions are combined with Divebell's own script. One failed Extension does not block the page or other Extensions.
 
 #### `detectStack`
 
-`detectStack` runs only for `openruntime stack` and does not slow down `openruntime open`:
+`detectStack` runs only for `divebell stack` and does not slow down `divebell open`:
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
 export const detectStack: NonNullable<
-  OpenRuntimeExtensionHooks["detectStack"]
-> = async ({ openruntime }) => {
-  const detected = await openruntime.browser.eval(
+  DivebellExtensionHooks["detectStack"]
+> = async ({ divebell }) => {
+  const detected = await divebell.browser.eval(
     "globalThis._MODERNJS_ROUTE_MANIFEST != null"
   );
   if (!detected) return;
@@ -252,16 +252,16 @@ export const detectStack: NonNullable<
 };
 ```
 
-Return only short evidence in a detection result. Do not include full page configuration or sensitive values. The latest result is reused for the same page and detector set. `openruntime stack --refresh` forces detection again.
+Return only short evidence in a detection result. Do not include full page configuration or sensitive values. The latest result is reused for the same page and detector set. `divebell stack --refresh` forces detection again.
 
 #### `close`
 
 `close` cleans up resources outside the page that were created during the matching `open`:
 
 ```ts
-import type { OpenRuntimeExtensionHooks } from "@openruntime/cli";
+import type { DivebellExtensionHooks } from "@divebell/cli";
 
-export const close: NonNullable<OpenRuntimeExtensionHooks["close"]> = async () => {
+export const close: NonNullable<DivebellExtensionHooks["close"]> = async () => {
   // Close resources created by this Extension.
 };
 ```
@@ -281,7 +281,7 @@ hooks: {
 }
 ```
 
-`before` and `after` only control order. Required Extensions belong in the Extension-level `requires` list. OpenRuntime computes parallel execution batches from the loaded Extension list; it runs `close` in reverse `open` order. Hook results are not passed to later Hooks, and one failure does not stop unrelated Hooks.
+`before` and `after` only control order. Required Extensions belong in the Extension-level `requires` list. Divebell computes parallel execution batches from the loaded Extension list; it runs `close` in reverse `open` order. Hook results are not passed to later Hooks, and one failure does not stop unrelated Hooks.
 
 See the [Hooks API](extension-api.md#hooks) for Hook parameters and return types.
 
@@ -302,16 +302,16 @@ import { fileURLToPath } from "node:url";
 }
 ```
 
-`openruntime foo --skill` prints the Skill path without running the Command. A Skill should explain applicable scenarios, arguments, decision logic, and verification standards. Do not repeat information already available from `--help`.
+`divebell foo --skill` prints the Skill path without running the Command. A Skill should explain applicable scenarios, arguments, decision logic, and verification standards. Do not repeat information already available from `--help`.
 
 ## Use the Extension API
 
-A Command accesses OpenRuntime capabilities through `options.openruntime`:
+A Command accesses Divebell capabilities through `options.divebell`:
 
 | Task | Prefer |
 | --- | --- |
-| Read and operate the current page | `openruntime.browser` |
-| Collect screenshot, Network, Console, memory, and code-execution evidence | The matching capability under `openruntime.browser` |
+| Read and operate the current page | `divebell.browser` |
+| Collect screenshot, Network, Console, memory, and code-execution evidence | The matching capability under `divebell.browser` |
 | Read internal state declared by the application | `targets`, `snapshot`, `events`, `actions` |
 | Execute a page-declared action and wait for its result | `runAction`, `waitFor` |
 
@@ -319,26 +319,26 @@ Browser capabilities remain available when the page does not use Runtime Core. R
 
 After an action, continue reading the page result or use `waitFor` to await an explicit state. Do not claim verification merely because `page` exists or an action ran.
 
-See [`OpenRuntimeExtensionApi`](extension-api.md#openruntimeextensionapi) for all methods, fields, and boundaries.
+See [`DivebellExtensionApi`](extension-api.md#divebellextensionapi) for all methods, fields, and boundaries.
 
 ## Develop locally
 
 ### Load a local entry directly
 
-Build first, then point `OPENRUNTIME_EXTENSIONS_DIR` directly at the generated `.mjs` entry. This keeps an unfinished Extension out of the normal installation directory:
+Build first, then point `DIVEBELL_EXTENSIONS_DIR` directly at the generated `.mjs` entry. This keeps an unfinished Extension out of the normal installation directory:
 
 ```sh
 cd my-extension
 pnpm build
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime --help
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell --help
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime foo --help
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell foo --help
 
-OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
-  openruntime foo inspect --name demo
+DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs" \
+  divebell foo inspect --name demo
 ```
 
 Confirm that the top-level help lists the Command and its command-specific help shows the detailed usage before running a path that does not require a page. Implementations are dynamically imported, so rerun the command after a change; no persistent development process is required.
@@ -348,11 +348,11 @@ Confirm that the top-level help lists the Command and its command-specific help 
 A page Command should handle a missing latest page before it is tested against a representative page:
 
 ```sh
-export OPENRUNTIME_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
-openruntime open https://example.com --no-bridge
-openruntime foo inspect
-openruntime stack --refresh
-openruntime stop
+export DIVEBELL_EXTENSIONS_DIR="$PWD/dist/extension.mjs"
+divebell open https://example.com --no-bridge
+divebell foo inspect
+divebell stack --refresh
+divebell stop
 ```
 
 After a change, return to the same account, environment, and user journey to verify the result.
@@ -380,19 +380,19 @@ Confirm that the package contains only the Extension entry, implementations load
 Install the local `.tgz` for final verification before publishing:
 
 ```sh
-openruntime extensions add ./scope-my-extension-1.0.0.tgz
-openruntime extensions list
-openruntime --help
-openruntime foo --help
+divebell extensions add ./scope-my-extension-1.0.0.tgz
+divebell extensions list
+divebell --help
+divebell foo --help
 ```
 
 ## Verify the Extension
 
 Before delivery, confirm at least the following:
 
-1. `openruntime --help` discovers the Command without an entry-loading error, and `openruntime <command> --help` shows its detailed usage.
+1. `divebell --help` discovers the Command without an entry-loading error, and `divebell <command> --help` shows its detailed usage.
 2. Unrelated commands do not load implementation modules early.
-3. Commands that do not need a page run without a prior `openruntime open`.
+3. Commands that do not need a page run without a prior `divebell open`.
 4. Commands that need a page return a clear next step when no page exists.
 5. Missing arguments, repeated options, unknown subcommands, and failure paths all have deterministic results.
 6. `open`, `stack`, and `stop` trigger their matching `open`, `detectStack`, and `close` Hooks.
@@ -400,4 +400,4 @@ Before delivery, confirm at least the following:
 8. Operations complete on a real or representative page, and the final page or Runtime result is verified.
 9. `npm pack --dry-run` contains only expected files.
 
-Repository development should also run the Extension's own tests and the `@openruntime/cli` Extension tests to ensure loading, Hook isolation, and structured output remain intact.
+Repository development should also run the Extension's own tests and the `@divebell/cli` Extension tests to ensure loading, Hook isolation, and structured output remain intact.

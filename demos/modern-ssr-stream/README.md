@@ -1,12 +1,12 @@
 # Modern.js Stream SSR Demo
 
-This demo verifies that OpenRuntime can connect server rendering and the browser Runtime in the same record when a Modern.js app uses the recommended streaming SSR mode.
+This demo verifies that Divebell can connect server rendering and the browser Runtime in the same record when a Modern.js app uses the recommended streaming SSR mode.
 
 ## Prerequisites
 
-This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by OpenRuntime and has its dependencies installed.
+This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by Divebell and has its dependencies installed.
 
-Install dependencies and build from the OpenRuntime repository root:
+Install dependencies and build from the Divebell repository root:
 
 ```bash
 pnpm install
@@ -18,13 +18,13 @@ pnpm build
 Start the Bridge in the first terminal:
 
 ```bash
-openruntime start
+divebell start
 ```
 
 Start the streaming SSR demo in a second terminal:
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr-stream dev
+pnpm --filter @divebell/demo-modern-ssr-stream dev
 ```
 
 Then open:
@@ -38,14 +38,14 @@ http://localhost:19083/
 Run the verification in a third terminal:
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr-stream verify
+pnpm --filter @divebell/demo-modern-ssr-stream verify
 ```
 
 You can also inspect the state manually:
 
 ```bash
-openruntime targets --url http://localhost:19083/
-openruntime snapshot --url http://localhost:19083/
+divebell targets --url http://localhost:19083/
+divebell snapshot --url http://localhost:19083/
 ```
 
 Expected results:
@@ -59,11 +59,11 @@ Expected results:
 You can also wait for the server SSR state directly:
 
 ```bash
-openruntime wait-for modern:ssr server-rendered --url http://localhost:19083/ --where environment=server --timeout 5000
+divebell wait-for modern:ssr server-rendered --url http://localhost:19083/ --where environment=server --timeout 5000
 ```
 
 ## Build Check
 
 ```bash
-pnpm --filter @openruntime/demo-modern-ssr-stream build
+pnpm --filter @divebell/demo-modern-ssr-stream build
 ```

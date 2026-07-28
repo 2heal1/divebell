@@ -1,4 +1,4 @@
-import { createPackageInfo } from "@openruntime/core";
+import { createPackageInfo } from "@divebell/core";
 import { validateCommandSkill } from "./commands/skill.js";
 import { validateExtension } from "./commands/definition.js";
 import { createBuiltInCommandNameSet } from "./commands/names.js";
@@ -16,20 +16,20 @@ import { runCliWithConfig } from "./runner.js";
 import { createExtensionHookPlans } from "./features/extension/plan.js";
 import type {
   CliRunOptions,
-  CreateOpenRuntimeCliOptions,
-  OpenRuntimeCli,
-  OpenRuntimeExtensionCommand,
-  OpenRuntimeExtensionDefinition,
-  OpenRuntimeCliWithExternalExtensions
+  CreateDivebellCliOptions,
+  DivebellCli,
+  DivebellExtensionCommand,
+  DivebellExtensionDefinition,
+  DivebellCliWithExternalExtensions
 } from "./types/cli.js";
 
-export const cliPackageInfo = createPackageInfo("@openruntime/cli", "agent command line");
+export const cliPackageInfo = createPackageInfo("@divebell/cli", "agent command line");
 
-export function getCliCommandName(): "openruntime" {
-  return "openruntime";
+export function getCliCommandName(): "divebell" {
+  return "divebell";
 }
 
-export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}): OpenRuntimeCli {
+export function createDivebellCli(options: CreateDivebellCliOptions = {}): DivebellCli {
   const extensions = (options.extensions ?? []).map((extension) => validateExtension(extension));
   const extensionRegistry = createExtensionRegistry(extensions);
   const commandRegistry = createCommandRegistry(extensions);
@@ -68,9 +68,9 @@ export function createOpenRuntimeCli(options: CreateOpenRuntimeCliOptions = {}):
 }
 
 function createExtensionRegistry(
-  extensions: readonly OpenRuntimeExtensionDefinition[]
-): Map<string, OpenRuntimeExtensionDefinition> {
-  const registry = new Map<string, OpenRuntimeExtensionDefinition>();
+  extensions: readonly DivebellExtensionDefinition[]
+): Map<string, DivebellExtensionDefinition> {
+  const registry = new Map<string, DivebellExtensionDefinition>();
   for (const extension of extensions) {
     if (registry.has(extension.name)) {
       throw new Error(`Extension "${extension.name}" is registered more than once.`);
@@ -88,11 +88,11 @@ function createExtensionRegistry(
   return registry;
 }
 
-export const defaultOpenRuntimeCli = createOpenRuntimeCli();
+export const defaultDivebellCli = createDivebellCli();
 
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
   const stderr = options.stderr ?? process.stderr;
-  const loaded = await createOpenRuntimeCliWithExternalExtensions();
+  const loaded = await createDivebellCliWithExternalExtensions();
   for (const record of loaded.extensionLoadRecords) {
     if (record.source === "external" && record.status !== "loaded") {
       stderr.write(formatExternalExtensionWarning(record));
@@ -104,10 +104,10 @@ export async function runCli(argv = process.argv.slice(2), options: CliRunOption
   });
 }
 
-export async function createOpenRuntimeCliWithExternalExtensions(
-  options: CreateOpenRuntimeCliOptions = {},
+export async function createDivebellCliWithExternalExtensions(
+  options: CreateDivebellCliOptions = {},
   env: NodeJS.ProcessEnv = process.env
-): Promise<OpenRuntimeCliWithExternalExtensions> {
+): Promise<DivebellCliWithExternalExtensions> {
   const internalExtensions = options.extensions ?? [];
   const external = await loadExternalCliExtensions({
     reservedExtensionNames: internalExtensions.map((extension) => extension.name),
@@ -129,7 +129,7 @@ export async function createOpenRuntimeCliWithExternalExtensions(
     ...resolvedExternal.records
   ];
   return {
-    cli: createOpenRuntimeCli({
+    cli: createDivebellCli({
       ...options,
       extensions: [
         ...internalExtensions,
@@ -142,11 +142,11 @@ export async function createOpenRuntimeCliWithExternalExtensions(
 }
 
 function resolveExternalExtensionDependencies(
-  internalExtensions: readonly OpenRuntimeExtensionDefinition[],
-  externalExtensions: readonly OpenRuntimeExtensionDefinition[],
+  internalExtensions: readonly DivebellExtensionDefinition[],
+  externalExtensions: readonly DivebellExtensionDefinition[],
   records: readonly ExtensionLoadRecord[]
 ): {
-  extensions: OpenRuntimeExtensionDefinition[];
+  extensions: DivebellExtensionDefinition[];
   records: ExtensionLoadRecord[];
 } {
   const available = new Map(
@@ -186,13 +186,13 @@ function resolveExternalExtensionDependencies(
   };
 }
 
-function createCommandRegistry(extensions: readonly OpenRuntimeExtensionDefinition[]): Map<string, {
-  extension: OpenRuntimeExtensionDefinition;
-  command: OpenRuntimeExtensionCommand;
+function createCommandRegistry(extensions: readonly DivebellExtensionDefinition[]): Map<string, {
+  extension: DivebellExtensionDefinition;
+  command: DivebellExtensionCommand;
 }> {
   const registry = new Map<string, {
-    extension: OpenRuntimeExtensionDefinition;
-    command: OpenRuntimeExtensionCommand;
+    extension: DivebellExtensionDefinition;
+    command: DivebellExtensionCommand;
   }>();
   const builtInCommandNames = createBuiltInCommandNameSet();
 
@@ -215,7 +215,7 @@ function createCommandRegistry(extensions: readonly OpenRuntimeExtensionDefiniti
   return registry;
 }
 
-function createCommandSkillReferences(command: OpenRuntimeExtensionCommand): CliCommandSkillReference[] {
+function createCommandSkillReferences(command: DivebellExtensionCommand): CliCommandSkillReference[] {
   if (command.skill === undefined) return [];
   let category: CliCommandSkillReference["category"] | undefined;
   for (const reference of command.commandReferences ?? []) {
@@ -234,5 +234,5 @@ function createCommandSkillReferences(command: OpenRuntimeExtensionCommand): Cli
 function formatExternalExtensionWarning(record: ExtensionLoadRecord): string {
   const location = record.path === undefined ? record.name : record.path;
   const reason = record.reason ?? "unknown reason";
-  return `Skipped external OpenRuntime extension ${location}: ${reason}\n`;
+  return `Skipped external Divebell extension ${location}: ${reason}\n`;
 }

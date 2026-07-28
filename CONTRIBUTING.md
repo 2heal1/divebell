@@ -1,8 +1,8 @@
-# Contributing to OpenRuntime
+# Contributing to Divebell
 
-Chinese version: [OpenRuntime 贡献指南](./CONTRIBUTING.zh-CN.md)
+Chinese version: [Divebell 贡献指南](./CONTRIBUTING.zh-CN.md)
 
-Thank you for contributing to OpenRuntime. This guide explains how to set up
+Thank you for contributing to Divebell. This guide explains how to set up
 the repository, develop its packages, run the current CLI locally, and verify a
 change before opening a pull request.
 
@@ -25,8 +25,8 @@ corepack prepare pnpm@10.18.1 --activate
 Clone the repository and install the root and package dependencies:
 
 ```bash
-git clone https://github.com/2heal1/openruntime.git
-cd openruntime
+git clone https://github.com/2heal1/divebell.git
+cd divebell
 pnpm --filter . --filter "./packages/*" install --frozen-lockfile
 pnpm build
 ```
@@ -39,34 +39,34 @@ depend on another local framework checkout.
 From the repository root, run:
 
 ```bash
-./openruntime --help
+./divebell --help
 ```
 
-`./openruntime` points directly to `packages/cli/dist/bin.js` in this checkout. It
-does not use a globally installed or published `openruntime` command.
+`./divebell` points directly to `packages/cli/dist/bin.js` in this checkout. It
+does not use a globally installed or published `divebell` command.
 
 After changing the CLI, Core, or Bridge, rebuild the CLI and its referenced
 packages before trying the command again:
 
 ```bash
-pnpm --filter @openruntime/cli build
-./openruntime <command> [options]
+pnpm --filter @divebell/cli build
+./divebell <command> [options]
 ```
 
 The CLI keeps page and browser context by working directory. Run
-`./openruntime` from the repository root for normal CLI development. When a
+`./divebell` from the repository root for normal CLI development. When a
 test needs a different working directory, invoke the same built entry from that
 directory:
 
 ```bash
-/absolute/path/to/openruntime/openruntime <command> [options]
+/absolute/path/to/divebell/divebell <command> [options]
 ```
 
 ## Repository Layout
 
 - `packages/core`: optional page-side Runtime Core API.
 - `packages/bridge`: connection between a page Runtime and the CLI.
-- `packages/cli`: the `openruntime` and `opr` command-line entry points.
+- `packages/cli`: the `divebell` command-line entry point.
 - `packages/extension-*`: focused Extension packages.
 - `packages/chunk-map`, `packages/modern-plugin`, and
   `packages/rspack-plugin`: build and framework integrations.
@@ -90,10 +90,10 @@ Useful commands:
 pnpm build
 
 # Build one package
-pnpm --filter @openruntime/cli build
+pnpm --filter @divebell/cli build
 
 # Test one package
-pnpm --filter @openruntime/cli test
+pnpm --filter @divebell/cli test
 
 # Test every package
 pnpm test
@@ -123,7 +123,7 @@ Do not edit `docs/cli-reference.md` or `docs/cli-reference.zh-CN.md` by hand.
 
 ## Architecture Boundaries
 
-- OpenRuntime is a web development debugging tool for coding agents. Do not
+- Divebell is a web development debugging tool for coding agents. Do not
   reintroduce the old “Agent Runtime” product name.
 - Runtime Core is optional. Browser operations, diagnostics, login reuse, and
   Extensions must continue to work for pages that do not integrate it.
@@ -153,7 +153,7 @@ pnpm changeset
 
 Choose the affected package or packages and describe the user-visible result.
 Documentation-only changes and repository-local tooling such as the
-`./openruntime` launcher do not need a changeset.
+`./divebell` launcher do not need a changeset.
 
 ## Pull Request Checklist
 

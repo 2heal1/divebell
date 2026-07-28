@@ -37,9 +37,9 @@ const EXISTING_CHROME_CONNECT_INTERVAL_MS = 2000;
 const EXISTING_CHROME_IDLE_TIMEOUT_MS = 5000;
 export const SUPPORTED_NODE_RANGE = ">=24.0.0 <25";
 const CHECK_CONTROL_SCRIPT = `(() => {
-  const manager = globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__;
+  const manager = globalThis.__DIVEBELL_BRIDGE_MANAGER__;
   if (manager === null || typeof manager !== "object") {
-    throw new Error("OpenRuntime Bridge initialization was not installed in the page.");
+    throw new Error("Divebell Bridge initialization was not installed in the page.");
   }
   return {
     controlled: true,
@@ -123,11 +123,11 @@ export async function runCheckCommand(options: {
       }
     ];
     output.error(createError({
-      code: "OPENRUNTIME_CHECK_NODE_UNSUPPORTED",
+      code: "DIVEBELL_CHECK_NODE_UNSUPPORTED",
       kind: "validation",
-      message: `OpenRuntime requires Node.js 24, but this command is running on Node.js ${nodeVersion}.`,
+      message: `Divebell requires Node.js 24, but this command is running on Node.js ${nodeVersion}.`,
       retryable: false,
-      hint: "Install and select Node.js 24, then run `openruntime check` again.",
+      hint: "Install and select Node.js 24, then run `divebell check` again.",
       data: {
         ready: false,
         fixed: false,
@@ -143,10 +143,10 @@ export async function runCheckCommand(options: {
     return 1;
   }
 
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "openruntime-check-"));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-check-"));
   const bridgeStateDirectory = join(temporaryDirectory, "bridge");
   const browserOptions: BrowserRunOptions = {
-    session: `openruntime-check-${randomUUID().replaceAll("-", "")}`,
+    session: `divebell-check-${randomUUID().replaceAll("-", "")}`,
     disableRestore: true
   };
   const fixRequested = hasOption(options.args, "fix");
@@ -199,11 +199,11 @@ export async function runCheckCommand(options: {
         }
       ];
       failure = createError({
-        code: "OPENRUNTIME_CHECK_BRIDGE_FAILED",
+        code: "DIVEBELL_CHECK_BRIDGE_FAILED",
         kind: "internal",
-        message: `OpenRuntime could not start its local Bridge: ${reason}`,
+        message: `Divebell could not start its local Bridge: ${reason}`,
         retryable: true,
-        hint: "Check whether this machine allows local processes to listen on an available port, then run `openruntime check` again."
+        hint: "Check whether this machine allows local processes to listen on an available port, then run `divebell check` again."
       });
     }
 
@@ -372,11 +372,11 @@ export async function runCheckCommand(options: {
 
   if (failure === undefined && cleanupFailure !== undefined) {
     failure = createError({
-      code: "OPENRUNTIME_CHECK_CLEANUP_FAILED",
+      code: "DIVEBELL_CHECK_CLEANUP_FAILED",
       kind: "internal",
-      message: `OpenRuntime opened and controlled the browser, but could not clean up the temporary check: ${cleanupFailure}`,
+      message: `Divebell opened and controlled the browser, but could not clean up the temporary check: ${cleanupFailure}`,
       retryable: true,
-      hint: "Run `openruntime check` again after confirming no temporary OpenRuntime process is still running."
+      hint: "Run `divebell check` again after confirming no temporary Divebell process is still running."
     });
   }
 
@@ -518,7 +518,7 @@ async function runExistingBrowserProbe(
         stage: "browser.open",
         reason: browserResultMessage(
           opened,
-          "OpenRuntime could not create a temporary tab in the existing browser."
+          "Divebell could not create a temporary tab in the existing browser."
         )
       };
     }
@@ -534,7 +534,7 @@ async function runExistingBrowserProbe(
         stage: "browser.control",
         reason: browserResultMessage(
           injected,
-          "OpenRuntime could not initialize its Bridge in the temporary tab."
+          "Divebell could not initialize its Bridge in the temporary tab."
         )
       };
     } else {
@@ -572,7 +572,7 @@ async function runExistingBrowserProbe(
         stage: "browser.control",
         reason: browserResultMessage(
           closed,
-          "OpenRuntime could not close the temporary tab."
+          "Divebell could not close the temporary tab."
         )
       };
     }
@@ -639,7 +639,7 @@ function createExistingBrowserOptions(
 ): BrowserRunOptions {
   return {
     ...browserOptions,
-    session: `${browserOptions.session ?? "openruntime-check"}-existing`,
+    session: `${browserOptions.session ?? "divebell-check"}-existing`,
     ...(autoConnect ? { autoConnect: true } : {}),
     idleTimeoutMs: EXISTING_CHROME_IDLE_TIMEOUT_MS
   };
@@ -692,11 +692,11 @@ function createProbeFailure(
 ): CommandError {
   if (probe.stage === "browser.control") {
     return createError({
-      code: "OPENRUNTIME_CHECK_CONTROL_FAILED",
+      code: "DIVEBELL_CHECK_CONTROL_FAILED",
       kind: "browser",
-      message: `OpenRuntime opened the browser but could not control it: ${probe.reason}`,
+      message: `Divebell opened the browser but could not control it: ${probe.reason}`,
       retryable: true,
-      hint: "Close any temporary OpenRuntime browser process, then run `openruntime check` again."
+      hint: "Close any temporary Divebell browser process, then run `divebell check` again."
     });
   }
 
@@ -708,21 +708,21 @@ function createProbeFailure(
       ? "Start Chrome with remote debugging enabled"
       : `Start Chrome with \`--remote-debugging-port=${browserSource.port}\` and a non-default \`--user-data-dir\``;
     return createError({
-      code: "OPENRUNTIME_CHECK_DEBUG_CONNECTION_REQUIRED",
+      code: "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED",
       kind: "needs_input",
-      message: `OpenRuntime could not connect to ${target}: ${probe.reason}`,
+      message: `Divebell could not connect to ${target}: ${probe.reason}`,
       retryable: false,
-      hint: `${setup}, then run \`openruntime check\` again.`
+      hint: `${setup}, then run \`divebell check\` again.`
     });
   }
 
   if (browserSource.kind === "auto-connect") {
     return createError({
-      code: "OPENRUNTIME_CHECK_DEBUG_CONNECTION_REQUIRED",
+      code: "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED",
       kind: "needs_input",
-      message: `OpenRuntime could not find a Chrome instance with remote debugging enabled: ${probe.reason}`,
+      message: `Divebell could not find a Chrome instance with remote debugging enabled: ${probe.reason}`,
       retryable: false,
-      hint: "In Chrome 144 or newer, open `chrome://inspect/#remote-debugging`, enable remote debugging, then run `openruntime check` again."
+      hint: "In Chrome 144 or newer, open `chrome://inspect/#remote-debugging`, enable remote debugging, then run `divebell check` again."
     });
   }
 
@@ -732,54 +732,54 @@ function createProbeFailure(
     || browserSource.kind === "executable"
   ) {
     return createError({
-      code: "OPENRUNTIME_CHECK_CONFIGURED_BROWSER_FAILED",
+      code: "DIVEBELL_CHECK_CONFIGURED_BROWSER_FAILED",
       kind: "needs_input",
-      message: `OpenRuntime could not use the configured browser source: ${probe.reason}`,
+      message: `Divebell could not use the configured browser source: ${probe.reason}`,
       retryable: false,
-      hint: "Check the configured browser source and its credentials, then run `openruntime check` again."
+      hint: "Check the configured browser source and its credentials, then run `divebell check` again."
     });
   }
 
   if (!fixRequested) {
     const missingBrowser = isMissingBrowserFailure(probe.reason);
     return createError({
-      code: "OPENRUNTIME_CHECK_BROWSER_NOT_READY",
+      code: "DIVEBELL_CHECK_BROWSER_NOT_READY",
       kind: "browser",
-      message: `OpenRuntime could not open a browser: ${probe.reason}`,
+      message: `Divebell could not open a browser: ${probe.reason}`,
       retryable: true,
       hint: missingBrowser
-        ? "Run `openruntime check --fix` to install a managed browser and retry."
-        : "Run `openruntime check --fix` to connect to the Chrome already installed on this machine."
+        ? "Run `divebell check --fix` to install a managed browser and retry."
+        : "Run `divebell check --fix` to connect to the Chrome already installed on this machine."
     });
   }
 
   return createError({
-    code: "OPENRUNTIME_CHECK_BROWSER_FAILED",
+    code: "DIVEBELL_CHECK_BROWSER_FAILED",
     kind: "browser",
-    message: `OpenRuntime could not open a browser after the automatic repair: ${probe.reason}`,
+    message: `Divebell could not open a browser after the automatic repair: ${probe.reason}`,
     retryable: false,
     hint: fixed
-      ? "Review the browser startup reason and any operating-system security prompt, then run `openruntime check` again."
-      : "Install the browser requirements manually, then run `openruntime check` again."
+      ? "Review the browser startup reason and any operating-system security prompt, then run `divebell check` again."
+      : "Install the browser requirements manually, then run `divebell check` again."
   });
 }
 
 function createInstallFailure(reason: string): CommandError {
   if (isBrowserDownloadFailure(reason)) {
     return createError({
-      code: "OPENRUNTIME_CHECK_BROWSER_DOWNLOAD_FAILED",
+      code: "DIVEBELL_CHECK_BROWSER_DOWNLOAD_FAILED",
       kind: "browser",
-      message: `OpenRuntime could not download Chrome for Testing: ${reason}`,
+      message: `Divebell could not download Chrome for Testing: ${reason}`,
       retryable: true,
       hint: "Allow access to `googlechromelabs.github.io` and `storage.googleapis.com`, or use an existing Chrome with remote debugging enabled."
     });
   }
   return createError({
-    code: "OPENRUNTIME_CHECK_FIX_FAILED",
+    code: "DIVEBELL_CHECK_FIX_FAILED",
     kind: "browser",
-    message: `OpenRuntime could not install the browser requirements: ${reason}`,
+    message: `Divebell could not install the browser requirements: ${reason}`,
     retryable: false,
-    hint: "Resolve the reported browser installation error, then run `openruntime check` again."
+    hint: "Resolve the reported browser installation error, then run `divebell check` again."
   });
 }
 
@@ -789,14 +789,14 @@ function createExistingChromeFailure(
   openFailure?: string
 ): CommandError {
   const action = settingsOpened
-    ? "The Chrome remote-debugging page was opened, but OpenRuntime did not receive permission before the check timed out."
+    ? "The Chrome remote-debugging page was opened, but Divebell did not receive permission before the check timed out."
     : `Open \`${CHROME_REMOTE_DEBUGGING_URL}\` in Chrome and enable remote debugging.`;
   return createError({
-    code: "OPENRUNTIME_CHECK_REMOTE_DEBUGGING_REQUIRED",
+    code: "DIVEBELL_CHECK_REMOTE_DEBUGGING_REQUIRED",
     kind: "needs_input",
-    message: `OpenRuntime could not connect to the existing Chrome session: ${probe.reason}`,
+    message: `Divebell could not connect to the existing Chrome session: ${probe.reason}`,
     retryable: true,
-    hint: `${action} Approve the Chrome connection prompt, then run \`openruntime check\` again.`,
+    hint: `${action} Approve the Chrome connection prompt, then run \`divebell check\` again.`,
     ...(openFailure === undefined
       ? {}
       : {
@@ -835,11 +835,11 @@ function createSuccessMessage(
   fixed: boolean,
   fixMethods: readonly FixMethod[]
 ): string {
-  if (!fixed) return "OpenRuntime is ready.";
+  if (!fixed) return "Divebell is ready.";
   if (fixMethods.includes("connect-existing-chrome")) {
-    return "OpenRuntime is ready. Connected to the existing Chrome session.";
+    return "Divebell is ready. Connected to the existing Chrome session.";
   }
-  return "OpenRuntime is ready. Browser requirements were installed.";
+  return "Divebell is ready. Browser requirements were installed.";
 }
 
 async function closeCheckBrowser(

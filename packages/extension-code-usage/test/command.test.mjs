@@ -15,11 +15,11 @@ import {
   writeCodeUsageReportHtml
 } from "../dist/index.js";
 import {
-  createOpenRuntimeCli,
+  createDivebellCli,
   parseCliArgs
 } from "../../cli/dist/index.js";
 
-const cli = createOpenRuntimeCli({ extensions: [extension] });
+const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;
 
 function createOutput() {
@@ -174,7 +174,7 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.match(html, /filter\(isBusinessSource\)/);
   assert.match(html, /demo/);
   assert.doesNotMatch(html, /const tag/);
-  assert.doesNotMatch(html, /__OPENRUNTIME_REPORT_DATA__/);
+  assert.doesNotMatch(html, /__DIVEBELL_REPORT_DATA__/);
   assert.doesNotMatch(html, /<\/script><script>alert\(1\)<\/script>/);
   assert.match(html, /\\u003c\/script\\u003e/);
 });
@@ -185,7 +185,7 @@ test("selects English by default and Chinese for Chinese terminal locales", () =
   assert.equal(detectCliLocale({ LC_ALL: "zh_CN.UTF-8" }), "zh");
   assert.equal(detectCliLocale({ LANG: "zh-TW" }), "zh");
   assert.equal(
-    detectCliLocale({ OPENRUNTIME_LANG: "en", LANG: "zh_CN.UTF-8" }),
+    detectCliLocale({ DIVEBELL_LANG: "en", LANG: "zh_CN.UTF-8" }),
     "en"
   );
   assert.equal(cliText("Report ready", "报告已生成", { LANG: "en_US.UTF-8" }), "Report ready");
@@ -193,7 +193,7 @@ test("selects English by default and Chinese for Chinese terminal locales", () =
 });
 
 test("code-usage report generates an HTML file without requiring a page session", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-report-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-report-"));
   const inputPath = join(directory, "report.json");
   const outputPath = join(directory, "visual-report.html");
   writeFileSync(inputPath, JSON.stringify(report), "utf8");
@@ -264,7 +264,7 @@ test("code-usage report generates an HTML file without requiring a page session"
 });
 
 test("splits a large JavaScript file into bounded viewer pages", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-large-code-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-large-code-"));
   const inputPath = join(directory, "report.json");
   const outputPath = join(directory, "report.html");
   const largeCode = `${"x".repeat(2 * 1024 * 1024 - 1)}😀${"y".repeat(32)}`;
@@ -308,7 +308,7 @@ test("splits a large JavaScript file into bounded viewer pages", async () => {
 });
 
 test("streams report records and code before the complete response is ready", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-stream-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-stream-"));
   const inputPath = join(directory, "report.json");
   const streamReport = structuredClone(report);
   streamReport.usage.phases[0].sources = Array.from({ length: 24 }, (_, index) => ({
@@ -355,7 +355,7 @@ test("streams report records and code before the complete response is ready", as
 });
 
 test("keeps reports created before code highlighting compatible", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-legacy-report-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-legacy-report-"));
   const inputPath = join(directory, "report.json");
   const outputPath = join(directory, "report.html");
   const legacyReport = structuredClone(report);
@@ -376,7 +376,7 @@ test("keeps reports created before code highlighting compatible", async () => {
 });
 
 test("code-usage report opens the generated file by default", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-open-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-open-"));
   const inputPath = join(directory, "report.json");
   writeFileSync(inputPath, JSON.stringify(report), "utf8");
   const opened = [];
@@ -396,7 +396,7 @@ test("code-usage report opens the generated file by default", async () => {
 });
 
 test("code-usage report rejects unrelated JSON instead of creating an empty page", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-analysis-invalid-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-invalid-"));
   const inputPath = join(directory, "report.json");
   writeFileSync(inputPath, JSON.stringify({ ok: true }), "utf8");
   const output = createOutput();
@@ -418,10 +418,10 @@ test("code-usage report rejects unrelated JSON instead of creating an empty page
 });
 
 test("code-usage analyze accepts an explicit Chunk Map path and multiple local checkpoints", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-code-usage-analyze-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-code-usage-analyze-"));
   const assetDirectory = join(directory, "dist");
   const scriptDirectory = join(assetDirectory, "static/js");
-  const chunkMapPath = join(assetDirectory, "openruntime-chunks.json");
+  const chunkMapPath = join(assetDirectory, "divebell-chunks.json");
   const firstCoveragePath = join(directory, "first.coverage.json");
   const secondCoveragePath = join(directory, "second.coverage.json");
   const reportPath = join(directory, "report.json");
@@ -434,7 +434,7 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
   }), "utf8");
   writeFileSync(chunkMapPath, JSON.stringify({
     schemaVersion: 2,
-    generator: "@openruntime/rspack-plugin",
+    generator: "@divebell/rspack-plugin",
     buildId: "build-online-1",
     publicPath: "/",
     chunks: [{
@@ -570,12 +570,12 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
 });
 
 test("code-usage analyze reads a Chunk Map, JavaScript, and source maps over HTTP", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-code-usage-http-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-code-usage-http-"));
   const coveragePath = join(directory, "coverage.json");
   const reportPath = join(directory, "report.json");
   const chunkMap = {
     schemaVersion: 2,
-    generator: "@openruntime/rspack-plugin",
+    generator: "@divebell/rspack-plugin",
     buildId: "build-http-1",
     publicPath: "/quickstart/",
     chunks: [{
@@ -611,7 +611,7 @@ test("code-usage analyze reads a Chunk Map, JavaScript, and source maps over HTT
     packages: []
   };
   const fixtures = new Map([
-    ["/quickstart/openruntime-chunks.json", JSON.stringify(chunkMap)],
+    ["/quickstart/divebell-chunks.json", JSON.stringify(chunkMap)],
     ["/quickstart/static/js/main.js", "aaaa"],
     ["/quickstart/static/js/main.js.map", JSON.stringify({
       version: 3,
@@ -651,7 +651,7 @@ test("code-usage analyze reads a Chunk Map, JavaScript, and source maps over HTT
       "code-usage",
       "analyze",
       "--chunk-map",
-      `${baseUrl}openruntime-chunks.json`,
+      `${baseUrl}divebell-chunks.json`,
       "--coverage",
       coveragePath,
       "--output",
@@ -664,7 +664,7 @@ test("code-usage analyze reads a Chunk Map, JavaScript, and source maps over HTT
     assert.equal(exitCode, 0, output.errorText());
     const result = JSON.parse(output.text());
     assert.equal(result.status, "ok");
-    assert.equal(result.data.chunkMap, `${baseUrl}openruntime-chunks.json`);
+    assert.equal(result.data.chunkMap, `${baseUrl}divebell-chunks.json`);
     assert.equal(result.data.assets, baseUrl);
     const saved = JSON.parse(readFileSync(reportPath, "utf8"));
     assert.equal(saved.phases[0].sources[0].owner.packageName, "quickstart");

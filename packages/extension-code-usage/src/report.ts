@@ -8,12 +8,12 @@ import { promisify } from "node:util";
 import type { CodeUsageReportWriteOptions, CodeUsageReportWriteResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-const REPORT_DATA_PLACEHOLDER = "__OPENRUNTIME_REPORT_DATA__";
-const REPORT_DATA_HREF_PLACEHOLDER = "__OPENRUNTIME_REPORT_DATA_HREF__";
-const REPORT_DATA_MODE_PLACEHOLDER = "__OPENRUNTIME_REPORT_DATA_MODE__";
-const CODE_FILE_DATA_PLACEHOLDER = "__OPENRUNTIME_CODE_FILE_DATA__";
-const CODE_FILE_DATA_HREF_PLACEHOLDER = "__OPENRUNTIME_CODE_FILE_DATA_HREF__";
-const CODE_FILE_DATA_MODE_PLACEHOLDER = "__OPENRUNTIME_CODE_FILE_DATA_MODE__";
+const REPORT_DATA_PLACEHOLDER = "__DIVEBELL_REPORT_DATA__";
+const REPORT_DATA_HREF_PLACEHOLDER = "__DIVEBELL_REPORT_DATA_HREF__";
+const REPORT_DATA_MODE_PLACEHOLDER = "__DIVEBELL_REPORT_DATA_MODE__";
+const CODE_FILE_DATA_PLACEHOLDER = "__DIVEBELL_CODE_FILE_DATA__";
+const CODE_FILE_DATA_HREF_PLACEHOLDER = "__DIVEBELL_CODE_FILE_DATA_HREF__";
+const CODE_FILE_DATA_MODE_PLACEHOLDER = "__DIVEBELL_CODE_FILE_DATA_MODE__";
 const CODE_VIEWER_PART_LENGTH = 2 * 1024 * 1024;
 
 interface CodeFileSource {
@@ -87,7 +87,7 @@ export async function writeCodeUsageReportHtml(
   await mkdir(dirname(htmlPath), { recursive: true });
   await writeFile(
     resolve(dirname(htmlPath), dataFilename),
-    createDeferredDataScript("__OPENRUNTIME_RENDER_REPORT__", reportData),
+    createDeferredDataScript("__DIVEBELL_RENDER_REPORT__", reportData),
     "utf8"
   );
   await writeFile(htmlPath, html, "utf8");
@@ -259,7 +259,7 @@ async function createCodeViewerPages(
       await writeFile(resolve(codeDirectory, filenames[index] ?? `${digest}.html`), html, "utf8");
       await writeFile(
         resolve(codeDirectory, dataFilename),
-        createDeferredDataScript("__OPENRUNTIME_RENDER_CODE_FILE__", data),
+        createDeferredDataScript("__DIVEBELL_RENDER_CODE_FILE__", data),
         "utf8"
       );
       pageCount += 1;

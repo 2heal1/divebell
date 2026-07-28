@@ -1,15 +1,15 @@
 import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { basename, isAbsolute } from "node:path";
 
-import type { OpenRuntimeCommandSkill } from "../types/commands.js";
-export type { OpenRuntimeCommandSkill } from "../types/commands.js";
+import type { DivebellCommandSkill } from "../types/commands.js";
+export type { DivebellCommandSkill } from "../types/commands.js";
 
-export function validateCommandSkill(value: unknown, commandName: string): OpenRuntimeCommandSkill {
+export function validateCommandSkill(value: unknown, commandName: string): DivebellCommandSkill {
   if (typeof value !== "object" || value === null) {
     throw new Error(`Command "${commandName}" skill must be an object.`);
   }
 
-  const path = (value as Partial<OpenRuntimeCommandSkill>).path;
+  const path = (value as Partial<DivebellCommandSkill>).path;
   if (typeof path !== "string" || path.length === 0 || !isAbsolute(path) || basename(path) !== "SKILL.md") {
     throw new Error(`Command "${commandName}" skill.path must be an absolute path to SKILL.md.`);
   }

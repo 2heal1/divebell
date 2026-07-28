@@ -1,41 +1,41 @@
 export {
-  analyzeOpenRuntimeCodeUsage,
-  createOpenRuntimeChunkMap,
-  matchOpenRuntimeChunk,
-  OPENRUNTIME_CHUNK_MAP_SCHEMA_VERSION
-} from "@openruntime/chunk-map";
+  analyzeDivebellCodeUsage,
+  createDivebellChunkMap,
+  matchDivebellChunk,
+  DIVEBELL_CHUNK_MAP_SCHEMA_VERSION
+} from "@divebell/chunk-map";
 export type {
-  OpenRuntimeChunkMapStats,
-  OpenRuntimeCodeUsageAsset,
-  OpenRuntimeCodeUsageChunkResult,
-  OpenRuntimeCodeUsageInput,
-  OpenRuntimeCodeUsagePackageResult,
-  OpenRuntimeCodeUsagePhaseResult,
-  OpenRuntimeCodeUsageReport,
-  OpenRuntimeCodeUsageSourceResult,
-  OpenRuntimeCoverageCheckpoint,
-  OpenRuntimeCoverageFunction,
-  OpenRuntimeCoverageRange,
-  OpenRuntimeCoverageScript,
-  OpenRuntimeSourceMap,
-  OpenRuntimeChunkMap,
-  OpenRuntimeChunkMapAsset,
-  OpenRuntimeChunkMapChunk,
-  OpenRuntimeChunkMapCreateOptions,
-  OpenRuntimeChunkMapModule,
-  OpenRuntimeChunkMapModuleKind,
-  OpenRuntimeChunkMapModuleOwner,
-  OpenRuntimeChunkMapPackageSummary,
-  OpenRuntimeChunkMapSplitRule,
-  OpenRuntimeChunkMapSplitRuleKind,
-  OpenRuntimeChunkMatchResult
-} from "@openruntime/chunk-map";
+  DivebellChunkMapStats,
+  DivebellCodeUsageAsset,
+  DivebellCodeUsageChunkResult,
+  DivebellCodeUsageInput,
+  DivebellCodeUsagePackageResult,
+  DivebellCodeUsagePhaseResult,
+  DivebellCodeUsageReport,
+  DivebellCodeUsageSourceResult,
+  DivebellCoverageCheckpoint,
+  DivebellCoverageFunction,
+  DivebellCoverageRange,
+  DivebellCoverageScript,
+  DivebellSourceMap,
+  DivebellChunkMap,
+  DivebellChunkMapAsset,
+  DivebellChunkMapChunk,
+  DivebellChunkMapCreateOptions,
+  DivebellChunkMapModule,
+  DivebellChunkMapModuleKind,
+  DivebellChunkMapModuleOwner,
+  DivebellChunkMapPackageSummary,
+  DivebellChunkMapSplitRule,
+  DivebellChunkMapSplitRuleKind,
+  DivebellChunkMatchResult
+} from "@divebell/chunk-map";
 export {
-  openRuntimeChunkMapPlugin,
-  OpenRuntimeChunkMapRspackPlugin
+  divebellChunkMapPlugin,
+  DivebellChunkMapRspackPlugin
 } from "./plugin.js";
 export type {
   ModernCliPluginApiLike,
   ModernCliPluginLike,
-  OpenRuntimeChunkMapPluginOptions
+  DivebellChunkMapPluginOptions
 } from "./plugin.js";

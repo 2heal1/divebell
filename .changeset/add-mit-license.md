@@ -1,14 +1,14 @@
 ---
-"@openruntime/core": patch
-"@openruntime/bridge": patch
-"@openruntime/chunk-map": patch
-"@openruntime/rspack-plugin": patch
-"@openruntime/modern-plugin": patch
-"@openruntime/cli": patch
-"@openruntime/extension-code-usage": patch
-"@openruntime/extension-troubleshooting": patch
-"@openruntime/extension-imitate": patch
-"@openruntime/extension-memory": patch
+"@divebell/core": patch
+"@divebell/bridge": patch
+"@divebell/chunk-map": patch
+"@divebell/rspack-plugin": patch
+"@divebell/modern-plugin": patch
+"@divebell/cli": patch
+"@divebell/extension-code-usage": patch
+"@divebell/extension-troubleshooting": patch
+"@divebell/extension-imitate": patch
+"@divebell/extension-memory": patch
 ---
 
-License OpenRuntime and all published packages under the MIT License.
+License Divebell and all published packages under the MIT License.

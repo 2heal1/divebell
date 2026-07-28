@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "@rstest/core";
-import { createOpenRuntime } from "@openruntime/core";
+import { createDivebell } from "@divebell/core";
 
-import { openRuntimeModernPlugin, type ModernRenderContext } from "../../dist/index.js";
+import { divebellModernPlugin, type ModernRenderContext } from "../../dist/index.js";
 import { createModernApiHarness } from "../helpers/modern-api.js";
 
 test("registers fixed app and route targets during plugin setup", () => {
-  const runtime = createOpenRuntime();
-  createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  createModernApiHarness(divebellModernPlugin({ runtime }));
 
   const appTarget = runtime.getTargets({ id: "modern:app" })[0];
   assert.ok(appTarget);
@@ -25,14 +25,14 @@ test("registers fixed app and route targets during plugin setup", () => {
 });
 
 test("registers Modern.js app, SSR, and aggregate route targets", () => {
-  const runtime = createOpenRuntime();
+  const runtime = createDivebell();
   const host = {
-    __OPEN_RUNTIME__: runtime,
+    __DIVEBELL__: runtime,
     _SSR_DATA: {
       renderMode: "string"
     }
   };
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime, host }));
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime, host }));
 
   handlers.onBeforeRender?.({
     routes: [
@@ -92,8 +92,8 @@ test("registers Modern.js app, SSR, and aggregate route targets", () => {
 });
 
 test("does not register an SSR target for client-rendered pages", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onBeforeRender?.({
     routes: [
@@ -112,8 +112,8 @@ test("does not register an SSR target for client-rendered pages", () => {
 });
 
 test("does not connect the bridge while running without a browser host", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({
     runtime,
     bridge: {
       port: 17321
@@ -134,7 +134,7 @@ test("does not connect the bridge while running without a browser host", () => {
 });
 
 test("injects the same render context through stream SSR", () => {
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin());
+  const { handlers } = createModernApiHarness(divebellModernPlugin());
   const context: ModernRenderContext = {
     routes: [
       {
@@ -170,7 +170,7 @@ test("injects the same render context through stream SSR", () => {
   });
 
   const streamScript = extender.getStyleTags?.() ?? "";
-  assert.match(streamScript, /id="__OPEN_RUNTIME_CONTEXT__"/);
+  assert.match(streamScript, /id="__DIVEBELL_CONTEXT__"/);
   const renderContext = readRenderContextFromScript(streamScript);
   assert.match(renderContext.runtimeId, /^runtime-/);
   assert.match(renderContext.renderId, /^render-/);
@@ -183,8 +183,8 @@ test("injects the same render context through stream SSR", () => {
 });
 
 test("does not treat Modern.js lazy import loader as a data loader", () => {
-  const runtime = createOpenRuntime();
-  const { handlers } = createModernApiHarness(openRuntimeModernPlugin({ runtime }));
+  const runtime = createDivebell();
+  const { handlers } = createModernApiHarness(divebellModernPlugin({ runtime }));
 
   handlers.onBeforeRender?.({
     routes: [

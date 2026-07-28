@@ -1,5 +1,5 @@
 {
-  "name": "openruntime",
+  "name": "divebell",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
@@ -13,10 +13,10 @@
     "build": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 --if-present run build",
     "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
     "check": "pnpm run version:check && pnpm run build && pnpm run docs:cli:check -- --no-build && pnpm run test:release-script && pnpm run test && pnpm run verify:stage7 && pnpm run evaluate:stage6:run",
-    "docs:cli": "node ./scripts/sync-openruntime-cli-docs.mjs",
+    "docs:cli": "node ./scripts/sync-divebell-cli-docs.mjs",
     "build:recording-runtime": "node ./scripts/build-recording-skill-runtime.mjs",
     "verify:recording-runtime": "node ./scripts/verify-recording-skill-runtime.mjs",
-    "docs:cli:check": "node ./scripts/sync-openruntime-cli-docs.mjs --check",
+    "docs:cli:check": "node ./scripts/sync-divebell-cli-docs.mjs --check",
     "evaluate:stage6": "pnpm run build && pnpm run evaluate:stage6:run",
     "evaluate:stage6:run": "node ./scripts/evaluate-stage6.mjs",
     "verify:stage7": "node ./scripts/verify-stage7-release.mjs",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",
-    "@openruntime/cli": "workspace:^",
+    "@divebell/cli": "workspace:^",
     "@types/node": "24.13.1",
     "pkg-pr-new": "0.0.75",
     "typescript": "5.9.3"

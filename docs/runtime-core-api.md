@@ -2,9 +2,9 @@
 
 Chinese version: [Runtime Core API](runtime-core-api.zh-CN.md)
 
-`@openruntime/core` is OpenRuntime's page-side API. It lets an application expose internal state, key events, declared actions, and wait conditions that cannot be obtained reliably from the browser surface.
+`@divebell/core` is Divebell's page-side API. It lets an application expose internal state, key events, declared actions, and wait conditions that cannot be obtained reliably from the browser surface.
 
-Runtime Core is an optional enhancement. It is not required for the OpenRuntime CLI, login-state reuse, browser diagnostics, or Extensions.
+Runtime Core is an optional enhancement. It is not required for the Divebell CLI, login-state reuse, browser diagnostics, or Extensions.
 
 ## When to Use It
 
@@ -21,7 +21,7 @@ It is usually unnecessary when:
 - a one-off page problem can already be diagnosed and verified reliably through Console, Network, or an explicit page result;
 - the task only needs memory, code usage, screenshots, or browser-side performance diagnostics;
 - an Extension can handle the requirement entirely outside the page; or
-- the integration would exist only to demonstrate that the project uses OpenRuntime.
+- the integration would exist only to demonstrate that the project uses Divebell.
 
 ## Five Capabilities
 
@@ -38,18 +38,18 @@ These capabilities expose application-internal facts. Do not infer them from DOM
 Install the page-side package:
 
 ```sh
-pnpm add @openruntime/core
+pnpm add @divebell/core
 ```
 
 Create and install a Runtime:
 
 ```ts
 import {
-  createOpenRuntime,
-  installOpenRuntimeOnWindow,
-} from "@openruntime/core";
+  createDivebell,
+  installDivebellOnWindow,
+} from "@divebell/core";
 
-const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+const runtime = installDivebellOnWindow(createDivebell());
 ```
 
 Reuse an existing framework or host Runtime when one is already available. Do not create competing instances in multiple entry points.
@@ -100,15 +100,15 @@ An Action should declare risk, availability, input constraints, and dynamic choi
 
 ## Read It from an Agent
 
-After OpenRuntime CLI opens the page, it can read the connected Runtime:
+After Divebell CLI opens the page, it can read the connected Runtime:
 
 ```sh
-openruntime targets --session orders-debug
-openruntime snapshot --session orders-debug --id business:orders:list
-openruntime events --session orders-debug --target-id business:orders:list
-openruntime actions --session orders-debug
-openruntime run-action orders.refresh --session orders-debug
-openruntime wait-for business:orders:list ready --session orders-debug
+divebell targets --session orders-debug
+divebell snapshot --session orders-debug --id business:orders:list
+divebell events --session orders-debug --target-id business:orders:list
+divebell actions --session orders-debug
+divebell run-action orders.refresh --session orders-debug
+divebell wait-for business:orders:list ready --session orders-debug
 ```
 
 Without Runtime Core, these commands do not provide application-internal information, but browser diagnostics and Extensions continue to work.
@@ -129,10 +129,10 @@ An Extension organizes development debugging outside the page. Runtime Core expo
 
 Facts already known by a framework or runtime should come from the corresponding plugin rather than duplicated business probes:
 
-- Modern.js uses `@openruntime/modern-plugin` for route, loader, SSR, hydration, and Garfish state.
+- Modern.js uses `@divebell/modern-plugin` for route, loader, SSR, hydration, and Garfish state.
 - Module Federation integration should reuse MF observability for remote, shared, expose, and runtime-error information.
-- Regular applications and stable business outcomes may use `@openruntime/core` directly.
+- Regular applications and stable business outcomes may use `@divebell/core` directly.
 
 If a framework lacks a required lifecycle, add a formal hook instead of simulating framework state through DOM, Console, or Network inspection.
 
-See the [Core Reference](../skills/openruntime/references/core.md) for complete fields, behavior, and examples.
+See the [Core Reference](../skills/divebell/references/core.md) for complete fields, behavior, and examples.

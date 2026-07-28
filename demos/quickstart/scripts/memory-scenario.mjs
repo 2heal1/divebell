@@ -14,14 +14,14 @@ export default {
   async run({ page }) {
     await page.eval(
       `(() => {
-        window.__openruntimeQuickStartMemoryCycle =
+        window.__divebellQuickStartMemoryCycle =
           Number(document.querySelector('.activity-count')?.textContent ?? 0);
         document.querySelector('[data-action="memory-cycle"]')?.click();
       })()`
     );
     await page.waitEval(
       `Number(document.querySelector('.activity-count')?.textContent ?? 0) >
-        Number(window.__openruntimeQuickStartMemoryCycle ?? -1)`
+        Number(window.__divebellQuickStartMemoryCycle ?? -1)`
     );
   }
 };

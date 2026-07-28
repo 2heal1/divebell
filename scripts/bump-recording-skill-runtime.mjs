@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = resolve(repositoryRoot, getOption("--manifest") ??
-  "skills/record-openruntime-workflow/references/openruntime-cli-runtime.json");
+  "skills/record-divebell-workflow/references/divebell-cli-runtime.json");
 const packagePaths = [
   "packages/core/package.json",
   "packages/bridge/package.json",
@@ -38,7 +38,7 @@ for (const item of packages) {
 
 const version = bumpVersion(currentVersion, bump);
 const tag = `recording-skill-runtime-v${version}`;
-const assetName = `openruntime-recording-runtime-${version}.tgz`;
+const assetName = `divebell-recording-runtime-${version}.tgz`;
 const baseUrl = `https://github.com/${manifest.repository}/releases/download/${tag}`;
 const packageByDirectory = new Map(packages.map((item) => [
   dirname(item.relativePath),
@@ -82,7 +82,7 @@ process.stdout.write(`${JSON.stringify({
   tag,
   asset: nextManifest.asset.name,
   packages: packages.map((item) => item.value.name),
-  files: [...packagePaths, "skills/record-openruntime-workflow/references/openruntime-cli-runtime.json"],
+  files: [...packagePaths, "skills/record-divebell-workflow/references/divebell-cli-runtime.json"],
   dryRun
 }, null, 2)}\n`);
 

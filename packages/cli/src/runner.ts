@@ -22,10 +22,10 @@ import { runCheckCommand } from "./commands/check.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import type {
   CliRunOptions,
-  OpenRuntimeCliConfig
+  DivebellCliConfig
 } from "./types/cli.js";
 
-export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
+export async function runCliWithConfig(config: DivebellCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
@@ -56,7 +56,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
           code: "CLI_UNKNOWN_COMMAND",
           kind: "validation",
           message: `Unknown command "${args.command.join(" ")}".`,
-          hint: "Run `openruntime --help` to see available commands."
+          hint: "Run `divebell --help` to see available commands."
         });
       }
       stdout.write(`${helpText}\n`);
@@ -183,7 +183,7 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
         code: "CLI_COMMAND_MISSING",
         kind: "validation",
         message: "Missing command.",
-        hint: "Run `openruntime --help` to see available commands."
+        hint: "Run `divebell --help` to see available commands."
       });
     }
 
@@ -206,10 +206,10 @@ export async function runCliWithConfig(config: OpenRuntimeCliConfig, argv: strin
       code: "CLI_UNKNOWN_COMMAND",
       kind: "validation",
       message: `Unknown command "${args.command.join(" ")}".`,
-      hint: "Run `openruntime --help` to see available commands."
+      hint: "Run `divebell --help` to see available commands."
     });
   } catch (error) {
-    writeErrorOutput(stdout, args.command.join(" ") || "openruntime", error);
+    writeErrorOutput(stdout, args.command.join(" ") || "divebell", error);
     return 1;
   }
 }

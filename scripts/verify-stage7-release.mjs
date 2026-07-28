@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { createBridgeServer } from "../packages/bridge/dist/index.js";
-import { createOpenRuntime, installOpenRuntimeOnWindow } from "../packages/core/dist/index.js";
+import { createDivebell, installDivebellOnWindow } from "../packages/core/dist/index.js";
 import { runCli } from "../packages/cli/dist/index.js";
 
 class NodeEventSource {
@@ -63,9 +63,9 @@ await main();
 async function main() {
   const previousEventSource = globalThis.EventSource;
   const previousLocation = globalThis.location;
-  const previousRuntime = globalThis.__OPEN_RUNTIME__;
-  const previousRegistry = globalThis.__OPEN_RUNTIME_REGISTRY__;
-  const previousBridgeManager = globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__;
+  const previousRuntime = globalThis.__DIVEBELL__;
+  const previousRegistry = globalThis.__DIVEBELL_REGISTRY__;
+  const previousBridgeManager = globalThis.__DIVEBELL_BRIDGE_MANAGER__;
 
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
@@ -77,7 +77,7 @@ async function main() {
       href: "http://stage7-release.test/"
     };
 
-    const runtime = createOpenRuntime();
+    const runtime = createDivebell();
     runtime.registerTarget({
       id: "app:stage7-release",
       type: "release.app",
@@ -93,7 +93,7 @@ async function main() {
         bridgeManagedBy: "cli"
       }
     });
-    installOpenRuntimeOnWindow(runtime, globalThis, {
+    installDivebellOnWindow(runtime, globalThis, {
       runtimeId: "stage7-release-runtime",
       name: "stage7-release",
       source: "stage7-smoke"
@@ -144,7 +144,7 @@ async function main() {
 
     console.log("Stage 7 release smoke verification passed.");
   } finally {
-    globalThis.__OPEN_RUNTIME_BRIDGE_MANAGER__?.close();
+    globalThis.__DIVEBELL_BRIDGE_MANAGER__?.close();
     for (const source of NodeEventSource.instances) {
       source.close();
     }
@@ -159,12 +159,12 @@ async function main() {
       globalThis.location = previousLocation;
     }
     if (previousRuntime === undefined) {
-      delete globalThis.__OPEN_RUNTIME__;
+      delete globalThis.__DIVEBELL__;
     } else {
-      globalThis.__OPEN_RUNTIME__ = previousRuntime;
+      globalThis.__DIVEBELL__ = previousRuntime;
     }
-    restoreOptionalGlobal("__OPEN_RUNTIME_REGISTRY__", previousRegistry);
-    restoreOptionalGlobal("__OPEN_RUNTIME_BRIDGE_MANAGER__", previousBridgeManager);
+    restoreOptionalGlobal("__DIVEBELL_REGISTRY__", previousRegistry);
+    restoreOptionalGlobal("__DIVEBELL_BRIDGE_MANAGER__", previousBridgeManager);
     await bridge.close();
   }
 }
@@ -237,7 +237,7 @@ async function waitForConnectedRuntime(bridgeUrl) {
     if (
       body.runtimes?.some(
         (runtime) => runtime.status === "connected" &&
-          runtime.url === "http://stage7-release.test/?openruntimeSessionId=stage7-release"
+          runtime.url === "http://stage7-release.test/?divebellSessionId=stage7-release"
       )
     ) {
       return;

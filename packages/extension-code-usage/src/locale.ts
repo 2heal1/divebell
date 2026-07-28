@@ -3,7 +3,7 @@ export type SupportedLocale = "en" | "zh";
 export function detectCliLocale(
   environment: Readonly<Record<string, string | undefined>> = process.env
 ): SupportedLocale {
-  const value = environment.OPENRUNTIME_LANG
+  const value = environment.DIVEBELL_LANG
     ?? environment.LC_ALL
     ?? environment.LC_MESSAGES
     ?? environment.LANG

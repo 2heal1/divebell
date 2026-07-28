@@ -4,172 +4,172 @@ export type { CliCommandReference } from "../types/commands.js";
 export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
-    usage: "openruntime check [--fix]",
+    usage: "divebell check [--fix]",
     description: "Report Node and browser details, then verify browser startup and control; --fix connects an installed Chrome or installs one only when Chrome is missing."
   },
   {
     category: "Extensions",
-    usage: "openruntime extensions add <package-or-path> [--extensions-dir <path>]",
-    description: "Validate and install an OpenRuntime extension with no runtime dependencies from an npm package or local path."
+    usage: "divebell extensions add <package-or-path> [--extensions-dir <path>]",
+    description: "Validate and install a Divebell extension with no runtime dependencies from an npm package or local path."
   },
   {
     category: "Extensions",
-    usage: "openruntime extensions list [--extensions-dir <path>]",
-    description: "List installed OpenRuntime extension packages, commands, and hooks."
+    usage: "divebell extensions list [--extensions-dir <path>]",
+    description: "List installed Divebell extension packages, commands, and hooks."
   },
   {
     category: "Extensions",
-    usage: "openruntime extensions update <package> [--extensions-dir <path>]",
+    usage: "divebell extensions update <package> [--extensions-dir <path>]",
     description: "Download and activate the latest extension package version; keep the current version if the update fails."
   },
   {
     category: "Extensions",
-    usage: "openruntime extensions remove <package> [--extensions-dir <path>]",
+    usage: "divebell extensions remove <package> [--extensions-dir <path>]",
     description: "Uninstall the specified extension package."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime start [--port <port>]",
+    usage: "divebell start [--port <port>]",
     description: "Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime stop [--port <port>]",
+    usage: "divebell stop [--port <port>]",
     description: "Close the browser session, then stop the CLI-managed Bridge."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime profiles",
+    usage: "divebell profiles",
     description: "List Chrome profiles available to agent-browser."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime state save <path> [--url <url>]",
+    usage: "divebell state save <path> [--url <url>]",
     description: "Save agent-browser state; with --url, keep only cookies and web storage that apply to that URL."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime state load <path>",
+    usage: "divebell state load <path>",
     description: "Load an agent-browser state file into the current browser session."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime state <list|show|rename|clear|clean> [args]",
+    usage: "divebell state <list|show|rename|clear|clean> [args]",
     description: "Inspect and manage agent-browser saved states."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth save <name> --url <url> --username <user> --password-stdin",
+    usage: "divebell auth save <name> --url <url> --username <user> --password-stdin",
     description: "Save encrypted login credentials in the agent-browser auth vault."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth login <name>",
+    usage: "divebell auth login <name>",
     description: "Open the saved login page and let agent-browser fill and submit the matching login form."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime auth <list|show|delete> [name]",
+    usage: "divebell auth <list|show|delete> [name]",
     description: "Inspect or delete agent-browser auth vault entries; passwords are never shown."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
+    usage: "divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
     description: "Open a directory-scoped page with its own automatically assigned Bridge port, optionally using origin-scoped HTTP headers, a Chrome profile, state file, or explicit Bridge."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime stack [--refresh]",
+    usage: "divebell stack [--refresh]",
     description: "Run stack detectors from installed extensions and summarize matches for the current page."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime page-snapshot",
+    usage: "divebell page-snapshot",
     description: "Read the current page snapshot, including actionable element references."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime click <ref|selector|text>",
+    usage: "divebell click <ref|selector|text>",
     description: "Click an element by page reference, selector, or visible text."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime fill <ref|selector> <value>",
+    usage: "divebell fill <ref|selector> <value>",
     description: "Fill an input by page reference or selector."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime eval <script>",
+    usage: "divebell eval <script>",
     description: "Run a script in the page, or load one from --file <path>."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime wait-eval <script> [--timeout <ms>]",
+    usage: "divebell wait-eval <script> [--timeout <ms>]",
     description: "Poll a page expression until it returns true."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime get-window <path>",
+    usage: "divebell get-window <path>",
     description: "Read a dotted path from window/globalThis, such as gf_data_v1."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime screenshot [name] [--full-page]",
-    description: "Capture a screenshot through the OpenRuntime browser layer."
+    usage: "divebell screenshot [name] [--full-page]",
+    description: "Capture a screenshot through the Divebell browser layer."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime network [--url <query>]",
+    usage: "divebell network [--url <query>]",
     description: "List network requests from the current page and optionally filter them by URL text."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime console [--level <level>] [--query <keyword>] [--limit <n>]",
+    usage: "divebell console [--level <level>] [--query <keyword>] [--limit <n>]",
     description: "Read browser console logs as a fallback; prefer snapshot --query for structured verification and troubleshooting."
   },
   {
     category: "Bridge and Browser",
-    usage: "openruntime coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
+    usage: "divebell coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
     description: "Capture code executed by the current page in stages to identify loaded but unused application and third-party code."
   },
   {
     category: "Runtime",
-    usage: "openruntime runtimes [--bridge <url>]",
+    usage: "divebell runtimes [--bridge <url>]",
     description: "List runtimes from the current directory's opened page, or from an explicitly selected Bridge."
   },
   {
     category: "Runtime",
-    usage: "openruntime targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    usage: "divebell targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
     description: "Read target definitions registered by the selected runtime."
   },
   {
     category: "Runtime",
-    usage: "openruntime snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
+    usage: "divebell snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]",
     description: "Read the current snapshot state from the selected runtime."
   },
   {
     category: "Runtime",
-    usage: "openruntime events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]",
+    usage: "divebell events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]",
     description: "Read runtime event history."
   },
   {
     category: "Runtime",
-    usage: "openruntime actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
+    usage: "divebell actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]",
     description: "List runtime actions declared by the page."
   },
   {
     category: "Runtime",
-    usage: "openruntime input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
+    usage: "divebell input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
     description: "Read dynamic choices for an action input."
   },
   {
     category: "Runtime",
-    usage: "openruntime run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
+    usage: "divebell run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
     description: "Run a runtime action declared by the page."
   },
   {
     category: "Runtime",
-    usage: "openruntime wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]",
+    usage: "divebell wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]",
     description: "Wait for a target to reach a status; --where values are parsed as JSON literals and can match numbers, booleans, or null."
   }
 ];
@@ -187,7 +187,7 @@ const HELP_CATEGORIES: CliCommandReference["category"][] = [
 const TOP_LEVEL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   console: "Read browser console logs.",
   eval: "Run a script in the current page.",
-  extensions: "Install, list, update, or remove OpenRuntime extensions.",
+  extensions: "Install, list, update, or remove Divebell extensions.",
   "wait-for": "Wait for a target to reach a status."
 };
 
@@ -205,21 +205,21 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
       "",
       `${category}:`,
       ...topLevelCommands.map((command) =>
-        `  openruntime ${command.name} - ${command.description}`
+        `  divebell ${command.name} - ${command.description}`
       ),
       ...(skillCommands.length === 0 ? [] : [
         "",
         `  Skill: available for ${skillCommands.join(", ")}.`,
-        "  Skill usage: `openruntime <command> --skill`"
+        "  Skill usage: `divebell <command> --skill`"
       ])
     ];
   });
 
   return [
-    "Usage: openruntime <command> [options]",
+    "Usage: divebell <command> [options]",
     ...commandLines,
     "",
-    "Run `openruntime <command> --help` for detailed usage."
+    "Run `divebell <command> --help` for detailed usage."
   ].join("\n");
 }
 
@@ -248,7 +248,7 @@ export function createCommandHelpText(
     ),
     ...(hasSkill ? [
       "",
-      `Skill: available via \`openruntime ${commandName} --skill\`.`
+      `Skill: available via \`divebell ${commandName} --skill\`.`
     ] : [])
   ].join("\n");
 }
@@ -262,16 +262,15 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
     "External Extensions": "External Extensions"
   };
   const lines = [
-    "# OpenRuntime CLI Reference",
+    "# Divebell CLI Reference",
     "",
-    "<!-- This file is generated by scripts/sync-openruntime-cli-docs.mjs. Do not edit by hand. -->",
+    "<!-- This file is generated by scripts/sync-divebell-cli-docs.mjs. Do not edit by hand. -->",
     "",
     "This document is generated from the current CLI command table in `packages/cli/src/commands/help.ts`.",
     "",
     "## Binaries",
     "",
-    "- `openruntime`",
-    "- `opr`",
+    "- `divebell`",
     "",
     "## Commands"
   ];
@@ -344,7 +343,7 @@ function matchesCommandPath(usage: string, commandPath: readonly string[]): bool
 
 function getUsageTokens(usage: string): string[] {
   const tokens = usage.trim().split(/\s+/);
-  if (tokens[0] !== "openruntime") return [];
+  if (tokens[0] !== "divebell") return [];
   return tokens.slice(1);
 }
 

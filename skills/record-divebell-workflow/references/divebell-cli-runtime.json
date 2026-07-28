@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "repository": "2heal1/divebell",
+  "version": "0.1.7",
+  "tag": "recording-skill-runtime-v0.1.7",
+  "asset": {
+    "name": "divebell-recording-runtime-0.1.7.tgz",
+    "url": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.1.7/divebell-recording-runtime-0.1.7.tgz",
+    "checksumName": "divebell-recording-runtime-0.1.7.tgz.sha256",
+    "checksumUrl": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.1.7/divebell-recording-runtime-0.1.7.tgz.sha256"
+  },
+  "packages": [
+    {
+      "name": "@divebell/agent-browser",
+      "source": "registry",
+      "specifier": "@divebell/agent-browser@0.32.0-divebell.1",
+      "file": "divebell-agent-browser-0.32.0-divebell.1.tgz"
+    },
+    {
+      "name": "@divebell/core",
+      "source": "workspace",
+      "directory": "packages/core",
+      "file": "divebell-core-0.1.7.tgz"
+    },
+    {
+      "name": "@divebell/bridge",
+      "source": "workspace",
+      "directory": "packages/bridge",
+      "file": "divebell-bridge-0.1.7.tgz"
+    },
+    {
+      "name": "@divebell/cli",
+      "source": "workspace",
+      "directory": "packages/cli",
+      "file": "divebell-cli-0.1.7.tgz"
+    },
+    {
+      "name": "@divebell/extension-imitate",
+      "source": "workspace",
+      "directory": "packages/extension-imitate",
+      "file": "divebell-extension-imitate-0.1.7.tgz"
+    }
+  ]
+}

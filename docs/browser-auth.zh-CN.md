@@ -2,7 +2,7 @@
 
 English version: [Browser Authentication and State](browser-auth.md)
 
-OpenRuntime 组合使用 agent-browser 的 Profile、state 和 auth，为 Coding Agent 提供可复用的浏览器登录环境。
+Divebell 组合使用 agent-browser 的 Profile、state 和 auth，为 Coding Agent 提供可复用的浏览器登录环境。
 
 ## 三者的区别
 
@@ -19,32 +19,32 @@ OpenRuntime 组合使用 agent-browser 的 Profile、state 和 auth，为 Coding
 先查看可用 Profile：
 
 ```bash
-openruntime profiles
+divebell profiles
 ```
 
-关闭已有的 OpenRuntime 浏览器，再用选中的 Profile 打开目标页面：
+关闭已有的 Divebell 浏览器，再用选中的 Profile 打开目标页面：
 
 ```bash
-openruntime stop
-openruntime open https://app.example.com/dashboard --profile "Work" --ui
+divebell stop
+divebell open https://app.example.com/dashboard --profile "Work" --ui
 ```
 
 传入 Chrome Profile 名称时，agent-browser 使用它的只读副本，不会修改原来的 Chrome 配置。也可以传入目录路径，作为长期保存的独立 Profile：
 
 ```bash
-openruntime open https://app.example.com --profile ~/.openruntime-profiles/app
+divebell open https://app.example.com --profile ~/.divebell-profiles/app
 ```
 
 Profile 是一个目录，不是单个导出文件。需要得到可迁移文件时，请保存 state。
 
 ## 只导出指定 URL 的登录状态
 
-这是 OpenRuntime 在 agent-browser `state save` 基础上增加的组合能力。推荐先用目标 Chrome Profile 打开准确网址，再按相同 URL 保存：
+这是 Divebell 在 agent-browser `state save` 基础上增加的组合能力。推荐先用目标 Chrome Profile 打开准确网址，再按相同 URL 保存：
 
 ```bash
-openruntime stop
-openruntime open https://app.example.com/account --profile "Work" --ui
-openruntime state save ./app-state.json --url https://app.example.com/account
+divebell stop
+divebell open https://app.example.com/account --profile "Work" --ui
+divebell state save ./app-state.json --url https://app.example.com/account
 ```
 
 生成的 `app-state.json` 仍是标准 agent-browser state 文件，可以直接载入。筛选规则是：
@@ -59,7 +59,7 @@ openruntime state save ./app-state.json --url https://app.example.com/account
 如果不加 `--url`，行为就是 agent-browser 原生的完整 state 保存，会包含当前会话中所有 Cookie，以及本次会话访问过的 Origin：
 
 ```bash
-openruntime state save ./full-state.json
+divebell state save ./full-state.json
 ```
 
 ## 载入和管理 state
@@ -67,27 +67,27 @@ openruntime state save ./full-state.json
 可以在打开页面时载入：
 
 ```bash
-openruntime open https://app.example.com/account --state ./app-state.json
+divebell open https://app.example.com/account --state ./app-state.json
 ```
 
 也可以载入当前会话后继续使用：
 
 ```bash
-openruntime state load ./app-state.json
-openruntime open https://app.example.com/account
+divebell state load ./app-state.json
+divebell open https://app.example.com/account
 ```
 
 查看和清理已保存的自动恢复状态：
 
 ```bash
-openruntime state list
-openruntime state show <文件名>
-openruntime state rename <旧名称> <新名称>
-openruntime state clear [会话名]
-openruntime state clean --older-than 7
+divebell state list
+divebell state show <文件名>
+divebell state rename <旧名称> <新名称>
+divebell state clear [会话名]
+divebell state clean --older-than 7
 ```
 
-OpenRuntime 默认会让同一项目的浏览器会话自动恢复。显式传入 `--profile` 或 `--state` 时，以该来源为准，不会再叠加之前的自动恢复内容。显式 state 文件用于需要人工确认、迁移或缩小范围的场景。
+Divebell 默认会让同一项目的浏览器会话自动恢复。显式传入 `--profile` 或 `--state` 时，以该来源为准，不会再叠加之前的自动恢复内容。显式 state 文件用于需要人工确认、迁移或缩小范围的场景。
 
 ## 使用 auth 凭据库
 
@@ -95,7 +95,7 @@ OpenRuntime 默认会让同一项目的浏览器会话自动恢复。显式传�
 
 ```bash
 printf '%s\n' "$APP_PASSWORD" | \
-  openruntime auth save app \
+  divebell auth save app \
     --url https://app.example.com/login \
     --username tester@example.com \
     --password-stdin
@@ -104,7 +104,7 @@ printf '%s\n' "$APP_PASSWORD" | \
 登录时：
 
 ```bash
-openruntime auth login app
+divebell auth login app
 ```
 
 agent-browser 会打开保存的登录页，等待常见的用户名和密码输入框出现，然后填写并提交。网站表单不标准时，可以在保存或登录命令中传入 `--username-selector`、`--password-selector` 和 `--submit-selector`。
@@ -112,9 +112,9 @@ agent-browser 会打开保存的登录页，等待常见的用户名和密码输
 管理凭据：
 
 ```bash
-openruntime auth list
-openruntime auth show app
-openruntime auth delete app
+divebell auth list
+divebell auth show app
+divebell auth delete app
 ```
 
 列表和详情不会显示密码。

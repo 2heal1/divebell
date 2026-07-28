@@ -2,9 +2,9 @@
 
 English version: [Runtime Core API](runtime-core-api.md)
 
-`@openruntime/core` 是 OpenRuntime 的页面侧 API。它让应用主动提供浏览器表面无法稳定获得的内部状态、关键事件、声明动作和等待条件。
+`@divebell/core` 是 Divebell 的页面侧 API。它让应用主动提供浏览器表面无法稳定获得的内部状态、关键事件、声明动作和等待条件。
 
-Runtime Core 是可选增强，不是使用 OpenRuntime CLI、登录状态、浏览器调试或 Extensions 的前置条件。
+Runtime Core 是可选增强，不是使用 Divebell CLI、登录状态、浏览器调试或 Extensions 的前置条件。
 
 ## 什么时候使用
 
@@ -21,7 +21,7 @@ Runtime Core 是可选增强，不是使用 OpenRuntime CLI、登录状态、浏
 - 一次性的页面问题已经能通过 Console、Network 或页面结果稳定定位和验证。
 - 只需要内存、代码使用、截图或浏览器侧性能诊断。
 - 需求可以完全由 Extension 在页面外部完成。
-- 接入只为了证明项目“使用了 OpenRuntime”，没有长期调试或验证价值。
+- 接入只为了证明项目“使用了 Divebell”，没有长期调试或验证价值。
 
 ## 五类能力
 
@@ -38,18 +38,18 @@ Runtime Core 是可选增强，不是使用 OpenRuntime CLI、登录状态、浏
 安装页面侧包：
 
 ```sh
-pnpm add @openruntime/core
+pnpm add @divebell/core
 ```
 
 创建并安装 Runtime：
 
 ```ts
 import {
-  createOpenRuntime,
-  installOpenRuntimeOnWindow,
-} from "@openruntime/core";
+  createDivebell,
+  installDivebellOnWindow,
+} from "@divebell/core";
 
-const runtime = installOpenRuntimeOnWindow(createOpenRuntime());
+const runtime = installDivebellOnWindow(createDivebell());
 ```
 
 已有框架插件或宿主 Runtime 时应复用现有实例，不要在多个入口重复创建。
@@ -100,15 +100,15 @@ Action 应明确风险、是否可用、输入约束和动态候选。`runAction
 
 ## Agent 如何读取
 
-OpenRuntime CLI 打开页面后，可以读取已经连接的 Runtime：
+Divebell CLI 打开页面后，可以读取已经连接的 Runtime：
 
 ```sh
-openruntime targets --session orders-debug
-openruntime snapshot --session orders-debug --id business:orders:list
-openruntime events --session orders-debug --target-id business:orders:list
-openruntime actions --session orders-debug
-openruntime run-action orders.refresh --session orders-debug
-openruntime wait-for business:orders:list ready --session orders-debug
+divebell targets --session orders-debug
+divebell snapshot --session orders-debug --id business:orders:list
+divebell events --session orders-debug --target-id business:orders:list
+divebell actions --session orders-debug
+divebell run-action orders.refresh --session orders-debug
+divebell wait-for business:orders:list ready --session orders-debug
 ```
 
 页面没有 Runtime Core 时，这些命令不会提供应用内部信息，但浏览器调试和 Extension 仍然可以正常使用。
@@ -129,10 +129,10 @@ Extension 在页面外部组织开发调试流程；Runtime Core 在页面内部
 
 框架或运行时已经知道的事实应由对应插件提供，不要在业务代码里重复探测：
 
-- Modern.js 使用 `@openruntime/modern-plugin` 提供 route、loader、SSR、hydration 和 Garfish 状态。
+- Modern.js 使用 `@divebell/modern-plugin` 提供 route、loader、SSR、hydration 和 Garfish 状态。
 - Module Federation 接入应复用 MF observability 提供的 remote、shared、expose 和 runtime error 信息。
-- 普通应用或稳定业务结果可以直接使用 `@openruntime/core`。
+- 普通应用或稳定业务结果可以直接使用 `@divebell/core`。
 
-框架缺少必要生命周期时，应优先补正式 hook，而不是在 OpenRuntime 中用 DOM、Console 或 Network 模拟框架状态。
+框架缺少必要生命周期时，应优先补正式 hook，而不是在 Divebell 中用 DOM、Console 或 Network 模拟框架状态。
 
-更完整的字段、行为和示例见 [Core Reference](../skills/openruntime/references/core.md)。
+更完整的字段、行为和示例见 [Core Reference](../skills/divebell/references/core.md)。

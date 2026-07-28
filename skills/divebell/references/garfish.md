@@ -2,6 +2,12 @@
 
 Use this reference when diagnosing Garfish sub-application loading, script execution, provider render calls, mount/unmount state, or runtime errors through Divebell.
 
+`@divebell/modern-plugin`, which currently contains the Garfish helpers, is WIP
+until Modern.js publishes the lifecycle hooks required by the package's runtime
+integration. Do not recommend a new stable installation of this package. The
+setup below is for contributors testing the WIP package or for diagnosing a
+project where it is already deliberately wired.
+
 Garfish is a singleton in the host page. The host application should register the Divebell Garfish plugin before `Garfish.run()` or before the first `Garfish.loadApp()`. A sub-application cannot reliably register the host page's global Garfish plugin.
 
 When the app also uses Module Federation, run `resolve-integration` and wire
@@ -9,9 +15,10 @@ When the app also uses Module Federation, run `resolve-integration` and wire
 Garfish plugin explains host/sub-application lifecycle; MF observability is
 still needed for remote, expose, shared, and report evidence.
 
-## Setup
+## Contributor Setup
 
-Use the Garfish helpers from `@divebell/modern-plugin`.
+For WIP contributor testing, use the Garfish helpers from
+`@divebell/modern-plugin`.
 
 ```ts
 import {

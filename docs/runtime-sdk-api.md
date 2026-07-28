@@ -129,7 +129,7 @@ An Extension organizes development debugging outside the page. Runtime SDK expos
 
 Facts already known by a framework or runtime should come from the corresponding plugin rather than duplicated business probes:
 
-- Modern.js uses `@divebell/modern-plugin` for route, loader, SSR, hydration, and Garfish state.
+- The planned Modern.js integration is `@divebell/modern-plugin`, but it is WIP until Modern.js publishes the required lifecycle hooks. Use `@divebell/core` for stable application signals in the meantime.
 - Module Federation integration should reuse MF observability for remote, shared, expose, and runtime-error information.
 - Regular applications and stable business outcomes may use `@divebell/core` directly.
 

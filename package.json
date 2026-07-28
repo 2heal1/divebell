@@ -26,7 +26,7 @@
     "release:npm:pack": "node ./scripts/npm-release.mjs pack",
     "sync:mf-observability": "node ./packages/extension-mf/scripts/sync-mf-debug.mjs sync",
     "check:mf-observability": "node ./packages/extension-mf/scripts/sync-mf-debug.mjs check",
-    "test:release-script": "node --test ./scripts/divebell-release-packages.test.mjs ./scripts/npm-release-utils.test.mjs ./scripts/release-change-files.test.mjs ./scripts/release-pr-body-utils.test.mjs ./scripts/release-workflow.test.mjs ./scripts/validate-divebell-release-state.test.mjs",
+    "test:release-script": "node --test ./scripts/divebell-release-packages.test.mjs ./scripts/npm-release-utils.test.mjs ./scripts/release-change-files.test.mjs ./scripts/release-pr-body-utils.test.mjs ./scripts/release-workflow.test.mjs ./scripts/resolve-divebell-integration.test.mjs ./scripts/validate-divebell-release-state.test.mjs",
     "publish:packages": "node ./scripts/npm-release.mjs publish",
     "version:check": "node ./scripts/check-package-versions.mjs",
     "clean": "node ./scripts/clean.mjs"

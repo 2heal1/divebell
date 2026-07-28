@@ -37,6 +37,8 @@ Extension 可以从当前页面识别应用、环境和部署等资源，调用�
 
 Divebell 的 Modern.js 接入后续应以 Modern.js plugin 的形式完成，不要写成独立外置 adapter。这个 plugin 负责注册和更新 Modern.js 能直接知道的 target，例如 app、route、loader、route component、SSR、hydration 和 navigation。
 
+`@divebell/modern-plugin` 当前是 WIP。它依赖的 Modern.js 生命周期 hook 尚未随正式版本发布。在包含这些 hook 的 Modern.js 新版本发布并完成兼容性验证前，不要把它推荐给普通项目，也不要根据现有版本号或 preview 标记判断可用；需要页面内部事实时先使用 `@divebell/core`。`@divebell/modern-plugin/chunk-map` 是独立的构建期能力，不依赖这批 runtime hook。
+
 Divebell 的 Module Federation 接入后续应在 MF 仓库的 observability plugin 中完成，并优先复用 MF observability 能力。这个接入负责注册和更新 MF 能直接知道的 target，例如 consumer、remote、manifest、remoteEntry、expose、shared 和 runtime error。
 
 这些 plugin 需要依赖 Modern.js / MF 暴露的 hook。如果现有 hook 不够，不要在 Divebell 里绕开框架做脆弱探测，应优先在 Modern.js 或 MF 里补 hook。

@@ -3,7 +3,6 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const MODERN_PLUGIN_MIN_VERSION = "3.4.0";
 const modernPackages = [
   "@modern-js/runtime",
   "@modern-js/plugin",
@@ -95,10 +94,19 @@ function resolveIntegration({ dependencies }) {
     ...modern.use,
     ...moduleFederation.use
   ]);
+  const notices = modern.detected
+    ? [{
+        integration: "@divebell/modern-plugin",
+        status: "wip",
+        reason: "Waiting for a Modern.js release with the required lifecycle hooks.",
+        fallback: "@divebell/core"
+      }]
+    : [];
 
   return {
     install,
-    use
+    use,
+    notices
   };
 }
 
@@ -111,24 +119,13 @@ function resolveModern(dependencies) {
   }
 
   const detected = Object.keys(versions).length > 0;
-  const versionEntries = Object.entries(versions).map(([name, range]) => ({
-    name,
-    range,
-    parsed: parseVersion(range),
-    isPreview: /preview/i.test(range)
-  }));
-  const hasSupportedVersion = versionEntries.some((entry) =>
-    entry.isPreview || compareVersions(entry.parsed, parseVersion(MODERN_PLUGIN_MIN_VERSION)) >= 0
-  );
-  const hasModernPlugin = dependencies["@divebell/modern-plugin"] !== undefined;
   const hasCore = dependencies["@divebell/core"] !== undefined;
 
   if (!detected) {
     return {
       detected: false,
       versionGate: {
-        minVersion: MODERN_PLUGIN_MIN_VERSION,
-        previewAllowed: true,
+        status: "wip",
         satisfied: false
       },
       versions,
@@ -137,25 +134,10 @@ function resolveModern(dependencies) {
     };
   }
 
-  if (hasSupportedVersion) {
-    return {
-      detected: true,
-      versionGate: {
-        minVersion: MODERN_PLUGIN_MIN_VERSION,
-        previewAllowed: true,
-        satisfied: true
-      },
-      versions,
-      install: hasModernPlugin ? [] : ["@divebell/modern-plugin"],
-      use: ["@divebell/modern-plugin"]
-    };
-  }
-
   return {
     detected: true,
     versionGate: {
-      minVersion: MODERN_PLUGIN_MIN_VERSION,
-      previewAllowed: true,
+      status: "wip",
       satisfied: false
     },
     versions,
@@ -196,27 +178,6 @@ function isMfDependency(name) {
       ? name.startsWith(signal)
       : name === signal
   );
-}
-
-function parseVersion(input) {
-  const match = String(input).match(/(\d+)\.(\d+)\.(\d+)/);
-  if (match === null) {
-    return [0, 0, 0];
-  }
-
-  return [
-    Number(match[1]),
-    Number(match[2]),
-    Number(match[3])
-  ];
-}
-
-function compareVersions(left, right) {
-  for (let index = 0; index < 3; index += 1) {
-    if (left[index] > right[index]) return 1;
-    if (left[index] < right[index]) return -1;
-  }
-  return 0;
 }
 
 function dedupe(items) {

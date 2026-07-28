@@ -52,7 +52,9 @@ jobs:
           echo "tag=$current_tag" >> "$GITHUB_OUTPUT"
 
       - name: Bump release version
-        run: node scripts/bump-recording-skill-runtime.mjs "${{ inputs.bump }}"
+        run: |
+          node scripts/bump-recording-skill-runtime.mjs "${{ inputs.bump }}"
+          node scripts/check-package-versions.mjs
 
       - name: Read release metadata
         id: metadata
@@ -93,16 +95,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
           git add \
-            packages/core/package.json \
-            packages/bridge/package.json \
-            packages/chunk-map/package.json \
-            packages/rspack-plugin/package.json \
-            packages/modern-plugin/package.json \
-            packages/cli/package.json \
-            packages/extension-code-usage/package.json \
-            packages/extension-troubleshooting/package.json \
-            packages/extension-imitate/package.json \
-            packages/extension-memory/package.json \
+            packages/*/package.json \
             skills/record-divebell-workflow/references/divebell-cli-runtime.json
           git commit -m "chore: prepare Divebell ${VERSION}"
           git push origin "$branch"

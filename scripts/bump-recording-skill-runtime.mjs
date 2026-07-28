@@ -3,32 +3,24 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readDivebellReleasePackages } from "./divebell-release-packages.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = resolve(repositoryRoot, getOption("--manifest") ??
   "skills/record-divebell-workflow/references/divebell-cli-runtime.json");
-const packagePaths = [
-  "packages/core/package.json",
-  "packages/bridge/package.json",
-  "packages/chunk-map/package.json",
-  "packages/rspack-plugin/package.json",
-  "packages/modern-plugin/package.json",
-  "packages/cli/package.json",
-  "packages/extension-code-usage/package.json",
-  "packages/extension-troubleshooting/package.json",
-  "packages/extension-imitate/package.json",
-  "packages/extension-memory/package.json"
-];
+const releasePackages = await readDivebellReleasePackages(repositoryRoot);
+const packagePaths = releasePackages.map((item) => item.relativePath);
 const bump = process.argv.slice(2).find((value) => !value.startsWith("--"));
 if (!["patch", "minor", "major"].includes(bump)) {
   throw new Error("Usage: node scripts/bump-recording-skill-runtime.mjs <patch|minor|major> [--dry-run]");
 }
 
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-const packages = await Promise.all(packagePaths.map(async (relativePath) => ({
-  relativePath,
-  absolutePath: resolve(repositoryRoot, relativePath),
-  value: JSON.parse(await readFile(resolve(repositoryRoot, relativePath), "utf8"))
-})));
+const packages = releasePackages.map((item) => ({
+  relativePath: item.relativePath,
+  absolutePath: resolve(repositoryRoot, item.relativePath),
+  value: item.packageJson
+}));
 const currentVersion = manifest.version;
 for (const item of packages) {
   if (item.value.version !== currentVersion) {

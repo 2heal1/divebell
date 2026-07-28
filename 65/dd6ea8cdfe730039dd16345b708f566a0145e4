@@ -1,0 +1,27 @@
+.github/workflows/prepare-release.yml
+  s_cbea3114c4ff66::t_be629d08223cda 50-59
+package.json
+  s_cbea3114c4ff66::t_2b856b7ae76798 29
+scripts/validate-divebell-release-state.mjs
+  s_cbea3114c4ff66::t_ec9e8b639d6aec 1-69
+scripts/validate-divebell-release-state.test.mjs
+  s_cbea3114c4ff66::t_e380a1d528099a 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "65dd6ea8cdfe730039dd16345b708f566a0145e4",
+  "prompts": {},
+  "sessions": {
+    "s_cbea3114c4ff66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa82c-c5d1-7312-8905-e1c5e325769d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -52,7 +52,7 @@ divebell open https://example.com/orders --session orders-debug --ui
 
 后续页面命令和 Extension 会默认复用**当前工作目录**最近一次打开的页面、会话和登录状态。除非任务拥有完整浏览器生命周期，否则不要在中间步骤随意 `stop`，避免丢失仍有价值的页面上下文。
 
-Divebell 能调试没有接入 Runtime Core 的普通页面。页面没有 connected runtime 时，继续使用浏览器侧能力，不要为了开始排查而先修改应用。
+Divebell 能调试没有接入 Runtime SDK 的普通页面。页面没有 connected runtime 时，继续使用浏览器侧能力，不要为了开始排查而先修改应用。
 
 ## 3. 发现可用能力
 
@@ -89,7 +89,7 @@ divebell screenshot orders-error --full-page
 
 页面性能、内存或代码执行问题应优先使用对应 Extension，让 Extension 负责采集、计算、报告和清理。例如内存检查可以重复同一段真实操作，比较清理后的内存、DOM 节点和监听器趋势，而不是只看某一个瞬间的数值。
 
-如果页面已经接入 Runtime Core，可以补充读取：
+如果页面已经接入 Runtime SDK，可以补充读取：
 
 ```sh
 divebell snapshot --session orders-debug
@@ -117,7 +117,7 @@ Coding Agent 根据诊断证据修改源码。Divebell 不负责替代代码编�
 3. 明确的页面结果、请求结果和无错误条件。
 4. 截图作为视觉确认或留档，不单独替代需要交互或状态判断的验收。
 
-普通页面不需要为了最终验证强制增加 Runtime Core 接入。只有下面情况才值得补稳定的 Target 或 Action：
+普通页面不需要为了最终验证强制增加 Runtime SDK 接入。只有下面情况才值得补稳定的 Target 或 Action：
 
 - 页面表面很难可靠判断真实业务状态。
 - 同一结果会被多个 Agent、脚本或 CI 长期验证。
@@ -136,7 +136,7 @@ Coding Agent 根据诊断证据修改源码。Divebell 不负责替代代码编�
 | 操作当前已打开页面并输出诊断结果 | Extension 命令 |
 | 准备账号、环境或页面初始化条件 | Extension Hook 或命令 |
 | 管理完整浏览器生命周期并重复用户路径 | 自动化脚本 |
-| 暴露页面内部状态、事件和允许动作 | Runtime Core API |
+| 暴露页面内部状态、事件和允许动作 | Runtime SDK API |
 | 说明复杂命令的使用和判断方法 | Extension 附带的 Skill |
 
 不要为了展示 Divebell 而给每个页面增加 Target，也不要把一次性的浏览器命令都包装成 Extension。只有能减少未来人工介入或提高稳定性的内容才值得沉淀。

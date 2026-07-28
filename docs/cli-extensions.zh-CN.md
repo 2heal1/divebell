@@ -19,7 +19,7 @@ Extension 用于把团队会反复使用的账号与环境准备、技术栈识�
 
 Extension 不要求团队重写已经存在的服务能力。它可以只负责从当前现场补齐调用所需的上下文，再把参数交给原有工具，并将结果带回同一个开发调试流程。
 
-Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
+Extension 适合页面外部可以完成、并且值得团队复用的流程。如果需求必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime SDK API](runtime-sdk-api.zh-CN.md)。一次性的页面操作直接使用现有 CLI，不需要包装成 Extension。
 
 页面类 Command 操作当前工作目录最近一次通过 `divebell open <url>` 打开的页面。如果一个流程需要自己管理页面打开、等待、操作和关闭的完整生命周期，应编写[自动化脚本](cli-automation-scripts.zh-CN.md)。
 
@@ -307,7 +307,7 @@ Command 通过 `options.divebell` 访问 Divebell 能力：
 | 读取应用主动声明的内部状态 | `targets`、`snapshot`、`events`、`actions` |
 | 执行页面声明的动作并等待结果 | `runAction`、`waitFor` |
 
-页面没有接入 Runtime Core 时，浏览器相关能力仍然可用。只有 Command 确实需要应用内部事实时，才要求 connected runtime。
+页面没有接入 Runtime SDK 时，浏览器相关能力仍然可用。只有 Command 确实需要应用内部事实时，才要求 connected runtime。
 
 执行动作后继续读取页面结果或使用 `waitFor` 等待明确状态。不要仅凭 `page` 存在或动作已经运行就宣布验证成功。
 

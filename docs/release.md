@@ -8,7 +8,7 @@ Divebell publishes all public packages and the browser-recording runtime through
 
 One release uses the same version for:
 
-- Runtime Core, Bridge, Chunk Map, the Modern.js plugin, and the Rspack plugin;
+- Runtime SDK, Bridge, Chunk Map, the Modern.js plugin, and the Rspack plugin;
 - Divebell CLI;
 - `@divebell/extension-code-usage`;
 - `@divebell/extension-troubleshooting`;

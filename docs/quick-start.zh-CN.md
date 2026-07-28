@@ -60,11 +60,11 @@ JavaScript、source map 和 Chunk Map 结合起来。只有 source map 不能说
 ```
 
 内存 Extension 会重复 skill 自带的操作场景，并判断浏览器数据是否持续增长。这个过程
-不需要应用源码、source map 或 Runtime Core。
+不需要应用源码、source map 或 Runtime SDK。
 
 ## 它解决什么问题
 
 Quick Start 是一个已接入 Divebell 的参考业务项目。Agent 应把它当成一个陌生的真实
-页面，通过浏览器证据、Runtime Core 和 Extension 自己完成判断，而不是从页面提示中读取
+页面，通过浏览器证据、Runtime SDK 和 Extension 自己完成判断，而不是从页面提示中读取
 答案。真正排查并修改业务项目时，Agent 仍然应在用户自己的仓库中工作，最后回到原来的
 真实页面验证结果。

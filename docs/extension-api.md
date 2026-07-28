@@ -186,7 +186,7 @@ interface CliExtensionPageContext {
 
 - `url` is the latest recorded page URL; `openedUrl` is the original URL passed to `divebell open`.
 - `normalizedUrl` supports stable page comparisons; `openedAt` is a millisecond timestamp.
-- `bridgeUrl` and `sessionId` may be null. Their presence must not be used to assume that a page uses Runtime Core.
+- `bridgeUrl` and `sessionId` may be null. Their presence must not be used to assume that a page uses Runtime SDK.
 - This object is historical context for the latest opened page. Continue through `options.divebell.browser` when current page state must be confirmed.
 
 ### Command results and errors
@@ -320,6 +320,6 @@ Commands and page hooks use `options.divebell` as the primary entry point to Div
 | Collect browser evidence | `browser.screenshot`, `browser.network`, `browser.console` |
 | Run focused low-level capture | `browser.memory`, `browser.coverage` |
 
-Page operations and diagnostics under `browser` remain available when the page does not use Runtime Core. Require a connected Runtime only when a Command truly needs application-internal state.
+Page operations and diagnostics under `browser` remain available when the page does not use Runtime SDK. Require a connected Runtime only when a Command truly needs application-internal state.
 
 The Coding Agent remains responsible for reading and changing project source code. The Extension API does not provide a standardized code workspace or development-server interface. Do not present an Extension's own file access as a general Divebell code capability.

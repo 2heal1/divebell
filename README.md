@@ -69,41 +69,19 @@ Divebell makes the web page the agent's point of entry, connecting page context,
 
 Teams can use Extensions to bring existing capabilities into the current page scenario without rebuilding a separate tool system for agents. Once a workflow works, other agents and CI can keep using it as a durable team asset.
 
-## What Divebell Changes
-
-<p align="center">
-  <img src="./assets/divebell-workflow.svg" width="900" alt="Divebell workflow" />
-</p>
-
-Divebell reduces the cost of connecting web pages with agent capabilities. Users no longer need to carry context between the page, development tools, and the agent.
-
-## A Real Web Issue Debugging Flow
-
-Consider a user reporting, "The page shows an error after I click Submit":
-
-1. The agent opens the real web page, follows the relevant user journey, and reproduces the issue.
-2. Divebell collects page context and diagnostic evidence such as Console, Network, screenshots, and runtime state.
-3. When business information is needed, an Extension uses the current page to connect existing SDKs, OpenAPIs, CLIs, or internal platforms.
-4. The coding agent modifies the source code based on the diagnosis.
-5. Divebell returns to the same page scenario to verify the change.
-
-The point of Divebell is not to teach an agent how to operate a browser. It is to make the web page a scenario where the agent can work directly.
-
-See [Coding Agent Development Debugging Loop](./docs/agent-devloop.md) for the complete workflow.
-
 ## Core Capabilities
 
 | Module | Responsibility | Entry point | Page integration required |
 | --- | --- | --- | --- |
 | Web Context & Diagnostics | Make a real web page the agent's point of entry and provide page context, browser diagnostics, and same-scenario verification | Divebell CLI | No |
 | Extensions | Connect the web page with the team's existing development and debugging capabilities | CLI commands, Extension API | No |
-| Runtime Core | Expose application-internal facts that browser information cannot represent reliably | `@divebell/core`, framework plugins | Yes |
+| Runtime SDK | Expose application-internal facts that browser information cannot represent reliably | `@divebell/core`, framework plugins | Yes |
 
 ### Web Context & Diagnostics
 
 Divebell makes a real web page the agent's point of entry, providing page context, page operations, browser diagnostics, and same-scenario verification after a code change.
 
-These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, and diagnostic evidence from Console, Network, Screenshot, and Coverage. Agents can call them directly through the Divebell CLI without Runtime Core.
+These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, and diagnostic evidence from Console, Network, Screenshot, and Coverage. Agents can call them directly through the Divebell CLI without Runtime SDK.
 
 [CLI Reference](./docs/cli-reference.md)
 
@@ -130,7 +108,7 @@ Focused capabilities are published as optional packages and installed only when 
 | `@divebell/extension-memory` | `divebell memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
 | `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
 | `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
-| `@divebell/extension-troubleshooting` | `divebell verify` | Verify that a page-declared business target reaches the expected result. | [Runtime Core API](./docs/runtime-core-api.md) |
+| `@divebell/extension-troubleshooting` | `divebell verify` | Verify that a page-declared business target reaches the expected result. | [Runtime SDK API](./docs/runtime-sdk-api.md) |
 | `@divebell/modern-plugin` | Modern.js runtime plugin | Expose application, route, loader, route-component, SSR, hydration, and navigation state that Modern.js already knows. | [Modern.js Integration](./docs/modernjs-integration.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | Record consumer, remote, manifest, remoteEntry, expose, shared-dependency, and runtime-error evidence through MF observability. | [Module Federation Observability](./docs/module-federation-observability.md) |
 
@@ -142,13 +120,13 @@ divebell extensions add @divebell/extension-memory
 
 Installed Extension commands appear in `divebell --help` and run through the same CLI, browser sessions, and login state as the built-in commands. Framework integration packages are application dependencies and must be wired into the matching framework; they do not add a CLI command by themselves.
 
-### Runtime Core
+### Runtime SDK
 
-Runtime Core is an optional page-side API. When the DOM, Console, Network, and other browser information cannot represent application state reliably, Runtime Core can expose more granular application-internal facts to the agent.
+Runtime SDK is an optional page-side API. When the DOM, Console, Network, and other browser information cannot represent application state reliably, Runtime SDK can expose more granular application-internal facts to the agent.
 
-It supports registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Divebell works without Runtime Core, and regular pages do not need to integrate it.
+It supports registering Targets, updating Snapshots, recording Events, declaring Actions, and running `waitFor`. Divebell works without Runtime SDK, and regular pages do not need to integrate it.
 
-[Runtime Core API](./docs/runtime-core-api.md)
+[Runtime SDK API](./docs/runtime-sdk-api.md)
 
 ## Examples
 
@@ -187,43 +165,6 @@ Run an orders page, inspect its state and events, invoke an allowed refresh acti
 #### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
 
 Create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
-
-## Components
-
-```text
-                  Coding Agent
-                       │
-                       ▼
-                  Divebell
-       ┌──────────────────────────────────┐
-       │ Web page: the agent's entry point│
-       │                                  │
-       │ Page context, browser operations │
-       │ and diagnostics                  │
-       │ Before-and-after verification    │
-       │                                  │
-       │ Extensions                       │
-       │ Connect existing SDKs, APIs,     │
-       │ CLIs, and internal platforms     │
-       │                                  │
-       │ Runtime Core                     │
-       │ Expose application facts         │
-       └──────────────────────────────────┘
-```
-
-## Documentation
-
-- [Quick Start](./docs/quick-start.md)
-- [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
-- [CLI Reference](./docs/cli-reference.md)
-- [Browser Authentication and State](./docs/browser-auth.md)
-- [Browser Connections and Multiple Runtimes](./docs/runtime-connections.md)
-- [Using Extensions](./docs/extensions.md)
-- [CLI Extension Development](./docs/cli-extensions.md)
-- [Extension API Reference](./docs/extension-api.md)
-- [Runtime Core API](./docs/runtime-core-api.md)
-- [Standalone Automation](./docs/cli-automation-scripts.md)
-- [Release Process](./docs/release.md)
 
 ## Contribution
 

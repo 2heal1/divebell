@@ -114,7 +114,7 @@ divebell wait-for --runtime runtime-orders business:orders ready --timeout 5000 
 
 ## 页面如何登记 Runtime
 
-框架接入已经负责登记时，业务应用不需要重复处理。直接使用 Core SDK 时，可以在应用挂载时登记，在卸载时移除：
+框架接入已经负责登记时，业务应用不需要重复处理。直接使用 Runtime SDK 时，可以在应用挂载时登记，在卸载时移除：
 
 ```ts
 import {

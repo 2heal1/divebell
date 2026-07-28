@@ -45,7 +45,7 @@ From the repository root, run:
 `./divebell` points directly to `packages/cli/dist/bin.js` in this checkout. It
 does not use a globally installed or published `divebell` command.
 
-After changing the CLI, Core, or Bridge, rebuild the CLI and its referenced
+After changing the CLI, Runtime SDK, or Bridge, rebuild the CLI and its referenced
 packages before trying the command again:
 
 ```bash
@@ -64,7 +64,7 @@ directory:
 
 ## Repository Layout
 
-- `packages/core`: optional page-side Runtime Core API.
+- `packages/core`: optional page-side Runtime SDK API.
 - `packages/bridge`: connection between a page Runtime and the CLI.
 - `packages/cli`: the `divebell` command-line entry point.
 - `packages/extension-*`: focused Extension packages.
@@ -125,10 +125,10 @@ Do not edit `docs/cli-reference.md` or `docs/cli-reference.zh-CN.md` by hand.
 
 - Divebell is a web development debugging tool for coding agents. Do not
   reintroduce the old “Agent Runtime” product name.
-- Runtime Core is optional. Browser operations, diagnostics, login reuse, and
+- Runtime SDK is optional. Browser operations, diagnostics, login reuse, and
   Extensions must continue to work for pages that do not integrate it.
 - Put reusable capabilities outside the page in an Extension when possible.
-  Use Runtime Core only for application-internal facts, declared actions, or
+  Use Runtime SDK only for application-internal facts, declared actions, or
   stable wait conditions.
 - Modern.js integration belongs in a Modern.js plugin, and Module Federation
   integration belongs in the Module Federation observability plugin. Prefer
@@ -137,11 +137,11 @@ Do not edit `docs/cli-reference.md` or `docs/cli-reference.zh-CN.md` by hand.
   as the reported issue whenever the relevant setup is available.
 
 Read the following before making a change that affects the development loop,
-Extensions, or Runtime Core:
+Extensions, or Runtime SDK:
 
 - [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
 - [CLI Extension Development](./docs/cli-extensions.md)
-- [Runtime Core API](./docs/runtime-core-api.md)
+- [Runtime SDK API](./docs/runtime-sdk-api.md)
 
 ## Changesets
 

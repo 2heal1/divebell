@@ -44,7 +44,7 @@ export default defineRuntimeConfig({
 });
 ```
 
-The current integration guidance uses this plugin for Modern.js `>=3.4.0` and preview versions, where the required framework hooks are available. For an older version, expose the smallest stable business signal with [`@divebell/core`](runtime-core-api.md) instead of attempting to reconstruct missing framework lifecycle through browser heuristics.
+The current integration guidance uses this plugin for Modern.js `>=3.4.0` and preview versions, where the required framework hooks are available. For an older version, expose the smallest stable business signal with [`@divebell/core`](runtime-sdk-api.md) instead of attempting to reconstruct missing framework lifecycle through browser heuristics.
 
 Route actions are opt-in because navigation changes page state:
 

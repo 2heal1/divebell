@@ -2,7 +2,7 @@
 
 This Divebell Extension adds `divebell verify`, a focused command for checking that a page-declared business target reaches the expected status and optional data conditions.
 
-The package requires a page connected to Runtime Core. Framework targets such as Modern.js, Module Federation, or Garfish provide supporting evidence, but they do not by themselves prove that the business result is correct.
+The package requires a page connected to Runtime SDK. Framework targets such as Modern.js, Module Federation, or Garfish provide supporting evidence, but they do not by themselves prove that the business result is correct.
 
 ## Install
 
@@ -38,4 +38,4 @@ divebell verify \
 
 The command succeeds only when the requested business target reaches the expected result. If only framework-level evidence exists, the output explains why final business verification is still missing and suggests a suitable business target when one is available.
 
-See [Runtime Core API](../../docs/runtime-core-api.md), [Runtime Core API 中文版](../../docs/runtime-core-api.zh-CN.md), and [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md).
+See [Runtime SDK API](../../docs/runtime-sdk-api.md), [Runtime SDK API 中文版](../../docs/runtime-sdk-api.zh-CN.md), and [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md).

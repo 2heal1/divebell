@@ -186,7 +186,7 @@ interface CliExtensionPageContext {
 
 - `url` 是最近一次记录到的页面地址；`openedUrl` 是传给 `divebell open` 的原始地址。
 - `normalizedUrl` 用于稳定比较页面；`openedAt` 是毫秒时间戳。
-- `bridgeUrl` 和 `sessionId` 可能为空，不能据此假设页面一定接入 Runtime Core。
+- `bridgeUrl` 和 `sessionId` 可能为空，不能据此假设页面一定接入 Runtime SDK。
 - 这个对象是最近打开页面的历史上下文。需要确认页面此刻的真实状态时，继续使用 `options.divebell.browser` 读取。
 
 ### Command 返回值和错误
@@ -320,6 +320,6 @@ interface DivebellStackDetection {
 | 收集浏览器证据 | `browser.screenshot`、`browser.network`、`browser.console` |
 | 专项底层采集 | `browser.memory`、`browser.coverage` |
 
-页面没有接入 Runtime Core 时，`browser` 下的页面操作和诊断仍然可用。只有 Command 确实需要应用内部状态时，才要求 connected runtime。
+页面没有接入 Runtime SDK 时，`browser` 下的页面操作和诊断仍然可用。只有 Command 确实需要应用内部状态时，才要求 connected runtime。
 
 Coding Agent 仍负责读取和修改项目代码。Extension API 没有统一的代码工作区或开发服务器管理接口；不要把扩展自己的文件访问包装成 Divebell 已经提供的通用代码能力。

@@ -2,7 +2,7 @@
 
 Use this workflow when the user wants a first experience and has not provided
 another page. The hosted Northstar Supply application is already deployed with
-Runtime Core and build metadata. Treat it like an unfamiliar real application:
+Runtime SDK and build metadata. Treat it like an unfamiliar real application:
 the page does not expose the walkthrough or debugging answers. Do not clone the
 Divebell repository and do not modify source.
 
@@ -46,7 +46,7 @@ stages use them to reload the same managed page and select the correct Runtime.
 Use actionable references from the page snapshot to search or filter orders and
 select a different order. Read another page snapshot to verify the visible
 result. This stage demonstrates ordinary Browser API capability and does not
-depend on Runtime Core.
+depend on Runtime SDK.
 
 ## 3. Reproduce and explain the controlled failure
 
@@ -66,10 +66,10 @@ Report the combined evidence:
 
 - Network contains a real 404 for `inventory-missing.json`.
 - Console records the controlled request failure.
-- Runtime Core says fulfillment is `blocked` and depends on
+- Runtime SDK says fulfillment is `blocked` and depends on
   `request:inventory`.
 
-Browser evidence proves what the browser observed. Runtime Core provides the
+Browser evidence proves what the browser observed. Runtime SDK provides the
 stable application meaning. Keep those roles distinct.
 
 ## 4. Recover through a declared action
@@ -159,7 +159,7 @@ Stop the page after all requested stages are complete:
 divebell stop
 ```
 
-Summarize the visible operation, browser evidence, Runtime Core explanation,
+Summarize the visible operation, browser evidence, Runtime SDK explanation,
 verified recovery, and any optional analysis. Do not imply that this playground
 modified application source; source editing belongs to a later workflow in the
 user's own repository.

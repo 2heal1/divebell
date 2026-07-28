@@ -174,7 +174,7 @@
       <rect x="698" y="385" width="62" height="22" rx="11" fill="#DBEAFE" />
       <text x="729" y="400" fill="#1D4ED8" font-size="9.5" font-weight="800" text-anchor="middle">OPTIONAL</text>
       <text x="772" y="400" fill="#475569" font-size="10.5">
-        Runtime Core · Expose application runtime facts
+        Runtime SDK · Expose application runtime facts
       </text>
 
       <!-- Extension and existing tools -->

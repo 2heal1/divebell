@@ -107,7 +107,7 @@ If a child remounts with the same Runtime ID, its new connection replaces the ol
 
 ## Register Runtimes in the page
 
-Do not repeat registration when a framework integration already handles it. With the Core SDK directly, register on mount and unregister on unmount:
+Do not repeat registration when a framework integration already handles it. With the Runtime SDK directly, register on mount and unregister on unmount:
 
 ```ts
 import {

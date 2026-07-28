@@ -6,7 +6,7 @@ description: >-
   divebell to reuse authenticated browser profiles and sessions, interact
   with pages, inspect Console, Network, performance, memory, code execution, and
   Runtime evidence, invoke Extension commands, verify changes, and develop
-  Extensions, automation scripts, or Runtime Core integrations. Use when a task
+  Extensions, automation scripts, or Runtime SDK integrations. Use when a task
   explicitly mentions Divebell, asks to use its CLI or Extensions, or needs
   Divebell evidence for a real web development debugging workflow.
 ---
@@ -21,7 +21,7 @@ capabilities, and preserve verification evidence.
 First decide whether the user wants to use capabilities, troubleshoot and fix
 an issue, or customize capabilities. Then read only the corresponding workflow.
 Do not preload every reference merely because a task involves Divebell. Do
-not require an ordinary page to integrate Runtime Core before using Divebell.
+not require an ordinary page to integrate Runtime SDK before using Divebell.
 
 ## Choose a workflow
 
@@ -30,7 +30,7 @@ not require an ordinary page to integrate Runtime Core before using Divebell.
 Read `references/quickstart.md` when the user asks to try, demo, evaluate, or
 quickly understand Divebell and has not supplied another target page. Use the
 public playground; do not clone this repository or ask for application source.
-Complete the browser, Runtime Core, and recovery stages before offering the
+Complete the browser, Runtime SDK, and recovery stages before offering the
 optional code-usage or memory stage.
 
 ### Use capabilities
@@ -59,7 +59,7 @@ that matches the issue, then use structured state when the page already
 provides relevant Runtime information.
 
 Continue diagnosing an ordinary page when no runtime is connected. Add Runtime
-Core, a framework plugin, or a business signal only when browser-visible
+SDK, a framework plugin, or a business signal only when browser-visible
 evidence is not reliable enough, the user explicitly requests integration, or
 the capability is worth reusing.
 
@@ -70,7 +70,7 @@ Read `references/integrate.md` when the task involves any of the following:
 - Develop or modify a Divebell Extension, including test-account setup,
   environment preparation, specialized diagnostics, or verification commands.
 - Write an automation script that owns a complete browser workflow.
-- Integrate Runtime Core, the Modern plugin, MF observability, or Garfish into a
+- Integrate Runtime SDK, the Modern plugin, MF observability, or Garfish into a
   project.
 - Register or design targets, snapshots, events, actions, `waitFor` conditions,
   or durable business verification signals.
@@ -139,7 +139,7 @@ application as a side effect.
   `references/troubleshoot.md`
 - Extensions, automation scripts, and Runtime integration:
   `references/integrate.md`
-- Page-side `@divebell/core` API: `references/core.md`
+- Page-side `@divebell/core` API: `references/runtime-sdk.md`
 - Modern.js integration, routes, and loaders: `references/modernjs.md`
 - Module Federation observability, remotes, and shared dependencies:
   `references/module-federation.md`

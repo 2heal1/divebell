@@ -52,7 +52,7 @@ divebell open https://example.com/orders --session orders-debug --ui
 
 Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
-Divebell can debug a regular page without Runtime Core. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
+Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 
 ## 3. Discover Available Capabilities
 
@@ -89,7 +89,7 @@ divebell screenshot orders-error --full-page
 
 For performance, memory, or code-execution problems, prefer a matching Extension so it owns capture, calculation, reporting, and cleanup. A memory check, for example, can repeat a real user journey and compare post-cleanup memory, DOM-node, and listener trends rather than relying on one instantaneous value.
 
-If the page already uses Runtime Core, add internal evidence when useful:
+If the page already uses Runtime SDK, add internal evidence when useful:
 
 ```sh
 divebell snapshot --session orders-debug
@@ -117,7 +117,7 @@ Choose verification evidence in this order:
 3. An explicit page result, request outcome, and absence of relevant errors.
 4. A screenshot for visual confirmation or an artifact, not as the sole proof of an interactive or stateful result.
 
-A regular page does not need Runtime Core solely for final verification. Add a stable Target or Action when:
+A regular page does not need Runtime SDK solely for final verification. Add a stable Target or Action when:
 
 - the true business state cannot be determined reliably from the page surface;
 - multiple agents, scripts, or CI jobs will verify the same result over time;
@@ -136,7 +136,7 @@ An isolated problem does not require permanent integration. Keep the appropriate
 | Diagnose the currently opened page | Extension command |
 | Prepare accounts, environments, or page initialization | Extension hook or command |
 | Own the whole browser lifecycle and replay a journey | Automation script |
-| Expose internal state, events, and allowed actions | Runtime Core API |
+| Expose internal state, events, and allowed actions | Runtime SDK API |
 | Explain a complex command and its decision process | Skill shipped by the Extension |
 
 Do not add Targets to every page merely to demonstrate Divebell, and do not turn every one-off browser command into an Extension. Preserve only work that reduces future human intervention or improves reliability.

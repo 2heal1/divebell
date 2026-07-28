@@ -1,6 +1,6 @@
 # @divebell/cli
 
-Divebell CLI is the main entry point for coding agents using Divebell as a web development debugging tool. It preserves login state and browser sessions, operates real pages, collects debugging evidence, loads team Extensions, and reads Runtime Core information when the application provides it.
+Divebell CLI is the main entry point for coding agents using Divebell as a web development debugging tool. It preserves login state and browser sessions, operates real pages, collects debugging evidence, loads team Extensions, and reads Runtime SDK information when the application provides it.
 
 ## Install
 
@@ -34,7 +34,7 @@ divebell page-snapshot
 
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
 
-When a page already provides Runtime Core information, the same session can add internal evidence:
+When a page already provides Runtime SDK information, the same session can add internal evidence:
 
 ```sh
 divebell snapshot --session orders-debug
@@ -42,7 +42,7 @@ divebell actions --session orders-debug
 divebell wait-for --session orders-debug business:orders ready --timeout 5000
 ```
 
-Runtime Core is optional. Do not add it merely to start debugging a regular page.
+Runtime SDK is optional. Do not add it merely to start debugging a regular page.
 
 ## Extensions
 
@@ -90,7 +90,7 @@ divebell code-usage analyze \
 - [Coding Agent Development Debugging Loop](https://github.com/2heal1/divebell/blob/main/docs/agent-devloop.md)
 - [Browser Authentication and State](https://github.com/2heal1/divebell/blob/main/docs/browser-auth.md)
 - [CLI Extension Development](https://github.com/2heal1/divebell/blob/main/docs/cli-extensions.md)
-- [Runtime Core API](https://github.com/2heal1/divebell/blob/main/docs/runtime-core-api.md)
+- [Runtime SDK API](https://github.com/2heal1/divebell/blob/main/docs/runtime-sdk-api.md)
 - [Standalone Automation](https://github.com/2heal1/divebell/blob/main/docs/cli-automation-scripts.md)
 - [Generated CLI Reference](https://github.com/2heal1/divebell/blob/main/docs/cli-reference.md)
 

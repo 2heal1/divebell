@@ -14,6 +14,10 @@ import {
 import { implementedMfCommandMetadata } from "../dist/commands/metadata.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
+const packageArchiveName = `${
+  packageJson.name.replace(/^@/, "").replaceAll("/", "-")
+}-${packageJson.version}.tgz`;
 
 test("extension manifest is valid and implementation stays lazy", async () => {
   const extension = (await import(pathToFileURL(resolve(packageRoot, "dist/extension.js")).href)).default;
@@ -87,7 +91,7 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(outputDirectory, "divebell-extension-mf-0.0.0.tgz");
+    const archive = join(outputDirectory, packageArchiveName);
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
@@ -140,7 +144,6 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(reportTypes, /interface RuntimeResource/);
     assert.match(reportTypes, /interface RuntimeShared/);
     assert.match(reportTypes, /interface RuntimeBridgeInfo/);
-    const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     assert.equal(packageJson.dependencies, undefined);
     assert.equal(packageJson.divebell.extensions[0], "./dist/extension.js");
     assert.equal(packageJson.exports["."].import, "./dist/package.js");
@@ -197,7 +200,7 @@ test("packed archive supports real package-name imports for public API and exten
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "divebell-extension-mf-0.0.0.tgz");
+    const archive = join(packDirectory, packageArchiveName);
     const installed = spawnSync("npm", [
       "install",
       "--ignore-scripts",
@@ -243,7 +246,7 @@ test("packed archive installs and loads through the external extension mechanism
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "divebell-extension-mf-0.0.0.tgz");
+    const archive = join(packDirectory, packageArchiveName);
     let stdout = "";
     let stderr = "";
     const cli = createDivebellCli();

@@ -57,3 +57,4 @@ jobs:
           packages/extension-troubleshooting
           packages/extension-imitate
           packages/extension-memory
+          packages/extension-mf

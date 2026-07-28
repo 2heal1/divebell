@@ -4,20 +4,12 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readDivebellReleasePackages } from "./divebell-release-packages.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = "skills/record-divebell-workflow/references/divebell-cli-runtime.json";
-const packagePaths = [
-  "packages/core/package.json",
-  "packages/bridge/package.json",
-  "packages/chunk-map/package.json",
-  "packages/rspack-plugin/package.json",
-  "packages/modern-plugin/package.json",
-  "packages/cli/package.json",
-  "packages/extension-code-usage/package.json",
-  "packages/extension-troubleshooting/package.json",
-  "packages/extension-imitate/package.json",
-  "packages/extension-memory/package.json"
-];
+const releasePackages = await readDivebellReleasePackages(repositoryRoot);
+const packagePaths = releasePackages.map((item) => item.relativePath);
 const allowedFiles = new Set([...packagePaths, manifestPath]);
 const branch = getOption("--branch");
 const changedFilesPath = getOption("--changed-files");
@@ -28,11 +20,11 @@ if (branch === undefined || changedFilesPath === undefined || baseRevision === u
 
 const manifest = JSON.parse(await readFile(resolve(repositoryRoot, manifestPath), "utf8"));
 const baseManifest = readJsonAtRevision(baseRevision, manifestPath);
-const packages = await Promise.all(packagePaths.map(async (relativePath) => ({
-  relativePath,
-  value: JSON.parse(await readFile(resolve(repositoryRoot, relativePath), "utf8")),
-  baseValue: readJsonAtRevision(baseRevision, relativePath)
-})));
+const packages = releasePackages.map((item) => ({
+  relativePath: item.relativePath,
+  value: item.packageJson,
+  baseValue: readJsonAtRevision(baseRevision, item.relativePath)
+}));
 const version = manifest.version;
 const allowedVersions = ["patch", "minor", "major"].map((type) => bumpVersion(baseManifest.version, type));
 if (!allowedVersions.includes(version)) {

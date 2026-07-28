@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, rm, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,6 +8,7 @@ import {
   redactCommandArgs,
   redactSensitiveText
 } from "./npm-release-utils.mjs";
+import { readDivebellReleasePackages } from "./divebell-release-packages.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mode = process.argv[2];
@@ -17,23 +18,7 @@ if (!["check", "pack", "publish"].includes(mode)) {
 const otp = getOption("--otp");
 if (otp !== undefined && mode !== "publish") throw new Error("--otp is only supported in publish mode.");
 
-const packageDefinitions = [
-  { directory: "packages/core", filePrefix: "divebell-core" },
-  { directory: "packages/bridge", filePrefix: "divebell-bridge" },
-  { directory: "packages/chunk-map", filePrefix: "divebell-chunk-map" },
-  { directory: "packages/rspack-plugin", filePrefix: "divebell-rspack-plugin" },
-  { directory: "packages/modern-plugin", filePrefix: "divebell-modern-plugin" },
-  { directory: "packages/cli", filePrefix: "divebell-cli" },
-  { directory: "packages/extension-code-usage", filePrefix: "divebell-extension-code-usage" },
-  { directory: "packages/extension-troubleshooting", filePrefix: "divebell-extension-troubleshooting" },
-  { directory: "packages/extension-imitate", filePrefix: "divebell-extension-imitate" },
-  { directory: "packages/extension-memory", filePrefix: "divebell-extension-memory" },
-  { directory: "packages/extension-mf", filePrefix: "divebell-extension-mf" }
-];
-const packages = await Promise.all(packageDefinitions.map(async (definition) => ({
-  ...definition,
-  packageJson: JSON.parse(await readFile(resolve(repositoryRoot, definition.directory, "package.json"), "utf8"))
-})));
+const packages = await readDivebellReleasePackages(repositoryRoot);
 const versions = new Set(packages.map((item) => item.packageJson.version));
 if (versions.size !== 1) throw new Error("All Divebell packages must use the same release version.");
 const version = packages[0].packageJson.version;

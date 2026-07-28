@@ -219,7 +219,7 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
     "Usage: divebell <command> [options]",
     ...commandLines,
     "",
-    "Run `divebell <command> --help` for detailed usage."
+    "Run `divebell <command> --help` (or `-h`) for detailed usage."
   ].join("\n");
 }
 

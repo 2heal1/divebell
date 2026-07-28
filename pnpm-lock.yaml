@@ -165,15 +165,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@divebell/agent-browser':
+        specifier: 0.33.1-divebell.1
+        version: 0.33.1-divebell.1
       '@divebell/bridge':
         specifier: workspace:^
         version: link:../bridge
       '@divebell/core':
         specifier: workspace:^
         version: link:../core
-      '@openruntime/agent-browser':
-        specifier: 0.32.0-openruntime.1
-        version: 0.32.0-openruntime.1
     devDependencies:
       '@rstest/core':
         specifier: 0.10.3
@@ -280,6 +280,11 @@ packages:
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
 
+  '@divebell/agent-browser@0.33.1-divebell.1':
+    resolution: {integrity: sha512-Fyrb6R+uyOJcf1dOgYsAqcc/0V1h/BCdoXpxjVA6boiyZUq6H9zP4ceQem5TWJPNfXVF4aSnS49FrJxriOB+jQ==}
+    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
+    hasBin: true
+
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
 
@@ -321,11 +326,6 @@ packages:
   '@nodelib/fs.walk@1.2.8':
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
-
-  '@openruntime/agent-browser@0.32.0-openruntime.1':
-    resolution: {integrity: sha512-U7OGEFeuO7M/DFmxiGqxnAi4CS7bjeS2srnJI7TkV5c74L7eEuCorAbcTLfu5R40XRHeQYrvixa487xFbYIixA==}
-    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
-    hasBin: true
 
   '@rsbuild/core@2.0.11':
     resolution: {integrity: sha512-Mpp/viUSkVdSWJkFipdZxM2nUztrBwSnMm6Q86bPzLHtHnXqQ3VFpSMlA4wWRyySNddP6s6efKiVpx0ZOCf7Gg==}
@@ -880,6 +880,8 @@ snapshots:
       human-id: 4.2.0
       prettier: 2.8.8
 
+  '@divebell/agent-browser@0.33.1-divebell.1': {}
+
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
@@ -937,8 +939,6 @@ snapshots:
     dependencies:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.1
-
-  '@openruntime/agent-browser@0.32.0-openruntime.1': {}
 
   '@rsbuild/core@2.0.11':
     dependencies:

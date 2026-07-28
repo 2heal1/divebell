@@ -13,7 +13,7 @@ npm install --global @divebell/cli
 divebell check --fix
 ```
 
-The package provides the `divebell` binary. It currently includes the legacy-named `@openruntime/agent-browser@0.32.0-openruntime.1`, which adds the memory and code-coverage capture used by Divebell. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.1-divebell.1`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
 `divebell check` reports the current Node.js version, browser source, and browser-reported version, then uses a temporary session to verify that Divebell can start its Bridge, open a blank page, and control the browser without changing the current project session.
 

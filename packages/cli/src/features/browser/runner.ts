@@ -89,7 +89,7 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
 
 export function resolveBundledAgentBrowserEntryPath(): string | undefined {
   try {
-    return require.resolve("@openruntime/agent-browser/bin/agent-browser.js");
+    return require.resolve("@divebell/agent-browser/bin/agent-browser.js");
   } catch {
     return undefined;
   }

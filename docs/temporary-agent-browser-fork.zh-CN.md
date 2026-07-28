@@ -7,11 +7,11 @@ English version: [Temporary agent-browser Build Used by Divebell](temporary-agen
 Divebell CLI 暂时固定使用：
 
 ```text
-@openruntime/agent-browser@0.32.0-openruntime.1
+@divebell/agent-browser@0.33.1-divebell.1
 ```
 
-这个保留旧 scope 的包来自 agent-browser 临时分支，增加了 Divebell 内存诊断和代码覆盖率
-采集所需的能力；完成发包迁移前仍使用 `@openruntime`。Divebell 会直接使用随 CLI 安装的这个版本；只有设置
+这个包来自 agent-browser 临时分支，增加了 Divebell 内存诊断和代码覆盖率
+采集所需的能力。Divebell 会直接使用随 CLI 安装的这个版本；只有设置
 `DIVEBELL_AGENT_BROWSER_EXECUTABLE` 时，才会改用用户指定的程序。
 
 ## 为什么暂时使用它
@@ -29,7 +29,7 @@ Divebell 需要固定使用这个临时版本，避免用户另外编译或配�
 
 ## 恢复步骤
 
-1. 将 `packages/cli/package.json` 中的 `@openruntime/agent-browser` 替换为官方
+1. 将 `packages/cli/package.json` 中的 `@divebell/agent-browser` 替换为官方
    `agent-browser`，并固定到已验证的正式版本。
 2. 更新 `pnpm-lock.yaml`。
 3. 更新 `packages/cli/README.md` 的安装说明。

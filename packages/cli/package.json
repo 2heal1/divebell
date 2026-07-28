@@ -38,7 +38,7 @@
     "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run"
   },
   "dependencies": {
-    "@openruntime/agent-browser": "0.32.0-openruntime.1",
+    "@divebell/agent-browser": "0.33.1-divebell.1",
     "@divebell/bridge": "workspace:^",
     "@divebell/core": "workspace:^"
   },

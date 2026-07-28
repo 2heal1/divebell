@@ -184,12 +184,12 @@ test("allows an isolated command to override the default browser session", async
 
 test("uses the packaged Divebell agent-browser by default", async () => {
   const entryPath = resolveBundledAgentBrowserEntryPath();
-  assert.match(entryPath ?? "", /@openruntime[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
+  assert.match(entryPath ?? "", /@divebell[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
 
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.32\.0-openruntime\.1/);
+  assert.match(result.stdout, /agent-browser 0\.33\.1-divebell\.1/);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {

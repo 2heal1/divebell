@@ -1,0 +1,41 @@
+.github/workflows/prepare-release.yml
+  s_cbea3114c4ff66::t_a1fc188f33a297 81,87-88,95,108-113
+.github/workflows/release.yml
+  s_cbea3114c4ff66::t_be32460fb3731c 75-77
+CONTRIBUTING.md
+  s_cbea3114c4ff66::t_1283cc5754ccd8 158-160
+docs/release.md
+  s_cbea3114c4ff66::t_29be9406bf4d83 86,89
+docs/release.zh-CN.md
+  s_cbea3114c4ff66::t_43e9d150193312 86,89
+package.json
+  s_cbea3114c4ff66::t_1e4e6d5c823ed2 29
+scripts/generate-release-pr-body.mjs
+  s_cbea3114c4ff66::t_c9e7437cc4fc51 17,32-38,72-77,81-82
+scripts/release-change-files.mjs
+  s_cbea3114c4ff66::t_46d4ebac40faa2 1-45
+scripts/release-change-files.test.mjs
+  s_cbea3114c4ff66::t_32c3c8b0df52c6 1-75
+scripts/release-workflow.test.mjs
+  s_cbea3114c4ff66::t_febd6ea82eb842 8,12-15,18-19,24-25,30,34-45
+scripts/validate-divebell-release.mjs
+  s_cbea3114c4ff66::t_9219d5c9422941 8,59-62,89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "68cb8f86ac08e14b81b6f9e413cf0fdb7c273ef8",
+  "prompts": {},
+  "sessions": {
+    "s_cbea3114c4ff66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa82c-c5d1-7312-8905-e1c5e325769d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

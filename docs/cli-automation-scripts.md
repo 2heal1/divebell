@@ -85,17 +85,21 @@ For scripts that run inside the current project, add `@openruntime/cli` to the p
 pnpm add -D @openruntime/cli
 ```
 
+OpenRuntime CLI supports Node.js 24.
+
 If a script only calls the `openruntime` binary from Shell, it can rely on a global install or a CI-provided CLI, but check that it is available before running:
 
 ```sh
 openruntime --help
 ```
 
-OpenRuntime CLI browser features depend on a Playwright runtime environment. CI and clean machines need browser dependencies prepared ahead of time. Whether to package Playwright and browsers depends on how the script is distributed:
+Run a readiness check before using browser commands:
 
-- Project script: keep `@openruntime/cli` in project dependencies and install browser dependencies in CI.
-- Local tool script: require users to install the CLI and browser runtime environment first.
-- Standalone distribution: provide an install script or setup documentation; do not assume browser dependencies already exist.
+```sh
+openruntime check
+```
+
+Use `openruntime check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
 
 ## Script File Structure
 

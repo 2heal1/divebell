@@ -85,17 +85,21 @@ node scripts/check-home.mjs http://localhost:3000
 pnpm add -D @openruntime/cli
 ```
 
+OpenRuntime CLI 支持 Node.js 24。
+
 如果脚本只通过 Shell 调用 `openruntime`，也可以依赖全局安装或 CI 里预装的 CLI，但需要在运行前检查：
 
 ```sh
 openruntime --help
 ```
 
-OpenRuntime CLI 的浏览器能力依赖 Playwright 运行环境。CI 或干净机器上需要提前准备浏览器依赖；项目内脚本建议把安装步骤写进项目的安装或 CI 流程。是否把 Playwright 和浏览器一起打包，取决于脚本分发方式：
+使用浏览器命令前先检查环境：
 
-- 项目内使用：把 `@openruntime/cli` 放到项目依赖，CI 安装依赖和浏览器。
-- 本机工具脚本：要求使用者先安装 CLI 和浏览器运行环境。
-- 独立分发脚本：提供明确的安装脚本或安装文档，不要假设机器上已经有浏览器依赖。
+```sh
+openruntime check
+```
+
+准备环境时可以执行 `openruntime check --fix`。它会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
 
 ## 脚本文件结构
 

@@ -275,6 +275,38 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
 });
 
+test("points browser startup failures to the readiness check", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => ({
+      exitCode: 1,
+      stdout: "",
+      stderr: "Chrome exited early (unknown code)"
+    }))
+  });
+
+  assert.equal(exitCode, 1);
+  const sessionId = createOperationSessionId();
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("open http://app.test/", {
+    code: "PAGE_OPEN_FAILED",
+    kind: "browser",
+    message: "Chrome exited early (unknown code)",
+    retryable: true,
+    hint: "Run `openruntime check` to verify browser startup, or `openruntime check --fix` to install missing browser requirements.",
+    details: {
+      url: "http://app.test/",
+      openedUrl: `http://app.test/?openruntimeSessionId=${sessionId}`,
+      stderr: "Chrome exited early (unknown code)"
+    }
+  }));
+});
+
 test("forwards origin-scoped headers to the first page request", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

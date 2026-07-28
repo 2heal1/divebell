@@ -1,6 +1,7 @@
 import type { BridgeServer } from "@openruntime/bridge";
 import type { OpenRuntimePackageInfo } from "@openruntime/core";
 import type { BrowserRunner } from "../features/browser/runner.js";
+import type { RemoteDebuggingPageOpener } from "../features/browser/remote-debugging.js";
 import type { BridgeProcessController, BridgeStarter } from "../features/bridge/process.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import type {
@@ -37,8 +38,11 @@ export interface CliRunOptions {
     write(chunk: string): void;
   };
   stdin?: AsyncIterable<string | Uint8Array>;
+  env?: NodeJS.ProcessEnv;
   fetcher?: Fetcher;
   browserRunner?: BrowserRunner;
+  remoteDebuggingPageOpener?: RemoteDebuggingPageOpener;
+  checkWaiter?: (milliseconds: number) => Promise<void>;
   bridgeStarter?: BridgeStarter;
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;

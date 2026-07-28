@@ -26,7 +26,7 @@ Prerequisites:
 
 - the package rename and release-script updates are already merged locally;
 - the maintainer has write access to every npm package and account-level two-factor authentication enabled;
-- Node.js is 22.14.0 or newer; and
+- Node.js 24.x is installed; and
 - npm is 11.15.0 or newer.
 
 Sign in, build, check the package archives, and publish the first version:

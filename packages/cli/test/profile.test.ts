@@ -48,6 +48,20 @@ test("configures an isolated restore name and headed mode", () => {
   assert.equal(env.AGENT_BROWSER_HEADED, "1");
 });
 
+test("configures automatic connection without inheriting an explicit CDP port", () => {
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_CDP: "9222"
+  }, undefined, "browser-check", {
+    autoConnect: true,
+    idleTimeoutMs: 5000
+  });
+
+  assert.equal(env.AGENT_BROWSER_AUTO_CONNECT, "1");
+  assert.equal(env.AGENT_BROWSER_CDP, undefined);
+  assert.equal(env.AGENT_BROWSER_IDLE_TIMEOUT_MS, "5000");
+  assert.equal(env.AGENT_BROWSER_SESSION, "browser-check");
+});
+
 test("adds a reusable blank startup page without dropping custom browser arguments", () => {
   const env = createAgentBrowserEnvironment({
     AGENT_BROWSER_ARGS: "--disable-features=Translate,--start-maximized"
@@ -141,6 +155,30 @@ test("uses agent-browser as the default browser runner", async () => {
   assert.deepEqual(JSON.parse(result.stdout), {
     args: ["snapshot"],
     session: "default-agent-browser"
+  });
+});
+
+test("allows an isolated command to override the default browser session", async () => {
+  const runner = createDefaultBrowserRunner({
+    env: {},
+    agentBrowser: {
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ session: process.env.AGENT_BROWSER_SESSION, restore: process.env.AGENT_BROWSER_RESTORE ?? null }))"
+      ],
+      session: "default-agent-browser"
+    }
+  });
+
+  const result = await runner.run(["snapshot"], {
+    session: "isolated-browser-check",
+    disableRestore: true
+  });
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    session: "isolated-browser-check",
+    restore: null
   });
 });
 

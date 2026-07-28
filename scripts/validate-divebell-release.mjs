@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { readDivebellReleasePackages } from "./divebell-release-packages.mjs";
+import { validateReleaseChangedFiles } from "./release-change-files.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = "skills/record-divebell-workflow/references/divebell-cli-runtime.json";
@@ -55,16 +56,10 @@ assertEqualWithoutReleaseFields(
   normalizeManifest
 );
 
-const changedFiles = (await readFile(resolve(changedFilesPath), "utf8"))
-  .split(/\r?\n/)
-  .map((value) => value.trim())
-  .filter(Boolean);
-if (changedFiles.length !== allowedFiles.size || changedFiles.some((file) => !allowedFiles.has(file))) {
-  throw new Error(`Release PR may only change version files. Received: ${changedFiles.join(", ")}`);
-}
-for (const file of allowedFiles) {
-  if (!changedFiles.includes(file)) throw new Error(`Release PR did not change required file: ${file}`);
-}
+const releaseChanges = validateReleaseChangedFiles(
+  await readFile(resolve(changedFilesPath), "utf8"),
+  allowedFiles
+);
 
 const expectedTag = `recording-skill-runtime-v${version}`;
 const expectedAsset = `divebell-recording-runtime-${version}.tgz`;
@@ -91,7 +86,8 @@ process.stdout.write(`${JSON.stringify({
   ok: true,
   branch,
   version,
-  files: changedFiles,
+  files: releaseChanges.files,
+  changesets: releaseChanges.changesets,
   packages: packages.map((item) => item.value.name)
 }, null, 2)}\n`);
 

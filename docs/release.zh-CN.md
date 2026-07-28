@@ -83,10 +83,10 @@ gh release create recording-skill-runtime-v0.0.0 \
 2. 选择 **Prepare Divebell Release**。
 3. 从 `main` 运行流程，并选择 `patch`、`minor` 或 `major`。
 4. 检查自动创建的 `release/divebell-vX.Y.Z` 合并请求，并等待 CI 通过。
-5. 确认合并请求只修改公开包的版本号和录制运行包清单。
+5. 确认合并请求修改公开包的版本号和录制运行包清单，并删除本次发布包含的 changeset 文件。
 6. 将发版合并请求合入 `main`。
 
-准备流程会先确认当前版本的 npm 包和 GitHub Release 都已存在，然后把所有公开包和录制运行包更新到同一个版本。
+准备流程会先确认当前版本的 npm 包和 GitHub Release 都已存在，然后把所有公开包和录制运行包更新到同一个版本。Changeset 描述会用于生成合并请求摘要，并在使用后由该合并请求删除。
 
 ## 正式发布
 
@@ -98,7 +98,7 @@ gh release create recording-skill-runtime-v0.0.0 \
 4. 构建并检查录制运行包；
 5. 等 npm 全部成功后，创建 GitHub Release 并上传运行包和校验文件。
 
-流程中断后可以安全重跑。已经存在的 npm 版本会跳过，尚未公开的 GitHub Release 可以重新上传附件。如果已经公开的 Release 缺少附件，流程会停止并保留现场。
+流程中断后可以安全重跑。已经存在的 npm 版本会跳过，尚未公开的 GitHub Release 可以重新上传附件。如果已经公开的 Release 缺少附件，流程会停止并保留现场。每个完成的 GitHub Release 都会标记为 **Latest**；如果当前版本的附件完整，重跑流程也会恢复这个标记。
 
 ## 本地检查
 

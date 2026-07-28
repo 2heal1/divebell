@@ -83,10 +83,10 @@ If that release already exists, do not overwrite it. First confirm that it alrea
 2. Select **Prepare Divebell Release**.
 3. Run the workflow from `main` with a `patch`, `minor`, or `major` increment.
 4. Review the generated `release/divebell-vX.Y.Z` pull request and wait for CI.
-5. Confirm that the pull request changes only the public package versions and the recording runtime manifest.
+5. Confirm that the pull request changes the public package versions and recording runtime manifest, and removes the changeset files included in this release.
 6. Merge the release pull request into `main`.
 
-The preparation workflow first confirms that the current npm packages and GitHub Release exist. It then updates every published package and the recording runtime to the same version.
+The preparation workflow first confirms that the current npm packages and GitHub Release exist. It then updates every published package and the recording runtime to the same version. Changeset descriptions are used to build the pull request summary and are removed by that pull request after they have been consumed.
 
 ## Publish a release
 
@@ -98,7 +98,7 @@ Merging a `release/divebell-vX.Y.Z` pull request starts **Publish Divebell Relea
 4. builds and verifies the recording runtime bundle; and
 5. creates the GitHub Release and uploads the bundle and checksum only after npm publishing succeeds.
 
-The workflow is safe to rerun after an interruption. Existing npm versions are skipped, and an unfinished draft GitHub Release can have its assets replaced. A published Release with missing assets is left untouched and reported as an error.
+The workflow is safe to rerun after an interruption. Existing npm versions are skipped, and an unfinished draft GitHub Release can have its assets replaced. A published Release with missing assets is left untouched and reported as an error. Every completed GitHub Release is marked as **Latest**; rerunning the workflow for the current version also restores that marker when its published assets are complete.
 
 ## Local checks
 

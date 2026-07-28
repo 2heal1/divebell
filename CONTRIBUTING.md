@@ -155,6 +155,9 @@ Choose the affected package or packages and describe the user-visible result.
 Documentation-only changes and repository-local tooling such as the
 `./divebell` launcher do not need a changeset.
 
+The release preparation workflow uses each pending changeset in the release
+pull request summary, then removes it in that same pull request.
+
 ## Pull Request Checklist
 
 Before opening a pull request, confirm that:

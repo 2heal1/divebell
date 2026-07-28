@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Exact incomplete release version to recover from main
+        description: Exact release version to recover or repair from main
         required: true
         type: string
 
@@ -72,13 +72,15 @@ jobs:
           RELEASE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           RELEASE_FILES: ${{ runner.temp }}/divebell-release-files.txt
         run: |
-          gh pr diff "${{ github.event.pull_request.number }}" --name-only > "$RELEASE_FILES"
+          gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}/files?per_page=100" \
+            --jq '.[] | [.status, .filename] | @tsv' > "$RELEASE_FILES"
           node scripts/validate-divebell-release.mjs \
             --branch "$RELEASE_BRANCH" \
             --base "$RELEASE_BASE_SHA" \
             --changed-files "$RELEASE_FILES"
 
-      - name: Validate incomplete release recovery
+      - name: Validate release recovery request
         if: github.event_name == 'workflow_dispatch'
         env:
           RECOVERY_VERSION: ${{ inputs.version }}
@@ -138,12 +140,13 @@ jobs:
             if [ "$is_draft" = "false" ]; then
               if echo "$asset_names" | grep -Fxq "$ASSET_NAME" && echo "$asset_names" | grep -Fxq "$CHECKSUM_NAME"; then
                 echo "Release $TAG is already published with both assets."
-                exit 0
+              else
+                echo "Published release $TAG is missing expected assets; refusing to mutate it." >&2
+                exit 1
               fi
-              echo "Published release $TAG is missing expected assets; refusing to mutate it." >&2
-              exit 1
+            else
+              gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
             fi
-            gh release upload "$TAG" "$ASSET" "$CHECKSUM" --clobber
           else
             gh release create "$TAG" "$ASSET" "$CHECKSUM" \
               --draft \
@@ -151,4 +154,4 @@ jobs:
               --title "Divebell ${VERSION}" \
               --notes "Publishes all @divebell npm packages through OIDC and provides the versioned runtime bundle used by record-divebell-workflow."
           fi
-          gh release edit "$TAG" --draft=false --latest=false
+          gh release edit "$TAG" --draft=false --latest

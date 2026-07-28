@@ -1,0 +1,533 @@
+.changeset/add-mit-license.md
+  s_de9a8d96742e00::t_a0c41c34dd2460 2-11,14
+.changeset/check-browser-readiness.md
+  s_de9a8d96742e00::t_3f8defad62b48f 2,5
+.changeset/clean-extension-run-results.md
+  s_de9a8d96742e00::t_8c55e4725de2aa 2-6
+.changeset/compose-extension-hooks.md
+  s_de9a8d96742e00::t_fc9c4a0914bfa5 2
+.changeset/config.json
+  s_de9a8d96742e00::t_936192d513e15f 7-16
+.changeset/fix-agent-browser-auth.md
+  s_de9a8d96742e00::t_d4b194c6b76638 2
+.changeset/inject-extension-headers.md
+  s_de9a8d96742e00::t_cc1928cfd42434 2
+.changeset/isolate-open-bridges.md
+  s_de9a8d96742e00::t_5b2515810e50b1 2
+.changeset/open-headers.md
+  s_de9a8d96742e00::t_a9ae61e980dbf4 2
+.changeset/pass-open-headers-to-extensions.md
+  s_de9a8d96742e00::t_635bca8cba6959 2
+.changeset/quiet-bridges-connect.md
+  s_de9a8d96742e00::t_0bdfe2ebf40e1e 2-5,8
+.changeset/read-remote-code-usage-assets.md
+  s_de9a8d96742e00::t_bfb47e5c596398 2
+.changeset/record-current-page.md
+  s_de9a8d96742e00::t_6253529f6e4992 2-3,6
+.changeset/scope-cli-help.md
+  s_de9a8d96742e00::t_63f7154f045fc8 2
+.github/workflows/pages.yml
+  s_de9a8d96742e00::t_e99a898beb3b5e 38-40
+.github/workflows/prepare-release.yml
+  s_de9a8d96742e00::t_b43e6157e3bca4 1,7,22,27,49,60-61,70,82,84,106-107,112
+.github/workflows/release.yml
+  s_de9a8d96742e00::t_f7511028af9fbb 1,16,22,24,57,60,91,129-130
+.gitignore
+  s_de9a8d96742e00::t_c5e58b2ba08432 3
+AGENTS.md
+  s_de9a8d96742e00::t_b1909b485a1be6 1,5,8,21,26,28,38,40,42,68-69,77-78
+LICENSE
+  s_de9a8d96742e00::t_4a78bbee7c6ce5 3
+README.md
+  s_de9a8d96742e00::t_68df5dbfb2e15e 2,5,8,10,17,19,21,23,27,33,36-38,44,48,51,56,68,72,75,78,85,88,90,98,100,104,106,110,114,130-134,140,143,149,157,181,197,230,234,240
+README.zh-CN.md
+  s_de9a8d96742e00::t_5eb5f3a360a00f 2,5,8,10,17,19,21,23,27,33,36-38,43,46,49,53,65,69,72,75,82,85,87,95,97,101,103,107,111,127-131,137,140,146,193,225,229,235
+assets/divebell-workflow.svg
+  s_de9a8d96742e00::t_acf2a8f37c7c11 9,11-12,29,39,46,120,127,149,151
+assets/divebell-workflow.zh-CN.svg
+  s_de9a8d96742e00::t_cb77798533e464 9,11-12,28,38,45,119,126,148,150
+demos/bridge-readonly/README.md
+  s_de9a8d96742e00::t_0bc015e828a6d4 3,20,26,36,42,48,54,60,66,72,78,105,111
+demos/bridge-readonly/index.html
+  s_de9a8d96742e00::t_94573121003bff 6
+demos/bridge-readonly/package.json
+  s_de9a8d96742e00::t_51b3b29b694c8a 2,12
+demos/bridge-readonly/rsbuild.config.ts
+  s_de9a8d96742e00::t_c3b0419dd6d96c 6
+demos/bridge-readonly/src/index.ts
+  s_de9a8d96742e00::t_ab8c786398d933 2-4,7-8,17
+demos/cli-extension/README.md
+  s_de9a8d96742e00::t_9a99de8b490c94 8,17,23,30,37,44
+demos/cli-extension/command.mjs
+  s_de9a8d96742e00::t_3403d63882d203 5,14,18-19
+demos/cli-extension/hooks.mjs
+  s_de9a8d96742e00::t_681f176ea6d1bb 4,9-11,16-17,19
+demos/cli-extension/index.mjs
+  s_de9a8d96742e00::t_cf56ce7f685219 1,6,11
+demos/cli-extension/package.json
+  s_de9a8d96742e00::t_da955a2441a778 2,6
+demos/cli-extension/test.mjs
+  s_de9a8d96742e00::t_28dd5b104ac885 14,50,68,72
+demos/modern-basic/README.md
+  s_de9a8d96742e00::t_9e2d2c166b76cf 3,7,21,27,41,47-50,59,69,77,87,97,105,111,129,135,138,140,147-148,153,163,173,176,181,192
+demos/modern-basic/modern.config.ts
+  s_de9a8d96742e00::t_3b3469c86d401b 2,5
+demos/modern-basic/package.json
+  s_de9a8d96742e00::t_bb5b6d9b4a0ab7 2,11,19-20,26
+demos/modern-basic/scripts/run-extension-package.mjs
+  s_de9a8d96742e00::t_cd28d1cb01241b 18,21,42
+demos/modern-basic/scripts/verify-chunk-map.mjs
+  s_de9a8d96742e00::t_31c2d92d10aa15 6-8,13,15,23,34,97-98,118,132
+demos/modern-basic/scripts/verify-divebell.mjs
+  s_de9a8d96742e00::t_c5875e631ff88b 1-2,49
+demos/modern-basic/scripts/verify-experience.mjs
+  s_de9a8d96742e00::t_83532672434645 18,22,29,32,35,52,202,212,280-281,359,376,477
+demos/modern-basic/scripts/verify-route-component-error.mjs
+  s_de9a8d96742e00::t_83f0f8e70f4cc6 1-2
+demos/modern-basic/src/modern.runtime.ts
+  s_de9a8d96742e00::t_31d46473b10b5b 2,6
+demos/modern-basic/src/routes/layout.tsx
+  s_de9a8d96742e00::t_16e9a922a2d3e1 3,17,32,52,60
+demos/modern-basic/src/routes/page.tsx
+  s_de9a8d96742e00::t_57927699477371 2,4-8,16,21,31,40,45,50
+demos/modern-basic/tsconfig.json
+  s_de9a8d96742e00::t_9c0a8e06a82698 7-8
+demos/modern-ssr-stream/README.md
+  s_de9a8d96742e00::t_7784e2d68c6005 3,7,9,21,27,41,47-48,62,68
+demos/modern-ssr-stream/package.json
+  s_de9a8d96742e00::t_9afcee6a1454ed 2,10,15-16
+demos/modern-ssr-stream/scripts/verify-divebell.mjs
+  s_de9a8d96742e00::t_0afd1c7ba281c2 1-2
+demos/modern-ssr-stream/src/modern.runtime.ts
+  s_de9a8d96742e00::t_1bf8e9e7c391ff 2,6
+demos/modern-ssr-stream/src/routes/layout.tsx
+  s_de9a8d96742e00::t_d67fbc694a7330 22,39
+demos/modern-ssr/README.md
+  s_de9a8d96742e00::t_fdd13647958239 3,7,9,21,27,41,47-48,62,68
+demos/modern-ssr/package.json
+  s_de9a8d96742e00::t_f0d2f23065813d 2,10,15-16
+demos/modern-ssr/scripts/verify-divebell.mjs
+  s_de9a8d96742e00::t_6221dd7da7e13f 1-2
+demos/modern-ssr/src/modern.runtime.ts
+  s_de9a8d96742e00::t_daa5fcc0cbf050 2,6
+demos/modern-ssr/src/routes/layout.tsx
+  s_de9a8d96742e00::t_014b8feb483928 22,39
+demos/quickstart/README.md
+  s_de9a8d96742e00::t_f01598d14bfcf2 4,6,15,23-25,39
+demos/quickstart/index.html
+  s_de9a8d96742e00::t_9dcda352777ad8 15,18
+demos/quickstart/package.json
+  s_de9a8d96742e00::t_c8a988de4b6611 2,9,14,17
+demos/quickstart/rsbuild.config.ts
+  s_de9a8d96742e00::t_580fae1fdf218c 2,4,22
+demos/quickstart/scripts/memory-scenario.mjs
+  s_de9a8d96742e00::t_a1f7905c9a810c 17,24
+demos/quickstart/scripts/verify-build.mjs
+  s_de9a8d96742e00::t_adbe972c5d1c53 6-7
+demos/quickstart/src/index.ts
+  s_de9a8d96742e00::t_f343f03690e588 2-4,54-55,134,261,289,302,418,460
+demos/stage6-evaluation/README.md
+  s_de9a8d96742e00::t_5ecca4d728ba92 11
+demos/stage6-evaluation/scenarios.json
+  s_de9a8d96742e00::t_d96f8a1b6d7f61 6,16,24
+docs/agent-devloop.md
+  s_de9a8d96742e00::t_0284fb1bf7a778 5,34,36,39,50,55,62-64,84-87,95-96,105,142,152
+docs/agent-devloop.zh-CN.md
+  s_de9a8d96742e00::t_74ce5d407ebe8b 5,34,36,39,50,55,62-64,84-87,95-96,105,142,152
+docs/browser-auth.md
+  s_de9a8d96742e00::t_df5949397953a3 5,22,25,28-29,35,42,45-47,62,70,76-77,83-87,90,98,107,115-117
+docs/browser-auth.zh-CN.md
+  s_de9a8d96742e00::t_2ef03f2127121d 5,22,25,28-29,35,42,45-47,62,70,76-77,83-87,90,98,107,115-117
+docs/cli-extensions.md
+  s_de9a8d96742e00::t_48d5de348f4e27 1,3,7,11,32,65,85,89,102,106,133,135,144,174,186,209,213,220,222,229,233,236,239-241,255,262,264,284,305,309,313-314,322,328,334-335,337-338,340-341,351-355,383-386,393,395,403
+docs/cli-extensions.zh-CN.md
+  s_de9a8d96742e00::t_1a299c9f995359 1,3,5,11,24,51,57,77,81,94,98,125,127,136,166,178,201,205,212,214,221,225,228,231-233,247,254,256,276,297,301,305-306,314,320,326-327,329-330,332-333,343-347,375-378,385,387,395
+docs/code-usage-analysis.md
+  s_de9a8d96742e00::t_a9bbbc2f15d721 9,25,28-29,40,44,47,53,57,60,66,69,72,76,81,91-92,98,105,114-115,124-125,136-137,153,161,186-187,193-194
+docs/code-usage-analysis.zh-CN.md
+  s_de9a8d96742e00::t_ac64881a1b91ff 10,23,27,30-31,41,43,48,55,59,62,68,71,74,78,84,94-95,101,108,118-119,133-134,143-144,179,187,258,271,304-305,311-312,322,326
+docs/extension-api.md
+  s_de9a8d96742e00::t_7139d092402f7f 1,3,7,12,18-19,33,38,57,59,71,79-82,97,116,187,190,205,210,214,217,219,226-227,229-231,234-236,238-239,241-242,246,266,273,280,285,290,293,296,305,311,313,325
+docs/extension-api.zh-CN.md
+  s_de9a8d96742e00::t_be3aec75a27553 1,3,7,12,18-19,33,38,57,59,71,79-82,97,116,187,190,205,210,214,217,219,226-227,229-231,234-236,238-239,241-242,246,266,273,280,285,290,293,296,305,311,313,325
+docs/extensions.md
+  s_de9a8d96742e00::t_acf8ecef4bc0f0 1,3,9,13,21,24-25,29,36,46-47,55,58,63-65,75,81,87,92,94,97-98,101,104-105,111
+docs/extensions.zh-CN.md
+  s_de9a8d96742e00::t_b92d8901c402f5 1,3,9,13,21,24-25,28,35,45-46,54,57,62-64,74,80,86,91,93,96-97,100,103-104,110
+docs/memory-analysis.md
+  s_de9a8d96742e00::t_333eb6bf7f7ae9 5,7,10-11,38,58-59,67-69,77
+docs/memory-analysis.zh-CN.md
+  s_de9a8d96742e00::t_a827b3c9601387 6-7,10-11,38,62-63,78,81,85,93,113-114,117-118
+docs/modernjs-integration.md
+  s_de9a8d96742e00::t_1d5e78a78568a6 5,7,27,34,38,47,52,63-66,72,81,83
+docs/modernjs-integration.zh-CN.md
+  s_de9a8d96742e00::t_c2fba22099b08d 5,7,27,34,38,47,52,63-66,72,81,83
+docs/module-federation-observability.zh-CN.md
+  s_de9a8d96742e00::t_a918ddf935ec75 5,7,67,70-73,81
+docs/quick-start.zh-CN.md
+  s_de9a8d96742e00::t_c0ebd2288d8109 1,3,7,9,13,18-20,23,27,30,36,40,59,67
+docs/record-browser-workflows.md
+  s_de9a8d96742e00::t_c70bd2ffbdce21 5,21,24-26,32,38,41,49,52,59,61,79
+docs/record-browser-workflows.zh-CN.md
+  s_de9a8d96742e00::t_280a55af5590b4 5,21,24-26,32,38,41,48,51,58,60,78
+docs/release.md
+  s_de9a8d96742e00::t_18f17ed734c154 1,3,5,12-17,23,39-40,45,48-57,67-68,70-71,73-74,82,84,92,109-111,118
+docs/release.zh-CN.md
+  s_de9a8d96742e00::t_4a71f6ca882b14 1,3,5,12-17,39-40,45,48-57,67-68,70-71,73-74,82,84,92,109-111,118
+docs/runtime-connections.md
+  s_de9a8d96742e00::t_12ca85b194d1bc 3,12,19,22,28,53,60-65,71-72,80-86,102,104,114-117,119,121,129,136,138,145-147,153-154,157,162-170
+docs/runtime-connections.zh-CN.md
+  s_de9a8d96742e00::t_1376cd2ec90058 3,12,24,27,35,60,67-72,78-79,87-93,109,111,121-124,126,128,136,143,145,152-154,160-161,164,169-177
+docs/runtime-core-api.md
+  s_de9a8d96742e00::t_665e4a113716ef 5,7,24,41,48-50,52,103,106-111,132,134,138
+docs/runtime-core-api.zh-CN.md
+  s_de9a8d96742e00::t_f944c30f162357 5,7,24,41,48-50,52,103,106-111,132,134,136,138
+docs/temporary-agent-browser-fork.md
+  s_de9a8d96742e00::t_f1b1743a4f25d7 1,3,7,13,17,24-25
+docs/temporary-agent-browser-fork.zh-CN.md
+  s_de9a8d96742e00::t_bedf47f3be84a8 1,3,7,13-15,20,27-28
+package.json
+  s_de9a8d96742e00::t_7e87fce99bc58d 2,16,19,34
+packages/bridge/package.json
+  s_de9a8d96742e00::t_71d890d4a6f66f 2,8,34
+packages/bridge/src/index.ts
+  s_de9a8d96742e00::t_8b6c998dd9af81 1,3
+packages/bridge/src/query.ts
+  s_de9a8d96742e00::t_f2081d4f46f257 10
+packages/bridge/src/runtime-store.ts
+  s_de9a8d96742e00::t_acd19ff798d3dd 7,17
+packages/bridge/src/server.ts
+  s_de9a8d96742e00::t_0997e3f365c702 3-4,11,35,182,632,634
+packages/bridge/test/index.test.ts
+  s_de9a8d96742e00::t_5cbf829f57c312 8
+packages/bridge/test/server.test.ts
+  s_de9a8d96742e00::t_ca4e2a7fa19a0c 13,67,103,110,133,140,165-166,189,192,214,246,253,260,283,291,401,495,658,732,764,858
+packages/chunk-map/package.json
+  s_de9a8d96742e00::t_7f48afeac10df4 2,8
+packages/chunk-map/src/analyze-coverage.ts
+  s_de9a8d96742e00::t_89aaad64685baf 5,7-16,19-21,36-38,64-66,68-71,74-75,77,82,142-143,176,205-206,242-243,297-299,334,336,346,360,367,498,515,527,531
+packages/chunk-map/src/coverage-types.ts
+  s_de9a8d96742e00::t_a69270397a920c 3-5,8,14,16,19,22,25,28,31,38,42,45,50,56,62,65-68,71,73,77-78,85-86,96,106,112,116-119,122,125-126
+packages/chunk-map/src/index.ts
+  s_de9a8d96742e00::t_f54c960f2c851e 1-5,7-21,24-34
+packages/chunk-map/src/match.ts
+  s_de9a8d96742e00::t_7629e3f7e4318d 3-4,7-8,11,52,65
+packages/chunk-map/src/types.ts
+  s_de9a8d96742e00::t_6ada1a0fc79e66 2,4,11-12,18,24,31,34-35,46,54-55,61,64,71-72,76-77,81-82,85,91,96-97
+packages/cli/src/commands/bridge.ts
+  s_de9a8d96742e00::t_1181b0369f0551 2-3,86,90,95
+packages/cli/src/commands/browser.ts
+  s_de9a8d96742e00::t_dfb1ef5918cfa3 19,28,36,44,54,61,117,128,202,211,376,389,402
+packages/cli/src/commands/check.ts
+  s_de9a8d96742e00::t_02352cd804ed8d 40,42,126,128,130,146,149,202,204,206,375,377,379,521,537,575,642,695,697,699,711,713,715,721,723,725,735,737,739,746,748,751-752,757,759,762-763,770,772,778,780,782,792,795,797,799,838,840,842
+packages/cli/src/commands/definition.ts
+  s_de9a8d96742e00::t_b374f4ca92b9cd 3-5,15-21,25,27,34,38-39,72,106,113,134,137-138
+packages/cli/src/commands/extension.ts
+  s_de9a8d96742e00::t_9aa472774c3e15 17-18,21,27-28,76,84,172
+packages/cli/src/commands/external.ts
+  s_de9a8d96742e00::t_8ca4dcd628d932 12,19-21,63,77,116,127
+packages/cli/src/commands/installed.ts
+  s_de9a8d96742e00::t_c52ddff729a569 20,26-27,32,110,126,140,266,275,322,393-395,398,530
+packages/cli/src/commands/skill.ts
+  s_de9a8d96742e00::t_0038ef014dc4d2 4-5,7,12
+packages/cli/src/commands/stack.ts
+  s_de9a8d96742e00::t_a2b9c1a30fb11d 2,6,12,21,28,36,66
+packages/cli/src/create.ts
+  s_de9a8d96742e00::t_6f8728b4f03bfb 1,19-23,26,28-29,32,71-73,91,95,107-108,110,132,145-146,149,189-191,194-195,218,237
+packages/cli/src/features/bridge/inject.ts
+  s_de9a8d96742e00::t_beb098af134529 4-6
+packages/cli/src/features/bridge/process.ts
+  s_de9a8d96742e00::t_97b2f3c3a6297d 6-7,44,68,90,96,110,142,147,170,175,195,219,225,235,253,283,285,295
+packages/cli/src/features/browser/command-args.ts
+  s_de9a8d96742e00::t_e2f9fa23e54eb2 4,26,69
+packages/cli/src/features/browser/runner.ts
+  s_de9a8d96742e00::t_0e4ee9fb9caa9b 11-13,45,130,138,256,266
+packages/cli/src/features/browser/state.ts
+  s_de9a8d96742e00::t_b716f38b2e7448 33,38
+packages/cli/src/features/extension/api.ts
+  s_de9a8d96742e00::t_26dc6b5d686886 1-2,14,33-43,47,60,84,118,132,150,154,276,302,313,331,351,356,367,403,410,432-433,438,449,451,455,468
+packages/cli/src/features/extension/hooks.ts
+  s_de9a8d96742e00::t_8e4b8f41593e43 2-5,28-29,77-78,81,85,126,128,155
+packages/cli/src/features/extension/plan.ts
+  s_de9a8d96742e00::t_01202964a638a3 2-4,33,42,104-105,112-113
+packages/cli/src/features/extension/types.ts
+  s_de9a8d96742e00::t_7f88807d6347be 1,15,23,25,30,35,39,43,45-46,51-52,57-58,68,75,79,91,107,116,131,141,145,149,155,162-164,166,168-169,171-172,175-176,182,186,200,204,210,225-228,230-231,233-234,239,251,253-257,260-264,268,277,279,282
+packages/cli/src/features/runtime/client.ts
+  s_de9a8d96742e00::t_4567609ea3edd2 1-3,129-130,134,147,150,153
+packages/cli/src/features/runtime/selector.ts
+  s_de9a8d96742e00::t_1c4e9dcc5d0cb2 11,23
+packages/cli/src/features/runtime/types.ts
+  s_de9a8d96742e00::t_0755c00c94ad7d 1
+packages/cli/src/features/runtime/wait.ts
+  s_de9a8d96742e00::t_61940ea652d601 1-2,7,10,101,171,205,207,211-212,216-217,245
+packages/cli/src/index.ts
+  s_de9a8d96742e00::t_5d194f1a8c5c40 6-8,20-24,34,37-39,65,70-71,83
+packages/cli/src/open-context.ts
+  s_de9a8d96742e00::t_9e532c07f835dd 5,39,67,74,80
+packages/cli/src/runner.ts
+  s_de9a8d96742e00::t_73fa4ab7958569 25,28,59,186,209,212
+packages/cli/src/types/cli.ts
+  s_de9a8d96742e00::t_f0b862bd9567c4 1-2,15-16,29-30,66-68,72-74,80-81,85,88,90,92-93
+packages/cli/src/types/commands.ts
+  s_de9a8d96742e00::t_7838c28a981c75 3,40,44,47,52,59,63,66,69,77,83-85,87-89,91-92,95-98,101,107-108,119,121-122,139,145
+packages/cli/src/utils/command.ts
+  s_de9a8d96742e00::t_19330650bb0693 1
+packages/cli/src/utils/operation-log.ts
+  s_de9a8d96742e00::t_60c0309ea8d16b 5,43,54,57
+packages/cli/src/utils/url.ts
+  s_de9a8d96742e00::t_3a4e243964f917 1,3,7,14,16
+packages/cli/test/browser.test.ts
+  s_de9a8d96742e00::t_9800e57d4dd2f0 51,58,61,93,101,138,141,147-148,268,274,301,304,342,423,453,459,464,508,513,544,570,596,643,662,773,812-813
+packages/cli/test/check.test.ts
+  s_de9a8d96742e00::t_21d5c746082c68 40,45,85,96,174,274,306-307,349,387,418,457,488,534,563,631,696
+packages/cli/test/extensions.test.ts
+  s_de9a8d96742e00::t_93b9c796f8199e 9-10,12-13,20,22,31,34,41,43,45,66,130,135,226,233,274,285,287,345,356,366,371,383,393,403,420,422-423,426,435,483,485-486,506,512,524,541,558,575,580-582,590-593,600,602-603,611-612,688,727,744,764,792,806,825,842,857,871,881,891,900,929,941,951,1106,1108,1180-1181,1195,1218-1219,1224-1225,1233,1235-1239,1243-1244,1249-1250,1254,1281-1282,1290-1291,1303,1305-1307,1312,1316,1320,1362,1368,1376,1390,1403-1406,1408,1416-1418,1462,1466-1467,1475,1506,1551,1577,1593,1597,1600-1601,1609,1611-1612,1627-1628,1633,1677-1678,1689-1691,1702,1714,1716-1717,1735,1747,1749-1750,1779,1790,1792-1793,1807,1822-1823,1828,1840,1854
+packages/cli/test/helpers.ts
+  s_de9a8d96742e00::t_a3737ae6117495 9,111
+packages/cli/test/runtime-read.test.ts
+  s_de9a8d96742e00::t_7582091c4994c8 114,169,404,415,458,467,505,512
+packages/cli/test/stage2-flow.test.ts
+  s_de9a8d96742e00::t_9950ca46ea386c 10-12,16,21-24,35,86,99,132,242,244-245,250-251,257-259
+packages/cli/test/wait-for.test.ts
+  s_de9a8d96742e00::t_5922a847035342 509,514,670,710
+packages/core/package.json
+  s_de9a8d96742e00::t_2abfb11db81fbe 2,8
+packages/core/src/bridge/server.ts
+  s_de9a8d96742e00::t_058c959da71a36 1,3,9,12
+packages/core/src/bridge/types.ts
+  s_de9a8d96742e00::t_591a78b28ca769 7-8
+packages/core/src/index.ts
+  s_de9a8d96742e00::t_cdc394e6adfdf6 1-2,4,6-9,12-16,28-29,33-34
+packages/core/src/runtime/center.ts
+  s_de9a8d96742e00::t_cadb5223bb3894 25-26,31,33,40,115,256
+packages/core/src/runtime/types.ts
+  s_de9a8d96742e00::t_08cbcba4187092 21,45
+packages/core/src/runtime/window.ts
+  s_de9a8d96742e00::t_1c43d9c6586d4c 1-2,4-6,9,17,19,22-24,26-30,33-37,42,44,48-50,52,57-59,61,63,65,71-74,77-80,83-85,88-91,93,96,102,109,123,135,139,144,166,176-177
+packages/core/src/shared/package-info.ts
+  s_de9a8d96742e00::t_190dcd7c7775e3 1,3,5-7,12,14,16,19
+packages/core/test/action/input-options.test.ts
+  s_de9a8d96742e00::t_2c896e6c9e88df 4,8,32
+packages/core/test/action/registry.test.ts
+  s_de9a8d96742e00::t_38e10d8caf8dbd 4,8
+packages/core/test/action/run-action.test.ts
+  s_de9a8d96742e00::t_8ad3cad26b47de 4,8,64,102
+packages/core/test/event/events.test.ts
+  s_de9a8d96742e00::t_142c450c8c91ef 4,8
+packages/core/test/helpers/runtime.ts
+  s_de9a8d96742e00::t_8ac9d95534c288 1,13
+packages/core/test/runtime/window-api.test.ts
+  s_de9a8d96742e00::t_da2eaecb8e2503 5-10,15-16,18,20-22,26-28,31,35,37,43,54,60-62,64-66,70-72,74-76,78
+packages/core/test/shared/package-info.test.ts
+  s_de9a8d96742e00::t_19a5fd7ba5d570 4,7-9
+packages/core/test/snapshot/snapshot.test.ts
+  s_de9a8d96742e00::t_e7b6d1b2bb0637 4,8,56,87
+packages/core/test/target/registry.test.ts
+  s_de9a8d96742e00::t_9d9ba5851bcaa9 4,8,28
+packages/core/test/wait/wait-for.test.ts
+  s_de9a8d96742e00::t_6090987f6a21c8 4,8,21,64
+packages/extension-code-usage/README.md
+  s_de9a8d96742e00::t_9f5444e1805f0c 1,3,8,11,18-20,22,28-29,44,50
+packages/extension-code-usage/assets/code-usage-file.html
+  s_de9a8d96742e00::t_8c274478d974ae 6,363,368,405,470-471,557,577,580,898,907-908,961-962
+packages/extension-code-usage/assets/code-usage-report.html
+  s_de9a8d96742e00::t_2a53d909640ed9 6,421,584,651-652,677-678,680-681,1224,1303,1480,1487,1546,1553
+packages/extension-code-usage/package.json
+  s_de9a8d96742e00::t_99b99df7c01bb5 2,8,13
+packages/extension-code-usage/scripts/assemble.mjs
+  s_de9a8d96742e00::t_31785fa751a848 20
+packages/extension-code-usage/src/code-usage.ts
+  s_de9a8d96742e00::t_4a35f1314281c7 5-11,41-42,56-57,59,62,149,153,159,163,166,175
+packages/extension-code-usage/src/extension.ts
+  s_de9a8d96742e00::t_d0d8f10a0262b4 1,11,16,21,27
+packages/extension-code-usage/src/index.ts
+  s_de9a8d96742e00::t_b646ffe2e6bc5c 5,31-32,61-62,113-114,166-167
+packages/extension-code-usage/src/locale.ts
+  s_de9a8d96742e00::t_720bd2e829412f 6
+packages/extension-code-usage/src/report.ts
+  s_de9a8d96742e00::t_c8d2cbecfa6365 11-16,90,262
+packages/extension-code-usage/src/types.ts
+  s_de9a8d96742e00::t_1003613e68559e 1,16
+packages/extension-code-usage/test/command.test.mjs
+  s_de9a8d96742e00::t_42934a608e7fdb 18,22,177,188,196,267,311,358,379,399,421,424,437,573,578,614,654,667
+packages/extension-imitate/README.md
+  s_de9a8d96742e00::t_c47a0bf792df41 1,3,8,16,19,22,28,34,37,44,52,63-64,67
+packages/extension-imitate/package.json
+  s_de9a8d96742e00::t_91c487c6b3d314 2,8,13
+packages/extension-imitate/src/capture.ts
+  s_de9a8d96742e00::t_41cb077c8797d7 2,6-7,37,43-46,71,104,156-157
+packages/extension-imitate/src/extension.ts
+  s_de9a8d96742e00::t_447773fb3d8a10 1,11-12,16-17,21,26,31,40
+packages/extension-imitate/src/index.ts
+  s_de9a8d96742e00::t_65817a59215a80 8,12,21,30,105,114,130-132,138,313-315,393,484,519,524,536,541,550,557,567,583,599,616,621
+packages/extension-imitate/src/open.ts
+  s_de9a8d96742e00::t_f8eea4febb7f39 1,8-10,34,82
+packages/extension-imitate/src/session.ts
+  s_de9a8d96742e00::t_b23a8d45eaeaff 8-10,25,51,76,84,100
+packages/extension-imitate/src/storage.ts
+  s_de9a8d96742e00::t_77a3847ce504bc 15
+packages/extension-imitate/src/types.ts
+  s_de9a8d96742e00::t_07d6446d3c3c55 1,16
+packages/extension-imitate/test/record.test.mjs
+  s_de9a8d96742e00::t_67f78500e8bb89 8,10,13-14,46,62,64-67,90-91,151,225,306,315,321,329-330,336,345,365,377,384-385,395,401,414-415,515,517
+packages/extension-memory/README.md
+  s_de9a8d96742e00::t_ddfb955bfc6b29 1,3,10,18,37,40-41,43-46
+packages/extension-memory/package.json
+  s_de9a8d96742e00::t_7899e1435cae6d 2,8,13
+packages/extension-memory/src/extension.ts
+  s_de9a8d96742e00::t_ab19f572e3f4f3 1,11,16,22
+packages/extension-memory/src/index.ts
+  s_de9a8d96742e00::t_568e385f7c4ac1 5,11,13,27,102
+packages/extension-memory/src/memory-check.ts
+  s_de9a8d96742e00::t_6dab99ffb5ea65 5,116,141,157,176
+packages/extension-memory/src/types.ts
+  s_de9a8d96742e00::t_f1b197f6ba0512 1,25
+packages/extension-memory/test/memory-check.test.mjs
+  s_de9a8d96742e00::t_78f060f2ff52ff 8,10,29
+packages/extension-troubleshooting/README.md
+  s_de9a8d96742e00::t_dbff7f2ced69a0 1,3,10,18,24,33
+packages/extension-troubleshooting/package.json
+  s_de9a8d96742e00::t_bb1032c8f9eaab 2,8,13
+packages/extension-troubleshooting/src/extension.ts
+  s_de9a8d96742e00::t_ded4b21cffa128 1,10,15
+packages/extension-troubleshooting/src/index.ts
+  s_de9a8d96742e00::t_03b5a78d886b2e 4,13
+packages/extension-troubleshooting/src/types.ts
+  s_de9a8d96742e00::t_3df82d7979df1f 1
+packages/extension-troubleshooting/src/verify.ts
+  s_de9a8d96742e00::t_230758477a5a43 1,23,29,37,45,99,109,112,190,200,266-267,273,275,338
+packages/extension-troubleshooting/test/verify.test.mjs
+  s_de9a8d96742e00::t_53c058cff48b57 5,7
+packages/modern-plugin/README.md
+  s_de9a8d96742e00::t_6e36fe095d59b8 1,3-4,17,19,25-28,84,117-118,128,142,154-156,178,191,226-228,230,236-239,241,244-245,250,264,275,285-286,293-296,308,315-319,321,324,328,335
+packages/modern-plugin/package.json
+  s_de9a8d96742e00::t_1ec856d91a53fa 2,8,38-40
+packages/modern-plugin/src/business/ready.ts
+  s_de9a8d96742e00::t_4354d0ae2d6ce1 1,5-6,13,37-38,50-51,66
+packages/modern-plugin/src/chunk-map/index.ts
+  s_de9a8d96742e00::t_2f78018c2d2d5b 2-6,8-32,34-35,40
+packages/modern-plugin/src/chunk-map/plugin.ts
+  s_de9a8d96742e00::t_25bbd6259273b8 2-4,6-7,23-24,27,33,35
+packages/modern-plugin/src/garfish/plugin.ts
+  s_de9a8d96742e00::t_e0ae5413887520 2,15-19,22-24,28,144-145,158-160,166,232-236
+packages/modern-plugin/src/garfish/reporter.ts
+  s_de9a8d96742e00::t_7c132d28afe4e8 2,4-5,16-18,69-72,75-76,79,81,96,197-198,277,289
+packages/modern-plugin/src/garfish/types.ts
+  s_de9a8d96742e00::t_7b9c7aeb306d62 2-3,5,36-37,39,42-43,46-47,51,56,62,136,174
+packages/modern-plugin/src/index.ts
+  s_de9a8d96742e00::t_6bf89d55e00c60 1,3,7-8,26-29,31,33-34,36,50-55,59
+packages/modern-plugin/src/modern/handlers.ts
+  s_de9a8d96742e00::t_514cb5ff3573a6 1,22-23,25,53,56,178,312,338,358,430,435
+packages/modern-plugin/src/modern/serialize.ts
+  s_de9a8d96742e00::t_755877e150edae 1
+packages/modern-plugin/src/modern/stream-ssr.ts
+  s_de9a8d96742e00::t_c11f8ce744cda9 6-7,10,12-13,18,20,32,36-37,41,50,55,61,73,82,90,93,100,103,113
+packages/modern-plugin/src/plugin/create-plugin.ts
+  s_de9a8d96742e00::t_6956b4dc5b91ee 10,15,18-19,22,48
+packages/modern-plugin/src/plugin/runtime-state.ts
+  s_de9a8d96742e00::t_8a1644ce3c9964 2-3,7,9,11,30,32-33,35,74,80-82,84,92,97-98,106,114-116,120,276,283,557
+packages/modern-plugin/src/plugin/types.ts
+  s_de9a8d96742e00::t_fb02ebf25bff2a 1,12-13,15-16,21
+packages/modern-plugin/src/runtime/render-context.ts
+  s_de9a8d96742e00::t_d5168fb0976770 1,3,9,17,19,21,29-30,33-34,40
+packages/modern-plugin/src/runtime/resolve-runtime.ts
+  s_de9a8d96742e00::t_3bbd8279c061a0 2-8,11-12,16,19,21,26,28,40
+packages/modern-plugin/src/runtime/targets.ts
+  s_de9a8d96742e00::t_f7509d3bba9fab 1,43,54,65,77,95
+packages/modern-plugin/test/business/ready.test.ts
+  s_de9a8d96742e00::t_d2a7b19ee99340 3,6-9,13,15,26,31,37,41
+packages/modern-plugin/test/chunk-map.test.ts
+  s_de9a8d96742e00::t_79a87d8f2b82c2 5-7,65,105,157,162-163,177,179,192,194,202,207,238
+packages/modern-plugin/test/package-info.test.ts
+  s_de9a8d96742e00::t_91329909449c9e 8
+packages/modern-plugin/test/plugin/base-targets.test.ts
+  s_de9a8d96742e00::t_6348969aa85b5e 3,5,9-10,28,30,35,95-96,115-116,137,173,186-187
+packages/modern-plugin/test/plugin/garfish.test.ts
+  s_de9a8d96742e00::t_952d06e3c6916d 3,6-8,34-36,86-87,109-111
+packages/modern-plugin/test/plugin/hydration.test.ts
+  s_de9a8d96742e00::t_93d8fdf21ad239 3,5,9-10,29,31,35-36,72-73,113-114
+packages/modern-plugin/test/plugin/loader-component.test.ts
+  s_de9a8d96742e00::t_3955a6ee5a0320 3,5,9-10,77-78,105-106,163-164,209-210,244-245,282
+packages/modern-plugin/test/plugin/route-actions.test.ts
+  s_de9a8d96742e00::t_4cf305065fbc31 3,5,12-13,20-21,79,92
+packages/modern-plugin/test/plugin/router.test.ts
+  s_de9a8d96742e00::t_0071025cab682c 3,5,9-10,52-53,91-92,143,145,150
+packages/rspack-plugin/README.md
+  s_de9a8d96742e00::t_5ee8eaa331a547 1,3-4,7,10,15,18-20
+packages/rspack-plugin/package.json
+  s_de9a8d96742e00::t_87b2b35abc4693 2,8,34
+packages/rspack-plugin/src/index.ts
+  s_de9a8d96742e00::t_a196489e701b68 2-5,7,9,59,89,94-95,97,104,132,154,226
+packages/rspack-plugin/test/plugin.test.ts
+  s_de9a8d96742e00::t_f737575fb9d4d4 4,16,91,93
+scripts/build-recording-skill-runtime.mjs
+  s_de9a8d96742e00::t_c3ea786eb9d29f 12,16
+scripts/bump-recording-skill-runtime.mjs
+  s_de9a8d96742e00::t_aba5406dadaa26 8,41,85
+scripts/evaluate-stage6.mjs
+  s_de9a8d96742e00::t_91647e1880dae2 3,9,140
+scripts/npm-release-utils.test.mjs
+  s_de9a8d96742e00::t_623d7007eda28f 11,14
+scripts/npm-release.mjs
+  s_de9a8d96742e00::t_a16d9d89dec0e5 21-30,37,105
+scripts/release-pr-body-utils.mjs
+  s_de9a8d96742e00::t_4d262b66106453 48
+scripts/release-pr-body-utils.test.mjs
+  s_de9a8d96742e00::t_41f008533f27dc 12-13,20,32,36,45,53
+scripts/validate-divebell-release.mjs
+  s_de9a8d96742e00::t_6d8c91d97bed37 8,26,41,78
+scripts/verify-recording-skill-runtime.mjs
+  s_de9a8d96742e00::t_d693f93a89b752 10,15-16,23-25,34
+scripts/verify-stage7-release.mjs
+  s_de9a8d96742e00::t_c572b8d94b485c 5,66-68,80,96,147,162,164,166-167,240
+skills/divebell/references/garfish.md
+  s_de9a8d96742e00::t_aef5f33d7c0f17 3,5,14,18-21,23,26-27,34,37-38,52-53,59-61,73,84-85
+skills/divebell/references/integrate.md
+  s_de9a8d96742e00::t_262afe5af30d90 1,41,49,54,57,66,106,113,121,138-139,143,145-146,173,178
+skills/divebell/references/modernjs.md
+  s_de9a8d96742e00::t_e75f900726fa91 3,13,17,24,32,36,45-47,50,56,63-64,67-68,79,81,84,88-91,99,105,113,118,122-127
+skills/divebell/references/quickstart.md
+  s_de9a8d96742e00::t_4ab12a26f3bbc9 1,7,12,20,26-27,30,39-40,56-62,80-81,88,100-101,107-113,115-122,138-141,145,159
+skills/divebell/references/troubleshoot.md
+  s_de9a8d96742e00::t_b2887beaf0ad62 1,8,51,73,90-92,96,111,124-127,140,161,172,226
+skills/divebell/scripts/download-quickstart-build.mjs
+  s_de9a8d96742e00::t_3c40c655824ada 6,9,11,19,30,41
+skills/divebell/scripts/quickstart-memory-scenario.mjs
+  s_de9a8d96742e00::t_ade440877b3e4c 17,24
+skills/divebell/scripts/resolve-integration.mjs
+  s_de9a8d96742e00::t_185979851b526d 65,123-124,149-150,162-163
+skills/divebell/scripts/workflow.mjs
+  s_de9a8d96742e00::t_bb72368ee399fc 126,227,292,296,328-329,417,419-420,439,444,449,457,461,474,481,483,512,518-519,523,529,545,549,606-608,839,903
+skills/record-divebell-workflow/SKILL.md
+  s_de9a8d96742e00::t_56c7940802d215 2-3,6,13-18,20,23-24,35,38,43,46,54,60,73,76,93,98,105,115,121,131,133
+skills/record-divebell-workflow/agents/openai.yaml
+  s_de9a8d96742e00::t_deae0fbc9feeb9 2,4
+skills/record-divebell-workflow/references/divebell-cli-runtime.json
+  s_de9a8d96742e00::t_e460ce230a5860 3,7-10,14,16-17,20,23,26,29,32,35,38,41
+skills/record-divebell-workflow/references/divebell-cli.md
+  s_de9a8d96742e00::t_0add45099198e6 1,3,8,11-13,19-20,24,31-35,45,51-52
+skills/record-divebell-workflow/scripts/divebell-cli.mjs
+  s_de9a8d96742e00::t_301497a21aee32 24,28,52,65,73,77,127,143,148,175,206
+skills/record-divebell-workflow/scripts/runtime-release.mjs
+  s_de9a8d96742e00::t_b16c19c1e9671b 8,21-22,26,64,68,109,120,124,144,201
+tsconfig.base.json
+  s_de9a8d96742e00::t_51e13179dd3d97 9-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d83065f7120e98ebd46798310fcef2091a502be8",
+  "prompts": {},
+  "sessions": {
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

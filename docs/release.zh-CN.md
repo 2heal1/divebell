@@ -98,7 +98,7 @@ gh release create recording-skill-runtime-v0.0.0 \
 4. 构建并检查录制运行包；
 5. 等 npm 全部成功后，创建 GitHub Release 并上传运行包和校验文件。
 
-流程中断后可以安全重跑。已经存在的 npm 版本会跳过，尚未公开的 GitHub Release 可以重新上传附件。如果已经公开的 Release 缺少附件，流程会停止并保留现场。
+流程中断后可以安全重跑。已经存在的 npm 版本会跳过，尚未公开的 GitHub Release 可以重新上传附件。如果已经公开的 Release 缺少附件，流程会停止并保留现场。每个完成的 GitHub Release 都会标记为 **Latest**；如果当前版本的附件完整，重跑流程也会恢复这个标记。
 
 ## 本地检查
 

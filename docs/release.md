@@ -98,7 +98,7 @@ Merging a `release/divebell-vX.Y.Z` pull request starts **Publish Divebell Relea
 4. builds and verifies the recording runtime bundle; and
 5. creates the GitHub Release and uploads the bundle and checksum only after npm publishing succeeds.
 
-The workflow is safe to rerun after an interruption. Existing npm versions are skipped, and an unfinished draft GitHub Release can have its assets replaced. A published Release with missing assets is left untouched and reported as an error.
+The workflow is safe to rerun after an interruption. Existing npm versions are skipped, and an unfinished draft GitHub Release can have its assets replaced. A published Release with missing assets is left untouched and reported as an error. Every completed GitHub Release is marked as **Latest**; rerunning the workflow for the current version also restores that marker when its published assets are complete.
 
 ## Local checks
 

@@ -17,7 +17,7 @@ Divebell CLI 自动化脚本适合把一段完整页面流程写成可重复执�
 - 在 CI 或本机任务里跑一段稳定的页面验收流程。
 - 把多个 Divebell CLI 命令组合成一个更高层的自动化入口。
 
-如果页面已经暴露与任务相关的稳定 Target 或 Action，脚本可以调用 `snapshot`、`run-action`、`wait-for`，或使用 `verify` 检查已有 business target。普通页面可以直接使用明确的页面、请求或 Extension 结果，不需要为了编写脚本先接入 Runtime Core。
+如果页面已经暴露与任务相关的稳定 Target 或 Action，脚本可以调用 `snapshot`、`run-action`、`wait-for`，或使用 `verify` 检查已有 business target。普通页面可以直接使用明确的页面、请求或 Extension 结果，不需要为了编写脚本先接入 Runtime SDK。
 
 脚本确实要验证已有 business target 时，先安装提供 `verify` 的扩展包：
 
@@ -95,7 +95,7 @@ divebell check
 准备环境时可以执行 `divebell check --fix`。它会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
 
 CI 应在准备步骤中全局安装选定的 CLI 版本，并准备浏览器运行环境。业务项目依赖中只
-保留 Runtime Core、框架接入等真正运行在页面里的包。
+保留 Runtime SDK、框架接入等真正运行在页面里的包。
 
 只有独立自动化包确实要在 Node.js 中导入 `runCli` 时，才把 `@divebell/cli` 声明为
 这个自动化包自己的依赖。这是使用程序接口，不是普通的 CLI 安装方式。
@@ -231,7 +231,7 @@ divebell fill "#email" "dev@example.com"
 
 ### 可选的 Runtime 查询与动作
 
-下面命令只用于已经接入 Runtime Core、并且信号与当前任务相关的页面。普通页面跳过本节，继续使用浏览器或 Extension 验证。
+下面命令只用于已经接入 Runtime SDK、并且信号与当前任务相关的页面。普通页面跳过本节，继续使用浏览器或 Extension 验证。
 
 读取当前页面 snapshot：
 

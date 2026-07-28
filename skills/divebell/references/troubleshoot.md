@@ -5,7 +5,7 @@ and fix**. Gather evidence, change source, and verify the result with the same
 account, environment, and user path as the real issue while minimizing manual
 login, authorization, and handoff.
 
-Divebell does not require a page to integrate Runtime Core first. Browser
+Divebell does not require a page to integrate Runtime SDK first. Browser
 capabilities and Extensions are the normal path. Use Runtime information as an
 additional source only when the page already exposes relevant state.
 
@@ -117,7 +117,7 @@ answers the problem.
 
 ### Ordinary Pages
 
-When the page has no Runtime Core integration, use browser capabilities and
+When the page has no Runtime SDK integration, use browser capabilities and
 Extensions directly:
 
 ```bash
@@ -150,7 +150,7 @@ divebell snapshot --session <debug-session>
 Read events when the state-change history matters. Before executing a declared
 page action, inspect its action definition, risk, and input options.
 
-### Add Runtime Core Only When Justified
+### Add Runtime SDK Only When Justified
 
 Do not add an integration for a one-off investigation by default. Read
 `integrate.md` and `core.md` and add a durable signal only when one of these

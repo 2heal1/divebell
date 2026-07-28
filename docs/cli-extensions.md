@@ -27,7 +27,7 @@ An Extension consists of:
 
 An Extension does not require the team to rebuild a service capability that already exists. It may only resolve the context required by an existing tool, pass the right parameters to that tool, and bring its result back into the same development debugging workflow.
 
-Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
+Extensions are appropriate for work that can be completed outside the page and deserves to be reused by the team. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime SDK API](runtime-sdk-api.md). Use the existing CLI directly for a one-off page operation instead of wrapping it in an Extension.
 
 A page Command operates on the page most recently opened by `divebell open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
@@ -315,7 +315,7 @@ A Command accesses Divebell capabilities through `options.divebell`:
 | Read internal state declared by the application | `targets`, `snapshot`, `events`, `actions` |
 | Execute a page-declared action and wait for its result | `runAction`, `waitFor` |
 
-Browser capabilities remain available when the page does not use Runtime Core. Require a connected Runtime only when the Command truly needs application-internal facts.
+Browser capabilities remain available when the page does not use Runtime SDK. Require a connected Runtime only when the Command truly needs application-internal facts.
 
 After an action, continue reading the page result or use `waitFor` to await an explicit state. Do not claim verification merely because `page` exists or an action ran.
 

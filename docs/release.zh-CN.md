@@ -8,7 +8,7 @@ Divebell 使用一条受控流程发布所有公开包和浏览器录制运行�
 
 一次发版会为以下内容使用同一个版本号：
 
-- Runtime Core、Bridge、Chunk Map、Modern.js 插件和 Rspack 插件；
+- Runtime SDK、Bridge、Chunk Map、Modern.js 插件和 Rspack 插件；
 - Divebell CLI；
 - `@divebell/extension-code-usage`；
 - `@divebell/extension-troubleshooting`；

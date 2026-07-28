@@ -71,13 +71,13 @@ create a temporary Bridge connection and claim the project is integrated.
 
 ## 3. Design Targets, Snapshots, and Events
 
-Read `core.md` and preserve these boundaries:
+Read `runtime-sdk.md` and preserve these boundaries:
 
 - Use a target to answer "what can be referenced or waited for on this page?"
 - Use a snapshot to answer "what is its current state?"
 - Use an event to answer "how did state and actions change?"
 - Let each integration declare the target's `type` and `statuses`; do not assume
-  Core provides a fixed set.
+  Runtime SDK provides a fixed set.
 - Register a target before updating its snapshot, and record only the data
   needed to prove the current fact.
 - Put `dependsOn` in the snapshot to describe current dependencies or blockers.

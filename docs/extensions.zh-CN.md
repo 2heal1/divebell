@@ -14,7 +14,7 @@ Divebell 默认提供通用的页面操作、浏览器诊断和可选 Runtime �
 - Hooks：在 `open`、`detectStack` 和 `close` 阶段执行逻辑。
 - Skills：说明复杂命令的使用方式和判断标准。
 
-Extension 适合团队会反复使用的开发调试流程。一次性的页面点击或临时检查直接使用现有 CLI 即可。如果能力必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime Core API](runtime-core-api.zh-CN.md)。
+Extension 适合团队会反复使用的开发调试流程。一次性的页面点击或临时检查直接使用现有 CLI 即可。如果能力必须由应用主动暴露内部状态、事件或允许动作，应使用 [Runtime SDK API](runtime-sdk-api.zh-CN.md)。
 
 ## 安装 Extension
 
@@ -117,5 +117,5 @@ divebell <extension-command> --skill
 - Extension 在本机执行，只加载可信来源。
 - 不要把测试账号、登录状态、临时凭证或其他敏感信息写进扩展包和命令输出。
 - Extension 只能在已经授权的账号、环境和页面范围内工作，不能绕过权限边界。
-- 页面没有接入 Runtime Core 时，浏览器操作和诊断仍然可用；不要为了运行 Extension 强制修改应用。
+- 页面没有接入 Runtime SDK 时，浏览器操作和诊断仍然可用；不要为了运行 Extension 强制修改应用。
 - 执行动作后应继续读取页面结果或等待明确状态，不要仅凭命令已运行就宣布验证成功。

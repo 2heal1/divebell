@@ -44,7 +44,7 @@ export default defineRuntimeConfig({
 });
 ```
 
-当前接入建议适用于 Modern.js `>=3.4.0` 或 preview 版本，这些版本提供了所需的正式框架 hook。更老的版本应使用 [`@divebell/core`](runtime-core-api.zh-CN.md) 暴露最小且稳定的业务信号，不要通过浏览器现象拼凑缺失的框架生命周期。
+当前接入建议适用于 Modern.js `>=3.4.0` 或 preview 版本，这些版本提供了所需的正式框架 hook。更老的版本应使用 [`@divebell/core`](runtime-sdk-api.zh-CN.md) 暴露最小且稳定的业务信号，不要通过浏览器现象拼凑缺失的框架生命周期。
 
 路由导航会改变页面状态，因此对应 Action 默认关闭，需要时再显式开启：
 

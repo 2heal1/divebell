@@ -42,7 +42,7 @@ pnpm build
 `./divebell` 直接指向当前仓库的 `packages/cli/dist/bin.js`，不会误用电脑上全局安装或已经发布的
 `divebell` 命令。
 
-修改 CLI、Core 或 Bridge 后，先重新构建 CLI 及其引用的包，再运行命令：
+修改 CLI、Runtime SDK 或 Bridge 后，先重新构建 CLI 及其引用的包，再运行命令：
 
 ```bash
 pnpm --filter @divebell/cli build
@@ -58,7 +58,7 @@ CLI 会按当前工作目录保存页面和浏览器上下文。一般的 CLI �
 
 ## 目录结构
 
-- `packages/core`：可选的页面侧 Runtime Core API。
+- `packages/core`：可选的页面侧 Runtime SDK API。
 - `packages/bridge`：连接页面 Runtime 和 CLI。
 - `packages/cli`：提供 `divebell` 命令。
 - `packages/extension-*`：各类专项 Extension。
@@ -115,19 +115,19 @@ pnpm docs:cli:check -- --no-build
 
 - Divebell 是面向 Coding Agent 的 Web 开发调试工具。不要重新使用旧的 “Agent Runtime”
   产品名。
-- Runtime Core 是可选能力。没有接入 Runtime Core 的页面仍然必须可以使用浏览器操作、诊断、
+- Runtime SDK 是可选能力。没有接入 Runtime SDK 的页面仍然必须可以使用浏览器操作、诊断、
   登录状态复用和 Extension。
 - 可以在页面外完成并值得复用的能力优先做成 Extension。只有应用内部事实、声明动作和稳定等待条件
-  才应该接入 Runtime Core。
+  才应该接入 Runtime SDK。
 - Modern.js 接入应该放在 Modern.js plugin 中；Module Federation 接入应该放在 Module
   Federation observability plugin 中。优先使用框架提供的 hook，不要做脆弱的页面探测。
 - 条件允许时，修改后应回到问题发生时相同的账号、环境和用户路径完成验证。
 
-改动开发调试闭环、Extension 或 Runtime Core 前，请先阅读：
+改动开发调试闭环、Extension 或 Runtime SDK 前，请先阅读：
 
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
 - [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md)
-- [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
+- [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md)
 
 ## Changeset
 

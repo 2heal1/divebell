@@ -2,7 +2,7 @@
 
 This Divebell Extension checks whether a repeatable browser journey causes sustained growth in JavaScript memory, DOM nodes, or event listeners. It also exposes lower-level memory metrics, allocation sampling, and heap snapshots for focused investigation.
 
-It works with regular Chrome pages and does not require Runtime Core, a framework plugin, or build metadata.
+It works with regular Chrome pages and does not require Runtime SDK, a framework plugin, or build metadata.
 
 ## Install
 

@@ -14,7 +14,7 @@ An Extension may provide:
 - Hooks that run during `open`, `detectStack`, and `close`.
 - Skills that explain how to use complex commands and interpret their results.
 
-Extensions are appropriate for development debugging workflows that a team will reuse. Use the existing CLI directly for a one-off page click or temporary check. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime Core API](runtime-core-api.md).
+Extensions are appropriate for development debugging workflows that a team will reuse. Use the existing CLI directly for a one-off page click or temporary check. If a capability must be exposed by the application itself as internal state, events, or allowed actions, use the [Runtime SDK API](runtime-sdk-api.md).
 
 ## Install an Extension
 
@@ -118,5 +118,5 @@ When a workflow must manage the complete lifecycle for opening, waiting on, oper
 - Extensions execute locally. Load only trusted sources.
 - Do not place test accounts, login state, temporary credentials, or other sensitive information in an Extension package or command output.
 - An Extension must stay within the authorized account, environment, and page boundaries. It must not bypass access controls.
-- Browser operations and diagnostics remain available when a page does not use Runtime Core. Do not modify an application merely to run an Extension.
+- Browser operations and diagnostics remain available when a page does not use Runtime SDK. Do not modify an application merely to run an Extension.
 - After an action, continue reading the page result or wait for an explicit state. Do not claim success merely because a command ran.

@@ -72,13 +72,13 @@ Continue the Divebell Quick Start with the memory analysis.
 ```
 
 The memory Extension repeats the bundled scenario and measures the browser
-trend. It does not need application source, source maps, or Runtime Core.
+trend. It does not need application source, source maps, or Runtime SDK.
 
 ## What this is—and is not
 
 The Quick Start is a hosted reference application with Divebell already
 connected. The Agent should treat it like an unfamiliar real product and reach
-its conclusions from browser evidence, Runtime Core, and Extensions instead of
+its conclusions from browser evidence, Runtime SDK, and Extensions instead of
 reading hints from the page. When diagnosing and fixing a real application, the
 Agent works in that application's own repository and returns to the same real
 page to verify the change.

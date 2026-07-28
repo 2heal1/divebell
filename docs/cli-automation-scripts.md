@@ -17,7 +17,7 @@ Typical use cases:
 - Run stable page validation in CI or local tasks.
 - Compose multiple Divebell CLI commands into a higher-level automation entrypoint.
 
-If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, `wait-for`, or `verify` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime Core first.
+If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, `wait-for`, or `verify` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime SDK first.
 
 When a script specifically needs to verify an existing business Target, install the Extension that provides `verify`:
 
@@ -98,7 +98,7 @@ Use `divebell check --fix` during environment setup. It first tries the Chrome a
 
 CI should install the chosen CLI version globally in its setup step, then
 prepare the browser runtime. Application dependencies should contain only
-page-side packages such as Runtime Core or framework integrations.
+page-side packages such as Runtime SDK or framework integrations.
 
 Only add `@divebell/cli` to a separate automation package when its Node.js
 code intentionally imports `runCli`. That library use case is different from
@@ -235,7 +235,7 @@ divebell fill "#email" "dev@example.com"
 
 ### Optional Runtime Queries and Actions
 
-The commands below apply only when the page uses Runtime Core and the signals are relevant to the task. A regular page can skip this section and verify through browser or Extension evidence.
+The commands below apply only when the page uses Runtime SDK and the signals are relevant to the task. A regular page can skip this section and verify through browser or Extension evidence.
 
 Read the current page snapshot:
 

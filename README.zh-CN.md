@@ -66,41 +66,19 @@ Divebell 将 Web 页面作为 Agent 的工作入口，连接页面上下文、�
 
 团队可以通过 Extension 将已有能力接入当前页面场景，而不需要重新建设一套 Agent 工具体系。已经跑通的方法可以继续交给其他 Agent 和 CI 使用，形成长期积累。
 
-## Divebell 改变了什么
-
-<p align="center">
-  <img src="./assets/divebell-workflow.zh-CN.svg" width="900" alt="Divebell 工作流" />
-</p>
-
-Divebell 降低了 Web 页面和 Agent 能力之间的连接成本，用户不再需要充当页面、开发工具和 Agent 之间的上下文搬运者。
-
-## 一个真实的 Web 问题调试流程
-
-以用户反馈“点击提交后页面报错”为例：
-
-1. Agent 打开真实 Web 页面，进入对应的用户操作路径并复现问题。
-2. Divebell 获取页面上下文、Console、Network、截图和运行状态等诊断信息。
-3. 如果需要业务信息，Extension 根据当前页面连接已有的 SDK、OpenAPI、CLI 或内部平台。
-4. Coding Agent 根据诊断结果修改源码。
-5. Divebell 回到相同页面场景验证修改结果。
-
-Divebell 的核心不是让 Agent 学会操作浏览器，而是让 Web 页面成为 Agent 可以直接工作的场景入口。
-
-完整流程见 [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)。
-
 ## 核心能力
 
 | 模块 | 职责 | 使用入口 | 是否需要页面接入 |
 | --- | --- | --- | --- |
 | Web Context & Diagnostics | 将真实 Web 页面作为 Agent 工作入口，提供页面上下文、浏览器诊断和同场景验证 | Divebell CLI | 否 |
 | Extensions | 连接 Web 页面和团队已有的开发调试能力 | CLI 命令、Extension API | 否 |
-| Runtime Core | 暴露浏览器信息无法稳定表达的应用内部事实 | `@divebell/core`、框架插件 | 是 |
+| Runtime SDK | 暴露浏览器信息无法稳定表达的应用内部事实 | `@divebell/core`、框架插件 | 是 |
 
 ### Web Context & Diagnostics
 
 Divebell 将真实 Web 页面作为 Agent 的工作入口，提供页面上下文、页面操作、浏览器诊断以及修改后的同场景验证能力。
 
-这些能力包括当前页面和用户路径，`click`、`fill`、`eval` 等页面操作，以及 Console、Network、Screenshot 和 Coverage 等诊断信息。Agent 可以通过 Divebell CLI 直接调用，不依赖 Runtime Core。
+这些能力包括当前页面和用户路径，`click`、`fill`、`eval` 等页面操作，以及 Console、Network、Screenshot 和 Coverage 等诊断信息。Agent 可以通过 Divebell CLI 直接调用，不依赖 Runtime SDK。
 
 [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 
@@ -127,7 +105,7 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 | `@divebell/extension-memory` | `divebell memory` | 重复真实页面流程，检查内存、DOM 节点和监听器是否持续增长。 | [内存分析](./docs/memory-analysis.zh-CN.md) |
 | `@divebell/extension-code-usage` | `divebell code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
 | `@divebell/extension-imitate` | `divebell record` | 录制一次浏览器操作并生成可以继续检查的脚本草稿。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
-| `@divebell/extension-troubleshooting` | `divebell verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime Core API](./docs/runtime-core-api.zh-CN.md) |
+| `@divebell/extension-troubleshooting` | `divebell verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md) |
 | `@divebell/modern-plugin` | Modern.js runtime plugin | 暴露 Modern.js 已知的应用、路由、loader、路由组件、SSR、hydration 和导航状态。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | 通过 MF observability 记录 consumer、remote、manifest、remoteEntry、expose、shared 依赖和运行时错误证据。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
 
@@ -139,13 +117,13 @@ divebell extensions add @divebell/extension-memory
 
 安装后的扩展命令会出现在 `divebell --help` 中，并复用同一个 CLI、浏览器会话和登录状态。框架接入包是应用依赖，需要在对应框架中配置，本身不会增加一条 CLI 命令。
 
-### Runtime Core
+### Runtime SDK
 
-Runtime Core 是可选的页面侧 API。当页面 DOM、Console、Network 等浏览器信息无法稳定表达应用状态时，Runtime Core 可以向 Agent 暴露更细粒度的应用内部事实。
+Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏览器信息无法稳定表达应用状态时，Runtime SDK 可以向 Agent 暴露更细粒度的应用内部事实。
 
-它支持注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。没有 Runtime Core 也可以使用 Divebell，普通页面不需要接入。
+它支持注册 Target、更新 Snapshot、记录 Event、声明 Action 和执行 `waitFor`。没有 Runtime SDK 也可以使用 Divebell，普通页面不需要接入。
 
-[Runtime Core API](./docs/runtime-core-api.zh-CN.md)
+[Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md)
 
 ## Examples
 
@@ -183,42 +161,6 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 #### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
 
 创建一个本地 Extension，读取当前页面并参与页面打开、技术栈识别和关闭流程。
-
-## 组成
-
-```text
-                  Coding Agent
-                       │
-                       ▼
-                  Divebell
-       ┌──────────────────────────────────┐
-       │ Web 页面：Agent 的工作入口       │
-       │                                  │
-       │ 页面上下文、浏览器操作与诊断     │
-       │ 修改前后的结果验证               │
-       │                                  │
-       │ Extensions                       │
-       │ 连接团队已有 SDK / API / CLI     │
-       │ 和内部平台                       │
-       │                                  │
-       │ Runtime Core                     │
-       │ 获取应用内部事实                 │
-       └──────────────────────────────────┘
-```
-
-## 文档
-
-- [Quick Start](./docs/quick-start.zh-CN.md)
-- [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
-- [CLI 命令参考](./docs/cli-reference.zh-CN.md)
-- [浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)
-- [浏览器连接与多 Runtime](./docs/runtime-connections.zh-CN.md)
-- [Extension 使用指南](./docs/extensions.zh-CN.md)
-- [CLI Extension 开发指南](./docs/cli-extensions.zh-CN.md)
-- [Extension API 参考](./docs/extension-api.zh-CN.md)
-- [Runtime Core API](./docs/runtime-core-api.zh-CN.md)
-- [自动化脚本](./docs/cli-automation-scripts.zh-CN.md)
-- [发版流程](./docs/release.zh-CN.md)
 
 ## 参与贡献
 

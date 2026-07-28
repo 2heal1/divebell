@@ -468,8 +468,8 @@ export default defineRuntimeConfig({
   }
 
   return {
-    type: "connect_core_runtime",
-    summary: "No connected runtime was found. Install a Core runtime on window, restart the app, then reopen it with the CLI and rerun this connected check.",
+    type: "connect_runtime_sdk",
+    summary: "No connected runtime was found. Install a Runtime SDK instance on window, restart the app, then reopen it with the CLI and rerun this connected check.",
     commands: install,
     reference: "skills/divebell/references/modernjs.md",
     bridge,

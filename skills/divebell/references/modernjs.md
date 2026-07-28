@@ -44,7 +44,7 @@ export default defineRuntimeConfig({
 
 `@divebell/modern-plugin` does not re-export `@divebell/core` API. When
 business code needs `getDivebellFromWindow`, `registerTarget`,
-`updateSnapshot`, actions, or other Core APIs, install `@divebell/core` as a
+`updateSnapshot`, actions, or other Runtime SDK APIs, install `@divebell/core` as a
 direct dependency too. Do not rely on the Modern plugin's transitive dependency.
 
 Do not recommend `@divebell/modern-plugin` by default for older non-preview
@@ -70,10 +70,10 @@ page-side Bridge connection code.
 
 If `workflow.mjs connected` reports no connected runtime, use its `nextAction`
 snippet. For supported Modern versions, wire the Modern plugin.
-For older versions, wire the Core entrypoint. If source edits are not allowed,
+For older versions, wire the Runtime SDK entrypoint. If source edits are not allowed,
 mark runtime evidence unavailable and use browser fallback evidence explicitly.
 If a runtime connects but Modern targets are missing, check the Modern plugin
-wiring instead of adding an empty Core runtime:
+wiring instead of adding an empty Runtime SDK instance:
 
 ```ts
 import { createDivebell, installDivebellOnWindow } from "@divebell/core";

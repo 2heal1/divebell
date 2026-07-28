@@ -15,12 +15,12 @@ export default {
     await page.eval(
       `(() => {
         window.__openruntimeQuickStartMemoryCycle =
-          Number(document.querySelector('.memory-orbit strong')?.textContent ?? 0);
+          Number(document.querySelector('.activity-count')?.textContent ?? 0);
         document.querySelector('[data-action="memory-cycle"]')?.click();
       })()`
     );
     await page.waitEval(
-      `Number(document.querySelector('.memory-orbit strong')?.textContent ?? 0) >
+      `Number(document.querySelector('.activity-count')?.textContent ?? 0) >
         Number(window.__openruntimeQuickStartMemoryCycle ?? -1)`
     );
   }

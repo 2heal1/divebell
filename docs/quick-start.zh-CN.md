@@ -6,8 +6,9 @@ English version: [OpenRuntime Quick Start](quick-start.md)
 
 [打开 Quick Start](https://2heal1.github.io/openruntime/quickstart/)
 
-这个页面专门用于 Agent 引导体验，包含真实交互、可控的请求失败、页面声明的恢复动作、
-按需加载的 Insights 页面和可重复的内存场景。用户不需要克隆仓库，也不需要先获取源码。
+这个页面按一个正常的订单工作台呈现，不在界面里展示 OpenRuntime 教程、Agent 操作步骤
+或排查答案。它在内部接入了可控的请求失败、页面声明的恢复动作、按需加载的 Analytics
+页面和可重复的内存场景。用户不需要克隆仓库，也不需要先获取源码。
 
 ## 安装 OpenRuntime
 
@@ -63,6 +64,7 @@ JavaScript、source map 和 Chunk Map 结合起来。只有 source map 不能说
 
 ## 它解决什么问题
 
-Quick Start 是一个能力体验页，让新用户在同一个稳定页面里看到浏览器能力、Runtime
-Core 和 Extension 如何配合。真正排查并修改业务项目时，Agent 仍然应在用户自己的
-仓库中工作，最后回到原来的真实页面验证结果。
+Quick Start 是一个已接入 OpenRuntime 的参考业务项目。Agent 应把它当成一个陌生的真实
+页面，通过浏览器证据、Runtime Core 和 Extension 自己完成判断，而不是从页面提示中读取
+答案。真正排查并修改业务项目时，Agent 仍然应在用户自己的仓库中工作，最后回到原来的
+真实页面验证结果。

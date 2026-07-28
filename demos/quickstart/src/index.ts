@@ -53,7 +53,7 @@ interface AppState {
 
 const runtime = installOpenRuntimeOnWindow(createOpenRuntime(), window, {
   runtimeId: "runtime-openruntime-quickstart",
-  name: "OpenRuntime Quick Start",
+  name: "Northstar Supply Operations",
   source: "quickstart"
 });
 
@@ -84,57 +84,35 @@ const retainedMemory: Array<{
 document.querySelector("#root")!.innerHTML = `
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#operations" aria-label="OpenRuntime Quick Start home">
+      <a class="brand" href="#operations" aria-label="Northstar Supply home">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
         <span>
-          <strong>OpenRuntime</strong>
-          <small>Quick Start playground</small>
+          <strong>Northstar Supply</strong>
+          <small>Operations</small>
         </span>
       </a>
+      <nav class="topnav" aria-label="Operations workspace">
+        <button type="button" data-section="operations">Orders</button>
+        <button type="button" data-section="diagnostics">Inventory</button>
+        <button type="button" data-section="insights">Analytics</button>
+        <button type="button" data-section="memory">Activity</button>
+      </nav>
       <div class="topbar-meta">
-        <span class="live-dot"><i></i> Public demo</span>
+        <span class="live-dot"><i></i> US West</span>
+        <span class="user-avatar" aria-label="Signed in as Avery Stone">AS</span>
       </div>
     </header>
 
     <div class="workspace">
-      <aside class="sidebar" aria-label="Playground sections">
-        <div class="sidebar-heading">
-          <span>Operations desk</span>
-          <strong>Northstar Supply</strong>
-        </div>
-        <nav>
-          <button type="button" data-section="operations">
-            <span class="nav-icon">01</span>
-            <span><strong>Orders</strong><small>Operate the page</small></span>
-          </button>
-          <button type="button" data-section="diagnostics">
-            <span class="nav-icon">02</span>
-            <span><strong>Diagnostics</strong><small>Inspect a failure</small></span>
-          </button>
-          <button type="button" data-section="insights">
-            <span class="nav-icon">03</span>
-            <span><strong>Insights</strong><small>Load an async view</small></span>
-          </button>
-          <button type="button" data-section="memory">
-            <span class="nav-icon">04</span>
-            <span><strong>Memory lab</strong><small>Run a repeatable cycle</small></span>
-          </button>
-        </nav>
-        <div class="sidebar-note">
-          <span class="kicker">Runtime Core</span>
-          <p>The page declares stable state and safe actions. Browser evidence remains independent.</p>
-        </div>
-      </aside>
-
       <main class="main-column">
         <section class="hero">
           <div>
-            <p class="eyebrow">Interactive operations workspace</p>
-            <h1>See the page.<br><em>Know what happened.</em></h1>
-            <p class="hero-copy">Operate a realistic order workflow, inspect browser evidence, and ask the application for facts the browser cannot reliably infer.</p>
+            <p class="eyebrow" id="page-eyebrow">Order management</p>
+            <h1 id="page-title">Orders</h1>
+            <p class="hero-copy" id="page-description">Review and fulfill incoming customer orders.</p>
           </div>
           <div class="hero-card">
-            <span>Current workflow</span>
+            <span>Fulfillment status</span>
             <strong id="hero-workflow-status">Preparing</strong>
             <p id="hero-message">Preparing the operations workspace…</p>
           </div>
@@ -142,48 +120,6 @@ document.querySelector("#root")!.innerHTML = `
 
         <section id="section-content" aria-live="polite"></section>
       </main>
-
-      <aside class="evidence-rail" aria-label="Live OpenRuntime evidence">
-        <div class="rail-heading">
-          <div>
-            <p class="eyebrow">Live evidence</p>
-            <h2>What the Agent can read</h2>
-          </div>
-          <span class="pulse" aria-hidden="true"></span>
-        </div>
-
-        <div class="evidence-card">
-          <div class="evidence-row">
-            <span>App</span>
-            <strong id="app-status" data-tone="loading">booting</strong>
-          </div>
-          <div class="evidence-row">
-            <span>Inventory request</span>
-            <strong id="request-status" data-tone="muted">idle</strong>
-          </div>
-          <div class="evidence-row">
-            <span>Fulfillment</span>
-            <strong id="fulfillment-status" data-tone="muted">idle</strong>
-          </div>
-          <div class="evidence-row">
-            <span>Code insights</span>
-            <strong id="analysis-status" data-tone="muted">idle</strong>
-          </div>
-        </div>
-
-        <ol class="journey-list">
-          <li data-step="operate"><span>1</span><div><strong>Operate</strong><small>Search, filter, and select an order.</small></div></li>
-          <li data-step="observe"><span>2</span><div><strong>Observe</strong><small>Read the page, Console, and Network.</small></div></li>
-          <li data-step="understand"><span>3</span><div><strong>Understand</strong><small>Inspect targets, snapshots, and events.</small></div></li>
-          <li data-step="act"><span>4</span><div><strong>Act safely</strong><small>Run a declared retry and wait for recovery.</small></div></li>
-          <li data-step="analyze"><span>5</span><div><strong>Analyze deeper</strong><small>Compare code execution and memory.</small></div></li>
-        </ol>
-
-        <div class="command-card">
-          <span class="kicker">Try asking your Agent</span>
-          <p>“Use OpenRuntime to complete this Quick Start and explain the evidence.”</p>
-        </div>
-      </aside>
     </div>
   </div>
 `;
@@ -198,14 +134,14 @@ function registerRuntime(): void {
     id: "app:openruntime-quickstart",
     type: "quickstart.app",
     source: "quickstart",
-    label: "OpenRuntime Quick Start",
+    label: "Northstar Supply Operations",
     statuses: ["booting", "ready", "error"]
   });
   runtime.registerTarget({
     id: "page:operations",
     type: "quickstart.page",
     source: "quickstart",
-    label: "Current playground section",
+    label: "Current operations page",
     statuses: ["ready"]
   });
   runtime.registerTarget({
@@ -226,20 +162,20 @@ function registerRuntime(): void {
     id: "analysis:code-usage",
     type: "quickstart.analysis",
     source: "quickstart",
-    label: "Lazy-loaded order insights",
+    label: "Order analytics",
     statuses: ["idle", "loading", "ready", "error"]
   });
   runtime.registerTarget({
     id: "lab:memory",
     type: "quickstart.lab",
     source: "quickstart",
-    label: "Controlled memory retention lab",
+    label: "Customer activity archive",
     statuses: ["idle", "retaining", "reset"]
   });
 
   runtime.registerAction({
     name: "quickstart.trigger-inventory-failure",
-    description: "Run the controlled inventory failure used by the diagnostics walkthrough.",
+    description: "Check the selected order against the inventory service.",
     source: "quickstart",
     risk: "safe",
     handler: () => {
@@ -254,7 +190,7 @@ function registerRuntime(): void {
 
   runtime.registerAction({
     name: "quickstart.retry-inventory",
-    description: "Retry inventory through a healthy endpoint and resume fulfillment.",
+    description: "Retry the latest inventory sync and resume fulfillment.",
     source: "quickstart",
     risk: "safe",
     availableWhen: {
@@ -275,7 +211,7 @@ function registerRuntime(): void {
     getInputOptions: (inputName) => inputName === "strategy"
       ? [
           { value: "origin", description: "Refresh inventory from the healthy static endpoint." },
-          { value: "cache", description: "Use the playground's known-good cached response." }
+          { value: "cache", description: "Use the last known-good inventory snapshot." }
         ]
       : [],
     handler: (payload) => {
@@ -293,7 +229,7 @@ function registerRuntime(): void {
 
   runtime.registerAction({
     name: "quickstart.open-insights",
-    description: "Open the lazy-loaded insights view for code-usage analysis.",
+    description: "Open the order analytics page.",
     source: "quickstart",
     risk: "safe",
     handler: () => {
@@ -304,7 +240,7 @@ function registerRuntime(): void {
 
   runtime.registerAction({
     name: "quickstart.run-memory-cycle",
-    description: "Run one controlled memory-retention cycle. Reloading or resetting clears it.",
+    description: "Load an earlier page of customer activity.",
     source: "quickstart",
     risk: "safe",
     handler: () => runMemoryCycle("runtime-action")
@@ -312,7 +248,7 @@ function registerRuntime(): void {
 
   runtime.registerAction({
     name: "quickstart.reset",
-    description: "Reset the controlled Quick Start scenario.",
+    description: "Refresh order and inventory data.",
     source: "quickstart",
     risk: "safe",
     handler: () => {
@@ -326,7 +262,7 @@ function registerRuntime(): void {
     status: "booting",
     data: {
       version: 1,
-      purpose: "OpenRuntime Quick Start"
+      purpose: "Northstar Supply Operations"
     }
   });
   updatePageSnapshot();
@@ -408,7 +344,6 @@ function attachGlobalListeners(): void {
     if (orderId !== undefined) {
       state.selectedOrderId = orderId;
       state.message = `${orderId} selected for review.`;
-      markJourneyStep("operate");
       updateFulfillmentSnapshot();
       render();
       return;
@@ -451,12 +386,10 @@ function attachGlobalListeners(): void {
     if (target instanceof HTMLInputElement && target.name === "order-search") {
       state.search = target.value;
       renderOrderResults();
-      markJourneyStep("operate");
     }
     if (target instanceof HTMLSelectElement && target.name === "status-filter") {
       state.statusFilter = isOrderStatus(target.value) ? target.value : "all";
       renderOrderResults();
-      markJourneyStep("operate");
     }
   });
 }
@@ -468,7 +401,7 @@ async function triggerInventoryFailure(source: string): Promise<void> {
   state.fulfillmentStatus = "processing";
   state.lastRequestStatus = null;
   state.lastRequestUrl = assetUrl(`data/inventory-missing.json?attempt=${attempt}`);
-  state.message = "Checking inventory through the controlled failing endpoint…";
+  state.message = "Checking inventory availability…";
   if (state.section !== "diagnostics") {
     state.section = "diagnostics";
     history.pushState(null, "", "#diagnostics");
@@ -492,8 +425,8 @@ async function triggerInventoryFailure(source: string): Promise<void> {
   } catch (error) {
     state.requestStatus = "error";
     state.fulfillmentStatus = "blocked";
-    state.message = "Inventory failed. Fulfillment is blocked until a declared retry succeeds.";
-    console.error("[OpenRuntime Quick Start] Inventory request failed.", {
+    state.message = "Inventory service unavailable. Fulfillment is paused.";
+    console.error("[Northstar Supply] Inventory request failed.", {
       attempt,
       source,
       url: state.lastRequestUrl,
@@ -502,8 +435,6 @@ async function triggerInventoryFailure(source: string): Promise<void> {
     });
     updateRequestSnapshot(error);
     updateFulfillmentSnapshot();
-    markJourneyStep("observe");
-    markJourneyStep("understand");
     render();
   }
 }
@@ -539,8 +470,7 @@ async function retryInventory(strategy: "origin" | "cache", source: string): Pro
     state.message = `Inventory recovered from ${inventory.warehouse}. Fulfillment is ready.`;
     updateRequestSnapshot(undefined, inventory);
     updateFulfillmentSnapshot();
-    markJourneyStep("act");
-    console.info("[OpenRuntime Quick Start] Inventory recovered.", {
+    console.info("[Northstar Supply] Inventory recovered.", {
       attempt,
       strategy,
       source,
@@ -550,7 +480,7 @@ async function retryInventory(strategy: "origin" | "cache", source: string): Pro
   } catch (error) {
     state.requestStatus = "error";
     state.fulfillmentStatus = "blocked";
-    state.message = "The retry failed. Inspect the latest Network and Runtime evidence.";
+    state.message = "Inventory is still unavailable. Try again in a moment.";
     updateRequestSnapshot(error);
     updateFulfillmentSnapshot();
     render();
@@ -566,15 +496,14 @@ async function openInsights(source: string): Promise<void> {
   }
 
   updateAnalysisSnapshot("loading", source);
-  state.message = "Loading the analytics chunk and calculating order insights…";
+  state.message = "Loading current order analytics…";
   render();
   try {
     const module = await import("./insights");
     await delay(260);
     state.insights = module.calculateOrderInsights(state.orders);
-    state.message = "Insights loaded from an on-demand code chunk.";
+    state.message = "Analytics are up to date.";
     updateAnalysisSnapshot("ready", source);
-    markJourneyStep("analyze");
     render();
   } catch (error) {
     state.message = errorMessage(error);
@@ -605,9 +534,8 @@ function runMemoryCycle(source: string): {
   retainedMemory.push({ records, nodes, listener });
   state.memoryCycles = cycle;
   state.memoryRetainedBytes += records.length * payload.length;
-  state.message = `Memory lab retained cycle ${cycle}. Reload or reset the lab to clear it.`;
+  state.message = `Loaded ${cycle * 5_000} customer activity records.`;
   updateMemorySnapshot("retaining", source);
-  markJourneyStep("analyze");
   render();
   return {
     cycle,
@@ -625,7 +553,7 @@ function resetMemoryLab(): void {
   retainedMemory.length = 0;
   state.memoryCycles = 0;
   state.memoryRetainedBytes = 0;
-  state.message = "The controlled memory lab was reset.";
+  state.message = "Customer activity cache cleared.";
   updateMemorySnapshot("reset", "page");
   render();
 }
@@ -636,10 +564,9 @@ function resetScenario(): void {
   state.inventoryAttempt = 0;
   state.lastRequestStatus = null;
   state.lastRequestUrl = null;
-  state.message = "The diagnostic scenario was reset.";
+  state.message = "Order and inventory data refreshed.";
   updateRequestSnapshot();
   updateFulfillmentSnapshot();
-  document.querySelectorAll("[data-step]").forEach((step) => step.classList.remove("complete"));
   render();
 }
 
@@ -745,12 +672,9 @@ function setSection(section: Section, updateHash = true): void {
 
 function render(): void {
   updateNavigation();
+  updatePageHeading();
   setText("hero-workflow-status", statusLabel(state.fulfillmentStatus));
-  setText("hero-message", state.message);
-  setStatus("app-status", state.orders.length > 0 ? "ready" : "booting");
-  setStatus("request-status", state.requestStatus);
-  setStatus("fulfillment-status", state.fulfillmentStatus);
-  setStatus("analysis-status", state.analysisStatus);
+  setText("hero-message", sectionMessage());
 
   if (state.section === "operations") renderOperations();
   if (state.section === "diagnostics") renderDiagnostics();
@@ -765,11 +689,10 @@ function renderOperations(): void {
   content.innerHTML = `
     <section class="section-header">
       <div>
-        <p class="eyebrow">Browser interaction</p>
         <h2>Order queue</h2>
-        <p>Search, filter, and select an order. Every control is available to the Agent through the page snapshot.</p>
+        <p>Search incoming orders, review customer details, and confirm inventory before fulfillment.</p>
       </div>
-      <button class="secondary-button" type="button" data-action="reset">Reset scenario</button>
+      <button class="secondary-button" type="button" data-action="reset">Refresh data</button>
     </section>
 
     <div class="operations-grid">
@@ -811,11 +734,6 @@ function renderOperations(): void {
           : orderDetail(selected)}
       </aside>
     </div>
-
-    <div class="next-step">
-      <div><span>Next</span><p>Move to Diagnostics and trigger a controlled inventory failure.</p></div>
-      <button class="primary-button" type="button" data-section-jump="diagnostics" data-action="trigger-failure">Trigger failure</button>
-    </div>
   `;
 }
 
@@ -840,60 +758,65 @@ function renderDiagnostics(): void {
   const content = requireContent();
   const failed = state.requestStatus === "error";
   const recovered = state.requestStatus === "ready" && state.inventoryAttempt > 1;
+  const checking = state.requestStatus === "loading";
+  const selected = state.orders.find((order) => order.id === state.selectedOrderId) ?? null;
+  const serviceLabel = failed
+    ? "Service unavailable"
+    : checking
+      ? "Checking availability"
+      : recovered
+        ? "Operational"
+        : "Ready";
+  const serviceCopy = failed
+    ? "The latest warehouse request failed. Pending orders are temporarily paused."
+    : checking
+      ? "Contacting the west-2 inventory service."
+      : recovered
+        ? "Inventory is responding normally and fulfillment has resumed."
+        : "Inventory checks are available for the selected order.";
   content.innerHTML = `
     <section class="section-header">
       <div>
-        <p class="eyebrow">Browser evidence + Runtime facts</p>
-        <h2>Inventory recovery</h2>
-        <p>Trigger a real 404 request, inspect Network and Console, then use the page-declared retry action.</p>
+        <h2>Warehouse availability</h2>
+        <p>Review the latest inventory sync before releasing orders for fulfillment.</p>
       </div>
-      <span class="scenario-badge">${recovered ? "Recovered" : failed ? "Failure captured" : "Ready to run"}</span>
+      <span class="scenario-badge ${failed ? "error" : ""}">${serviceLabel}</span>
     </section>
 
     <div class="diagnostic-grid">
-      <section class="content-card diagnostic-flow">
-        <div class="flow-node ${state.inventoryAttempt > 0 ? "active" : ""}">
-          <span>01</span>
-          <div><strong>Check inventory</strong><small>Fetch the controlled endpoint</small></div>
-          <em>${state.inventoryAttempt > 0 ? `Attempt ${state.inventoryAttempt}` : "Waiting"}</em>
+      <section class="content-card service-card">
+        <div class="service-summary">
+          <span class="service-indicator status-${state.requestStatus}" aria-hidden="true"></span>
+          <div>
+            <span class="kicker">West warehouse</span>
+            <h3>${serviceLabel}</h3>
+            <p>${serviceCopy}</p>
+          </div>
         </div>
-        <div class="flow-line"></div>
-        <div class="flow-node ${failed ? "error" : recovered ? "success" : ""}">
-          <span>02</span>
-          <div><strong>Read the evidence</strong><small>Network, Console, Snapshot</small></div>
-          <em>${failed ? "404 found" : recovered ? "Evidence retained" : "Waiting"}</em>
-        </div>
-        <div class="flow-line"></div>
-        <div class="flow-node ${recovered ? "success" : ""}">
-          <span>03</span>
-          <div><strong>Verify recovery</strong><small>Wait for fulfillment=ready</small></div>
-          <em>${recovered ? "Verified" : "Waiting"}</em>
-        </div>
+        <dl>
+          <div><dt>Location</dt><dd>west-2</dd></div>
+          <div><dt>Selected order</dt><dd>${selected?.id ?? "None"}</dd></div>
+          <div><dt>Fulfillment</dt><dd>${state.fulfillmentStatus}</dd></div>
+        </dl>
       </section>
 
       <section class="content-card request-card">
         <div class="request-heading">
-          <div><span class="kicker">Latest request</span><h3>Inventory availability</h3></div>
+          <div><span class="kicker">Latest sync</span><h3>Inventory service</h3></div>
           <span class="status-pill status-${state.requestStatus}">${state.requestStatus}</span>
         </div>
         <dl>
           <div><dt>Attempt</dt><dd>${state.inventoryAttempt || "—"}</dd></div>
-          <div><dt>HTTP status</dt><dd>${state.lastRequestStatus ?? "—"}</dd></div>
-          <div><dt>Workflow</dt><dd>${state.fulfillmentStatus}</dd></div>
+          <div><dt>Response</dt><dd>${state.lastRequestStatus ?? "—"}</dd></div>
+          <div><dt>Order</dt><dd>${selected?.id ?? "—"}</dd></div>
         </dl>
-        <p class="request-url">${state.lastRequestUrl === null ? "No request captured yet." : escapeHtml(state.lastRequestUrl)}</p>
+        <p class="request-url">${state.lastRequestUrl === null ? "No warehouse request yet." : escapeHtml(state.lastRequestUrl)}</p>
         <div class="button-row">
-          <button class="danger-button" type="button" data-action="trigger-failure">Trigger 404</button>
-          <button class="primary-button" type="button" data-action="retry" ${failed ? "" : "disabled"}>Retry safely</button>
+          <button class="secondary-button" type="button" data-action="trigger-failure">Check availability</button>
+          <button class="primary-button" type="button" data-action="retry" ${failed ? "" : "disabled"}>Retry sync</button>
         </div>
       </section>
     </div>
-
-    <section class="content-card evidence-explainer">
-      <div><span>Browser</span><strong>Network + Console</strong><p>Shows the failed URL, status code, and emitted error.</p></div>
-      <div><span>Runtime Core</span><strong>State + dependency</strong><p>Shows fulfillment is blocked by the inventory request.</p></div>
-      <div><span>Declared action</span><strong>Retry + wait</strong><p>Runs an allowed recovery and waits for a new ready state.</p></div>
-    </section>
   `;
 }
 
@@ -903,15 +826,14 @@ function renderInsights(): void {
     content.innerHTML = `
       <section class="section-header">
         <div>
-          <p class="eyebrow">Code Usage</p>
-          <h2>Order insights</h2>
-          <p>This view lives in an on-demand JavaScript chunk. Open it while coverage is running to compare execution stages.</p>
+          <h2>Order analytics</h2>
+          <p>Revenue and fulfillment performance across the current order queue.</p>
         </div>
       </section>
       <section class="content-card loading-card">
         <span class="loader" aria-hidden="true"></span>
-        <h3>Loading the insights chunk</h3>
-        <p>Calculating revenue, regional share, and fulfillment recommendations.</p>
+        <h3>Loading analytics</h3>
+        <p>Calculating revenue, regional share, and fulfillment trends.</p>
       </section>
     `;
     return;
@@ -922,11 +844,10 @@ function renderInsights(): void {
   content.innerHTML = `
     <section class="section-header">
       <div>
-        <p class="eyebrow">Lazy-loaded analysis</p>
-        <h2>Order insights</h2>
-        <p>The additional application code has loaded. A staged coverage recording can now show exactly what changed.</p>
+        <h2>Order analytics</h2>
+        <p>Revenue and fulfillment performance across the current order queue.</p>
       </div>
-      <span class="scenario-badge">Async chunk loaded</span>
+      <span class="scenario-badge">Updated just now</span>
     </section>
 
     <div class="metric-grid">
@@ -951,7 +872,7 @@ function renderInsights(): void {
       </section>
 
       <section class="content-card recommendation-card">
-        <span class="kicker">Recommended next moves</span>
+        <span class="kicker">Operations</span>
         <h3>Operations notes</h3>
         <ul>${insights.recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
       </section>
@@ -961,45 +882,47 @@ function renderInsights(): void {
 
 function renderMemory(): void {
   const content = requireContent();
+  const loadedRecords = state.memoryCycles * 5_000;
   content.innerHTML = `
     <section class="section-header">
       <div>
-        <p class="eyebrow">Extension scenario</p>
-        <h2>Controlled memory lab</h2>
-        <p>Each cycle intentionally retains objects, detached DOM nodes, and a listener. It exists only to make a repeatable Extension report.</p>
+        <h2>Customer activity</h2>
+        <p>Recent customer and order events from the operations archive.</p>
       </div>
-      <span class="scenario-badge warning">Intentional growth</span>
+      <span class="scenario-badge">Live</span>
     </section>
 
     <div class="memory-grid">
-      <section class="content-card memory-visual">
-        <div class="memory-orbit">
-          <div><strong>${state.memoryCycles}</strong><span>retained cycles</span></div>
-          ${Array.from({ length: Math.min(state.memoryCycles, 7) }, (_, index) =>
-            `<i style="--orbit:${index + 1}"></i>`).join("")}
+      <section class="content-card activity-feed">
+        <div class="card-title">
+          <div><span class="kicker">Today</span><h3>Recent events</h3></div>
+          <em>${loadedRecords === 0 ? "Latest" : `${loadedRecords.toLocaleString()} archived`}</em>
         </div>
-        <div class="button-row centered">
-          <button class="primary-button" type="button" data-action="memory-cycle">Retain one cycle</button>
-          <button class="secondary-button" type="button" data-action="memory-reset">Reset lab</button>
+        <ol class="activity-list">
+          <li><span class="activity-avatar">AS</span><div><strong>Avery Stone</strong><p>Order OR-1048 moved to inventory review.</p><small>2 minutes ago</small></div></li>
+          <li><span class="activity-avatar">MP</span><div><strong>Mina Park</strong><p>Order OR-1049 entered the fulfillment queue.</p><small>14 minutes ago</small></div></li>
+          <li><span class="activity-avatar">NW</span><div><strong>Noah Williams</strong><p>Priority delivery details were updated.</p><small>31 minutes ago</small></div></li>
+          ${Array.from({ length: Math.min(state.memoryCycles, 4) }, (_, index) => `
+            <li><span class="activity-avatar muted">AR</span><div><strong>Archive import</strong><p>Loaded activity page ${state.memoryCycles - index}.</p><small>Earlier today</small></div></li>
+          `).join("")}
+        </ol>
+        <div class="activity-actions">
+          <button class="primary-button" type="button" data-action="memory-cycle">Load earlier activity</button>
         </div>
       </section>
 
-      <section class="content-card memory-stats">
-        <span class="kicker">Page-declared lab state</span>
-        <h3>Current retained data</h3>
+      <section class="content-card activity-summary">
+        <span class="kicker">Archive cache</span>
+        <h3>Activity feed</h3>
         <dl>
-          <div><dt>Estimated payload</dt><dd>${formatBytes(state.memoryRetainedBytes)}</dd></div>
-          <div><dt>Detached nodes</dt><dd>${state.memoryCycles * 8}</dd></div>
-          <div><dt>Event listeners</dt><dd>${state.memoryCycles}</dd></div>
+          <div><dt>Loaded pages</dt><dd><strong class="activity-count">${state.memoryCycles}</strong></dd></div>
+          <div><dt>Cached records</dt><dd>${loadedRecords.toLocaleString()}</dd></div>
+          <div><dt>Live subscriptions</dt><dd>${state.memoryCycles}</dd></div>
         </dl>
-        <p>Use the memory Extension for the actual browser measurements. The values above only describe what this lab intentionally retained.</p>
+        <p>Earlier activity remains available while this workspace is open.</p>
+        <button class="secondary-button full-button" type="button" data-action="memory-reset" ${state.memoryCycles === 0 ? "disabled" : ""}>Clear activity cache</button>
       </section>
     </div>
-
-    <section class="content-card memory-note">
-      <span>Why repeat?</span>
-      <p>A single high reading is not a leak. The Extension warms the page, repeats this same cycle, requests garbage collection, and looks for sustained growth.</p>
-    </section>
   `;
 }
 
@@ -1061,22 +984,37 @@ function updateNavigation(): void {
   });
 }
 
-function markJourneyStep(step: string): void {
-  document.querySelector(`[data-step="${step}"]`)?.classList.add("complete");
-}
-
-function setStatus(id: string, value: string): void {
-  const element = document.getElementById(id);
-  if (element === null) return;
-  element.textContent = value;
-  element.dataset.tone = statusTone(value);
-}
-
-function statusTone(value: string): string {
-  if (["ready", "processed"].includes(value)) return "success";
-  if (["error", "blocked"].includes(value)) return "error";
-  if (["loading", "processing", "booting"].includes(value)) return "loading";
-  return "muted";
+function updatePageHeading(): void {
+  const content: Record<Section, {
+    eyebrow: string;
+    title: string;
+    description: string;
+  }> = {
+    operations: {
+      eyebrow: "Order management",
+      title: "Orders",
+      description: "Review and fulfill incoming customer orders."
+    },
+    diagnostics: {
+      eyebrow: "Warehouse operations",
+      title: "Inventory",
+      description: "Monitor inventory availability across fulfillment locations."
+    },
+    insights: {
+      eyebrow: "Business intelligence",
+      title: "Analytics",
+      description: "Track revenue and fulfillment performance."
+    },
+    memory: {
+      eyebrow: "Customer operations",
+      title: "Activity",
+      description: "Review recent customer and order events."
+    }
+  };
+  const current = content[state.section];
+  setText("page-eyebrow", current.eyebrow);
+  setText("page-title", current.title);
+  setText("page-description", current.description);
 }
 
 function statusLabel(status: FulfillmentStatus): string {
@@ -1084,6 +1022,28 @@ function statusLabel(status: FulfillmentStatus): string {
   if (status === "processing") return "Checking inventory";
   if (status === "blocked") return "Action required";
   return "Preparing";
+}
+
+function sectionMessage(): string {
+  if (state.fulfillmentStatus === "blocked" || state.fulfillmentStatus === "processing") {
+    return state.message;
+  }
+  if (state.section === "operations") {
+    return `${state.orders.length} orders loaded and ready for review.`;
+  }
+  if (state.section === "diagnostics") {
+    return state.requestStatus === "ready"
+      ? "Inventory is healthy across active fulfillment locations."
+      : "No inventory incidents are currently active.";
+  }
+  if (state.section === "insights") {
+    return state.analysisStatus === "ready"
+      ? "Analytics are up to date."
+      : "Preparing current order analytics.";
+  }
+  return state.memoryCycles > 0
+    ? `${state.memoryCycles * 5_000} archived activity records loaded.`
+    : "Customer activity is up to date.";
 }
 
 function sectionFromHash(): Section {
@@ -1127,12 +1087,6 @@ function percent(value: number): string {
     style: "percent",
     maximumFractionDigits: 0
   }).format(value);
-}
-
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function escapeHtml(value: string): string {

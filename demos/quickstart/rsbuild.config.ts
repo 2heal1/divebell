@@ -6,7 +6,7 @@ const pagesBase = process.env.OPENRUNTIME_PAGES_BASE ?? "/";
 export default defineConfig({
   html: {
     template: "./index.html",
-    title: "OpenRuntime Quick Start"
+    title: "Northstar Supply | Operations"
   },
   output: {
     assetPrefix: pagesBase,

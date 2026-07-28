@@ -18,7 +18,7 @@ pnpm build
 Start the Bridge in the first terminal:
 
 ```bash
-pnpm exec openruntime start
+openruntime start
 ```
 
 Start the SSR demo in a second terminal:
@@ -44,8 +44,8 @@ pnpm --filter @openruntime/demo-modern-ssr verify
 You can also inspect the state manually:
 
 ```bash
-pnpm exec openruntime targets --url http://localhost:19082/
-pnpm exec openruntime snapshot --url http://localhost:19082/
+openruntime targets --url http://localhost:19082/
+openruntime snapshot --url http://localhost:19082/
 ```
 
 Expected results:
@@ -59,7 +59,7 @@ Expected results:
 You can also wait for the server SSR state directly:
 
 ```bash
-pnpm exec openruntime wait-for modern:ssr server-rendered --url http://localhost:19082/ --where environment=server --timeout 5000
+openruntime wait-for modern:ssr server-rendered --url http://localhost:19082/ --where environment=server --timeout 5000
 ```
 
 ## Build Check

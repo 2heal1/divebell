@@ -18,6 +18,16 @@ Extensions are appropriate for development debugging workflows that a team will 
 
 ## Install an Extension
 
+Install OpenRuntime globally before adding Extensions:
+
+```sh
+npm install --global @openruntime/cli
+openruntime --help
+```
+
+Do not add the CLI to the application. Installed Extensions are shared by the
+global OpenRuntime command.
+
 ### Install from npm
 
 Install a trusted Extension by npm package name:

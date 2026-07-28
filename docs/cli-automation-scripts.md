@@ -50,17 +50,17 @@ Every step should have a clear success condition. Do not click immediately after
 
 ## Install And Run
 
-Shell scripts only need `openruntime` to be available in the current environment:
+Install OpenRuntime globally before running local or CI scripts:
 
 ```sh
+npm install --global @openruntime/cli
 openruntime --help
 ```
 
-Node.js scripts need to resolve `@openruntime/cli`:
-
-```js
-import { runCli } from "@openruntime/cli";
-```
+Shell and Node.js scripts should invoke the global `openruntime` command by
+default. Do not add the CLI to the application just to run a debugging script.
+The later Node.js API section is an explicit exception for an automation
+package that intentionally embeds the CLI API.
 
 Scripts can live in the project `scripts/` directory:
 
@@ -79,15 +79,10 @@ node scripts/check-home.mjs http://localhost:3000
 
 ## Dependency Handling
 
-For scripts that run inside the current project, add `@openruntime/cli` to the project dependencies so the script and project use the same version:
-
-```sh
-pnpm add -D @openruntime/cli
-```
+OpenRuntime CLI is a global machine tool. Local scripts use the same global
+command and should check it before running:
 
 OpenRuntime CLI supports Node.js 24.
-
-If a script only calls the `openruntime` binary from Shell, it can rely on a global install or a CI-provided CLI, but check that it is available before running:
 
 ```sh
 openruntime --help
@@ -101,6 +96,14 @@ openruntime check
 
 Use `openruntime check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
 
+CI should install the chosen CLI version globally in its setup step, then
+prepare the browser runtime. Application dependencies should contain only
+page-side packages such as Runtime Core or framework integrations.
+
+Only add `@openruntime/cli` to a separate automation package when its Node.js
+code intentionally imports `runCli`. That library use case is different from
+installing the OpenRuntime command for normal use.
+
 ## Script File Structure
 
 A Shell script usually contains:
@@ -112,32 +115,31 @@ A Shell script usually contains:
 - One final output object.
 - Optional `openruntime stop`.
 
-A Node.js script should usually wrap `runCli(args, options)` in a small `opr(args)` helper that captures stdout, stderr, and the exit code:
+A Node.js script should usually call the global command through a small
+`opr(args)` helper that captures stdout, stderr, and the exit code:
 
 ```js
-import { runCli } from "@openruntime/cli";
+import { spawn } from "node:child_process";
 
 async function opr(args) {
-  let stdout = "";
-  let stderr = "";
-  const exitCode = await runCli(args, {
-    stdout: {
-      write(chunk) {
-        stdout += chunk;
+  return await new Promise((resolve, reject) => {
+    const child = spawn("openruntime", args, {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", chunk => { stdout += chunk; });
+    child.stderr.on("data", chunk => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", exitCode => {
+      if (exitCode !== 0) {
+        reject(new Error(stderr.trim() || stdout.trim() ||
+          `openruntime ${args.join(" ")} failed`));
+        return;
       }
-    },
-    stderr: {
-      write(chunk) {
-        stderr += chunk;
-      }
-    }
+      resolve(stdout.trim());
+    });
   });
-
-  if (exitCode !== 0) {
-    throw new Error(stderr.trim() || stdout.trim() || `openruntime ${args.join(" ")} failed`);
-  }
-
-  return stdout.trim();
 }
 ```
 
@@ -278,7 +280,11 @@ On failure, return a non-zero exit code and write the error to stderr. Shell scr
 
 ## Node.js API
 
-Node.js scripts use `runCli(args, options)` from `@openruntime/cli`. It uses the same arguments as the CLI, but avoids spawning a subprocess and lets the script capture output directly.
+Normal Node.js scripts should invoke the globally installed `openruntime`
+command. Use this API only when a separate automation package deliberately
+embeds OpenRuntime and declares `@openruntime/cli` as its own dependency.
+`runCli(args, options)` uses the same arguments as the CLI, but avoids spawning
+a subprocess and lets the script capture output directly.
 
 ```js
 import { runCli } from "@openruntime/cli";

@@ -106,23 +106,23 @@ createInstance({
 Start from MF targets:
 
 ```bash
-pnpm exec openruntime targets --url <url> --type mf.remote
-pnpm exec openruntime targets --url <url> --type mf.remote.expose
-pnpm exec openruntime targets --url <url> --type mf.shared
+openruntime targets --url <url> --type mf.remote
+openruntime targets --url <url> --type mf.remote.expose
+openruntime targets --url <url> --type mf.shared
 ```
 
 Wait for a concrete expose rather than only the remote summary:
 
 ```bash
-pnpm exec openruntime wait-for mf:remote:<remoteName>:expose:<exposeName> ready --url <url> --timeout 10000
+openruntime wait-for mf:remote:<remoteName>:expose:<exposeName> ready --url <url> --timeout 10000
 ```
 
 Diagnose shared dependencies:
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --query <sharedName>
-pnpm exec openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> loaded --url <url> --timeout 10000
-pnpm exec openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> error --url <url> --timeout 10000
+openruntime snapshot --url <url> --query <sharedName>
+openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> loaded --url <url> --timeout 10000
+openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> error --url <url> --timeout 10000
 ```
 
 ## Report Actions
@@ -130,6 +130,6 @@ pnpm exec openruntime wait-for mf:shared:<sharedName>:<version>:<shareScope> err
 If MF observability registered report actions, read detailed reports through OpenRuntime:
 
 ```bash
-pnpm exec openruntime run-action --url <url> mf:list-reports --payload '{"remote":"<remoteName>"}'
-pnpm exec openruntime run-action --url <url> mf:get-report --payload '{"traceId":"<trace-id>"}'
+openruntime run-action --url <url> mf:list-reports --payload '{"remote":"<remoteName>"}'
+openruntime run-action --url <url> mf:get-report --payload '{"traceId":"<trace-id>"}'
 ```

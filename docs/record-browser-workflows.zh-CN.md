@@ -18,6 +18,14 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 ## 安装
 
+先全局安装 OpenRuntime，并添加录制 Extension：
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime extensions add @openruntime/extension-imitate
+```
+
 将仓库中的 skill 目录安装到支持 skill 的 Agent：
 
 ```text
@@ -30,9 +38,7 @@ skills/record-openruntime-workflow
 ~/.codex/skills/record-openruntime-workflow
 ```
 
-用户不需要预先安装全局 `openruntime` 命令。启动前，Agent 会检查当前环境里是否已有可复用版本；没有时从 GitHub Release 下载固定运行包，校验 SHA-256，并按版本缓存。
-
-统一版本发布方式见 [OpenRuntime 发版流程](./release.zh-CN.md)。
+skill 直接使用全局 `openruntime` 命令，不会把 CLI 加到业务项目中。
 
 ## 使用
 

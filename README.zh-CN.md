@@ -28,6 +28,28 @@ Coding Agent 负责阅读和修改代码；OpenRuntime 负责准备可复用的�
 
 ---
 
+## Quick Start
+
+先全局安装一次 OpenRuntime CLI：
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
+直接体验已经部署的订单工作台，不需要克隆仓库，也不需要先获取源码：
+
+[打开体验页](https://2heal1.github.io/openruntime/quickstart/) ·
+[查看 Agent 引导流程](./docs/quick-start.zh-CN.md)
+
+安装 CLI 和 [OpenRuntime Skill](./skills/openruntime/SKILL.md) 后，对 Agent 说：
+
+```text
+使用 OpenRuntime 完成官方 Quick Start：操作订单页面，触发并定位库存失败，
+使用页面声明的重试动作恢复流程，并在最后打开 Code Usage 报告。
+```
+
 ## 为什么需要 OpenRuntime
 
 Coding Agent 已经可以阅读和修改代码，也可以调用各种开发工具。但真实 Web 开发中的问题通常发生在页面场景中：用户看到的是一个页面，而定位问题需要结合页面状态、运行环境、业务上下文以及团队已有的诊断能力。
@@ -131,6 +153,11 @@ Runtime Core 是可选的页面侧 API。当页面 DOM、Console、Network 等�
 
 ### 直接体验
 
+#### [完成在线 Quick Start](./docs/quick-start.zh-CN.md)
+
+在一个公开页面里完成操作、查看 Network 和 Console、读取应用声明的状态、执行安全恢复，
+最后打开高阶代码使用报告，全程不需要克隆仓库。
+
 #### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
 在可见浏览器中演示一次流程，让 Agent 根据操作记录、页面上下文和可选语音说明生成脚本草稿。
@@ -181,6 +208,7 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 ## 文档
 
+- [Quick Start](./docs/quick-start.zh-CN.md)
 - [Coding Agent 开发调试闭环](./docs/agent-devloop.zh-CN.md)
 - [CLI 命令参考](./docs/cli-reference.zh-CN.md)
 - [浏览器登录与状态复用](./docs/browser-auth.zh-CN.md)

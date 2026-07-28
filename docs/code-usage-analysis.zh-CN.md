@@ -24,11 +24,14 @@ English version: [Chunk and Code-Usage Analysis](code-usage-analysis.md)
 [内存分析指南](memory-analysis.zh-CN.md)。只有需要把浏览器中的代码记录还原到分块、
 源码文件和依赖包时，才需要下面的接入。
 
-先安装分析命令：
+先全局安装 OpenRuntime，再添加分析命令：
 
 ```bash
+npm install --global @openruntime/cli
 openruntime extensions add @openruntime/extension-code-usage
 ```
+
+不要把 CLI 加到业务项目中；只有对应的构建接入包需要安装在项目里。
 
 ## 整体流程
 
@@ -88,21 +91,21 @@ Rspack 插件也支持同一个 `filename` 选项。
 先打开要测试的页面。页面可以是本地地址，也可以是线上地址：
 
 ```bash
-pnpm exec openruntime open https://example.com/
-pnpm exec openruntime coverage start
+openruntime open https://example.com/
+openruntime coverage start
 ```
 
 等待首屏稳定后保存第一阶段：
 
 ```bash
-pnpm exec openruntime coverage take /tmp/first-screen.coverage.json \
+openruntime coverage take /tmp/first-screen.coverage.json \
   --label first-screen
 ```
 
 继续使用 `click`、`fill`、`goto` 或项目声明的动作完成下一段真实操作，然后保存并结束：
 
 ```bash
-pnpm exec openruntime coverage stop /tmp/orders.coverage.json \
+openruntime coverage stop /tmp/orders.coverage.json \
   --label orders
 ```
 
@@ -112,27 +115,40 @@ pnpm exec openruntime coverage stop /tmp/orders.coverage.json \
 ## 3. 指定 Chunk Map，让 CLI 完成分析
 
 ```bash
-pnpm exec openruntime code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map /path/to/production-dist/openruntime-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
   --output /tmp/code-usage-report.json
 ```
 
-`--chunk-map` 可以指向任意本地路径。测试线上页面时，将线上正在运行的那一次构建
-产物下载或保留在本地，再把它的 Chunk Map 路径传给 CLI。页面地址和构建文件不需要
-位于同一台机器，但必须属于同一次构建。
+`--chunk-map` 可以指向本地路径，也可以直接指向 HTTP 或 HTTPS 地址。测试线上页面时，
+既可以把线上正在运行的那次构建产物保留在本地，也可以让 CLI 从可信的公开部署读取。
+页面和构建文件不必位于同一台机器，但必须属于同一次构建。
 
 默认会从 Chunk Map 所在目录读取 JavaScript 和 source map。如果它们放在另一个目录，
 使用：
 
 ```bash
-pnpm exec openruntime code-usage analyze \
+openruntime code-usage analyze \
   --chunk-map /path/to/metadata/openruntime-chunks.json \
   --assets /path/to/production-dist \
   --coverage /tmp/first-screen.coverage.json \
   --output /tmp/code-usage-report.json
 ```
+
+线上构建文件放在一起时，可以直接分析：
+
+```bash
+openruntime code-usage analyze \
+  --chunk-map https://example.com/app/openruntime-chunks.json \
+  --coverage /tmp/first-screen.coverage.json \
+  --coverage /tmp/orders.coverage.json \
+  --output /tmp/code-usage-report.json
+```
+
+远程 Chunk Map 没有指定 `--assets` 时，CLI 会从它所在的 URL 目录读取 JavaScript 和
+source map。只应分析可信的部署，因为命令会下载 Chunk Map 引用的构建文件。
 
 可以重复传入 `--coverage`，顺序就是报告中的阶段顺序。
 
@@ -239,7 +255,7 @@ JavaScript 中对应的体积。它不是原始 `.tsx` 文件大小。这正是�
 ## 4. 打开可视化报告
 
 ```bash
-pnpm exec openruntime code-usage report /tmp/code-usage-report.json
+openruntime code-usage report /tmp/code-usage-report.json
 ```
 
 命令会在 JSON 旁生成 HTML 并打开。只生成文件时使用 `--no-open`，自定义保存位置时

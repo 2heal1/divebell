@@ -50,17 +50,16 @@ openruntime extensions add @openruntime/extension-troubleshooting
 
 ## 安装与运行
 
-Shell 脚本只需要当前环境能执行 `openruntime`：
+运行本机或 CI 脚本前，先全局安装 OpenRuntime：
 
 ```sh
+npm install --global @openruntime/cli
 openruntime --help
 ```
 
-Node.js 脚本需要能解析 `@openruntime/cli`：
-
-```js
-import { runCli } from "@openruntime/cli";
-```
+Shell 和 Node.js 脚本默认都应调用全局的 `openruntime` 命令。不要为了运行调试脚本，
+把 CLI 加到业务项目中。后面的 Node.js API 是明确的例外，只适用于有意嵌入 CLI API
+的独立自动化包。
 
 脚本可以放在项目自己的 `scripts/` 目录，例如：
 
@@ -79,15 +78,9 @@ node scripts/check-home.mjs http://localhost:3000
 
 ## 依赖处理
 
-如果脚本只在当前项目里运行，推荐把 `@openruntime/cli` 放进项目依赖，让脚本和项目使用同一套版本：
-
-```sh
-pnpm add -D @openruntime/cli
-```
+OpenRuntime CLI 是全局的本机工具。本机脚本直接使用同一条全局命令，并在运行前检查：
 
 OpenRuntime CLI 支持 Node.js 24。
-
-如果脚本只通过 Shell 调用 `openruntime`，也可以依赖全局安装或 CI 里预装的 CLI，但需要在运行前检查：
 
 ```sh
 openruntime --help
@@ -101,6 +94,12 @@ openruntime check
 
 准备环境时可以执行 `openruntime check --fix`。它会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
 
+CI 应在准备步骤中全局安装选定的 CLI 版本，并准备浏览器运行环境。业务项目依赖中只
+保留 Runtime Core、框架接入等真正运行在页面里的包。
+
+只有独立自动化包确实要在 Node.js 中导入 `runCli` 时，才把 `@openruntime/cli` 声明为
+这个自动化包自己的依赖。这是使用程序接口，不是普通的 CLI 安装方式。
+
 ## 脚本文件结构
 
 Shell 脚本通常包含：
@@ -112,32 +111,31 @@ Shell 脚本通常包含：
 - 统一输出结果。
 - 可选的 `openruntime stop`。
 
-Node.js 脚本建议封装一个小的 `opr(args)` helper，用来捕获 stdout、stderr 和退出码：
+Node.js 脚本建议通过一个小的 `opr(args)` helper 调用全局命令，并捕获 stdout、stderr
+和退出码：
 
 ```js
-import { runCli } from "@openruntime/cli";
+import { spawn } from "node:child_process";
 
 async function opr(args) {
-  let stdout = "";
-  let stderr = "";
-  const exitCode = await runCli(args, {
-    stdout: {
-      write(chunk) {
-        stdout += chunk;
+  return await new Promise((resolve, reject) => {
+    const child = spawn("openruntime", args, {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", chunk => { stdout += chunk; });
+    child.stderr.on("data", chunk => { stderr += chunk; });
+    child.on("error", reject);
+    child.on("close", exitCode => {
+      if (exitCode !== 0) {
+        reject(new Error(stderr.trim() || stdout.trim() ||
+          `openruntime ${args.join(" ")} failed`));
+        return;
       }
-    },
-    stderr: {
-      write(chunk) {
-        stderr += chunk;
-      }
-    }
+      resolve(stdout.trim());
+    });
   });
-
-  if (exitCode !== 0) {
-    throw new Error(stderr.trim() || stdout.trim() || `openruntime ${args.join(" ")} failed`);
-  }
-
-  return stdout.trim();
 }
 ```
 
@@ -278,7 +276,9 @@ openruntime verify business:home ready --session check-home --timeout 10000
 
 ## Node.js API
 
-Node.js 脚本使用 `@openruntime/cli` 导出的 `runCli(args, options)`。它和命令行使用同一套参数，区别是不用启动子进程，可以直接在脚本里捕获输出。
+普通 Node.js 脚本应调用全局安装的 `openruntime` 命令。只有独立自动化包明确需要嵌入
+OpenRuntime，并把 `@openruntime/cli` 声明为自己的依赖时，才使用这里的 API。
+`runCli(args, options)` 和命令行使用同一套参数，区别是不用启动子进程，可以直接在脚本里捕获输出。
 
 ```js
 import { runCli } from "@openruntime/cli";

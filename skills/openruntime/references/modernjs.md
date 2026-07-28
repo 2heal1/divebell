@@ -85,10 +85,10 @@ After installing `@openruntime/modern-plugin`, always verify that runtime state
 is actually connected by opening the page through the CLI first.
 
 ```bash
-pnpm exec openruntime open <app-url> --bridge <bridge-url>
-pnpm exec openruntime runtimes --bridge <bridge-url>
-pnpm exec openruntime targets --bridge <bridge-url>
-pnpm exec openruntime snapshot --bridge <bridge-url>
+openruntime open <app-url> --bridge <bridge-url>
+openruntime runtimes --bridge <bridge-url>
+openruntime targets --bridge <bridge-url>
+openruntime snapshot --bridge <bridge-url>
 ```
 
 ## Route / Loader / SSR / Hydration
@@ -96,13 +96,13 @@ pnpm exec openruntime snapshot --bridge <bridge-url>
 Wait for a route:
 
 ```bash
-pnpm exec openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 30000
+openruntime wait-for modern:route ready --url <url> --where pathname=/orders --timeout 30000
 ```
 
 Read the current route state:
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --id modern:route
+openruntime snapshot --url <url> --id modern:route
 ```
 
 `modern:route.data.matches` contains the current route chain, loader state, route component state, and route errors.
@@ -110,7 +110,7 @@ pnpm exec openruntime snapshot --url <url> --id modern:route
 If the page exposes SSR or hydration state, read Modern.js targets together:
 
 ```bash
-pnpm exec openruntime snapshot --url <url> --query modern
+openruntime snapshot --url <url> --query modern
 ```
 
 ## Business Ready Helper

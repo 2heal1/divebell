@@ -28,6 +28,31 @@ The coding agent reads and modifies code. OpenRuntime prepares reusable browser 
 
 ---
 
+## Quick Start
+
+Install the OpenRuntime CLI globally once:
+
+```bash
+npm install --global @openruntime/cli
+openruntime check --fix
+openruntime --help
+```
+
+Try the hosted operations playground—no repository clone or source checkout
+required:
+
+[Open the playground](https://2heal1.github.io/openruntime/quickstart/) ·
+[Follow the Agent-guided walkthrough](./docs/quick-start.md)
+
+After installing the CLI and the
+[OpenRuntime Skill](./skills/openruntime/SKILL.md), ask:
+
+```text
+Use OpenRuntime to complete the official Quick Start. Operate the order page,
+trigger and diagnose the inventory failure, recover it through the
+page-declared action, and finish by opening a Code Usage report.
+```
+
 ## Why OpenRuntime
 
 Coding agents can already read and modify code, and they can call many development tools. But real web development issues usually happen in the page itself: users see a page, while diagnosing the problem requires its state, runtime environment, business context, and the team's existing diagnostic capabilities.
@@ -131,6 +156,12 @@ These examples are organized around the result a user can experience. Start with
 
 ### Try OpenRuntime
 
+#### [Complete the hosted Quick Start](./docs/quick-start.md)
+
+Operate one public page, inspect Network and Console evidence, read
+application-declared state, recover through a safe action, and open an advanced
+code-usage report without cloning the repository.
+
 #### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
 Demonstrate a workflow in a visible browser and let the agent generate a script draft from the interactions, page context, and optional spoken intent.
@@ -182,6 +213,7 @@ Create a local Extension that reads the current page and participates in page op
 
 ## Documentation
 
+- [Quick Start](./docs/quick-start.md)
 - [Coding Agent Development Debugging Loop](./docs/agent-devloop.md)
 - [CLI Reference](./docs/cli-reference.md)
 - [Browser Authentication and State](./docs/browser-auth.md)

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -564,6 +565,111 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
       { startOffset: 0, endOffset: 10 }
     ]);
   } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("code-usage analyze reads a Chunk Map, JavaScript, and source maps over HTTP", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "openruntime-code-usage-http-"));
+  const coveragePath = join(directory, "coverage.json");
+  const reportPath = join(directory, "report.json");
+  const chunkMap = {
+    schemaVersion: 2,
+    generator: "@openruntime/rspack-plugin",
+    buildId: "build-http-1",
+    publicPath: "/quickstart/",
+    chunks: [{
+      id: "main",
+      names: ["main"],
+      assets: [{
+        file: "static/js/main.js",
+        size: 5,
+        sourceMap: "static/js/main.js.map"
+      }],
+      initial: true,
+      entry: true,
+      entrypoints: ["main"],
+      groups: ["main"],
+      parents: [],
+      children: [],
+      modules: [{
+        id: "app",
+        identifier: join(directory, "src/app.ts"),
+        name: "./src/app.ts",
+        sourcePath: join(directory, "src/app.ts"),
+        moduleType: "javascript/auto",
+        size: 5,
+        owner: {
+          kind: "application",
+          packageName: "quickstart",
+          packageVersion: "1.0.0",
+          packageSubpath: "src/app.ts"
+        }
+      }],
+      moduleSize: 5
+    }],
+    packages: []
+  };
+  const fixtures = new Map([
+    ["/quickstart/openruntime-chunks.json", JSON.stringify(chunkMap)],
+    ["/quickstart/static/js/main.js", "aaaa"],
+    ["/quickstart/static/js/main.js.map", JSON.stringify({
+      version: 3,
+      sources: ["../../../src/app.ts"],
+      mappings: "AAAA"
+    })]
+  ]);
+  const server = createServer((request, response) => {
+    const body = fixtures.get(request.url ?? "");
+    if (body === undefined) {
+      response.writeHead(404).end();
+      return;
+    }
+    response.writeHead(200, { "content-type": "application/json" }).end(body);
+  });
+  await new Promise((resolveReady) => server.listen(0, "127.0.0.1", resolveReady));
+  const address = server.address();
+  assert.notEqual(address, null);
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/quickstart/`;
+  writeFileSync(coveragePath, JSON.stringify({
+    schemaVersion: 1,
+    label: "first-screen",
+    scripts: [{
+      scriptId: "1",
+      url: `${baseUrl}static/js/main.js`,
+      functions: [{
+        functionName: "",
+        ranges: [{ startOffset: 0, endOffset: 4, count: 1 }]
+      }]
+    }]
+  }), "utf8");
+  const output = createOutput();
+
+  try {
+    const exitCode = await runCli([
+      "code-usage",
+      "analyze",
+      "--chunk-map",
+      `${baseUrl}openruntime-chunks.json`,
+      "--coverage",
+      coveragePath,
+      "--output",
+      reportPath
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr
+    });
+
+    assert.equal(exitCode, 0, output.errorText());
+    const result = JSON.parse(output.text());
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.chunkMap, `${baseUrl}openruntime-chunks.json`);
+    assert.equal(result.data.assets, baseUrl);
+    const saved = JSON.parse(readFileSync(reportPath, "utf8"));
+    assert.equal(saved.phases[0].sources[0].owner.packageName, "quickstart");
+  } finally {
+    await new Promise((resolveClosed) => server.close(resolveClosed));
     rmSync(directory, { recursive: true, force: true });
   }
 });

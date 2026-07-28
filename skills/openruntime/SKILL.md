@@ -25,6 +25,14 @@ not require an ordinary page to integrate Runtime Core before using OpenRuntime.
 
 ## Choose a workflow
 
+### Try the official Quick Start
+
+Read `references/quickstart.md` when the user asks to try, demo, evaluate, or
+quickly understand OpenRuntime and has not supplied another target page. Use the
+public playground; do not clone this repository or ask for application source.
+Complete the browser, Runtime Core, and recovery stages before offering the
+optional code-usage or memory stage.
+
 ### Use capabilities
 
 Read `references/use-cli.md` when the task involves any of the following:
@@ -88,8 +96,12 @@ application as a side effect.
 
 ## Common rules
 
+- Use the globally installed `openruntime` or `opr` command. Do not add
+  `@openruntime/cli` to the user's application. If the command is unavailable,
+  ask the user to install it with
+  `npm install --global @openruntime/cli` before continuing.
 - To confirm current commands or Extension commands, first run the available
-  `openruntime --help`, `opr --help`, or project-local equivalent. Run
+  `openruntime --help` or `opr --help`. Run
   `openruntime <command> --help` for command-specific options and details.
   Trust actual help output instead of guessing from stale documentation.
 - Find Extension commands under `Extensions` or `External Extensions` in help.
@@ -119,6 +131,8 @@ application as a side effect.
 
 ## Load references on demand
 
+- Official hosted playground and first-use walkthrough:
+  `references/quickstart.md`
 - CLI queries, accounts, page interactions, and Extension commands:
   `references/use-cli.md`
 - Diagnosis, fixes, and post-change verification:

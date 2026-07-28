@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-07-27T08:00:00.000Z",
+  "orders": [
+    {
+      "id": "OR-1048",
+      "customer": "Avery Stone",
+      "region": "North America",
+      "total": 428.5,
+      "items": 4,
+      "status": "ready",
+      "priority": "high"
+    },
+    {
+      "id": "OR-1049",
+      "customer": "Mina Park",
+      "region": "Asia Pacific",
+      "total": 184.2,
+      "items": 2,
+      "status": "queued",
+      "priority": "normal"
+    },
+    {
+      "id": "OR-1050",
+      "customer": "Noah Williams",
+      "region": "Europe",
+      "total": 962,
+      "items": 7,
+      "status": "ready",
+      "priority": "high"
+    },
+    {
+      "id": "OR-1051",
+      "customer": "Sara Ahmed",
+      "region": "Middle East",
+      "total": 76.8,
+      "items": 1,
+      "status": "review",
+      "priority": "normal"
+    },
+    {
+      "id": "OR-1052",
+      "customer": "Lucas Silva",
+      "region": "South America",
+      "total": 315.4,
+      "items": 3,
+      "status": "queued",
+      "priority": "normal"
+    },
+    {
+      "id": "OR-1053",
+      "customer": "Eleanor Reed",
+      "region": "Europe",
+      "total": 1204.75,
+      "items": 9,
+      "status": "ready",
+      "priority": "high"
+    }
+  ]
+}

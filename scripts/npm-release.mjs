@@ -27,7 +27,8 @@ const packageDefinitions = [
   { directory: "packages/extension-code-usage", filePrefix: "divebell-extension-code-usage" },
   { directory: "packages/extension-troubleshooting", filePrefix: "divebell-extension-troubleshooting" },
   { directory: "packages/extension-imitate", filePrefix: "divebell-extension-imitate" },
-  { directory: "packages/extension-memory", filePrefix: "divebell-extension-memory" }
+  { directory: "packages/extension-memory", filePrefix: "divebell-extension-memory" },
+  { directory: "packages/extension-mf", filePrefix: "divebell-extension-mf" }
 ];
 const packages = await Promise.all(packageDefinitions.map(async (definition) => ({
   ...definition,

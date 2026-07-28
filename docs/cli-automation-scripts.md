@@ -199,6 +199,7 @@ On success, `open` prints unified JSON. `data` contains:
 | `bridgePort` | Port assigned to this open command; `null` with `--no-bridge`. |
 | `sessionId` | Session used by this open command. |
 | `openedAt` | Open timestamp. |
+| `injectedScriptPath` | Local path to the exact init script passed to the browser. Omitted when no script was injected. |
 
 ### Wait And Operate On The Page
 

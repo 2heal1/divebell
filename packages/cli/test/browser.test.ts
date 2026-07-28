@@ -54,6 +54,12 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
     bridgePort: 18080,
     sessionId
   });
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.data.injectedScriptPath, browserCalls[0]?.[3]);
+  assert.match(
+    readFileSync(parsed.data.injectedScriptPath, "utf8"),
+    /http:\/\/localhost:18080/
+  );
   assert.equal(output.errorText(), "");
   assertBridgeOpenCalls(browserCalls, `http://app.test/?divebellSessionId=${sessionId}`, "http://localhost:18080");
 });
@@ -271,6 +277,10 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
     bridgePort: null,
     sessionId
   });
+  assert.equal(
+    Object.hasOwn(JSON.parse(output.text()).data, "injectedScriptPath"),
+    false
+  );
   assert.deepEqual(browserCalls, [["open", `http://app.test/?divebellSessionId=${sessionId}`]]);
   assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
 });

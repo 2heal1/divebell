@@ -195,6 +195,7 @@ divebell open http://localhost:3000 --ui
 | `bridgePort` | 本次 open 分配的 Bridge 端口；`--no-bridge` 时为 `null`。 |
 | `sessionId` | 本次 open 使用的 session。 |
 | `openedAt` | 打开页面的时间戳。 |
+| `injectedScriptPath` | 实际传给浏览器的初始化脚本本地路径；没有注入脚本时不返回。 |
 
 ### 页面等待与操作
 

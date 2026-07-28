@@ -1,0 +1,47 @@
+docs/release.md
+  s_de9a8d96742e00::t_aa72e7a3ed62ac 24,65,70-72,74-75
+docs/release.zh-CN.md
+  s_de9a8d96742e00::t_c7d10aff5b850c 24,65,70-72,74-75
+package.json
+  s_de9a8d96742e00::t_e4c64485143fb9 3
+packages/bridge/package.json
+  s_de9a8d96742e00::t_c7975d1bd32adf 3
+packages/chunk-map/package.json
+  s_de9a8d96742e00::t_6200e9b4059724 3
+packages/cli/package.json
+  s_de9a8d96742e00::t_7fcfad3972aa2c 3
+packages/core/package.json
+  s_de9a8d96742e00::t_4e613634836b37 3
+packages/extension-code-usage/package.json
+  s_de9a8d96742e00::t_9c5773ed84757b 3
+packages/extension-imitate/package.json
+  s_de9a8d96742e00::t_e8ff2a52b9ac32 3
+packages/extension-memory/package.json
+  s_de9a8d96742e00::t_8bd6a9db36c6b3 3
+packages/extension-troubleshooting/package.json
+  s_de9a8d96742e00::t_1844212959c548 3
+packages/modern-plugin/package.json
+  s_de9a8d96742e00::t_9b0f7eae8ba92e 3
+packages/rspack-plugin/package.json
+  s_de9a8d96742e00::t_65b0862dc2199b 3
+skills/record-divebell-workflow/references/divebell-cli-runtime.json
+  s_de9a8d96742e00::t_e2da065ccf4f70 4-5,7-10,23,29,35,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9ef73667811da6918a95d50961ecfdafe20a1a0b",
+  "prompts": {},
+  "sessions": {
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

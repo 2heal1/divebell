@@ -5,7 +5,7 @@ The Shared commands analyze facts already exposed by the page's public Module Fe
 ## Current status
 
 ```sh
-openruntime mf shared status [package] \
+divebell mf shared status [package] \
   [--scope <scope>] [--version <version>] [--verbose]
 ```
 
@@ -20,14 +20,14 @@ false; after loading completes, both `mf status` and `mf shared status` omit it.
 
 ## Global shared registry in `mf status`
 
-`openruntime mf status` and `openruntime mf shared status` use the same sanitized global Shared registry and the same default-versus-verbose rules. `mf status` returns the complete registry next to the instance list, while `mf shared status` can narrow it by package, scope, and version.
+`divebell mf status` and `divebell mf shared status` use the same sanitized global Shared registry and the same default-versus-verbose rules. `mf status` returns the complete registry next to the instance list, while `mf shared status` can narrow it by package, scope, and version.
 
 Verbose output includes bounded `lib` and `get` source text, generated file, line, and column, and the original source file, line, and column when a usable Source Map is available. These details are best effort: missing or inaccessible Source Maps leave the generated bundle location intact, while a function with no browser location simply omits the location field. Location failures never fail the status command.
 
 ## Registration, selection, and load trace
 
 ```sh
-openruntime mf shared trace [package] \
+divebell mf shared trace [package] \
   [--mf <name>] [--instance <ref>] [--scope <scope>] \
   [--operation <id>] [--trace-id <id>]
 ```

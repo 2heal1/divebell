@@ -309,12 +309,12 @@ export function createCompatibilitySummary(
     warnings.push("Only current state and partial history can be confirmed.");
     recommendedActions.push(
       snapshot.state.completeness.recommendation ??
-      "Run `openruntime open <url>` again before reproducing the loading path."
+      "Run `divebell open <url>` again before reproducing the loading path."
     );
   }
   if (snapshot.injection?.timing === "late") {
     warnings.push("The injected reader was installed after the MF runtime had already started.");
-    recommendedActions.push("Reopen the page with `openruntime open <url>` to capture the full history.");
+    recommendedActions.push("Reopen the page with `divebell open <url>` to capture the full history.");
   }
   if (snapshot.state.scope.frame === "child") {
     warnings.push("This result covers only the current child frame/realm.");
@@ -484,7 +484,7 @@ function moduleRecommendedActions(
     actions.push("Trigger the remote load, then run the same command again to inspect loaded facts.");
   }
   if (snapshot.state.completeness.history === "partial") {
-    actions.push("Reopen the page with `openruntime open <url>` before reproducing the remote load.");
+    actions.push("Reopen the page with `divebell open <url>` before reproducing the remote load.");
   }
   if (warnings.length > 0 && snapshot.state.capabilities.remoteTrace.available === false) {
     actions.push("Upgrade or configure the MF Observability Plugin so remoteTrace is available.");

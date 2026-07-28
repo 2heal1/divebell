@@ -1,4 +1,4 @@
-import type { OpenRuntimeExtensionDefinition } from "@openruntime/cli";
+import type { DivebellExtensionDefinition } from "@divebell/cli";
 
 import { implementedMfCommandMetadata } from "./commands/metadata.js";
 
@@ -20,6 +20,6 @@ const extension = {
     open: async ({ args }) =>
       await (await import("./open.js")).openMfObservability(args)
   }
-} satisfies OpenRuntimeExtensionDefinition;
+} satisfies DivebellExtensionDefinition;
 
 export default extension;

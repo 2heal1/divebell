@@ -1,5 +1,5 @@
 import { MfCommandError } from "../cli/errors.js";
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { createSharedStatusResult } from "../shared/status.js";
 import { sharedStatusCommandMetadata } from "./metadata.js";
@@ -30,8 +30,7 @@ export const sharedStatusCommand: MfCommandDefinition = {
     }, {
       verbose
     });
-    writeCommandResult(options, result);
-    return 0;
+    return presentCommandResult(result);
   }
 };
 

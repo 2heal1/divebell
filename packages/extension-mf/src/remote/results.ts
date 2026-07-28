@@ -308,7 +308,7 @@ function normalizeProxyTarget(value: string): string {
     const protocolRelative = withoutQuery.startsWith("//");
     const url = new URL(
       withoutQuery,
-      protocolRelative ? "https://openruntime.invalid" : undefined
+      protocolRelative ? "https://divebell.invalid" : undefined
     );
     url.username = "";
     url.password = "";

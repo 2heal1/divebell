@@ -29,7 +29,7 @@
     ) {
       notify({
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "already-installed",
         runtimeVersion: RUNTIME_VERSION,
         installedAt,
@@ -68,7 +68,7 @@
 
     notify({
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "installed",
       runtimeVersion: RUNTIME_VERSION,
       installedAt,
@@ -77,7 +77,7 @@
   } catch (error) {
     notify({
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "error",
       runtimeVersion: RUNTIME_VERSION,
       installedAt,

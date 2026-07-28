@@ -180,7 +180,7 @@ test("partial history and late injection are explicit without discarding evidenc
   const parsed = parseBrowserReadResult(browserRead(state, [loadTrace()], {
     marker: {
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "installed",
       scope: "chrome_extension",
       observabilityVersion: "2.5.4",
@@ -250,7 +250,7 @@ test("remote status reports whether the active name or alias proxy was applied",
     {
       proxyMarker: {
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "installed",
         installedAt: 10,
         overrides: { shop: "2.0.0" }
@@ -282,7 +282,7 @@ test("remote status sanitizes URL proxies and exposes setup failures", () => {
     {
       proxyMarker: {
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "installed",
         installedAt: 10,
         overrides: {
@@ -311,7 +311,7 @@ test("remote status sanitizes URL proxies and exposes setup failures", () => {
     {
       proxyMarker: {
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "error",
         installedAt: 10,
         overrides: { shop: "2.0.0" },
@@ -345,7 +345,7 @@ test("remote status does not claim a URL proxy succeeded when loading used anoth
     {
       proxyMarker: {
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "installed",
         installedAt: 10,
         overrides: {

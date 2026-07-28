@@ -119,7 +119,7 @@ export function browserRead(state, reports = [], overrides = {}) {
     compatibleScopes: ["chrome_extension"],
     marker: {
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "installed",
       scope: "chrome_extension",
       observabilityVersion: "2.5.4",

@@ -50,14 +50,14 @@
         },
         devtools: {
           enabled: true,
-          source: "openruntime/extension-mf"
+          source: "divebell/extension-mf"
         }
       }));
     }
 
     notify({
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: existing ? "already-installed" : "installed",
       scope: SCOPE,
       observabilityVersion: PLUGIN_VERSION,
@@ -67,7 +67,7 @@
   } catch (error) {
     notify({
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "error",
       scope: SCOPE,
       observabilityVersion: PLUGIN_VERSION,

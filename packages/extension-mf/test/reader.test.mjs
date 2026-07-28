@@ -21,7 +21,7 @@ test("reader keeps only a bounded and sanitized MF proxy marker", () => {
   const result = parseBrowserReadResult(browserRead(runtimeState(), [], {
     proxyMarker: {
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "installed",
       installedAt: 10,
       overrides: {
@@ -32,7 +32,7 @@ test("reader keeps only a bounded and sanitized MF proxy marker", () => {
   assert.equal(result.ok, true);
   assert.deepEqual(result.snapshot.proxy, {
     schemaVersion: 1,
-    source: "openruntime/extension-mf",
+    source: "divebell/extension-mf",
     status: "installed",
     installedAt: 10,
     overrides: {

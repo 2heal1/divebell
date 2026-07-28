@@ -19,7 +19,7 @@ export function createSharedCapabilitySummary(
       reportedCapability.available === false &&
       reasonRequiresStableRuntime(reportedCapability.reason) &&
       snapshot.observabilityMode === "injected" &&
-      snapshot.injection?.source === "openruntime/extension-mf" &&
+      snapshot.injection?.source === "divebell/extension-mf" &&
       snapshot.injection.status !== "error" &&
       snapshot.observabilityVersion === INJECTED_MF_PREVIEW_VERSION &&
       snapshot.injection.observabilityVersion === INJECTED_MF_PREVIEW_VERSION &&

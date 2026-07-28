@@ -273,7 +273,7 @@ function appendHistoryWarnings(
   }
   if (snapshot.injection?.timing === "late") {
     warnings.push("The observability reader was injected after the MF runtime started, so earlier shared operations may be missing.");
-    actions.push("Reopen the page with `openruntime open <url>`, reproduce the operation, and retry.");
+    actions.push("Reopen the page with `divebell open <url>`, reproduce the operation, and retry.");
   }
 }
 

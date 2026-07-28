@@ -50,12 +50,12 @@ export function createSharedCommandPresenter(
 
 export function sharedCoreErrorToCommandError(error: unknown): never {
   if (!(error instanceof MfCoreError) || !error.code.startsWith("MF_SHARED_")) throw error;
-  const presenter = createSharedCommandPresenter(["openruntime", "mf"]);
+  const presenter = createSharedCommandPresenter(["divebell", "mf"]);
   throw new MfCommandError({
     code: error.code,
     kind: error.kind,
     message: error.message,
-    hint: "Repeat `openruntime mf shared trace` with one of the current --instance values.",
+    hint: "Repeat `divebell mf shared trace` with one of the current --instance values.",
     data: {
       ...error.facts,
       ...(error.candidates.length === 0

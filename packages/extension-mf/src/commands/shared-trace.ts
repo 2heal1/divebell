@@ -1,5 +1,5 @@
 import { MfCommandError } from "../cli/errors.js";
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import {
   createSharedCommandPresenter,
@@ -30,13 +30,12 @@ export const sharedTraceCommand: MfCommandDefinition = {
       sharedCoreErrorToCommandError(error);
     }
     const presented = presentCandidates(result);
-    writeCommandResult(options, presented);
-    return 0;
+    return presentCommandResult(presented);
   }
 };
 
 function presentCandidates(result: SharedTraceResult): PresentedSharedTraceResult {
-  const presenter = createSharedCommandPresenter(["openruntime", "mf"]);
+  const presenter = createSharedCommandPresenter(["divebell", "mf"]);
   return {
     ...result,
     candidates: result.candidates.map((candidate) => ({

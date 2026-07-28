@@ -1,17 +1,17 @@
-# @openruntime/extension-mf
+# @divebell/extension-mf
 
 Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides seven external commands and a bounded, serializable view of the MF global share table.
 
 ## Commands
 
 ```text
-openruntime mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
-openruntime mf module-info [remote] [--mf <name>] [--instance <ref>]
-openruntime mf remote status <remote> [--mf <name>] [--instance <ref>]
-openruntime mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
-openruntime mf shared status [package] [--scope <scope>] [--version <version>] [--verbose]
-openruntime mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>]
-openruntime mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id <id>] [--operation <id>]
+divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
+divebell mf module-info [remote] [--mf <name>] [--instance <ref>]
+divebell mf remote status <remote> [--mf <name>] [--instance <ref>]
+divebell mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+divebell mf shared status [package] [--scope <scope>] [--version <version>] [--verbose]
+divebell mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <scope>] [--operation <id>] [--trace-id <id>]
+divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id <id>] [--operation <id>]
 ```
 
 All commands return structured output by default; `--json` is not required. Compatibility and capability summaries are used internally but are omitted from successful command output. When evidence is incomplete or unavailable, the useful reason remains in `warnings` and the next step remains in `recommendedActions`.
@@ -23,21 +23,21 @@ Remote and Shared trace commands analyze facts exposed through the page's safe p
 ## Install
 
 ```sh
-openruntime extensions add @openruntime/extension-mf
+divebell extensions add @divebell/extension-mf
 ```
 
-The current CLI uses the plural `extensions` command. The older singular form `openruntime extension add @openruntime/extension-mf` is not supported by this repository version.
+The current CLI uses the plural `extensions` command. The older singular form `divebell extension add @divebell/extension-mf` is not supported by this repository version.
 
-After installing or updating the extension, reopen the page with `openruntime open`. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
+After installing or updating the extension, reopen the page with `divebell open`. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
 
 ```sh
-openruntime open https://example.com
+divebell open https://example.com
 ```
 
 This behavior is enabled by default. Disable the whole MF debug injection for one open command with:
 
 ```sh
-openruntime open https://example.com --mf-debug=false
+divebell open https://example.com --mf-debug=false
 ```
 
 ### Proxy remotes while opening
@@ -47,7 +47,7 @@ can be the configured remote name or alias. A version target replaces the
 remote's version, while an HTTP(S) manifest URL replaces its entry.
 
 ```sh
-openruntime open https://example.com \
+divebell open https://example.com \
   --mf-proxy 'mf-doc=1.2.3' \
   --mf-proxy 'playground=https://cdn.example.com/playground/mf-manifest.json'
 ```
@@ -55,7 +55,7 @@ openruntime open https://example.com \
 `--mf-proxy` also accepts an absolute or relative path to a local JSON file:
 
 ```sh
-openruntime open https://example.com --mf-proxy ./mf-proxy.json
+divebell open https://example.com --mf-proxy ./mf-proxy.json
 ```
 
 The recommended file shape is:
@@ -75,9 +75,9 @@ remote more than once is an error. JSON file values must be strings, and the
 argument must be a local file path rather than an HTTP URL.
 
 The proxy applies only to that `open` operation. The next ordinary
-`openruntime open` restores the browser's previous proxy settings before the
-page starts, so an earlier OpenRuntime proxy does not remain active. Existing
-proxy settings that OpenRuntime did not create are preserved and restored.
+`divebell open` restores the browser's previous proxy settings before the
+page starts, so an earlier Divebell proxy does not remain active. Existing
+proxy settings that Divebell did not create are preserved and restored.
 `--mf-proxy` is independent from debug collection and still works together
 with `--mf-debug=false`.
 
@@ -143,11 +143,11 @@ Proxy SDK from a CDN.
 ## `mf status`
 
 ```sh
-openruntime mf status
-openruntime mf status host
-openruntime mf status --role consumer
-openruntime mf status --instance mf-2
-openruntime mf status --verbose
+divebell mf status
+divebell mf status host
+divebell mf status --role consumer
+divebell mf status --instance mf-2
+divebell mf status --verbose
 ```
 
 Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it.
@@ -170,7 +170,7 @@ The default command does not collect function locations. With `--verbose`, the g
 When a name matches more than one instance, the command returns candidates such as:
 
 ```text
-openruntime mf status --instance "mf-2"
+divebell mf status --instance "mf-2"
 ```
 
 It never selects the first same-name instance.
@@ -178,10 +178,10 @@ It never selects the first same-name instance.
 ## `mf module-info`
 
 ```sh
-openruntime mf module-info
-openruntime mf module-info catalog
-openruntime mf module-info catalog --mf host
-openruntime mf module-info catalog --instance mf-1
+divebell mf module-info
+divebell mf module-info catalog
+divebell mf module-info catalog --mf host
+divebell mf module-info catalog --instance mf-1
 ```
 
 The command first selects a confirmed consumer. It automatically selects only when exactly one consumer exists. With several consumers, duplicate names, or ambiguous remotes, it returns copyable candidate commands.
@@ -193,10 +193,10 @@ Output distinguishes `declared` from `loaded` and reports only what the public r
 ## Remote loading commands
 
 ```sh
-openruntime mf remote status shop --mf host
-openruntime mf remote trace
-openruntime mf remote trace shop/Button --instance mf-1 --trace-id mf-trace-1
-openruntime mf remote trace shop --preload --instance mf-1
+divebell mf remote status shop --mf host
+divebell mf remote trace
+divebell mf remote trace shop/Button --instance mf-1 --trace-id mf-trace-1
+divebell mf remote trace shop --preload --instance mf-1
 ```
 
 `mf remote status` returns a compact current view: whether the selected consumer declared the remote, whether the remote itself has loaded, which exposes have been observed loading successfully, whether a current consumer-to-producer relationship exists, the latest observed result, and its `traceId`. `loadedExposes` contains only exposes from successful or recovered loads; failed attempts are not counted. When the current page was opened with `--mf-proxy`, the optional `proxy` object also reports the target, name/alias match, whether the proxy actually applied, and the observed manifest URL as `loadedFrom` when available. It only analyzes existing page evidence and does not make a request or execute remote code. Detailed resources and lifecycle stages stay in `mf remote trace`.
@@ -228,15 +228,15 @@ See [docs/remote.md](docs/remote.md) for the result fields, evidence boundaries,
 ## Shared state and loading chains
 
 ```sh
-openruntime mf shared status
-openruntime mf shared status react --scope default
-openruntime mf shared status react --scope default --version 18.3.1
-openruntime mf shared status react --verbose
+divebell mf shared status
+divebell mf shared status react --scope default
+divebell mf shared status react --scope default --version 18.3.1
+divebell mf shared status react --verbose
 
-openruntime mf shared trace
-openruntime mf shared trace react --instance mf-1
-openruntime mf shared trace react --instance mf-1 --operation loadShare-42
-openruntime mf shared trace react --trace-id mf-trace-42
+divebell mf shared trace
+divebell mf shared trace react --instance mf-1
+divebell mf shared trace react --instance mf-1 --operation loadShare-42
+divebell mf shared trace react --trace-id mf-trace-42
 ```
 
 `mf shared status` returns the same `scope -> package -> version` structure as the top-level `shared` field in `mf status`. It reads the merged global Shared registry and does not return an `instances` list. The optional package, `--scope`, and `--version` selectors are exact filters. By default, only loaded versions are returned and `lib` / `get` details are omitted. `--verbose` additionally returns unloaded versions and bounded function source/location details.
@@ -250,11 +250,11 @@ See [docs/shared.md](docs/shared.md) for capability, version, ambiguity, and par
 ## `mf bridge trace`
 
 ```sh
-openruntime mf bridge trace
-openruntime mf bridge trace catalog
-openruntime mf bridge trace shop --instance mf-1
-openruntime mf bridge trace catalog --instance mf-1 --bridge-id bridge-1 --operation bridge-op-1
-openruntime mf bridge trace catalog --instance mf-1 --operation bridge-op-1
+divebell mf bridge trace
+divebell mf bridge trace catalog
+divebell mf bridge trace shop --instance mf-1
+divebell mf bridge trace catalog --instance mf-1 --bridge-id bridge-1 --operation bridge-op-1
+divebell mf bridge trace catalog --instance mf-1 --operation bridge-op-1
 ```
 
 Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
@@ -271,7 +271,7 @@ See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boun
 
 - `injected`: this extension installed its bundled collector before MF runtime startup.
 - `application`: the page exposes one compatible application Observability reader; it is preferred over the injected reader.
-- `unavailable`: no compatible public reader is present. Reopen the page with `openruntime open <url>` or configure the MF Observability Plugin in the application.
+- `unavailable`: no compatible public reader is present. Reopen the page with `divebell open <url>` or configure the MF Observability Plugin in the application.
 
 Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, `options.id`, or other private runtime objects. The only additional global read is the sanitized `__SHARE__` snapshot used by `mf status` and `mf shared status`.
 
@@ -307,13 +307,13 @@ import {
   type BridgeTraceResult,
   type ConsumerSelectors,
   type StatusSelectors
-} from "@openruntime/extension-mf/core";
+} from "@divebell/extension-mf/core";
 ```
 
-The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `openruntime mf` commands. A Vmok extension can therefore use the same facts and render its own `openruntime vmok` guidance.
+The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `divebell mf` commands. A Vmok extension can therefore use the same facts and render its own `divebell vmok` guidance.
 
 The public report types preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Bridge, Remote, and Shared commands consume the same `BrowserObservabilitySnapshot`, report, resource, Shared, and Bridge facts from this entry, so other extensions can reuse the result builders, grouping, and selection rules without invoking the CLI or adding another browser reader.
 
 The reader intentionally omits response headers and bodies, cookies, tokens, factories, containers, props, routers, arbitrary metadata, and raw runtime objects. The current public report also does not provide Remote response contents, Shared factory identity, Bridge props/router objects, or business-data readiness. Bridge commit and route-sync evidence is available, but application readiness still needs an explicit business signal. Missing facts should remain unknown rather than being inferred by commands.
 
-The package root remains the default OpenRuntime extension entry and keeps the existing named public exports for compatibility. New integrations should use `@openruntime/extension-mf/core` for reusable capabilities and types. Command routing, formatting, and output adapters are intentionally private.
+The package root remains the default Divebell extension entry and keeps the existing named public exports for compatibility. New integrations should use `@divebell/extension-mf/core` for reusable capabilities and types. Command routing, formatting, and output adapters are intentionally private.

@@ -90,7 +90,7 @@ function createMatchedPackages(root) {
 }
 
 test("sync creates one exact-version Runtime, Runtime Core, and Observability set", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-sync-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-debug-sync-"));
   const assets = join(root, "assets");
   try {
     const packages = createMatchedPackages(root);
@@ -162,7 +162,7 @@ test("sync creates one exact-version Runtime, Runtime Core, and Observability se
 });
 
 test("sync rejects any package that does not use the required version", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-mismatch-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-debug-mismatch-"));
   try {
     const packages = createMatchedPackages(root);
     const manifestPath = join(packages.observabilityRoot, "package.json");
@@ -188,7 +188,7 @@ test("sync rejects any package that does not use the required version", async ()
 });
 
 test("Runtime must depend on the exact Runtime Core version", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-runtime-core-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-runtime-core-"));
   try {
     const packages = createMatchedPackages(root);
     const manifestPath = join(packages.runtimeRoot, "package.json");
@@ -210,7 +210,7 @@ test("Runtime must depend on the exact Runtime Core version", async () => {
 });
 
 test("sync accepts independently versioned packages from one local workspace", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-workspace-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-debug-workspace-"));
   const assets = join(root, "assets");
   try {
     const packages = createMatchedPackages(root);
@@ -288,7 +288,7 @@ test("Runtime package validation rejects wrong packages and missing public entri
     /does not exist/
   );
 
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-debug-invalid-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-debug-invalid-"));
   try {
     const wrong = join(root, "wrong");
     writeManifest(wrong, { name: "not-the-runtime", version: "1.0.0" });

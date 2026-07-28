@@ -1,4 +1,4 @@
-import type { CommandErrorKind } from "@openruntime/cli";
+import type { CommandErrorKind } from "@divebell/cli";
 
 import type { MfCoreError } from "../errors.js";
 import type { InstanceCandidate } from "../types.js";
@@ -31,7 +31,7 @@ export class MfCommandError extends Error {
 }
 
 export function coreErrorToCommandError(error: MfCoreError): MfCommandError {
-  const presenter = createCommandPresenter(["openruntime", "mf"]);
+  const presenter = createCommandPresenter(["divebell", "mf"]);
   return new MfCommandError({
     code: error.code,
     kind: error.kind,
@@ -75,23 +75,23 @@ function coreErrorHint(error: MfCoreError): string {
     case "MF_PAGE_NOT_FEDERATED":
       return "Confirm that the opened page uses Module Federation. If it initializes later, wait and run the command again.";
     case "MF_INSTANCE_STATE_UNAVAILABLE":
-      return "Upgrade or configure the MF Observability Plugin, then reopen the page with `openruntime open <url>`.";
+      return "Upgrade or configure the MF Observability Plugin, then reopen the page with `divebell open <url>`.";
     case "MF_INSTANCE_REF_NOT_FOUND":
       return error.facts.requiredRole === "consumer"
-        ? "Run `openruntime mf status --role consumer` and choose a current instanceRef."
-        : "Run `openruntime mf status` and choose a current instanceRef.";
+        ? "Run `divebell mf status --role consumer` and choose a current instanceRef."
+        : "Run `divebell mf status` and choose a current instanceRef.";
     case "MF_INSTANCE_NOT_CONSUMER":
       return "Choose a consumer candidate. Unknown role evidence is not treated as consumer proof.";
     case "MF_INSTANCE_NAME_AMBIGUOUS":
     case "MF_CONSUMER_AMBIGUOUS":
       return "Repeat the command with one of the candidate --instance values.";
     case "MF_REMOTE_NOT_FOUND":
-      return "Run `openruntime mf status` to inspect the current consumers.";
+      return "Run `divebell mf status` to inspect the current consumers.";
     case "MF_REMOTE_AMBIGUOUS":
       return "Repeat the command with one of the candidate remote names and the same --instance value.";
     case "MF_CONSUMER_NOT_FOUND":
-      return "Run `openruntime mf status` and inspect the current roles.";
+      return "Run `divebell mf status` and inspect the current roles.";
     default:
-      return "Run `openruntime mf status` to inspect the current candidates.";
+      return "Run `divebell mf status` to inspect the current candidates.";
   }
 }

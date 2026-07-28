@@ -274,7 +274,7 @@ function createOptions(command, argsOptions, browserValue) {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write() {} },
       fetcher: async () => new Response(),
-      openruntime: {
+      divebell: {
         browser: { async eval() { return browserValue; } }
       },
       output: {

@@ -72,8 +72,8 @@ test("the real registry exposes exactly the implemented commands", () => {
 function registration(path) {
   return {
     path,
-    usage: `openruntime mf ${path.join(" ")}`,
-    summaryUsage: `openruntime mf ${path.join(" ")}`,
+    usage: `divebell mf ${path.join(" ")}`,
+    summaryUsage: `divebell mf ${path.join(" ")}`,
     description: "test command",
     async load() {
       return { metadata: this, async run() { return 0; } };

@@ -87,7 +87,7 @@ export async function runBrowserCliCommand(
       ...(headers === undefined ? {} : { headers })
     }, openHookPlan);
     writeHookFailures(stderr, hookResult.failures);
-    let result: BrowserRunResult;
+    let result: BrowserRunResult & { injectedScriptPath?: string };
     try {
       result = await openBrowserPage(
         browserRunner,

@@ -4,7 +4,7 @@ import { MfCommandError } from "./errors.js";
 import { createCommandPresenter } from "./presenter.js";
 
 export function remoteCoreErrorToCommandError(error: RemoteCoreError): MfCommandError {
-  const presenter = createCommandPresenter(["openruntime", "mf"]);
+  const presenter = createCommandPresenter(["divebell", "mf"]);
   return new MfCommandError({
     code: error.code,
     kind: error.kind,

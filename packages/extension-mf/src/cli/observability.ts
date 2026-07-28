@@ -1,4 +1,4 @@
-import type { CliExtensionRunOptions } from "@openruntime/cli";
+import type { CliExtensionRunOptions } from "@divebell/cli";
 
 import { readMfObservability } from "../reader.js";
 import type { BrowserObservabilitySnapshot } from "../types.js";
@@ -11,7 +11,7 @@ export async function readCommandSnapshot(
   let readResult;
   try {
     readResult = await readMfObservability(
-      options.openruntime.browser,
+      options.divebell.browser,
       readOptions
     );
   } catch (error) {
@@ -19,8 +19,8 @@ export async function readCommandSnapshot(
       throw new MfCommandError({
         code: "MF_PAGE_CONTEXT_REQUIRED",
         kind: "validation",
-        message: "There is no page opened by OpenRuntime for this command.",
-        hint: "Run `openruntime open <url>` and then run the MF command again."
+        message: "There is no page opened by Divebell for this command.",
+        hint: "Run `divebell open <url>` and then run the MF command again."
       });
     }
     throw new MfCommandError({
@@ -34,14 +34,7 @@ export async function readCommandSnapshot(
   return readResult.snapshot;
 }
 
-export function writeCommandResult(
-  options: CliExtensionRunOptions,
-  result: unknown
-): void {
-  options.output.ok(presentCommandResult(result));
-}
-
-function presentCommandResult(result: unknown): unknown {
+export function presentCommandResult(result: unknown): unknown {
   if (!isRecord(result)) return result;
   const presented = { ...result };
   delete presented.compatibility;
@@ -265,7 +258,7 @@ function unavailableError(
       code: "MF_OBSERVABILITY_INCOMPATIBLE",
       kind: "runtime",
       message: "An Observability reader exists, but it does not provide the MF-Obs-00 safe runtime-state interface.",
-      hint: "Upgrade the MF Observability Plugin, then reopen the page with `openruntime open <url>`.",
+      hint: "Upgrade the MF Observability Plugin, then reopen the page with `divebell open <url>`.",
       ...common
     });
   }
@@ -282,7 +275,7 @@ function unavailableError(
     code: "MF_OBSERVABILITY_UNAVAILABLE",
     kind: "not_found",
     message: "No public Module Federation Observability reader is available in the current page.",
-    hint: "Reopen the page with `openruntime open <url>`. If the extension was installed after opening, close and reopen the page; alternatively configure the Observability Plugin in the application.",
+    hint: "Reopen the page with `divebell open <url>`. If the extension was installed after opening, close and reopen the page; alternatively configure the Observability Plugin in the application.",
     ...common
   });
 }

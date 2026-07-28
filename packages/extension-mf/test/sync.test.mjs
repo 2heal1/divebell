@@ -43,15 +43,15 @@ function createPackageFixture(root, overrides = {}) {
     `
   );
   execFileSync("git", ["init", "-q"], { cwd: packageRoot });
-  execFileSync("git", ["config", "user.email", "test@openruntime.dev"], { cwd: packageRoot });
-  execFileSync("git", ["config", "user.name", "OpenRuntime Test"], { cwd: packageRoot });
+  execFileSync("git", ["config", "user.email", "test@divebell.dev"], { cwd: packageRoot });
+  execFileSync("git", ["config", "user.name", "Divebell Test"], { cwd: packageRoot });
   execFileSync("git", ["add", "."], { cwd: packageRoot });
   execFileSync("git", ["commit", "-qm", "fixture"], { cwd: packageRoot });
   return packageRoot;
 }
 
 test("sync and check share one deterministic public-entry build", async () => {
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-sync-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-sync-"));
   const assets = join(root, "assets");
   try {
     const packageRoot = createPackageFixture(root);
@@ -87,7 +87,7 @@ test("sync and check share one deterministic public-entry build", async () => {
     );
     assert.doesNotMatch(bundle, /\brequire\s*\(|\bimport\s*\(|\bimport\s+[\w{*]/);
     assert.doesNotMatch(bundle, /\/Users\/|sourceMappingURL|cdn\.jsdelivr|unpkg\.com/i);
-    assert.doesNotMatch(metadataSource, /\/Users\/|openruntime-mf-sync-/);
+    assert.doesNotMatch(metadataSource, /\/Users\/|divebell-mf-sync-/);
 
     const context = vm.createContext({
       console: { log() {}, info() {}, warn() {}, error() {} }
@@ -118,7 +118,7 @@ test("package root validation rejects missing, wrong, and private entries", asyn
   await assert.rejects(loadPackageContext(), /--package-root/);
   await assert.rejects(loadPackageContext("/path/that/does/not/exist"), /does not exist/);
 
-  const root = mkdtempSync(join(tmpdir(), "openruntime-mf-invalid-"));
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-invalid-"));
   try {
     const wrongName = join(root, "wrong-name");
     mkdirSync(wrongName);

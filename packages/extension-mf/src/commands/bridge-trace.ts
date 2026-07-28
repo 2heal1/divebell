@@ -1,5 +1,5 @@
 import { createCommandPresenter } from "../cli/presenter.js";
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import { MfCommandError } from "../cli/errors.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { presentBridgeTraceResult } from "../bridge/format.js";
@@ -32,10 +32,9 @@ export const bridgeTraceCommand: MfCommandDefinition = {
     });
     const presented = presentBridgeTraceResult(
       result,
-      createCommandPresenter(["openruntime", "mf"])
+      createCommandPresenter(["divebell", "mf"])
     );
-    writeCommandResult(options, presented);
-    return 0;
+    return presentCommandResult(presented);
   }
 };
 

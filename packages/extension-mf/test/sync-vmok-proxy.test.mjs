@@ -13,7 +13,7 @@ import test from "node:test";
 import { synchronizeVmokProxy } from "../scripts/sync-vmok-proxy.mjs";
 
 test("Vmok Proxy SDK sync and check use one fixed self-contained bundle", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-vmok-proxy-sync-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-vmok-proxy-sync-"));
   try {
     const packageRoot = createProxyPackage(directory);
     const assetDirectory = join(directory, "assets");
@@ -54,7 +54,7 @@ test("Vmok Proxy SDK sync and check use one fixed self-contained bundle", async 
 });
 
 test("Vmok Proxy SDK sync rejects the wrong package and unsafe bundles", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-vmok-proxy-invalid-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-vmok-proxy-invalid-"));
   try {
     const wrongPackage = createProxyPackage(directory, {
       name: "@example/not-proxy"

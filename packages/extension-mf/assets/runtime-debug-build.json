@@ -5,5 +5,5 @@
   "packageVersion": "2.8.0",
   "sourceRevision": "e80ae523309d08e92dc6009ec65a8d42721462e5",
   "publicEntry": "./dist/index.js",
-  "bundleSha256": "6cfbaa360e66a46333906b8fe8441708a9f389848d7180dda55009d7ff0085a4"
+  "bundleSha256": "532d4abb5f566d8f63105222218e5e8de0505a04340db14f8fc8294e082d21fc"
 }

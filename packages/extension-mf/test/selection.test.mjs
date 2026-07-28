@@ -48,7 +48,7 @@ test("duplicate names return structured candidates without CLI command text", ()
   assert.equal(selected.issue.candidates[0].instanceRef, "mf-1");
   assert.equal(selected.issue.kind, "needs_input");
   assert.equal(selected.issue.recommendedActions[0].type, "select-instance");
-  assert.doesNotMatch(JSON.stringify(selected.issue), /openruntime mf|command/);
+  assert.doesNotMatch(JSON.stringify(selected.issue), /divebell mf|command/);
 });
 
 test("role filters include mixed instances and preserve unknown evidence", () => {

@@ -1,5 +1,5 @@
 import { MfCommandError } from "../cli/errors.js";
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { createRemoteTraceResult } from "../remote/results.js";
 import { remoteTraceCommandMetadata } from "./metadata.js";
@@ -19,8 +19,7 @@ export const remoteTraceCommand: MfCommandDefinition = {
       preload ? "preload" : "load",
       remoteSelectors(options, target)
     );
-    writeCommandResult(options, result);
-    return 0;
+    return presentCommandResult(result);
   }
 };
 
@@ -33,7 +32,7 @@ function rejectSharedOptions(options: Map<string, string[]>): void {
     code: "MF_COMMAND_OPTION_INVALID",
     kind: "validation",
     message: `--${optionName} is not available for remote traces.`,
-    hint: `Use \`${remoteTraceCommandMetadata.usage}\` or run \`openruntime mf shared trace [package]\`.`
+    hint: `Use \`${remoteTraceCommandMetadata.usage}\` or run \`divebell mf shared trace [package]\`.`
   });
 }
 

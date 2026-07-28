@@ -420,7 +420,7 @@ export interface RuntimeReport {
 
 export interface InjectionMarker {
   schemaVersion: 1;
-  source: "openruntime/extension-mf";
+  source: "divebell/extension-mf";
   status: "installed" | "already-installed" | "error";
   scope: string;
   observabilityVersion: string;
@@ -431,7 +431,7 @@ export interface InjectionMarker {
 
 export interface ProxyInjectionMarker {
   schemaVersion: 1;
-  source: "openruntime/extension-mf";
+  source: "divebell/extension-mf";
   status: "installed" | "error";
   installedAt: number;
   overrides: Record<string, string>;

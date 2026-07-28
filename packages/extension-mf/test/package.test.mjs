@@ -7,10 +7,10 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
-  createOpenRuntimeCli,
-  createOpenRuntimeCliWithExternalExtensions,
+  createDivebellCli,
+  createDivebellCliWithExternalExtensions,
   validateExtension
-} from "@openruntime/cli";
+} from "@divebell/cli";
 import { implementedMfCommandMetadata } from "../dist/commands/metadata.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,7 +40,7 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   }
   assert.doesNotMatch(
     JSON.stringify(commandReferences),
-    /openruntime mf trace|openruntime mf remote check|openruntime mf preload trace/
+    /divebell mf trace|divebell mf remote check|divebell mf preload trace/
   );
 });
 
@@ -76,18 +76,18 @@ test("public build output has no external runtime imports or embedded MF CLI gui
       /(?:from|import\()\s*["'](?!\.\.?\/|node:)/
     );
   }
-  assert.doesNotMatch(sources.join("\n"), /openruntime mf (?:status|module-info|remote status|remote trace|shared status|shared trace|bridge trace)/);
+  assert.doesNotMatch(sources.join("\n"), /divebell mf (?:status|module-info|remote status|remote trace|shared status|shared trace|bridge trace)/);
 });
 
 test("packed npm archive is self-contained and has no runtime dependencies", () => {
-  const outputDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-pack-"));
+  const outputDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-mf-pack-"));
   try {
     const packed = spawnSync("pnpm", ["pack", "--pack-destination", outputDirectory], {
       cwd: packageRoot,
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(outputDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(outputDirectory, "divebell-extension-mf-0.0.0.tgz");
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
@@ -142,7 +142,7 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(reportTypes, /interface RuntimeBridgeInfo/);
     const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     assert.equal(packageJson.dependencies, undefined);
-    assert.equal(packageJson.openruntime.extensions[0], "./dist/extension.js");
+    assert.equal(packageJson.divebell.extensions[0], "./dist/extension.js");
     assert.equal(packageJson.exports["."].import, "./dist/package.js");
     assert.equal(packageJson.exports["./core"].import, "./dist/public.js");
     assert.deepEqual(Object.keys(packageJson.exports), [".", "./core"]);
@@ -188,7 +188,7 @@ function escapeRegExp(value) {
 }
 
 test("packed archive supports real package-name imports for public API and extension", () => {
-  const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-public-import-"));
+  const tempDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-mf-public-import-"));
   const packDirectory = join(tempDirectory, "pack");
   try {
     mkdirSync(packDirectory, { recursive: true });
@@ -197,7 +197,7 @@ test("packed archive supports real package-name imports for public API and exten
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(packDirectory, "divebell-extension-mf-0.0.0.tgz");
     const installed = spawnSync("npm", [
       "install",
       "--ignore-scripts",
@@ -215,8 +215,8 @@ test("packed archive supports real package-name imports for public API and exten
     const imported = spawnSync(process.execPath, [
       "--input-type=module",
       "-e",
-      `const extension = await import("@openruntime/extension-mf");
-       const api = await import("@openruntime/extension-mf/core");
+      `const extension = await import("@divebell/extension-mf");
+       const api = await import("@divebell/extension-mf/core");
        const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterGlobalShared", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteStatus", "createRemoteTraceResult", "createRemoteStatusResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
@@ -233,7 +233,7 @@ test("packed archive supports real package-name imports for public API and exten
 });
 
 test("packed archive installs and loads through the external extension mechanism", async () => {
-  const tempDirectory = mkdtempSync(join(tmpdir(), "openruntime-extension-mf-install-"));
+  const tempDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-mf-install-"));
   const packDirectory = join(tempDirectory, "pack");
   const extensionsDirectory = join(tempDirectory, "extensions");
   try {
@@ -243,14 +243,14 @@ test("packed archive installs and loads through the external extension mechanism
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "openruntime-extension-mf-0.1.2.tgz");
+    const archive = join(packDirectory, "divebell-extension-mf-0.0.0.tgz");
     let stdout = "";
     let stderr = "";
-    const cli = createOpenRuntimeCli();
+    const cli = createDivebellCli();
     const exitCode = await cli.run([
       "extensions",
       "add",
-      "@openruntime/extension-mf"
+      "@divebell/extension-mf"
     ], {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write(chunk) { stderr += chunk; } },
@@ -260,26 +260,34 @@ test("packed archive installs and loads through the external extension mechanism
       }
     });
     assert.equal(exitCode, 0, stderr);
-    assert.equal(JSON.parse(stdout).package.name, "@openruntime/extension-mf");
+    assert.equal(JSON.parse(stdout).package.name, "@divebell/extension-mf");
 
-    const loaded = await createOpenRuntimeCliWithExternalExtensions({}, {
+    const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
-      OPENRUNTIME_EXTENSIONS_DIR: extensionsDirectory,
-      OPENRUNTIME_DISABLE_EXTENSIONS: "0"
+      DIVEBELL_EXTENSIONS_DIR: extensionsDirectory,
+      DIVEBELL_DISABLE_EXTENSIONS: "0"
     });
     assert.deepEqual(loaded.cli.extensions.map((extension) => extension.name), ["mf"]);
     assert.deepEqual(loaded.cli.extensions[0].commands.map((command) => command.name), ["mf"]);
     assert.equal(typeof loaded.cli.extensions[0].hooks.open, "function");
-    let help = "";
-    const helpExitCode = await loaded.cli.run(["--help"], {
-      stdout: { write(chunk) { help += chunk; } },
+    let rootHelp = "";
+    const rootHelpExitCode = await loaded.cli.run(["--help"], {
+      stdout: { write(chunk) { rootHelp += chunk; } },
       stderr: { write() {} }
     });
-    assert.equal(helpExitCode, 0);
-    assert.match(help, /External Extensions:/);
+    assert.equal(rootHelpExitCode, 0);
+    assert.match(rootHelp, /External Extensions:/);
+    assert.match(rootHelp, /divebell mf/);
+
+    let commandHelp = "";
+    const commandHelpExitCode = await loaded.cli.run(["mf", "--help"], {
+      stdout: { write(chunk) { commandHelp += chunk; } },
+      stderr: { write() {} }
+    });
+    assert.equal(commandHelpExitCode, 0);
     let previousIndex = -1;
     for (const command of implementedMfCommandMetadata) {
-      const index = help.indexOf(command.usage);
+      const index = commandHelp.indexOf(command.usage);
       assert.ok(index > previousIndex, `${command.usage} is missing or out of order in --help`);
       previousIndex = index;
     }

@@ -1,4 +1,4 @@
-import type { CliExtensionRunOptions } from "@openruntime/cli";
+import type { CliExtensionRunOptions } from "@divebell/cli";
 
 import { MfCommandError } from "../cli/errors.js";
 import type { MfCommandMetadata } from "./metadata.js";

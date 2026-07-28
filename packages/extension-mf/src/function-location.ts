@@ -8,8 +8,8 @@ import type {
   SharedOriginalFunctionLocation
 } from "./types.js";
 
-const FUNCTION_LOCATOR_KEY = "__openruntimeFunctionLocator";
-const LOCATION_TOKEN_SYMBOL = "openruntime.mf.location-token";
+const FUNCTION_LOCATOR_KEY = "__divebellFunctionLocator";
+const LOCATION_TOKEN_SYMBOL = "divebell.mf.location-token";
 const MAX_FUNCTIONS = 200;
 const MAX_PAGE_TARGETS = 20;
 const MAX_SOURCE_MAPS = 20;
@@ -294,7 +294,7 @@ async function resolveFunctionLocations(
       await ignoreCdpError(
         client.send(
           "Runtime.releaseObjectGroup",
-          { objectGroup: "openruntime-mf-location" },
+          { objectGroup: "divebell-mf-location" },
           sessionId
         )
       );
@@ -388,7 +388,7 @@ async function resolveOneFunctionLocation(
       "Runtime.evaluate",
       {
         expression: createFunctionLookupExpression(locator),
-        objectGroup: "openruntime-mf-location",
+        objectGroup: "divebell-mf-location",
         returnByValue: false,
         silent: true
       },

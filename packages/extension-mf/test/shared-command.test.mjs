@@ -7,7 +7,7 @@ import { browserRead, instance, runtimeState } from "./fixtures.mjs";
 import { sharedReport } from "./shared-fixtures.mjs";
 
 test("shared presenter emits copyable status and trace selectors", () => {
-  const presenter = createSharedCommandPresenter(["openruntime", "mf"]);
+  const presenter = createSharedCommandPresenter(["divebell", "mf"]);
   assert.equal(
     presenter.status({
       package: "react",
@@ -15,7 +15,7 @@ test("shared presenter emits copyable status and trace selectors", () => {
       version: "18.3.1",
       verbose: true
     }),
-    'openruntime mf shared status "react" --scope "default" --version "18.3.1" --verbose'
+    'divebell mf shared status "react" --scope "default" --version "18.3.1" --verbose'
   );
   assert.equal(
     presenter.trace({
@@ -24,7 +24,7 @@ test("shared presenter emits copyable status and trace selectors", () => {
       scope: "default",
       operationId: "loadShare-42"
     }),
-    'openruntime mf shared trace "react" --instance "mf-1" --scope "default" --operation "loadShare-42"'
+    'divebell mf shared trace "react" --instance "mf-1" --scope "default" --operation "loadShare-42"'
   );
 });
 
@@ -148,7 +148,7 @@ test("ambiguous shared trace returns copyable operation commands", async () => {
   assert.deepEqual(value.candidates.map((candidate) => candidate.operationId), ["op-a", "op-b"]);
   assert.equal(
     value.candidates[0].command,
-    'openruntime mf shared trace "react" --instance "mf-1" --scope "default" --operation "op-a"'
+    'divebell mf shared trace "react" --instance "mf-1" --scope "default" --operation "op-a"'
   );
 
   const textRun = createOptions(
@@ -265,7 +265,7 @@ function createOptions(command, argsOptions, browserValue) {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write() {} },
       fetcher: async () => new Response(),
-      openruntime: {
+      divebell: {
         browser: {
           async eval() {
             return browserValue;

@@ -37,9 +37,9 @@ const capabilityNames: CapabilityName[] = [
 ];
 
 const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
-  const includeFunctionSource = __OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__;
-  const includeFunctionLocations = __OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__;
-  const locationTokenSymbol = "openruntime.mf.location-token";
+  const includeFunctionSource = __DIVEBELL_MF_INCLUDE_FUNCTION_SOURCE__;
+  const includeFunctionLocations = __DIVEBELL_MF_INCLUDE_FUNCTION_LOCATIONS__;
+  const locationTokenSymbol = "divebell.mf.location-token";
   const pageToken = includeFunctionLocations
     ? \`\${Date.now().toString(36)}-\${Math.random().toString(36).slice(2)}\`
     : undefined;
@@ -47,7 +47,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
     globalThis[Symbol.for(locationTokenSymbol)] = pageToken;
   }
   const marker = globalThis.__MF_OBSERVABILITY_INJECTION__;
-  const proxyMarker = globalThis.__OPENRUNTIME_MF_PROXY_INJECTION__;
+  const proxyMarker = globalThis.__DIVEBELL_MF_PROXY_INJECTION__;
   const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__;
   const availableScopes = readers && typeof readers === "object"
     ? Object.keys(readers)
@@ -92,7 +92,7 @@ const MF_BROWSER_READ_SCRIPT_TEMPLATE = `(() => {
   const functionSource = (value, locator) => {
     if (typeof value !== "function") return undefined;
     const details = includeFunctionLocations
-      ? { __openruntimeFunctionLocator: locator }
+      ? { __divebellFunctionLocator: locator }
       : {};
     if (!includeFunctionSource) {
       return includeFunctionLocations ? details : undefined;
@@ -282,10 +282,10 @@ function createBrowserReadScript(
   includeFunctionLocations = false
 ): string {
   return MF_BROWSER_READ_SCRIPT_TEMPLATE.replace(
-    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_SOURCE__",
+    "__DIVEBELL_MF_INCLUDE_FUNCTION_SOURCE__",
     includeFunctionSource ? "true" : "false"
   ).replace(
-    "__OPENRUNTIME_MF_INCLUDE_FUNCTION_LOCATIONS__",
+    "__DIVEBELL_MF_INCLUDE_FUNCTION_LOCATIONS__",
     includeFunctionLocations ? "true" : "false"
   );
 }
@@ -1107,7 +1107,7 @@ function parseErrorSummary(record: Record<string, unknown>) {
 function optionalInjection(value: unknown): InjectionMarker | undefined {
   if (value === undefined || value === null) return undefined;
   const record = asRecord(value, "injection marker");
-  if (record.schemaVersion !== 1 || record.source !== "openruntime/extension-mf") {
+  if (record.schemaVersion !== 1 || record.source !== "divebell/extension-mf") {
     return undefined;
   }
   const status = requiredString(record.status, "injection status");
@@ -1116,7 +1116,7 @@ function optionalInjection(value: unknown): InjectionMarker | undefined {
   if (!["before-runtime", "late", "unknown"].includes(timing)) return undefined;
   return compact({
     schemaVersion: 1,
-    source: "openruntime/extension-mf",
+    source: "divebell/extension-mf",
     status: status as InjectionMarker["status"],
     scope: requiredString(record.scope, "injection scope"),
     observabilityVersion: requiredString(record.observabilityVersion, "injection version"),
@@ -1131,7 +1131,7 @@ function optionalProxyInjection(
 ): ProxyInjectionMarker | undefined {
   if (value === undefined || value === null) return undefined;
   const record = asRecord(value, "proxy injection marker");
-  if (record.schemaVersion !== 1 || record.source !== "openruntime/extension-mf") {
+  if (record.schemaVersion !== 1 || record.source !== "divebell/extension-mf") {
     return undefined;
   }
   const status = requiredString(record.status, "proxy injection status");
@@ -1148,7 +1148,7 @@ function optionalProxyInjection(
   );
   return compact({
     schemaVersion: 1,
-    source: "openruntime/extension-mf",
+    source: "divebell/extension-mf",
     status: status as ProxyInjectionMarker["status"],
     installedAt: requiredNumber(
       record.installedAt,
@@ -1186,7 +1186,7 @@ function requiredProxyTarget(value: unknown, label: string): string {
     const protocolRelative = withoutQuery.startsWith("//");
     const url = new URL(
       withoutQuery,
-      protocolRelative ? "https://openruntime.invalid" : undefined
+      protocolRelative ? "https://divebell.invalid" : undefined
     );
     url.username = "";
     url.password = "";

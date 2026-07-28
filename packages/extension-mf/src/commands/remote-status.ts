@@ -1,4 +1,4 @@
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { createRemoteStatusResult } from "../remote/results.js";
 import { remoteStatusCommandMetadata } from "./metadata.js";
@@ -18,7 +18,6 @@ export const remoteStatusCommand: MfCommandDefinition = {
       ...(name === undefined ? {} : { name }),
       ...(instanceRef === undefined ? {} : { instanceRef })
     });
-    writeCommandResult(options, result);
-    return 0;
+    return presentCommandResult(result);
   }
 };

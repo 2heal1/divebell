@@ -177,9 +177,9 @@ test("same-name MF instances return copyable command candidates", async () => {
     () => runMfCommand(run.options),
     (error) => error.code === "MF_CONSUMER_AMBIGUOUS" &&
       error.data.candidates[0].command ===
-        'openruntime mf remote trace "shop/Button" --instance "mf-1"' &&
+        'divebell mf remote trace "shop/Button" --instance "mf-1"' &&
       error.data.candidates[1].command ===
-        'openruntime mf remote trace "shop/Button" --instance "mf-2"'
+        'divebell mf remote trace "shop/Button" --instance "mf-2"'
   );
 });
 
@@ -197,9 +197,9 @@ test("concurrent traces return copyable --trace-id candidates", async () => {
     (error) => error.code === "MF_REMOTE_TRACE_AMBIGUOUS" &&
       error.data.candidates[0].traceId === "trace-a" &&
       error.data.candidates[0].command ===
-        'openruntime mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-a"' &&
+        'divebell mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-a"' &&
       error.data.candidates[1].command ===
-        'openruntime mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-b"'
+        'divebell mf remote trace "shop/Button" --instance "mf-1" --trace-id "trace-b"'
   );
 });
 
@@ -238,7 +238,7 @@ function createOptions(command, argsOptions, browserValue) {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write() {} },
       fetcher: async () => new Response(),
-      openruntime: {
+      divebell: {
         browser: {
           async eval() { return browserValue; }
         }

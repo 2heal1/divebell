@@ -1,20 +1,20 @@
 # Bridge lifecycle diagnostics
 
-`openruntime mf bridge trace` explains the Bridge lifecycle evidence already exposed by the Module Federation Observability Plugin. It does not inspect Bridge internals, application props, router objects, or business state.
+`divebell mf bridge trace` explains the Bridge lifecycle evidence already exposed by the Module Federation Observability Plugin. It does not inspect Bridge internals, application props, router objects, or business state.
 
 ## Commands
 
 ```sh
-openruntime mf bridge trace
-openruntime mf bridge trace <remote-or-alias>
-openruntime mf bridge trace <remote-or-alias> --mf <name>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --bridge-id <bridgeId>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
-openruntime mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
+divebell mf bridge trace
+divebell mf bridge trace <remote-or-alias>
+divebell mf bridge trace <remote-or-alias> --mf <name>
+divebell mf bridge trace <remote-or-alias> --instance <instanceRef>
+divebell mf bridge trace <remote-or-alias> --instance <instanceRef> --bridge-id <bridgeId>
+divebell mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
+divebell mf bridge trace <remote-or-alias> --instance <instanceRef> --operation <operationId>
 ```
 
-`--instance` always takes the session-scoped instanceRef shown by `openruntime mf status`. `--mf` matches the visible MF name. `--bridge-id` selects one Module Federation Bridge instance without conflicting with OpenRuntime's own `--bridge` connection option. Duplicate names return candidates instead of selecting the first instance.
+`--instance` always takes the session-scoped instanceRef shown by `divebell mf status`. `--mf` matches the visible MF name. `--bridge-id` selects one Module Federation Bridge instance without conflicting with Divebell's own `--bridge` connection option. Duplicate names return candidates instead of selecting the first instance.
 
 Without a remote or operation selector, the command returns an operation summary array. A remote selector can use its declared name or alias, but alias matching remains scoped to the owning MF instance. Several matching operations return candidates with instanceRef, bridgeId, operationId, side, operation, and a copyable command containing `--operation`.
 
@@ -53,4 +53,4 @@ The command uses `state.capabilities.bridgeTrace` as the authority:
 
 Current Bridge state may still be available when historical tracing is unavailable. In that case, the command shows the current state and explicitly says that historical operations cannot be reconstructed. The capability reason is preserved as reported; the command does not guess a Bridge or runtime version requirement.
 
-When observation started late, reopen the page with `openruntime open <url>`, reproduce the Bridge operation, and run the command again.
+When observation started late, reopen the page with `divebell open <url>`, reproduce the Bridge operation, and run the command again.

@@ -100,7 +100,7 @@ test("ambiguous remote results include copyable --operation candidate commands",
     ["op-one", "op-two"]
   );
   for (const candidate of result.candidates) {
-    assert.match(candidate.command, /^openruntime mf bridge trace "catalog"/);
+    assert.match(candidate.command, /^divebell mf bridge trace "catalog"/);
     assert.match(candidate.command, /--instance "mf-1"/);
     assert.match(candidate.command, new RegExp(`--bridge-id ${JSON.stringify(candidate.bridgeId)}`));
     assert.match(candidate.command, new RegExp(`--operation ${JSON.stringify(candidate.operationId)}`));
@@ -128,8 +128,8 @@ test("same-name MF instances return instanceRef commands instead of selecting th
   assert.deepEqual(
     run.outputValue().instanceCandidates.map((candidate) => candidate.command),
     [
-      'openruntime mf bridge trace --instance "mf-1"',
-      'openruntime mf bridge trace --instance "mf-2"'
+      'divebell mf bridge trace --instance "mf-1"',
+      'divebell mf bridge trace --instance "mf-2"'
     ]
   );
 });
@@ -173,7 +173,7 @@ function createOptions(command, argsOptions, browserValue) {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write() {} },
       fetcher: async () => new Response(),
-      openruntime: {
+      divebell: {
         browser: { async eval() { return browserValue; } }
       },
       output: {

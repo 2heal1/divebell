@@ -185,7 +185,7 @@ async function createRuntimeCoreBundle(context) {
     stdin: {
       contents: `export { ModuleFederation } from ${JSON.stringify(context.entryPath)};`,
       resolveDir: context.packageRoot,
-      sourcefile: "openruntime-mf-debug-runtime.js"
+      sourcefile: "divebell-mf-debug-runtime.js"
     },
     target: ["es2020"],
     treeShaking: true,

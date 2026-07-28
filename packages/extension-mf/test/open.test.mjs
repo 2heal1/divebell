@@ -6,7 +6,7 @@ import { join } from "node:path";
 import vm from "node:vm";
 import test from "node:test";
 
-import { createOpenRuntimeCli } from "@openruntime/cli";
+import { createDivebellCli } from "@divebell/cli";
 import { MF_BROWSER_READ_SCRIPT } from "../dist/reader.js";
 import { openMfObservability } from "../dist/open.js";
 import extension from "../dist/extension.js";
@@ -96,7 +96,7 @@ test("open hook returns one self-contained script with matched Runtime and Obser
   assert.match(source, /__DEBUG_CONSTRUCTOR__/);
   assert.match(source, /ChromeObservabilityPlugin/);
   assert.match(source, /getRuntimeState/);
-  assert.match(source, /openruntime\/extension-mf/);
+  assert.match(source, /divebell\/extension-mf/);
   assert.doesNotMatch(source, /\bVmokProxySdk\b/);
   assert.doesNotMatch(source, /\brequire\s*\(/);
   assert.doesNotMatch(source, /^\s*import\s/m);
@@ -257,7 +257,7 @@ test("--mf-debug=false disables Runtime and Observability but retains proxy clea
     options: new Map([["mf-debug", ["false"]]])
   });
   assert.equal(result.scripts.length, 1);
-  assert.match(result.scripts[0], /__OPENRUNTIME_MF_PROXY_OWNER__/);
+  assert.match(result.scripts[0], /__DIVEBELL_MF_PROXY_OWNER__/);
   assert.doesNotMatch(result.scripts[0], /ModuleFederationDebugRuntime/);
   assert.doesNotMatch(result.scripts[0], /ChromeObservabilityPlugin/);
 });
@@ -284,13 +284,13 @@ test("MF proxy is installed before Runtime and Observability and matches an alia
   context.window = context;
   context.top = context;
   vm.runInContext(source, context, { timeout: 5_000 });
-  assert.equal(context.__OPENRUNTIME_MF_PROXY_INJECTION__.status, "installed");
+  assert.equal(context.__DIVEBELL_MF_PROXY_INJECTION__.status, "installed");
   assert.deepEqual(
     [...context.__FEDERATION__.__GLOBAL_PLUGIN__].map((plugin) => plugin.name),
     [
       "mf-chrome-devtools-override-remotes-plugin",
       "mf-chrome-devtools-inject-snapshot-plugin",
-      "openruntime-mf-proxy-snapshot-override",
+      "divebell-mf-proxy-snapshot-override",
       "observability-plugin:chrome-extension"
     ]
   );
@@ -333,9 +333,9 @@ test("invalid --mf-debug values fail with a useful message", async () => {
   );
 });
 
-test("OpenRuntime open passes the MF script as an init script before navigation", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-open-"));
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+test("Divebell open passes the MF script as an init script before navigation", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-mf-open-"));
+  const cli = createDivebellCli({ extensions: [extension] });
   let initScriptChecked = false;
   let injectedScriptPath;
   let stdout = "";
@@ -384,15 +384,15 @@ test("OpenRuntime open passes the MF script as an init script before navigation"
   }
 });
 
-test("OpenRuntime open accepts a local --mf-proxy JSON file", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-proxy-open-"));
+test("Divebell open accepts a local --mf-proxy JSON file", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-mf-proxy-open-"));
   const proxyFile = join(operationLogDirectory, "proxy.json");
   writeFileSync(proxyFile, JSON.stringify({
     overrides: {
       shop: "2.0.0"
     }
   }));
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+  const cli = createDivebellCli({ extensions: [extension] });
   let stdout = "";
   let stderr = "";
   try {
@@ -425,7 +425,7 @@ test("OpenRuntime open accepts a local --mf-proxy JSON file", async () => {
             timeout: 5_000
           });
           assert.deepEqual(
-            { ...context.__OPENRUNTIME_MF_PROXY_INJECTION__.overrides },
+            { ...context.__DIVEBELL_MF_PROXY_INJECTION__.overrides },
             { shop: "2.0.0" }
           );
           return { exitCode: 0, stdout: "", stderr: "" };
@@ -439,9 +439,9 @@ test("OpenRuntime open accepts a local --mf-proxy JSON file", async () => {
   }
 });
 
-test("OpenRuntime open keeps only proxy cleanup when --mf-debug=false", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "openruntime-mf-disabled-"));
-  const cli = createOpenRuntimeCli({ extensions: [extension] });
+test("Divebell open keeps only proxy cleanup when --mf-debug=false", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-mf-disabled-"));
+  const cli = createDivebellCli({ extensions: [extension] });
   let stdout = "";
   let stderr = "";
   try {
@@ -458,7 +458,7 @@ test("OpenRuntime open keeps only proxy cleanup when --mf-debug=false", async ()
             assert.equal(args.includes("--init-script"), true);
             const initScriptPath = args[args.indexOf("--init-script") + 1];
             const source = readFileSync(initScriptPath, "utf8");
-            assert.match(source, /__OPENRUNTIME_MF_PROXY_OWNER__/);
+            assert.match(source, /__DIVEBELL_MF_PROXY_OWNER__/);
             assert.doesNotMatch(source, /ModuleFederationDebugRuntime/);
             assert.doesNotMatch(source, /ChromeObservabilityPlugin/);
             return { exitCode: 0, stdout: "", stderr: "" };

@@ -1,6 +1,6 @@
 import { createModuleInfoResult } from "../results.js";
 import { MfCommandError } from "../cli/errors.js";
-import { readCommandSnapshot, writeCommandResult } from "../cli/observability.js";
+import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { moduleInfoCommandMetadata } from "./metadata.js";
 
@@ -27,8 +27,7 @@ export const moduleInfoCommand: MfCommandDefinition = {
       },
       remote
     );
-    writeCommandResult(options, result);
-    return 0;
+    return presentCommandResult(result);
   }
 };
 

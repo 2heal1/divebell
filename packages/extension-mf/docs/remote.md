@@ -5,8 +5,8 @@ The remote commands analyze the public `RuntimeState` and `RuntimeReport` values
 ## Commands
 
 ```text
-openruntime mf remote status <remote> [--mf <name>] [--instance <ref>]
-openruntime mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
+divebell mf remote status <remote> [--mf <name>] [--instance <ref>]
+divebell mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 ```
 
 All commands return structured JSON by default.
@@ -77,7 +77,7 @@ remote matched by that rule:
   started.
 
 The proxy marker is evidence about the current `open` operation only. A later
-ordinary `openruntime open` restores the browser's previous proxy settings and
+ordinary `divebell open` restores the browser's previous proxy settings and
 does not return this field.
 
 `loadedExposes` contains only exposes from successful or recovered ordinary loads. A failed load is not included. A loaded remote can still have an empty `loadedExposes` list when current producer state confirms the remote but no successful expose load was captured.
@@ -112,11 +112,11 @@ The result uses `state.capabilities.remoteTrace` and page history timing:
 - `partial`: existing evidence is returned, with a warning that earlier stages may be missing. Partial history, partial capability, late injection, or late-bound instances produce this state.
 - `unavailable`: the result explicitly says the current reader cannot support remote tracing and recommends upgrading/configuring observability and reopening the page. It is not reported as an empty successful result.
 
-If the extension was installed after Module Federation had already started, reopen the page with `openruntime open <url>` before reproducing the load.
+If the extension was installed after Module Federation had already started, reopen the page with `divebell open <url>` before reproducing the load.
 
 ## Public reuse
 
-The package's `@openruntime/extension-mf/core` entry exports the pure selectors and result builders:
+The package's `@divebell/extension-mf/core` entry exports the pure selectors and result builders:
 
 ```ts
 import {
@@ -125,7 +125,7 @@ import {
   createRemoteTraceResult,
   selectRemoteStatus,
   selectRemoteTrace
-} from "@openruntime/extension-mf/core";
+} from "@divebell/extension-mf/core";
 ```
 
 These functions accept plain snapshots and selectors. They do not write CLI output or access a browser. Command-specific candidate rendering stays outside the reusable layer, so another extension can present the same evidence with its own command prefix.

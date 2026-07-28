@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { ParsedCliArgs } from "@openruntime/cli";
+import type { ParsedCliArgs } from "@divebell/cli";
 import {
   createMfProxyInitScript,
   readMfProxyOverrides

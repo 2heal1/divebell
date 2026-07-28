@@ -302,7 +302,7 @@ test("injected preview Runtime is not rejected by the stable-version fallback", 
   );
   const marker = {
     schemaVersion: 1,
-    source: "openruntime/extension-mf",
+    source: "divebell/extension-mf",
     status: "installed",
     scope: "chrome_extension",
     observabilityVersion: previewVersion,
@@ -337,7 +337,7 @@ test("preview Observability does not hide an older application Runtime", () => {
       observabilityVersion: previewVersion,
       marker: {
         schemaVersion: 1,
-        source: "openruntime/extension-mf",
+        source: "divebell/extension-mf",
         status: "installed",
         scope: "chrome_extension",
         observabilityVersion: previewVersion,
@@ -365,7 +365,7 @@ test("partial history and late injection return data with explicit reopen guidan
   state.capabilities.sharedTrace = capability(true, "partial", "Detailed history is incomplete.");
   const marker = {
     schemaVersion: 1,
-    source: "openruntime/extension-mf",
+    source: "divebell/extension-mf",
     status: "installed",
     scope: "chrome_extension",
     observabilityVersion: "2.5.4",

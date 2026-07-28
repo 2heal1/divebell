@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { ParsedCliArgs } from "@openruntime/cli";
+import type { ParsedCliArgs } from "@divebell/cli";
 
 export type MfProxyOverrides = Record<string, string>;
 
@@ -60,7 +60,7 @@ export function createMfProxyInitScript(
 ): string {
   if (Object.keys(overrides).length === 0) {
     return `(() => {
-  const OWNER_KEY = "__OPENRUNTIME_MF_PROXY_OWNER__";
+  const OWNER_KEY = "__DIVEBELL_MF_PROXY_OWNER__";
   const CONFIG_KEY = "__MF_DEVTOOLS__";
   const ENV_KEY = "MF_ENV";
   const setStorageValue = (storage, key, value) => {
@@ -92,7 +92,7 @@ export function createMfProxyInitScript(
   const serializedOverrides = serializeForScript(overrides);
   const proxySdk = proxySdkSource ?? "";
   return `(() => {
-  const OWNER_KEY = "__OPENRUNTIME_MF_PROXY_OWNER__";
+  const OWNER_KEY = "__DIVEBELL_MF_PROXY_OWNER__";
   const CONFIG_KEY = "__MF_DEVTOOLS__";
   const ENV_KEY = "MF_ENV";
   const overrides = ${serializedOverrides};
@@ -140,7 +140,7 @@ export function createMfProxyInitScript(
     VmokProxySdk.bootstrapProxy({ data: { overrides } });
     const federation = VmokProxySdk.ensureProxyRuntimeContext(globalThis);
     const snapshotOverridePlugin = {
-      name: "openruntime-mf-proxy-snapshot-override",
+      name: "divebell-mf-proxy-snapshot-override",
       beforeLoadRemoteSnapshot(args) {
         try {
           const remote = args && args.moduleInfo;
@@ -194,7 +194,7 @@ export function createMfProxyInitScript(
             }
           };
         } catch (error) {
-          console.error("[OpenRuntime MF Proxy Snapshot]", error);
+          console.error("[Divebell MF Proxy Snapshot]", error);
         }
       }
     };
@@ -203,9 +203,9 @@ export function createMfProxyInitScript(
     )) {
       federation.__GLOBAL_PLUGIN__.push(snapshotOverridePlugin);
     }
-    globalThis.__OPENRUNTIME_MF_PROXY_INJECTION__ = {
+    globalThis.__DIVEBELL_MF_PROXY_INJECTION__ = {
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "installed",
       installedAt: Date.now(),
       overrides
@@ -213,15 +213,15 @@ export function createMfProxyInitScript(
   } catch (error) {
     if (storage) restoreOwnedState(storage);
     const message = error instanceof Error ? error.message : String(error);
-    globalThis.__OPENRUNTIME_MF_PROXY_INJECTION__ = {
+    globalThis.__DIVEBELL_MF_PROXY_INJECTION__ = {
       schemaVersion: 1,
-      source: "openruntime/extension-mf",
+      source: "divebell/extension-mf",
       status: "error",
       installedAt: Date.now(),
       overrides,
       message
     };
-    console.error("[OpenRuntime MF Proxy]", error);
+    console.error("[Divebell MF Proxy]", error);
   }
 })()`;
 }

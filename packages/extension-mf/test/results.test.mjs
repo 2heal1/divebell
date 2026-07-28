@@ -292,7 +292,7 @@ test("missing instanceState capability fails before selection", () => {
       error.code === "MF_INSTANCE_STATE_UNAVAILABLE" &&
       error.facts.capability.available === false &&
       error.recommendedActions[0].type === "configure-observability" &&
-      !JSON.stringify(error.issue).includes("openruntime mf")
+      !JSON.stringify(error.issue).includes("divebell mf")
   );
 });
 

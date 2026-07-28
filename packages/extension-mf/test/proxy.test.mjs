@@ -13,7 +13,7 @@ import {
 const packageRoot = new URL("..", import.meta.url);
 
 test("--mf-proxy combines inline rules with nested and flat JSON files", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-mf-proxy-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-mf-proxy-"));
   try {
     const nested = join(directory, "nested.json");
     const flat = join(directory, "flat.json");
@@ -46,7 +46,7 @@ test("--mf-proxy combines inline rules with nested and flat JSON files", async (
 });
 
 test("--mf-proxy rejects duplicate remotes and invalid JSON files", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "openruntime-mf-proxy-invalid-"));
+  const directory = mkdtempSync(join(tmpdir(), "divebell-mf-proxy-invalid-"));
   try {
     const duplicate = join(directory, "duplicate.json");
     const invalid = join(directory, "invalid.json");
@@ -90,7 +90,7 @@ test("proxy injection applies overrides and the next ordinary open restores prio
     { timeout: 5_000 }
   );
 
-  assert.equal(proxied.__OPENRUNTIME_MF_PROXY_INJECTION__.status, "installed");
+  assert.equal(proxied.__DIVEBELL_MF_PROXY_INJECTION__.status, "installed");
   assert.deepEqual(
     JSON.parse(storage.getItem("__MF_DEVTOOLS__")).overrides,
     {
@@ -104,7 +104,7 @@ test("proxy injection applies overrides and the next ordinary open restores prio
     [
       "mf-chrome-devtools-override-remotes-plugin",
       "mf-chrome-devtools-inject-snapshot-plugin",
-      "openruntime-mf-proxy-snapshot-override"
+      "divebell-mf-proxy-snapshot-override"
     ]
   );
 
@@ -164,8 +164,8 @@ test("proxy injection applies overrides and the next ordinary open restores prio
     overrides: { original: "1.0.0" }
   });
   assert.equal(storage.getItem("MF_ENV"), "previous");
-  assert.equal(storage.getItem("__OPENRUNTIME_MF_PROXY_OWNER__"), null);
-  assert.equal(ordinary.__OPENRUNTIME_MF_PROXY_INJECTION__, undefined);
+  assert.equal(storage.getItem("__DIVEBELL_MF_PROXY_OWNER__"), null);
+  assert.equal(ordinary.__DIVEBELL_MF_PROXY_INJECTION__, undefined);
 });
 
 function createStorage(initial = {}) {

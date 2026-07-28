@@ -1,4 +1,4 @@
-import type { CliExtensionRunOptions } from "@openruntime/cli";
+import type { CliExtensionRunOptions } from "@divebell/cli";
 
 import { MfCommandError } from "./errors.js";
 import type { MfCommandMetadata } from "../commands/metadata.js";
@@ -10,7 +10,7 @@ export interface MfCommandContext {
 
 export interface MfCommandDefinition {
   metadata: MfCommandMetadata;
-  run(context: MfCommandContext): Promise<number>;
+  run(context: MfCommandContext): Promise<unknown>;
 }
 
 export interface MfCommandRegistration extends MfCommandMetadata {
@@ -48,7 +48,7 @@ export function matchMfCommand(
 export async function dispatchMfCommand(
   options: CliExtensionRunOptions,
   registrations: readonly MfCommandRegistration[]
-): Promise<number> {
+): Promise<unknown> {
   const segments = options.args.command.slice(1);
   const match = matchMfCommand(registrations, segments);
   if (match === undefined) throw commandRouteError(registrations, segments);

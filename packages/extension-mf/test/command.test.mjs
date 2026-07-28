@@ -139,11 +139,11 @@ test("missing reader explains current evidence and the next open command", async
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_OBSERVABILITY_UNAVAILABLE" &&
-      /openruntime open/.test(error.hint)
+      /divebell open/.test(error.hint)
   );
 });
 
-test("missing OpenRuntime page context has a dedicated recovery message", async () => {
+test("missing Divebell page context has a dedicated recovery message", async () => {
   const run = createOptions(["mf", "status"], new Map(), undefined, {
     code: "OPEN_CONTEXT_REQUIRED",
     message: "No opened page context was found."
@@ -151,7 +151,7 @@ test("missing OpenRuntime page context has a dedicated recovery message", async 
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_PAGE_CONTEXT_REQUIRED" &&
-      /openruntime open/.test(error.hint)
+      /divebell open/.test(error.hint)
   );
 });
 
@@ -161,13 +161,13 @@ test("unknown MF commands return the compatible unified help error", async () =>
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
       error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, remote status, remote trace, shared status, shared trace or bridge trace." &&
-      /openruntime mf status/.test(error.hint) &&
-      /openruntime mf module-info/.test(error.hint) &&
-      /openruntime mf bridge trace/.test(error.hint) &&
-      /openruntime mf remote status/.test(error.hint) &&
-      /openruntime mf remote trace/.test(error.hint) &&
-      /openruntime mf shared status/.test(error.hint) &&
-      /openruntime mf shared trace/.test(error.hint)
+      /divebell mf status/.test(error.hint) &&
+      /divebell mf module-info/.test(error.hint) &&
+      /divebell mf bridge trace/.test(error.hint) &&
+      /divebell mf remote status/.test(error.hint) &&
+      /divebell mf remote trace/.test(error.hint) &&
+      /divebell mf shared status/.test(error.hint) &&
+      /divebell mf shared trace/.test(error.hint)
   );
 });
 
@@ -211,7 +211,7 @@ test("MF presenter preserves status and module-info candidate commands", async (
   await assert.rejects(
     () => runMfCommand(statusRun.options),
     (error) => error.code === "MF_INSTANCE_NAME_AMBIGUOUS" &&
-      error.data.candidates[0].command === 'openruntime mf status --instance "mf-1"'
+      error.data.candidates[0].command === 'divebell mf status --instance "mf-1"'
   );
 
   const moduleRun = createOptions(
@@ -223,7 +223,7 @@ test("MF presenter preserves status and module-info candidate commands", async (
     () => runMfCommand(moduleRun.options),
     (error) => error.code === "MF_INSTANCE_REF_NOT_FOUND" &&
       /--role consumer/.test(error.hint) &&
-      error.data.candidates[0].command === 'openruntime mf module-info --instance "mf-1"'
+      error.data.candidates[0].command === 'divebell mf module-info --instance "mf-1"'
   );
 });
 
@@ -289,7 +289,7 @@ function createOptions(command, argsOptions, browserValue, browserError) {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write() {} },
       fetcher: async () => new Response(),
-      openruntime: {
+      divebell: {
         browser: {
           async eval() {
             if (browserError !== undefined) {

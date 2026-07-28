@@ -1,0 +1,43 @@
+.changeset/config.json
+  s_cbea3114c4ff66::t_d170b98c378214 11-12
+.github/workflows/pkg-pr-new.yml
+  s_cbea3114c4ff66::t_ba318fafab96d3 60
+.github/workflows/prepare-release.yml
+  s_cbea3114c4ff66::t_fe780b211a01d7 55-57,98
+package.json
+  s_cbea3114c4ff66::t_c60ec6e2332f67 29
+packages/extension-mf/package.json
+  s_cbea3114c4ff66::t_4a32e69b702c04 3
+packages/extension-mf/test/package.test.mjs
+  s_cbea3114c4ff66::t_714e18197d167b 17-20,94,203,249
+scripts/bump-recording-skill-runtime.mjs
+  s_cbea3114c4ff66::t_89bb68b556c53e 6-7,11-12,19-23
+scripts/check-package-versions.mjs
+  s_cbea3114c4ff66::t_fcbf970001743f 1-2,4,6-7,9-12,23
+scripts/divebell-release-packages.mjs
+  s_cbea3114c4ff66::t_764197e2d905b9 1-74
+scripts/divebell-release-packages.test.mjs
+  s_cbea3114c4ff66::t_968c3c75f05e6b 1-25
+scripts/npm-release.mjs
+  s_cbea3114c4ff66::t_8948524247ef63 3,11,21
+scripts/validate-divebell-release.mjs
+  s_cbea3114c4ff66::t_09ec54e76e840a 7-8,11-12,23-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7598b755fdaeefcf73227c938e48a15b0ec17c97",
+  "prompts": {},
+  "sessions": {
+    "s_cbea3114c4ff66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa82c-c5d1-7312-8905-e1c5e325769d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -21,6 +21,7 @@ GitHub Release 包含录制运行包和它的 SHA-256 校验文件。所有 npm 
 ## 新包首次发布
 
 npm 只能为已经存在的包配置可信发布。当包名是第一次使用时，需要先用维护者账号人工发布一次当前版本，再配置 GitHub Actions 的信任关系。
+Divebell 的首次发布版本统一为 `0.0.0`。
 
 执行前确认：
 
@@ -61,17 +62,17 @@ npm trust github @divebell/extension-memory --repo 2heal1/divebell --file releas
 
 第一次 OIDC 发版成功后，再到 npm 包设置中限制传统发布令牌。更多要求见 npm 官方的[可信发布说明](https://docs.npmjs.com/trusted-publishers/)和 [`npm trust` 命令参考](https://docs.npmjs.com/cli/v11/commands/npm-trust/)。
 
-当这次改名已经进入 `main` 后，还需要为首个版本补齐录制运行包。这是后续自动准备新版本的基线：
+首批 npm 包发布并配置可信发布后，还需要为 `0.0.0` 补齐录制运行包。这是后续自动准备新版本的基线：
 
 ```bash
 pnpm run build:recording-runtime -- --output-dir /tmp/divebell-recording-runtime
 pnpm run verify:recording-runtime -- --output-dir /tmp/divebell-recording-runtime
-gh release create recording-skill-runtime-v0.1.2 \
-  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.1.2.tgz \
-  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.1.2.tgz.sha256 \
+gh release create recording-skill-runtime-v0.0.0 \
+  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.0.0.tgz \
+  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.0.0.tgz.sha256 \
   --target main \
-  --title "Divebell 0.1.2" \
-  --notes "Bootstrap recording runtime release for Divebell 0.1.2."
+  --title "Divebell 0.0.0" \
+  --notes "Bootstrap recording runtime release for Divebell 0.0.0."
 ```
 
 如果这个 Release 已经存在，不要覆盖；先检查其中是否已有上面两个附件。

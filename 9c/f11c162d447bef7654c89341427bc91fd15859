@@ -1,0 +1,27 @@
+.changeset/accept-short-help-flag.md
+  s_cbea3114c4ff66::t_aeb45e20e46121 1-5
+packages/cli/src/commands/help.ts
+  s_cbea3114c4ff66::t_f38b17de5d782b 222
+packages/cli/src/utils/args.ts
+  s_cbea3114c4ff66::t_0fb2c5fa728fdb 12-16
+packages/cli/test/cli-core.test.ts
+  s_cbea3114c4ff66::t_78f10426ee82ff 91,114-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9cf11c162d447bef7654c89341427bc91fd15859",
+  "prompts": {},
+  "sessions": {
+    "s_cbea3114c4ff66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa82c-c5d1-7312-8905-e1c5e325769d",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

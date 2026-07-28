@@ -1,10 +1,12 @@
-# Modern.js 接入指南
+# Modern.js 接入指南（WIP）
 
 English version: [Modern.js Integration](modernjs-integration.md)
 
-`@divebell/modern-plugin` 是 Divebell 面向 Modern.js 的官方页面侧接入。它把 Modern.js 本来就知道的生命周期信息转换成稳定的 Divebell 事实，让 Coding Agent 直接检查框架状态，不必根据 DOM 文本、Console 信息或 Network 时机猜测。
+> **WIP：**普通项目暂时不要接入 `@divebell/modern-plugin`。这项 runtime 接入依赖新的 Modern.js 生命周期 hook，而这些 hook 尚未随 Modern.js 正式版本发布。在兼容版本发布并完成验证前，请使用浏览器证据，或通过 [`@divebell/core`](runtime-sdk-api.zh-CN.md) 暴露最小且稳定的应用信号。
 
-这个包是 Modern.js runtime plugin，不是 CLI Extension。它需要安装到应用中，并在 `src/modern.runtime.ts` 注册。没有这个插件仍然可以使用 Divebell；只有任务需要路由、loader、SSR 或 hydration 等框架内部证据时，才需要接入。
+`@divebell/modern-plugin` 是 Divebell 规划中的 Modern.js 官方页面侧接入。它把 Modern.js 本来就知道的生命周期信息转换成稳定的 Divebell 事实，让 Coding Agent 直接检查框架状态，不必根据 DOM 文本、Console 信息或 Network 时机猜测。
+
+这个包是 Modern.js runtime plugin，不是 CLI Extension。下面的内容用于维护者配合包含所需 hook 的 Modern.js 源码检出进行开发验证，不是当前面向普通项目的安装指南。
 
 ## 插件提供什么
 
@@ -19,7 +21,7 @@ English version: [Modern.js Integration](modernjs-integration.md)
 
 这些信息只说明框架生命周期。路由已经 ready，不等于业务数据或用户流程已经可用。业务成功条件应由业务 Target 表达，或者使用相符的页面和请求结果验证。
 
-## 接入方式
+## 规划中的接入方式
 
 安装依赖：
 
@@ -44,7 +46,7 @@ export default defineRuntimeConfig({
 });
 ```
 
-当前接入建议适用于 Modern.js `>=3.4.0` 或 preview 版本，这些版本提供了所需的正式框架 hook。更老的版本应使用 [`@divebell/core`](runtime-sdk-api.zh-CN.md) 暴露最小且稳定的业务信号，不要通过浏览器现象拼凑缺失的框架生命周期。
+目前没有任何已发布的 Modern.js 版本被声明为兼容。不要根据版本号或 `preview` 标记推断可用性。Modern.js 发布所需 hook、且本接入完成对应版本验证后，本文会移除 WIP 提示并写明准确的支持版本范围。
 
 路由导航会改变页面状态，因此对应 Action 默认关闭，需要时再显式开启：
 
@@ -55,7 +57,7 @@ divebellModernPlugin({
 });
 ```
 
-## 验证接入
+## 维护者验证
 
 通过 CLI 打开页面，再确认 Runtime 和 Modern.js Target 已经出现：
 
@@ -78,6 +80,6 @@ divebell wait-for modern:route ready \
 
 ## 相关能力
 
-同一个包还提供 `@divebell/modern-plugin/chunk-map`，用于在构建时生成 Chunk Map。只有任务需要把浏览器里的代码执行情况还原到源码和依赖时才使用这个独立入口，详见[代码使用分析](code-usage-analysis.zh-CN.md)。
+同一个包还提供 `@divebell/modern-plugin/chunk-map`，用于在构建时生成 Chunk Map。这个入口不使用尚未发布的 Modern.js runtime 生命周期 hook，因此不受 runtime 接入 WIP 状态影响。只有任务需要把浏览器里的代码执行情况还原到源码和依赖时才使用它，详见[代码使用分析](code-usage-analysis.zh-CN.md)。
 
 完整的 Target 字段、路由 Action、Garfish helper 和业务 ready helper 见 [`@divebell/modern-plugin` 包说明](../packages/modern-plugin/README.md)。

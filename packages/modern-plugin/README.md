@@ -1,6 +1,13 @@
-# @divebell/modern-plugin
+# @divebell/modern-plugin (WIP)
 
-`@divebell/modern-plugin` lets a Modern.js app expose framework runtime
+> **WIP:** Do not adopt the runtime integration in a regular project yet. It
+> depends on Modern.js lifecycle hooks that have not been included in a
+> published Modern.js version. Use `@divebell/core` for stable application
+> signals until a compatible Modern.js release is available and verified.
+> The build-time `@divebell/modern-plugin/chunk-map` entry does not use those
+> runtime hooks and remains available.
+
+`@divebell/modern-plugin` is intended to let a Modern.js app expose framework runtime
 state to Divebell. It records information that Modern.js already knows:
 application render state, current route state, SSR state, hydration state, and
 optional business ready state.
@@ -9,9 +16,11 @@ The plugin does not decide whether a business page is usable. Framework targets
 only describe framework lifecycle. Business readiness should use the business
 ready helpers described below.
 
-## Usage
+## Planned Usage
 
-Add the plugin in `src/modern.runtime.ts`:
+The following setup is only for contributors testing against a Modern.js source
+checkout that contains the required hooks. Add the plugin in
+`src/modern.runtime.ts`:
 
 ```ts
 import { divebellModernPlugin } from "@divebell/modern-plugin";

@@ -2,6 +2,10 @@
 
 This demo verifies the Divebell state exposed by Modern.js during SSR and hydration.
 
+> **WIP:** This is a contributor demo, not proof that the plugin works with a
+> published Modern.js version. It requires a local Modern.js source checkout
+> containing the unreleased lifecycle hooks used by Divebell.
+
 ## Prerequisites
 
 This demo depends on the local Modern.js repository at `/Users/bytedance/fork_repo/modern.js`. Make sure it includes the hooks required by Divebell and has its dependencies installed.

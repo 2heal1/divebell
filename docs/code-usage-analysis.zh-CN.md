@@ -52,6 +52,9 @@ Divebell CLI 读取指定的 Chunk Map 和构建目录
 
 ### Modern.js 项目
 
+`@divebell/modern-plugin` 的 runtime 接入目前是 WIP，但下面的构建期
+`/chunk-map` 入口不依赖尚未发布的 Modern.js 生命周期 hook，仍可用于代码使用分析。
+
 安装 `@divebell/modern-plugin`，然后在 `modern.config.ts` 中加入：
 
 ```ts

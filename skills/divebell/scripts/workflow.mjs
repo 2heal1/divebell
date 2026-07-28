@@ -59,7 +59,8 @@ async function runConnected(args) {
     executed: true,
     packageJson: path.resolve(packageJsonPath),
     install: integration.install,
-    use: integration.use
+    use: integration.use,
+    notices: integration.notices
   };
 
   const bridgeResult = await readBridgeRuntimes(bridge);
@@ -351,7 +352,8 @@ function resolveIntegration(packageJsonPath) {
   const parsed = JSON.parse(result.stdout);
   return {
     install: Array.isArray(parsed.install) ? parsed.install : [],
-    use: Array.isArray(parsed.use) ? parsed.use : []
+    use: Array.isArray(parsed.use) ? parsed.use : [],
+    notices: Array.isArray(parsed.notices) ? parsed.notices : []
   };
 }
 
@@ -439,32 +441,6 @@ function createInstallRuntimeNextAction(integration, bridge, url) {
       reference: "skills/divebell/references/module-federation.md",
       summary: "Wire @module-federation/observability-plugin in the MF consumer if mf:* targets are required."
     });
-  }
-
-  if (use.has("@divebell/modern-plugin")) {
-    return {
-      type: "connect_modern_plugin",
-      summary: "No connected runtime was found. Wire the Modern plugin in source, restart the app, then reopen it with the CLI and rerun this connected check.",
-      commands: install,
-      reference: "skills/divebell/references/modernjs.md",
-      bridge,
-      url: url ?? null,
-      snippets: [
-        {
-          pathHint: "src/modern.runtime.ts",
-          language: "ts",
-          code: `import { defineRuntimeConfig } from "@modern-js/runtime";
-import { divebellModernPlugin } from "@divebell/modern-plugin";
-
-export default defineRuntimeConfig({
-  plugins: [
-    divebellModernPlugin(),
-  ],
-});`
-        }
-      ],
-      additionalActions
-    };
   }
 
   return {
@@ -603,14 +579,6 @@ function resolvePluginSnapshotAvailability(integration) {
       plugins.push("module-federation");
     }
   }
-  if (use.has("@divebell/modern-plugin")) {
-    if (install.has("@divebell/modern-plugin")) {
-      missingInstall.push("@divebell/modern-plugin");
-    } else {
-      plugins.push("modern");
-    }
-  }
-
   return {
     available: plugins.length > 0,
     plugins,
@@ -648,7 +616,8 @@ function createEmptyEvidence() {
       executed: false,
       packageJson: null,
       install: [],
-      use: []
+      use: [],
+      notices: []
     },
     connected: {
       ok: false,

@@ -51,15 +51,18 @@ node <divebell-skill-dir>/scripts/resolve-integration.mjs <path-to-package.json>
 
 Continue from its output:
 
-- For a supported Modern.js version, use `@divebell/modern-plugin` and read
-  `modernjs.md`.
-- For an older Modern.js version, or an ordinary frontend project that needs
-  page-side capabilities, use `@divebell/core` and read `core.md`.
+- For Modern.js, read `modernjs.md`. The Modern runtime plugin is WIP while
+  waiting for a Modern.js release with the required lifecycle hooks. The
+  resolver intentionally chooses `@divebell/core` for every published Modern.js
+  version during this period.
+- For an ordinary frontend project that needs page-side capabilities, use
+  `@divebell/core` and read `core.md`.
 - For Module Federation, use MF observability and read
   `module-federation.md`. Also follow the MF skill provided by the current
   environment.
-- For Garfish, use the Garfish capabilities provided by the Modern plugin and
-  read `garfish.md`.
+- For Garfish, read `garfish.md`. Its helpers currently ship from the WIP
+  Modern package, so do not recommend a new stable integration through that
+  package yet.
 
 Prefer hooks exposed by the framework or observability layer. When existing
 hooks are insufficient, decide whether the proper capability belongs in the

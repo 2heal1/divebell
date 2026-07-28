@@ -129,7 +129,7 @@ Extension 在页面外部组织开发调试流程；Runtime SDK 在页面内部�
 
 框架或运行时已经知道的事实应由对应插件提供，不要在业务代码里重复探测：
 
-- Modern.js 使用 `@divebell/modern-plugin` 提供 route、loader、SSR、hydration 和 Garfish 状态。
+- Modern.js 规划使用 `@divebell/modern-plugin` 提供 route、loader、SSR、hydration 和 Garfish 状态，但在 Modern.js 发布所需生命周期 hook 前仍是 WIP；目前请使用 `@divebell/core` 提供稳定的应用信号。
 - Module Federation 接入应复用 MF observability 提供的 remote、shared、expose 和 runtime error 信息。
 - 普通应用或稳定业务结果可以直接使用 `@divebell/core`。
 

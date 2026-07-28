@@ -106,7 +106,7 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 | `@divebell/extension-code-usage` | `divebell code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
 | `@divebell/extension-imitate` | `divebell record` | 录制一次浏览器操作并生成可以继续检查的脚本草稿。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
 | `@divebell/extension-troubleshooting` | `divebell verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md) |
-| `@divebell/modern-plugin` | Modern.js runtime plugin | 暴露 Modern.js 已知的应用、路由、loader、路由组件、SSR、hydration 和导航状态。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
+| `@divebell/modern-plugin` | Modern.js runtime plugin（WIP） | 规划中的框架状态接入。在包含所需生命周期 hook 的 Modern.js 新版本发布前，请勿正式接入。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | 通过 MF observability 记录 consumer、remote、manifest、remoteEntry、expose、shared 依赖和运行时错误证据。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
 
 安装 CLI Extension：

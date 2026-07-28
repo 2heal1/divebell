@@ -50,6 +50,10 @@ Build metadata, JavaScript files, source maps, and the deployed page must come f
 
 ### Modern.js
 
+The runtime side of `@divebell/modern-plugin` is WIP, but the build-time
+`/chunk-map` entry below does not depend on the unreleased Modern.js lifecycle
+hooks and remains available for code-usage analysis.
+
 Install `@divebell/modern-plugin`, then add:
 
 ```ts

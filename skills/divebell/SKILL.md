@@ -70,8 +70,8 @@ Read `references/integrate.md` when the task involves any of the following:
 - Develop or modify a Divebell Extension, including test-account setup,
   environment preparation, specialized diagnostics, or verification commands.
 - Write an automation script that owns a complete browser workflow.
-- Integrate Runtime SDK, the Modern plugin, MF observability, or Garfish into a
-  project.
+- Integrate Runtime SDK, the WIP Modern plugin, MF observability, or Garfish
+  into a project.
 - Register or design targets, snapshots, events, actions, `waitFor` conditions,
   or durable business verification signals.
 
@@ -123,6 +123,10 @@ application as a side effect.
 - Use Bridge connections, target registration, snapshot updates, and events
   only to expose facts. Do not change APIs, routes, business state, or rendering
   branches through observability wiring.
+- Treat `@divebell/modern-plugin` runtime integration as WIP. Do not recommend
+  or install it for a regular project until Modern.js publishes the required
+  lifecycle hooks and Divebell documents a verified compatible version. Use
+  `@divebell/core` for stable page-side signals in the meantime.
 - Reuse the original authentication state, session, and page context after a
   change. Stop the browser only when the full workflow is complete or the task
   owns the browser lifecycle.
@@ -140,7 +144,8 @@ application as a side effect.
 - Extensions, automation scripts, and Runtime integration:
   `references/integrate.md`
 - Page-side `@divebell/core` API: `references/runtime-sdk.md`
-- Modern.js integration, routes, and loaders: `references/modernjs.md`
+- Modern.js WIP status, contributor integration, routes, and loaders:
+  `references/modernjs.md`
 - Module Federation observability, remotes, and shared dependencies:
   `references/module-federation.md`
 - Garfish sub-application lifecycle and custom loaders:

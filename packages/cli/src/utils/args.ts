@@ -9,6 +9,11 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     const arg = argv[index];
     if (arg === undefined) continue;
 
+    if (arg === "-h") {
+      appendOption(options, "help", "true");
+      continue;
+    }
+
     if (!arg.startsWith("--")) {
       command.push(arg);
       continue;

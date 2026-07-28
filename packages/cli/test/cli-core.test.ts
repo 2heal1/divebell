@@ -88,7 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
   assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
-  assert.match(output.text(), /Run `divebell <command> --help` for detailed usage\./);
+  assert.match(output.text(), /Run `divebell <command> --help` \(or `-h`\) for detailed usage\./);
   assert.doesNotMatch(output.text(), /divebell extensions (add|list|update|remove)/);
   assert.doesNotMatch(output.text(), /divebell state (save|load)/);
   assert.doesNotMatch(output.text(), /divebell auth (save|login)/);
@@ -109,6 +109,22 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /Examples:/);
   assert.doesNotMatch(output.text(), /Skill: available/);
   assert.doesNotMatch(output.text(), /\p{Script=Han}/u);
+});
+
+test("accepts the short help flag", async () => {
+  const topLevelOutput = createOutput();
+  assert.equal(await runCli(["-h"], {
+    stdout: topLevelOutput.stdout,
+    stderr: topLevelOutput.stderr
+  }), 0);
+  assert.match(topLevelOutput.text(), /^Usage: divebell <command> \[options\]/);
+
+  const commandOutput = createOutput();
+  assert.equal(await runCli(["extensions", "-h"], {
+    stdout: commandOutput.stdout,
+    stderr: commandOutput.stderr
+  }), 0);
+  assert.match(commandOutput.text(), /divebell extensions add <package-or-path>/);
 });
 
 test("prints progressively scoped command help", async () => {

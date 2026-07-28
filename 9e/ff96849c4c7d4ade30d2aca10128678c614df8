@@ -1,0 +1,159 @@
+.changeset/add-mf-extension.md
+  s_de9a8d96742e00::t_428e23d9af0840 2
+.changeset/inject-mf-debug-runtime.md
+  s_de9a8d96742e00::t_f878249015192b 2
+.changeset/mf-bridge-command.md
+  s_de9a8d96742e00::t_19cb14bdec599d 2,5
+.changeset/mf-remote-command.md
+  s_de9a8d96742e00::t_18a2b1c7fb4010 2
+.changeset/mf-shared-command.md
+  s_de9a8d96742e00::t_fb280663b09ade 2
+packages/cli/src/commands/browser.ts
+  s_44e917dc900a13::t_081c32831709a7 90
+packages/extension-mf/README.md
+  s_de9a8d96742e00::t_893c93813a0a38 1,8-14,26,29,31,34,40,50,58,78-80,146-150,173,181-184,196-199,231-239,253-257,274,310,313,319
+packages/extension-mf/assets/install-observability.js
+  s_de9a8d96742e00::t_90abcfce3b3902 53,60,70
+packages/extension-mf/assets/install-runtime-debug.js
+  s_de9a8d96742e00::t_005181eebe8029 32,41,45,76,85
+packages/extension-mf/assets/runtime-debug-build.json
+  s_de9a8d96742e00::t_69fe75440fb178 8
+packages/extension-mf/docs/bridge.md
+  s_de9a8d96742e00::t_9e2e951966b5eb 3,8-14,17,56
+packages/extension-mf/docs/remote.md
+  s_de9a8d96742e00::t_990f847d542b35 8-9,80,115,119,128
+packages/extension-mf/docs/shared.md
+  s_de9a8d96742e00::t_44f9c2f36cb66d 8,23,30
+packages/extension-mf/package.json
+  s_de9a8d96742e00::t_1bbcbdf66b20e9 2-4,8,26
+packages/extension-mf/scripts/install-observability.template.js
+  s_de9a8d96742e00::t_25d435721868a2 53,60,70
+packages/extension-mf/scripts/install-runtime-debug.template.js
+  s_de9a8d96742e00::t_112e00d4a8b6ca 32,71,80
+packages/extension-mf/scripts/sync-mf-debug.mjs
+  s_de9a8d96742e00::t_d265a244695f6c 188
+packages/extension-mf/src/bridge/result.ts
+  s_de9a8d96742e00::t_5ee55d9117cd99 118
+packages/extension-mf/src/cli/errors.ts
+  s_de9a8d96742e00::t_0b64518924b1cd 1,34,78,81-82,89,93,95
+packages/extension-mf/src/cli/observability.ts
+  s_44e917dc900a13::t_4cfd2712eb6aa3 1,14,22-23,37,261,278
+packages/extension-mf/src/cli/remote-errors.ts
+  s_de9a8d96742e00::t_752bc5625411af 7
+packages/extension-mf/src/cli/router.ts
+  s_44e917dc900a13::t_96597febb12bfe 1,13,51
+packages/extension-mf/src/cli/shared.ts
+  s_de9a8d96742e00::t_f7ccee650d857d 53,58
+packages/extension-mf/src/commands/bridge-trace.ts
+  s_de9a8d96742e00::t_958c9dfe17bf96 2,35,37
+packages/extension-mf/src/commands/metadata.ts
+  s_de9a8d96742e00::t_0232fb2b7b4f8c 10-11,17-18,24-25,31-32,38-39,45-46,52-53
+packages/extension-mf/src/commands/module-info.ts
+  s_de9a8d96742e00::t_4c28f4a06213de 3,30
+packages/extension-mf/src/commands/remote-command.ts
+  s_de9a8d96742e00::t_290216e2858b86 1
+packages/extension-mf/src/commands/remote-status.ts
+  s_de9a8d96742e00::t_9c2cf626aa410e 1,21
+packages/extension-mf/src/commands/remote-trace.ts
+  s_de9a8d96742e00::t_4aa0457b09f879 2,22,35
+packages/extension-mf/src/commands/shared-status.ts
+  s_de9a8d96742e00::t_f0df63a79c0a71 2,33
+packages/extension-mf/src/commands/shared-trace.ts
+  s_de9a8d96742e00::t_3c412d5a5f4d4b 2,33,38
+packages/extension-mf/src/commands/status.ts
+  s_de9a8d96742e00::t_cc5abc4abb474b 4,34
+packages/extension-mf/src/extension.ts
+  s_de9a8d96742e00::t_57d3230efc8af8 1,23
+packages/extension-mf/src/function-location.ts
+  s_de9a8d96742e00::t_27f581c5d01dda 11-12,297,391
+packages/extension-mf/src/index.ts
+  s_44e917dc900a13::t_a40e2e95868dd2 1,10-16,18-23
+packages/extension-mf/src/open.ts
+  s_de9a8d96742e00::t_6eb9967ab8a810 2
+packages/extension-mf/src/proxy.ts
+  s_87e6285f7a3b87::t_a9c0b65606254a 3,63,95,143,197,206,208,216,218,224
+packages/extension-mf/src/reader.ts
+  s_87e6285f7a3b87::t_0c0abfb517481c 40-42,50,95,285,288,1110,1119,1134,1151,1189
+packages/extension-mf/src/remote/results.ts
+  s_de9a8d96742e00::t_a2ffb829625c09 311
+packages/extension-mf/src/results.ts
+  s_de9a8d96742e00::t_47a17068e4c936 312,317,487
+packages/extension-mf/src/shared/capability.ts
+  s_de9a8d96742e00::t_747e8947db5ad8 22
+packages/extension-mf/src/shared/trace.ts
+  s_de9a8d96742e00::t_c58e77ebc2c44c 276
+packages/extension-mf/src/types.ts
+  s_de9a8d96742e00::t_6298dd148adfe0 423,434
+packages/extension-mf/test/bridge-command.test.mjs
+  s_de9a8d96742e00::t_e0884014f50e77 103,131-132,176
+packages/extension-mf/test/command.test.mjs
+  s_de9a8d96742e00::t_389688721ed055 142,146,154,164-170,214,226,292
+packages/extension-mf/test/fixtures.mjs
+  s_de9a8d96742e00::t_00aa16d3b839c6 122
+packages/extension-mf/test/integration.test.mjs
+  s_de9a8d96742e00::t_061a991cfe0b9e 277
+packages/extension-mf/test/open.test.mjs
+  s_87e6285f7a3b87::t_c28b31cb953fc8 9,99,260,287,293,336-338,387-388,395,428,442-444,461
+packages/extension-mf/test/package.test.mjs
+  s_44e917dc900a13::t_dd5a51896f3cf6 10-11,13,43,79,83,90,145,191,200,218-219,236,246,249,253,263,265,267-268,273-275,278-287,290
+packages/extension-mf/test/presenter.test.mjs
+  s_de9a8d96742e00::t_bc21ac9fd627ee 18-21,25,33,38,41,45,54
+packages/extension-mf/test/proxy.test.mjs
+  s_87e6285f7a3b87::t_499041889fa07d 16,49,93,107,167-168
+packages/extension-mf/test/reader.test.mjs
+  s_de9a8d96742e00::t_3420cc323e12da 24,35
+packages/extension-mf/test/remote-command.test.mjs
+  s_de9a8d96742e00::t_3a52ed2a7b6e99 180,182,200,202,241
+packages/extension-mf/test/remote.test.mjs
+  s_de9a8d96742e00::t_619659b5e86e36 183,253,285,314,348
+packages/extension-mf/test/results.test.mjs
+  s_de9a8d96742e00::t_d2c1860b62b34a 295
+packages/extension-mf/test/router.test.mjs
+  s_de9a8d96742e00::t_84f467576b4a5e 75-76
+packages/extension-mf/test/selection.test.mjs
+  s_de9a8d96742e00::t_176ba85d230bd6 51
+packages/extension-mf/test/shared-command.test.mjs
+  s_de9a8d96742e00::t_7d194333029ed8 10,18,27,151,268
+packages/extension-mf/test/shared-trace.test.mjs
+  s_de9a8d96742e00::t_ab04c9d894d827 305,340,368
+packages/extension-mf/test/sync-mf-debug.test.mjs
+  s_de9a8d96742e00::t_a2fac5a52b355e 93,165,191,213,291
+packages/extension-mf/test/sync-vmok-proxy.test.mjs
+  s_de9a8d96742e00::t_fd989623824afd 16,57
+packages/extension-mf/test/sync.test.mjs
+  s_de9a8d96742e00::t_1bd75f5a973220 46-47,54,90,121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9eff96849c4c7d4ade30d2aca10128678c614df8",
+  "prompts": {},
+  "sessions": {
+    "s_44e917dc900a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa7f8-d031-7340-95c0-c6bf17bcee1f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_87e6285f7a3b87": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa752-5532-7e51-8c23-8894e713952e",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_de9a8d96742e00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f83b6-c86d-7cd3-bc36-24fc710f3eea",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

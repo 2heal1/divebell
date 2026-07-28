@@ -47,8 +47,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current_tag=$(node -p "require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json').tag")
-          gh release view "$current_tag" >/dev/null
-          node scripts/npm-release.mjs check
+          current_version=$(node -p "require('./skills/record-divebell-workflow/references/divebell-cli-runtime.json').version")
+          recovery_url="https://github.com/${GITHUB_REPOSITORY}/actions/workflows/release.yml"
+          if ! gh release view "$current_tag" >/dev/null 2>&1; then
+            echo "::error::Release $current_tag is incomplete. Run Publish Divebell Release from main with version $current_version before preparing the next release. $recovery_url"
+            exit 1
+          fi
+          if ! node scripts/npm-release.mjs check; then
+            echo "::error::Release $current_tag is incomplete on npm. Run Publish Divebell Release from main with version $current_version before preparing the next release. $recovery_url"
+            exit 1
+          fi
           echo "tag=$current_tag" >> "$GITHUB_OUTPUT"
 
       - name: Bump release version

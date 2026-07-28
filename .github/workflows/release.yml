@@ -6,6 +6,12 @@ on:
       - main
     types:
       - closed
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact incomplete release version to recover from main
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -13,22 +19,31 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: divebell-release-${{ github.event.pull_request.number }}
+  group: divebell-release-${{ github.event_name == 'pull_request' && github.event.pull_request.number || inputs.version }}
   cancel-in-progress: false
 
 jobs:
   publish:
     if: >-
       github.repository == '2heal1/divebell' &&
-      github.event.pull_request.merged == true &&
-      startsWith(github.event.pull_request.head.ref, 'release/divebell-v')
+      (
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.merged == true &&
+          startsWith(github.event.pull_request.head.ref, 'release/divebell-v')
+        ) ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main'
+        )
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout merged release
+      - name: Checkout release source
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -50,6 +65,7 @@ jobs:
         run: npm install --global npm@11.15.0
 
       - name: Validate merged release pull request
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
@@ -61,6 +77,12 @@ jobs:
             --branch "$RELEASE_BRANCH" \
             --base "$RELEASE_BASE_SHA" \
             --changed-files "$RELEASE_FILES"
+
+      - name: Validate incomplete release recovery
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RECOVERY_VERSION: ${{ inputs.version }}
+        run: node scripts/validate-divebell-release-state.mjs --version "$RECOVERY_VERSION"
 
       - name: Build packages
         run: pnpm run build
@@ -102,7 +124,7 @@ jobs:
       - name: Create or finish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
           TAG: ${{ steps.metadata.outputs.tag }}
           VERSION: ${{ steps.metadata.outputs.version }}
           ASSET: ${{ steps.metadata.outputs.asset }}

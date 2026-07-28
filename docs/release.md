@@ -21,6 +21,7 @@ The GitHub Release contains the recording runtime bundle and its SHA-256 checksu
 ## One-time setup for new packages
 
 npm can configure trusted publishing only after a package exists. When a package name is new, publish the current Divebell version once with a maintainer account, then configure its GitHub Actions trust relationship.
+The initial Divebell release uses `0.0.0` for every package and the recording runtime.
 
 Prerequisites:
 
@@ -61,17 +62,17 @@ Use only the workflow filename, `release.yml`, not its full `.github/workflows/`
 
 After one successful OIDC release, restrict traditional publishing tokens in npm package settings. See npm's [trusted publishing guide](https://docs.npmjs.com/trusted-publishers/) and [`npm trust` reference](https://docs.npmjs.com/cli/v11/commands/npm-trust/).
 
-After this rename has landed on `main`, publish the recording runtime for the bootstrap version as well. The next automated release uses it as the current-release baseline:
+After the initial npm packages are published and trusted publishing is configured, publish the recording runtime for `0.0.0` as well. The next automated release uses it as the current-release baseline:
 
 ```bash
 pnpm run build:recording-runtime -- --output-dir /tmp/divebell-recording-runtime
 pnpm run verify:recording-runtime -- --output-dir /tmp/divebell-recording-runtime
-gh release create recording-skill-runtime-v0.1.2 \
-  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.1.2.tgz \
-  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.1.2.tgz.sha256 \
+gh release create recording-skill-runtime-v0.0.0 \
+  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.0.0.tgz \
+  /tmp/divebell-recording-runtime/divebell-recording-runtime-0.0.0.tgz.sha256 \
   --target main \
-  --title "Divebell 0.1.2" \
-  --notes "Bootstrap recording runtime release for Divebell 0.1.2."
+  --title "Divebell 0.0.0" \
+  --notes "Bootstrap recording runtime release for Divebell 0.0.0."
 ```
 
 If that release already exists, do not overwrite it. First confirm that it already contains both assets shown above.

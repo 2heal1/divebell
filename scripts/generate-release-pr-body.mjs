@@ -14,6 +14,7 @@ const base = getRequiredOption("--base");
 const version = getRequiredOption("--version");
 const tag = getRequiredOption("--tag");
 const output = resolve(getRequiredOption("--output"));
+const changesetOutputOption = getOption("--changeset-output");
 const changesetPaths = changedChangesetPaths(base);
 if (changesetPaths.length === 0) {
   throw new Error(`No changeset descriptions changed since ${base}.`);
@@ -28,6 +29,13 @@ const changesets = await Promise.all(changesetPaths.map(async (relativePath) => 
 })));
 const body = renderReleasePullRequestBody({ version, tag, changesets });
 await writeFile(output, body, "utf8");
+if (changesetOutputOption !== undefined) {
+  await writeFile(
+    resolve(changesetOutputOption),
+    `${changesetPaths.join("\n")}\n`,
+    "utf8"
+  );
+}
 
 process.stdout.write(`${JSON.stringify({
   ok: true,
@@ -61,10 +69,17 @@ function changedChangesetPaths(baseRevision) {
 }
 
 function getRequiredOption(name) {
+  const value = getOption(name);
+  if (value === undefined) throw new Error(`${name} is required.`);
+  return value;
+}
+
+function getOption(name) {
   const index = process.argv.indexOf(name);
   const value = index === -1 ? undefined : process.argv[index + 1];
   if (value === undefined || value.startsWith("--")) {
-    throw new Error(`${name} is required.`);
+    if (index === -1) return undefined;
+    throw new Error(`${name} requires a value.`);
   }
   return value;
 }

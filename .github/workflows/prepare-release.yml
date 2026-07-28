@@ -78,18 +78,21 @@ jobs:
           VERSION: ${{ steps.metadata.outputs.version }}
           TAG: ${{ steps.metadata.outputs.tag }}
           PR_BODY: ${{ runner.temp }}/divebell-release-pr.md
+          CHANGESET_FILES: ${{ runner.temp }}/divebell-release-changesets.txt
         run: |
           node scripts/generate-release-pr-body.mjs \
             --base "$BASE_TAG" \
             --version "$VERSION" \
             --tag "$TAG" \
-            --output "$PR_BODY"
+            --output "$PR_BODY" \
+            --changeset-output "$CHANGESET_FILES"
 
       - name: Create release branch and pull request
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.metadata.outputs.version }}
           PR_BODY: ${{ runner.temp }}/divebell-release-pr.md
+          CHANGESET_FILES: ${{ runner.temp }}/divebell-release-changesets.txt
         run: |
           branch="release/divebell-v${VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
@@ -102,6 +105,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
+          mapfile -t changeset_files < "$CHANGESET_FILES"
+          if [ "${#changeset_files[@]}" -eq 0 ]; then
+            echo "No changeset files were selected for this release." >&2
+            exit 1
+          fi
+          git rm -- "${changeset_files[@]}"
           git add \
             packages/*/package.json \
             skills/record-divebell-workflow/references/divebell-cli-runtime.json

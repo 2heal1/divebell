@@ -72,7 +72,9 @@ jobs:
           RELEASE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           RELEASE_FILES: ${{ runner.temp }}/divebell-release-files.txt
         run: |
-          gh pr diff "${{ github.event.pull_request.number }}" --name-only > "$RELEASE_FILES"
+          gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}/files?per_page=100" \
+            --jq '.[] | [.status, .filename] | @tsv' > "$RELEASE_FILES"
           node scripts/validate-divebell-release.mjs \
             --branch "$RELEASE_BRANCH" \
             --base "$RELEASE_BASE_SHA" \

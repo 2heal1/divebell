@@ -1,0 +1,63 @@
+packages/extensions/mf/README.md
+  s_0658e270076e3c::t_ef35ae7904b84a 19-27,39,42,45-47,87-88,106-128,145-151,309
+packages/extensions/mf/docs/bridge.md
+  s_0658e270076e3c::t_5e83ddeb43d9f8 56
+packages/extensions/mf/docs/remote.md
+  s_0658e270076e3c::t_a30f58df66a97b 115
+packages/extensions/mf/scripts/sync-mf-debug.mjs
+  s_46f08ac1c90fa6::t_237101ec81bc8d 2-12,15,28-29,31-38,342-620,691,719,723,727-728,741-763,779-782
+packages/extensions/mf/scripts/sync-observability.mjs
+  s_46f08ac1c90fa6::t_11da95c0071504 214-218
+packages/extensions/mf/src/bridge/result.ts
+  s_0658e270076e3c::t_b0d2e54b5e1933 118
+packages/extensions/mf/src/cli/errors.ts
+  s_0658e270076e3c::t_3a3107b0007de7 84
+packages/extensions/mf/src/cli/observability.ts
+  s_0658e270076e3c::t_9f36dd540b7dfe 24,34-39,44-52,296,313
+packages/extensions/mf/src/commands/metadata.ts
+  s_0658e270076e3c::t_b660763b897a71 29
+packages/extensions/mf/src/extension.ts
+  s_0658e270076e3c::t_5cfd37efcf731e 21
+packages/extensions/mf/src/open.ts
+  s_46f08ac1c90fa6::t_73a8b29147aa59 16-19,22,35
+packages/extensions/mf/src/results.ts
+  s_0658e270076e3c::t_3130513e80c617 312,317,487
+packages/extensions/mf/src/shared/trace.ts
+  s_0658e270076e3c::t_5b844b022ca9ee 276
+packages/extensions/mf/test/command.test.mjs
+  s_46f08ac1c90fa6::t_5498c25b4b07b1 141-169,181
+packages/extensions/mf/test/open.test.mjs
+  s_46f08ac1c90fa6::t_103b49db07e25c 22-28,88,100,115-117,187,213,243,264-265,273-275,332,336,338,350-355,442-443,455,462
+packages/extensions/mf/test/package.test.mjs
+  s_46f08ac1c90fa6::t_96209dc1cd8205 29,92,369
+packages/extensions/mf/test/sync-mf-debug.test.mjs
+  s_46f08ac1c90fa6::t_c06c0e413a6482 19-21,36-42,50,61-65,73,75,81,96,105-316
+packages/extensions/mf/test/sync.test.mjs
+  s_46f08ac1c90fa6::t_4a00cfb721c9ee 40-44,148-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4c876b27f321e615f106514103546c39d5119c21",
+  "prompts": {},
+  "sessions": {
+    "s_0658e270076e3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa8b0-b7b1-78c3-979a-7e77b553614f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_46f08ac1c90fa6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadb9-2271-7933-8ff8-cfd2e0fe6a99",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

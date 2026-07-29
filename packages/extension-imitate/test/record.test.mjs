@@ -75,8 +75,7 @@ test("starts and stops a manual recording on the same current page", async () =>
       "record",
       "start",
       "--out",
-      fixture.outputDir,
-      "--mic"
+      fixture.outputDir
     ], startOutput), 0);
     assert.equal(startOutput.errorText(), "");
     assert.equal(commandData(startOutput).status, "prepared");
@@ -93,6 +92,10 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.match(initScript, /locators/);
     assert.match(initScript, /composedPath/);
     assert.match(initScript, /selectedValues/);
+    writeFileSync(join(fixture.outputDir, "audio-events.jsonl"), `${JSON.stringify({
+      type: "audio-error",
+      message: "NotAllowedError: microphone permission was denied"
+    })}\n`);
 
     const stopOutput = createOutput();
     assert.equal(await fixture.run([
@@ -123,6 +126,9 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.equal(completedManifest.counts.domSnapshots, 1);
     assert.equal(completedManifest.counts.interactions, 4);
     assert.equal(completedManifest.counts.operations, 7);
+    assert.equal(completedManifest.capture.audio.status, "not-captured");
+    assert.match(completedManifest.capture.audio.reason, /continued without microphone audio/);
+    assert.equal(readJson(join(fixture.outputDir, "transcript.json")).status, "not-captured");
 
     const script = readFileSync(join(fixture.outputDir, "generated-script.mjs"), "utf8");
     assert.match(script, /waitForRecordedTarget/);
@@ -375,8 +381,7 @@ test("captures audio chunks and transcribes a recording", async () => {
       "record",
       "start",
       "--out",
-      fixture.outputDir,
-      "--mic"
+      fixture.outputDir
     ], startOutput), 0);
     await fixture.open("http://app.test/");
 

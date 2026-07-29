@@ -104,6 +104,11 @@ process.exitCode = await cli.run(process.argv.slice(2));
   const stopped = await runCli(["record", "stop", "--out", recordingDirectory], env);
   assert.equal(stopped.status, "ok");
   assert.equal(stopped.data.status, "completed");
+  const manifest = JSON.parse(await readFile(join(recordingDirectory, "manifest.json"), "utf8"));
+  const transcript = JSON.parse(await readFile(join(recordingDirectory, "transcript.json"), "utf8"));
+  assert.equal(manifest.capture.audio.requested, true);
+  assert.equal(manifest.capture.audio.status, "not-captured");
+  assert.equal(transcript.status, "not-captured");
   await runCli(["stop"], env);
 
   const replay = await execFileAsync(process.execPath, [

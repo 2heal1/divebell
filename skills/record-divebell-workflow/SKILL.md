@@ -1,6 +1,6 @@
 ---
 name: record-divebell-workflow
-description: 录制用户在网页中的人工浏览器操作和对应元素，生成可直接执行并验证最终页面的 JS 脚本；麦克风语音只是可选补充。Use when the user wants an agent-installable workflow skill for recording browser actions and operated elements, converting the recording into an executable JavaScript replay, or drafting a reusable skill from a manual web workflow with the globally installed divebell command.
+description: 录制用户在网页中的人工浏览器操作和对应元素，默认尝试采集可选语音，生成可直接执行并验证最终页面的 JS 脚本；无语音或麦克风权限被拒绝时直接忽略。Use when the user wants an agent-installable workflow skill for recording browser actions and operated elements, converting the recording into an executable JavaScript replay, or drafting a reusable skill from a manual web workflow with the globally installed divebell command.
 ---
 
 # 录制 Divebell 流程
@@ -17,14 +17,14 @@ description: 录制用户在网页中的人工浏览器操作和对应元素，�
   `divebell extensions add @divebell/extension-imitate`。
 - 如果 CLI 或录制命令不可用，读取 `references/divebell-cli.md`，不要回退到项目
   本地依赖或临时下载的 CLI。
-- 默认先运行 `record start` 准备录制，再通过 `divebell open about:blank --ui` 打开可见页面。语音不是必需输入，只有用户明确希望录音时才增加 `--mic`。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
+- 默认先运行 `record start` 准备录制，再通过 `divebell open about:blank --ui` 打开可见页面。不要询问用户是否开启语音，也不要增加语音参数；录制会自动尝试麦克风，未说话、未捕获音频或权限被拒绝时直接忽略。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
 - 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
 - 用户说“结束”“完成”“done”后，再调用 stop。
 - `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `divebell stop`。
 - 第一版录制包会保存鼠标点击、输入、键盘事件、事件相对录制开始的时间、页面快照、DOM 摘要、Divebell 结构化状态和可选麦克风音频。连续视频还不是可靠产物。
-- 使用 `--mic` 时，浏览器会申请麦克风权限，并把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`。如果权限被拒绝，必须读取 `audio-events.jsonl` 和 manifest 里的失败原因。
+- 浏览器会自动申请麦克风权限。成功捕获时把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`；没有可用音频或权限被拒绝时，不把它当成错误，也不要求用户重试。
 - 页面跳转、搜索或打开新页面后，中间的点击和输入也应该保留在 `interactions.jsonl`。不要只按最后停留的 URL 判断录制结果。
-- 只有录制时启用了麦克风，且音频包含影响最终结果的口头说明时，才需要转写。没有语音不影响根据屏幕操作生成可执行脚本。
+- 只有 `transcript.json` 已有非空语音文字时，才把语音作为用户意图来源。没有文字时继续根据屏幕操作生成和验证脚本，不自动追问或阻塞。
 - 生成脚本后必须读取脚本、`workflow.json`、`manifest.json`、`interactions.jsonl` 和 `dom-snapshots.jsonl`，再实际运行脚本验证。
 
 ## 确认 CLI
@@ -46,7 +46,7 @@ Extension。确认帮助可读后再继续，不要使用项目本地 CLI。
 divebell record start
 ```
 
-录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。如果用户明确需要录音，再增加 `--mic`。
+录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。语音采集会自动尝试，不需要额外参数。
 
 2. 用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
 
@@ -98,15 +98,15 @@ divebell stop
 
 结束后读取 `manifest.json`、`interactions.jsonl`、`workflow.json` 和 `generated-script.mjs`。确认 manifest 的 `status` 是 `completed`，并检查 workflow 是否按顺序包含录到的输入、选择、按键和点击。随后实际运行 `generated-script.mjs`，确认它到达录制结束时的页面状态。不要只因为页面没有 Divebell target 就说“没有录到操作”；先看 `interactions.jsonl`。
 
-如果 `manifest.capture.audio.status` 是 `captured`，先读取 `transcript.json`。如果 `segments` 已有内容，后续分析必须把它当成用户意图来源。
+读取 `transcript.json`。只有 `segments` 有非空内容时，后续分析才把它作为用户意图来源；状态是 `not-captured` 或内容为空时直接跳过。
 
-如果用户启用了麦克风、`segments` 为空，且环境里有 `OPENAI_API_KEY`，继续运行：
+如果已经捕获音频、用户明确表示说过补充说明、`segments` 仍为空，且环境里有 `OPENAI_API_KEY`，运行：
 
 ```bash
 divebell record transcribe --input <start-output-path>
 ```
 
-转写完成后重新读取 `transcript.json`。如果没有 `OPENAI_API_KEY`，浏览器操作生成和回放照常继续；只需说明音频已经保存，但其中可能存在尚未用于编排的口头补充。
+转写完成后重新读取 `transcript.json`。其他情况下不要因为语音为空或无法转写而停下来，浏览器操作生成和回放照常继续。
 
 ## 重新生成脚本
 

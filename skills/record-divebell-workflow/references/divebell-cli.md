@@ -34,10 +34,10 @@ divebell record stop --out <start-output-path>
 divebell stop
 ```
 
-默认录制操作元素和事件，不要求语音。用户明确需要录音时使用
-`record start --mic`，它会额外保存 `audio.webm`、`audio-chunks.jsonl` 和
-`audio-events.jsonl`。浏览器支持时，录音页会同步写入语音识别结果，
-`record stop` 会汇总到 `transcript.json`，但不会默认访问外部转写服务。
+`record start` 默认录制操作元素和事件，并自动尝试麦克风。捕获成功时会额外保存
+`audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`。浏览器支持时，录音页会
+同步写入语音识别结果，`record stop` 会汇总到 `transcript.json`。没有说话、没有
+捕获到音频或麦克风权限被拒绝时直接忽略，不影响浏览器录制、脚本生成和回放。
 
 需要把录音转成文字时间轴时，运行：
 
@@ -45,8 +45,9 @@ divebell stop
 divebell record transcribe --input <start-output-path>
 ```
 
-默认读取 `OPENAI_API_KEY`，也可以传 `--api-key <key>`。没有录音或转写不影响
-根据操作记录生成和回放脚本。
+默认读取 `OPENAI_API_KEY`，也可以传 `--api-key <key>`。只有用户明确说过补充说明、
+已有音频但没有实时语音文字时才需要调用。没有录音或转写不影响根据操作记录生成和
+回放脚本。
 
 `record stop` 会生成 `workflow.json` 和 `generated-script.mjs`。后者默认执行全局
 `divebell`。运行脚本前用 `divebell --help` 确认命令仍然可用。

@@ -82,6 +82,11 @@ export async function collectAudioCapture(
   const liveTranscript = createLiveTranscriptFromAudioEvents(files, events);
   if (liveTranscript.segments.length > 0) {
     await writeJsonFile(join(outputDirectory, files.transcript), liveTranscript);
+  } else if (requested && chunks.length === 0) {
+    await writeJsonFile(join(outputDirectory, files.transcript), {
+      status: "not-captured",
+      segments: []
+    } satisfies TranscriptData);
   }
   const summary: AudioCaptureSummary = {
     requested,
@@ -169,7 +174,9 @@ function createAudioCaptureReason(
   if (chunks.length > 0) return undefined;
   const errorEvent = [...events].reverse().find((event) => event.type === "audio-error");
   const message = typeof errorEvent?.message === "string" ? errorEvent.message : undefined;
-  return message === undefined ? "No microphone audio chunks were captured." : message;
+  return message === undefined
+    ? "No usable microphone audio was captured; browser replay generation continued without it."
+    : `${message} Browser replay generation continued without microphone audio.`;
 }
 
 

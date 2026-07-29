@@ -13,8 +13,8 @@ const extension = {
       },
       {
         category: "Extensions",
-        usage: "divebell record start [--out <path>] [--interval <ms>] [--mic]",
-        description: "Prepare a manual recording before the next divebell open; write under ./recordings when out is omitted."
+        usage: "divebell record start [--out <path>] [--interval <ms>]",
+        description: "Prepare browser and optional voice capture before the next divebell open; missing or denied audio is ignored."
       },
       {
         category: "Extensions",

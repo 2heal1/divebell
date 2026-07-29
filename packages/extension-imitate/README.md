@@ -1,6 +1,6 @@
 # @divebell/extension-imitate
 
-This Divebell Extension records a real browser walkthrough and turns the captured interactions, operated elements, page context, and Runtime state into an executable JavaScript replay. Spoken intent is optional supplementary context.
+This Divebell Extension records a real browser walkthrough and turns the captured interactions, operated elements, page context, and Runtime state into an executable JavaScript replay. It also tries to capture spoken intent, but voice is always supplementary and missing or denied audio is ignored.
 
 ## Install
 
@@ -10,13 +10,13 @@ divebell extensions add @divebell/extension-imitate
 
 ## Record a manual walkthrough
 
-Prepare the recording first so browser interaction capture is active from page startup. The output defaults to `./recordings`; microphone narration is optional and is not required to generate a replayable script:
+Prepare the recording first so browser interaction and optional voice capture are active from page startup. The output defaults to `./recordings`:
 
 ```bash
 divebell record start
 ```
 
-Add `--mic` only when spoken context would help explain the intended result.
+The command tries to start microphone capture automatically. If the user does not speak, the browser cannot capture audio, or microphone permission is denied, recording continues with browser actions only.
 
 Then open the page through Divebell. The CLI starts and injects the Bridge while the recording Extension injects its page capture script into the same browser launch:
 
@@ -55,9 +55,9 @@ OPENAI_API_KEY=... divebell record transcribe \
   --input ./recordings/example.orrec
 ```
 
-The default transcription model is `whisper-1`; use `--model` to select another compatible model. Do not treat a script that only opens the last URL as complete when recorded audio has not been transcribed.
+The default transcription model is `whisper-1`; use `--model` to select another compatible model. Run transcription only when the user says they provided spoken context but the browser did not produce live speech text. Otherwise an empty transcript is ignored.
 
-Audio is supplementary. A recording without audio still produces a complete browser replay when the intended result is the demonstrated sequence itself.
+Audio is supplementary. Only a non-empty transcript is used as Agent context. A recording without usable audio still produces a complete browser replay when the intended result is the demonstrated sequence itself.
 
 ## Fixed-duration capture
 

@@ -227,7 +227,7 @@ export interface AudioChunkEntry {
 }
 
 export interface TranscriptData {
-  status: "not-requested" | "pending" | "completed" | "failed";
+  status: "not-requested" | "not-captured" | "pending" | "completed" | "failed";
   audio?: string;
   model?: string;
   transcribedAt?: string;

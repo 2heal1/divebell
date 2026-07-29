@@ -1,0 +1,51 @@
+.changeset/generate-executable-recording-replays.md
+  s_a101c7b87ffa85::t_8b73f93e998aa9 6
+docs/record-browser-workflows.md
+  s_a101c7b87ffa85::t_606a47e01bc874 5,52,57,97
+docs/record-browser-workflows.zh-CN.md
+  s_a101c7b87ffa85::t_b8d00b3b4f7962 5,51,56,96
+packages/extension-imitate/README.md
+  s_df7b1a4bc04419::t_7140256e0a9a2d 3,13,19,58,60
+packages/extension-imitate/src/audio.ts
+  s_a101c7b87ffa85::t_bc5717b393cd4a 85-89,177-179
+packages/extension-imitate/src/extension.ts
+  s_a101c7b87ffa85::t_7a4f2131e89112 16-17
+packages/extension-imitate/src/index.ts
+  s_df7b1a4bc04419::t_35019c74028dde 72,78,99,334,366,402,429,433,456,475
+packages/extension-imitate/src/types.ts
+  s_a101c7b87ffa85::t_44bfd7ab382124 230
+packages/extension-imitate/test/recording-replay.e2e.mjs
+  s_df7b1a4bc04419::t_afb20f3f35be6e 107-111
+skills/record-divebell-workflow/SKILL.md
+  s_a101c7b87ffa85::t_d7e49db69199d2 3,20,25,27,49,101,103,109
+skills/record-divebell-workflow/agents/openai.yaml
+  s_a101c7b87ffa85::t_e9735cd65e863e 4
+skills/record-divebell-workflow/references/divebell-cli.md
+  s_a101c7b87ffa85::t_d2cbb6ba12af3a 37-40,48-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c8e65f1dcd092ce4d34a272e69672f4058fd05ae",
+  "prompts": {},
+  "sessions": {
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_df7b1a4bc04419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad1c-367e-72a3-b20c-596cc9783dd5",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

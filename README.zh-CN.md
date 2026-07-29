@@ -50,9 +50,6 @@ https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json�
 信息，按需调整 Playground 输入，并确认页面渲染出可交互的诊断小游戏。
 ```
 
-完整 Quick Start 就是：安装 CLI 和 Skill，然后把上面的提示词发给 Agent。Divebell CLI
-保持全局安装，不需要加入项目依赖。
-
 ## 为什么需要 Divebell
 
 Coding Agent 已经可以阅读和修改代码，也可以调用各种开发工具。但真实 Web 开发中的问题通常发生在页面场景中：用户看到的是一个页面，而定位问题需要结合页面状态、运行环境、业务上下文以及团队已有的诊断能力。

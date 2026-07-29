@@ -52,10 +52,6 @@ Terminal, Console, and Network evidence, update the Playground inputs as
 needed, and verify that the remote renders the interactive diagnostics game.
 ```
 
-That's the full Quick Start: install the CLI and skill, then send the prompt
-above to your agent. The Divebell CLI stays global and does not need to be
-added to the project.
-
 ## Why Divebell
 
 Coding agents can already read and modify code, and they can call many development tools. But real web development issues usually happen in the page itself: users see a page, while diagnosing the problem requires its state, runtime environment, business context, and the team's existing diagnostic capabilities.

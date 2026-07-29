@@ -1,0 +1,39 @@
+docs/extension-api.md
+  s_2a6fe411057fce::t_15776568f76a06 318
+packages/extension-imitate/test/record.test.mjs
+  s_5585a971cab438::t_6ec9c184bb0118 591
+skills/divebell/references/integrate.md
+  s_5585a971cab438::t_81ef7d198a88bf 97,100
+skills/divebell/references/quickstart.md
+  s_5585a971cab438::t_2d4d32d4fbe25b 77,80
+skills/divebell/references/troubleshoot.md
+  s_5585a971cab438::t_7224f958678bfc 151
+skills/divebell/references/use-cli.md
+  s_5585a971cab438::t_0b1205c5b10bfd 84,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "edacae0d03f85c1ee7ec1ba8d2a4e3c195d4720b",
+  "prompts": {},
+  "sessions": {
+    "s_2a6fe411057fce": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fabd5-3d7a-71a3-b6f6-70f34f847593",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_5585a971cab438": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fabd3-4b69-7cb3-a80f-b6172d8e839a",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,37 @@
+package.json
+  s_df7b1a4bc04419::t_02b215eeaab84f 31
+skills/divebell/SKILL.md
+  s_305d8faa16684e::t_bbbb7b46084cf4 73,77-79
+skills/divebell/references/integrate.md
+  s_df7b1a4bc04419::t_9d80fec5477362 28-29,45-53,74,158
+skills/divebell/references/runtime-sdk.md
+  s_df7b1a4bc04419::t_cc930911277c07 65,75,1134,1292-1296
+skills/divebell/references/troubleshoot.md
+  s_df7b1a4bc04419::t_40a7d7eb22f5dd 142-144,155-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d333328a18140dd7169e915a16cdc67522c27817",
+  "prompts": {},
+  "sessions": {
+    "s_305d8faa16684e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad47-fa96-7ac3-9a5b-d0acbeda47bc",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_df7b1a4bc04419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad1c-367e-72a3-b20c-596cc9783dd5",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

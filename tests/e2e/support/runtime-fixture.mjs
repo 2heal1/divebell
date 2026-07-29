@@ -1,13 +1,17 @@
 import { request as httpRequest } from "node:http";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { createBridgeServer } from "@divebell/bridge";
 import {
+  importFromTestPackage,
+  resolvePackagePathFromTestPackage
+} from "./package-resolution.mjs";
+
+const { createBridgeServer } = await importFromTestPackage("@divebell/bridge");
+const {
   createDivebell,
   installDivebellOnWindow
-} from "@divebell/core";
-
+} = await importFromTestPackage("@divebell/core");
 const createBridgeInitScript = await resolveCliBridgeInitScript();
 
 export async function createTroubleshootingRuntimeFixture() {
@@ -164,11 +168,9 @@ function restoreGlobal(name, value) {
 }
 
 async function resolveCliBridgeInitScript() {
-  const cliEntry = fileURLToPath(await import.meta.resolve("@divebell/cli"));
-  const cliPackageRoot = dirname(dirname(cliEntry));
   const bridgeInitScriptModule = await import(pathToFileURL(join(
-    cliPackageRoot,
-    "dist/features/bridge/inject.js"
+    await resolvePackagePathFromTestPackage("@divebell/cli", "dist/features/bridge"),
+    "inject.js"
   )).href);
   return bridgeInitScriptModule.createBridgeInitScript;
 }

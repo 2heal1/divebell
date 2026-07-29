@@ -17,13 +17,15 @@
   },
   "files": [
     "bin/**/*.js",
-    "src/**/*.mjs",
-    "test/**/*.mjs"
+    "dist/e2e/**/*",
+    "scripts/**/*.mjs"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
+    "build": "node ./scripts/prepare-package.mjs",
+    "prepack": "pnpm run build",
     "test:e2e": "node ./bin/divebell-test.js"
   },
   "dependencies": {

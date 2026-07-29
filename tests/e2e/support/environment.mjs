@@ -1,12 +1,16 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+import {
+  packageRoot,
+  resolvePackagePathFromTestPackage,
+  resolvePackageRootFromTestPackage
+} from "./package-resolution.mjs";
+
 const testPackageManifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
-const cliEntry = await resolvePackagePath("@divebell/cli", "dist/bin.js");
+const cliEntry = await resolvePackagePathFromTestPackage("@divebell/cli", "dist/bin.js");
 const declaredOfficialExtensionNames = Object.keys(testPackageManifest.dependencies ?? {})
   .filter((name) => name.startsWith("@divebell/extension-"))
   .sort();
@@ -103,7 +107,7 @@ async function discoverOfficialExtensions() {
   await validateDeclaredOfficialExtensions();
   const extensions = [];
   for (const name of declaredOfficialExtensionNames) {
-    const directory = await resolvePackageRoot(name);
+    const directory = await resolvePackageRootFromTestPackage(name);
     const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
     if (
       manifest.name !== name
@@ -166,25 +170,6 @@ async function validateDeclaredOfficialExtensions() {
       `Received: ${declaredOfficialExtensionNames.join(", ")}`
     ].join("\n"));
   }
-}
-
-async function resolvePackagePath(packageName, relativePath) {
-  return join(await resolvePackageRoot(packageName), relativePath);
-}
-
-async function resolvePackageRoot(packageName) {
-  const entryUrl = await import.meta.resolve(packageName);
-  let directory = dirname(fileURLToPath(entryUrl));
-  while (directory !== dirname(directory)) {
-    try {
-      const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
-      if (manifest.name === packageName) return directory;
-    } catch (error) {
-      if (error?.code !== "ENOENT") throw error;
-    }
-    directory = dirname(directory);
-  }
-  throw new Error(`Could not resolve package root for ${packageName}.`);
 }
 
 function parseJsonOutput(stdout, command) {

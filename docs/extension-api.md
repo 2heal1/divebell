@@ -315,7 +315,7 @@ Commands and page hooks use `options.divebell` as the primary entry point to Div
 | Capability | API |
 | --- | --- |
 | Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
-| Execute and await page-declared capabilities | `inputOptions`, `runAction`, `waitFor` |
+| Execute and await page-declared capabilities | `runAction`, `waitFor` |
 | Operate and inspect the current page | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.getWindow` |
 | Collect browser evidence | `browser.screenshot`, `browser.network`, `browser.console` |
 | Run focused low-level capture | `browser.memory`, `browser.coverage` |

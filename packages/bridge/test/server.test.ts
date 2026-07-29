@@ -486,7 +486,7 @@ test("links server-rendered runtime state with the later browser connection", as
   }
 });
 
-test("forwards input options, action runs, and wait requests", async () => {
+test("forwards action runs and wait requests", async () => {
   const server = createBridgeServer({
     idGenerator: () => "runtime-1",
     clock: createClock(3000)
@@ -497,34 +497,6 @@ test("forwards input options, action runs, and wait requests", async () => {
   try {
     await stream.next("connected");
 
-    const optionsPromise = readJson(`${address.url}/runtimes/runtime-1/actions/demo.select/options?input=region&payload=${encodeURIComponent(JSON.stringify({ country: "cn" }))}&timeout=20`);
-    const optionsRequest = await stream.next("request");
-    assert.deepEqual(optionsRequest, {
-      requestId: "request-1",
-      method: "getInputOptions",
-      actionName: "demo.select",
-      inputName: "region",
-      payload: {
-        country: "cn"
-      },
-      options: {
-        timeout: 20
-      }
-    });
-    await postJson(`${address.url}/runtimes/runtime-1/responses/request-1`, {
-      success: true,
-      result: [
-        {
-          value: "hangzhou"
-        }
-      ]
-    });
-    assert.deepEqual(await optionsPromise, [
-      {
-        value: "hangzhou"
-      }
-    ]);
-
     const runPromise = postReadJson(`${address.url}/runtimes/runtime-1/actions/demo.select/run`, {
       payload: {
         region: "hangzhou"
@@ -532,14 +504,14 @@ test("forwards input options, action runs, and wait requests", async () => {
     });
     const runRequest = await stream.next("request");
     assert.deepEqual(runRequest, {
-      requestId: "request-2",
+      requestId: "request-1",
       method: "runAction",
       actionName: "demo.select",
       payload: {
         region: "hangzhou"
       }
     });
-    await postJson(`${address.url}/runtimes/runtime-1/responses/request-2`, {
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-1`, {
       success: true,
       result: {
         success: true,
@@ -570,7 +542,7 @@ test("forwards input options, action runs, and wait requests", async () => {
     });
     const waitRequest = await stream.next("request");
     assert.deepEqual(waitRequest, {
-      requestId: "request-3",
+      requestId: "request-2",
       method: "waitFor",
       targetId: "route:/home",
       status: "ready",
@@ -584,7 +556,7 @@ test("forwards input options, action runs, and wait requests", async () => {
         timeout: 30
       }
     });
-    await postJson(`${address.url}/runtimes/runtime-1/responses/request-3`, {
+    await postJson(`${address.url}/runtimes/runtime-1/responses/request-2`, {
       success: true,
       result: {
         success: true,

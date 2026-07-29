@@ -43,9 +43,6 @@ export type {
   RuntimeActionHandler,
   RuntimeActionResult,
   RuntimeActionRisk,
-  RuntimeInputOption,
-  RuntimeInputOptionsOptions,
-  RuntimeInputOptionsProvider,
   RuntimeJsonSchema,
   RuntimeJsonSchemaProperty
 } from "./action/types.js";

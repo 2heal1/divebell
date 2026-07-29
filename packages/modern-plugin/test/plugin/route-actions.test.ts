@@ -45,7 +45,6 @@ test("registers route list action when enabled", async () => {
   assert.ok(action);
   assert.equal(action.risk, "safe");
   assert.equal(action.source, "modern.js");
-  assert.equal(action.hasInputOptions, false);
 
   const result = await runtime.runAction(routeListActionName);
   assert.equal(result.success, true);
@@ -118,12 +117,6 @@ test("registers route navigate action when enabled", async () => {
   assert.ok(action);
   assert.equal(action.risk, "state-changing");
   assert.equal(action.source, "modern.js");
-  assert.equal(action.hasInputOptions, true);
-
-  assert.deepEqual(await runtime.getInputOptions(routeNavigateActionName, "to"), [
-    { value: "/", description: "root" },
-    { value: "/orders", description: "orders" }
-  ]);
 
   const result = await runtime.runAction(routeNavigateActionName, {
     to: "/orders",

@@ -208,12 +208,6 @@ function registerRuntime(): void {
       },
       additionalProperties: false
     },
-    getInputOptions: (inputName) => inputName === "strategy"
-      ? [
-          { value: "origin", description: "Refresh inventory from the healthy static endpoint." },
-          { value: "cache", description: "Use the last known-good inventory snapshot." }
-        ]
-      : [],
     handler: (payload) => {
       const input = isRecord(payload) ? payload : {};
       const strategy = input.strategy === "cache" ? "cache" : "origin";

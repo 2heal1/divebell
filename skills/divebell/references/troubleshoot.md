@@ -148,7 +148,7 @@ divebell snapshot --session <debug-session>
 - Add `--id` or `--query` only to narrow a clue that already appeared.
 
 Read events when the state-change history matters. Before executing a declared
-page action, inspect its action definition, risk, and input options.
+page action, inspect its action definition, risk, and input constraints.
 
 ### Add Runtime SDK Only When Justified
 

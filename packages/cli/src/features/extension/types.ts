@@ -27,11 +27,6 @@ export interface DivebellWaitOptions {
   where?: RuntimeDataCondition[];
 }
 
-export interface DivebellInputOptionsRequest {
-  payload?: Record<string, unknown>;
-  timeout?: number;
-}
-
 export interface DivebellBrowserScreenshotOptions {
   fullPage?: boolean;
 }
@@ -262,11 +257,6 @@ export interface DivebellExtensionApi {
   snapshot<T = RuntimeSnapshot>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   events<T = unknown>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
   actions<T = unknown>(query?: DivebellResourceQuery, selector?: RuntimeSelector): Promise<RuntimeResourceResult<T>>;
-  inputOptions<T = unknown>(
-    actionName: string,
-    inputName: string,
-    options?: DivebellInputOptionsRequest
-  ): Promise<RuntimeResourceResult<T>>;
   runAction<T = unknown>(
     actionName: string,
     payload?: Record<string, unknown>

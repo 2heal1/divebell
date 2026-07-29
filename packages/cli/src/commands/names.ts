@@ -35,7 +35,6 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "extensions",
     "stack",
     "runtimes",
-    "input-options",
     "run-action",
     "wait-for",
     ...BROWSER_COMMAND_NAMES,

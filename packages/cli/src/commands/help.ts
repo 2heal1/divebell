@@ -159,11 +159,6 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Runtime",
-    usage: "divebell input-options [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] --action <name> --input <name> [--payload <json>] [--timeout <ms>]",
-    description: "Read dynamic choices for an action input."
-  },
-  {
-    category: "Runtime",
     usage: "divebell run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]",
     description: "Run a runtime action declared by the page."
   },

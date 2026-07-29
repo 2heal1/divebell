@@ -588,8 +588,7 @@ function createRecordingFetcher(fetchUrls = [], sessionId = "recording-session")
         name: "orders.refresh",
         source: "orders",
         risk: "safe",
-        enabled: true,
-        hasInputOptions: false
+        enabled: true
       }]);
     }
     if (url === "http://bridge.test/runtimes/runtime-1/events?limit=50") {

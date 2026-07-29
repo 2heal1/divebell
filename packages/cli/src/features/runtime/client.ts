@@ -29,31 +29,6 @@ export async function fetchRuntimeResource<T>(
   };
 }
 
-export async function fetchInputOptions<T>(
-  fetcher: Fetcher,
-  bridgeUrl: string,
-  runtime: BridgeRuntimeInfo,
-  actionName: string,
-  inputName: string,
-  payload: Record<string, unknown> | undefined,
-  timeout: number | undefined
-): Promise<RuntimeResourceResult<T>> {
-  const url = new URL(`${bridgeUrl}/runtimes/${encodeURIComponent(runtime.runtimeId)}/actions/${encodeURIComponent(actionName)}/options`);
-  url.searchParams.set("input", inputName);
-  if (payload !== undefined) {
-    url.searchParams.set("payload", JSON.stringify(payload));
-  }
-  if (timeout !== undefined) {
-    url.searchParams.set("timeout", String(timeout));
-  }
-
-  const result = await requestJson<T>(fetcher, url.toString());
-  return {
-    runtime,
-    result
-  };
-}
-
 export async function runRuntimeAction<T>(
   fetcher: Fetcher,
   bridgeUrl: string,

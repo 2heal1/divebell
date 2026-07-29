@@ -21,7 +21,6 @@ export type BridgeRuntimeCommandName =
   | "getSnapshot"
   | "getEvents"
   | "getActions"
-  | "getInputOptions"
   | "runAction"
   | "waitFor";
 
@@ -36,7 +35,6 @@ export interface BridgeRuntimeRequest {
   method: BridgeRuntimeCommandName;
   query?: BridgeRuntimeQuery;
   actionName?: string;
-  inputName?: string;
   payload?: Record<string, unknown>;
   targetId?: string;
   status?: string;

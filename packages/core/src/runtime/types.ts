@@ -2,9 +2,7 @@ import type {
   GetActionsQuery,
   RegisterActionInput,
   RuntimeActionDescriptor,
-  RuntimeActionResult,
-  RuntimeInputOption,
-  RuntimeInputOptionsOptions
+  RuntimeActionResult
 } from "../action/types.js";
 import type { GetEventsQuery, GetEventsResult } from "../event/types.js";
 import type { GetSnapshotQuery, RuntimeSnapshot, UpdateSnapshotInput } from "../snapshot/types.js";
@@ -28,12 +26,6 @@ export interface DivebellCore {
   registerAction(action: RegisterActionInput): void;
   unregisterAction(actionName: string): void;
   getActions(query?: GetActionsQuery): RuntimeActionDescriptor[];
-  getInputOptions(
-    actionName: string,
-    inputName: string,
-    currentPayload?: Record<string, unknown>,
-    options?: RuntimeInputOptionsOptions
-  ): Promise<RuntimeInputOption[]>;
   runAction(actionName: string, payload?: Record<string, unknown>): Promise<RuntimeActionResult>;
   waitFor(condition: RuntimeCondition, options?: RuntimeWaitOptions): Promise<RuntimeWaitResult>;
 }

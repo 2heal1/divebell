@@ -315,7 +315,7 @@ interface DivebellStackDetection {
 | 能力 | API |
 | --- | --- |
 | 读取应用内部信息 | `targets`、`snapshot`、`events`、`actions` |
-| 执行和等待页面声明能力 | `inputOptions`、`runAction`、`waitFor` |
+| 执行和等待页面声明能力 | `runAction`、`waitFor` |
 | 操作和读取当前页面 | `browser.pageSnapshot`、`browser.click`、`browser.fill`、`browser.eval`、`browser.evalFile`、`browser.waitEval`、`browser.getWindow` |
 | 收集浏览器证据 | `browser.screenshot`、`browser.network`、`browser.console` |
 | 专项底层采集 | `browser.memory`、`browser.coverage` |

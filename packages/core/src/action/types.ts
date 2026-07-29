@@ -21,23 +21,6 @@ export interface RuntimeJsonSchemaProperty {
   additionalProperties?: boolean;
 }
 
-export type RuntimeInputOptionValue = string | number | boolean;
-
-export interface RuntimeInputOption {
-  value: RuntimeInputOptionValue;
-  description?: string;
-}
-
-export interface RuntimeInputOptionsOptions {
-  timeout?: number;
-}
-
-export type RuntimeInputOptionsProvider = (
-  inputName: string,
-  currentPayload?: Record<string, unknown>,
-  context?: RuntimeActionContext
-) => Promise<RuntimeInputOption[]> | RuntimeInputOption[];
-
 export type RuntimeActionHandler = (
   payload: unknown,
   context: RuntimeActionContext
@@ -60,7 +43,6 @@ export interface RegisterActionInput {
   risk?: RuntimeActionRisk;
   availableWhen?: RuntimeCondition | RuntimeCondition[];
   inputSchema?: RuntimeJsonSchema;
-  getInputOptions?: RuntimeInputOptionsProvider;
   handler: RuntimeActionHandler;
 }
 
@@ -71,7 +53,6 @@ export interface RuntimeActionDescriptor {
   risk: RuntimeActionRisk;
   availableWhen?: RuntimeCondition | RuntimeCondition[];
   inputSchema?: RuntimeJsonSchema;
-  hasInputOptions: boolean;
   enabled: boolean;
   reason?: string;
   registeredAt: number;
@@ -92,4 +73,3 @@ export interface RuntimeActionResult {
   result?: unknown;
   error?: RuntimeError;
 }
-

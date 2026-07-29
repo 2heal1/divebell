@@ -16,7 +16,6 @@ import {
 } from "../bridge/process.js";
 import { waitForRuntimeCommand } from "../runtime/wait.js";
 import {
-  fetchInputOptions,
   fetchRuntimeResource,
   fetchRuntimes,
   normalizeBridgeUrl,
@@ -99,18 +98,6 @@ export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOp
     snapshot: async (query, selector) => await fetchResource("snapshot", query, selector),
     events: async (query, selector) => await fetchResource("events", query, selector),
     actions: async (query, selector) => await fetchResource("actions", query, selector),
-    inputOptions: async (actionName, inputName, inputOptions = {}) => {
-      const runtime = await chooseRuntime();
-      return await fetchInputOptions(
-        options.fetcher,
-        bridgeUrl,
-        runtime,
-        actionName,
-        inputName,
-        inputOptions.payload,
-        inputOptions.timeout
-      );
-    },
     runAction: async (actionName, payload) => {
       const runtime = await chooseRuntime();
       return await runRuntimeAction(options.fetcher, bridgeUrl, runtime, actionName, payload);

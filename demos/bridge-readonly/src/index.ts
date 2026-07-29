@@ -101,19 +101,6 @@ runtime.registerAction({
     },
     additionalProperties: false
   },
-  getInputOptions: (inputName) => {
-    if (inputName !== "source") return [];
-    return [
-      {
-        value: "cli",
-        description: "Triggered from the CLI"
-      },
-      {
-        value: "demo",
-        description: "Triggered from the demo page"
-      }
-    ];
-  },
   handler: (payload) => {
     const input = isRecord(payload) ? payload : {};
     const amount = typeof input.amount === "number" && Number.isFinite(input.amount)

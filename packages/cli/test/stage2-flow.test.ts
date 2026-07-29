@@ -55,16 +55,6 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
         id: "business:orders",
         status: "ready"
       },
-      getInputOptions: (inputName) => inputName === "source"
-        ? [
-            {
-              value: "cli"
-            },
-            {
-              value: "demo"
-            }
-          ]
-        : [],
       handler: (payload) => {
         const input = isRecord(payload) ? payload : {};
         const amount = typeof input.amount === "number" ? input.amount : 1;
@@ -148,23 +138,6 @@ test("runs the stage 2 cli flow against a connected runtime", async () => {
       { runtimeId: "runtime-checkout", name: "checkout", parentRuntimeId: "runtime-orders" },
       { runtimeId: "runtime-orders", name: "orders", parentRuntimeId: undefined }
     ]);
-
-    const options = await runCliJson<{
-      result: Array<{ value: string }>;
-    }>([
-      "input-options",
-      "--bridge",
-      address.url,
-      "--runtime",
-      "runtime-orders",
-      "--url",
-      "http://app.test/",
-      "--action",
-      "demo.refresh-orders",
-      "--input",
-      "source"
-    ]);
-    assert.deepEqual(options.result.map((option) => option.value), ["cli", "demo"]);
 
     const action = await runCliJson<{
       result: {

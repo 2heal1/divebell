@@ -1,0 +1,55 @@
+packages/test/README.md
+  s_f8bf05ae0511bf::t_9a3934807913c2 3,10-13
+packages/test/bin/divebell-test.js
+  s_f8bf05ae0511bf::t_f0652c9191c764 3,9-16,39-59
+packages/test/package.json
+  s_f8bf05ae0511bf::t_e691816c09ef74 20-21,27-28
+packages/test/scripts/prepare-package.mjs
+  s_f8bf05ae0511bf::t_9a0324a3165a3f 1-25
+tests/e2e/cli/scenario.mjs
+  s_f8bf05ae0511bf::t_102e973c83c582 1-24
+tests/e2e/e2e.test.mjs
+  s_f8bf05ae0511bf::t_fc7c6a622f09eb 1,3-5,17-22,24-27
+tests/e2e/extension-code-usage/README.md
+  s_f8bf05ae0511bf::t_2aaeb0f6e3eff6 1-3
+tests/e2e/extension-imitate/README.md
+  s_a101c7b87ffa85::t_837d2df35cb24a 1-3
+tests/e2e/extension-memory/README.md
+  s_a101c7b87ffa85::t_61228c11445a6f 1-3
+tests/e2e/extension-mf/README.md
+  s_a101c7b87ffa85::t_292ce48cf3983d 1-3
+tests/e2e/extension-troubleshooting/scenario.mjs
+  s_f8bf05ae0511bf::t_0d147179e6507b 1-52
+tests/e2e/support/environment.mjs
+  s_f8bf05ae0511bf::t_03993af33cfb90 2,4-10,13,110
+tests/e2e/support/package-resolution.mjs
+  s_a101c7b87ffa85::t_44c8b9e31ac25f 1-50
+tests/e2e/support/runtime-fixture.mjs
+  s_a101c7b87ffa85::t_3ce65f340dafb1 2-3,6-11,14,172-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f307026808cb73ca2e029a88a5a7ae9af79f1661",
+  "prompts": {},
+  "sessions": {
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_f8bf05ae0511bf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019facb3-0b2a-7ee3-b7b2-77cd1b7f6361",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

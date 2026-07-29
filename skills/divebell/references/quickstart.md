@@ -1,15 +1,32 @@
 # Run the Official Divebell Quick Start
 
 Use this workflow when the user wants a first experience and has not provided
-another page. The hosted Northstar Supply application is already deployed with
-Runtime SDK and build metadata. Treat it like an unfamiliar real application:
-the page does not expose the walkthrough or debugging answers. Do not clone the
-Divebell repository and do not modify source.
+another page. The public Module Federation Playground can load a published
+Divebell remote without cloning a repository, installing a browser extension,
+or reading the remote source code.
 
-Application:
+Playground:
 
 ```text
-https://2heal1.github.io/divebell/quickstart/
+https://module-federation.io/playground/index.html
+```
+
+Remote manifest:
+
+```text
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json
+```
+
+Remote name:
+
+```text
+divebell_mf_playground_remote
+```
+
+Expose:
+
+```text
+.
 ```
 
 ## 1. Resolve the CLI
@@ -31,135 +48,81 @@ Do not install `@divebell/cli` in the user's application.
 
 Read scoped help before using commands whose arguments are not confirmed.
 
-## 2. Open and operate the page
+## 2. Open the Playground
 
-Open the application visibly unless the user requested a headless run:
+Open the public Playground visibly unless the user requested a headless run:
 
 ```bash
-divebell open https://2heal1.github.io/divebell/quickstart/ --ui
+divebell open https://module-federation.io/playground/index.html --ui
 divebell page-snapshot
 ```
 
-Keep the `openedUrl` and connected Runtime ID from the command results. Later
-stages use them to reload the same managed page and select the correct Runtime.
+Use the visible controls in the Playground page. Do not inspect or download the
+remote package source; the point of the walkthrough is to rely on the page,
+Terminal, Console, Network, and the published manifest.
 
-Use actionable references from the page snapshot to search or filter orders and
-select a different order. Read another page snapshot to verify the visible
-result. This stage demonstrates ordinary Browser API capability and does not
-depend on Runtime SDK.
+## 3. Load the remote manifest
 
-## 3. Reproduce and explain the controlled failure
+Replace the Playground manifest with:
 
-Inspect `actions`, then run the page-declared failure:
-
-```bash
-divebell actions
-divebell run-action quickstart.trigger-inventory-failure
-divebell wait-for request:inventory error
-divebell network --url inventory-missing
-divebell console --level error --query "Inventory request failed"
-divebell snapshot --id request:inventory
-divebell snapshot --id business:fulfillment
+```text
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json
 ```
 
-Report the combined evidence:
+Use the exposed module:
 
-- Network contains a real 404 for `inventory-missing.json`.
-- Console records the controlled request failure.
-- Runtime SDK says fulfillment is `blocked` and depends on
-  `request:inventory`.
-
-Browser evidence proves what the browser observed. Runtime SDK provides the
-stable application meaning. Keep those roles distinct.
-
-## 4. Recover through a declared action
-
-Inspect the action definition before changing state:
-
-```bash
-divebell actions --name quickstart.retry-inventory
-divebell run-action quickstart.retry-inventory --payload '{"strategy":"origin"}'
+```text
+divebell_mf_playground_remote
+.
 ```
 
-Read `nextAttempt` from the action result, then wait for
-`business:fulfillment` to become `ready` with that attempt:
+Run the Playground preview. Do not intentionally create a failing input. If the
+remote renders successfully, continue to final verification.
 
-```bash
-divebell wait-for business:fulfillment ready --where attempt=<nextAttempt> --timeout 10000
+If the Playground reports an error, read the visible Terminal output first,
+then use browser Console and Network as supporting evidence. Determine which
+Playground input needs to change and update it.
+
+When the Terminal says that the remote expected a `config` object, use this
+compatible props shape:
+
+```tsx
+{
+  config: {
+    appName: 'MF Playground',
+    environment: 'staging',
+    sessionId: 'mf-quickstart',
+  },
+}
 ```
 
-Confirm the final page and Network result. Do not treat successful action
-dispatch as successful recovery; the final target state is the verification.
+If the Playground UI has changed, use `divebell page-snapshot`, screenshots,
+Console, and Network evidence to find the equivalent manifest, exposed module,
+props, and run controls.
 
-## 5. Optional advanced code-usage stage
+## 4. Verify the page
 
-Use this stage when the user asks for the complete or advanced Quick Start.
-Confirm `code-usage` through help; install the official Extension if missing:
+Run the preview after any required input update and verify all of the following:
 
-```bash
-divebell extensions add @divebell/extension-code-usage
-divebell code-usage --help
-```
+- The Terminal does not report a blocking remote-loading or props error.
+- The remote renders a Divebell diagnostics game.
+- Moving the pointer, arrow keys, or WASD steers the Divebell logo.
+- Colliding with Bug, Performance, or Network icons produces the golden sonar
+  pulse and updates the located count.
 
-Record the initial view and the on-demand Insights view as separate phases:
+Use page-visible evidence first. Console and Network are fallback evidence for
+ordinary page or remote-loading errors. Do not require a Module Federation
+browser extension.
 
-```bash
-divebell coverage start
-divebell goto <openedUrl-from-open>
-divebell wait-for --runtime runtime-divebell-quickstart app:divebell-quickstart ready --timeout 10000
-divebell coverage take /tmp/divebell-quickstart-initial.coverage.json --label initial
-divebell run-action --runtime runtime-divebell-quickstart quickstart.open-insights
-divebell wait-for --runtime runtime-divebell-quickstart analysis:code-usage ready --timeout 10000
-divebell coverage stop /tmp/divebell-quickstart-insights.coverage.json --label insights
-node <skill-dir>/scripts/download-quickstart-build.mjs \
-  --output /tmp/divebell-quickstart-build
-divebell code-usage analyze \
-  --chunk-map /tmp/divebell-quickstart-build/divebell-chunks.json \
-  --assets /tmp/divebell-quickstart-build \
-  --coverage /tmp/divebell-quickstart-initial.coverage.json \
-  --coverage /tmp/divebell-quickstart-insights.coverage.json \
-  --output /tmp/divebell-quickstart-code-usage.json
-divebell code-usage report /tmp/divebell-quickstart-code-usage.json
-```
+## 5. Finish
 
-The deployed Chunk Map, JavaScript, and source maps come from the same build.
-Source maps alone are insufficient: coverage records what ran, while the Chunk
-Map and exact build assets attribute those bytes to chunks and source owners.
-The bundled download script retrieves only those public build files; it does
-not clone the repository or require an application source checkout.
+Summarize:
 
-## 6. Optional memory stage
+- the manifest that was loaded;
+- any Terminal, Console, or Network error that appeared;
+- the Playground input that was changed to resolve it, if a change was needed;
+- the final visible verification that the remote rendered and interacted.
 
-Use this stage only when the user asks for memory analysis. Confirm `memory`
-through help; install the official Extension if missing, then use the scenario
-bundled with this skill:
-
-```bash
-divebell extensions add @divebell/extension-memory
-divebell stop
-divebell memory check \
-  --url https://2heal1.github.io/divebell/quickstart/#memory \
-  --scenario <skill-dir>/scripts/quickstart-memory-scenario.mjs \
-  --warmup 2 \
-  --iterations 8 \
-  --artifact-dir /tmp/divebell-quickstart-memory
-```
-
-Report the measured trend and verdict. The Activity page presents a normal
-archive feed while the scenario intentionally retains earlier pages behind the
-interface; only the Extension output is browser memory evidence. `memory check`
-owns and closes its browser page, so stop any page left by the earlier workflow
-before starting it.
-
-## 7. Finish
-
-Stop the page after all requested stages are complete:
-
-```bash
-divebell stop
-```
-
-Summarize the visible operation, browser evidence, Runtime SDK explanation,
-verified recovery, and any optional analysis. Do not imply that this playground
-modified application source; source editing belongs to a later workflow in the
-user's own repository.
+Do not imply that this quick start modifies application source. Source editing
+belongs to a later workflow in the user's own repository or in the Module
+Federation Playground if the user explicitly asks to integrate Divebell there.

@@ -8,7 +8,7 @@ Teams can use Extensions to identify development context from the current page a
 
 The goal is to reduce human intervention during development. This does not bypass authorization. Teams prepare test accounts, login state, accessible environments, and allowed actions in advance so an agent can continue working within explicit boundaries.
 
-## Complete Flow
+## Development Loop
 
 ```text
 Prepare account and environment

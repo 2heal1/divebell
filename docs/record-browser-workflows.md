@@ -14,11 +14,13 @@ Use it when a task is easier to demonstrate than to specify from scratch, such a
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-The video shows the complete recording, interaction, and script-generation workflow.
+The video shows a full recording session, from browser interaction to the
+generated replay script.
 
 ## Install
 
-> Download and install the recording Extension, then have the Agent run `divebell record --skill` to read the bundled skill and follow it to start recording.
+> Download and install the recording Extension, then use its bundled skill to
+> start a recording session with your agent.
 
 Install Divebell globally, then add the recording Extension:
 
@@ -28,30 +30,35 @@ divebell check --fix
 divebell extensions add @divebell/extension-imitate
 ```
 
-After installation, have the Agent resolve the skill bundled with the `record` command:
+After installation, get the skill bundled with the `record` command:
 
 ```bash
 divebell record --skill
 ```
 
-This command only prints the path to the packaged `SKILL.md`; it does not start recording. The Agent should read that file and follow it. Users no longer need to copy or install a separate skill directory from the repository.
+This command prints the packaged `SKILL.md` path. Use that path with your
+agent's skill-loading method, or let the agent run the command directly. You do
+not need to copy a separate skill from this repository.
 
 ## Use
 
-After installation, ask the Agent:
+After installation, send this prompt:
 
 ```text
 Use the recording Extension's bundled skill and start recording my browser workflow.
 ```
 
-The Agent first runs `divebell record --skill` and reads the returned skill. It then runs `divebell record start` to prepare recording files, cross-page interaction capture, and supplementary voice capture. It does not ask the user to choose a voice mode. It then runs `divebell open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
+A visible browser page opens with recording enabled. Recording files are saved
+under `recordings/` in the current project, so you do not need to provide a URL
+or output path first.
 
 Then:
 
 1. Navigate, click, type, and move through the target workflow normally.
 2. Speak or add a short chat message only when the demonstrated actions do not fully express the intended result.
-3. Tell the Agent “done” when the walkthrough is complete.
-4. The Agent stops recording, reads the ordered workflow, generates the script, replays it, checks the final page, and then closes the browser through `divebell stop`.
+3. Say “done” when the walkthrough is complete.
+4. A replay script is generated, run once, checked against the final page, and
+   the browser is closed.
 
 The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `divebell open`. Recording refuses to mix evidence if another `divebell open` replaces that page before `record stop`.
 
@@ -83,7 +90,7 @@ Each session creates an `.orrec` directory under `recordings/`, including:
 
 - `manifest.json`: recording status and file inventory
 - `interactions.jsonl`: clicks, inputs, and keyboard actions
-- `workflow.json`: ordered executable steps and element evidence for Agent inspection or rearrangement
+- `workflow.json`: ordered executable steps and element evidence
 - `dom-snapshots.jsonl`: page context captured during the workflow
 - `audio.webm`: microphone audio
 - `transcript.json`: speech text with timing information
@@ -95,5 +102,5 @@ The generated script waits for each recorded element, replays input, dropdown se
 
 - Live speech recognition depends on browser support.
 - When live text is unavailable, `audio.webm` can be transcribed after recording.
-- The Agent runs the generated script and verifies its output before presenting it as complete.
+- The generated script is run once before it is presented as complete.
 - The first version generates a script; a stable script can later be packaged as a new skill when requested.

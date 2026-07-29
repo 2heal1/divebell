@@ -38,16 +38,15 @@ divebell check --fix
 divebell --help
 ```
 
-直接体验已经部署的订单工作台，不需要克隆仓库，也不需要先获取源码：
+把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。
 
-[打开体验页](https://2heal1.github.io/divebell/quickstart/) ·
-[查看 Agent 引导流程](./docs/quick-start.zh-CN.md)
-
-安装 CLI 和 [Divebell Skill](./skills/divebell/SKILL.md) 后，对 Agent 说：
+然后对 Agent 说：
 
 ```text
-使用 Divebell 完成官方 Quick Start：操作订单页面，触发并定位库存失败，
-使用页面声明的重试动作恢复流程，并在最后打开 Code Usage 报告。
+使用 divebell 访问 https://module-federation.io/playground/index.html，
+把 manifest 替换为
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json，
+并运行预览。如果 Playground 报错，使用 divebell cli 分析并解决问题。
 ```
 
 ## 为什么需要 Divebell
@@ -127,40 +126,27 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 ## Examples
 
-下面的例子按照用户可以完成的结果组织。可以先选择与当前任务最接近的例子体验完整流程，再查看背后的命令和接入方式。
+这里是官方 Extension 示例：录制浏览器操作、检查内存增长、分析代码使用，以及把团队已有工具接到当前页面。
 
-### 直接体验
+### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
-#### [完成在线 Quick Start](./docs/quick-start.zh-CN.md)
+在可见浏览器中演示一次操作，把操作元素和事件顺序生成可验证的 JavaScript 回放；语音说明是可选项。
 
-在一个公开页面里完成操作、查看 Network 和 Console、读取应用声明的状态、执行安全恢复，
-最后打开高阶代码使用报告，全程不需要克隆仓库。
-
-#### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
-
-在可见浏览器中演示一次流程，让 Agent 根据操作元素和事件顺序生成、运行并验证 JavaScript 回放；语音说明是可选项。
-
-> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后让 Agent 执行 `divebell record --skill`，并按返回的 skill 开始录制。
+> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后用它自带的 skill 开始录制。
 
 **演示视频**
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-#### [检查真实页面流程中的内存增长](./docs/memory-analysis.zh-CN.md)
+### [检查真实页面流程中的内存增长](./docs/memory-analysis.zh-CN.md)
 
 重复同一段用户操作，判断 JavaScript 内存、DOM 节点和事件监听器是否持续增长。
 
-#### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
+### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
 
 对比首屏与后续操作，查看分块、源码文件和依赖包的加载与执行情况。
 
-### 接入参考
-
-#### [让 Agent 读取应用状态并执行页面声明的动作](./demos/bridge-readonly/README.md)
-
-运行一个订单页面，读取状态和事件，执行页面允许的刷新动作并等待最终结果。
-
-#### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
+### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
 
 创建一个本地 Extension，读取当前页面并参与页面打开、技术栈识别和关闭流程。
 

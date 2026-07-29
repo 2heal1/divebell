@@ -38,19 +38,16 @@ divebell check --fix
 divebell --help
 ```
 
-Try the hosted operations playground—no repository clone or source checkout
-required:
+Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
 
-[Open the playground](https://2heal1.github.io/divebell/quickstart/) ·
-[Follow the Agent-guided walkthrough](./docs/quick-start.md)
-
-After installing the CLI and the
-[Divebell Skill](./skills/divebell/SKILL.md), ask:
+Then ask:
 
 ```text
-Use Divebell to complete the official Quick Start. Operate the order page,
-trigger and diagnose the inventory failure, recover it through the
-page-declared action, and finish by opening a Code Usage report.
+Use divebell to visit https://module-federation.io/playground/index.html,
+replace the manifest with
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json,
+and run the preview. If the Playground reports an error, use the divebell CLI
+to analyze and resolve it.
 ```
 
 ## Why Divebell
@@ -130,41 +127,30 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 ## Examples
 
-These examples are organized around the result a user can experience. Start with the example closest to your task, run the complete workflow, and then explore the commands and integrations behind it.
+Explore the official Extension examples for recording browser workflows,
+checking memory growth, analyzing code usage, and connecting team tools to the
+current page.
 
-### Try Divebell
+### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
-#### [Complete the hosted Quick Start](./docs/quick-start.md)
+Demonstrate a browser workflow and turn the operated elements and event
+sequence into a verified JavaScript replay. Spoken intent is optional.
 
-Operate one public page, inspect Network and Console evidence, read
-application-declared state, recover through a safe action, and open an advanced
-code-usage report without cloning the repository.
-
-#### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
-
-Demonstrate a workflow in a visible browser and let the Agent generate, run, and verify a JavaScript replay from the operated elements and event sequence. Spoken intent is optional.
-
-> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then have the Agent run `divebell record --skill` and follow the returned skill to start recording.
+> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then start recording with its bundled skill.
 
 **Demo video**
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-#### [Check memory growth across a real page journey](./docs/memory-analysis.md)
+### [Check memory growth across a real page journey](./docs/memory-analysis.md)
 
 Repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
 
-#### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
+### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
 
 Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
-### Build with Divebell
-
-#### [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md)
-
-Run an orders page, inspect its state and events, invoke an allowed refresh action, and wait for the final result.
-
-#### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
+### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
 
 Create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
 

@@ -38,18 +38,25 @@ divebell check --fix
 divebell --help
 ```
 
-直接体验 Module Federation Playground remote，不需要克隆仓库、获取源码或安装浏览器扩展：
+把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。Codex 中放到：
 
-[打开 Module Federation Playground](https://module-federation.io/playground/index.html) ·
-[查看 Agent 引导流程](./docs/quick-start.zh-CN.md)
+```text
+~/.codex/skills/divebell
+```
 
-安装 CLI 和 [Divebell Skill](./skills/divebell/SKILL.md) 后，对 Agent 说：
+然后对 Agent 说：
 
 ```text
 使用 Divebell 完成官方 Quick Start：打开 Module Federation Playground，
-用故意错误的 props 加载 Divebell remote，读取 Playground Terminal 报错，
-把 props 改成要求的 config，并确认页面渲染出可交互的诊断小游戏。
+地址是 https://module-federation.io/playground/index.html；加载
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json，
+remote name 是 divebell_mf_playground_remote，expose 是 "."；先使用
+props { title: 'Divebell' } 运行，读取 Playground Terminal 报错，再把
+props 改成要求的 config 对象，并确认页面渲染出可交互的诊断小游戏。
 ```
+
+不需要单独打开 Quick Start 文档；具体操作步骤由 skill 负责，并直接使用全局安装的
+`divebell` 命令。
 
 ## 为什么需要 Divebell
 
@@ -126,16 +133,12 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md)
 
-## Examples
+## Extension 场景
 
-下面的例子按照用户可以完成的结果组织。可以先选择与当前任务最接近的例子体验完整流程，再查看背后的命令和接入方式。
+下面只列补充 Extension 能力的场景。可以先选择与当前任务最接近的 Extension 跑通完整
+流程，再查看背后的命令和接入方式。
 
-### 直接体验
-
-#### [完成 Module Federation Playground Quick Start](./docs/quick-start.zh-CN.md)
-
-在公开的 Module Federation Playground 中加载已发布的 remote，从浏览器证据定位运行时
-props 报错，修复 props，并确认 Divebell 诊断小游戏正常渲染，全程不需要克隆源码仓库。
+### 使用 Extension
 
 #### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
@@ -155,11 +158,7 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 对比首屏与后续操作，查看分块、源码文件和依赖包的加载与执行情况。
 
-### 接入参考
-
-#### [让 Agent 读取应用状态并执行页面声明的动作](./demos/bridge-readonly/README.md)
-
-运行一个订单页面，读取状态和事件，执行页面允许的刷新动作并等待最终结果。
+### 构建 Extension
 
 #### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
 

@@ -38,21 +38,27 @@ divebell check --fix
 divebell --help
 ```
 
-Try the Module Federation Playground remote—no repository clone, source
-checkout, or browser extension required:
+Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
+For Codex, place the complete `skills/divebell` directory at:
 
-[Open the Module Federation Playground](https://module-federation.io/playground/index.html) ·
-[Follow the Agent-guided walkthrough](./docs/quick-start.md)
+```text
+~/.codex/skills/divebell
+```
 
-After installing the CLI and the
-[Divebell Skill](./skills/divebell/SKILL.md), ask:
+Then ask:
 
 ```text
 Use Divebell to complete the official Quick Start. Open the Module Federation
-Playground, load the Divebell remote with the intentionally wrong props,
-read the Playground Terminal error, update the props to the required config,
-and verify that the remote renders the interactive diagnostics game.
+Playground at https://module-federation.io/playground/index.html, load
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json
+as remote divebell_mf_playground_remote with expose ".", first run it with
+props { title: 'Divebell' }, read the Playground Terminal error, update the
+props to the required config object, and verify that the remote renders the
+interactive diagnostics game.
 ```
+
+No separate walkthrough document is required. The skill owns the operating
+steps and uses the globally installed `divebell` command.
 
 ## Why Divebell
 
@@ -129,17 +135,13 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 [Runtime SDK API](./docs/runtime-sdk-api.md)
 
-## Examples
+## Extension Scenarios
 
-These examples are organized around the result a user can experience. Start with the example closest to your task, run the complete workflow, and then explore the commands and integrations behind it.
+These scenarios are supplementary examples for optional Extensions. Start with
+the Extension closest to your task, run the complete workflow, and then explore
+the command and integration details behind it.
 
-### Try Divebell
-
-#### [Complete the Module Federation Playground Quick Start](./docs/quick-start.md)
-
-Load a published remote in the public Module Federation Playground, diagnose
-the runtime prop error from browser evidence, fix the props, and verify the
-interactive Divebell diagnostics game without cloning any source repository.
+### Use an Extension
 
 #### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
@@ -159,11 +161,7 @@ Repeat the same user journey and determine whether JavaScript memory, DOM nodes,
 
 Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
-### Build with Divebell
-
-#### [Let an agent read application state and run page-declared actions](./demos/bridge-readonly/README.md)
-
-Run an orders page, inspect its state and events, invoke an allowed refresh action, and wait for the final result.
+### Build an Extension
 
 #### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
 

@@ -211,6 +211,11 @@ function assertSelfContainedBundle(bundle, context) {
   if (!bundle.includes("ChromeObservabilityPlugin")) {
     throw new Error("Generated browser bundle does not export ChromeObservabilityPlugin.");
   }
+  if (!bundle.includes("getRuntimeState")) {
+    throw new Error(
+      "The selected Observability Plugin does not expose the getRuntimeState interface required by the MF extension."
+    );
+  }
   assertNoLocalDetails(bundle, context, "browser bundle");
 }
 

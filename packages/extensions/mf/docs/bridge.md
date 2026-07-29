@@ -53,4 +53,4 @@ The command uses `state.capabilities.bridgeTrace` as the authority:
 
 Current Bridge state may still be available when historical tracing is unavailable. In that case, the command shows the current state and explicitly says that historical operations cannot be reconstructed. The capability reason is preserved as reported; the command does not guess a Bridge or runtime version requirement.
 
-When observation started late, reopen the page with `divebell open <url>`, reproduce the Bridge operation, and run the command again.
+When observation started late, reopen the page, reproduce the Bridge operation, and run the command again.

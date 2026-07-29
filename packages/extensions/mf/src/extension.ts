@@ -18,7 +18,7 @@ export function createMfExtension(
     name: options.name ?? commandName,
     displayName: options.displayName ?? "Module Federation",
     description: options.description ??
-      "Inspect safe Module Federation observability state from the current page.",
+      "Inspect Module Federation state. MF commands require the page to be opened with `divebell open <url> --mf`.",
     commands: [{
       name: commandName,
       commandReferences: createMfCommandMetadata(commandName).map((command) => ({

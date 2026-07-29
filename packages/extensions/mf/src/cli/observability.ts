@@ -21,7 +21,7 @@ export async function readCommandSnapshot(
         code: "MF_PAGE_CONTEXT_REQUIRED",
         kind: "validation",
         message: "There is no page opened by Divebell for this command.",
-        hint: "Run `divebell open <url>` and then run the MF command again."
+        hint: "Run `divebell open <url> --mf` and then run the MF command again."
       });
     }
     throw new MfCommandError({
@@ -31,8 +31,23 @@ export async function readCommandSnapshot(
       hint: "Confirm that the current page is still open, then retry."
     });
   }
+  const injection = readResult.ok
+    ? readResult.snapshot.injection
+    : readResult.injection;
+  if (injection === undefined) {
+    throw mfOpenFlagRequiredError();
+  }
   if (!readResult.ok) throw unavailableError(readResult);
   return readResult.snapshot;
+}
+
+function mfOpenFlagRequiredError(): MfCommandError {
+  return new MfCommandError({
+    code: "MF_OPEN_FLAG_REQUIRED",
+    kind: "validation",
+    message: "MF commands require the current page to be opened with `--mf`.",
+    hint: "Reopen the page with `divebell open <url> --mf`, then run the MF command again."
+  });
 }
 
 export function presentCommandResult(
@@ -278,7 +293,7 @@ function unavailableError(
       code: "MF_OBSERVABILITY_INCOMPATIBLE",
       kind: "runtime",
       message: "An Observability reader exists, but it does not provide the MF-Obs-00 safe runtime-state interface.",
-      hint: "Upgrade the MF Observability Plugin, then reopen the page with `divebell open <url>`.",
+      hint: "Upgrade the MF Observability Plugin, then reopen the page.",
       ...common
     });
   }
@@ -295,7 +310,7 @@ function unavailableError(
     code: "MF_OBSERVABILITY_UNAVAILABLE",
     kind: "not_found",
     message: "No public Module Federation Observability reader is available in the current page.",
-    hint: "Reopen the page with `divebell open <url>`. If the extension was installed after opening, close and reopen the page; alternatively configure the Observability Plugin in the application.",
+    hint: "Inspect the MF injection details, then reopen the page and retry.",
     ...common
   });
 }

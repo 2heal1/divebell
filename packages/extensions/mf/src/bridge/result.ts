@@ -115,7 +115,7 @@ function bridgeRecommendedActions(
   ) {
     actions.push(
       snapshot.state.completeness.recommendation ??
-      "Reopen the page with `divebell open <url>`, reproduce the Bridge operation, and run the command again."
+      "Reopen the page, reproduce the Bridge operation, and run the command again."
     );
   }
   if (!capability.available) {

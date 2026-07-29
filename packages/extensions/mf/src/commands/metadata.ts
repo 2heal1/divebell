@@ -26,7 +26,7 @@ export const statusCommandMetadata = {
   path: ["status"],
   usage: "divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]",
   summaryUsage: "divebell mf status",
-  description: "List Module Federation instances and loaded shared dependencies; --verbose adds unloaded entries and function details."
+  description: "Requires `divebell open <url> --mf`; lists Module Federation instances and loaded shared dependencies."
 } as const satisfies MfCommandMetadata;
 
 export const moduleInfoCommandMetadata = {

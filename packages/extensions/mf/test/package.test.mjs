@@ -26,6 +26,7 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   const extension = extensionModule.default;
   const validated = validateExtension(extension);
   assert.equal(validated.name, "mf");
+  assert.match(validated.description, /divebell open <url> --mf/);
   assert.deepEqual(validated.commands.map((command) => command.name), ["mf"]);
   assert.equal(typeof validated.hooks.open, "function");
   const entrySource = readFileSync(resolve(packageRoot, "dist/extension.js"), "utf8");
@@ -88,6 +89,7 @@ test("configured extension exposes complete vmok help and routing guidance", asy
     stderr: { write() {} }
   });
   assert.equal(rootHelpExitCode, 0);
+  assert.match(rootHelp, /divebell vmok - Requires `divebell open <url> --mf`/);
   assert.match(rootHelp, /divebell vmok/);
   assert.doesNotMatch(rootHelp, /divebell mf/);
 
@@ -364,7 +366,7 @@ test("packed archive installs and loads through the external extension mechanism
     });
     assert.equal(rootHelpExitCode, 0);
     assert.match(rootHelp, /External Extensions:/);
-    assert.match(rootHelp, /divebell mf/);
+    assert.match(rootHelp, /divebell mf - Requires `divebell open <url> --mf`/);
 
     let commandHelp = "";
     const commandHelpExitCode = await loaded.cli.run(["mf", "--help"], {

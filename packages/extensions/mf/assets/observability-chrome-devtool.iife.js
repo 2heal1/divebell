@@ -1,4 +1,3 @@
-"use strict";
 var ModuleFederationChromeObservabilityPlugin = (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -43,9 +42,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
   var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
   var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/constants.js
+  // ../../semver/internal/constants.js
   var require_constants = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/constants.js"(exports, module) {
+    "../../semver/internal/constants.js"(exports, module) {
       "use strict";
       var SEMVER_SPEC_VERSION = "2.0.0";
       var MAX_LENGTH = 256;
@@ -75,9 +74,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/debug.js
+  // ../../semver/internal/debug.js
   var require_debug = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/debug.js"(exports, module) {
+    "../../semver/internal/debug.js"(exports, module) {
       "use strict";
       var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
       };
@@ -85,9 +84,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/re.js
+  // ../../semver/internal/re.js
   var require_re = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/re.js"(exports, module) {
+    "../../semver/internal/re.js"(exports, module) {
       "use strict";
       var {
         MAX_SAFE_COMPONENT_LENGTH,
@@ -173,9 +172,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/parse-options.js
+  // ../../semver/internal/parse-options.js
   var require_parse_options = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/parse-options.js"(exports, module) {
+    "../../semver/internal/parse-options.js"(exports, module) {
       "use strict";
       var looseOption = Object.freeze({ loose: true });
       var emptyOpts = Object.freeze({});
@@ -192,9 +191,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/identifiers.js
+  // ../../semver/internal/identifiers.js
   var require_identifiers = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/identifiers.js"(exports, module) {
+    "../../semver/internal/identifiers.js"(exports, module) {
       "use strict";
       var numeric = /^[0-9]+$/;
       var compareIdentifiers = (a, b) => {
@@ -217,15 +216,27 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/semver.js
+  // ../../semver/classes/semver.js
   var require_semver = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/semver.js"(exports, module) {
+    "../../semver/classes/semver.js"(exports, module) {
       "use strict";
       var debug = require_debug();
       var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
       var { safeRe: re, t } = require_re();
       var parseOptions = require_parse_options();
       var { compareIdentifiers } = require_identifiers();
+      var isPrereleaseIdentifier = (prerelease, identifier) => {
+        const identifiers = identifier.split(".");
+        if (identifiers.length > prerelease.length) {
+          return false;
+        }
+        for (let i = 0; i < identifiers.length; i++) {
+          if (compareIdentifiers(prerelease[i], identifiers[i]) !== 0) {
+            return false;
+          }
+        }
+        return true;
+      };
       var SemVer = class _SemVer {
         constructor(version, options) {
           options = parseOptions(options);
@@ -472,8 +483,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
                 if (identifierBase === false) {
                   prerelease = [identifier];
                 }
-                if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
-                  if (isNaN(this.prerelease[1])) {
+                if (isPrereleaseIdentifier(this.prerelease, identifier)) {
+                  const prereleaseBase = this.prerelease[identifier.split(".").length];
+                  if (isNaN(prereleaseBase)) {
                     this.prerelease = prerelease;
                   }
                 } else {
@@ -496,9 +508,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/parse.js
+  // ../../semver/functions/parse.js
   var require_parse = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/parse.js"(exports, module) {
+    "../../semver/functions/parse.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var parse = (version, options, throwErrors = false) => {
@@ -518,9 +530,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/valid.js
+  // ../../semver/functions/valid.js
   var require_valid = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/valid.js"(exports, module) {
+    "../../semver/functions/valid.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var valid = (version, options) => {
@@ -531,9 +543,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/clean.js
+  // ../../semver/functions/clean.js
   var require_clean = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/clean.js"(exports, module) {
+    "../../semver/functions/clean.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var clean = (version, options) => {
@@ -544,9 +556,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/inc.js
+  // ../../semver/functions/inc.js
   var require_inc = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/inc.js"(exports, module) {
+    "../../semver/functions/inc.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var inc = (version, release, options, identifier, identifierBase) => {
@@ -568,9 +580,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/diff.js
+  // ../../semver/functions/diff.js
   var require_diff = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/diff.js"(exports, module) {
+    "../../semver/functions/diff.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var diff = (version1, version2) => {
@@ -612,9 +624,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/major.js
+  // ../../semver/functions/major.js
   var require_major = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/major.js"(exports, module) {
+    "../../semver/functions/major.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var major = (a, loose) => new SemVer(a, loose).major;
@@ -622,9 +634,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/minor.js
+  // ../../semver/functions/minor.js
   var require_minor = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/minor.js"(exports, module) {
+    "../../semver/functions/minor.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var minor = (a, loose) => new SemVer(a, loose).minor;
@@ -632,9 +644,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/patch.js
+  // ../../semver/functions/patch.js
   var require_patch = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/patch.js"(exports, module) {
+    "../../semver/functions/patch.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var patch = (a, loose) => new SemVer(a, loose).patch;
@@ -642,9 +654,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/prerelease.js
+  // ../../semver/functions/prerelease.js
   var require_prerelease = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/prerelease.js"(exports, module) {
+    "../../semver/functions/prerelease.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var prerelease = (version, options) => {
@@ -655,9 +667,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare.js
+  // ../../semver/functions/compare.js
   var require_compare = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare.js"(exports, module) {
+    "../../semver/functions/compare.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
@@ -665,9 +677,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rcompare.js
+  // ../../semver/functions/rcompare.js
   var require_rcompare = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rcompare.js"(exports, module) {
+    "../../semver/functions/rcompare.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var rcompare = (a, b, loose) => compare(b, a, loose);
@@ -675,9 +687,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-loose.js
+  // ../../semver/functions/compare-loose.js
   var require_compare_loose = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-loose.js"(exports, module) {
+    "../../semver/functions/compare-loose.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var compareLoose = (a, b) => compare(a, b, true);
@@ -685,9 +697,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-build.js
+  // ../../semver/functions/compare-build.js
   var require_compare_build = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-build.js"(exports, module) {
+    "../../semver/functions/compare-build.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var compareBuild = (a, b, loose) => {
@@ -699,9 +711,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/sort.js
+  // ../../semver/functions/sort.js
   var require_sort = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/sort.js"(exports, module) {
+    "../../semver/functions/sort.js"(exports, module) {
       "use strict";
       var compareBuild = require_compare_build();
       var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
@@ -709,9 +721,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rsort.js
+  // ../../semver/functions/rsort.js
   var require_rsort = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rsort.js"(exports, module) {
+    "../../semver/functions/rsort.js"(exports, module) {
       "use strict";
       var compareBuild = require_compare_build();
       var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
@@ -719,9 +731,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gt.js
+  // ../../semver/functions/gt.js
   var require_gt = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gt.js"(exports, module) {
+    "../../semver/functions/gt.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var gt = (a, b, loose) => compare(a, b, loose) > 0;
@@ -729,9 +741,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lt.js
+  // ../../semver/functions/lt.js
   var require_lt = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lt.js"(exports, module) {
+    "../../semver/functions/lt.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var lt = (a, b, loose) => compare(a, b, loose) < 0;
@@ -739,9 +751,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/eq.js
+  // ../../semver/functions/eq.js
   var require_eq = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/eq.js"(exports, module) {
+    "../../semver/functions/eq.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var eq = (a, b, loose) => compare(a, b, loose) === 0;
@@ -749,9 +761,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/neq.js
+  // ../../semver/functions/neq.js
   var require_neq = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/neq.js"(exports, module) {
+    "../../semver/functions/neq.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var neq = (a, b, loose) => compare(a, b, loose) !== 0;
@@ -759,9 +771,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gte.js
+  // ../../semver/functions/gte.js
   var require_gte = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gte.js"(exports, module) {
+    "../../semver/functions/gte.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var gte = (a, b, loose) => compare(a, b, loose) >= 0;
@@ -769,9 +781,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lte.js
+  // ../../semver/functions/lte.js
   var require_lte = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lte.js"(exports, module) {
+    "../../semver/functions/lte.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var lte = (a, b, loose) => compare(a, b, loose) <= 0;
@@ -779,9 +791,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/cmp.js
+  // ../../semver/functions/cmp.js
   var require_cmp = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/cmp.js"(exports, module) {
+    "../../semver/functions/cmp.js"(exports, module) {
       "use strict";
       var eq = require_eq();
       var neq = require_neq();
@@ -829,9 +841,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/coerce.js
+  // ../../semver/functions/coerce.js
   var require_coerce = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/coerce.js"(exports, module) {
+    "../../semver/functions/coerce.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var parse = require_parse();
@@ -875,9 +887,50 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/lrucache.js
+  // ../../semver/functions/truncate.js
+  var require_truncate = __commonJS({
+    "../../semver/functions/truncate.js"(exports, module) {
+      "use strict";
+      var parse = require_parse();
+      var constants = require_constants();
+      var SemVer = require_semver();
+      var truncate = (version, truncation, options) => {
+        if (!constants.RELEASE_TYPES.includes(truncation)) {
+          return null;
+        }
+        const clonedVersion = cloneInputVersion(version, options);
+        return clonedVersion && doTruncation(clonedVersion, truncation);
+      };
+      var cloneInputVersion = (version, options) => {
+        const versionStringToParse = version instanceof SemVer ? version.version : version;
+        return parse(versionStringToParse, options);
+      };
+      var doTruncation = (version, truncation) => {
+        if (isPrerelease(truncation)) {
+          return version.version;
+        }
+        version.prerelease = [];
+        switch (truncation) {
+          case "major":
+            version.minor = 0;
+            version.patch = 0;
+            break;
+          case "minor":
+            version.patch = 0;
+            break;
+        }
+        return version.format();
+      };
+      var isPrerelease = (type) => {
+        return type.startsWith("pre");
+      };
+      module.exports = truncate;
+    }
+  });
+
+  // ../../semver/internal/lrucache.js
   var require_lrucache = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/lrucache.js"(exports, module) {
+    "../../semver/internal/lrucache.js"(exports, module) {
       "use strict";
       var LRUCache = class {
         constructor() {
@@ -913,9 +966,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/range.js
+  // ../../semver/classes/range.js
   var require_range = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/range.js"(exports, module) {
+    "../../semver/classes/range.js"(exports, module) {
       "use strict";
       var SPACE_CHARACTERS = /\s+/g;
       var Range = class _Range {
@@ -983,6 +1036,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
           return this.range;
         }
         parseRange(range) {
+          range = range.replace(BUILDSTRIPRE, "");
           const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
           const memoKey = memoOpts + ":" + range;
           const cached = cache.get(memoKey);
@@ -1065,12 +1119,14 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
       var SemVer = require_semver();
       var {
         safeRe: re,
+        src,
         t,
         comparatorTrimReplace,
         tildeTrimReplace,
         caretTrimReplace
       } = require_re();
       var { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants();
+      var BUILDSTRIPRE = new RegExp(src[t.BUILD], "g");
       var isNullSet = (c) => c.value === "<0.0.0-0";
       var isAny = (c) => c.value === "";
       var isSatisfiable = (comparators, options) => {
@@ -1099,20 +1155,22 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         return comp;
       };
       var isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
+      var invalidXRangeOrder = (M, m, p) => isX(M) && !isX(m) || isX(m) && p && !isX(p);
       var replaceTildes = (comp, options) => {
         return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
       };
       var replaceTilde = (comp, options) => {
         const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
+        const z = options.includePrerelease ? "-0" : "";
         return comp.replace(r, (_, M, m, p, pr) => {
           debug("tilde", comp, _, M, m, p, pr);
           let ret;
           if (isX(M)) {
             ret = "";
           } else if (isX(m)) {
-            ret = `>=${M}.0.0 <${+M + 1}.0.0-0`;
+            ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
           } else if (isX(p)) {
-            ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`;
+            ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
           } else if (pr) {
             debug("replaceTilde pr", pr);
             ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
@@ -1158,9 +1216,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
             debug("no pr");
             if (M === "0") {
               if (m === "0") {
-                ret = `>=${M}.${m}.${p}${z} <${M}.${m}.${+p + 1}-0`;
+                ret = `>=${M}.${m}.${p} <${M}.${m}.${+p + 1}-0`;
               } else {
-                ret = `>=${M}.${m}.${p}${z} <${M}.${+m + 1}.0-0`;
+                ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
               }
             } else {
               ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
@@ -1179,6 +1237,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
         return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
           debug("xRange", comp, ret, gtlt, M, m, p, pr);
+          if (invalidXRangeOrder(M, m, p)) {
+            return comp;
+          }
           const xM = isX(M);
           const xm = xM || isX(m);
           const xp = xm || isX(p);
@@ -1290,9 +1351,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/comparator.js
+  // ../../semver/classes/comparator.js
   var require_comparator = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/comparator.js"(exports, module) {
+    "../../semver/classes/comparator.js"(exports, module) {
       "use strict";
       var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
       var Comparator = class _Comparator {
@@ -1403,9 +1464,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/satisfies.js
+  // ../../semver/functions/satisfies.js
   var require_satisfies = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/satisfies.js"(exports, module) {
+    "../../semver/functions/satisfies.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var satisfies2 = (version, range, options) => {
@@ -1420,9 +1481,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/to-comparators.js
+  // ../../semver/ranges/to-comparators.js
   var require_to_comparators = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/to-comparators.js"(exports, module) {
+    "../../semver/ranges/to-comparators.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
@@ -1430,9 +1491,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/max-satisfying.js
+  // ../../semver/ranges/max-satisfying.js
   var require_max_satisfying = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
+    "../../semver/ranges/max-satisfying.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1459,9 +1520,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-satisfying.js
+  // ../../semver/ranges/min-satisfying.js
   var require_min_satisfying = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
+    "../../semver/ranges/min-satisfying.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1488,9 +1549,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-version.js
+  // ../../semver/ranges/min-version.js
   var require_min_version = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-version.js"(exports, module) {
+    "../../semver/ranges/min-version.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1547,9 +1608,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/valid.js
+  // ../../semver/ranges/valid.js
   var require_valid2 = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/valid.js"(exports, module) {
+    "../../semver/ranges/valid.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var validRange = (range, options) => {
@@ -1563,9 +1624,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/outside.js
+  // ../../semver/ranges/outside.js
   var require_outside = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/outside.js"(exports, module) {
+    "../../semver/ranges/outside.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Comparator = require_comparator();
@@ -1632,9 +1693,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/gtr.js
+  // ../../semver/ranges/gtr.js
   var require_gtr = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/gtr.js"(exports, module) {
+    "../../semver/ranges/gtr.js"(exports, module) {
       "use strict";
       var outside = require_outside();
       var gtr = (version, range, options) => outside(version, range, ">", options);
@@ -1642,9 +1703,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/ltr.js
+  // ../../semver/ranges/ltr.js
   var require_ltr = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/ltr.js"(exports, module) {
+    "../../semver/ranges/ltr.js"(exports, module) {
       "use strict";
       var outside = require_outside();
       var ltr = (version, range, options) => outside(version, range, "<", options);
@@ -1652,9 +1713,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/intersects.js
+  // ../../semver/ranges/intersects.js
   var require_intersects = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/intersects.js"(exports, module) {
+    "../../semver/ranges/intersects.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var intersects = (r1, r2, options) => {
@@ -1666,9 +1727,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/simplify.js
+  // ../../semver/ranges/simplify.js
   var require_simplify = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/simplify.js"(exports, module) {
+    "../../semver/ranges/simplify.js"(exports, module) {
       "use strict";
       var satisfies2 = require_satisfies();
       var compare = require_compare();
@@ -1716,9 +1777,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/subset.js
+  // ../../semver/ranges/subset.js
   var require_subset = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/subset.js"(exports, module) {
+    "../../semver/ranges/subset.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var Comparator = require_comparator();
@@ -1826,7 +1887,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
               if (higher === c && higher !== gt) {
                 return false;
               }
-            } else if (gt.operator === ">=" && !satisfies2(gt.semver, String(c), options)) {
+            } else if (gt.operator === ">=" && !c.test(gt.semver)) {
               return false;
             }
           }
@@ -1841,7 +1902,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
               if (lower === c && lower !== lt) {
                 return false;
               }
-            } else if (lt.operator === "<=" && !satisfies2(lt.semver, String(c), options)) {
+            } else if (lt.operator === "<=" && !c.test(lt.semver)) {
               return false;
             }
           }
@@ -1878,9 +1939,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/index.js
+  // ../../semver/index.js
   var require_semver2 = __commonJS({
-    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/index.js"(exports, module) {
+    "../../semver/index.js"(exports, module) {
       "use strict";
       var internalRe = require_re();
       var constants = require_constants();
@@ -1909,6 +1970,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
       var lte = require_lte();
       var cmp = require_cmp();
       var coerce = require_coerce();
+      var truncate = require_truncate();
       var Comparator = require_comparator();
       var Range = require_range();
       var satisfies2 = require_satisfies();
@@ -1947,6 +2009,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         lte,
         cmp,
         coerce,
+        truncate,
         Comparator,
         Range,
         satisfies: satisfies2,
@@ -1979,6 +2042,977 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     ChromeObservabilityPlugin: () => ChromeObservabilityPlugin,
     default: () => ChromeObservabilityPlugin
   });
+
+  // ../../@divebell/core/dist/shared/query.js
+  function matchesValue(value, query) {
+    if (query === void 0) {
+      return true;
+    }
+    if (value === void 0) {
+      return false;
+    }
+    const values = Array.isArray(query) ? query : [query];
+    return values.includes(value);
+  }
+  function matchesAnyValue(values, query) {
+    if (query === void 0) {
+      return true;
+    }
+    const expected = Array.isArray(query) ? query : [query];
+    return expected.some((value) => values.includes(value));
+  }
+  function matchesText(fields, query) {
+    if (query === void 0 || query === "") {
+      return true;
+    }
+    const normalizedQuery = query.toLowerCase();
+    return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
+  }
+
+  // ../../@divebell/core/dist/action/registry.js
+  var defaultActionSource = "business";
+  var defaultActionRisk = "state-changing";
+  var _clock, _actions;
+  var ActionRegistry = class {
+    constructor(clock) {
+      __privateAdd(this, _clock);
+      __privateAdd(this, _actions, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock, clock);
+    }
+    register(input) {
+      const now = __privateGet(this, _clock).now();
+      const existing = __privateGet(this, _actions).get(input.name);
+      const action = normalizeAction(input, existing?.registeredAt ?? now, now);
+      __privateGet(this, _actions).set(action.name, action);
+    }
+    unregister(actionName) {
+      return __privateGet(this, _actions).delete(actionName);
+    }
+    get(actionName) {
+      const action = __privateGet(this, _actions).get(actionName);
+      return action === void 0 ? void 0 : cloneRegisteredAction(action);
+    }
+    list(query, snapshot) {
+      return Array.from(__privateGet(this, _actions).values()).map((action) => toDescriptor(action, getAvailability(action.availableWhen, snapshot))).filter((action) => matchesAction(action, query)).map(cloneActionDescriptor);
+    }
+  };
+  _clock = new WeakMap();
+  _actions = new WeakMap();
+  function getAvailability(availableWhen, snapshot) {
+    if (availableWhen === void 0) {
+      return { enabled: true };
+    }
+    const conditions = Array.isArray(availableWhen) ? availableWhen : [availableWhen];
+    for (const condition of conditions) {
+      const target = snapshot.targets[condition.id];
+      if (target?.status !== condition.status) {
+        return {
+          enabled: false,
+          reason: `Waiting for ${condition.id} to reach ${condition.status}.`
+        };
+      }
+    }
+    return { enabled: true };
+  }
+  function normalizeAction(input, registeredAt, updatedAt) {
+    const name = assertNonEmptyString(input.name, "action name");
+    if (typeof input.handler !== "function") {
+      throw new Error("action handler must be a function");
+    }
+    const action = {
+      name,
+      source: input.source ?? defaultActionSource,
+      risk: input.risk ?? defaultActionRisk,
+      enabled: true,
+      registeredAt,
+      updatedAt,
+      handler: input.handler
+    };
+    assignOptionalActionFields(action, input);
+    return action;
+  }
+  function toDescriptor(action, availability) {
+    const descriptor = {
+      name: action.name,
+      source: action.source,
+      risk: action.risk,
+      enabled: availability.enabled,
+      registeredAt: action.registeredAt,
+      updatedAt: action.updatedAt
+    };
+    assignOptionalActionFields(descriptor, action);
+    if (!availability.enabled && availability.reason !== void 0) {
+      descriptor.reason = availability.reason;
+    }
+    return descriptor;
+  }
+  function cloneRegisteredAction(action) {
+    const clone = {
+      ...cloneActionDescriptor(action),
+      handler: action.handler
+    };
+    return clone;
+  }
+  function cloneActionDescriptor(action) {
+    const clone = {
+      name: action.name,
+      source: action.source,
+      risk: action.risk,
+      enabled: action.enabled,
+      registeredAt: action.registeredAt,
+      updatedAt: action.updatedAt
+    };
+    assignOptionalActionFields(clone, action);
+    if (action.reason !== void 0)
+      clone.reason = action.reason;
+    return clone;
+  }
+  function assignOptionalActionFields(target, input) {
+    if (input.description !== void 0)
+      target.description = input.description;
+    if (input.availableWhen !== void 0) {
+      target.availableWhen = Array.isArray(input.availableWhen) ? input.availableWhen.map((condition) => ({ ...condition })) : { ...input.availableWhen };
+    }
+    if (input.inputSchema !== void 0)
+      target.inputSchema = cloneInputSchema(input.inputSchema);
+  }
+  function cloneInputSchema(schema) {
+    if (schema === void 0) {
+      return schema;
+    }
+    return structuredClone(schema);
+  }
+  function matchesAction(action, query) {
+    if (query === void 0) {
+      return true;
+    }
+    return matchesValue(action.name, query.name) && matchesValue(action.source, query.source) && matchesValue(action.risk, query.risk) && (query.enabled === void 0 || action.enabled === query.enabled) && matchesText([action.name, action.description], query.query);
+  }
+  function assertNonEmptyString(value, label) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error(`${label} must be a non-empty string`);
+    }
+    return value;
+  }
+
+  // ../../@divebell/core/dist/action/validation.js
+  function validateActionPayload(schema, payload) {
+    if (schema === void 0) {
+      return void 0;
+    }
+    const value = payload ?? {};
+    return validateObjectSchema(schema, value, "payload");
+  }
+  function validateObjectSchema(schema, value, path) {
+    if (!isPlainObject(value)) {
+      return createValidationError(`${path} must be an object`);
+    }
+    const properties = schema.properties ?? {};
+    const required = schema.required ?? [];
+    for (const key of required) {
+      if (!(key in value)) {
+        return createValidationError(`${path}.${key} is required`);
+      }
+    }
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (!(key in properties)) {
+          return createValidationError(`${path}.${key} is not allowed`);
+        }
+      }
+    }
+    for (const [key, property] of Object.entries(properties)) {
+      if (key in value) {
+        const error = validateProperty(property, value[key], `${path}.${key}`);
+        if (error !== void 0) {
+          return error;
+        }
+      }
+    }
+    return void 0;
+  }
+  function validateProperty(property, value, path) {
+    if (property.enum !== void 0 && !property.enum.includes(value)) {
+      return createValidationError(`${path} must be one of the declared enum values`);
+    }
+    switch (property.type) {
+      case "string":
+        return typeof value === "string" ? void 0 : createValidationError(`${path} must be a string`);
+      case "number":
+        return typeof value === "number" ? void 0 : createValidationError(`${path} must be a number`);
+      case "boolean":
+        return typeof value === "boolean" ? void 0 : createValidationError(`${path} must be a boolean`);
+      case "array":
+        return validateArrayProperty(property, value, path);
+      case "object":
+        return validateNestedObjectProperty(property, value, path);
+    }
+  }
+  function validateArrayProperty(property, value, path) {
+    if (!Array.isArray(value)) {
+      return createValidationError(`${path} must be an array`);
+    }
+    if (property.items === void 0) {
+      return void 0;
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const error = validateProperty(property.items, value[index], `${path}[${index}]`);
+      if (error !== void 0) {
+        return error;
+      }
+    }
+    return void 0;
+  }
+  function validateNestedObjectProperty(property, value, path) {
+    const schema = {
+      type: "object"
+    };
+    if (property.properties !== void 0)
+      schema.properties = property.properties;
+    if (property.required !== void 0)
+      schema.required = property.required;
+    if (property.additionalProperties !== void 0) {
+      schema.additionalProperties = property.additionalProperties;
+    }
+    return validateObjectSchema(schema, value, path);
+  }
+  function isPlainObject(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+  }
+  function createValidationError(message) {
+    return {
+      message,
+      code: "action_payload_invalid"
+    };
+  }
+
+  // ../../@divebell/core/dist/event/log.js
+  var DEFAULT_EVENT_LIMIT = 100;
+  var _clock2, _events, _nextEventId;
+  var EventLog = class {
+    constructor(clock) {
+      __privateAdd(this, _clock2);
+      __privateAdd(this, _events, []);
+      __privateAdd(this, _nextEventId, 1);
+      __privateSet(this, _clock2, clock);
+    }
+    append(input) {
+      const event = normalizeEvent(input, __privateGet(this, _nextEventId), __privateGet(this, _clock2).now());
+      __privateSet(this, _nextEventId, __privateGet(this, _nextEventId) + 1);
+      __privateGet(this, _events).push(event);
+      return cloneEvent(event);
+    }
+    latestEventId() {
+      return __privateGet(this, _nextEventId) - 1;
+    }
+    get(query) {
+      const filtered = __privateGet(this, _events).filter((event) => matchesEvent(event, query));
+      const limit = normalizeLimit(query?.limit);
+      const truncated = filtered.length > limit;
+      const events = truncated ? filtered.slice(filtered.length - limit) : filtered;
+      return {
+        events: events.map(cloneEvent),
+        latestEventId: this.latestEventId(),
+        truncated
+      };
+    }
+  };
+  _clock2 = new WeakMap();
+  _events = new WeakMap();
+  _nextEventId = new WeakMap();
+  function normalizeEvent(input, id, timestamp) {
+    const event = {
+      id,
+      type: input.type,
+      source: input.source,
+      timestamp
+    };
+    if (input.targetId !== void 0)
+      event.targetId = input.targetId;
+    if (input.actionName !== void 0)
+      event.actionName = input.actionName;
+    if (input.status !== void 0)
+      event.status = input.status;
+    if ("payload" in input)
+      event.payload = input.payload;
+    if (input.error !== void 0)
+      event.error = { ...input.error };
+    return event;
+  }
+  function cloneEvent(event) {
+    const clone = {
+      id: event.id,
+      type: event.type,
+      source: event.source,
+      timestamp: event.timestamp
+    };
+    if (event.targetId !== void 0)
+      clone.targetId = event.targetId;
+    if (event.actionName !== void 0)
+      clone.actionName = event.actionName;
+    if (event.status !== void 0)
+      clone.status = event.status;
+    if ("payload" in event)
+      clone.payload = event.payload;
+    if (event.error !== void 0)
+      clone.error = { ...event.error };
+    return clone;
+  }
+  function matchesEvent(event, query) {
+    if (query === void 0) {
+      return true;
+    }
+    if (query.since !== void 0 && event.id <= query.since) {
+      return false;
+    }
+    return matchesValue(event.targetId, query.targetId) && matchesValue(event.actionName, query.actionName) && matchesValue(event.type, query.type) && matchesValue(event.source, query.source) && matchesValue(event.status, query.status) && matchesEventText(event, query.query);
+  }
+  function matchesEventText(event, query) {
+    return matchesText([
+      event.targetId,
+      event.actionName,
+      event.type,
+      event.source,
+      event.status,
+      event.error?.message,
+      event.error?.code,
+      event.error?.stack,
+      stringifySearchValue(event.error?.data),
+      stringifySearchValue(event.payload)
+    ], query);
+  }
+  function stringifySearchValue(value) {
+    if (value === void 0)
+      return void 0;
+    if (typeof value === "string")
+      return value;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  function normalizeLimit(limit) {
+    if (limit === void 0) {
+      return DEFAULT_EVENT_LIMIT;
+    }
+    if (!Number.isFinite(limit) || limit < 1) {
+      return DEFAULT_EVENT_LIMIT;
+    }
+    return Math.floor(limit);
+  }
+
+  // ../../@divebell/core/dist/snapshot/store.js
+  var _clock3, _targets;
+  var SnapshotStore = class {
+    constructor(clock) {
+      __privateAdd(this, _clock3);
+      __privateAdd(this, _targets, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock3, clock);
+    }
+    update(target, input) {
+      const updatedAt = __privateGet(this, _clock3).now();
+      const next = {
+        id: target.id,
+        type: target.type,
+        status: input.status,
+        updatedAt
+      };
+      const source = input.source ?? target.source;
+      if (source !== void 0)
+        next.source = source;
+      const description = input.description ?? target.description;
+      if (description !== void 0)
+        next.description = description;
+      if ("data" in input)
+        next.data = input.data;
+      if (input.error !== void 0)
+        next.error = { ...input.error };
+      if (input.dependsOn !== void 0)
+        next.dependsOn = [...input.dependsOn];
+      __privateGet(this, _targets).set(next.id, next);
+      return cloneSnapshotTarget(next);
+    }
+    remove(targetId) {
+      __privateGet(this, _targets).delete(targetId);
+    }
+    get(query, latestEventId) {
+      const targets = {};
+      for (const target of __privateGet(this, _targets).values()) {
+        if (matchesSnapshotTarget(target, query)) {
+          targets[target.id] = cloneSnapshotTarget(target);
+        }
+      }
+      return {
+        targets,
+        latestEventId,
+        capturedAt: __privateGet(this, _clock3).now()
+      };
+    }
+  };
+  _clock3 = new WeakMap();
+  _targets = new WeakMap();
+  function matchesSnapshotTarget(target, query) {
+    if (query === void 0) {
+      return true;
+    }
+    return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesValue(target.status, query.status) && matchesText([target.id, target.description], query.query);
+  }
+  function cloneSnapshotTarget(target) {
+    const clone = {
+      id: target.id,
+      type: target.type,
+      status: target.status,
+      updatedAt: target.updatedAt
+    };
+    if (target.source !== void 0)
+      clone.source = target.source;
+    if (target.description !== void 0)
+      clone.description = target.description;
+    if ("data" in target)
+      clone.data = target.data;
+    if (target.error !== void 0)
+      clone.error = { ...target.error };
+    if (target.dependsOn !== void 0)
+      clone.dependsOn = [...target.dependsOn];
+    return clone;
+  }
+
+  // ../../@divebell/core/dist/target/registry.js
+  var _clock4, _targets2;
+  var TargetRegistry = class {
+    constructor(clock) {
+      __privateAdd(this, _clock4);
+      __privateAdd(this, _targets2, /* @__PURE__ */ new Map());
+      __privateSet(this, _clock4, clock);
+    }
+    register(input) {
+      const now = __privateGet(this, _clock4).now();
+      const existing = __privateGet(this, _targets2).get(input.id);
+      const descriptor = normalizeTarget(input, existing?.registeredAt ?? now, now);
+      __privateGet(this, _targets2).set(descriptor.id, descriptor);
+    }
+    unregister(targetId) {
+      return __privateGet(this, _targets2).delete(targetId);
+    }
+    get(targetId) {
+      const descriptor = __privateGet(this, _targets2).get(targetId);
+      return descriptor === void 0 ? void 0 : cloneTarget(descriptor);
+    }
+    list(query) {
+      const descriptors = Array.from(__privateGet(this, _targets2).values());
+      return descriptors.filter((target) => matchesTarget(target, query)).map(cloneTarget);
+    }
+  };
+  _clock4 = new WeakMap();
+  _targets2 = new WeakMap();
+  function normalizeTarget(input, registeredAt, updatedAt) {
+    const id = assertNonEmptyString2(input.id, "target id");
+    const type = assertNonEmptyString2(input.type, "target type");
+    const source = assertNonEmptyString2(input.source, "target source");
+    const statuses = uniqueStatuses(input.statuses);
+    const descriptor = {
+      id,
+      type,
+      source,
+      statuses,
+      registeredAt,
+      updatedAt
+    };
+    assignOptionalTargetFields(descriptor, input);
+    return descriptor;
+  }
+  function assignOptionalTargetFields(descriptor, input) {
+    if (input.label !== void 0)
+      descriptor.label = input.label;
+    if (input.description !== void 0)
+      descriptor.description = input.description;
+    if (input.params !== void 0)
+      descriptor.params = input.params.map((param) => ({ ...param }));
+    if (input.matcher !== void 0)
+      descriptor.matcher = { ...input.matcher };
+    if ("data" in input)
+      descriptor.data = input.data;
+  }
+  function cloneTarget(target) {
+    const clone = {
+      id: target.id,
+      type: target.type,
+      source: target.source,
+      statuses: [...target.statuses],
+      registeredAt: target.registeredAt,
+      updatedAt: target.updatedAt
+    };
+    assignOptionalTargetFields(clone, target);
+    return clone;
+  }
+  function uniqueStatuses(statuses) {
+    if (!Array.isArray(statuses) || statuses.length === 0) {
+      throw new Error("target statuses must not be empty");
+    }
+    const unique = /* @__PURE__ */ new Set();
+    for (const status of statuses) {
+      unique.add(assertNonEmptyString2(status, "target status"));
+    }
+    return [...unique];
+  }
+  function assertNonEmptyString2(value, label) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error(`${label} must be a non-empty string`);
+    }
+    return value;
+  }
+  function matchesTarget(target, query) {
+    if (query === void 0) {
+      return true;
+    }
+    return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesAnyValue(target.statuses, query.status) && matchesText([target.id, target.label, target.description], query.query);
+  }
+
+  // ../../@divebell/core/dist/wait/condition.js
+  function matchesRuntimeCondition(target, condition) {
+    return target?.status === condition.status && matchesDataConditions(target.data, condition.where);
+  }
+  function matchesDataConditions(data, conditions) {
+    if (conditions === void 0 || conditions.length === 0) {
+      return true;
+    }
+    return conditions.every((condition) => {
+      const values = getValuesByPath(data, condition.path);
+      return values.some((value) => matchesExpectedValue(value, condition.equals));
+    });
+  }
+  function getValuesByPath(value, path) {
+    const segments = path.split(".").filter(Boolean);
+    if (segments.length === 0) {
+      return [value];
+    }
+    return segments.reduce((values, segment) => {
+      const next = [];
+      for (const item of values) {
+        if (Array.isArray(item)) {
+          for (const entry of item) {
+            next.push(...readProperty(entry, segment));
+          }
+          continue;
+        }
+        next.push(...readProperty(item, segment));
+      }
+      return next;
+    }, [value]);
+  }
+  function readProperty(value, segment) {
+    if (value === null || typeof value !== "object") {
+      return [];
+    }
+    if (!(segment in value)) {
+      return [];
+    }
+    return [value[segment]];
+  }
+  function matchesExpectedValue(value, expected) {
+    if (typeof expected === "string") {
+      return String(value) === expected;
+    }
+    return Object.is(value, expected);
+  }
+
+  // ../../@divebell/core/dist/wait/manager.js
+  var _waits, _nextWaitId, _WaitManager_instances, failWait_fn, clear_fn;
+  var WaitManager = class {
+    constructor() {
+      __privateAdd(this, _WaitManager_instances);
+      __privateAdd(this, _waits, /* @__PURE__ */ new Map());
+      __privateAdd(this, _nextWaitId, 1);
+    }
+    waitFor(condition, options, getSnapshot) {
+      return new Promise((resolve) => {
+        const waitId = __privateGet(this, _nextWaitId);
+        __privateSet(this, _nextWaitId, __privateGet(this, _nextWaitId) + 1);
+        const timeout = normalizeTimeout(options?.timeout);
+        const timer = setTimeout(() => {
+          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, waitId, getSnapshot, "Timed out waiting for target status.");
+        }, timeout);
+        __privateGet(this, _waits).set(waitId, {
+          id: waitId,
+          condition: { ...condition },
+          resolve,
+          timer
+        });
+      });
+    }
+    resolveForTarget(targetId, getSnapshot) {
+      for (const wait of __privateGet(this, _waits).values()) {
+        if (wait.condition.id === targetId) {
+          const snapshot = getSnapshot();
+          const target = snapshot.targets[wait.condition.id];
+          if (matchesRuntimeCondition(target, wait.condition)) {
+            __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
+            wait.resolve(createSuccessResult(wait.condition, snapshot, target));
+          }
+        }
+      }
+    }
+    rejectForTarget(targetId, getSnapshot) {
+      for (const wait of __privateGet(this, _waits).values()) {
+        if (wait.condition.id === targetId) {
+          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, wait.id, getSnapshot, "Target was unregistered.");
+        }
+      }
+    }
+  };
+  _waits = new WeakMap();
+  _nextWaitId = new WeakMap();
+  _WaitManager_instances = new WeakSet();
+  failWait_fn = function(waitId, getSnapshot, reason) {
+    const wait = __privateGet(this, _waits).get(waitId);
+    if (wait === void 0) {
+      return;
+    }
+    __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
+    wait.resolve({
+      success: false,
+      condition: wait.condition,
+      snapshot: getSnapshot(),
+      reason
+    });
+  };
+  clear_fn = function(wait) {
+    clearTimeout(wait.timer);
+    __privateGet(this, _waits).delete(wait.id);
+  };
+  var defaultWaitTimeout = 5e3;
+  function normalizeTimeout(timeout) {
+    if (timeout === void 0 || !Number.isFinite(timeout) || timeout < 0) {
+      return defaultWaitTimeout;
+    }
+    return Math.floor(timeout);
+  }
+  function createSuccessResult(condition, snapshot, target) {
+    return {
+      success: true,
+      condition,
+      snapshot,
+      target
+    };
+  }
+
+  // ../../@divebell/core/dist/runtime/center.js
+  var systemSource = "divebell";
+  var _targets3, _snapshot, _events2, _actions2, _waits2, _RuntimeCenter_instances, recordRejectedUpdate_fn, recordActionFailure_fn, createActionContext_fn;
+  var RuntimeCenter = class {
+    constructor(options = {}) {
+      __privateAdd(this, _RuntimeCenter_instances);
+      __privateAdd(this, _targets3);
+      __privateAdd(this, _snapshot);
+      __privateAdd(this, _events2);
+      __privateAdd(this, _actions2);
+      __privateAdd(this, _waits2, new WaitManager());
+      const clock = options.clock ?? systemClock;
+      __privateSet(this, _targets3, new TargetRegistry(clock));
+      __privateSet(this, _snapshot, new SnapshotStore(clock));
+      __privateSet(this, _events2, new EventLog(clock));
+      __privateSet(this, _actions2, new ActionRegistry(clock));
+    }
+    registerTarget(target) {
+      __privateGet(this, _targets3).register(target);
+    }
+    unregisterTarget(targetId) {
+      __privateGet(this, _targets3).unregister(targetId);
+      __privateGet(this, _snapshot).remove(targetId);
+      __privateGet(this, _waits2).rejectForTarget(targetId, () => this.getSnapshot());
+    }
+    getTargets(query) {
+      return __privateGet(this, _targets3).list(query);
+    }
+    updateSnapshot(input) {
+      const target = __privateGet(this, _targets3).get(input.id);
+      if (target === void 0) {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
+          message: `Cannot update unregistered target "${input.id}".`,
+          code: "target_not_registered"
+        });
+        return;
+      }
+      if (input.type !== void 0 && input.type !== target.type) {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
+          message: `Snapshot type "${input.type}" does not match registered target type "${target.type}".`,
+          code: "target_type_mismatch"
+        }, target);
+        return;
+      }
+      if (!target.statuses.includes(input.status)) {
+        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
+          message: `Status "${input.status}" is not declared for target "${input.id}".`,
+          code: "target_status_not_declared"
+        }, target);
+        return;
+      }
+      __privateGet(this, _snapshot).update(target, input);
+      __privateGet(this, _events2).append({
+        type: "snapshot.updated",
+        source: input.source ?? target.source,
+        targetId: input.id,
+        status: input.status,
+        payload: normalizeAcceptedUpdate(input, target)
+      });
+      __privateGet(this, _waits2).resolveForTarget(input.id, () => this.getSnapshot());
+    }
+    getSnapshot(query) {
+      return __privateGet(this, _snapshot).get(query, __privateGet(this, _events2).latestEventId());
+    }
+    getEvents(query) {
+      return __privateGet(this, _events2).get(query);
+    }
+    registerAction(action) {
+      __privateGet(this, _actions2).register(action);
+    }
+    unregisterAction(actionName) {
+      __privateGet(this, _actions2).unregister(actionName);
+    }
+    getActions(query) {
+      return __privateGet(this, _actions2).list(query, this.getSnapshot());
+    }
+    async runAction(actionName, payload) {
+      const action = __privateGet(this, _actions2).get(actionName);
+      if (action === void 0) {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
+          message: `Action "${actionName}" is not registered.`,
+          code: "action_not_registered"
+        });
+      }
+      const availability = getAvailability(action.availableWhen, this.getSnapshot());
+      if (!availability.enabled) {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
+          message: availability.reason ?? `Action "${actionName}" is not available.`,
+          code: "action_not_available"
+        }, action.source);
+      }
+      const validationError = validateActionPayload(action.inputSchema, payload);
+      if (validationError !== void 0) {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, validationError, action.source);
+      }
+      __privateGet(this, _events2).append({
+        type: "action.started",
+        source: action.source,
+        actionName,
+        payload
+      });
+      try {
+        const result = await action.handler(payload ?? {}, __privateMethod(this, _RuntimeCenter_instances, createActionContext_fn).call(this, actionName));
+        __privateGet(this, _events2).append({
+          type: "action.success",
+          source: action.source,
+          actionName,
+          payload: result
+        });
+        return {
+          success: true,
+          actionName,
+          result
+        };
+      } catch (error) {
+        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, toRuntimeError(error), action.source);
+      }
+    }
+    waitFor(condition, options) {
+      const snapshot = this.getSnapshot();
+      const target = snapshot.targets[condition.id];
+      if (matchesRuntimeCondition(target, condition)) {
+        return Promise.resolve({
+          success: true,
+          condition,
+          snapshot,
+          target
+        });
+      }
+      if (target === void 0 && __privateGet(this, _targets3).get(condition.id) === void 0) {
+        return Promise.resolve({
+          success: false,
+          condition,
+          snapshot,
+          reason: "Target is not registered."
+        });
+      }
+      return __privateGet(this, _waits2).waitFor(condition, options, () => this.getSnapshot());
+    }
+  };
+  _targets3 = new WeakMap();
+  _snapshot = new WeakMap();
+  _events2 = new WeakMap();
+  _actions2 = new WeakMap();
+  _waits2 = new WeakMap();
+  _RuntimeCenter_instances = new WeakSet();
+  recordRejectedUpdate_fn = function(input, error, target) {
+    __privateGet(this, _events2).append({
+      type: "snapshot.update.rejected",
+      source: input.source ?? target?.source ?? systemSource,
+      targetId: input.id,
+      status: input.status,
+      payload: input,
+      error
+    });
+  };
+  recordActionFailure_fn = function(actionName, payload, error, source = systemSource) {
+    __privateGet(this, _events2).append({
+      type: "action.error",
+      source,
+      actionName,
+      payload,
+      error
+    });
+    return {
+      success: false,
+      actionName,
+      error
+    };
+  };
+  createActionContext_fn = function(actionName) {
+    return {
+      actionName,
+      getSnapshot: () => this.getSnapshot(),
+      updateSnapshot: (input) => this.updateSnapshot(input),
+      waitFor: (condition, options) => this.waitFor(condition, options)
+    };
+  };
+  function createDivebell(options) {
+    return new RuntimeCenter(options);
+  }
+  var systemClock = {
+    now: () => Date.now()
+  };
+  function normalizeAcceptedUpdate(input, target) {
+    const payload = {
+      id: input.id,
+      type: target.type,
+      source: input.source ?? target.source,
+      status: input.status
+    };
+    if (input.description !== void 0)
+      payload.description = input.description;
+    if ("data" in input)
+      payload.data = input.data;
+    if (input.error !== void 0)
+      payload.error = { ...input.error };
+    if (input.dependsOn !== void 0)
+      payload.dependsOn = [...input.dependsOn];
+    return payload;
+  }
+  function toRuntimeError(error) {
+    if (error instanceof Error) {
+      const runtimeError = {
+        message: error.message
+      };
+      if (error.stack !== void 0) {
+        runtimeError.stack = error.stack;
+      }
+      return runtimeError;
+    }
+    return {
+      message: String(error)
+    };
+  }
+
+  // ../../@divebell/core/dist/runtime/window.js
+  function installDivebellOnWindow(runtime = createDivebell(), host = getDefaultWindowHost(), options = {}) {
+    if (host === void 0) {
+      return runtime;
+    }
+    const registry = getOrCreateDivebellRegistry(host);
+    registry.register(runtime, options);
+    host.__DIVEBELL__ ?? (host.__DIVEBELL__ = runtime);
+    return runtime;
+  }
+  function getDivebellFromWindow(host = getDefaultWindowHost()) {
+    return host?.__DIVEBELL__;
+  }
+  function getOrCreateDivebellRegistry(host) {
+    host.__DIVEBELL_REGISTRY__ ?? (host.__DIVEBELL_REGISTRY__ = new WindowRuntimeRegistry());
+    return host.__DIVEBELL_REGISTRY__;
+  }
+  var _instances, _runtimeIds, _listeners, _WindowRuntimeRegistry_instances, emit_fn;
+  var WindowRuntimeRegistry = class {
+    constructor() {
+      __privateAdd(this, _WindowRuntimeRegistry_instances);
+      __privateAdd(this, _instances, /* @__PURE__ */ new Map());
+      __privateAdd(this, _runtimeIds, /* @__PURE__ */ new WeakMap());
+      __privateAdd(this, _listeners, /* @__PURE__ */ new Set());
+    }
+    register(runtime, options = {}) {
+      const existingId = __privateGet(this, _runtimeIds).get(runtime);
+      if (existingId !== void 0) {
+        return __privateGet(this, _instances).get(existingId);
+      }
+      const runtimeId = normalizeRuntimeId(options.runtimeId) ?? createRuntimeId();
+      const collision = __privateGet(this, _instances).get(runtimeId);
+      if (collision !== void 0 && collision.runtime !== runtime) {
+        throw new Error(`Divebell instance id "${runtimeId}" is already registered.`);
+      }
+      const name = normalizeOptional(options.name);
+      const source = normalizeOptional(options.source);
+      const parentRuntimeId = normalizeOptional(options.parentRuntimeId);
+      const renderId = normalizeOptional(options.renderId);
+      const instance = {
+        runtimeId,
+        runtime,
+        ...name === void 0 ? {} : { name },
+        ...source === void 0 ? {} : { source },
+        ...parentRuntimeId === void 0 ? {} : { parentRuntimeId },
+        ...renderId === void 0 ? {} : { renderId }
+      };
+      __privateGet(this, _instances).set(runtimeId, instance);
+      __privateGet(this, _runtimeIds).set(runtime, runtimeId);
+      __privateMethod(this, _WindowRuntimeRegistry_instances, emit_fn).call(this, { type: "registered", instance });
+      return instance;
+    }
+    unregister(runtimeOrId) {
+      const runtimeId = typeof runtimeOrId === "string" ? runtimeOrId : __privateGet(this, _runtimeIds).get(runtimeOrId);
+      if (runtimeId === void 0)
+        return false;
+      const instance = __privateGet(this, _instances).get(runtimeId);
+      if (instance === void 0)
+        return false;
+      __privateGet(this, _instances).delete(runtimeId);
+      __privateGet(this, _runtimeIds).delete(instance.runtime);
+      __privateMethod(this, _WindowRuntimeRegistry_instances, emit_fn).call(this, { type: "unregistered", instance });
+      return true;
+    }
+    list() {
+      return [...__privateGet(this, _instances).values()];
+    }
+    subscribe(listener) {
+      __privateGet(this, _listeners).add(listener);
+      return () => __privateGet(this, _listeners).delete(listener);
+    }
+  };
+  _instances = new WeakMap();
+  _runtimeIds = new WeakMap();
+  _listeners = new WeakMap();
+  _WindowRuntimeRegistry_instances = new WeakSet();
+  emit_fn = function(event) {
+    for (const listener of __privateGet(this, _listeners)) {
+      listener(event);
+    }
+  };
+  function createRuntimeId() {
+    const uuid = globalThis.crypto?.randomUUID?.();
+    if (uuid !== void 0)
+      return `runtime-${uuid}`;
+    return `runtime-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+  function normalizeRuntimeId(value) {
+    return normalizeOptional(value);
+  }
+  function normalizeOptional(value) {
+    const normalized = value?.trim();
+    return normalized === void 0 || normalized.length === 0 ? void 0 : normalized;
+  }
+  function getDefaultWindowHost() {
+    if (typeof window === "undefined") {
+      return void 0;
+    }
+    return window;
+  }
 
   // ../sdk/dist/constant.js
   var BROWSER_LOG_KEY = "FEDERATION_DEBUG";
@@ -2133,1168 +3167,8 @@ ${filtered.slice(0, 5).join("\n")}`;
   var logger = createLogger(PREFIX);
   var infrastructureLogger = createInfrastructureLogger(PREFIX);
 
-  // dist/esm/core-BycBQy_S.js
+  // dist/esm/core-DsPVxJ5T.js
   var import_semver = __toESM(require_semver2());
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/shared/query.js
-  function matchesValue(value, query) {
-    if (query === void 0) {
-      return true;
-    }
-    if (value === void 0) {
-      return false;
-    }
-    const values = Array.isArray(query) ? query : [query];
-    return values.includes(value);
-  }
-  function matchesAnyValue(values, query) {
-    if (query === void 0) {
-      return true;
-    }
-    const expected = Array.isArray(query) ? query : [query];
-    return expected.some((value) => values.includes(value));
-  }
-  function matchesText(fields, query) {
-    if (query === void 0 || query === "") {
-      return true;
-    }
-    const normalizedQuery = query.toLowerCase();
-    return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/registry.js
-  var defaultActionSource = "business";
-  var defaultActionRisk = "state-changing";
-  var _clock, _actions;
-  var ActionRegistry = class {
-    constructor(clock) {
-      __privateAdd(this, _clock);
-      __privateAdd(this, _actions, /* @__PURE__ */ new Map());
-      __privateSet(this, _clock, clock);
-    }
-    register(input) {
-      const now = __privateGet(this, _clock).now();
-      const existing = __privateGet(this, _actions).get(input.name);
-      const action = normalizeAction(input, existing?.registeredAt ?? now, now);
-      __privateGet(this, _actions).set(action.name, action);
-    }
-    unregister(actionName) {
-      return __privateGet(this, _actions).delete(actionName);
-    }
-    get(actionName) {
-      const action = __privateGet(this, _actions).get(actionName);
-      return action === void 0 ? void 0 : cloneRegisteredAction(action);
-    }
-    list(query, snapshot) {
-      return Array.from(__privateGet(this, _actions).values()).map((action) => toDescriptor(action, getAvailability(action.availableWhen, snapshot))).filter((action) => matchesAction(action, query)).map(cloneActionDescriptor);
-    }
-    async getInputOptions(actionName, inputName, currentPayload, context) {
-      const action = __privateGet(this, _actions).get(actionName);
-      if (action?.getInputOptions === void 0) {
-        return [];
-      }
-      const properties = action.inputSchema?.properties;
-      if (properties !== void 0 && !(inputName in properties)) {
-        return [];
-      }
-      const options = await action.getInputOptions(inputName, currentPayload, context);
-      return options.map((option) => ({ ...option }));
-    }
-  };
-  _clock = new WeakMap();
-  _actions = new WeakMap();
-  function getAvailability(availableWhen, snapshot) {
-    if (availableWhen === void 0) {
-      return { enabled: true };
-    }
-    const conditions = Array.isArray(availableWhen) ? availableWhen : [availableWhen];
-    for (const condition of conditions) {
-      const target = snapshot.targets[condition.id];
-      if (target?.status !== condition.status) {
-        return {
-          enabled: false,
-          reason: `Waiting for ${condition.id} to reach ${condition.status}.`
-        };
-      }
-    }
-    return { enabled: true };
-  }
-  function normalizeAction(input, registeredAt, updatedAt) {
-    const name = assertNonEmptyString(input.name, "action name");
-    if (typeof input.handler !== "function") {
-      throw new Error("action handler must be a function");
-    }
-    const action = {
-      name,
-      source: input.source ?? defaultActionSource,
-      risk: input.risk ?? defaultActionRisk,
-      hasInputOptions: input.getInputOptions !== void 0,
-      enabled: true,
-      registeredAt,
-      updatedAt,
-      handler: input.handler
-    };
-    assignOptionalActionFields(action, input);
-    if (input.getInputOptions !== void 0) {
-      action.getInputOptions = input.getInputOptions;
-    }
-    return action;
-  }
-  function toDescriptor(action, availability) {
-    const descriptor = {
-      name: action.name,
-      source: action.source,
-      risk: action.risk,
-      hasInputOptions: action.hasInputOptions,
-      enabled: availability.enabled,
-      registeredAt: action.registeredAt,
-      updatedAt: action.updatedAt
-    };
-    assignOptionalActionFields(descriptor, action);
-    if (!availability.enabled && availability.reason !== void 0) {
-      descriptor.reason = availability.reason;
-    }
-    return descriptor;
-  }
-  function cloneRegisteredAction(action) {
-    const clone = {
-      ...cloneActionDescriptor(action),
-      handler: action.handler
-    };
-    if (action.getInputOptions !== void 0) {
-      clone.getInputOptions = action.getInputOptions;
-    }
-    return clone;
-  }
-  function cloneActionDescriptor(action) {
-    const clone = {
-      name: action.name,
-      source: action.source,
-      risk: action.risk,
-      hasInputOptions: action.hasInputOptions,
-      enabled: action.enabled,
-      registeredAt: action.registeredAt,
-      updatedAt: action.updatedAt
-    };
-    assignOptionalActionFields(clone, action);
-    if (action.reason !== void 0)
-      clone.reason = action.reason;
-    return clone;
-  }
-  function assignOptionalActionFields(target, input) {
-    if (input.description !== void 0)
-      target.description = input.description;
-    if (input.availableWhen !== void 0) {
-      target.availableWhen = Array.isArray(input.availableWhen) ? input.availableWhen.map((condition) => ({ ...condition })) : { ...input.availableWhen };
-    }
-    if (input.inputSchema !== void 0)
-      target.inputSchema = cloneInputSchema(input.inputSchema);
-  }
-  function cloneInputSchema(schema) {
-    if (schema === void 0) {
-      return schema;
-    }
-    return structuredClone(schema);
-  }
-  function matchesAction(action, query) {
-    if (query === void 0) {
-      return true;
-    }
-    return matchesValue(action.name, query.name) && matchesValue(action.source, query.source) && matchesValue(action.risk, query.risk) && (query.enabled === void 0 || action.enabled === query.enabled) && matchesText([action.name, action.description], query.query);
-  }
-  function assertNonEmptyString(value, label) {
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new Error(`${label} must be a non-empty string`);
-    }
-    return value;
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/action/validation.js
-  function validateActionPayload(schema, payload) {
-    if (schema === void 0) {
-      return void 0;
-    }
-    const value = payload ?? {};
-    return validateObjectSchema(schema, value, "payload");
-  }
-  function validateObjectSchema(schema, value, path) {
-    if (!isPlainObject(value)) {
-      return createValidationError(`${path} must be an object`);
-    }
-    const properties = schema.properties ?? {};
-    const required = schema.required ?? [];
-    for (const key of required) {
-      if (!(key in value)) {
-        return createValidationError(`${path}.${key} is required`);
-      }
-    }
-    if (schema.additionalProperties === false) {
-      for (const key of Object.keys(value)) {
-        if (!(key in properties)) {
-          return createValidationError(`${path}.${key} is not allowed`);
-        }
-      }
-    }
-    for (const [key, property] of Object.entries(properties)) {
-      if (key in value) {
-        const error = validateProperty(property, value[key], `${path}.${key}`);
-        if (error !== void 0) {
-          return error;
-        }
-      }
-    }
-    return void 0;
-  }
-  function validateProperty(property, value, path) {
-    if (property.enum !== void 0 && !property.enum.includes(value)) {
-      return createValidationError(`${path} must be one of the declared enum values`);
-    }
-    switch (property.type) {
-      case "string":
-        return typeof value === "string" ? void 0 : createValidationError(`${path} must be a string`);
-      case "number":
-        return typeof value === "number" ? void 0 : createValidationError(`${path} must be a number`);
-      case "boolean":
-        return typeof value === "boolean" ? void 0 : createValidationError(`${path} must be a boolean`);
-      case "array":
-        return validateArrayProperty(property, value, path);
-      case "object":
-        return validateNestedObjectProperty(property, value, path);
-    }
-  }
-  function validateArrayProperty(property, value, path) {
-    if (!Array.isArray(value)) {
-      return createValidationError(`${path} must be an array`);
-    }
-    if (property.items === void 0) {
-      return void 0;
-    }
-    for (let index = 0; index < value.length; index += 1) {
-      const error = validateProperty(property.items, value[index], `${path}[${index}]`);
-      if (error !== void 0) {
-        return error;
-      }
-    }
-    return void 0;
-  }
-  function validateNestedObjectProperty(property, value, path) {
-    const schema = {
-      type: "object"
-    };
-    if (property.properties !== void 0)
-      schema.properties = property.properties;
-    if (property.required !== void 0)
-      schema.required = property.required;
-    if (property.additionalProperties !== void 0) {
-      schema.additionalProperties = property.additionalProperties;
-    }
-    return validateObjectSchema(schema, value, path);
-  }
-  function isPlainObject(value) {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-  }
-  function createValidationError(message) {
-    return {
-      message,
-      code: "action_payload_invalid"
-    };
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/command.js
-  async function executeBridgeRuntimeRequest(runtime, request) {
-    switch (request.method) {
-      case "getTargets":
-        return runtime.getTargets(request.query);
-      case "getSnapshot":
-        return runtime.getSnapshot(request.query);
-      case "getEvents":
-        return runtime.getEvents(request.query);
-      case "getActions":
-        return runtime.getActions(request.query);
-      case "getInputOptions":
-        return runtime.getInputOptions(requireString(request.actionName, "actionName"), requireString(request.inputName, "inputName"), request.payload, request.options);
-      case "runAction":
-        return runtime.runAction(requireString(request.actionName, "actionName"), request.payload);
-      case "waitFor":
-        return runtime.waitFor({
-          id: requireString(request.targetId, "targetId"),
-          status: requireString(request.status, "status"),
-          ...request.where === void 0 ? {} : { where: request.where }
-        }, request.options);
-    }
-  }
-  function requireString(value, field) {
-    if (typeof value !== "string" || value.length === 0) {
-      throw new Error(`Bridge request is missing "${field}".`);
-    }
-    return value;
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/types.js
-  var OPEN_RUNTIME_BRIDGE_DEFAULT_PORT = 17321;
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/bridge/connect.js
-  var reconnectDelays = [1e3, 2e3, 4e3, 8e3, 1e4];
-  function connectBridge(runtime, options = {}) {
-    if (getGlobalBridgeConnection() !== void 0) {
-      return;
-    }
-    const port = options.port ?? OPEN_RUNTIME_BRIDGE_DEFAULT_PORT;
-    const autoReconnect = options.autoReconnect ?? true;
-    const pageUrl = getPageUrl();
-    const pageInstanceId = getPageInstanceId(options.pageInstanceId);
-    const configuredRuntimeId = normalizeOptional(options.runtimeId);
-    const configuredRenderId = normalizeOptional(options.renderId);
-    let runtimeId;
-    let stream;
-    let stopped = false;
-    let reconnectAttempt = 0;
-    let connection;
-    const open = () => {
-      if (typeof EventSource === "undefined") {
-        throw new Error("EventSource is required to connect OpenRuntime Bridge.");
-      }
-      stream = new EventSource(createBridgeConnectUrl({
-        port,
-        pageUrl,
-        pageInstanceId,
-        ...configuredRuntimeId === void 0 ? {} : { runtimeId: configuredRuntimeId },
-        ...configuredRenderId === void 0 ? {} : { renderId: configuredRenderId }
-      }));
-      stream.addEventListener("connected", (event) => {
-        runtimeId = parseConnectedRuntimeId(event);
-        reconnectAttempt = 0;
-      });
-      stream.addEventListener("request", (event) => {
-        void handleRequest(runtime, port, () => runtimeId, event);
-      });
-      stream.onerror = () => {
-        stream?.close();
-        stream = void 0;
-        if (!stopped && autoReconnect) {
-          const delay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1e4;
-          reconnectAttempt += 1;
-          setTimeout(open, delay);
-        }
-      };
-    };
-    const stop = () => {
-      stopped = true;
-      stream?.close();
-      if (connection !== void 0) {
-        clearGlobalBridgeConnection(connection);
-      }
-    };
-    connection = { close: stop };
-    setGlobalBridgeConnection(connection);
-    globalThis.addEventListener?.("beforeunload", stop, { once: true });
-    try {
-      open();
-    } catch (error) {
-      clearGlobalBridgeConnection(connection);
-      throw error;
-    }
-  }
-  async function handleRequest(runtime, port, getRuntimeId, event) {
-    const request = parseRequest(event);
-    if (request === void 0)
-      return;
-    let response;
-    try {
-      response = {
-        success: true,
-        result: await executeBridgeRuntimeRequest(runtime, request)
-      };
-    } catch (error) {
-      response = {
-        success: false,
-        error: toRuntimeError(error)
-      };
-    }
-    const runtimeId = getRuntimeId();
-    if (runtimeId === void 0)
-      return;
-    await fetch(createBridgeResponseUrl(port, runtimeId, request.requestId), {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
-      },
-      body: JSON.stringify(response)
-    });
-  }
-  function createBridgeConnectUrl(options) {
-    const { port, pageUrl, pageInstanceId, runtimeId, renderId } = options;
-    const url = new URL(`http://localhost:${port}/connect`);
-    url.searchParams.set("url", pageUrl);
-    url.searchParams.set("pageInstanceId", pageInstanceId);
-    if (runtimeId !== void 0) {
-      url.searchParams.set("runtimeId", runtimeId);
-    }
-    if (renderId !== void 0) {
-      url.searchParams.set("renderId", renderId);
-    }
-    return url.toString();
-  }
-  function createBridgeResponseUrl(port, runtimeId, requestId) {
-    return `http://localhost:${port}/runtimes/${encodeURIComponent(runtimeId)}/responses/${encodeURIComponent(requestId)}`;
-  }
-  function getPageUrl() {
-    return globalThis.location?.href ?? "unknown";
-  }
-  function getBridgeGlobal() {
-    return globalThis;
-  }
-  function getGlobalBridgeConnection() {
-    return getBridgeGlobal().__OPEN_RUNTIME_BRIDGE_CONNECTION__;
-  }
-  function setGlobalBridgeConnection(connection) {
-    getBridgeGlobal().__OPEN_RUNTIME_BRIDGE_CONNECTION__ = connection;
-  }
-  function clearGlobalBridgeConnection(connection) {
-    const bridgeGlobal = getBridgeGlobal();
-    if (bridgeGlobal.__OPEN_RUNTIME_BRIDGE_CONNECTION__ === connection) {
-      delete bridgeGlobal.__OPEN_RUNTIME_BRIDGE_CONNECTION__;
-    }
-  }
-  function getPageInstanceId(configuredId) {
-    if (configuredId !== void 0 && configuredId.length > 0) {
-      return configuredId;
-    }
-    return createPageInstanceId();
-  }
-  function createPageInstanceId() {
-    const uuid = globalThis.crypto?.randomUUID?.();
-    if (uuid !== void 0) {
-      return `page-${uuid}`;
-    }
-    return `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  }
-  function normalizeOptional(value) {
-    return value === void 0 || value.length === 0 ? void 0 : value;
-  }
-  function parseConnectedRuntimeId(event) {
-    const data = parseJson(event.data);
-    return typeof data?.runtimeId === "string" ? data.runtimeId : void 0;
-  }
-  function parseRequest(event) {
-    const data = parseJson(event.data);
-    if (data === void 0 || typeof data !== "object")
-      return void 0;
-    const request = data;
-    if (typeof request.requestId !== "string")
-      return void 0;
-    if (request.method !== "getTargets" && request.method !== "getSnapshot" && request.method !== "getEvents" && request.method !== "getActions" && request.method !== "getInputOptions" && request.method !== "runAction" && request.method !== "waitFor") {
-      return void 0;
-    }
-    const bridgeRequest = {
-      requestId: request.requestId,
-      method: request.method
-    };
-    if (request.query !== void 0) {
-      bridgeRequest.query = request.query;
-    }
-    if (typeof request.actionName === "string") {
-      bridgeRequest.actionName = request.actionName;
-    }
-    if (typeof request.inputName === "string") {
-      bridgeRequest.inputName = request.inputName;
-    }
-    if (isRecord(request.payload)) {
-      bridgeRequest.payload = request.payload;
-    }
-    if (typeof request.targetId === "string") {
-      bridgeRequest.targetId = request.targetId;
-    }
-    if (typeof request.status === "string") {
-      bridgeRequest.status = request.status;
-    }
-    if (Array.isArray(request.where)) {
-      bridgeRequest.where = request.where;
-    }
-    if (isRecord(request.options)) {
-      bridgeRequest.options = request.options;
-    }
-    return bridgeRequest;
-  }
-  function parseJson(value) {
-    if (typeof value !== "string")
-      return void 0;
-    try {
-      const parsed = JSON.parse(value);
-      return parsed !== null && typeof parsed === "object" ? parsed : void 0;
-    } catch {
-      return void 0;
-    }
-  }
-  function isRecord(value) {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-  }
-  function toRuntimeError(error) {
-    if (error instanceof Error) {
-      const runtimeError = {
-        message: error.message
-      };
-      if (error.stack !== void 0) {
-        runtimeError.stack = error.stack;
-      }
-      return runtimeError;
-    }
-    return {
-      message: String(error)
-    };
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/event/log.js
-  var DEFAULT_EVENT_LIMIT = 100;
-  var _clock2, _events, _nextEventId;
-  var EventLog = class {
-    constructor(clock) {
-      __privateAdd(this, _clock2);
-      __privateAdd(this, _events, []);
-      __privateAdd(this, _nextEventId, 1);
-      __privateSet(this, _clock2, clock);
-    }
-    append(input) {
-      const event = normalizeEvent(input, __privateGet(this, _nextEventId), __privateGet(this, _clock2).now());
-      __privateSet(this, _nextEventId, __privateGet(this, _nextEventId) + 1);
-      __privateGet(this, _events).push(event);
-      return cloneEvent(event);
-    }
-    latestEventId() {
-      return __privateGet(this, _nextEventId) - 1;
-    }
-    get(query) {
-      const filtered = __privateGet(this, _events).filter((event) => matchesEvent(event, query));
-      const limit = normalizeLimit(query?.limit);
-      const truncated = filtered.length > limit;
-      const events = truncated ? filtered.slice(filtered.length - limit) : filtered;
-      return {
-        events: events.map(cloneEvent),
-        latestEventId: this.latestEventId(),
-        truncated
-      };
-    }
-  };
-  _clock2 = new WeakMap();
-  _events = new WeakMap();
-  _nextEventId = new WeakMap();
-  function normalizeEvent(input, id, timestamp) {
-    const event = {
-      id,
-      type: input.type,
-      source: input.source,
-      timestamp
-    };
-    if (input.targetId !== void 0)
-      event.targetId = input.targetId;
-    if (input.actionName !== void 0)
-      event.actionName = input.actionName;
-    if (input.status !== void 0)
-      event.status = input.status;
-    if ("payload" in input)
-      event.payload = input.payload;
-    if (input.error !== void 0)
-      event.error = { ...input.error };
-    return event;
-  }
-  function cloneEvent(event) {
-    const clone = {
-      id: event.id,
-      type: event.type,
-      source: event.source,
-      timestamp: event.timestamp
-    };
-    if (event.targetId !== void 0)
-      clone.targetId = event.targetId;
-    if (event.actionName !== void 0)
-      clone.actionName = event.actionName;
-    if (event.status !== void 0)
-      clone.status = event.status;
-    if ("payload" in event)
-      clone.payload = event.payload;
-    if (event.error !== void 0)
-      clone.error = { ...event.error };
-    return clone;
-  }
-  function matchesEvent(event, query) {
-    if (query === void 0) {
-      return true;
-    }
-    if (query.since !== void 0 && event.id <= query.since) {
-      return false;
-    }
-    return matchesValue(event.targetId, query.targetId) && matchesValue(event.actionName, query.actionName) && matchesValue(event.type, query.type) && matchesValue(event.source, query.source) && matchesValue(event.status, query.status);
-  }
-  function normalizeLimit(limit) {
-    if (limit === void 0) {
-      return DEFAULT_EVENT_LIMIT;
-    }
-    if (!Number.isFinite(limit) || limit < 1) {
-      return DEFAULT_EVENT_LIMIT;
-    }
-    return Math.floor(limit);
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/snapshot/store.js
-  var _clock3, _targets;
-  var SnapshotStore = class {
-    constructor(clock) {
-      __privateAdd(this, _clock3);
-      __privateAdd(this, _targets, /* @__PURE__ */ new Map());
-      __privateSet(this, _clock3, clock);
-    }
-    update(target, input) {
-      const updatedAt = __privateGet(this, _clock3).now();
-      const next = {
-        id: target.id,
-        type: target.type,
-        status: input.status,
-        updatedAt
-      };
-      const source = input.source ?? target.source;
-      if (source !== void 0)
-        next.source = source;
-      const description = input.description ?? target.description;
-      if (description !== void 0)
-        next.description = description;
-      if ("data" in input)
-        next.data = input.data;
-      if (input.error !== void 0)
-        next.error = { ...input.error };
-      if (input.dependsOn !== void 0)
-        next.dependsOn = [...input.dependsOn];
-      __privateGet(this, _targets).set(next.id, next);
-      return cloneSnapshotTarget(next);
-    }
-    remove(targetId) {
-      __privateGet(this, _targets).delete(targetId);
-    }
-    get(query, latestEventId) {
-      const targets = {};
-      for (const target of __privateGet(this, _targets).values()) {
-        if (matchesSnapshotTarget(target, query)) {
-          targets[target.id] = cloneSnapshotTarget(target);
-        }
-      }
-      return {
-        targets,
-        latestEventId,
-        capturedAt: __privateGet(this, _clock3).now()
-      };
-    }
-  };
-  _clock3 = new WeakMap();
-  _targets = new WeakMap();
-  function matchesSnapshotTarget(target, query) {
-    if (query === void 0) {
-      return true;
-    }
-    return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesValue(target.status, query.status) && matchesText([target.id, target.description], query.query);
-  }
-  function cloneSnapshotTarget(target) {
-    const clone = {
-      id: target.id,
-      type: target.type,
-      status: target.status,
-      updatedAt: target.updatedAt
-    };
-    if (target.source !== void 0)
-      clone.source = target.source;
-    if (target.description !== void 0)
-      clone.description = target.description;
-    if ("data" in target)
-      clone.data = target.data;
-    if (target.error !== void 0)
-      clone.error = { ...target.error };
-    if (target.dependsOn !== void 0)
-      clone.dependsOn = [...target.dependsOn];
-    return clone;
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/target/registry.js
-  var _clock4, _targets2;
-  var TargetRegistry = class {
-    constructor(clock) {
-      __privateAdd(this, _clock4);
-      __privateAdd(this, _targets2, /* @__PURE__ */ new Map());
-      __privateSet(this, _clock4, clock);
-    }
-    register(input) {
-      const now = __privateGet(this, _clock4).now();
-      const existing = __privateGet(this, _targets2).get(input.id);
-      const descriptor = normalizeTarget(input, existing?.registeredAt ?? now, now);
-      __privateGet(this, _targets2).set(descriptor.id, descriptor);
-    }
-    unregister(targetId) {
-      return __privateGet(this, _targets2).delete(targetId);
-    }
-    get(targetId) {
-      const descriptor = __privateGet(this, _targets2).get(targetId);
-      return descriptor === void 0 ? void 0 : cloneTarget(descriptor);
-    }
-    list(query) {
-      const descriptors = Array.from(__privateGet(this, _targets2).values());
-      return descriptors.filter((target) => matchesTarget(target, query)).map(cloneTarget);
-    }
-  };
-  _clock4 = new WeakMap();
-  _targets2 = new WeakMap();
-  function normalizeTarget(input, registeredAt, updatedAt) {
-    const id = assertNonEmptyString2(input.id, "target id");
-    const type = assertNonEmptyString2(input.type, "target type");
-    const source = assertNonEmptyString2(input.source, "target source");
-    const statuses = uniqueStatuses(input.statuses);
-    const descriptor = {
-      id,
-      type,
-      source,
-      statuses,
-      registeredAt,
-      updatedAt
-    };
-    assignOptionalTargetFields(descriptor, input);
-    return descriptor;
-  }
-  function assignOptionalTargetFields(descriptor, input) {
-    if (input.label !== void 0)
-      descriptor.label = input.label;
-    if (input.description !== void 0)
-      descriptor.description = input.description;
-    if (input.params !== void 0)
-      descriptor.params = input.params.map((param) => ({ ...param }));
-    if (input.matcher !== void 0)
-      descriptor.matcher = { ...input.matcher };
-    if ("data" in input)
-      descriptor.data = input.data;
-  }
-  function cloneTarget(target) {
-    const clone = {
-      id: target.id,
-      type: target.type,
-      source: target.source,
-      statuses: [...target.statuses],
-      registeredAt: target.registeredAt,
-      updatedAt: target.updatedAt
-    };
-    assignOptionalTargetFields(clone, target);
-    return clone;
-  }
-  function uniqueStatuses(statuses) {
-    if (!Array.isArray(statuses) || statuses.length === 0) {
-      throw new Error("target statuses must not be empty");
-    }
-    const unique = /* @__PURE__ */ new Set();
-    for (const status of statuses) {
-      unique.add(assertNonEmptyString2(status, "target status"));
-    }
-    return [...unique];
-  }
-  function assertNonEmptyString2(value, label) {
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new Error(`${label} must be a non-empty string`);
-    }
-    return value;
-  }
-  function matchesTarget(target, query) {
-    if (query === void 0) {
-      return true;
-    }
-    return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesAnyValue(target.statuses, query.status) && matchesText([target.id, target.label, target.description], query.query);
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/condition.js
-  function matchesRuntimeCondition(target, condition) {
-    return target?.status === condition.status && matchesDataConditions(target.data, condition.where);
-  }
-  function matchesDataConditions(data, conditions) {
-    if (conditions === void 0 || conditions.length === 0) {
-      return true;
-    }
-    return conditions.every((condition) => {
-      const values = getValuesByPath(data, condition.path);
-      return values.some((value) => matchesExpectedValue(value, condition.equals));
-    });
-  }
-  function getValuesByPath(value, path) {
-    const segments = path.split(".").filter(Boolean);
-    if (segments.length === 0) {
-      return [value];
-    }
-    return segments.reduce((values, segment) => {
-      const next = [];
-      for (const item of values) {
-        if (Array.isArray(item)) {
-          for (const entry of item) {
-            next.push(...readProperty(entry, segment));
-          }
-          continue;
-        }
-        next.push(...readProperty(item, segment));
-      }
-      return next;
-    }, [value]);
-  }
-  function readProperty(value, segment) {
-    if (value === null || typeof value !== "object") {
-      return [];
-    }
-    if (!(segment in value)) {
-      return [];
-    }
-    return [value[segment]];
-  }
-  function matchesExpectedValue(value, expected) {
-    if (typeof expected === "string") {
-      return String(value) === expected;
-    }
-    return Object.is(value, expected);
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/wait/manager.js
-  var _waits, _nextWaitId, _WaitManager_instances, failWait_fn, clear_fn;
-  var WaitManager = class {
-    constructor() {
-      __privateAdd(this, _WaitManager_instances);
-      __privateAdd(this, _waits, /* @__PURE__ */ new Map());
-      __privateAdd(this, _nextWaitId, 1);
-    }
-    waitFor(condition, options, getSnapshot) {
-      return new Promise((resolve) => {
-        const waitId = __privateGet(this, _nextWaitId);
-        __privateSet(this, _nextWaitId, __privateGet(this, _nextWaitId) + 1);
-        const timeout = normalizeTimeout(options?.timeout);
-        const timer = setTimeout(() => {
-          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, waitId, getSnapshot, "Timed out waiting for target status.");
-        }, timeout);
-        __privateGet(this, _waits).set(waitId, {
-          id: waitId,
-          condition: { ...condition },
-          resolve,
-          timer
-        });
-      });
-    }
-    resolveForTarget(targetId, getSnapshot) {
-      for (const wait of __privateGet(this, _waits).values()) {
-        if (wait.condition.id === targetId) {
-          const snapshot = getSnapshot();
-          const target = snapshot.targets[wait.condition.id];
-          if (matchesRuntimeCondition(target, wait.condition)) {
-            __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
-            wait.resolve(createSuccessResult(wait.condition, snapshot, target));
-          }
-        }
-      }
-    }
-    rejectForTarget(targetId, getSnapshot) {
-      for (const wait of __privateGet(this, _waits).values()) {
-        if (wait.condition.id === targetId) {
-          __privateMethod(this, _WaitManager_instances, failWait_fn).call(this, wait.id, getSnapshot, "Target was unregistered.");
-        }
-      }
-    }
-  };
-  _waits = new WeakMap();
-  _nextWaitId = new WeakMap();
-  _WaitManager_instances = new WeakSet();
-  failWait_fn = function(waitId, getSnapshot, reason) {
-    const wait = __privateGet(this, _waits).get(waitId);
-    if (wait === void 0) {
-      return;
-    }
-    __privateMethod(this, _WaitManager_instances, clear_fn).call(this, wait);
-    wait.resolve({
-      success: false,
-      condition: wait.condition,
-      snapshot: getSnapshot(),
-      reason
-    });
-  };
-  clear_fn = function(wait) {
-    clearTimeout(wait.timer);
-    __privateGet(this, _waits).delete(wait.id);
-  };
-  var defaultWaitTimeout = 5e3;
-  function normalizeTimeout(timeout) {
-    if (timeout === void 0 || !Number.isFinite(timeout) || timeout < 0) {
-      return defaultWaitTimeout;
-    }
-    return Math.floor(timeout);
-  }
-  function createSuccessResult(condition, snapshot, target) {
-    return {
-      success: true,
-      condition,
-      snapshot,
-      target
-    };
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/center.js
-  var systemSource = "openruntime";
-  var _targets3, _snapshot, _events2, _actions2, _waits2, _bridgeConnected, _RuntimeCenter_instances, recordRejectedUpdate_fn, recordActionFailure_fn, createActionContext_fn;
-  var RuntimeCenter = class {
-    constructor(options = {}) {
-      __privateAdd(this, _RuntimeCenter_instances);
-      __privateAdd(this, _targets3);
-      __privateAdd(this, _snapshot);
-      __privateAdd(this, _events2);
-      __privateAdd(this, _actions2);
-      __privateAdd(this, _waits2, new WaitManager());
-      __privateAdd(this, _bridgeConnected, false);
-      const clock = options.clock ?? systemClock;
-      __privateSet(this, _targets3, new TargetRegistry(clock));
-      __privateSet(this, _snapshot, new SnapshotStore(clock));
-      __privateSet(this, _events2, new EventLog(clock));
-      __privateSet(this, _actions2, new ActionRegistry(clock));
-    }
-    connectBridge(options) {
-      if (__privateGet(this, _bridgeConnected)) {
-        return;
-      }
-      connectBridge(this, options);
-      __privateSet(this, _bridgeConnected, true);
-    }
-    registerTarget(target) {
-      __privateGet(this, _targets3).register(target);
-    }
-    unregisterTarget(targetId) {
-      __privateGet(this, _targets3).unregister(targetId);
-      __privateGet(this, _snapshot).remove(targetId);
-      __privateGet(this, _waits2).rejectForTarget(targetId, () => this.getSnapshot());
-    }
-    getTargets(query) {
-      return __privateGet(this, _targets3).list(query);
-    }
-    updateSnapshot(input) {
-      const target = __privateGet(this, _targets3).get(input.id);
-      if (target === void 0) {
-        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
-          message: `Cannot update unregistered target "${input.id}".`,
-          code: "target_not_registered"
-        });
-        return;
-      }
-      if (input.type !== void 0 && input.type !== target.type) {
-        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
-          message: `Snapshot type "${input.type}" does not match registered target type "${target.type}".`,
-          code: "target_type_mismatch"
-        }, target);
-        return;
-      }
-      if (!target.statuses.includes(input.status)) {
-        __privateMethod(this, _RuntimeCenter_instances, recordRejectedUpdate_fn).call(this, input, {
-          message: `Status "${input.status}" is not declared for target "${input.id}".`,
-          code: "target_status_not_declared"
-        }, target);
-        return;
-      }
-      __privateGet(this, _snapshot).update(target, input);
-      __privateGet(this, _events2).append({
-        type: "snapshot.updated",
-        source: input.source ?? target.source,
-        targetId: input.id,
-        status: input.status,
-        payload: normalizeAcceptedUpdate(input, target)
-      });
-      __privateGet(this, _waits2).resolveForTarget(input.id, () => this.getSnapshot());
-    }
-    getSnapshot(query) {
-      return __privateGet(this, _snapshot).get(query, __privateGet(this, _events2).latestEventId());
-    }
-    getEvents(query) {
-      return __privateGet(this, _events2).get(query);
-    }
-    registerAction(action) {
-      __privateGet(this, _actions2).register(action);
-    }
-    unregisterAction(actionName) {
-      __privateGet(this, _actions2).unregister(actionName);
-    }
-    getActions(query) {
-      return __privateGet(this, _actions2).list(query, this.getSnapshot());
-    }
-    async getInputOptions(actionName, inputName, currentPayload, options) {
-      const inputOptions = __privateGet(this, _actions2).getInputOptions(actionName, inputName, currentPayload, __privateMethod(this, _RuntimeCenter_instances, createActionContext_fn).call(this, actionName));
-      return withTimeout(inputOptions, options?.timeout, "Timed out while reading input options.");
-    }
-    async runAction(actionName, payload) {
-      const action = __privateGet(this, _actions2).get(actionName);
-      if (action === void 0) {
-        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
-          message: `Action "${actionName}" is not registered.`,
-          code: "action_not_registered"
-        });
-      }
-      const availability = getAvailability(action.availableWhen, this.getSnapshot());
-      if (!availability.enabled) {
-        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, {
-          message: availability.reason ?? `Action "${actionName}" is not available.`,
-          code: "action_not_available"
-        }, action.source);
-      }
-      const validationError = validateActionPayload(action.inputSchema, payload);
-      if (validationError !== void 0) {
-        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, validationError, action.source);
-      }
-      __privateGet(this, _events2).append({
-        type: "action.started",
-        source: action.source,
-        actionName,
-        payload
-      });
-      try {
-        const result = await action.handler(payload ?? {}, __privateMethod(this, _RuntimeCenter_instances, createActionContext_fn).call(this, actionName));
-        __privateGet(this, _events2).append({
-          type: "action.success",
-          source: action.source,
-          actionName,
-          payload: result
-        });
-        return {
-          success: true,
-          actionName,
-          result
-        };
-      } catch (error) {
-        return __privateMethod(this, _RuntimeCenter_instances, recordActionFailure_fn).call(this, actionName, payload, toRuntimeError2(error), action.source);
-      }
-    }
-    waitFor(condition, options) {
-      const snapshot = this.getSnapshot();
-      const target = snapshot.targets[condition.id];
-      if (matchesRuntimeCondition(target, condition)) {
-        return Promise.resolve({
-          success: true,
-          condition,
-          snapshot,
-          target
-        });
-      }
-      if (target === void 0 && __privateGet(this, _targets3).get(condition.id) === void 0) {
-        return Promise.resolve({
-          success: false,
-          condition,
-          snapshot,
-          reason: "Target is not registered."
-        });
-      }
-      return __privateGet(this, _waits2).waitFor(condition, options, () => this.getSnapshot());
-    }
-  };
-  _targets3 = new WeakMap();
-  _snapshot = new WeakMap();
-  _events2 = new WeakMap();
-  _actions2 = new WeakMap();
-  _waits2 = new WeakMap();
-  _bridgeConnected = new WeakMap();
-  _RuntimeCenter_instances = new WeakSet();
-  recordRejectedUpdate_fn = function(input, error, target) {
-    __privateGet(this, _events2).append({
-      type: "snapshot.update.rejected",
-      source: input.source ?? target?.source ?? systemSource,
-      targetId: input.id,
-      status: input.status,
-      payload: input,
-      error
-    });
-  };
-  recordActionFailure_fn = function(actionName, payload, error, source = systemSource) {
-    __privateGet(this, _events2).append({
-      type: "action.error",
-      source,
-      actionName,
-      payload,
-      error
-    });
-    return {
-      success: false,
-      actionName,
-      error
-    };
-  };
-  createActionContext_fn = function(actionName) {
-    return {
-      actionName,
-      getSnapshot: () => this.getSnapshot(),
-      updateSnapshot: (input) => this.updateSnapshot(input),
-      waitFor: (condition, options) => this.waitFor(condition, options)
-    };
-  };
-  function createOpenRuntime(options) {
-    return new RuntimeCenter(options);
-  }
-  var systemClock = {
-    now: () => Date.now()
-  };
-  function normalizeAcceptedUpdate(input, target) {
-    const payload = {
-      id: input.id,
-      type: target.type,
-      source: input.source ?? target.source,
-      status: input.status
-    };
-    if (input.description !== void 0)
-      payload.description = input.description;
-    if ("data" in input)
-      payload.data = input.data;
-    if (input.error !== void 0)
-      payload.error = { ...input.error };
-    if (input.dependsOn !== void 0)
-      payload.dependsOn = [...input.dependsOn];
-    return payload;
-  }
-  function toRuntimeError2(error) {
-    if (error instanceof Error) {
-      const runtimeError = {
-        message: error.message
-      };
-      if (error.stack !== void 0) {
-        runtimeError.stack = error.stack;
-      }
-      return runtimeError;
-    }
-    return {
-      message: String(error)
-    };
-  }
-  function withTimeout(promise, timeout, message) {
-    if (timeout === void 0 || !Number.isFinite(timeout) || timeout < 0) {
-      return promise;
-    }
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(message));
-      }, Math.floor(timeout));
-      promise.then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      }, (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-    });
-  }
-
-  // ../../node_modules/.pnpm/@openruntime+core@https+++pkg.pr.new+2heal1+openruntime+@openruntime+core@a13b382/node_modules/@openruntime/core/dist/runtime/window.js
-  function installOpenRuntimeOnWindow(runtime = createOpenRuntime(), host = getDefaultWindowHost()) {
-    if (host === void 0) {
-      return runtime;
-    }
-    host.__OPEN_RUNTIME__ = runtime;
-    return runtime;
-  }
-  function getOpenRuntimeFromWindow(host = getDefaultWindowHost()) {
-    return host?.__OPEN_RUNTIME__;
-  }
-  function getDefaultWindowHost() {
-    if (typeof window === "undefined") {
-      return void 0;
-    }
-    return window;
-  }
-
-  // dist/esm/core-BycBQy_S.js
   var reportStatuses = [
     "pending",
     "success",
@@ -3309,7 +3183,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     "failed",
     "recovered"
   ];
-  function registerOpenRuntimeActions(runtime, source, reportReader, registeredActionRuntimes) {
+  function registerDivebellActions(runtime, source, reportReader, registeredActionRuntimes) {
     if (registeredActionRuntimes.has(runtime)) return;
     if (reportReader) {
       runtime.registerAction({
@@ -3364,7 +3238,6 @@ ${filtered.slice(0, 5).join("\n")}`;
             }
           }
         },
-        getInputOptions: (inputName) => getReportInputOptions(inputName, reportReader),
         handler: (payload) => listReports(reportReader, payload)
       });
       runtime.registerAction({
@@ -3394,7 +3267,6 @@ ${filtered.slice(0, 5).join("\n")}`;
             description: "Report trace id."
           } }
         },
-        getInputOptions: (inputName) => getReportInputOptions(inputName, reportReader),
         handler: (payload) => {
           const traceId = getPayloadString(payload, "traceId");
           const report = traceId ? reportReader.getReport(traceId) : void 0;
@@ -3418,7 +3290,6 @@ ${filtered.slice(0, 5).join("\n")}`;
             description: "Report trace id. When omitted, exports latest report."
           } }
         },
-        getInputOptions: (inputName) => getReportInputOptions(inputName, reportReader),
         handler: (payload) => {
           const traceId = getPayloadString(payload, "traceId");
           const report = reportReader.exportReport(traceId);
@@ -3464,7 +3335,6 @@ ${filtered.slice(0, 5).join("\n")}`;
           }
         }
       },
-      getInputOptions: (inputName) => getFederationModuleInfoInputOptions(inputName, reportReader.getRuntimeState()),
       handler: (payload) => getFederationModuleInfoActionResult(payload, reportReader.getRuntimeState())
     });
     runtime.registerAction({
@@ -3503,7 +3373,6 @@ ${filtered.slice(0, 5).join("\n")}`;
           }
         }
       },
-      getInputOptions: (inputName) => getFederationInstanceInputOptions(inputName, reportReader.getRuntimeState()),
       handler: (payload) => getFederationInstanceConfigActionResult(payload, reportReader.getRuntimeState())
     });
     registeredActionRuntimes.add(runtime);
@@ -3562,13 +3431,6 @@ ${filtered.slice(0, 5).join("\n")}`;
       errorMessage: report.errorMessage
     });
   }
-  function getReportInputOptions(inputName, reportReader) {
-    if (inputName !== "traceId") return [];
-    return reportReader.getReports({ limit: 20 }).map((report) => ({
-      value: report.traceId,
-      description: report.remote?.name || report.shared?.name || report.requestAlias || report.requestId || report.summary.outcome
-    }));
-  }
   function getFederationGlobalSummary(runtimeState) {
     return {
       available: true,
@@ -3610,14 +3472,6 @@ ${filtered.slice(0, 5).join("\n")}`;
       moduleInfo: runtimeState.moduleInfo
     });
   }
-  function getFederationModuleInfoInputOptions(inputName, runtimeState) {
-    if (inputName !== "key" && inputName !== "name" && inputName !== "instanceRef") return [];
-    if (inputName === "instanceRef") return runtimeState.instances.map((instance) => ({
-      value: instance.instanceRef,
-      description: instance.optionsName || instance.name || instance.instanceRef
-    }));
-    return runtimeState.moduleInfo.map((entry) => ({ value: entry.key }));
-  }
   function getFederationInstanceConfigActionResult(payload, runtimeState) {
     const instanceRef = getPayloadString(payload, "instanceRef");
     const name = getPayloadString(payload, "name");
@@ -3638,13 +3492,6 @@ ${filtered.slice(0, 5).join("\n")}`;
       unstableIndex: index !== void 0 || void 0,
       instance
     };
-  }
-  function getFederationInstanceInputOptions(inputName, runtimeState) {
-    if (inputName !== "name" && inputName !== "index" && inputName !== "instanceRef") return [];
-    return runtimeState.instances.map((instance, index) => ({
-      value: inputName === "instanceRef" ? instance.instanceRef : inputName === "index" ? index : instance.optionsName || instance.name || instance.instanceRef,
-      description: `${instance.optionsName || instance.name || "unnamed"} (${instance.instanceRef})`
-    }));
   }
   function createInstanceCandidate(instance) {
     return compactObject$1({
@@ -3693,7 +3540,7 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
     return output;
   }
-  var openRuntimeSource = "module-federation";
+  var divebellSource = "module-federation";
   var loadingStatuses = [
     "registered",
     "loading",
@@ -3724,29 +3571,27 @@ ${filtered.slice(0, 5).join("\n")}`;
     "remoteEntryInit",
     "loadRemote"
   ]);
-  function createOpenRuntimeObservabilityAdapter(input, reportReader) {
+  function createDivebellObservabilityAdapter(input, reportReader) {
     if (!input) return;
     const options = input === true ? {} : input;
     if (options.enabled === false) return;
-    const connectedRuntimes = /* @__PURE__ */ new WeakSet();
     const registeredActionRuntimes = /* @__PURE__ */ new WeakSet();
     let createdRuntime;
     const getRuntime = () => {
       if (options.runtime) return options.runtime;
       const host = options.host || getDefaultHost();
-      const runtime = getOpenRuntimeFromWindow(host);
+      const runtime = getDivebellFromWindow(host);
       if (runtime) return runtime;
       if (!createdRuntime) {
-        const nextRuntime = createOpenRuntime();
-        createdRuntime = host ? installOpenRuntimeOnWindow(nextRuntime, host) : nextRuntime;
+        const nextRuntime = createDivebell();
+        createdRuntime = host ? installDivebellOnWindow(nextRuntime, host) : nextRuntime;
       }
       return createdRuntime;
     };
     const prepareRuntime = () => {
       const runtime = getRuntime();
-      const source = options.source || openRuntimeSource;
-      registerOpenRuntimeActions(runtime, source, reportReader, registeredActionRuntimes);
-      connectRuntimeBridge(runtime, options.bridge, connectedRuntimes);
+      const source = options.source || divebellSource;
+      registerDivebellActions(runtime, source, reportReader, registeredActionRuntimes);
       return {
         runtime,
         source
@@ -3762,18 +3607,13 @@ ${filtered.slice(0, 5).join("\n")}`;
       syncReport(report) {
         try {
           const { runtime, source } = prepareRuntime();
-          syncReportToOpenRuntime(runtime, source, report, reportReader);
+          syncReportToDivebell(runtime, source, report, reportReader);
         } catch {
         }
       }
     };
   }
-  function connectRuntimeBridge(runtime, bridge, connectedRuntimes) {
-    if (bridge === void 0 || bridge === false || connectedRuntimes.has(runtime)) return;
-    runtime.connectBridge(bridge);
-    connectedRuntimes.add(runtime);
-  }
-  function syncReportToOpenRuntime(runtime, source, report, reportReader) {
+  function syncReportToDivebell(runtime, source, report, reportReader) {
     if (report.remote) {
       syncRemote(runtime, source, report, reportReader);
       syncRemoteModule(runtime, source, report, reportReader);
@@ -3786,7 +3626,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   function syncRemote(runtime, source, report, reportReader) {
     const remote = report.remote;
     if (!remote?.name) return;
-    const targetId = targetIds.remote(report.instanceRef, remote.name);
+    const targetId = targetIds.remote(remote.name);
     const remoteReports = getRemoteReports(report, remote, reportReader);
     const remoteStatus = getRemoteStatus(remoteReports);
     const remoteData = getRemoteTargetData(remote, remoteReports);
@@ -3810,7 +3650,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   function syncRemoteModule(runtime, source, report, reportReader) {
     const remote = report.remote;
     if (!remote?.name || !report.expose) return;
-    const targetId = targetIds.remoteModule(report.instanceRef, remote.name, report.expose);
+    const targetId = targetIds.remoteModule(remote.name, report.expose);
     const remoteModuleReports = getRemoteModuleReports(report, remote, report.expose, reportReader);
     const latestReport = remoteModuleReports[0] || report;
     const remoteModuleData = getRemoteModuleTargetData(latestReport, remoteModuleReports);
@@ -3829,13 +3669,13 @@ ${filtered.slice(0, 5).join("\n")}`;
       source,
       data: remoteModuleData,
       error: getReportError(latestReport),
-      dependsOn: getRemoteModuleDependsOn(report.instanceRef, remote.name)
+      dependsOn: getRemoteModuleDependsOn(remote.name)
     });
   }
   function syncShared(runtime, source, report) {
     const shared = report.shared;
     if (!shared?.name) return;
-    const targetId = targetIds.shared(report.instanceRef, shared);
+    const targetId = targetIds.shared(shared);
     runtime.registerTarget({
       id: targetId,
       type: targetTypes.shared,
@@ -3856,7 +3696,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   function syncSharedConflict(runtime, source, report) {
     const shared = report.shared;
     if (!shared?.name || shared.reason !== "singleton-multiple-versions") return;
-    const targetId = targetIds.sharedConflict(report.instanceRef, shared);
+    const targetId = targetIds.sharedConflict(shared);
     const data = getSharedConflictTargetData(report, shared);
     runtime.registerTarget({
       id: targetId,
@@ -3967,7 +3807,7 @@ ${filtered.slice(0, 5).join("\n")}`;
       if (!expose || reportsByExpose.has(exposeKey)) return;
       reportsByExpose.set(exposeKey, report);
     });
-    return Array.from(reportsByExpose.values()).map((report) => compactObject({ targetId: targetIds.remoteModule(report.instanceRef, remoteName, getReportExpose(report) || "") })).filter((item) => item["targetId"] !== void 0).sort((left, right) => String(left["targetId"] || "").localeCompare(String(right["targetId"] || "")));
+    return Array.from(reportsByExpose.values()).map((report) => compactObject({ targetId: targetIds.remoteModule(remoteName, getReportExpose(report) || "") })).filter((item) => item["targetId"] !== void 0).sort((left, right) => String(left["targetId"] || "").localeCompare(String(right["targetId"] || "")));
   }
   function getRemoteModuleStatus(report) {
     if (report.status === "error") return "error";
@@ -4025,11 +3865,11 @@ ${filtered.slice(0, 5).join("\n")}`;
     const failedReport = reports.find((report) => isRemoteFailureReport(report));
     return failedReport ? getReportError(failedReport) : void 0;
   }
-  function getRemoteModuleDependsOn(instanceRef, remoteName) {
-    return [targetIds.remote(instanceRef, remoteName)];
+  function getRemoteModuleDependsOn(remoteName) {
+    return [targetIds.remote(remoteName)];
   }
   function getRemoteReports(currentReport, remote, reportReader) {
-    const reports = reportReader ? reportReader.getReports().filter((report) => report.instanceRef === currentReport.instanceRef && isSameRemoteReport(report, remote)) : [];
+    const reports = reportReader ? reportReader.getReports().filter((report) => isSameRemoteReport(report, remote)) : [];
     if (!reports.some((report) => report.traceId === currentReport.traceId)) reports.unshift(currentReport);
     return Array.from(new Map(reports.map((report) => [report.traceId, report])).values()).sort(compareReportsByTime);
   }
@@ -4133,17 +3973,17 @@ ${filtered.slice(0, 5).join("\n")}`;
     sharedConflict: "mf.shared.conflict"
   };
   var targetIds = {
-    remote(instanceRef, remoteName) {
-      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:remote:${normalizeSegment(remoteName)}`;
+    remote(remoteName) {
+      return `mf:remote:${normalizeSegment(remoteName)}`;
     },
-    remoteModule(instanceRef, remoteName, expose) {
-      return `${targetIds.remote(instanceRef, remoteName)}:expose:${normalizeExpose(expose)}`;
+    remoteModule(remoteName, expose) {
+      return `${targetIds.remote(remoteName)}:expose:${normalizeExpose(expose)}`;
     },
-    shared(instanceRef, shared) {
-      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:shared:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetVersion(shared))}:${normalizeSegment(getSharedTargetScope(shared))}`;
+    shared(shared) {
+      return `mf:shared:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetVersion(shared))}:${normalizeSegment(getSharedTargetScope(shared))}`;
     },
-    sharedConflict(instanceRef, shared) {
-      return `mf:instance:${normalizeSegment(instanceRef || "legacy")}:shared-conflict:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetScope(shared))}`;
+    sharedConflict(shared) {
+      return `mf:shared-conflict:${normalizeSegment(shared.name)}:${normalizeSegment(getSharedTargetScope(shared))}`;
     }
   };
   function getSharedTargetVersion(shared) {
@@ -4152,8 +3992,6 @@ ${filtered.slice(0, 5).join("\n")}`;
   }
   function getSharedTargetScope(shared) {
     return shared.shareScope?.length ? shared.shareScope.join("_") : "default";
-  }
-  function continuePreloadAssetsGeneration() {
   }
   var DEFAULT_MAX_EVENTS = 100;
   var HARD_MAX_EVENTS = 1e3;
@@ -4173,13 +4011,8 @@ ${filtered.slice(0, 5).join("\n")}`;
   var MAX_FACT_KEYS = 50;
   var MAX_MODULE_INFO_ENTRIES = 20;
   var HARD_MAX_REPORT_QUERY_LIMIT = 1e3;
-  var traceCounter = 0;
-  function isRecord2(value) {
+  function isRecord(value) {
     return typeof value === "object" && value !== null;
-  }
-  function getRuntimeSharedVersionEntries(value) {
-    if (!isRecord2(value) || Array.isArray(value)) return [];
-    return Object.entries(value).filter((entry) => isRecord2(entry[1]) && !Array.isArray(entry[1]));
   }
   function normalizeMaxEvents(value, fallback) {
     if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
@@ -4295,6 +4128,19 @@ ${filtered.slice(0, 5).join("\n")}`;
       return sanitizeText(withoutQuery, 240);
     }
   }
+  function getObjectValue(value, key) {
+    return value[key];
+  }
+  function omitUndefinedFields(value) {
+    if (Array.isArray(value)) return value.map((item) => omitUndefinedFields(item));
+    if (!value || typeof value !== "object") return value;
+    const cleanValue = {};
+    Object.entries(value).forEach(([key, item]) => {
+      if (item === void 0) return;
+      cleanValue[key] = omitUndefinedFields(item);
+    });
+    return cleanValue;
+  }
   function sanitizeRemote(remote) {
     if (!remote || !remote.name) return;
     return {
@@ -4304,40 +4150,6 @@ ${filtered.slice(0, 5).join("\n")}`;
       entryGlobalName: sanitizeText(remote.entryGlobalName, 120),
       type: sanitizeText(remote.type, 80)
     };
-  }
-  function normalizeBridgeInfo(bridge, timing) {
-    if (!bridge?.operationId || !bridge.bridgeId) return;
-    const moduleName = sanitizeText(bridge.moduleName, 160);
-    const slashIndex = moduleName?.indexOf("/") ?? -1;
-    const remote = sanitizeText(bridge.remote, 120) || (moduleName ? slashIndex > 0 ? moduleName.slice(0, slashIndex) : moduleName : void 0);
-    const expose = sanitizeText(bridge.expose, 240) || (moduleName && slashIndex > 0 ? `./${moduleName.slice(slashIndex + 1).replace(/^\.\//, "")}` : void 0);
-    const errorInfo = getErrorInfo(bridge.error);
-    return omitUndefinedFields({
-      operationId: sanitizeText(bridge.operationId, 120) || bridge.operationId,
-      bridgeId: sanitizeText(bridge.bridgeId, 120) || bridge.bridgeId,
-      side: bridge.side,
-      framework: bridge.framework,
-      operation: bridge.operation,
-      moduleName,
-      remote,
-      expose,
-      route: bridge.route ? {
-        action: sanitizeText(bridge.route.action, 80) || "route-update",
-        from: sanitizeUrl(bridge.route.from),
-        to: sanitizeUrl(bridge.route.to),
-        basename: sanitizeUrl(bridge.route.basename),
-        mechanism: bridge.route.mechanism
-      } : void 0,
-      reason: sanitizeText(bridge.reason, 80),
-      startedAt: timing.startedAt,
-      endedAt: timing.endedAt,
-      duration: timing.duration,
-      outcome: bridge.outcome,
-      error: bridge.error ? {
-        name: sanitizeText(errorInfo.errorName, 80),
-        message: sanitizeText(errorInfo.errorMessage, 240)
-      } : void 0
-    });
   }
   function sanitizeResource(resource) {
     if (!resource) return;
@@ -4371,6 +4183,50 @@ ${filtered.slice(0, 5).join("\n")}`;
   function isManifestUrl(value) {
     const sanitized = sanitizeUrl(value);
     return Boolean(sanitized && /manifest.*\.json$/i.test(sanitized));
+  }
+  function normalizeEventSource(value) {
+    return value === "runtime" || value === "business" || value === "react" ? value : void 0;
+  }
+  function extractErrorCode(value) {
+    const matched = String(value ?? "").match(ERROR_CODE_PATTERN)?.[0];
+    return matched ? sanitizeText(matched, 40) : void 0;
+  }
+  function getErrorInfo(error, stackTraceOptions) {
+    if (!error) return {};
+    if (error instanceof Error) return {
+      errorCode: extractErrorCode(`${error.name}
+${error.message}
+${error.stack || ""}`),
+      errorName: getRawText(error.name),
+      errorMessage: getRawText(error.message),
+      errorStack: sanitizeStack(error.stack, stackTraceOptions)
+    };
+    if (isRecord(error) && typeof error.message === "string") return {
+      errorCode: extractErrorCode(error.message),
+      errorName: typeof error.name === "string" ? getRawText(error.name) : void 0,
+      errorMessage: getRawText(error.message)
+    };
+    return {
+      errorCode: extractErrorCode(error),
+      errorMessage: getRawText(error)
+    };
+  }
+  function classifyResourceLoadError(resource) {
+    if (resource.outcome === "timeout") return "timeout";
+    if (typeof resource.httpStatus === "number" && resource.httpStatus >= 400) return "http";
+    const errorInfo = getErrorInfo(resource.error);
+    const value = `${errorInfo.errorName || ""} ${errorInfo.errorMessage || ""}`.trim();
+    if (!value) return resource.outcome === "error" ? "unknown" : void 0;
+    if (/timeout|timed out/i.test(value)) return "timeout";
+    if (/ScriptExecutionError/i.test(value)) return "execution";
+    if (/ScriptNetworkError|LinkNetworkError|NetworkError|Failed to fetch|Request failed|ERR_|CORS|ENOENT|unreachable/i.test(value)) return "network";
+    if (/RUNTIME-001|global.+not found|not found.+global/i.test(value)) return "initialization";
+    if (errorInfo.errorName === "SyntaxError" || /valid federation manifest|JSON|Unexpected token/i.test(value)) return "content";
+    return resource.outcome === "error" ? "unknown" : void 0;
+  }
+  function getRuntimeSharedVersionEntries(value) {
+    if (!isRecord(value) || Array.isArray(value)) return [];
+    return Object.entries(value).filter((entry) => isRecord(entry[1]) && !Array.isArray(entry[1]));
   }
   function normalizeSharedScope(value) {
     if (!value) return [];
@@ -4788,152 +4644,6 @@ ${filtered.slice(0, 5).join("\n")}`;
       existingVersions
     };
   }
-  function getObjectValue(value, key) {
-    return value[key];
-  }
-  function isReactLike(value) {
-    if (!isRecord2(value)) return false;
-    return typeof getObjectValue(value, "createElement") === "function";
-  }
-  function resolveReactLike(value) {
-    if (isReactLike(value)) return value;
-    if (isRecord2(value)) {
-      const defaultExport = getObjectValue(value, "default");
-      if (isReactLike(defaultExport)) return defaultExport;
-    }
-  }
-  function getReactComponentName(component, fallback) {
-    if (typeof component === "function") return component.displayName || component.name || fallback;
-    if (!isRecord2(component)) return fallback;
-    const displayName = getObjectValue(component, "displayName");
-    if (typeof displayName === "string" && displayName) return displayName;
-    const render = getObjectValue(component, "render");
-    if (typeof render === "function") {
-      const renderFunction = render;
-      return renderFunction.displayName || renderFunction.name || fallback;
-    }
-    return fallback;
-  }
-  function isLikelyReactFunctionComponent(component, allowAnonymousComponent = false) {
-    if (typeof component !== "function") return false;
-    const name = component.displayName || component.name || "";
-    if (/^use[A-Z0-9]/.test(name)) return false;
-    if (allowAnonymousComponent) return true;
-    if (!name) return false;
-    return /^[A-Z]/.test(name);
-  }
-  function copyComponentStatics(target, source) {
-    const reserved = /* @__PURE__ */ new Set([
-      "arguments",
-      "caller",
-      "length",
-      "name",
-      "prototype",
-      "displayName"
-    ]);
-    Object.getOwnPropertyNames(source).forEach((key) => {
-      if (reserved.has(key)) return;
-      const descriptor = Object.getOwnPropertyDescriptor(source, key);
-      if (!descriptor || !descriptor.configurable) return;
-      try {
-        Object.defineProperty(target, key, descriptor);
-      } catch {
-      }
-    });
-  }
-  function cloneModuleWithDefaultExport(moduleExports, defaultExport) {
-    const descriptors = Object.getOwnPropertyDescriptors(moduleExports);
-    descriptors["default"] = {
-      configurable: true,
-      enumerable: descriptors["default"]?.enumerable ?? true,
-      writable: true,
-      value: defaultExport
-    };
-    return Object.defineProperties(Object.create(Object.getPrototypeOf(moduleExports)), descriptors);
-  }
-  function resolveReactComponentTarget(component, defaultExportMode = "preserve", allowAnonymousComponent = false) {
-    if (isLikelyReactFunctionComponent(component, allowAnonymousComponent)) return {
-      component,
-      createResult: (wrappedComponent) => wrappedComponent
-    };
-    if (!isRecord2(component)) return;
-    const defaultExport = getObjectValue(component, "default");
-    if (!isLikelyReactFunctionComponent(defaultExport, allowAnonymousComponent)) return;
-    return {
-      component: defaultExport,
-      createResult: (wrappedComponent) => {
-        const descriptor = Object.getOwnPropertyDescriptor(component, "default");
-        let defaultExportReplaced = false;
-        try {
-          if (!descriptor || descriptor.writable || descriptor.set) {
-            component["default"] = wrappedComponent;
-            defaultExportReplaced = true;
-          } else if (descriptor.configurable) {
-            Object.defineProperty(component, "default", {
-              configurable: true,
-              enumerable: descriptor.enumerable,
-              writable: true,
-              value: wrappedComponent
-            });
-            defaultExportReplaced = true;
-          }
-        } catch {
-        }
-        if (defaultExportMode === "component") return wrappedComponent;
-        return defaultExportReplaced ? void 0 : cloneModuleWithDefaultExport(component, wrappedComponent);
-      }
-    };
-  }
-  function normalizeEventSource(value) {
-    return value === "runtime" || value === "business" || value === "react" ? value : void 0;
-  }
-  function extractErrorCode(value) {
-    const matched = String(value ?? "").match(ERROR_CODE_PATTERN)?.[0];
-    return matched ? sanitizeText(matched, 40) : void 0;
-  }
-  function getErrorInfo(error, stackTraceOptions) {
-    if (!error) return {};
-    if (error instanceof Error) return {
-      errorCode: extractErrorCode(`${error.name}
-${error.message}
-${error.stack || ""}`),
-      errorName: getRawText(error.name),
-      errorMessage: getRawText(error.message),
-      errorStack: sanitizeStack(error.stack, stackTraceOptions)
-    };
-    if (isRecord2(error) && typeof error.message === "string") return {
-      errorCode: extractErrorCode(error.message),
-      errorName: typeof error.name === "string" ? getRawText(error.name) : void 0,
-      errorMessage: getRawText(error.message)
-    };
-    return {
-      errorCode: extractErrorCode(error),
-      errorMessage: getRawText(error)
-    };
-  }
-  function classifyResourceLoadError(resource) {
-    if (resource.outcome === "timeout") return "timeout";
-    if (typeof resource.httpStatus === "number" && resource.httpStatus >= 400) return "http";
-    const errorInfo = getErrorInfo(resource.error);
-    const value = `${errorInfo.errorName || ""} ${errorInfo.errorMessage || ""}`.trim();
-    if (!value) return resource.outcome === "error" ? "unknown" : void 0;
-    if (/timeout|timed out/i.test(value)) return "timeout";
-    if (/ScriptExecutionError/i.test(value)) return "execution";
-    if (/ScriptNetworkError|LinkNetworkError|NetworkError|Failed to fetch|Request failed|ERR_|CORS|ENOENT|unreachable/i.test(value)) return "network";
-    if (/RUNTIME-001|global.+not found|not found.+global/i.test(value)) return "initialization";
-    if (errorInfo.errorName === "SyntaxError" || /valid federation manifest|JSON|Unexpected token/i.test(value)) return "content";
-    return resource.outcome === "error" ? "unknown" : void 0;
-  }
-  function omitUndefinedFields(value) {
-    if (Array.isArray(value)) return value.map((item) => omitUndefinedFields(item));
-    if (!value || typeof value !== "object") return value;
-    const cleanValue = {};
-    Object.entries(value).forEach(([key, item]) => {
-      if (item === void 0) return;
-      cleanValue[key] = omitUndefinedFields(item);
-    });
-    return cleanValue;
-  }
   function copyEvent(event) {
     return omitUndefinedFields({
       ...event,
@@ -5047,7 +4757,7 @@ ${error.stack || ""}`),
     if (moduleCache instanceof Map) return Array.from(moduleCache.values());
     const entries = typeof moduleCache.entries === "function" ? Array.from(moduleCache.entries.call(moduleCache)) : void 0;
     if (entries) return entries.map(([, value]) => value);
-    if (isRecord2(moduleCache)) return Object.values(moduleCache);
+    if (isRecord(moduleCache)) return Object.values(moduleCache);
     return [];
   }
   function getLoadedExposesForRemote(instance, remoteName) {
@@ -5082,10 +4792,11 @@ ${error.stack || ""}`),
     };
   }
   function isRuntimeModuleWithEntryGlobalName(value, entryGlobalName) {
-    if (!isRecord2(value)) return false;
+    if (!isRecord(value)) return false;
     const remoteInfo = getObjectValue(value, "remoteInfo");
-    return isRecord2(remoteInfo) && getObjectValue(remoteInfo, "entryGlobalName") === entryGlobalName;
+    return isRecord(remoteInfo) && getObjectValue(remoteInfo, "entryGlobalName") === entryGlobalName;
   }
+  var traceCounter = 0;
   function normalizeScope(value) {
     return sanitizeText(value, 120)?.replace(/[^\w:@.-]+/g, "-") || "default";
   }
@@ -5149,7 +4860,7 @@ ${error.stack || ""}`),
   function createClippedModuleInfoEntry(rawName, rawValue) {
     const name = clipText(rawName, 240);
     if (!name) return;
-    const value = isRecord2(rawValue) ? rawValue : {};
+    const value = isRecord(rawValue) ? rawValue : {};
     return {
       name,
       publicPath: sanitizeModuleInfoPath(value["publicPath"]),
@@ -5213,7 +4924,7 @@ ${error.stack || ""}`),
     const reason = getModuleInfoCaptureReason(report);
     if (!reason) return;
     const moduleInfo = getFederationGlobal()?.moduleInfo;
-    const rawEntries = isRecord2(moduleInfo) ? Object.entries(moduleInfo) : [];
+    const rawEntries = isRecord(moduleInfo) ? Object.entries(moduleInfo) : [];
     const clippedEntries = rawEntries.map(([name, value]) => createClippedModuleInfoEntry(name, value)).filter((entry) => Boolean(entry));
     const lookupValues = getModuleInfoLookupValues(report);
     const matchedEntries = clippedEntries.filter((entry) => matchesModuleInfoLookup(entry, lookupValues));
@@ -5309,29 +5020,7 @@ ${event.message || ""}`;
     if (resourceErrorType) context["resourceErrorType"] = resourceErrorType === "execution" ? "script-execution" : resourceErrorType;
     return clipObservabilityMetadata(context);
   }
-  function createObservability(rawOptions = {}, adapterOptions = {}) {
-    const options = {
-      ...rawOptions,
-      browser: adapterOptions.fixedBrowserScope ? {
-        ...rawOptions.browser,
-        scope: adapterOptions.fixedBrowserScope
-      } : rawOptions.browser,
-      react: adapterOptions.disableReact ? {
-        ...rawOptions.react,
-        enabled: false,
-        injectLoadedCallback: false
-      } : rawOptions.react
-    };
-    const pluginName = adapterOptions.pluginName || "observability-plugin";
-    const shouldAttachInstanceApi = adapterOptions.attachInstanceApi !== false;
-    const shouldGuardSharedHooksByRuntimeVersion = adapterOptions.guardSharedHooksByRuntimeVersion === true;
-    const shouldGuardRuntimeHooksByRuntimeVersion = adapterOptions.guardRuntimeHooksByRuntimeVersion === true;
-    const shouldDisablePreloadHooks = adapterOptions.disablePreloadHooks === true;
-    const shouldReturnHookArgs = adapterOptions.returnHookArgs === true;
-    const shouldForceDevelopmentChannels = adapterOptions.forceDevelopmentChannels === true;
-    const returnHookArgs = (args) => shouldReturnHookArgs ? args : void 0;
-    const level = options.level || "summary";
-    const configuredMaxEvents = normalizeMaxEvents(options.maxEvents, DEFAULT_MAX_EVENTS);
+  function createReportManager({ options, configuredMaxEvents, getInstanceRef, getAppliedRuntimeVersion }) {
     const events = [];
     const reports = /* @__PURE__ */ new Map();
     const latestTraceByInstance = /* @__PURE__ */ new Map();
@@ -5339,66 +5028,10 @@ ${event.message || ""}`;
     const traceByRemote = /* @__PURE__ */ new Map();
     const traceByBridgeOperation = /* @__PURE__ */ new Map();
     const traceByBridgeId = /* @__PURE__ */ new Map();
-    const bridgeStartTimes = /* @__PURE__ */ new Map();
-    const bridgeOperations = /* @__PURE__ */ new WeakMap();
-    const bridgeContexts = /* @__PURE__ */ new WeakMap();
-    const bridgeIdsByTarget = /* @__PURE__ */ new WeakMap();
-    const bridgeIdsByFallback = /* @__PURE__ */ new Map();
-    const latestBridgeOperations = /* @__PURE__ */ new Map();
-    const resourceStartTimes = /* @__PURE__ */ new Map();
-    const sharedSelections = /* @__PURE__ */ new Map();
-    let sharedOperationIdsByContext = /* @__PURE__ */ new WeakMap();
-    const instanceRefs = /* @__PURE__ */ new WeakMap();
-    const instancesByRef = /* @__PURE__ */ new Map();
-    const bridgeStatesByInstance = /* @__PURE__ */ new Map();
-    const lateBoundInstanceRefs = /* @__PURE__ */ new Set();
-    const boundInstanceRefs = /* @__PURE__ */ new Set();
-    const attachedInstanceApis = /* @__PURE__ */ new WeakMap();
     const phaseStartTimes = /* @__PURE__ */ new Map();
-    const reportedSharedConflictKeys = /* @__PURE__ */ new Set();
-    const reportedBridgeProviderKeys = /* @__PURE__ */ new Set();
-    const collectorOptions = normalizeCollectorOptions(options.collector);
-    const devtoolsOptions = normalizeDevtoolsOptions(options.devtools);
-    const seenManifestUrls = /* @__PURE__ */ new Set();
-    const loadingManifestUrls = /* @__PURE__ */ new Set();
-    const seenRemoteEntryKeys = /* @__PURE__ */ new Set();
-    const consoleReportedTraceIds = /* @__PURE__ */ new Set();
-    const consoleReportedStartKeys = /* @__PURE__ */ new Set();
     let latestTraceId;
-    let runtimeObservabilityEnabled = false;
-    let suppressRuntimeEvents = false;
     let effectiveMaxEvents = configuredMaxEvents;
-    let browserGlobalScope;
-    let lastRuntimeOrigin;
-    let appliedRuntimeVersion;
-    let instanceRefCounter = 0;
-    let sharedOperationCounter = 0;
-    let sharedRegistrationCounter = 0;
-    let bridgeOperationCounter = 0;
-    let bridgeCounter = 0;
-    let bridgeObservedAt = 0;
-    let historyCleared = false;
-    const getActiveRuntimeInstances = () => {
-      const federation = getFederationGlobal();
-      return Array.isArray(federation?.__INSTANCES__) ? federation.__INSTANCES__ : [];
-    };
-    const registerRuntimeInstance = (origin, lateBound) => {
-      const existingRef = instanceRefs.get(origin);
-      if (existingRef) return existingRef;
-      instanceRefCounter += 1;
-      const instanceRef = `mf-${instanceRefCounter}`;
-      instanceRefs.set(origin, instanceRef);
-      instancesByRef.set(instanceRef, origin);
-      if (lateBound ?? getActiveRuntimeInstances().some((instance) => instance === origin)) lateBoundInstanceRefs.add(instanceRef);
-      return instanceRef;
-    };
-    const getInstanceRef = (origin) => origin ? registerRuntimeInstance(origin) : void 0;
     const getTraceMapKey = (instanceRef, value) => `${instanceRef || "legacy"}\0${value}`;
-    const isEnabled = () => {
-      if (options.enabled === false) return false;
-      runtimeObservabilityEnabled = true;
-      return true;
-    };
     const resolveTraceId = (event) => {
       const sanitizedRequestId = sanitizeRequestId(event.requestId);
       const instanceRef = sanitizeText(event.instanceRef, 80);
@@ -5435,7 +5068,7 @@ ${event.message || ""}`;
       const sanitizedShared = sanitizeShared(event.shared);
       const requestAlias = sanitizeRequestId(event.requestAlias) || resolveAliasRequestId(event.requestId, sanitizedRemote);
       const hostName = sanitizeText(event.hostName, 120) || sanitizeText(origin?.options?.name, 120);
-      const runtimeVersion = sanitizeText(origin?.version, 80) || appliedRuntimeVersion;
+      const runtimeVersion = sanitizeText(origin?.version, 80) || getAppliedRuntimeVersion();
       const message = sanitizedResource ? sanitizeText(event.message) || sanitizeText(errorInfo.errorMessage) : getRawText(event.message) || errorInfo.errorMessage;
       const normalizedErrorMessage = sanitizedResource ? sanitizeText(errorInfo.errorMessage) : errorInfo.errorMessage;
       const normalizedErrorStack = sanitizedResource ? sanitizeText(errorInfo.errorStack, 4e3) : errorInfo.errorStack;
@@ -5477,13 +5110,6 @@ ${event.message || ""}`;
       }
       return normalizedEvent;
     };
-    const supportsRuntimeHookObservability = (origin) => supportsRuntimeObservability({
-      ...origin,
-      version: sanitizeText(origin?.version, 80) || appliedRuntimeVersion || origin?.version
-    });
-    const shouldSkipRuntimeHook = (origin) => shouldGuardRuntimeHooksByRuntimeVersion && !supportsRuntimeHookObservability(origin);
-    const supportsManifestResultLifecycle = (origin) => Boolean(origin?.snapshotHandler?.hooks?.lifecycle?.afterLoadManifest);
-    const supportsSemanticResourceLifecycle = (origin) => Boolean(supportsManifestResultLifecycle(origin) && origin?.loaderHook?.lifecycle?.afterLoadEntry);
     const applyPhaseDuration = (event) => {
       const key = getPhaseDurationKey(event);
       if (event.status === "start") {
@@ -5931,87 +5557,226 @@ ${event.message || ""}`;
       trimEvents(report);
       return report;
     };
-    const notifyEvent = (event, report, origin) => {
+    const getEventsSnapshot = () => events.map(copyEvent);
+    const getTraceIdsSnapshot = () => Array.from(reports.keys());
+    const getReportTimeline = () => Array.from(reports.values()).sort((left, right) => {
+      if (right.updatedAt !== left.updatedAt) return right.updatedAt - left.updatedAt;
+      return right.startedAt - left.startedAt;
+    });
+    const matchesReportValue = (value, expected) => {
+      if (!value || !expected) return false;
+      const normalizedValue = value.toLowerCase();
+      const normalizedExpected = expected.toLowerCase();
+      return normalizedValue === normalizedExpected || normalizedValue.includes(normalizedExpected);
+    };
+    const matchesReportQuery = (report, query) => {
+      if (query.traceId && report.traceId !== query.traceId) return false;
+      if (query.instanceRef && report.instanceRef !== query.instanceRef) return false;
+      if (query.status && report.status !== query.status) return false;
+      if (query.outcome && report.summary.outcome !== query.outcome) return false;
+      if (query.remote && ![
+        report.remote?.name,
+        report.remote?.alias,
+        report.remote?.entry,
+        report.requestId,
+        report.requestAlias,
+        report.sanitizedUrl
+      ].some((value) => matchesReportValue(value, query.remote))) return false;
+      if (query.expose && ![report.expose, report.requestId].some((value) => matchesReportValue(value, query.expose))) return false;
+      if (query.shared && ![report.shared?.name].some((value) => matchesReportValue(value, query.shared))) return false;
+      return true;
+    };
+    const getReportsSnapshot = (options2 = {}) => {
+      const limit = normalizeQueryLimit(options2.limit);
+      const timeline = getReportTimeline();
+      return (limit ? timeline.slice(0, limit) : timeline).map(copyReport);
+    };
+    const findReportsSnapshot = (query = {}) => {
+      const limit = normalizeQueryLimit(query.limit);
+      const matchedReports = getReportTimeline().filter((report) => matchesReportQuery(report, query));
+      return (limit ? matchedReports.slice(0, limit) : matchedReports).map(copyReport);
+    };
+    const getLatestReportSnapshot = () => {
+      if (!latestTraceId) return;
+      const report = reports.get(latestTraceId);
+      return report ? copyReport(report) : void 0;
+    };
+    const getReportSnapshot = (traceId) => {
+      const report = reports.get(traceId);
+      return report ? copyReport(report) : void 0;
+    };
+    const exportReportSnapshot = (traceId) => traceId ? getReportSnapshot(traceId) : getLatestReportSnapshot();
+    const getTraceIdForRequest = (instanceRef, requestId) => requestId ? traceByRequest.get(getTraceMapKey(instanceRef, requestId)) : void 0;
+    const getLatestTraceId = (instanceRef) => instanceRef ? latestTraceByInstance.get(instanceRef) : latestTraceId;
+    const clear = () => {
+      events.length = 0;
+      reports.clear();
+      traceByRequest.clear();
+      traceByRemote.clear();
+      traceByBridgeOperation.clear();
+      traceByBridgeId.clear();
+      latestTraceByInstance.clear();
+      phaseStartTimes.clear();
+      latestTraceId = void 0;
+      effectiveMaxEvents = configuredMaxEvents;
+    };
+    return {
+      events,
+      resolveTraceId,
+      normalizeEvent: normalizeEvent2,
+      applyPhaseDuration,
+      updateTraceMaps,
+      getEventOutcome,
+      updateReport,
+      getEventsSnapshot,
+      getTraceIdsSnapshot,
+      getReportsSnapshot,
+      findReportsSnapshot,
+      getLatestReportSnapshot,
+      getReportSnapshot,
+      exportReportSnapshot,
+      getTraceIdForRequest,
+      getLatestTraceId,
+      clear
+    };
+  }
+  function normalizeBridgeInfo(bridge, timing) {
+    if (!bridge?.operationId || !bridge.bridgeId) return;
+    const moduleName = sanitizeText(bridge.moduleName, 160);
+    const slashIndex = moduleName?.indexOf("/") ?? -1;
+    const remote = sanitizeText(bridge.remote, 120) || (moduleName ? slashIndex > 0 ? moduleName.slice(0, slashIndex) : moduleName : void 0);
+    const expose = sanitizeText(bridge.expose, 240) || (moduleName && slashIndex > 0 ? `./${moduleName.slice(slashIndex + 1).replace(/^\.\//, "")}` : void 0);
+    const errorInfo = getErrorInfo(bridge.error);
+    return omitUndefinedFields({
+      operationId: sanitizeText(bridge.operationId, 120) || bridge.operationId,
+      bridgeId: sanitizeText(bridge.bridgeId, 120) || bridge.bridgeId,
+      side: bridge.side,
+      framework: bridge.framework,
+      operation: bridge.operation,
+      moduleName,
+      remote,
+      expose,
+      route: bridge.route ? {
+        action: sanitizeText(bridge.route.action, 80) || "route-update",
+        from: sanitizeUrl(bridge.route.from),
+        to: sanitizeUrl(bridge.route.to),
+        basename: sanitizeUrl(bridge.route.basename),
+        mechanism: bridge.route.mechanism
+      } : void 0,
+      reason: sanitizeText(bridge.reason, 80),
+      startedAt: timing.startedAt,
+      endedAt: timing.endedAt,
+      duration: timing.duration,
+      outcome: bridge.outcome,
+      error: bridge.error ? {
+        name: sanitizeText(errorInfo.errorName, 80),
+        message: sanitizeText(errorInfo.errorMessage, 240)
+      } : void 0
+    });
+  }
+  function continuePreloadAssetsGeneration() {
+  }
+  function isReactLike(value) {
+    if (!isRecord(value)) return false;
+    return typeof getObjectValue(value, "createElement") === "function";
+  }
+  function resolveReactLike(value) {
+    if (isReactLike(value)) return value;
+    if (isRecord(value)) {
+      const defaultExport = getObjectValue(value, "default");
+      if (isReactLike(defaultExport)) return defaultExport;
+    }
+  }
+  function getReactComponentName(component, fallback) {
+    if (typeof component === "function") return component.displayName || component.name || fallback;
+    if (!isRecord(component)) return fallback;
+    const displayName = getObjectValue(component, "displayName");
+    if (typeof displayName === "string" && displayName) return displayName;
+    const render = getObjectValue(component, "render");
+    if (typeof render === "function") {
+      const renderFunction = render;
+      return renderFunction.displayName || renderFunction.name || fallback;
+    }
+    return fallback;
+  }
+  function isLikelyReactFunctionComponent(component, allowAnonymousComponent = false) {
+    if (typeof component !== "function") return false;
+    const name = component.displayName || component.name || "";
+    if (/^use[A-Z0-9]/.test(name)) return false;
+    if (allowAnonymousComponent) return true;
+    if (!name) return false;
+    return /^[A-Z]/.test(name);
+  }
+  function copyComponentStatics(target, source) {
+    const reserved = /* @__PURE__ */ new Set([
+      "arguments",
+      "caller",
+      "length",
+      "name",
+      "prototype",
+      "displayName"
+    ]);
+    Object.getOwnPropertyNames(source).forEach((key) => {
+      if (reserved.has(key)) return;
+      const descriptor = Object.getOwnPropertyDescriptor(source, key);
+      if (!descriptor || !descriptor.configurable) return;
       try {
-        options.onEvent?.(copyEvent(event), copyReport(report), {
-          origin,
-          instanceRef: event.instanceRef
-        });
+        Object.defineProperty(target, key, descriptor);
       } catch {
       }
+    });
+  }
+  function cloneModuleWithDefaultExport(moduleExports, defaultExport) {
+    const descriptors = Object.getOwnPropertyDescriptors(moduleExports);
+    descriptors["default"] = {
+      configurable: true,
+      enumerable: descriptors["default"]?.enumerable ?? true,
+      writable: true,
+      value: defaultExport
     };
-    const notifyReport = (report, origin) => {
-      if (report.events[report.events.length - 1]?.status === "start") return;
-      try {
-        options.onReport?.(copyReport(report), {
-          origin,
-          instanceRef: report.instanceRef
-        });
-      } catch {
+    return Object.defineProperties(Object.create(Object.getPrototypeOf(moduleExports)), descriptors);
+  }
+  function resolveReactComponentTarget(component, defaultExportMode = "preserve", allowAnonymousComponent = false) {
+    if (isLikelyReactFunctionComponent(component, allowAnonymousComponent)) return {
+      component,
+      createResult: (wrappedComponent) => wrappedComponent
+    };
+    if (!isRecord(component)) return;
+    const defaultExport = getObjectValue(component, "default");
+    if (!isLikelyReactFunctionComponent(defaultExport, allowAnonymousComponent)) return;
+    return {
+      component: defaultExport,
+      createResult: (wrappedComponent) => {
+        const descriptor = Object.getOwnPropertyDescriptor(component, "default");
+        let defaultExportReplaced = false;
+        try {
+          if (!descriptor || descriptor.writable || descriptor.set) {
+            component["default"] = wrappedComponent;
+            defaultExportReplaced = true;
+          } else if (descriptor.configurable) {
+            Object.defineProperty(component, "default", {
+              configurable: true,
+              enumerable: descriptor.enumerable,
+              writable: true,
+              value: wrappedComponent
+            });
+            defaultExportReplaced = true;
+          }
+        } catch {
+        }
+        if (defaultExportMode === "component") return wrappedComponent;
+        return defaultExportReplaced ? void 0 : cloneModuleWithDefaultExport(component, wrappedComponent);
       }
     };
-    const notifyRawError = (errorValue, event, report, origin) => {
-      if (!errorValue || !options.onRawError) return;
-      try {
-        options.onRawError(errorValue, {
-          origin,
-          instanceRef: event.instanceRef,
-          event: copyEvent(event),
-          report: copyReport(report)
-        });
-      } catch {
-      }
-    };
-    const notifyCollector = (event, report) => {
-      if (!collectorOptions) return;
-      const fetcher = globalThis.fetch;
-      if (typeof fetcher !== "function") return;
-      try {
-        const body = JSON.stringify({
-          schemaVersion: 1,
-          source: "browser",
-          kind: "event",
-          createdAt: Date.now(),
-          event: copyEvent(event),
-          report: copyReport(report)
-        });
-        fetcher(getCollectorUrl(collectorOptions.port), {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body,
-          keepalive: body.length <= 64 * 1024,
-          credentials: "omit",
-          mode: "cors"
-        }).catch((error) => {
-          logger2.debug("Failed to notify local observability collector.", error);
-        });
-      } catch (error) {
-        logger2.debug("Failed to notify local observability collector.", error);
-      }
-    };
-    const notifyDevtools = (event, report) => {
-      if (!devtoolsOptions) return;
-      const poster = globalThis.postMessage;
-      if (typeof poster !== "function") return;
-      try {
-        poster.call(globalThis, {
-          schemaVersion: 1,
-          source: devtoolsOptions.source,
-          kind: "event",
-          createdAt: Date.now(),
-          scope: browserGlobalScope || report.hostName,
-          event: copyEvent(event),
-          report: copyReport(report)
-        }, "*");
-      } catch {
-      }
-    };
+  }
+  function createRuntimeStateManager({ options, events, instancesByRef, lateBoundInstanceRefs, boundInstanceRefs, getActiveRuntimeInstances, registerRuntimeInstance, getInstanceRef, getBrowserGlobalScope, getHistoryCleared, supportsSemanticResourceLifecycle }) {
+    const bridgeStatesByInstance = /* @__PURE__ */ new Map();
     const createStateRemote = (value, fallbackName) => {
       if (typeof value === "string") return {
         name: fallbackName || sanitizeText(value, 120) || "unknown",
         entry: sanitizeUrl(value)
       };
-      if (!isRecord2(value)) return fallbackName ? { name: fallbackName } : void 0;
+      if (!isRecord(value)) return fallbackName ? { name: fallbackName } : void 0;
       const name = sanitizeText(getObjectValue(value, "name"), 120) || sanitizeText(fallbackName, 120);
       if (!name) return;
       return omitUndefinedFields({
@@ -6025,9 +5790,9 @@ ${event.message || ""}`;
     };
     const getDeclaredRemotes = (origin) => {
       const remotes = origin.options?.remotes;
-      return (Array.isArray(remotes) ? remotes.map((value) => [void 0, value]) : isRecord2(remotes) ? Object.entries(remotes) : []).map(([name, value]) => createStateRemote(value, name)).filter((remote) => remote !== void 0);
+      return (Array.isArray(remotes) ? remotes.map((value) => [void 0, value]) : isRecord(remotes) ? Object.entries(remotes) : []).map(([name, value]) => createStateRemote(value, name)).filter((remote) => remote !== void 0);
     };
-    const getLoadedProducerRemotes = (origin) => getModuleCacheEntries(origin.moduleCache).map((module) => createStateRemote(isRecord2(module) ? getObjectValue(module, "remoteInfo") : void 0)).filter((remote) => remote !== void 0);
+    const getLoadedProducerRemotes = (origin) => getModuleCacheEntries(origin.moduleCache).map((module) => createStateRemote(isRecord(module) ? getObjectValue(module, "remoteInfo") : void 0)).filter((remote) => remote !== void 0);
     const getShareScopeSummaries = (origin) => Object.entries(getOriginShareScopeMap(origin)).map(([name, scope]) => {
       const sharedEntries = Object.entries(scope || {}).map(([rawName, versions]) => ({
         rawName,
@@ -6085,13 +5850,13 @@ ${event.message || ""}`;
       });
     };
     const getBridgeSummary = (origin, instanceRef) => {
-      if (!isRecord2(origin.bridgeHook)) return;
+      if (!isRecord(origin.bridgeHook)) return;
       const lifecycle = getObjectValue(origin.bridgeHook, "lifecycle");
       const states = Array.from(bridgeStatesByInstance.get(instanceRef)?.values() || []).sort((left, right) => (right.lastOperationAt || 0) - (left.lastOperationAt || 0)).map((state) => ({ ...state }));
       const latest = states[0];
       return {
         available: true,
-        lifecycleCount: isRecord2(lifecycle) ? Object.keys(lifecycle).length : void 0,
+        lifecycleCount: isRecord(lifecycle) ? Object.keys(lifecycle).length : void 0,
         framework: latest?.framework,
         moduleName: latest?.moduleName,
         remote: latest?.remote,
@@ -6105,9 +5870,9 @@ ${event.message || ""}`;
     const getRuntimeModuleInfo = () => {
       const moduleInfo = getFederationGlobal()?.moduleInfo || {};
       return Object.entries(moduleInfo).map(([key, value]) => {
-        const record = isRecord2(value) ? value : {};
+        const record = isRecord(value) ? value : {};
         const rawRemotes = getObjectValue(record, "remotes");
-        const remotes = (Array.isArray(rawRemotes) ? rawRemotes.map((remote) => [void 0, remote]) : isRecord2(rawRemotes) ? Object.entries(rawRemotes) : []).map(([name, remote]) => createStateRemote(remote, name)).filter((remote) => remote !== void 0);
+        const remotes = (Array.isArray(rawRemotes) ? rawRemotes.map((remote) => [void 0, remote]) : isRecord(rawRemotes) ? Object.entries(rawRemotes) : []).map(([name, remote]) => createStateRemote(remote, name)).filter((remote) => remote !== void 0);
         return omitUndefinedFields({
           key: sanitizeText(key, 160) || key,
           name: sanitizeText(getObjectValue(record, "name"), 120),
@@ -6198,7 +5963,9 @@ ${event.message || ""}`;
           active: activeInstances.includes(draft.origin)
         });
       });
-      const hasIncompleteHistory = lateBoundInstanceRefs.size > 0 || historyCleared;
+      const hasLateBinding = lateBoundInstanceRefs.size > 0;
+      const historyCleared = getHistoryCleared();
+      const hasIncompleteHistory = hasLateBinding || historyCleared;
       const hasStableSharedRuntime = instanceDrafts.some((draft) => supportsRuntimeObservability(draft.origin));
       const hasSharedState = instances.some((instance) => instance.shareScopes.length > 0);
       const hasRemoteSignals = events.some((event) => Boolean(event.remote));
@@ -6214,7 +5981,7 @@ ${event.message || ""}`;
         schemaVersion: 1,
         observedAt: Date.now(),
         scope: {
-          name: browserGlobalScope || normalizeScope(options.browser?.scope),
+          name: getBrowserGlobalScope() || normalizeScope(options.browser?.scope),
           realm: "current",
           frame: getRuntimeFrame()
         },
@@ -6255,56 +6022,192 @@ ${event.message || ""}`;
         moduleInfo
       });
     };
-    const getEventsSnapshot = () => events.map(copyEvent);
-    const getTraceIdsSnapshot = () => Array.from(reports.keys());
-    const getReportTimeline = () => Array.from(reports.values()).sort((left, right) => {
-      if (right.updatedAt !== left.updatedAt) return right.updatedAt - left.updatedAt;
-      return right.startedAt - left.startedAt;
-    });
-    const matchesReportValue = (value, expected) => {
-      if (!value || !expected) return false;
-      const normalizedValue = value.toLowerCase();
-      const normalizedExpected = expected.toLowerCase();
-      return normalizedValue === normalizedExpected || normalizedValue.includes(normalizedExpected);
+    return {
+      getRuntimeStateSnapshot,
+      updateBridgeState
     };
-    const matchesReportQuery = (report, query) => {
-      if (query.traceId && report.traceId !== query.traceId) return false;
-      if (query.instanceRef && report.instanceRef !== query.instanceRef) return false;
-      if (query.status && report.status !== query.status) return false;
-      if (query.outcome && report.summary.outcome !== query.outcome) return false;
-      if (query.remote && ![
-        report.remote?.name,
-        report.remote?.alias,
-        report.remote?.entry,
-        report.requestId,
-        report.requestAlias,
-        report.sanitizedUrl
-      ].some((value) => matchesReportValue(value, query.remote))) return false;
-      if (query.expose && ![report.expose, report.requestId].some((value) => matchesReportValue(value, query.expose))) return false;
-      if (query.shared && ![report.shared?.name].some((value) => matchesReportValue(value, query.shared))) return false;
+  }
+  function createObservability(rawOptions = {}, adapterOptions = {}) {
+    const options = {
+      ...rawOptions,
+      browser: adapterOptions.fixedBrowserScope ? {
+        ...rawOptions.browser,
+        scope: adapterOptions.fixedBrowserScope
+      } : rawOptions.browser,
+      react: adapterOptions.disableReact ? {
+        ...rawOptions.react,
+        enabled: false,
+        injectLoadedCallback: false
+      } : rawOptions.react
+    };
+    const pluginName = adapterOptions.pluginName || "observability-plugin";
+    const shouldAttachInstanceApi = adapterOptions.attachInstanceApi !== false;
+    const shouldGuardSharedHooksByRuntimeVersion = adapterOptions.guardSharedHooksByRuntimeVersion === true;
+    const shouldGuardRuntimeHooksByRuntimeVersion = adapterOptions.guardRuntimeHooksByRuntimeVersion === true;
+    const shouldDisablePreloadHooks = adapterOptions.disablePreloadHooks === true;
+    const shouldReturnHookArgs = adapterOptions.returnHookArgs === true;
+    const shouldForceDevelopmentChannels = adapterOptions.forceDevelopmentChannels === true;
+    const returnHookArgs = (args) => shouldReturnHookArgs ? args : void 0;
+    const level = options.level || "summary";
+    const configuredMaxEvents = normalizeMaxEvents(options.maxEvents, DEFAULT_MAX_EVENTS);
+    const bridgeStartTimes = /* @__PURE__ */ new Map();
+    const bridgeOperations = /* @__PURE__ */ new WeakMap();
+    const bridgeContexts = /* @__PURE__ */ new WeakMap();
+    const bridgeIdsByTarget = /* @__PURE__ */ new WeakMap();
+    const bridgeIdsByFallback = /* @__PURE__ */ new Map();
+    const latestBridgeOperations = /* @__PURE__ */ new Map();
+    const resourceStartTimes = /* @__PURE__ */ new Map();
+    const sharedSelections = /* @__PURE__ */ new Map();
+    let sharedOperationIdsByContext = /* @__PURE__ */ new WeakMap();
+    const instanceRefs = /* @__PURE__ */ new WeakMap();
+    const instancesByRef = /* @__PURE__ */ new Map();
+    const lateBoundInstanceRefs = /* @__PURE__ */ new Set();
+    const boundInstanceRefs = /* @__PURE__ */ new Set();
+    const attachedInstanceApis = /* @__PURE__ */ new WeakMap();
+    const reportedSharedConflictKeys = /* @__PURE__ */ new Set();
+    const reportedBridgeProviderKeys = /* @__PURE__ */ new Set();
+    const collectorOptions = normalizeCollectorOptions(options.collector);
+    const devtoolsOptions = normalizeDevtoolsOptions(options.devtools);
+    const seenManifestUrls = /* @__PURE__ */ new Set();
+    const loadingManifestUrls = /* @__PURE__ */ new Set();
+    const seenRemoteEntryKeys = /* @__PURE__ */ new Set();
+    const consoleReportedTraceIds = /* @__PURE__ */ new Set();
+    const consoleReportedStartKeys = /* @__PURE__ */ new Set();
+    let runtimeObservabilityEnabled = false;
+    let suppressRuntimeEvents = false;
+    let browserGlobalScope;
+    let lastRuntimeOrigin;
+    let appliedRuntimeVersion;
+    let instanceRefCounter = 0;
+    let sharedOperationCounter = 0;
+    let sharedRegistrationCounter = 0;
+    let bridgeOperationCounter = 0;
+    let bridgeCounter = 0;
+    let bridgeObservedAt = 0;
+    let historyCleared = false;
+    const getActiveRuntimeInstances = () => {
+      const federation = getFederationGlobal();
+      return Array.isArray(federation?.__INSTANCES__) ? federation.__INSTANCES__ : [];
+    };
+    const registerRuntimeInstance = (origin, lateBound) => {
+      const existingRef = instanceRefs.get(origin);
+      if (existingRef) return existingRef;
+      instanceRefCounter += 1;
+      const instanceRef = `mf-${instanceRefCounter}`;
+      instanceRefs.set(origin, instanceRef);
+      instancesByRef.set(instanceRef, origin);
+      if (lateBound ?? getActiveRuntimeInstances().some((instance) => instance === origin)) lateBoundInstanceRefs.add(instanceRef);
+      return instanceRef;
+    };
+    const getInstanceRef = (origin) => origin ? registerRuntimeInstance(origin) : void 0;
+    const reportManager = createReportManager({
+      options,
+      configuredMaxEvents,
+      getInstanceRef,
+      getAppliedRuntimeVersion: () => appliedRuntimeVersion
+    });
+    const { events, resolveTraceId, normalizeEvent: normalizeEvent2, applyPhaseDuration, updateTraceMaps, getEventOutcome, updateReport, getEventsSnapshot, getTraceIdsSnapshot, getReportsSnapshot, findReportsSnapshot, getLatestReportSnapshot, getReportSnapshot, exportReportSnapshot } = reportManager;
+    const isEnabled = () => {
+      if (options.enabled === false) return false;
+      runtimeObservabilityEnabled = true;
       return true;
     };
-    const getReportsSnapshot = (options2 = {}) => {
-      const limit = normalizeQueryLimit(options2.limit);
-      const timeline = getReportTimeline();
-      return (limit ? timeline.slice(0, limit) : timeline).map(copyReport);
+    const supportsRuntimeHookObservability = (origin) => supportsRuntimeObservability({
+      ...origin,
+      version: sanitizeText(origin?.version, 80) || appliedRuntimeVersion || origin?.version
+    });
+    const shouldSkipRuntimeHook = (origin) => shouldGuardRuntimeHooksByRuntimeVersion && !supportsRuntimeHookObservability(origin);
+    const supportsManifestResultLifecycle = (origin) => Boolean(origin?.snapshotHandler?.hooks?.lifecycle?.afterLoadManifest);
+    const supportsSemanticResourceLifecycle = (origin) => Boolean(supportsManifestResultLifecycle(origin) && origin?.loaderHook?.lifecycle?.afterLoadEntry);
+    const { getRuntimeStateSnapshot, updateBridgeState } = createRuntimeStateManager({
+      options,
+      events,
+      instancesByRef,
+      lateBoundInstanceRefs,
+      boundInstanceRefs,
+      getActiveRuntimeInstances,
+      registerRuntimeInstance,
+      getInstanceRef,
+      getBrowserGlobalScope: () => browserGlobalScope,
+      getHistoryCleared: () => historyCleared,
+      supportsSemanticResourceLifecycle
+    });
+    const notifyEvent = (event, report, origin) => {
+      try {
+        options.onEvent?.(copyEvent(event), copyReport(report), {
+          origin,
+          instanceRef: event.instanceRef
+        });
+      } catch {
+      }
     };
-    const findReportsSnapshot = (query = {}) => {
-      const limit = normalizeQueryLimit(query.limit);
-      const matchedReports = getReportTimeline().filter((report) => matchesReportQuery(report, query));
-      return (limit ? matchedReports.slice(0, limit) : matchedReports).map(copyReport);
+    const notifyReport = (report, origin) => {
+      if (report.events[report.events.length - 1]?.status === "start") return;
+      try {
+        options.onReport?.(copyReport(report), {
+          origin,
+          instanceRef: report.instanceRef
+        });
+      } catch {
+      }
     };
-    const getLatestReportSnapshot = () => {
-      if (!latestTraceId) return;
-      const report = reports.get(latestTraceId);
-      return report ? copyReport(report) : void 0;
+    const notifyRawError = (errorValue, event, report, origin) => {
+      if (!errorValue || !options.onRawError) return;
+      try {
+        options.onRawError(errorValue, {
+          origin,
+          instanceRef: event.instanceRef,
+          event: copyEvent(event),
+          report: copyReport(report)
+        });
+      } catch {
+      }
     };
-    const getReportSnapshot = (traceId) => {
-      const report = reports.get(traceId);
-      return report ? copyReport(report) : void 0;
+    const notifyCollector = (event, report) => {
+      if (!collectorOptions) return;
+      const fetcher = globalThis.fetch;
+      if (typeof fetcher !== "function") return;
+      try {
+        const body = JSON.stringify({
+          schemaVersion: 1,
+          source: "browser",
+          kind: "event",
+          createdAt: Date.now(),
+          event: copyEvent(event),
+          report: copyReport(report)
+        });
+        fetcher(getCollectorUrl(collectorOptions.port), {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body,
+          keepalive: body.length <= 64 * 1024,
+          credentials: "omit",
+          mode: "cors"
+        }).catch((error) => {
+          logger2.debug("Failed to notify local observability collector.", error);
+        });
+      } catch (error) {
+        logger2.debug("Failed to notify local observability collector.", error);
+      }
     };
-    const exportReportSnapshot = (traceId) => traceId ? getReportSnapshot(traceId) : getLatestReportSnapshot();
-    const openRuntimeAdapter = createOpenRuntimeObservabilityAdapter(options.openRuntime, {
+    const notifyDevtools = (event, report) => {
+      if (!devtoolsOptions) return;
+      const poster = globalThis.postMessage;
+      if (typeof poster !== "function") return;
+      try {
+        poster.call(globalThis, {
+          schemaVersion: 1,
+          source: devtoolsOptions.source,
+          kind: "event",
+          createdAt: Date.now(),
+          scope: browserGlobalScope || report.hostName,
+          event: copyEvent(event),
+          report: copyReport(report)
+        }, "*");
+      } catch {
+      }
+    };
+    const divebellAdapter = createDivebellObservabilityAdapter(options.divebell, {
       getReports: getReportsSnapshot,
       findReports: findReportsSnapshot,
       getLatestReport: getLatestReportSnapshot,
@@ -6442,7 +6345,7 @@ ${event.message || ""}`;
       if (!shouldRecordEvent(level, effectiveInput) && !shouldRecordStartTrace(effectiveInput)) return;
       events.push(event);
       const report = updateReport(event);
-      openRuntimeAdapter?.syncReport(report, {
+      divebellAdapter?.syncReport(report, {
         origin,
         instanceRef: event.instanceRef
       });
@@ -6459,7 +6362,7 @@ ${event.message || ""}`;
       if (options.enabled === false || !runtimeObservabilityEnabled) return;
       const instanceRef = getInstanceRef(origin);
       return recordEvent({
-        traceId: markOptions.traceId || (markOptions.requestId ? traceByRequest.get(getTraceMapKey(instanceRef, sanitizeRequestId(markOptions.requestId) || "")) : void 0) || (instanceRef ? latestTraceByInstance.get(instanceRef) : latestTraceId) || createTraceId({
+        traceId: markOptions.traceId || reportManager.getTraceIdForRequest(instanceRef, sanitizeRequestId(markOptions.requestId)) || reportManager.getLatestTraceId(instanceRef) || createTraceId({
           phase: "component",
           status: "success",
           requestId: markOptions.requestId
@@ -6529,7 +6432,7 @@ ${event.message || ""}`;
       const componentName = getReactComponentName(target.component, loadArgs.expose || loadArgs.id);
       const originalComponent = target.component;
       const ObservedRemoteComponent = (props) => {
-        const incomingProps = isRecord2(props) ? props : {};
+        const incomingProps = isRecord(props) ? props : {};
         const originalLoadedCallback = getObjectValue(incomingProps, ON_MF_REMOTE_LOADED_PROP);
         const onMFRemoteLoaded = (loadedOptions = {}) => {
           markComponentLoadedFor({
@@ -6571,7 +6474,7 @@ ${event.message || ""}`;
     const resolveBridgeHookArgs = (args, signal, origin) => {
       const hookArgs = args;
       if (typeof hookArgs.operationId === "string" && typeof hookArgs.bridgeId === "string") return args;
-      const context = isRecord2(hookArgs.context) ? hookArgs.context : hookArgs;
+      const context = isRecord(hookArgs.context) ? hookArgs.context : hookArgs;
       if (!context || !context.side || !context.framework || !context.operation) return;
       const operationKey = context;
       const target = typeof context.target === "object" && context.target !== null ? context.target : void 0;
@@ -6606,7 +6509,7 @@ ${event.message || ""}`;
       }
       const error = signal === "result" ? hookArgs.error : void 0;
       const result = signal === "result" ? hookArgs.result : void 0;
-      const isSkippedNavigation = context.operation === "route-sync" && isRecord2(result) && typeof result.type === "number" && isRecord2(result.to) && isRecord2(result.from);
+      const isSkippedNavigation = context.operation === "route-sync" && isRecord(result) && typeof result.type === "number" && isRecord(result.to) && isRecord(result.from);
       const outcome = signal !== "result" ? void 0 : error !== void 0 ? "error" : context.operation === "destroy" && result === false || isSkippedNavigation ? "skipped" : "success";
       return {
         operationId: operation.operationId,
@@ -7409,7 +7312,7 @@ ${event.message || ""}`;
     if (!shouldDisablePreloadHooks) {
       legacyHooks.generatePreloadAssets = async (args) => {
         const preloadArgs = args;
-        if (!prepareRuntimeOrigin(preloadArgs.origin)) return continuePreloadAssetsGeneration();
+        if (!prepareRuntimeOrigin(preloadArgs.origin)) return /* @__PURE__ */ continuePreloadAssetsGeneration();
         const remote = createRemoteInfo(preloadArgs.remoteInfo || preloadArgs.remote);
         const preloadConfig = preloadArgs.preloadOptions?.preloadConfig;
         recordEvent({
@@ -7427,7 +7330,7 @@ ${event.message || ""}`;
             depsRemote: Array.isArray(preloadConfig?.depsRemote) ? "custom" : preloadConfig?.depsRemote
           })
         }, preloadArgs.origin);
-        return continuePreloadAssetsGeneration();
+        return /* @__PURE__ */ continuePreloadAssetsGeneration();
       };
       legacyHooks.afterPreloadRemote = (args) => {
         const preloadArgs = args;
@@ -7486,7 +7389,7 @@ ${event.message || ""}`;
           const origin = boundInstance;
           prepareRuntimeOrigin(origin);
           const [firstArg, ...remainingArgs] = handlerArgs;
-          return handler(isRecord2(firstArg) ? {
+          return handler(isRecord(firstArg) ? {
             ...firstArg,
             origin
           } : firstArg, ...remainingArgs);
@@ -7512,7 +7415,7 @@ ${event.message || ""}`;
             instance.markComponentLoaded = instanceApi.markComponentLoaded;
           }
           prepareOutputChannels(origin);
-          openRuntimeAdapter?.register();
+          divebellAdapter?.register();
           return createRuntimeHooks(instance);
         },
         ...legacyHooks
@@ -7542,15 +7445,8 @@ ${event.message || ""}`;
         return getRuntimeStateSnapshot();
       },
       clear() {
-        events.length = 0;
-        reports.clear();
-        traceByRequest.clear();
-        traceByRemote.clear();
-        traceByBridgeOperation.clear();
-        traceByBridgeId.clear();
+        reportManager.clear();
         latestBridgeOperations.clear();
-        latestTraceByInstance.clear();
-        phaseStartTimes.clear();
         bridgeStartTimes.clear();
         resourceStartTimes.clear();
         sharedOperationIdsByContext = /* @__PURE__ */ new WeakMap();
@@ -7559,10 +7455,8 @@ ${event.message || ""}`;
         reportedBridgeProviderKeys.clear();
         consoleReportedTraceIds.clear();
         consoleReportedStartKeys.clear();
-        latestTraceId = void 0;
         bridgeObservedAt = 0;
         runtimeObservabilityEnabled = false;
-        effectiveMaxEvents = configuredMaxEvents;
         browserGlobalScope = void 0;
         lastRuntimeOrigin = void 0;
         historyCleared = true;

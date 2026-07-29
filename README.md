@@ -52,8 +52,9 @@ Terminal, Console, and Network evidence, update the Playground inputs as
 needed, and verify that the remote renders the interactive diagnostics game.
 ```
 
-No separate walkthrough document is required. The skill owns the operating
-steps and uses the globally installed `divebell` command.
+That's the full Quick Start: install the CLI and skill, then send the prompt
+above to your agent. The Divebell CLI stays global and does not need to be
+added to the project.
 
 ## Why Divebell
 

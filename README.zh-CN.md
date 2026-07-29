@@ -50,8 +50,8 @@ https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json�
 信息，按需调整 Playground 输入，并确认页面渲染出可交互的诊断小游戏。
 ```
 
-不需要单独打开 Quick Start 文档；具体操作步骤由 skill 负责，并直接使用全局安装的
-`divebell` 命令。
+完整 Quick Start 就是：安装 CLI 和 Skill，然后把上面的提示词发给 Agent。Divebell CLI
+保持全局安装，不需要加入项目依赖。
 
 ## 为什么需要 Divebell
 

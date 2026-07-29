@@ -39,11 +39,6 @@ divebell --help
 ```
 
 Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
-For Codex, place the complete `skills/divebell` directory at:
-
-```text
-~/.codex/skills/divebell
-```
 
 Then ask:
 

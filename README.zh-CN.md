@@ -38,11 +38,7 @@ divebell check --fix
 divebell --help
 ```
 
-把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。Codex 中放到：
-
-```text
-~/.codex/skills/divebell
-```
+把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。
 
 然后对 Agent 说：
 

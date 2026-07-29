@@ -1,0 +1,41 @@
+{
+  "name": "@divebell/mf-playground-remote",
+  "version": "0.1.0",
+  "description": "Interactive Divebell remote for the Module Federation Playground.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2heal1/divebell.git",
+    "directory": "demos/mf-playground-remote"
+  },
+  "author": "2heal1",
+  "files": [
+    "dist/mf"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "rslib build",
+    "dev": "rslib mf-dev",
+    "test": "pnpm run build && node ./scripts/verify-build.mjs",
+    "verify:build": "node ./scripts/verify-build.mjs",
+    "prepack": "pnpm run test"
+  },
+  "devDependencies": {
+    "@module-federation/rsbuild-plugin": "2.5.0",
+    "@rsbuild/core": "2.0.11",
+    "@rsbuild/plugin-react": "1.4.6",
+    "@rslib/core": "0.21.5",
+    "@types/node": "24.13.1",
+    "@types/react": "18.3.29",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "react": ">=16.9.0",
+    "react-dom": ">=16.9.0"
+  }
+}

@@ -1,0 +1,63 @@
+packages/test/README.md
+  s_a101c7b87ffa85::t_714c7d51d28e76 10-13
+packages/test/bin/divebell-test.js
+  s_a101c7b87ffa85::t_7eb82f917569bb 42,47
+packages/test/package.json
+  s_a101c7b87ffa85::t_4367c09e46cf93 29,40-42
+packages/test/scripts/prepare-package.mjs
+  s_a101c7b87ffa85::t_55956d0ce8f3dc 1,3,6,11-12,15,20-37
+pnpm-lock.yaml
+  s_56304f9c5492f8::t_54e215333cc93f 227-230
+tests/e2e/cli/fixtures/runtime-sdk-demo.ts
+  s_a101c7b87ffa85::t_f4dbb67eebebfc 1-5,8-12,17-54,56-58,63,66-67,69-73,78,81-83,86,95,98-102,107-108,140,156,200,228-232,252,254-256,258,269,275,279,298-301,304,315-318,320,331-335,337,339,343,347,351
+tests/e2e/cli/scenario.ts
+  s_56304f9c5492f8::t_bf308137b55266 3-15,17-18,20-36,39,61,95-97,113-115,124-128,130-132,139-142,144-146,159-161,172,176-178,194-199,201-203,226-236
+tests/e2e/e2e.test.ts
+  s_a101c7b87ffa85::t_f24ef730984b0e 3-7,9,19
+tests/e2e/extension-mf/scenario.ts
+  s_a101c7b87ffa85::t_4123a6028fba2a 2-6,9-38,43-45,51,64-67,89,93-95,109-111,136-142,152,154,212-213,224,235,239-244
+tests/e2e/extension-troubleshooting/scenario.ts
+  s_012a6da480e9fb::t_894c8ecf8d127d 4-5,7-37,42,61
+tests/e2e/support/environment.ts
+  s_56304f9c5492f8::t_c9ed7e6b521052 10-16,18-36,43-51,53,65,77-80,91-92,110,114,118,135,148-149,159,164-172,188-192,210,218,220-222,224-228,230,246,248,254-259,274-277,285,288,304-307
+tests/e2e/support/package-resolution.ts
+  s_a101c7b87ffa85::t_7f92dfd9dfb4d3 10,12,15-18,22-24,31,43-46,50-52,55,61-64
+tests/e2e/support/types.ts
+  s_56304f9c5492f8::t_2922a092d8e788 1-29
+tests/e2e/tsconfig.json
+  s_a101c7b87ffa85::t_b4eb8cfef397b2 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "df1ec481a993641c23250d60d05e264c59dc765c",
+  "prompts": {},
+  "sessions": {
+    "s_012a6da480e9fb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad23-5608-7021-9a8d-75c741ac90b4",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_56304f9c5492f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad09-45da-71d2-b61a-be9bd141881c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

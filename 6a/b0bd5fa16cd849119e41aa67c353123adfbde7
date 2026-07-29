@@ -1,0 +1,93 @@
+.changeset/generate-executable-recording-replays.md
+  s_df7b1a4bc04419::t_ae6cde10dbd6e6 1-6
+README.md
+  s_a101c7b87ffa85::t_3e9433c1e3a4e0 110,145
+README.zh-CN.md
+  s_a101c7b87ffa85::t_031af99efc0145 107,141
+docs/cli-reference.md
+  s_df7b1a4bc04419::t_ce084772ad7011 32-34
+docs/cli-reference.zh-CN.md
+  s_df7b1a4bc04419::t_0bed3037d3c10d 32-34
+docs/record-browser-workflows.md
+  s_012a6da480e9fb::t_a2815f1f7f1d0f 5,52,57,59,77,91,95,97,103
+docs/record-browser-workflows.zh-CN.md
+  s_df7b1a4bc04419::t_c22ed3592f0ba0 5,51,56,58,76,82,90,94,96,102
+packages/cli/src/commands/help.ts
+  s_df7b1a4bc04419::t_35dbe32f613e86 100-114
+packages/cli/src/commands/names.ts
+  s_df7b1a4bc04419::t_dd9703474251d6 10-12
+packages/cli/src/features/browser/command-args.ts
+  s_df7b1a4bc04419::t_a9f8f66ba49c73 41-53
+packages/cli/src/features/extension/api.ts
+  s_df7b1a4bc04419::t_b2fd73c1bd5bc7 172-174
+packages/cli/src/features/extension/types.ts
+  s_df7b1a4bc04419::t_8370226ea0a7c8 244-246
+packages/cli/src/types/commands.ts
+  s_df7b1a4bc04419::t_d0178ce2360a5f 182-184
+packages/cli/test/browser.test.ts
+  s_df7b1a4bc04419::t_096efdf182a00f 751-787
+packages/extension-imitate/README.md
+  s_df7b1a4bc04419::t_b03ab85a0eff2e 3,13,16,19-20,33,60-61,75-84
+packages/extension-imitate/package.json
+  s_df7b1a4bc04419::t_c0914dc3ffa6c9 28-29
+packages/extension-imitate/src/capture.ts
+  s_012a6da480e9fb::t_295cbd192c6026 140-147,153-154,161-400
+packages/extension-imitate/src/extension.ts
+  s_df7b1a4bc04419::t_d33b9be5791515 22,27
+packages/extension-imitate/src/index.ts
+  s_df7b1a4bc04419::t_6479fb922545d9 190,205,222-223,418
+packages/extension-imitate/src/script.ts
+  s_012a6da480e9fb::t_c525416bd3012d 3-12,20-22,24,29-31,35-37,44-53,55-71,73-91,95-114,116-136,138-148,150-167,169-241,245-248,254-308,310-331,333-340,342-408,410-436,452-453,489-501,503-509
+packages/extension-imitate/src/storage.ts
+  s_df7b1a4bc04419::t_768dfdf566c4e9 24
+packages/extension-imitate/src/types.ts
+  s_df7b1a4bc04419::t_78682b33ddc40c 25,65,134,138-209,274-275
+packages/extension-imitate/src/workflow.ts
+  s_df7b1a4bc04419::t_93aa1af0d896a8 1-212
+packages/extension-imitate/test/record.test.mjs
+  s_a101c7b87ffa85::t_592aa790c4f102 2-3,93-95,108,120,128-129,132-134,228-363
+packages/extension-imitate/test/recording-replay.e2e.mjs
+  s_df7b1a4bc04419::t_cf9414e1d0f96a 1-175
+scripts/sync-divebell-cli-docs.mjs
+  s_df7b1a4bc04419::t_d59315e11a5839 99-101
+skills/record-divebell-workflow/SKILL.md
+  s_012a6da480e9fb::t_8e58c5afd8666b 3,20,27-28,46,49,83,99,103,109,129
+skills/record-divebell-workflow/agents/openai.yaml
+  s_df7b1a4bc04419::t_0bb7638281d202 3-4
+skills/record-divebell-workflow/references/divebell-cli.md
+  s_a101c7b87ffa85::t_5bfe64b3a236b3 31,37-38,48-49,51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6ab0bd5fa16cd849119e41aa67c353123adfbde7",
+  "prompts": {},
+  "sessions": {
+    "s_012a6da480e9fb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad23-5608-7021-9a8d-75c741ac90b4",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_df7b1a4bc04419": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad1c-367e-72a3-b20c-596cc9783dd5",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

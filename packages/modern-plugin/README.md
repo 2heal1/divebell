@@ -159,7 +159,6 @@ This state-changing action navigates through the Modern.js router. The `to`
 input only accepts routes known by the current `modern:route` route manifest:
 
 ```sh
-divebell input-options --action modern.route.navigate --input to
 divebell run-action modern.route.navigate --payload '{"to":"/orders"}'
 divebell wait-for modern:route ready --where pathname=/orders
 ```

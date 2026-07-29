@@ -81,7 +81,7 @@ Choose the smallest preparation step from help and command output:
   `divebell open <url>` first.
 - When a required URL, account, option, or other input is missing, request only
   that missing input and do not broaden the task.
-- `targets`, `snapshot`, `events`, `actions`, `input-options`, `run-action`,
+- `targets`, `snapshot`, `events`, `actions`, `run-action`,
   `wait-for`, and `verify` need a selectable connected runtime. For an ordinary
   query against a page without integration, do not change source without
   authorization. Report that Runtime evidence is unavailable, or switch to the
@@ -109,7 +109,7 @@ login requirement, or empty result as an application failure.
 
 Run read-only commands directly. Run commands that may change page, account, or
 business state only when the user's request already includes that action.
-Inspect the action's risk, enabled state, and input options first; do not widen
+Inspect the action's risk, enabled state, and input constraints first; do not widen
 its scope.
 
 ## 4. Return to the Primary Workflow

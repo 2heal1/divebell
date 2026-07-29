@@ -60,12 +60,6 @@ Read the actions declared by the page:
 divebell actions --url http://localhost:19080/
 ```
 
-Read the input options for an action:
-
-```bash
-divebell input-options --url http://localhost:19080/ --action demo.refresh-orders --input source
-```
-
 Run the page-declared action:
 
 ```bash
@@ -87,7 +81,6 @@ Click `Loading`, `Error`, `Ready`, or `Add order` on the page, then run `snapsho
 - `snapshot` shows the current state of those targets.
 - `events` grows as the page buttons are used.
 - `actions` shows `demo.refresh-orders`.
-- `input-options` shows `cli` and `demo` as the two source options.
 - `run-action` increases the order count.
 - `wait-for` reports that `business:orders` is `ready`.
 

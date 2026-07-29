@@ -94,10 +94,10 @@ rules.
 
 ## 4. Design Actions
 
-Read the action and input-options sections in `core.md`:
+Read the action sections in `runtime-sdk.md`:
 
 - Declare only stable actions that the page permits an Agent to execute.
-- Define risk, enabled state, input constraints, and dynamic options clearly.
+- Define risk, enabled state, and input constraints clearly.
 - Let `runAction` execute the action and record action events only. Do not make
   it update snapshots automatically.
 - Verify action results through a target and `waitFor`; do not treat the action

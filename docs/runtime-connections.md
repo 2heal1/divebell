@@ -81,7 +81,6 @@ divebell targets --runtime runtime-orders
 divebell snapshot --runtime runtime-orders
 divebell events --runtime runtime-orders --limit 20
 divebell actions --runtime runtime-orders
-divebell input-options --runtime runtime-orders --action orders.refresh --input source
 divebell run-action --runtime runtime-orders orders.refresh --payload '{"force":true}'
 divebell wait-for --runtime runtime-orders business:orders ready --timeout 5000 --strict
 ```

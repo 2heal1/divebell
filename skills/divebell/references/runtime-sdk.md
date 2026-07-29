@@ -33,7 +33,6 @@ examples.
   - [`registerAction`](#registeraction)
   - [`unregisterAction`](#unregisteraction)
   - [`getActions`](#getactions)
-  - [`getInputOptions`](#getinputoptions)
   - [`runAction`](#runaction)
   - [`waitFor`](#waitfor)
   - [`matchesRuntimeCondition`](#matchesruntimecondition)
@@ -620,8 +619,6 @@ interface RegisterActionInput {
   availableWhen?: RuntimeCondition | RuntimeCondition[];
   // Input JSON Schema.
   inputSchema?: RuntimeJsonSchema;
-  // Dynamic input-options provider.
-  getInputOptions?: RuntimeInputOptionsProvider;
   // Action implementation.
   handler: RuntimeActionHandler;
 }
@@ -766,8 +763,6 @@ interface RuntimeActionDescriptor {
   availableWhen?: RuntimeCondition | RuntimeCondition[];
   // Input JSON Schema.
   inputSchema?: RuntimeJsonSchema;
-  // Whether a dynamic input-options provider is registered.
-  hasInputOptions: boolean;
   // Whether current conditions enable the action.
   enabled: boolean;
   // Reason the action is disabled.
@@ -785,61 +780,6 @@ interface DivebellCore {
 
 ```ts
 const actions = runtime.getActions({ query: "orders" });
-```
-
-### getInputOptions
-
-Read dynamic options for one action input field.
-
-Use it when:
-
-- Action input options depend on the current payload, page state, or business
-  data.
-- An Agent or UI must present selectable values for a field.
-
-Behavior:
-
-- Dynamic options exist only when the action registered `getInputOptions`.
-- Pass `currentPayload` to represent other fields already filled by the caller.
-
-```ts
-interface RuntimeInputOption {
-  // Actual option value.
-  value: string | number | boolean;
-  // Human-readable option description.
-  description?: string;
-}
-
-interface RuntimeInputOptionsOptions {
-  // Query timeout in milliseconds.
-  timeout?: number;
-}
-
-type RuntimeInputOptionsProvider = (
-  // Current input field name.
-  inputName: string,
-  // Other fields already present in the payload.
-  currentPayload?: Record<string, unknown>,
-  // Action execution context.
-  context?: RuntimeActionContext,
-) => Promise<RuntimeInputOption[]> | RuntimeInputOption[];
-
-interface DivebellCore {
-  getInputOptions(
-    // Action name.
-    actionName: string,
-    // Input field name.
-    inputName: string,
-    // Other fields already present in the payload.
-    currentPayload?: Record<string, unknown>,
-    // Query options.
-    options?: RuntimeInputOptionsOptions,
-  ): Promise<RuntimeInputOption[]>;
-}
-```
-
-```ts
-const owners = await runtime.getInputOptions("orders.assign", "owner");
 ```
 
 ### runAction

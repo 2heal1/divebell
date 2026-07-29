@@ -74,10 +74,10 @@ stable application meaning. Keep those roles distinct.
 
 ## 4. Recover through a declared action
 
-Inspect the action choices before changing state:
+Inspect the action definition before changing state:
 
 ```bash
-divebell input-options --action quickstart.retry-inventory --input strategy
+divebell actions --name quickstart.retry-inventory
 divebell run-action quickstart.retry-inventory --payload '{"strategy":"origin"}'
 ```
 

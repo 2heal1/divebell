@@ -139,9 +139,10 @@ current page.
 
 ### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
-Demonstrate a workflow in a visible browser and let the Agent generate, run, and verify a JavaScript replay from the operated elements and event sequence. Spoken intent is optional.
+Demonstrate a browser workflow and turn the operated elements and event
+sequence into a verified JavaScript replay. Spoken intent is optional.
 
-> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then have the Agent run `divebell record --skill` and follow the returned skill to start recording.
+> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then start recording with its bundled skill.
 
 **Demo video**
 

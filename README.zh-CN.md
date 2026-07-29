@@ -134,9 +134,9 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 ### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
-在可见浏览器中演示一次流程，让 Agent 根据操作元素和事件顺序生成、运行并验证 JavaScript 回放；语音说明是可选项。
+在可见浏览器中演示一次操作，把操作元素和事件顺序生成可验证的 JavaScript 回放；语音说明是可选项。
 
-> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后让 Agent 执行 `divebell record --skill`，并按返回的 skill 开始录制。
+> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后用它自带的 skill 开始录制。
 
 **演示视频**
 

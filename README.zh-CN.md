@@ -130,8 +130,7 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 ## Examples
 
-这里是仓库里官方维护的 Extension 示例。每个示例都对应一条完整流程，说明它展示什么、
-如何运行以及如何验证结果。
+这里是官方 Extension 示例：录制浏览器操作、检查内存增长、分析代码使用，以及把团队已有工具接到当前页面。
 
 ### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 

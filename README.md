@@ -132,9 +132,9 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 ## Examples
 
-These are the official Extension examples maintained in this repository. Each
-example links to a complete workflow covering what it demonstrates, how to run
-it, and how to verify the result.
+Explore the official Extension examples for recording browser workflows,
+checking memory growth, analyzing code usage, and connecting team tools to the
+current page.
 
 ### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 

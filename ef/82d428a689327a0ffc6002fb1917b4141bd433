@@ -1,0 +1,23 @@
+tests/e2e/cli/fixtures/runtime-sdk-demo.mjs
+  s_a101c7b87ffa85::t_3c1a7ef14fb0ce 1-289
+tests/e2e/cli/scenario.mjs
+  s_a101c7b87ffa85::t_2fbe60d339173b 4-5,26-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ef82d428a689327a0ffc6002fb1917b4141bd433",
+  "prompts": {},
+  "sessions": {
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

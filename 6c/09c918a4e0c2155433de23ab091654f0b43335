@@ -1,0 +1,91 @@
+.github/workflows/ci.yml
+  s_edff0bf9eee547::t_7bb7f2d20ce9ff 38
+.github/workflows/pkg-pr-new.yml
+  s_edff0bf9eee547::t_9dc233646700c4 38,56-60
+.github/workflows/prepare-release.yml
+  s_edff0bf9eee547::t_da65ffeee39fcc 116
+.github/workflows/release.yml
+  s_edff0bf9eee547::t_13b5c7bac6379e 62
+demos/modern-basic/package.json
+  s_edff0bf9eee547::t_cbcbc577aefa48 12,14
+demos/modern-basic/scripts/verify-experience.mjs
+  s_edff0bf9eee547::t_fbac7be4a74d94 13-14
+package.json
+  s_edff0bf9eee547::t_fcf13fea889889 13,29-30
+packages/extensions/code-usage/package.json
+  s_edff0bf9eee547::t_acd08396859013 9
+packages/extensions/code-usage/scripts/assemble.mjs
+  s_a101c7b87ffa85::t_8382d7d14b5371 6
+packages/extensions/code-usage/src/report.ts
+  s_a101c7b87ffa85::t_5ddc2258b77e7a 159
+packages/extensions/code-usage/test/command.test.mjs
+  s_a101c7b87ffa85::t_332c76b6975eb8 20
+packages/extensions/code-usage/tsconfig.json
+  s_a101c7b87ffa85::t_7eba84eb0009ed 2,11-12
+packages/extensions/imitate/package.json
+  s_edff0bf9eee547::t_4807cc5fba65f2 9
+packages/extensions/imitate/test/package.test.mjs
+  s_a101c7b87ffa85::t_cce9500064b310 10
+packages/extensions/imitate/test/record.test.mjs
+  s_a101c7b87ffa85::t_475ef7e597d215 10
+packages/extensions/imitate/test/recording-replay.e2e.mjs
+  s_a101c7b87ffa85::t_05817356b3e58e 12
+packages/extensions/imitate/tsconfig.json
+  s_a101c7b87ffa85::t_04ab7169b030a5 2,11
+packages/extensions/memory/package.json
+  s_edff0bf9eee547::t_1ae00e11451c63 9
+packages/extensions/memory/test/memory-check.test.mjs
+  s_a101c7b87ffa85::t_940ab30a6b3eef 8
+packages/extensions/memory/tsconfig.json
+  s_a101c7b87ffa85::t_50553333844113 2,11
+packages/extensions/mf/package.json
+  s_edff0bf9eee547::t_546d4b18ef010f 9
+packages/extensions/mf/tsconfig.json
+  s_a101c7b87ffa85::t_de117f181f1dd7 2,11
+packages/extensions/troubleshooting/package.json
+  s_edff0bf9eee547::t_038cea3bfd5816 9
+packages/extensions/troubleshooting/test/verify.test.mjs
+  s_a101c7b87ffa85::t_5aa22fcec7a2a5 5
+packages/extensions/troubleshooting/tsconfig.json
+  s_a101c7b87ffa85::t_b09262c72b99b2 2,11
+pnpm-lock.yaml
+  s_a101c7b87ffa85::t_0a310540ed3cdd 191,193,195,197,199,227-253
+pnpm-workspace.yaml
+  s_edff0bf9eee547::t_ad40c7138e404c 4
+scripts/clean.mjs
+  s_edff0bf9eee547::t_c2d50578e6178a 12-16
+scripts/divebell-release-packages.mjs
+  s_edff0bf9eee547::t_74b45bb182faa4 18,20-21,33,74-87
+scripts/divebell-release-packages.test.mjs
+  s_edff0bf9eee547::t_eef6504c77b17d 24-27
+skills/record-divebell-workflow/references/divebell-cli-runtime.json
+  s_edff0bf9eee547::t_84b7f671a98b48 40
+tsconfig.json
+  s_edff0bf9eee547::t_d644afa06c0123 10-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6c09c918a4e0c2155433de23ab091654f0b43335",
+  "prompts": {},
+  "sessions": {
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_edff0bf9eee547": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad91-a9fd-7ed0-8061-a584cc6f8210",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -48,11 +48,12 @@ assert.ok(
   exposedJavaScript.some(
     (source) =>
       source.includes('Find the issue.') &&
+      source.includes('Locate the source.') &&
       source.includes('Performance') &&
       source.includes('Network') &&
       source.includes('golden sonar pulse'),
   ),
-  'The built remote is missing the bug-clearing game.',
+  'The built remote is missing the issue-locating game.',
 );
 
 console.log('[mf-playground-remote] production build verified.');

@@ -125,7 +125,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
     initialized: false,
   });
   const [bugs, setBugs] = useState<BugTarget[]>([]);
-  const [clearedCount, setClearedCount] = useState(0);
+  const [locatedCount, setLocatedCount] = useState(0);
   const [controlMode, setControlMode] = useState<ControlMode>('idle');
   const [lastSignal, setLastSignal] = useState('Find an issue to begin');
   const [pingCycle, setPingCycle] = useState(0);
@@ -303,8 +303,8 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
           hitSet.has(bug.id) ? { ...bug, state: 'clearing' } : bug,
         ),
       );
-      setClearedCount((count) => count + hitIds.length);
-      setLastSignal(`${hitLabels.join(' + ')} cleared`);
+      setLocatedCount((count) => count + hitIds.length);
+      setLastSignal(`${hitLabels.join(' + ')} located`);
       sendPing();
 
       for (const id of hitIds) {
@@ -448,7 +448,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
         ref={oceanRef}
         className="db-ocean"
         tabIndex={0}
-        aria-label="Divebell issue clearing game"
+        aria-label="Divebell issue locating game"
         aria-describedby="db-control-help"
         aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight W A S D Space"
         onKeyDown={handleKeyDown}
@@ -476,7 +476,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
             <span>
               {activeBugCount.toString().padStart(2, '0')} issues detected
             </span>
-            <strong>{clearedCount.toString().padStart(2, '0')} cleared</strong>
+            <strong>{locatedCount.toString().padStart(2, '0')} located</strong>
           </div>
         </header>
 
@@ -484,11 +484,11 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
           <p>Development diagnostics / live mission</p>
           <h1>
             Find the issue.
-            <span>Clear the path.</span>
+            <span>Locate the source.</span>
           </h1>
           <p className="db-lede">
             Steer Divebell into each signal. Contact triggers a golden sonar
-            pulse and clears it from the scene.
+            pulse and marks it located.
           </p>
         </div>
 
@@ -514,7 +514,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
                 className={`db-bug is-${bug.kind} is-${bug.state}`}
                 style={bugStyle}
                 role="img"
-                aria-label={`${details.label} issue${bug.state === 'clearing' ? ' cleared' : ''}`}
+                aria-label={`${details.label} issue${bug.state === 'clearing' ? ' located' : ''}`}
               >
                 <span className="db-bug-radar" aria-hidden="true" />
                 <span className="db-bug-core">

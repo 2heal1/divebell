@@ -2,7 +2,7 @@
 
 Interactive Divebell remote used by the Module Federation Playground quick
 start. Bug, performance, and network issues appear throughout the scene; steer
-Divebell into them with the pointer, arrow keys, or WASD to clear them with a
+Divebell into them with the pointer, arrow keys, or WASD to locate them with a
 golden sonar pulse. Pressing Space sends a manual sonar ping.
 
 ## Manifest
@@ -32,7 +32,7 @@ loads it with the old `title` prop, reports the required `config` shape in the
 Playground Terminal, and succeeds after the consumer passes the props above.
 
 Once loaded, the game continuously introduces `Bug`, `Performance`, and
-`Network` issues. Moving Divebell into an issue clears it and updates the score.
+`Network` issues. Moving Divebell into an issue locates it and updates the score.
 
 ## Commands
 

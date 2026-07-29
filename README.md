@@ -44,12 +44,12 @@ Then ask:
 
 ```text
 Use Divebell to complete the official Quick Start. Open the Module Federation
-Playground at https://module-federation.io/playground/index.html, load
-https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json
-as remote divebell_mf_playground_remote with expose ".", first run it with
-props { title: 'Divebell' }, read the Playground Terminal error, update the
-props to the required config object, and verify that the remote renders the
-interactive diagnostics game.
+Playground at https://module-federation.io/playground/index.html, replace the
+manifest with
+https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json,
+and run the preview. If the Playground reports an error, analyze the visible
+Terminal, Console, and Network evidence, update the Playground inputs as
+needed, and verify that the remote renders the interactive diagnostics game.
 ```
 
 No separate walkthrough document is required. The skill owns the operating

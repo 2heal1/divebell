@@ -61,9 +61,9 @@ Use the visible controls in the Playground page. Do not inspect or download the
 remote package source; the point of the walkthrough is to rely on the page,
 Terminal, Console, Network, and the published manifest.
 
-## 3. Load the remote with intentionally wrong props
+## 3. Load the remote manifest
 
-Configure the Playground to load the remote manifest:
+Replace the Playground manifest with:
 
 ```text
 https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json
@@ -76,25 +76,15 @@ divebell_mf_playground_remote
 .
 ```
 
-Start with the old props shape:
+Run the Playground preview. Do not intentionally create a failing input. If the
+remote renders successfully, continue to final verification.
 
-```tsx
-{
-  title: 'Divebell',
-}
-```
+If the Playground reports an error, read the visible Terminal output first,
+then use browser Console and Network as supporting evidence. Determine which
+Playground input needs to change and update it.
 
-Run the Playground preview. Read the visible Terminal output and browser
-Console. The expected failure is a runtime prop validation error from the
-remote that says it expected a `config` object.
-
-If the Playground UI has changed, use `divebell page-snapshot`, screenshots,
-Console, and Network evidence to find the equivalent manifest, exposed module,
-props, and run controls.
-
-## 4. Fix the props and verify the page
-
-Update the props to the required shape:
+When the Terminal says that the remote expected a `config` object, use this
+compatible props shape:
 
 ```tsx
 {
@@ -106,9 +96,15 @@ Update the props to the required shape:
 }
 ```
 
-Run the preview again and verify all of the following:
+If the Playground UI has changed, use `divebell page-snapshot`, screenshots,
+Console, and Network evidence to find the equivalent manifest, exposed module,
+props, and run controls.
 
-- The Terminal no longer reports the props validation error.
+## 4. Verify the page
+
+Run the preview after any required input update and verify all of the following:
+
+- The Terminal does not report a blocking remote-loading or props error.
 - The remote renders a Divebell diagnostics game.
 - Moving the pointer, arrow keys, or WASD steers the Divebell logo.
 - Colliding with Bug, Performance, or Network icons produces the golden sonar
@@ -123,9 +119,8 @@ browser extension.
 Summarize:
 
 - the manifest that was loaded;
-- the wrong props that reproduced the failure;
-- the Terminal or Console evidence that identified the missing `config`;
-- the corrected props;
+- any Terminal, Console, or Network error that appeared;
+- the Playground input that was changed to resolve it, if a change was needed;
 - the final visible verification that the remote rendered and interacted.
 
 Do not imply that this quick start modifies application source. Source editing

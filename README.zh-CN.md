@@ -44,11 +44,10 @@ divebell --help
 
 ```text
 使用 Divebell 完成官方 Quick Start：打开 Module Federation Playground，
-地址是 https://module-federation.io/playground/index.html；加载
+地址是 https://module-federation.io/playground/index.html；把 manifest 替换为
 https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json，
-remote name 是 divebell_mf_playground_remote，expose 是 "."；先使用
-props { title: 'Divebell' } 运行，读取 Playground Terminal 报错，再把
-props 改成要求的 config 对象，并确认页面渲染出可交互的诊断小游戏。
+并运行预览。如果 Playground 报错，自动分析页面可见的 Terminal、Console 和 Network
+信息，按需调整 Playground 输入，并确认页面渲染出可交互的诊断小游戏。
 ```
 
 不需要单独打开 Quick Start 文档；具体操作步骤由 skill 负责，并直接使用全局安装的

@@ -19,7 +19,6 @@ additional source only when the page already exposes relevant state.
 - [PATCH](#6-patch)
 - [VERIFY](#7-verify)
 - [BLOCKED Boundary](#8-blocked-boundary)
-- [References](#9-references)
 
 ## 1. Workflow
 
@@ -140,9 +139,9 @@ snapshot:
 divebell snapshot --session <debug-session>
 ```
 
-- When the snapshot identifies route, loader, remote, shared, sub-application,
-  or business state, inspect the corresponding source, configuration, and
-  dependencies.
+- When the snapshot identifies route, loader, application dependency,
+  sub-application, or business state, inspect the corresponding source,
+  configuration, and dependencies.
 - When the snapshot has no relevant clue, return to browser capabilities or an
   Extension immediately. Do not keep trying arbitrary filters.
 - Add `--id` or `--query` only to narrow a clue that already appeared.
@@ -153,8 +152,8 @@ page action, inspect its action definition, risk, and input constraints.
 ### Add Runtime SDK Only When Justified
 
 Do not add an integration for a one-off investigation by default. Read
-`integrate.md` and `core.md` and add a durable signal only when one of these
-conditions applies:
+`integrate.md` and `runtime-sdk.md` and add a durable signal only when one of
+these conditions applies:
 
 - Browser-visible evidence cannot reliably determine the real business state or
   blocking cause.
@@ -220,12 +219,3 @@ Report that work cannot continue only when:
 A missing connected runtime, missing business target, or inconclusive
 diagnostic step is not a blocker. Continue with browser evidence, Extensions,
 source inspection, and actual tests.
-
-## 9. References
-
-- Page-side `@divebell/core` targets, snapshots, and actions: `core.md`
-- Extensions, automation scripts, and project integration: `integrate.md`
-- Modern.js routes, loaders, and hydration: `modernjs.md`
-- Module Federation remotes, exposes, shared dependencies, and observability:
-  `module-federation.md`
-- Garfish sub-application lifecycle and custom loaders: `garfish.md`

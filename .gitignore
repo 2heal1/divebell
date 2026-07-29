@@ -5,3 +5,4 @@ skills/record-divebell-workflow/references/divebell-cli/*.tgz
 .DS_Store
 demos/modern-basic/.memory-artifacts/
 demos/modern-basic/.code-usage-artifacts/
+demos/mf-playground-remote/.mf/

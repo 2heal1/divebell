@@ -198,6 +198,33 @@ importers:
 
   packages/extension-troubleshooting: {}
 
+  packages/test:
+    dependencies:
+      '@divebell/bridge':
+        specifier: workspace:^
+        version: link:../bridge
+      '@divebell/cli':
+        specifier: workspace:^
+        version: link:../cli
+      '@divebell/core':
+        specifier: workspace:^
+        version: link:../core
+      '@divebell/extension-code-usage':
+        specifier: workspace:^
+        version: link:../extension-code-usage
+      '@divebell/extension-imitate':
+        specifier: workspace:^
+        version: link:../extension-imitate
+      '@divebell/extension-memory':
+        specifier: workspace:^
+        version: link:../extension-memory
+      '@divebell/extension-mf':
+        specifier: workspace:^
+        version: link:../extension-mf
+      '@divebell/extension-troubleshooting':
+        specifier: workspace:^
+        version: link:../extension-troubleshooting
+
   packages/modern-plugin:
     dependencies:
       '@divebell/chunk-map':

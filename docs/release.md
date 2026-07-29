@@ -13,7 +13,9 @@ One release uses the same version for:
 - `@divebell/extension-code-usage`;
 - `@divebell/extension-troubleshooting`;
 - `@divebell/extension-imitate`;
-- `@divebell/extension-memory`; and
+- `@divebell/extension-memory`;
+- `@divebell/extension-mf`;
+- `@divebell/test`; and
 - the runtime bundle used by `record-divebell-workflow`.
 
 The GitHub Release contains the recording runtime bundle and its SHA-256 checksum. npm packages are published before the GitHub Release is made public.
@@ -43,7 +45,7 @@ pnpm run publish:packages -- --output-dir /tmp/divebell-npm-bootstrap --otp 1234
 
 Replace `123456` with the current one-time password from the maintainer's authenticator. The same value is forwarded to each `npm publish`; if it expires before all packages finish, rerun the command with a new code. Versions already published by the interrupted run are skipped.
 
-The release script checks all public packages in dependency order and skips versions that already exist. After the four `@divebell/extension-*` packages exist, configure GitHub Actions as their trusted publisher. Running the complete list is also appropriate when the existing packages have not yet been configured:
+The release script checks all public packages in dependency order and skips versions that already exist. After a new package exists, configure GitHub Actions as its trusted publisher. Running the complete list is also appropriate when the existing packages have not yet been configured:
 
 ```bash
 npm trust github @divebell/core --repo 2heal1/divebell --file release.yml --allow-publish --yes
@@ -56,6 +58,8 @@ npm trust github @divebell/extension-code-usage --repo 2heal1/divebell --file re
 npm trust github @divebell/extension-troubleshooting --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-imitate --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-memory --repo 2heal1/divebell --file release.yml --allow-publish --yes
+npm trust github @divebell/extension-mf --repo 2heal1/divebell --file release.yml --allow-publish --yes
+npm trust github @divebell/test --repo 2heal1/divebell --file release.yml --allow-publish --yes
 ```
 
 Use only the workflow filename, `release.yml`, not its full `.github/workflows/` path. The repository release workflow already uses a GitHub-hosted runner and grants `id-token: write`, which npm requires for OIDC publishing.

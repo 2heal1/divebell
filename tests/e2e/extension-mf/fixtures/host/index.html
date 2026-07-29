@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Divebell MF E2E Host</title>
+  </head>
+  <body>
+    <main>
+      <h1>Divebell MF E2E Host</h1>
+      <div id="remote-root">loading provider...</div>
+    </main>
+    <script>
+      (async () => {
+        const providerOrigin = new URL(location.href).searchParams.get("provider");
+        if (!providerOrigin) throw new Error("Missing provider query parameter.");
+
+        const manifestUrl = new URL("/mf-manifest.json", providerOrigin).href;
+        const manifestStartedAt = Date.now();
+        const manifestResponse = await fetch(manifestUrl);
+        const manifest = await manifestResponse.json();
+        const manifestEndedAt = Date.now();
+
+        const remoteEntryUrl = new URL(
+          manifest.metaData.remoteEntry.path,
+          providerOrigin
+        ).href;
+        const remoteEntryStartedAt = Date.now();
+        const remoteEntryResponse = await fetch(remoteEntryUrl);
+        const remoteEntrySource = await remoteEntryResponse.text();
+        globalThis.eval(remoteEntrySource);
+        const remoteEntryEndedAt = Date.now();
+
+        const expose = "./Widget";
+        const factory = await globalThis.divebell_e2e_provider.get(expose);
+        const providerModule = factory();
+        const rendered = providerModule.render();
+        document.getElementById("remote-root").textContent = rendered;
+        globalThis.__DIVEBELL_MF_E2E_RENDERED__ = rendered;
+
+        const observedAt = Date.now();
+        const remote = {
+          name: "divebell_e2e_provider",
+          alias: "provider",
+          entry: manifestUrl,
+          entryGlobalName: "divebell_e2e_provider",
+          type: "global"
+        };
+        const capabilities = Object.fromEntries([
+          "instanceState",
+          "remoteTrace",
+          "sharedState",
+          "sharedTrace",
+          "bridgeTrace"
+        ].map((name) => [name, { available: true, completeness: "complete" }]));
+        const shareScope = {
+          name: "default",
+          sharedCount: 1,
+          sharedNames: ["react"],
+          shared: [{
+            name: "react",
+            versions: [{
+              version: "18.3.1",
+              provider: "divebell_e2e_host",
+              loaded: true,
+              singleton: true
+            }]
+          }]
+        };
+        const runtimeState = {
+          schemaVersion: 1,
+          observedAt,
+          scope: {
+            name: "divebell-mf-e2e",
+            realm: "current"
+          },
+          completeness: {
+            currentState: "complete",
+            history: "complete",
+            historyCleared: false,
+            lateBoundInstanceRefs: []
+          },
+          capabilities,
+          instances: [
+            {
+              instanceRef: "mf-host-1",
+              name: "divebell_e2e_host",
+              optionsName: "divebell_e2e_host",
+              optionsVersion: "1.0.0",
+              runtimeVersion: "0.0.0-e2e",
+              role: "consumer",
+              roleEvidence: {
+                consumer: ["host declared provider remote", "host requested provider expose"],
+                producer: []
+              },
+              remotes: [remote],
+              loadedProducers: [remote],
+              shareScopes: [shareScope],
+              active: true
+            },
+            {
+              instanceRef: "mf-provider-1",
+              name: "divebell_e2e_provider",
+              optionsName: "divebell_e2e_provider",
+              optionsVersion: "1.0.0",
+              runtimeVersion: "0.0.0-e2e",
+              role: "producer",
+              roleEvidence: {
+                consumer: [],
+                producer: ["provider remoteEntry exposed ./Widget"]
+              },
+              remotes: [],
+              loadedProducers: [],
+              shareScopes: [shareScope],
+              active: true
+            }
+          ],
+          relationships: [{
+            consumerInstanceRef: "mf-host-1",
+            producerInstanceRef: "mf-provider-1",
+            remote,
+            evidence: ["provider manifest fetched", "provider remoteEntry executed", "provider widget rendered"],
+            status: "resolved"
+          }],
+          moduleInfo: [{
+            key: "divebell_e2e_provider",
+            name: "divebell_e2e_provider",
+            version: "1.0.0",
+            entry: manifestUrl,
+            tag: "manifest"
+          }]
+        };
+        const traceId = "mf-e2e-remote-load";
+        const report = {
+          traceId,
+          instanceRef: "mf-host-1",
+          status: "success",
+          requestId: "mf-e2e-request",
+          hostName: "divebell_e2e_host",
+          runtimeVersion: "0.0.0-e2e",
+          remote,
+          expose,
+          sanitizedUrl: remoteEntryUrl,
+          startedAt: manifestStartedAt,
+          updatedAt: observedAt,
+          duration: Math.max(1, observedAt - manifestStartedAt),
+          moduleInfo: {
+            reason: "provider manifest",
+            entries: [{
+              name: "divebell_e2e_provider",
+              publicPath: new URL("/", providerOrigin).href,
+              remoteEntry: remoteEntryUrl,
+              globalName: "divebell_e2e_provider"
+            }]
+          },
+          events: [
+            {
+              traceId,
+              instanceRef: "mf-host-1",
+              phase: "manifest",
+              status: "success",
+              timestamp: manifestEndedAt,
+              hostName: "divebell_e2e_host",
+              runtimeVersion: "0.0.0-e2e",
+              remote,
+              sanitizedUrl: manifestUrl,
+              resource: {
+                type: "manifest",
+                initiator: "loadRemote",
+                outcome: "success",
+                url: manifestUrl,
+                startedAt: manifestStartedAt,
+                endedAt: manifestEndedAt,
+                duration: Math.max(1, manifestEndedAt - manifestStartedAt),
+                httpStatus: manifestResponse.status,
+                mimeType: "application/json"
+              }
+            },
+            {
+              traceId,
+              instanceRef: "mf-host-1",
+              phase: "remoteEntry",
+              status: "success",
+              timestamp: remoteEntryEndedAt,
+              hostName: "divebell_e2e_host",
+              runtimeVersion: "0.0.0-e2e",
+              remote,
+              sanitizedUrl: remoteEntryUrl,
+              resource: {
+                type: "remoteEntry",
+                initiator: "loadRemote",
+                outcome: "success",
+                url: remoteEntryUrl,
+                startedAt: remoteEntryStartedAt,
+                endedAt: remoteEntryEndedAt,
+                duration: Math.max(1, remoteEntryEndedAt - remoteEntryStartedAt),
+                httpStatus: remoteEntryResponse.status,
+                mimeType: "text/javascript"
+              }
+            },
+            {
+              traceId,
+              instanceRef: "mf-host-1",
+              phase: "loadRemote",
+              status: "complete",
+              timestamp: observedAt,
+              hostName: "divebell_e2e_host",
+              runtimeVersion: "0.0.0-e2e",
+              remote,
+              expose,
+              message: "Provider widget rendered in host."
+            }
+          ],
+          summary: {
+            eventCount: 3,
+            loadCompleted: true,
+            runtimeLoaded: true,
+            sharedResolved: true,
+            sharedRegistered: true,
+            componentLoaded: true,
+            outcome: "success",
+            lastPhase: "loadRemote",
+            flags: {
+              cached: false,
+              fallback: false,
+              recovered: false
+            }
+          }
+        };
+
+        globalThis.__FEDERATION__ ??= {};
+        globalThis.__FEDERATION__.__SHARE__ = {
+          divebell_e2e_host: {
+            default: {
+              react: {
+                "18.3.1": {
+                  from: "divebell_e2e_host",
+                  useIn: ["divebell_e2e_host", "divebell_e2e_provider"],
+                  loaded: true,
+                  scope: ["default"],
+                  shareConfig: {
+                    requiredVersion: false,
+                    singleton: true
+                  }
+                }
+              }
+            }
+          }
+        };
+        globalThis.__FEDERATION__.__OBSERVABILITY__ ??= {};
+        globalThis.__FEDERATION__.__OBSERVABILITY__.divebell_e2e_host = {
+          getRuntimeState() {
+            return runtimeState;
+          },
+          getReports(options = {}) {
+            return typeof options.limit === "number"
+              ? [report].slice(-options.limit)
+              : [report];
+          }
+        };
+      })();
+    </script>
+  </body>
+</html>

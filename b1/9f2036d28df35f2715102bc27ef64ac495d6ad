@@ -1,0 +1,27 @@
+README.md
+  s_0658e270076e3c::t_25c0a218f969ba 47-52
+README.zh-CN.md
+  s_0658e270076e3c::t_d14b9c5e9c4243 47,49-50
+skills/divebell/SKILL.md
+  s_0658e270076e3c::t_0091d7a645e20e 33-34
+skills/divebell/references/quickstart.md
+  s_0658e270076e3c::t_2842feb831f6fe 64,66,79-80,82-84,86-87,99-105,107,122-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b19f2036d28df35f2715102bc27ef64ac495d6ad",
+  "prompts": {},
+  "sessions": {
+    "s_0658e270076e3c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa8b0-b7b1-78c3-979a-7e77b553614f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -1,0 +1,31 @@
+tests/e2e/e2e.test.mjs
+  s_a101c7b87ffa85::t_ccf84a77b654af 4,29
+tests/e2e/extension-mf/fixtures/host/index.html
+  s_a101c7b87ffa85::t_8c4442cbca51b0 1-263
+tests/e2e/extension-mf/fixtures/provider/remoteEntry.js
+  s_a101c7b87ffa85::t_9348f4ea60782f 1-15
+tests/e2e/extension-mf/scenario.mjs
+  s_a101c7b87ffa85::t_58ee7a4c8a51f6 1-196
+tests/e2e/support/environment.mjs
+  s_a101c7b87ffa85::t_f7b0af8e7b70a4 2,25-27,53-55,87,91,112-121
+tests/e2e/support/fake-agent-browser.mjs
+  s_a101c7b87ffa85::t_7ab34879e6037e 1-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2fceb307a6accdc3c36bbf8fd3f326ad1800f32a",
+  "prompts": {},
+  "sessions": {
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

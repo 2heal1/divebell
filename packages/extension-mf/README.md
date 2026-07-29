@@ -310,10 +310,29 @@ import {
 } from "@divebell/extension-mf/core";
 ```
 
-The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `divebell mf` commands. A Vmok extension can therefore use the same facts and render its own `divebell vmok` guidance.
+The reusable layer accepts snapshots and plain selectors. It returns structured candidates and recommended action types, without writing output or embedding `divebell mf` commands. Use it when another Extension needs a custom command surface or workflow.
 
 The public report types preserve the safe Remote resource results, Shared selection and registration details, and Bridge operation/state summaries emitted by the Observability Plugin. Bridge, Remote, and Shared commands consume the same `BrowserObservabilitySnapshot`, report, resource, Shared, and Bridge facts from this entry, so other extensions can reuse the result builders, grouping, and selection rules without invoking the CLI or adding another browser reader.
 
 The reader intentionally omits response headers and bodies, cookies, tokens, factories, containers, props, routers, arbitrary metadata, and raw runtime objects. The current public report also does not provide Remote response contents, Shared factory identity, Bridge props/router objects, or business-data readiness. Bridge commit and route-sync evidence is available, but application readiness still needs an explicit business signal. Missing facts should remain unknown rather than being inferred by commands.
 
 The package root remains the default Divebell extension entry and keeps the existing named public exports for compatibility. New integrations should use `@divebell/extension-mf/core` for reusable capabilities and types. Command routing, formatting, and output adapters are intentionally private.
+
+## Create a branded command entry
+
+Use the supported Extension factory when another distribution needs the complete command surface under a different top-level command:
+
+```ts
+import { createMfExtension } from "@divebell/extension-mf/extension";
+
+export default createMfExtension({
+  name: "vmok",
+  commandName: "vmok",
+  displayName: "Vmok",
+  description: "Inspect Vmok applications."
+});
+```
+
+The configured name is used consistently by top-level and command help, validation guidance, structured command results, and copyable candidate commands. The default package entry continues to register `divebell mf`.
+
+External Extension packages installed through `divebell extensions add` must remain self-contained. A branded distribution should bundle this implementation and its injection assets into its own published archive instead of declaring a runtime dependency.

@@ -2,6 +2,7 @@ import type { CliExtensionRunOptions } from "@divebell/cli";
 
 import { MfCommandError } from "./errors.js";
 import type { MfCommandMetadata } from "../commands/metadata.js";
+import { renderMfCommandUsage } from "../commands/metadata.js";
 
 export interface MfCommandContext {
   options: CliExtensionRunOptions;
@@ -47,28 +48,34 @@ export function matchMfCommand(
 
 export async function dispatchMfCommand(
   options: CliExtensionRunOptions,
-  registrations: readonly MfCommandRegistration[]
+  registrations: readonly MfCommandRegistration[],
+  commandName = options.args.command[0] ?? "mf"
 ): Promise<unknown> {
   const segments = options.args.command.slice(1);
   const match = matchMfCommand(registrations, segments);
-  if (match === undefined) throw commandRouteError(registrations, segments);
+  if (match === undefined) {
+    throw commandRouteError(registrations, segments, commandName);
+  }
   const definition = await match.registration.load();
   return definition.run({ options, positionals: match.positionals });
 }
 
 function commandRouteError(
   registrations: readonly MfCommandRegistration[],
-  segments: readonly string[]
+  segments: readonly string[],
+  commandName: string
 ): MfCommandError {
   const names = registrations.map((registration) => registration.path.join(" "));
-  const usages = registrations.map((registration) => `\`${registration.summaryUsage}\``);
+  const usages = registrations.map((registration) =>
+    `\`${renderMfCommandUsage(registration.summaryUsage, commandName)}\``
+  );
   const available = joinWithOr(names);
   return new MfCommandError({
     code: segments.length === 0 ? "MF_COMMAND_REQUIRED" : "MF_COMMAND_INVALID",
     kind: "validation",
     message: segments.length === 0
-      ? `mf requires a subcommand. Available commands: ${available}.`
-      : `Unknown mf subcommand \`${segments.join(" ")}\`. Available commands: ${available}.`,
+      ? `${commandName} requires a subcommand. Available commands: ${available}.`
+      : `Unknown ${commandName} subcommand \`${segments.join(" ")}\`. Available commands: ${available}.`,
     hint: `Run ${joinWithOr(usages)}.`
   });
 }

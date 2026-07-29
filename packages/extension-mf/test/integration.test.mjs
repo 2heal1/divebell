@@ -18,7 +18,7 @@ const idleRemote = {
   type: "global"
 };
 
-test("all seven commands and both trace modes execute against one combined snapshot", async () => {
+test("all seven commands and both trace modes execute for mf and vmok", async () => {
   const snapshot = combinedSnapshot();
   const cases = [
     { command: ["mf", "status"], expected: "mf status", compactStatus: true },
@@ -68,34 +68,37 @@ test("all seven commands and both trace modes execute against one combined snaps
     }
   ];
 
-  for (const item of cases) {
-    const run = createOptions(
-      item.command,
-      new Map(item.options ?? []),
-      snapshot
-    );
-    assert.equal(await runMfCommand(run.options), 0, item.expected);
-    if (item.compactStatus) {
-      assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
-    } else if (item.expected === "mf remote status") {
-      assert.deepEqual(Object.keys(run.outputValue()), ["consumer", "remote"]);
-    } else if (item.expected === "mf shared status") {
-      assert.deepEqual(Object.keys(run.outputValue()), ["shared"]);
-      assert.equal(
-        run.outputValue().shared.default.react["18.3.1"].loaded,
-        true
+  for (const commandName of ["mf", "vmok"]) {
+    for (const item of cases) {
+      const expected = item.expected.replace(/^mf(?=\s|$)/, commandName);
+      const run = createOptions(
+        [commandName, ...item.command.slice(1)],
+        new Map(item.options ?? []),
+        snapshot
       );
-    } else if (item.traceOperation !== undefined) {
-      assert.equal(run.outputValue().traces[0].operation, item.traceOperation);
-      assert.ok(Array.isArray(run.outputValue().traces[0].lifecycle));
-      assert.equal(run.outputValue().command, undefined);
-      assert.equal(run.outputValue().selection, undefined);
-    } else {
-      assert.equal(run.outputValue().command, item.expected);
-      assert.equal(run.outputValue().compatibility, undefined);
-      assert.equal(run.outputValue().capability, undefined);
+      assert.equal(await runMfCommand(run.options), 0, expected);
+      if (item.compactStatus) {
+        assert.deepEqual(Object.keys(run.outputValue()), ["instances", "shared"]);
+      } else if (item.expected === "mf remote status") {
+        assert.deepEqual(Object.keys(run.outputValue()), ["consumer", "remote"]);
+      } else if (item.expected === "mf shared status") {
+        assert.deepEqual(Object.keys(run.outputValue()), ["shared"]);
+        assert.equal(
+          run.outputValue().shared.default.react["18.3.1"].loaded,
+          true
+        );
+      } else if (item.traceOperation !== undefined) {
+        assert.equal(run.outputValue().traces[0].operation, item.traceOperation);
+        assert.ok(Array.isArray(run.outputValue().traces[0].lifecycle));
+        assert.equal(run.outputValue().command, undefined);
+        assert.equal(run.outputValue().selection, undefined);
+      } else {
+        assert.equal(run.outputValue().command, expected);
+        assert.equal(run.outputValue().compatibility, undefined);
+        assert.equal(run.outputValue().capability, undefined);
+      }
+      assert.doesNotThrow(() => JSON.parse(JSON.stringify(run.outputValue())));
     }
-    assert.doesNotThrow(() => JSON.parse(JSON.stringify(run.outputValue())));
   }
 });
 

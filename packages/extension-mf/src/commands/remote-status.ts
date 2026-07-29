@@ -1,4 +1,5 @@
 import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
+import { mfCommandName } from "../cli/identity.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { createRemoteStatusResult } from "../remote/results.js";
 import { remoteStatusCommandMetadata } from "./metadata.js";
@@ -9,7 +10,8 @@ export const remoteStatusCommand: MfCommandDefinition = {
   async run({ options, positionals }) {
     const remote = singleTarget(positionals, remoteStatusCommandMetadata, {
       required: true,
-      label: "remote status"
+      label: "remote status",
+      commandName: mfCommandName(options)
     });
     const name = option(options.args.options, "mf");
     const instanceRef = option(options.args.options, "instance");
@@ -18,6 +20,6 @@ export const remoteStatusCommand: MfCommandDefinition = {
       ...(name === undefined ? {} : { name }),
       ...(instanceRef === undefined ? {} : { instanceRef })
     });
-    return presentCommandResult(result);
+    return presentCommandResult(result, options);
   }
 };

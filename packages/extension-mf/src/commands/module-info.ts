@@ -1,8 +1,12 @@
 import { createModuleInfoResult } from "../results.js";
 import { MfCommandError } from "../cli/errors.js";
+import { mfCommandName } from "../cli/identity.js";
 import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { moduleInfoCommandMetadata } from "./metadata.js";
+import {
+  moduleInfoCommandMetadata,
+  renderMfCommandUsage
+} from "./metadata.js";
 
 export const moduleInfoCommand: MfCommandDefinition = {
   metadata: moduleInfoCommandMetadata,
@@ -12,7 +16,10 @@ export const moduleInfoCommand: MfCommandDefinition = {
         code: "MF_COMMAND_USAGE_INVALID",
         kind: "validation",
         message: "module-info accepts at most one remote name.",
-        hint: `Run \`${moduleInfoCommandMetadata.usage}\`.`
+        hint: `Run \`${renderMfCommandUsage(
+          moduleInfoCommandMetadata.usage,
+          mfCommandName(options)
+        )}\`.`
       });
     }
     const remote = positionals[0];
@@ -27,7 +34,7 @@ export const moduleInfoCommand: MfCommandDefinition = {
       },
       remote
     );
-    return presentCommandResult(result);
+    return presentCommandResult(result, options);
   }
 };
 

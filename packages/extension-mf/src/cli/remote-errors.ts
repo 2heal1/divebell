@@ -3,8 +3,11 @@ import type { RemoteSelectionCandidate } from "../remote/types.js";
 import { MfCommandError } from "./errors.js";
 import { createCommandPresenter } from "./presenter.js";
 
-export function remoteCoreErrorToCommandError(error: RemoteCoreError): MfCommandError {
-  const presenter = createCommandPresenter(["divebell", "mf"]);
+export function remoteCoreErrorToCommandError(
+  error: RemoteCoreError,
+  commandName = "mf"
+): MfCommandError {
+  const presenter = createCommandPresenter(["divebell", commandName]);
   return new MfCommandError({
     code: error.code,
     kind: error.kind,

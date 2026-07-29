@@ -20,7 +20,10 @@ const packageArchiveName = `${
 }-${packageJson.version}.tgz`;
 
 test("extension manifest is valid and implementation stays lazy", async () => {
-  const extension = (await import(pathToFileURL(resolve(packageRoot, "dist/extension.js")).href)).default;
+  const extensionModule = await import(
+    pathToFileURL(resolve(packageRoot, "dist/extension.js")).href
+  );
+  const extension = extensionModule.default;
   const validated = validateExtension(extension);
   assert.equal(validated.name, "mf");
   assert.deepEqual(validated.commands.map((command) => command.name), ["mf"]);
@@ -46,6 +49,74 @@ test("extension manifest is valid and implementation stays lazy", async () => {
     JSON.stringify(commandReferences),
     /divebell mf trace|divebell mf remote check|divebell mf preload trace/
   );
+
+  const vmok = validateExtension(extensionModule.createMfExtension({
+    name: "vmok",
+    commandName: "vmok",
+    displayName: "Vmok"
+  }));
+  assert.equal(vmok.name, "vmok");
+  assert.equal(vmok.displayName, "Vmok");
+  assert.deepEqual(vmok.commands.map((command) => command.name), ["vmok"]);
+  assert.equal(typeof vmok.hooks.open, "function");
+  assert.ok(
+    vmok.commands[0].commandReferences.every((reference) =>
+      reference.usage.startsWith("divebell vmok ")
+    )
+  );
+  assert.doesNotMatch(
+    JSON.stringify(vmok.commands[0].commandReferences),
+    /divebell mf/
+  );
+});
+
+test("configured extension exposes complete vmok help and routing guidance", async () => {
+  const { createMfExtension } = await import(
+    pathToFileURL(resolve(packageRoot, "dist/extension.js")).href
+  );
+  const cli = createDivebellCli({
+    extensions: [createMfExtension({
+      name: "vmok",
+      commandName: "vmok",
+      displayName: "Vmok"
+    })]
+  });
+
+  let rootHelp = "";
+  const rootHelpExitCode = await cli.run(["--help"], {
+    stdout: { write(chunk) { rootHelp += chunk; } },
+    stderr: { write() {} }
+  });
+  assert.equal(rootHelpExitCode, 0);
+  assert.match(rootHelp, /divebell vmok/);
+  assert.doesNotMatch(rootHelp, /divebell mf/);
+
+  let commandHelp = "";
+  const commandHelpExitCode = await cli.run(["vmok", "--help"], {
+    stdout: { write(chunk) { commandHelp += chunk; } },
+    stderr: { write() {} }
+  });
+  assert.equal(commandHelpExitCode, 0);
+  for (const command of implementedMfCommandMetadata) {
+    assert.match(
+      commandHelp,
+      new RegExp(escapeRegExp(
+        command.usage.replace("divebell mf", "divebell vmok")
+      ))
+    );
+  }
+  assert.doesNotMatch(commandHelp, /divebell mf/);
+
+  let commandError = "";
+  const commandExitCode = await cli.run(["vmok"], {
+    stdout: { write(chunk) { commandError += chunk; } },
+    stderr: { write() {} }
+  });
+  assert.equal(commandExitCode, 1);
+  const parsedError = JSON.parse(commandError);
+  assert.match(parsedError.message, /^vmok requires a subcommand/);
+  assert.match(parsedError.error.hint, /divebell vmok status/);
+  assert.doesNotMatch(parsedError.error.hint, /divebell mf/);
 });
 
 test("public build output has no external runtime imports or embedded MF CLI guidance", () => {
@@ -148,7 +219,11 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.equal(packageJson.divebell.extensions[0], "./dist/extension.js");
     assert.equal(packageJson.exports["."].import, "./dist/package.js");
     assert.equal(packageJson.exports["./core"].import, "./dist/public.js");
-    assert.deepEqual(Object.keys(packageJson.exports), [".", "./core"]);
+    assert.equal(packageJson.exports["./extension"].import, "./dist/extension.js");
+    assert.deepEqual(
+      Object.keys(packageJson.exports),
+      [".", "./core", "./extension"]
+    );
 
     const extracted = join(outputDirectory, "extracted");
     mkdirSync(extracted);
@@ -220,11 +295,15 @@ test("packed archive supports real package-name imports for public API and exten
       "-e",
       `const extension = await import("@divebell/extension-mf");
        const api = await import("@divebell/extension-mf/core");
+       const extensionFactory = await import("@divebell/extension-mf/extension");
        const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterGlobalShared", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteStatus", "createRemoteTraceResult", "createRemoteStatusResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
        if ("formatRemoteTrace" in api || "formatRemoteStatus" in api) process.exit(5);
-       if (extension.default?.name !== "mf") process.exit(3);`
+       if (extension.default?.name !== "mf") process.exit(3);
+       if (typeof extensionFactory.createMfExtension !== "function") process.exit(6);
+       const vmok = extensionFactory.createMfExtension({ commandName: "vmok" });
+       if (vmok.name !== "vmok" || vmok.commands?.[0]?.name !== "vmok") process.exit(7);`
     ], {
       cwd: tempDirectory,
       encoding: "utf8"

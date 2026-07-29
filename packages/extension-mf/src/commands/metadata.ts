@@ -5,6 +5,23 @@ export interface MfCommandMetadata {
   description: string;
 }
 
+export function renderMfCommandUsage(
+  usage: string,
+  commandName: string
+): string {
+  return usage.replace(/^divebell mf(?=\s|$)/, `divebell ${commandName}`);
+}
+
+export function createMfCommandMetadata(
+  commandName: string
+): MfCommandMetadata[] {
+  return implementedMfCommandMetadata.map((metadata) => ({
+    ...metadata,
+    usage: renderMfCommandUsage(metadata.usage, commandName),
+    summaryUsage: renderMfCommandUsage(metadata.summaryUsage, commandName)
+  }));
+}
+
 export const statusCommandMetadata = {
   path: ["status"],
   usage: "divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]",

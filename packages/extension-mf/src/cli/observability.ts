@@ -3,6 +3,7 @@ import type { CliExtensionRunOptions } from "@divebell/cli";
 import { readMfObservability } from "../reader.js";
 import type { BrowserObservabilitySnapshot } from "../types.js";
 import { MfCommandError } from "./errors.js";
+import { mfCommandName } from "./identity.js";
 
 export async function readCommandSnapshot(
   options: CliExtensionRunOptions,
@@ -34,7 +35,10 @@ export async function readCommandSnapshot(
   return readResult.snapshot;
 }
 
-export function presentCommandResult(result: unknown): unknown {
+export function presentCommandResult(
+  result: unknown,
+  options: CliExtensionRunOptions
+): unknown {
   if (!isRecord(result)) return result;
   const presented = { ...result };
   delete presented.compatibility;
@@ -48,7 +52,23 @@ export function presentCommandResult(result: unknown): unknown {
   if (presented.command === "mf remote status") {
     return presentRemoteStatusResult(presented);
   }
-  return presented;
+  return presentResultCommandName(presented, mfCommandName(options));
+}
+
+function presentResultCommandName(
+  result: Record<string, unknown>,
+  commandName: string
+): Record<string, unknown> {
+  if (
+    typeof result.command !== "string" ||
+    !result.command.startsWith("mf ")
+  ) {
+    return result;
+  }
+  return {
+    ...result,
+    command: `${commandName}${result.command.slice(2)}`
+  };
 }
 
 function presentRemoteStatusResult(

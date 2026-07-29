@@ -1,4 +1,5 @@
 import { MfCommandError } from "../cli/errors.js";
+import { mfCommandName } from "../cli/identity.js";
 import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import {
@@ -7,13 +8,20 @@ import {
 } from "../cli/shared.js";
 import { createSharedTraceResult } from "../shared/trace.js";
 import type { PresentedSharedTraceResult, SharedTraceResult } from "../shared/types.js";
-import { sharedTraceCommandMetadata } from "./metadata.js";
+import {
+  renderMfCommandUsage,
+  sharedTraceCommandMetadata
+} from "./metadata.js";
 
 export const sharedTraceCommand: MfCommandDefinition = {
   metadata: sharedTraceCommandMetadata,
   async run({ options, positionals }) {
+    const commandName = mfCommandName(options);
     if (positionals.length > 1) {
-      throw usageError("shared trace accepts at most one package name.");
+      throw usageError(
+        "shared trace accepts at most one package name.",
+        commandName
+      );
     }
     const snapshot = await readCommandSnapshot(options);
     let result: ReturnType<typeof createSharedTraceResult>;
@@ -27,15 +35,18 @@ export const sharedTraceCommand: MfCommandDefinition = {
         ...selectedOption(options.args.options, "trace-id", "traceId")
       });
     } catch (error) {
-      sharedCoreErrorToCommandError(error);
+      sharedCoreErrorToCommandError(error, commandName);
     }
-    const presented = presentCandidates(result);
-    return presentCommandResult(presented);
+    const presented = presentCandidates(result, commandName);
+    return presentCommandResult(presented, options);
   }
 };
 
-function presentCandidates(result: SharedTraceResult): PresentedSharedTraceResult {
-  const presenter = createSharedCommandPresenter(["divebell", "mf"]);
+function presentCandidates(
+  result: SharedTraceResult,
+  commandName: string
+): PresentedSharedTraceResult {
+  const presenter = createSharedCommandPresenter(["divebell", commandName]);
   return {
     ...result,
     candidates: result.candidates.map((candidate) => ({
@@ -52,12 +63,15 @@ function presentCandidates(result: SharedTraceResult): PresentedSharedTraceResul
   };
 }
 
-function usageError(message: string): MfCommandError {
+function usageError(message: string, commandName: string): MfCommandError {
   return new MfCommandError({
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${sharedTraceCommandMetadata.usage}\`.`
+    hint: `Run \`${renderMfCommandUsage(
+      sharedTraceCommandMetadata.usage,
+      commandName
+    )}\`.`
   });
 }
 

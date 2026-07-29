@@ -1,15 +1,22 @@
 import type { RoleFilter } from "../types.js";
 import { createStatusResult } from "../results.js";
 import { MfCommandError } from "../cli/errors.js";
+import { mfCommandName } from "../cli/identity.js";
 import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
-import { statusCommandMetadata } from "./metadata.js";
+import {
+  renderMfCommandUsage,
+  statusCommandMetadata
+} from "./metadata.js";
 
 export const statusCommand: MfCommandDefinition = {
   metadata: statusCommandMetadata,
   async run({ options, positionals }) {
     if (positionals.length > 1) {
-      throw usageError("status accepts at most one name.");
+      throw usageError(
+        "status accepts at most one name.",
+        mfCommandName(options)
+      );
     }
     const rawRole = option(options.args.options, "role");
     if (rawRole !== undefined && rawRole !== "consumer" && rawRole !== "producer") {
@@ -31,16 +38,16 @@ export const statusCommand: MfCommandDefinition = {
     }, {
       verbose
     });
-    return presentCommandResult(result);
+    return presentCommandResult(result, options);
   }
 };
 
-function usageError(message: string): MfCommandError {
+function usageError(message: string, commandName: string): MfCommandError {
   return new MfCommandError({
     code: "MF_COMMAND_USAGE_INVALID",
     kind: "validation",
     message,
-    hint: `Run \`${statusCommandMetadata.usage}\`.`
+    hint: `Run \`${renderMfCommandUsage(statusCommandMetadata.usage, commandName)}\`.`
   });
 }
 

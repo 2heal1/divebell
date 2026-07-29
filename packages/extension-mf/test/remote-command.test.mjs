@@ -161,26 +161,28 @@ test("remote trace keeps a failed lifecycle result and its related resource erro
   assert.doesNotMatch(JSON.stringify(output), /demo-secret|token=/);
 });
 
-test("same-name MF instances return copyable command candidates", async () => {
+test("same-name MF instances return branded command candidates", async () => {
   const first = consumer({ instanceRef: "mf-1", name: "host" });
   const second = consumer({ instanceRef: "mf-2", name: "host" });
   const state = stateWithConsumer({ instances: [first, second], relationships: [] });
-  const run = createOptions(
-    ["mf", "remote", "trace", "shop/Button"],
-    new Map([["mf", ["host"]]]),
-    browserRead(state, [
-      loadTrace({ traceId: "trace-a", instanceRef: "mf-1" }),
-      loadTrace({ traceId: "trace-b", instanceRef: "mf-2", base: 2000 })
-    ])
-  );
-  await assert.rejects(
-    () => runMfCommand(run.options),
-    (error) => error.code === "MF_CONSUMER_AMBIGUOUS" &&
-      error.data.candidates[0].command ===
-        'divebell mf remote trace "shop/Button" --instance "mf-1"' &&
-      error.data.candidates[1].command ===
-        'divebell mf remote trace "shop/Button" --instance "mf-2"'
-  );
+  for (const commandName of ["mf", "vmok"]) {
+    const run = createOptions(
+      [commandName, "remote", "trace", "shop/Button"],
+      new Map([["mf", ["host"]]]),
+      browserRead(state, [
+        loadTrace({ traceId: "trace-a", instanceRef: "mf-1" }),
+        loadTrace({ traceId: "trace-b", instanceRef: "mf-2", base: 2000 })
+      ])
+    );
+    await assert.rejects(
+      () => runMfCommand(run.options),
+      (error) => error.code === "MF_CONSUMER_AMBIGUOUS" &&
+        error.data.candidates[0].command ===
+          `divebell ${commandName} remote trace "shop/Button" --instance "mf-1"` &&
+        error.data.candidates[1].command ===
+          `divebell ${commandName} remote trace "shop/Button" --instance "mf-2"`
+    );
+  }
 });
 
 test("concurrent traces return copyable --trace-id candidates", async () => {

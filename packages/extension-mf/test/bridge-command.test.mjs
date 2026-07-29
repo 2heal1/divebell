@@ -132,6 +132,20 @@ test("same-name MF instances return instanceRef commands instead of selecting th
       'divebell mf bridge trace --instance "mf-2"'
     ]
   );
+
+  const vmokRun = createOptions(
+    ["vmok", "bridge", "trace"],
+    new Map([["mf", ["host"]], ["json", ["true"]]]),
+    browserValue
+  );
+  assert.equal(await runMfCommand(vmokRun.options), 0);
+  assert.deepEqual(
+    vmokRun.outputValue().instanceCandidates.map((candidate) => candidate.command),
+    [
+      'divebell vmok bridge trace --instance "mf-1"',
+      'divebell vmok bridge trace --instance "mf-2"'
+    ]
+  );
 });
 
 test("unavailable bridgeTrace is not reported as absence of Bridge usage", async () => {

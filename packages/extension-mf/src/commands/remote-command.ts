@@ -2,11 +2,12 @@ import type { CliExtensionRunOptions } from "@divebell/cli";
 
 import { MfCommandError } from "../cli/errors.js";
 import type { MfCommandMetadata } from "./metadata.js";
+import { renderMfCommandUsage } from "./metadata.js";
 
 export function singleTarget(
   positionals: string[],
   metadata: MfCommandMetadata,
-  options: { required?: boolean; label: string }
+  options: { commandName?: string; required?: boolean; label: string }
 ): string | undefined {
   if (positionals.length > 1 || (options.required === true && positionals.length !== 1)) {
     throw new MfCommandError({
@@ -15,7 +16,10 @@ export function singleTarget(
       message: options.required === true
         ? `${options.label} requires exactly one remote.`
         : `${options.label} accepts at most one target.`,
-      hint: `Run \`${metadata.usage}\`.`
+      hint: `Run \`${renderMfCommandUsage(
+        metadata.usage,
+        options.commandName ?? "mf"
+      )}\`.`
     });
   }
   return positionals[0];

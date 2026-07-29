@@ -196,35 +196,39 @@ test("removed trace routes do not silently fall back to a new command", async ()
   }
 });
 
-test("MF presenter preserves status and module-info candidate commands", async () => {
+test("candidate commands use the invoked mf or vmok command name", async () => {
   const duplicateState = runtimeState({
     instances: [
       instance({ instanceRef: "mf-1", name: "host", role: "consumer" }),
       instance({ instanceRef: "mf-2", name: "host", role: "consumer" })
     ]
   });
-  const statusRun = createOptions(
-    ["mf", "status", "host"],
-    new Map(),
-    browserRead(duplicateState)
-  );
-  await assert.rejects(
-    () => runMfCommand(statusRun.options),
-    (error) => error.code === "MF_INSTANCE_NAME_AMBIGUOUS" &&
-      error.data.candidates[0].command === 'divebell mf status --instance "mf-1"'
-  );
+  for (const commandName of ["mf", "vmok"]) {
+    const statusRun = createOptions(
+      [commandName, "status", "host"],
+      new Map(),
+      browserRead(duplicateState)
+    );
+    await assert.rejects(
+      () => runMfCommand(statusRun.options),
+      (error) => error.code === "MF_INSTANCE_NAME_AMBIGUOUS" &&
+        error.data.candidates[0].command ===
+          `divebell ${commandName} status --instance "mf-1"`
+    );
 
-  const moduleRun = createOptions(
-    ["mf", "module-info"],
-    new Map([["instance", ["stale-ref"]]]),
-    browserRead(duplicateState)
-  );
-  await assert.rejects(
-    () => runMfCommand(moduleRun.options),
-    (error) => error.code === "MF_INSTANCE_REF_NOT_FOUND" &&
-      /--role consumer/.test(error.hint) &&
-      error.data.candidates[0].command === 'divebell mf module-info --instance "mf-1"'
-  );
+    const moduleRun = createOptions(
+      [commandName, "module-info"],
+      new Map([["instance", ["stale-ref"]]]),
+      browserRead(duplicateState)
+    );
+    await assert.rejects(
+      () => runMfCommand(moduleRun.options),
+      (error) => error.code === "MF_INSTANCE_REF_NOT_FOUND" &&
+        /--role consumer/.test(error.hint) &&
+        error.data.candidates[0].command ===
+          `divebell ${commandName} module-info --instance "mf-1"`
+    );
+  }
 });
 
 test("representative status selectors and module-info still route and produce JSON", async () => {

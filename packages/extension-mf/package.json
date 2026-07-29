@@ -21,6 +21,11 @@
       "types": "./dist/public.d.ts",
       "import": "./dist/public.js",
       "default": "./dist/public.js"
+    },
+    "./extension": {
+      "types": "./dist/extension.d.ts",
+      "import": "./dist/extension.js",
+      "default": "./dist/extension.js"
     }
   },
   "divebell": {

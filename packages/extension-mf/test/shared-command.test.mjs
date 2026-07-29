@@ -151,6 +151,17 @@ test("ambiguous shared trace returns copyable operation commands", async () => {
     'divebell mf shared trace "react" --instance "mf-1" --scope "default" --operation "op-a"'
   );
 
+  const vmokRun = createOptions(
+    ["vmok", "shared", "trace", "react"],
+    new Map(),
+    browserRead(state, reports)
+  );
+  assert.equal(await runMfCommand(vmokRun.options), 0);
+  assert.equal(
+    vmokRun.outputValue().candidates[0].command,
+    'divebell vmok shared trace "react" --instance "mf-1" --scope "default" --operation "op-a"'
+  );
+
   const textRun = createOptions(
     ["mf", "shared", "trace", "react"],
     new Map(),

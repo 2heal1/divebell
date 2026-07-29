@@ -1,16 +1,22 @@
 import { MfCommandError } from "../cli/errors.js";
+import { mfCommandName } from "../cli/identity.js";
 import { presentCommandResult, readCommandSnapshot } from "../cli/observability.js";
 import type { MfCommandDefinition } from "../cli/router.js";
 import { createRemoteTraceResult } from "../remote/results.js";
-import { remoteTraceCommandMetadata } from "./metadata.js";
+import {
+  remoteTraceCommandMetadata,
+  renderMfCommandUsage
+} from "./metadata.js";
 import { remoteSelectors, singleTarget } from "./remote-command.js";
 
 export const remoteTraceCommand: MfCommandDefinition = {
   metadata: remoteTraceCommandMetadata,
   async run({ options, positionals }) {
-    rejectSharedOptions(options.args.options);
+    const commandName = mfCommandName(options);
+    rejectSharedOptions(options.args.options, commandName);
     const target = singleTarget(positionals, remoteTraceCommandMetadata, {
-      label: "remote trace"
+      label: "remote trace",
+      commandName
     });
     const preload = booleanOption(options.args.options, "preload");
     const snapshot = await readCommandSnapshot(options);
@@ -19,11 +25,14 @@ export const remoteTraceCommand: MfCommandDefinition = {
       preload ? "preload" : "load",
       remoteSelectors(options, target)
     );
-    return presentCommandResult(result);
+    return presentCommandResult(result, options);
   }
 };
 
-function rejectSharedOptions(options: Map<string, string[]>): void {
+function rejectSharedOptions(
+  options: Map<string, string[]>,
+  commandName: string
+): void {
   const optionName = ["shared", "scope", "operation"].find((name) =>
     options.has(name)
   );
@@ -32,7 +41,10 @@ function rejectSharedOptions(options: Map<string, string[]>): void {
     code: "MF_COMMAND_OPTION_INVALID",
     kind: "validation",
     message: `--${optionName} is not available for remote traces.`,
-    hint: `Use \`${remoteTraceCommandMetadata.usage}\` or run \`divebell mf shared trace [package]\`.`
+    hint: `Use \`${renderMfCommandUsage(
+      remoteTraceCommandMetadata.usage,
+      commandName
+    )}\` or run \`divebell ${commandName} shared trace [package]\`.`
   });
 }
 

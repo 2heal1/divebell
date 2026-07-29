@@ -1,25 +1,41 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
 
-import { implementedMfCommandMetadata } from "./commands/metadata.js";
+import { createMfCommandMetadata } from "./commands/metadata.js";
 
-const extension = {
-  schemaVersion: 1,
-  name: "mf",
-  displayName: "Module Federation",
-  description: "Inspect safe Module Federation observability state from the current page.",
-  commands: [{
-    name: "mf",
-    commandReferences: implementedMfCommandMetadata.map((command) => ({
-      category: "External Extensions" as const,
-      usage: command.usage,
-      description: command.description
-    })),
-    run: async (options) => await (await import("./index.js")).runMfCommand(options)
-  }],
-  hooks: {
-    open: async ({ args }) =>
-      await (await import("./open.js")).openMfObservability(args)
-  }
-} satisfies DivebellExtensionDefinition;
+export interface CreateMfExtensionOptions {
+  name?: string;
+  commandName?: string;
+  displayName?: string;
+  description?: string;
+}
+
+export function createMfExtension(
+  options: CreateMfExtensionOptions = {}
+): DivebellExtensionDefinition {
+  const commandName = options.commandName ?? "mf";
+  return {
+    schemaVersion: 1,
+    name: options.name ?? commandName,
+    displayName: options.displayName ?? "Module Federation",
+    description: options.description ??
+      "Inspect safe Module Federation observability state from the current page.",
+    commands: [{
+      name: commandName,
+      commandReferences: createMfCommandMetadata(commandName).map((command) => ({
+        category: "External Extensions" as const,
+        usage: command.usage,
+        description: command.description
+      })),
+      run: async (runOptions) =>
+        await (await import("./index.js")).runMfCommand(runOptions)
+    }],
+    hooks: {
+      open: async ({ args }) =>
+        await (await import("./open.js")).openMfObservability(args)
+    }
+  };
+}
+
+const extension = createMfExtension();
 
 export default extension;

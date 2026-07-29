@@ -48,14 +48,17 @@ export function createSharedCommandPresenter(
   };
 }
 
-export function sharedCoreErrorToCommandError(error: unknown): never {
+export function sharedCoreErrorToCommandError(
+  error: unknown,
+  commandName = "mf"
+): never {
   if (!(error instanceof MfCoreError) || !error.code.startsWith("MF_SHARED_")) throw error;
-  const presenter = createSharedCommandPresenter(["divebell", "mf"]);
+  const presenter = createSharedCommandPresenter(["divebell", commandName]);
   throw new MfCommandError({
     code: error.code,
     kind: error.kind,
     message: error.message,
-    hint: "Repeat `divebell mf shared trace` with one of the current --instance values.",
+    hint: `Repeat \`divebell ${commandName} shared trace\` with one of the current --instance values.`,
     data: {
       ...error.facts,
       ...(error.candidates.length === 0

@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const repositoryDirectory = resolve(packageDirectory, "../..");
+const repositoryDirectory = resolve(packageDirectory, "../../..");
 
 test("packs the command skill with the recording extension", () => {
   const outputDirectory = mkdtempSync(join(tmpdir(), "divebell-imitate-package-"));

@@ -9,10 +9,11 @@ const packageDirs = [
   "rspack-plugin",
   "cli",
   "modern-plugin",
-  "extension-code-usage",
-  "extension-troubleshooting",
-  "extension-imitate",
-  "extension-memory"
+  "extensions/code-usage",
+  "extensions/troubleshooting",
+  "extensions/imitate",
+  "extensions/memory",
+  "extensions/mf"
 ];
 
 for (const dir of packageDirs) {

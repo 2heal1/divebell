@@ -6,7 +6,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/2heal1/divebell.git",
-    "directory": "packages/extension-memory"
+    "directory": "packages/extensions/memory"
   },
   "author": "2heal1",
   "main": "./dist/index.js",

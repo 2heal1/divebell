@@ -15,11 +15,10 @@ export async function readDivebellReleasePackages(repositoryRoot) {
   }
 
   const packagesRoot = resolve(repositoryRoot, "packages");
-  const entries = await readdir(packagesRoot, { withFileTypes: true });
+  const packageDirectories = await readPackageDirectories(packagesRoot);
   const packageByName = new Map();
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const relativePath = `packages/${entry.name}/package.json`;
+  for (const directory of packageDirectories) {
+    const relativePath = `${directory}/package.json`;
     let packageJson;
     try {
       packageJson = JSON.parse(await readFile(resolve(repositoryRoot, relativePath), "utf8"));
@@ -31,7 +30,7 @@ export async function readDivebellReleasePackages(repositoryRoot) {
       throw new Error(`Duplicate workspace package name: ${packageJson.name}`);
     }
     packageByName.set(packageJson.name, {
-      directory: `packages/${entry.name}`,
+      directory,
       relativePath,
       packageJson
     });
@@ -71,4 +70,18 @@ export async function readDivebellReleasePackages(repositoryRoot) {
       packageJson: item.packageJson
     };
   });
+}
+
+async function readPackageDirectories(packagesRoot) {
+  const entries = await readdir(packagesRoot, { withFileTypes: true });
+  const directories = entries
+    .filter((entry) => entry.isDirectory() && entry.name !== "extensions")
+    .map((entry) => `packages/${entry.name}`);
+  const extensionEntries = await readdir(resolve(packagesRoot, "extensions"), {
+    withFileTypes: true
+  });
+  for (const entry of extensionEntries) {
+    if (entry.isDirectory()) directories.push(`packages/extensions/${entry.name}`);
+  }
+  return directories;
 }

@@ -113,6 +113,7 @@ jobs:
           git rm -- "${changeset_files[@]}"
           git add \
             packages/*/package.json \
+            packages/extensions/*/package.json \
             skills/record-divebell-workflow/references/divebell-cli-runtime.json
           git commit -m "chore: prepare Divebell ${VERSION}"
           git push origin "$branch"

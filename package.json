@@ -10,7 +10,7 @@
     "pnpm": ">=10.18.1 <11"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/*\" --workspace-concurrency=1 --if-present run build",
+    "build": "pnpm -r --filter \"./packages/*\" --filter \"./packages/extensions/*\" --workspace-concurrency=1 --if-present run build",
     "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
     "test:e2e": "pnpm run build && pnpm run test:e2e:run",
     "test:e2e:run": "pnpm --filter @divebell/test run test:e2e",
@@ -26,8 +26,8 @@
     "version:packages": "changeset version",
     "release:npm:check": "node ./scripts/npm-release.mjs check",
     "release:npm:pack": "node ./scripts/npm-release.mjs pack",
-    "sync:mf-observability": "node ./packages/extension-mf/scripts/sync-mf-debug.mjs sync",
-    "check:mf-observability": "node ./packages/extension-mf/scripts/sync-mf-debug.mjs check",
+    "sync:mf-observability": "node ./packages/extensions/mf/scripts/sync-mf-debug.mjs sync",
+    "check:mf-observability": "node ./packages/extensions/mf/scripts/sync-mf-debug.mjs check",
     "test:release-script": "node --test ./scripts/divebell-release-packages.test.mjs ./scripts/npm-release-utils.test.mjs ./scripts/release-change-files.test.mjs ./scripts/release-pr-body-utils.test.mjs ./scripts/release-workflow.test.mjs ./scripts/validate-divebell-release-state.test.mjs",
     "publish:packages": "node ./scripts/npm-release.mjs publish",
     "version:check": "node ./scripts/check-package-versions.mjs",

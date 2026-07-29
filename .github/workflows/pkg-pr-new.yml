@@ -35,7 +35,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm --filter . --filter "./packages/*" install --frozen-lockfile
+        run: pnpm --filter . --filter "./packages/*" --filter "./packages/extensions/*" install --frozen-lockfile
 
       - name: Run checks
         run: pnpm check
@@ -53,8 +53,8 @@ jobs:
           packages/rspack-plugin
           packages/cli
           packages/modern-plugin
-          packages/extension-code-usage
-          packages/extension-troubleshooting
-          packages/extension-imitate
-          packages/extension-memory
-          packages/extension-mf
+          packages/extensions/code-usage
+          packages/extensions/troubleshooting
+          packages/extensions/imitate
+          packages/extensions/memory
+          packages/extensions/mf

@@ -9,7 +9,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const repositoryDirectory = resolve(packageDirectory, "../..");
+const repositoryDirectory = resolve(packageDirectory, "../../..");
 const cliEntry = resolve(repositoryDirectory, "packages/cli/dist/index.js");
 const extensionEntry = resolve(packageDirectory, "dist/extension.js");
 

@@ -12,10 +12,10 @@
       "@divebell/chunk-map": ["packages/chunk-map/src/index.ts"],
       "@divebell/cli": ["packages/cli/src/index.ts"],
       "@divebell/modern-plugin": ["packages/modern-plugin/src/index.ts"],
-      "@divebell/extension-mf/core": ["packages/extension-mf/src/public.ts"],
-      "@divebell/extension-mf/test": ["packages/extension-mf/src/test-commands.ts"],
+      "@divebell/extension-mf/core": ["packages/extensions/mf/src/public.ts"],
+      "@divebell/extension-mf/test": ["packages/extensions/mf/src/test-commands.ts"],
       "@divebell/extension-troubleshooting/test": [
-        "packages/extension-troubleshooting/src/test-commands.ts"
+        "packages/extensions/troubleshooting/src/test-commands.ts"
       ],
       "@divebell/test": ["packages/test/src/index.ts"],
       "@divebell/test/internal": ["packages/test/src/internal.ts"]
@@ -26,8 +26,8 @@
     { "path": "../../packages/core" },
     { "path": "../../packages/bridge" },
     { "path": "../../packages/cli" },
-    { "path": "../../packages/extension-mf" },
-    { "path": "../../packages/extension-troubleshooting" },
+    { "path": "../../packages/extensions/mf" },
+    { "path": "../../packages/extensions/troubleshooting" },
     { "path": "../../packages/test" }
   ]
 }

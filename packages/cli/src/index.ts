@@ -76,11 +76,16 @@ export {
   resolveExtensionsDirectory
 } from "./commands/installed.js";
 export type {
+  ExtensionAddResult,
+  ExtensionListResult,
   ExtensionPackageDownloader,
   InstalledExtensionPackage,
   InstalledExtensionPackageRegistry,
   DivebellExtensionPackageManifest
 } from "./commands/installed.js";
+export type { OpenPageResult } from "./commands/browser.js";
+export type { StopResult } from "./commands/bridge.js";
+export type { RuntimesResult } from "./commands/runtime.js";
 export {
   createCommandOutput,
   createError,

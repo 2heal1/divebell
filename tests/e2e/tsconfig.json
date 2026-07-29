@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "../../packages/test/dist/e2e",
+    "tsBuildInfoFile": "../../packages/test/dist/e2e/tsconfig.tsbuildinfo",
+    "types": ["node"],
+    "paths": {
+      "@divebell/core": ["packages/core/src/index.ts"],
+      "@divebell/bridge": ["packages/bridge/src/index.ts"],
+      "@divebell/chunk-map": ["packages/chunk-map/src/index.ts"],
+      "@divebell/cli": ["packages/cli/src/index.ts"],
+      "@divebell/modern-plugin": ["packages/modern-plugin/src/index.ts"],
+      "@divebell/extension-mf/core": ["packages/extension-mf/src/public.ts"],
+      "@divebell/extension-mf/test": ["packages/extension-mf/src/test-commands.ts"],
+      "@divebell/extension-troubleshooting/test": [
+        "packages/extension-troubleshooting/src/test-commands.ts"
+      ],
+      "@divebell/test": ["packages/test/src/index.ts"],
+      "@divebell/test/internal": ["packages/test/src/internal.ts"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/bridge" },
+    { "path": "../../packages/cli" },
+    { "path": "../../packages/extension-mf" },
+    { "path": "../../packages/extension-troubleshooting" },
+    { "path": "../../packages/test" }
+  ]
+}

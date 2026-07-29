@@ -26,6 +26,11 @@
       "types": "./dist/extension.d.ts",
       "import": "./dist/extension.js",
       "default": "./dist/extension.js"
+    },
+    "./test": {
+      "types": "./dist/test-commands.d.ts",
+      "import": "./dist/test-commands.js",
+      "default": "./dist/test-commands.js"
     }
   },
   "divebell": {

@@ -1,31 +1,53 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
+import {
+  createServer,
+  type Server,
+  type ServerResponse
+} from "node:http";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
+import type { StatusInstance } from "@divebell/extension-mf/core";
+import { mfTestCommands } from "@divebell/extension-mf/test";
+import { divebellTestCommands } from "@divebell/test";
+
+import type { DivebellE2eContext } from "../support/types.js";
+
+interface ListeningServer {
+  origin: string;
+  close(): Promise<void>;
+}
+
+interface MfHostProviderFixture {
+  hostUrl: string;
+  providerManifestUrl: string;
+  providerRemoteEntryUrl: string;
+  close(): Promise<void>;
+}
 
 const hostIndexUrl = new URL("./fixtures/host/index.html", import.meta.url);
 const providerRemoteEntryUrl = new URL("./fixtures/provider/remoteEntry.js", import.meta.url);
 
-export function registerMfExtensionE2e({ getEnvironment }) {
+export function registerMfExtensionE2e({
+  getEnvironment
+}: DivebellE2eContext): void {
   test("runs installed MF Extension commands against a real host/provider fixture", async () => {
     const environment = getEnvironment();
     const fixture = await createMfHostProviderFixture();
     let opened = false;
     try {
-      const openResult = await environment.runCli([
-        "open",
-        fixture.hostUrl,
-        "--no-bridge",
-        "--session",
-        "mf-e2e"
-      ]);
+      const openResult = await environment.runCli(
+        divebellTestCommands.open(fixture.hostUrl, {
+          noBridge: true,
+          session: "mf-e2e"
+        })
+      );
       opened = true;
 
       assert.equal(openResult.json.status, "ok");
       assert.equal(openResult.json.data.url, fixture.hostUrl);
       assert.equal(openResult.json.data.bridgeUrl, null);
 
-      const status = await environment.runCli(["mf", "status"]);
+      const status = await environment.runCli(mfTestCommands.status());
       assert.equal(status.json.status, "ok");
       assert.deepEqual(status.json.data.instances.map(instanceSummary), [
         {
@@ -47,17 +69,16 @@ export function registerMfExtensionE2e({ getEnvironment }) {
         }
       ]);
       assert.equal(
-        status.json.data.shared.default.react["18.3.1"].from,
+        status.json.data.shared.default?.react?.["18.3.1"]?.from,
         "divebell_e2e_host"
       );
 
-      const moduleInfo = await environment.runCli([
-        "mf",
-        "module-info",
-        "provider",
-        "--instance",
-        "mf-host-1"
-      ]);
+      const moduleInfo = await environment.runCli(
+        mfTestCommands.moduleInfo({
+          remote: "provider",
+          instance: "mf-host-1"
+        })
+      );
       assert.equal(moduleInfo.json.status, "ok");
       assert.equal(moduleInfo.json.data.remote.status, "loaded");
       assert.equal(moduleInfo.json.data.remote.producerInstanceRef, "mf-provider-1");
@@ -65,14 +86,12 @@ export function registerMfExtensionE2e({ getEnvironment }) {
       assert.equal(moduleInfo.json.data.remote.remoteEntryUrl, fixture.providerRemoteEntryUrl);
       assert.deepEqual(moduleInfo.json.data.remote.exposes, ["./Widget"]);
 
-      const remoteStatus = await environment.runCli([
-        "mf",
-        "remote",
-        "status",
-        "provider",
-        "--instance",
-        "mf-host-1"
-      ]);
+      const remoteStatus = await environment.runCli(
+        mfTestCommands.remoteStatus({
+          remote: "provider",
+          instance: "mf-host-1"
+        })
+      );
       assert.equal(remoteStatus.json.status, "ok");
       assert.equal(remoteStatus.json.data.consumer.instanceRef, "mf-host-1");
       assert.equal(remoteStatus.json.data.remote.name, "divebell_e2e_provider");
@@ -83,14 +102,20 @@ export function registerMfExtensionE2e({ getEnvironment }) {
       assert.deepEqual(remoteStatus.json.data.remote.loadedExposes, ["./Widget"]);
     } finally {
       if (opened) {
-        await environment.runCli(["stop"]);
+        await environment.runCli(divebellTestCommands.stop());
       }
       await fixture.close();
     }
   });
 }
 
-function instanceSummary(instance) {
+function instanceSummary(instance: StatusInstance): {
+  instanceRef: string;
+  name: string;
+  role: StatusInstance["role"];
+  active: boolean;
+  consumers: StatusInstance["consumers"];
+} {
   return {
     instanceRef: instance.instanceRef,
     name: instance.name,
@@ -100,9 +125,9 @@ function instanceSummary(instance) {
   };
 }
 
-async function createMfHostProviderFixture() {
+async function createMfHostProviderFixture(): Promise<MfHostProviderFixture> {
   const providerRemoteEntrySource = await readFile(providerRemoteEntryUrl, "utf8");
-  let providerOrigin;
+  let providerOrigin = "";
   const provider = await listen(createServer((request, response) => {
     if (request.url === "/remoteEntry.js") {
       send(response, 200, providerRemoteEntrySource, "text/javascript; charset=utf-8");
@@ -160,8 +185,8 @@ async function createMfHostProviderFixture() {
   };
 }
 
-function listen(server) {
-  return new Promise((resolvePromise, reject) => {
+function listen(server: Server): Promise<ListeningServer> {
+  return new Promise<ListeningServer>((resolvePromise, reject) => {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => {
       server.off("error", reject);
@@ -172,7 +197,7 @@ function listen(server) {
       }
       resolvePromise({
         origin: `http://127.0.0.1:${address.port}`,
-        close: () => new Promise((closeResolve, closeReject) => {
+        close: () => new Promise<void>((closeResolve, closeReject) => {
           server.close((error) => {
             if (error) closeReject(error);
             else closeResolve();
@@ -183,11 +208,16 @@ function listen(server) {
   });
 }
 
-function sendJson(response, value) {
+function sendJson(response: ServerResponse, value: unknown): void {
   send(response, 200, `${JSON.stringify(value)}\n`, "application/json; charset=utf-8");
 }
 
-function send(response, statusCode, body, contentType) {
+function send(
+  response: ServerResponse,
+  statusCode: number,
+  body: string,
+  contentType: string
+): void {
   response.writeHead(statusCode, {
     "content-type": contentType,
     "cache-control": "no-store"

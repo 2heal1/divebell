@@ -224,6 +224,10 @@ importers:
       '@divebell/extension-troubleshooting':
         specifier: workspace:^
         version: link:../extension-troubleshooting
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   packages/modern-plugin:
     dependencies:

@@ -9,7 +9,8 @@ import {
   stopManagedBridge,
   type BridgeProcessController,
   type BridgeStarter,
-  type BridgeStateStore
+  type BridgeStateStore,
+  type StopBridgeResult
 } from "../features/bridge/process.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import type { CliOperationLogStore } from "../utils/operation-log.js";
@@ -20,6 +21,20 @@ import {
 } from "../utils/command.js";
 import { createBridgeUrl } from "../features/bridge/config.js";
 import { applyOpenContextDefaults } from "../open-context.js";
+
+export interface StopResult {
+  browser: {
+    command: "stop";
+    exitCode: number;
+  };
+  bridge:
+    | {
+        bridgeUrl: null;
+        stopped: false;
+        reason: string;
+      }
+    | StopBridgeResult;
+}
 
 export async function runStartCommand(
   args: ParsedCliArgs,
@@ -58,7 +73,7 @@ export async function runStopCommand(
       !commandArgs.options.has("port")
     ? null
     : createBridgeUrl(commandArgs);
-  const bridgeResult = bridgeUrl === null
+  const bridgeResult: StopResult["bridge"] = bridgeUrl === null
     ? {
         bridgeUrl: null,
         stopped: false,
@@ -69,10 +84,11 @@ export async function runStopCommand(
         stateStore: createFileBridgeStateStore(bridgeUrl, bridgeStateDirectory),
         ...createOptionalObjectProperty("processController", bridgeProcessController)
       });
-  writeJson(stdout, {
+  const result: StopResult = {
     browser: { command: "stop", exitCode: browserStopResult.exitCode },
     bridge: bridgeResult
-  });
+  };
+  writeJson(stdout, result);
   return 0;
 }
 

@@ -8,6 +8,26 @@ export interface VerifyVisibilityResult {
   details?: Record<string, unknown>;
 }
 
+export interface VerifyWaitTarget {
+  id: string;
+  type: string;
+  status: string;
+  source?: string;
+  data?: unknown;
+}
+
+export interface VerifyWaitResult {
+  success: boolean;
+  condition: {
+    id: string;
+    status: string;
+    where?: Array<{ path: string; equals: unknown }>;
+  };
+  snapshot?: unknown;
+  target?: VerifyWaitTarget;
+  reason?: string;
+}
+
 export interface VerifyCommandResult {
   runtime?: unknown;
   result: {
@@ -26,7 +46,7 @@ export interface VerifyCommandResult {
       nextStep?: string;
       businessTargetHints?: string[];
     };
-    wait: unknown;
+    wait: VerifyWaitResult;
     visibility: VerifyVisibilityResult;
   };
 }

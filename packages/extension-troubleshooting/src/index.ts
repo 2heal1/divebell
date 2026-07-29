@@ -2,10 +2,13 @@ import type {
   CliExtensionRunOptions,
   ParsedCliArgs
 } from "@divebell/cli";
+import type { VerifyCommandResult } from "./types.js";
 
 import { runVerifyCommand } from "./verify.js";
 
-export async function runVerifyCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
+export async function runVerifyCliCommand(
+  options: CliExtensionRunOptions
+): Promise<VerifyCommandResult> {
   const targetId = requireArgument(options.args, 1, "target id");
   const status = requireArgument(options.args, 2, "status");
   const where = parseWhereOptions(options.args);
@@ -28,6 +31,11 @@ export async function runVerifyCliCommand(options: CliExtensionRunOptions): Prom
   return result;
 }
 export { createVerifyCommandFailure, runVerifyCommand } from "./verify.js";
+export { verifyTestCommand } from "./test-commands.js";
+export type {
+  VerifyTestCommandError,
+  VerifyTestCommandOptions
+} from "./test-commands.js";
 export type * from "./types.js";
 
 function requireArgument(args: ParsedCliArgs, index: number, label: string): string {

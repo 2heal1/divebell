@@ -54,6 +54,16 @@ export interface InstalledExtensionPackageRegistry {
   packages: InstalledExtensionPackage[];
 }
 
+export interface ExtensionListResult {
+  extensionsDirectory: string;
+  packages: InstalledExtensionPackage[];
+}
+
+export interface ExtensionAddResult {
+  status: "installed" | "updated";
+  package: InstalledExtensionPackage;
+}
+
 export interface ExtensionPackageDownloader {
   download(spec: string, destinationDirectory: string): Promise<string>;
 }
@@ -73,10 +83,11 @@ export async function runExtensionsCommand(options: RunExtensionsCommandOptions)
 
   if (action === "list") {
     const registry = await readInstalledExtensionPackageRegistry(extensionsDirectory);
-    writeJson(options.stdout, {
+    const result: ExtensionListResult = {
       extensionsDirectory,
       packages: registry.packages
-    });
+    };
+    writeJson(options.stdout, result);
     return 0;
   }
 
@@ -131,10 +142,7 @@ export async function addExtensionPackage(options: {
   spec: string;
   extensionsDirectory: string;
   downloader: ExtensionPackageDownloader;
-}): Promise<{
-  status: "installed" | "updated";
-  package: InstalledExtensionPackage;
-}> {
+}): Promise<ExtensionAddResult> {
   const extensionsDirectory = resolve(options.extensionsDirectory);
   await mkdir(extensionsDirectory, { recursive: true });
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-extension-package-"));

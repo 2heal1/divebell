@@ -1,11 +1,51 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import vm from "node:vm";
 
-const browserStatePath = process.env.DIVEBELL_TEST_BROWSER_STATE;
-const commands = new Set(["open", "goto", "eval", "close"]);
+const browserStatePath = process.env.DIVEBELL_TEST_BROWSER_STATE ?? "";
+const commands = new Set<BrowserCommand>(["open", "goto", "eval", "close"]);
+
+type BrowserCommand = "open" | "goto" | "eval" | "close";
+
+interface BrowserElement {
+  id: string;
+  textContent: string;
+}
+
+interface ObservabilityReader {
+  getRuntimeState(): unknown;
+  getReports(options?: { limit?: number }): unknown[];
+}
+
+interface FederationGlobal {
+  __SHARE__?: Record<string, unknown>;
+  __OBSERVABILITY__?: Record<string, ObservabilityReader>;
+}
+
+interface TestBrowserContext extends vm.Context {
+  __MF_OBSERVABILITY_INJECTION__?: unknown;
+  __DIVEBELL_MF_PROXY_INJECTION__?: unknown;
+  __DIVEBELL_MF_E2E_RENDERED__?: unknown;
+  __FEDERATION__?: FederationGlobal;
+  globalThis: TestBrowserContext;
+  window: TestBrowserContext;
+  self: TestBrowserContext;
+  top: TestBrowserContext;
+  eval(source: unknown): unknown;
+}
+
+interface BrowserState {
+  url: string;
+  selectedScope?: string;
+  marker?: unknown;
+  proxyMarker?: unknown;
+  runtimeState: unknown;
+  reports: unknown[];
+  share: Record<string, unknown>;
+  rendered: unknown;
+}
 
 try {
-  if (browserStatePath === undefined || browserStatePath.length === 0) {
+  if (browserStatePath.length === 0) {
     throw new Error("DIVEBELL_TEST_BROWSER_STATE is required.");
   }
   await run(process.argv.slice(2));
@@ -14,10 +54,10 @@ try {
   process.exitCode = 1;
 }
 
-async function run(argv) {
-  const commandIndex = argv.findIndex((arg) => commands.has(arg));
+async function run(argv: string[]): Promise<void> {
+  const commandIndex = argv.findIndex(isBrowserCommand);
   const command = commandIndex < 0 ? undefined : argv[commandIndex];
-  if (command === undefined) {
+  if (!isBrowserCommand(command)) {
     throw new Error(`Unsupported test agent-browser command: ${argv.join(" ")}`);
   }
   const args = argv.slice(commandIndex);
@@ -37,7 +77,7 @@ async function run(argv) {
   }
 }
 
-async function open(args) {
+async function open(args: string[]): Promise<void> {
   const { url, initScriptPath } = parseOpenArgs(args);
   if (url === undefined) {
     throw new Error("The test agent-browser open command requires a URL.");
@@ -61,12 +101,18 @@ async function open(args) {
   await writeFile(browserStatePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
 }
 
-async function evaluate(args) {
+async function evaluate(args: string[]): Promise<void> {
   const script = args[1];
   if (script === undefined) {
     throw new Error("The test agent-browser eval command requires a script.");
   }
-  const state = JSON.parse(await readFile(browserStatePath, "utf8"));
+  const parsedState = JSON.parse(
+    await readFile(browserStatePath, "utf8")
+  ) as unknown;
+  if (!isBrowserState(parsedState)) {
+    throw new Error("The test agent-browser state file is invalid.");
+  }
+  const state = parsedState;
   const context = createBrowserContext(state.url);
   context.__MF_OBSERVABILITY_INJECTION__ = state.marker;
   context.__DIVEBELL_MF_PROXY_INJECTION__ = state.proxyMarker;
@@ -92,9 +138,12 @@ async function evaluate(args) {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }
 
-function parseOpenArgs(args) {
-  let url;
-  let initScriptPath;
+function parseOpenArgs(args: string[]): {
+  url: string | undefined;
+  initScriptPath: string | undefined;
+} {
+  let url: string | undefined;
+  let initScriptPath: string | undefined;
   for (let index = 1; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--init-script") {
@@ -106,15 +155,15 @@ function parseOpenArgs(args) {
       index += 1;
       continue;
     }
-    if (!arg.startsWith("--") && url === undefined) {
+    if (arg !== undefined && !arg.startsWith("--") && url === undefined) {
       url = arg;
     }
   }
   return { url, initScriptPath };
 }
 
-function createBrowserContext(url) {
-  const elements = new Map();
+function createBrowserContext(url: string): TestBrowserContext {
+  const elements = new Map<string, BrowserElement>();
   const context = vm.createContext({
     console: {
       log() {},
@@ -141,7 +190,7 @@ function createBrowserContext(url) {
     },
     location: new URL(url),
     document: {
-      getElementById(id) {
+      getElementById(id: string) {
         if (!elements.has(id)) {
           elements.set(id, { id, textContent: "" });
         }
@@ -149,7 +198,7 @@ function createBrowserContext(url) {
       }
     },
     postMessage() {}
-  });
+  }) as TestBrowserContext;
   context.globalThis = context;
   context.window = context;
   context.self = context;
@@ -160,7 +209,11 @@ function createBrowserContext(url) {
   return context;
 }
 
-async function runScript(context, source, label) {
+async function runScript(
+  context: TestBrowserContext,
+  source: string,
+  label: string
+): Promise<unknown> {
   try {
     const result = vm.runInContext(source, context, {
       filename: label,
@@ -174,13 +227,13 @@ async function runScript(context, source, label) {
   }
 }
 
-function readInlineScripts(html) {
+function readInlineScripts(html: string): string[] {
   return [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-    .map((match) => match[1])
+    .flatMap((match) => match[1] === undefined ? [] : [match[1]])
     .filter((source) => source.trim().length > 0);
 }
 
-function readSerializableBrowserState(context) {
+function readSerializableBrowserState(context: TestBrowserContext): BrowserState {
   const value = vm.runInContext(`(() => {
     const readers = globalThis.__FEDERATION__?.__OBSERVABILITY__ ?? {};
     const scopes = Object.keys(readers);
@@ -200,7 +253,7 @@ function readSerializableBrowserState(context) {
     timeout: 5_000
   });
 
-  if (value.runtimeState === undefined) {
+  if (!isBrowserState(value)) {
     throw new Error("The opened test page did not expose an MF observability reader.");
   }
   if (value.rendered !== "provider widget rendered") {
@@ -209,12 +262,30 @@ function readSerializableBrowserState(context) {
   return cloneJson(value);
 }
 
-function cloneJson(value) {
-  return JSON.parse(JSON.stringify(value));
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function isThenable(value) {
+function isThenable(value: unknown): value is PromiseLike<unknown> {
   return value !== null &&
     (typeof value === "object" || typeof value === "function") &&
+    "then" in value &&
     typeof value.then === "function";
+}
+
+function isBrowserCommand(value: string | undefined): value is BrowserCommand {
+  return value !== undefined && commands.has(value as BrowserCommand);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isBrowserState(value: unknown): value is BrowserState {
+  return isRecord(value)
+    && typeof value.url === "string"
+    && value.runtimeState !== undefined
+    && Array.isArray(value.reports)
+    && isRecord(value.share)
+    && "rendered" in value;
 }

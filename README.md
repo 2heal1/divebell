@@ -130,15 +130,13 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 [Runtime SDK API](./docs/runtime-sdk-api.md)
 
-## Extension Scenarios
+## Examples
 
-These scenarios are supplementary examples for optional Extensions. Start with
-the Extension closest to your task, run the complete workflow, and then explore
-the command and integration details behind it.
+These are the official Extension examples maintained in this repository. Each
+example links to a complete workflow covering what it demonstrates, how to run
+it, and how to verify the result.
 
-### Use an Extension
-
-#### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
+### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
 Demonstrate a workflow in a visible browser and let the Agent generate, run, and verify a JavaScript replay from the operated elements and event sequence. Spoken intent is optional.
 
@@ -148,17 +146,15 @@ Demonstrate a workflow in a visible browser and let the Agent generate, run, and
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-#### [Check memory growth across a real page journey](./docs/memory-analysis.md)
+### [Check memory growth across a real page journey](./docs/memory-analysis.md)
 
 Repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
 
-#### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
+### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
 
 Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
 
-### Build an Extension
-
-#### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
+### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
 
 Create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
 

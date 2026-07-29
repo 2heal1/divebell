@@ -128,14 +128,12 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md)
 
-## Extension 场景
+## Examples
 
-下面只列补充 Extension 能力的场景。可以先选择与当前任务最接近的 Extension 跑通完整
-流程，再查看背后的命令和接入方式。
+这里是仓库里官方维护的 Extension 示例。每个示例都对应一条完整流程，说明它展示什么、
+如何运行以及如何验证结果。
 
-### 使用 Extension
-
-#### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
+### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
 在可见浏览器中演示一次流程，让 Agent 根据操作元素和事件顺序生成、运行并验证 JavaScript 回放；语音说明是可选项。
 
@@ -145,17 +143,15 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
-#### [检查真实页面流程中的内存增长](./docs/memory-analysis.zh-CN.md)
+### [检查真实页面流程中的内存增长](./docs/memory-analysis.zh-CN.md)
 
 重复同一段用户操作，判断 JavaScript 内存、DOM 节点和事件监听器是否持续增长。
 
-#### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
+### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
 
 对比首屏与后续操作，查看分块、源码文件和依赖包的加载与执行情况。
 
-### 构建 Extension
-
-#### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
+### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
 
 创建一个本地 Extension，读取当前页面并参与页面打开、技术栈识别和关闭流程。
 

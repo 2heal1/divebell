@@ -1,6 +1,7 @@
 import { after, before } from "node:test";
 
 import { registerCliE2e } from "./cli/scenario.mjs";
+import { registerMfExtensionE2e } from "./extension-mf/scenario.mjs";
 import { registerTroubleshootingExtensionE2e } from "./extension-troubleshooting/scenario.mjs";
 import { DivebellTestEnvironment } from "./support/environment.mjs";
 
@@ -25,3 +26,4 @@ const context = {
 
 registerCliE2e(context);
 registerTroubleshootingExtensionE2e(context);
+registerMfExtensionE2e(context);

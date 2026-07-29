@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -22,6 +22,9 @@ export class DivebellTestEnvironment {
     this.#directory = directory;
     this.extensionsDirectory = join(directory, "extensions");
     this.archivesDirectory = join(directory, "archives");
+    this.browserExecutable = join(directory, "agent-browser.mjs");
+    this.browserProfileDirectory = join(directory, "browser-profile");
+    this.browserStateFile = join(directory, "browser-state.json");
     this.npmCacheDirectory = join(directory, "npm-cache");
     this.projectDirectory = join(directory, "project");
     this.officialExtensions = [];
@@ -47,6 +50,9 @@ export class DivebellTestEnvironment {
         ...process.env,
         DIVEBELL_DISABLE_EXTENSIONS: "0",
         DIVEBELL_EXTENSIONS_DIR: this.extensionsDirectory,
+        DIVEBELL_AGENT_BROWSER_EXECUTABLE: this.browserExecutable,
+        DIVEBELL_BROWSER_PROFILE_DIR: this.browserProfileDirectory,
+        DIVEBELL_TEST_BROWSER_STATE: this.browserStateFile,
         ...options.env
       }
     });
@@ -78,9 +84,11 @@ export class DivebellTestEnvironment {
     await Promise.all([
       mkdir(this.extensionsDirectory, { recursive: true }),
       mkdir(this.archivesDirectory, { recursive: true }),
+      mkdir(this.browserProfileDirectory, { recursive: true }),
       mkdir(this.npmCacheDirectory, { recursive: true }),
       mkdir(this.projectDirectory, { recursive: true })
     ]);
+    await this.#prepareBrowserExecutable();
     this.officialExtensions = await discoverOfficialExtensions();
 
     for (const extension of this.officialExtensions) {
@@ -100,6 +108,16 @@ export class DivebellTestEnvironment {
         throw new Error(`Installed ${installed.json.package?.name ?? "unknown package"} instead of ${extension.name}.`);
       }
     }
+  }
+
+  async #prepareBrowserExecutable() {
+    const fakeBrowserUrl = new URL("./fake-agent-browser.mjs", import.meta.url);
+    await writeFile(
+      this.browserExecutable,
+      `#!/usr/bin/env node\nimport ${JSON.stringify(fakeBrowserUrl.href)};\n`,
+      "utf8"
+    );
+    await chmod(this.browserExecutable, 0o755);
   }
 }
 

@@ -40,6 +40,9 @@ jobs:
       - name: Run package checks
         run: pnpm run version:check && pnpm run build && pnpm run test:release-script && pnpm run test
 
+      - name: Run Divebell end-to-end acceptance
+        run: pnpm run test:e2e:run
+
       - name: Pack npm release packages
         env:
           NPM_PACKAGES_OUTPUT: ${{ runner.temp }}/npm-packages

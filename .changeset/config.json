@@ -14,7 +14,8 @@
       "@divebell/extension-troubleshooting",
       "@divebell/extension-imitate",
       "@divebell/extension-memory",
-      "@divebell/extension-mf"
+      "@divebell/extension-mf",
+      "@divebell/test"
     ]
   ],
   "linked": [],

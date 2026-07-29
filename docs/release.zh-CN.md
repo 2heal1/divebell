@@ -14,6 +14,8 @@ Divebell 使用一条受控流程发布所有公开包和浏览器录制运行�
 - `@divebell/extension-troubleshooting`；
 - `@divebell/extension-imitate`；
 - `@divebell/extension-memory`；
+- `@divebell/extension-mf`；
+- `@divebell/test`；
 - `record-divebell-workflow` 使用的运行包。
 
 GitHub Release 包含录制运行包和它的 SHA-256 校验文件。所有 npm 包成功发布后，GitHub Release 才会公开。
@@ -43,7 +45,7 @@ pnpm run publish:packages -- --output-dir /tmp/divebell-npm-bootstrap --otp 1234
 
 把 `123456` 替换成维护者验证器当前显示的一次性验证码。这个值会传给每一次 `npm publish`；如果全部包发完前验证码已经失效，换一个新验证码重新执行即可，已经成功发布的版本会自动跳过。
 
-发版脚本会按依赖顺序检查全部公开包，已经存在的版本会跳过。四个新的 `@divebell/extension-*` 包创建成功后，为它们配置 GitHub Actions 可信发布；如果旧包还没有配置，也可以执行下面的完整清单：
+发版脚本会按依赖顺序检查全部公开包，已经存在的版本会跳过。新包创建成功后，为它配置 GitHub Actions 可信发布；如果旧包还没有配置，也可以执行下面的完整清单：
 
 ```bash
 npm trust github @divebell/core --repo 2heal1/divebell --file release.yml --allow-publish --yes
@@ -56,6 +58,8 @@ npm trust github @divebell/extension-code-usage --repo 2heal1/divebell --file re
 npm trust github @divebell/extension-troubleshooting --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-imitate --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-memory --repo 2heal1/divebell --file release.yml --allow-publish --yes
+npm trust github @divebell/extension-mf --repo 2heal1/divebell --file release.yml --allow-publish --yes
+npm trust github @divebell/test --repo 2heal1/divebell --file release.yml --allow-publish --yes
 ```
 
 `--file` 只填写 `release.yml`，不要填写完整的 `.github/workflows/` 路径。仓库当前发版流程已经使用 GitHub 托管环境，并授予 npm OIDC 所需的 `id-token: write` 权限。

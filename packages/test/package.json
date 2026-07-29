@@ -1,0 +1,39 @@
+{
+  "name": "@divebell/test",
+  "version": "0.0.2",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/2heal1/divebell.git",
+    "directory": "packages/test"
+  },
+  "author": "2heal1",
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "bin": {
+    "divebell-test": "./bin/divebell-test.js"
+  },
+  "files": [
+    "bin/**/*.js",
+    "src/**/*.mjs",
+    "test/**/*.mjs"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test:e2e": "node ./bin/divebell-test.js"
+  },
+  "dependencies": {
+    "@divebell/bridge": "workspace:^",
+    "@divebell/cli": "workspace:^",
+    "@divebell/core": "workspace:^",
+    "@divebell/extension-code-usage": "workspace:^",
+    "@divebell/extension-imitate": "workspace:^",
+    "@divebell/extension-memory": "workspace:^",
+    "@divebell/extension-mf": "workspace:^",
+    "@divebell/extension-troubleshooting": "workspace:^"
+  }
+}

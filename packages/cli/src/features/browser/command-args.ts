@@ -38,6 +38,19 @@ export function createBrowserCommandArgs(args: ParsedCliArgs): string[] {
       requireCommandArgument(args, 2, "value")
     ];
   }
+  if (command === "focus") {
+    return ["focus", normalizeAgentBrowserTarget(requireCommandArgument(args, 1, "ref or selector"))];
+  }
+  if (command === "press") {
+    return ["press", requireCommandArgument(args, 1, "key or shortcut")];
+  }
+  if (command === "select") {
+    return [
+      "select",
+      normalizeAgentBrowserTarget(requireCommandArgument(args, 1, "ref or selector")),
+      requireCommandArgument(args, 2, "value or label")
+    ];
+  }
   if (command === "eval") {
     return ["eval", requireCommandArgument(args, 1, "eval script")];
   }

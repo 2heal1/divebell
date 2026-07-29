@@ -29,6 +29,9 @@ English version: [Divebell CLI Reference](cli-reference.md)
 - `divebell page-snapshot` - 读取当前页面快照，包括可操作元素的引用。
 - `divebell click <ref|selector|text>` - 通过页面引用、选择器或可见文字点击元素。
 - `divebell fill <ref|selector> <value>` - 通过页面引用或选择器填写输入框。
+- `divebell focus <ref|selector>` - 通过页面引用或选择器聚焦元素。
+- `divebell press <key>` - 在当前聚焦的元素中按下键盘按键或组合键。
+- `divebell select <ref|selector> <value>` - 通过值或文字选择原生下拉框选项。
 - `divebell eval <script>` - 在页面中运行脚本，也可以通过 --file <path> 读取脚本文件。
 - `divebell wait-eval <script> [--timeout <ms>]` - 轮询页面表达式，直到它返回 true。
 - `divebell get-window <path>` - 读取 window/globalThis 上的点分路径，例如 gf_data_v1。

@@ -104,7 +104,7 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 | --- | --- | --- | --- |
 | `@divebell/extension-memory` | `divebell memory` | 重复真实页面流程，检查内存、DOM 节点和监听器是否持续增长。 | [内存分析](./docs/memory-analysis.zh-CN.md) |
 | `@divebell/extension-code-usage` | `divebell code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
-| `@divebell/extension-imitate` | `divebell record` | 录制一次浏览器操作并生成可以继续检查的脚本草稿。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
+| `@divebell/extension-imitate` | `divebell record` | 录制一次浏览器操作并生成可执行、可验证的 JavaScript 回放。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
 | `@divebell/extension-troubleshooting` | `divebell verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md) |
 | `@divebell/modern-plugin` | Modern.js runtime plugin（WIP） | 规划中的框架状态接入。在包含所需生命周期 hook 的 Modern.js 新版本发布前，请勿正式接入。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | 通过 MF observability 记录 consumer、remote、manifest、remoteEntry、expose、shared 依赖和运行时错误证据。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
@@ -138,7 +138,9 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 #### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 
-在可见浏览器中演示一次流程，让 Agent 根据操作记录、页面上下文和可选语音说明生成脚本草稿。
+在可见浏览器中演示一次流程，让 Agent 根据操作元素和事件顺序生成、运行并验证 JavaScript 回放；语音说明是可选项。
+
+> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后让 Agent 执行 `divebell record --skill`，并按返回的 skill 开始录制。
 
 **演示视频**
 

@@ -137,99 +137,267 @@ function createDomSnapshotScript(): string {
   return [
     "(() => {",
     "  const html = document.documentElement?.outerHTML ?? '';",
+    "  const normalize = (value) => String(value ?? '').replace(/\\s+/g, ' ').trim();",
+    "  const signals = Array.from(document.querySelectorAll('output,[role=alert],[role=status],[aria-live],dialog'))",
+    "    .map((element) => ({",
+    "      selector: element.id ? `#${CSS.escape(element.id)}` : element.tagName.toLowerCase(),",
+    "      text: normalize(element.textContent).slice(0, 500)",
+    "    }))",
+    "    .filter((item) => item.text.length > 0)",
+    "    .slice(0, 20);",
     "  return {",
     "    url: location.href,",
     "    title: document.title,",
     "    capturedAt: Date.now(),",
     "    htmlLength: html.length,",
-    "    html: html.slice(0, 200000)",
+    "    html: html.slice(0, 200000),",
+    "    signals",
     "  };",
     "})()"
   ].join("\n");
 }
 
 export function createInteractionRecorderScript(recordingStartedAtMs: number): string {
-  return [
-    "(() => {",
-    "  const marker = " + JSON.stringify(RECORD_EVENT_CONSOLE_MARKER) + ";",
-    "  const startedAt = " + JSON.stringify(recordingStartedAtMs) + ";",
-    "  if (window.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__) return;",
-    "  window.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__ = true;",
-    "  const textOf = (value, max = 160) => String(value ?? '').replace(/\\s+/g, ' ').trim().slice(0, max);",
-    "  const cssEscape = (value) => {",
-    "    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);",
-    "    return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\\\$&');",
-    "  };",
-    "  const selectorFor = (element) => {",
-    "    if (!(element instanceof Element)) return undefined;",
-    "    const test = (selector) => {",
-    "      try { return document.querySelectorAll(selector).length === 1; } catch { return false; }",
-    "    };",
-    "    const id = element.getAttribute('id');",
-    "    if (id) {",
-    "      const selector = `#${cssEscape(id)}`;",
-    "      if (test(selector)) return selector;",
-    "    }",
-    "    const attrs = ['data-testid', 'data-test-id', 'aria-label', 'name', 'placeholder', 'title'];",
-    "    for (const attr of attrs) {",
-    "      const value = element.getAttribute(attr);",
-    "      if (!value) continue;",
-    "      const selector = `${element.tagName.toLowerCase()}[${attr}=${JSON.stringify(value)}]`;",
-    "      if (test(selector)) return selector;",
-    "    }",
-    "    const parts = [];",
-    "    let current = element;",
-    "    while (current && current.nodeType === 1 && current !== document.documentElement) {",
-    "      let part = current.tagName.toLowerCase();",
-    "      const parent = current.parentElement;",
-    "      if (!parent) break;",
-    "      const siblings = Array.from(parent.children).filter((item) => item.tagName === current.tagName);",
-    "      if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;",
-    "      parts.unshift(part);",
-    "      const selector = parts.join(' > ');",
-    "      if (test(selector)) return selector;",
-    "      current = parent;",
-    "    }",
-    "    return parts.join(' > ') || undefined;",
-    "  };",
-    "  const targetOf = (event) => {",
-    "    const element = event.target instanceof Element ? event.target : undefined;",
-    "    if (!element) return undefined;",
-    "    const input = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element : undefined;",
-    "    const value = input ? (input.type === 'password' ? '[redacted]' : input.value) : undefined;",
-    "    return {",
-    "      selector: selectorFor(element),",
-    "      tagName: element.tagName.toLowerCase(),",
-    "      role: element.getAttribute('role') ?? undefined,",
-    "      name: element.getAttribute('name') ?? undefined,",
-    "      inputType: input instanceof HTMLInputElement ? input.type : undefined,",
-    "      text: textOf(element.textContent),",
-    "      value",
-    "    };",
-    "  };",
-    "  const emit = (type, event, extra = {}) => {",
-    "    try {",
-    "      const entry = {",
-    "        type,",
-    "        timeMs: Math.max(0, Date.now() - startedAt),",
-    "        url: location.href,",
-    "        title: document.title,",
-    "        target: targetOf(event),",
-    "        ...extra",
-    "      };",
-    "      console.info(marker + JSON.stringify(entry));",
-    "    } catch (error) {",
-    "      console.info(marker + JSON.stringify({ type: 'recorder-error', timeMs: Math.max(0, Date.now() - startedAt), message: String(error) }));",
-    "    }",
-    "  };",
-    "  document.addEventListener('click', (event) => emit('click', event, { pointer: { x: event.clientX, y: event.clientY, button: event.button } }), true);",
-    "  document.addEventListener('input', (event) => emit('input', event), true);",
-    "  document.addEventListener('change', (event) => emit('change', event), true);",
-    "  document.addEventListener('keydown', (event) => emit('keydown', event, { key: event.key, code: event.code, altKey: event.altKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey, shiftKey: event.shiftKey }), true);",
-    "  document.addEventListener('submit', (event) => emit('submit', event), true);",
-    "  console.info(marker + JSON.stringify({ type: 'recorder-ready', timeMs: Math.max(0, Date.now() - startedAt), url: location.href, title: document.title }));",
-    "})()"
-  ].join("\n");
+  return `(${installInteractionRecorder.toString()})(${JSON.stringify(recordingStartedAtMs)}, ${JSON.stringify(RECORD_EVENT_CONSOLE_MARKER)})`;
+}
+
+function installInteractionRecorder(startedAt: number, marker: string): void {
+  const recorderWindow = window as Window & {
+    __DIVEBELL_INTERACTION_RECORDER_INSTALLED__?: boolean;
+  };
+  if (recorderWindow.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__) return;
+  recorderWindow.__DIVEBELL_INTERACTION_RECORDER_INSTALLED__ = true;
+  let sequence = 0;
+
+  const textOf = (value: unknown, max = 160): string =>
+    String(value ?? "").replace(/\s+/gu, " ").trim().slice(0, max);
+  const cssEscape = (value: string): string => {
+    if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
+    return value.replace(/[^a-zA-Z0-9_-]/gu, "\\$&");
+  };
+  const isUnique = (selector: string): boolean => {
+    try {
+      return document.querySelectorAll(selector).length === 1;
+    } catch {
+      return false;
+    }
+  };
+  const attrSelector = (element: Element, name: string, value: string): string =>
+    `${element.tagName.toLowerCase()}[${name}=${JSON.stringify(value)}]`;
+  const labelTextOf = (label: HTMLLabelElement): string => {
+    const clone = label.cloneNode(true) as HTMLLabelElement;
+    clone.querySelectorAll("input,textarea,select,button").forEach((control) => control.remove());
+    return textOf(clone.textContent);
+  };
+  const labelOf = (element: Element): string | undefined => {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLSelectElement
+    ) {
+      const label = Array.from(element.labels ?? [])
+        .map(labelTextOf)
+        .find(Boolean);
+      if (label) return label;
+    }
+    const wrappingLabel = element.closest("label");
+    const text = wrappingLabel === null ? "" : labelTextOf(wrappingLabel);
+    return text || undefined;
+  };
+  const accessibleNameOf = (element: Element, label: string | undefined): string | undefined => {
+    const name = textOf(
+      element.getAttribute("aria-label") ??
+      label ??
+      element.getAttribute("alt") ??
+      element.getAttribute("title") ??
+      element.getAttribute("placeholder") ??
+      (
+        element instanceof HTMLInputElement &&
+        ["button", "submit", "reset"].includes(element.type)
+          ? element.value
+          : undefined
+      ) ??
+      element.textContent
+    );
+    return name || undefined;
+  };
+  const cssPathFor = (element: Element): string | undefined => {
+    const parts: string[] = [];
+    let current: Element | null = element;
+    while (current && current !== document.documentElement) {
+      let part = current.tagName.toLowerCase();
+      const parent: Element | null = current.parentElement;
+      if (!parent) break;
+      const siblings = Array.from(parent.children).filter((item) => item.tagName === current?.tagName);
+      if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
+      parts.unshift(part);
+      const selector = parts.join(" > ");
+      if (isUnique(selector)) return selector;
+      current = parent;
+    }
+    return parts.join(" > ") || undefined;
+  };
+  const actionElementOf = (event: Event, type: string): Element | undefined => {
+    const path = event.composedPath().filter((item): item is Element => item instanceof Element);
+    const first = path[0];
+    if (type !== "click") return first;
+    return path.find((element) => element.matches([
+      "button",
+      "a[href]",
+      "input",
+      "select",
+      "textarea",
+      "[role=button]",
+      "[role=link]",
+      "[role=menuitem]",
+      "[role=tab]",
+      "[role=option]",
+      "[role=checkbox]",
+      "[role=radio]",
+      "[role=switch]",
+      "[onclick]"
+    ].join(","))) ?? first;
+  };
+  const targetOf = (event: Event, type: string): Record<string, unknown> | undefined => {
+    const element = actionElementOf(event, type);
+    if (!element) return undefined;
+    const tagName = element.tagName.toLowerCase();
+    const id = element.getAttribute("id") ?? undefined;
+    const testId = element.getAttribute("data-testid") ?? element.getAttribute("data-test-id") ?? undefined;
+    const ariaLabel = element.getAttribute("aria-label") ?? undefined;
+    const role = element.getAttribute("role") ?? undefined;
+    const name = element.getAttribute("name") ?? undefined;
+    const placeholder = element.getAttribute("placeholder") ?? undefined;
+    const title = element.getAttribute("title") ?? undefined;
+    const href = element.getAttribute("href") ?? undefined;
+    const label = labelOf(element);
+    const accessibleName = accessibleNameOf(element, label);
+    const text = textOf(element.textContent) || undefined;
+    const locators: Array<Record<string, string>> = [];
+    const seen = new Set<string>();
+    const addLocator = (locator: Record<string, string>): void => {
+      const key = JSON.stringify(locator);
+      if (seen.has(key)) return;
+      seen.add(key);
+      locators.push(locator);
+    };
+    const addCssLocator = (kind: string, value: string | undefined, selector: string | undefined): void => {
+      if (!value || !selector || !isUnique(selector)) return;
+      addLocator({ kind, value, selector });
+    };
+
+    addCssLocator(
+      "test-id",
+      testId,
+      testId === undefined
+        ? undefined
+        : attrSelector(element, element.hasAttribute("data-testid") ? "data-testid" : "data-test-id", testId)
+    );
+    addCssLocator("id", id, id === undefined ? undefined : `#${cssEscape(id)}`);
+    addCssLocator("aria-label", ariaLabel, ariaLabel === undefined ? undefined : attrSelector(element, "aria-label", ariaLabel));
+    if (label) addLocator({ kind: "label", value: label });
+    if (role && accessibleName) addLocator({ kind: "role", value: accessibleName, role });
+    addCssLocator("name", name, name === undefined ? undefined : attrSelector(element, "name", name));
+    addCssLocator(
+      "placeholder",
+      placeholder,
+      placeholder === undefined ? undefined : attrSelector(element, "placeholder", placeholder)
+    );
+    addCssLocator("href", href, href === undefined ? undefined : attrSelector(element, "href", href));
+    if (accessibleName && ["button", "a", "input", "select", "textarea"].includes(tagName)) {
+      addLocator({ kind: "text", value: accessibleName });
+    }
+    const cssPath = cssPathFor(element);
+    if (cssPath) addLocator({ kind: "css", value: cssPath, selector: cssPath });
+
+    const input = element instanceof HTMLInputElement ? element : undefined;
+    const textarea = element instanceof HTMLTextAreaElement ? element : undefined;
+    const select = element instanceof HTMLSelectElement ? element : undefined;
+    const contentEditable = element instanceof HTMLElement && element.isContentEditable;
+    const value = input !== undefined
+      ? (input.type === "password" ? "[redacted]" : input.type === "file" ? "[file-input]" : input.value)
+      : textarea?.value ?? select?.value ?? (contentEditable ? textOf(element.textContent, 10_000) : undefined);
+    const selector = locators.find((locator) => typeof locator.selector === "string")?.selector;
+
+    return {
+      ...(selector === undefined ? {} : { selector }),
+      locators,
+      tagName,
+      ...(text === undefined ? {} : { text }),
+      ...(value === undefined ? {} : { value }),
+      ...(role === undefined ? {} : { role }),
+      ...(name === undefined ? {} : { name }),
+      ...(input === undefined ? {} : { inputType: input.type }),
+      ...(id === undefined ? {} : { id }),
+      ...(testId === undefined ? {} : { testId }),
+      ...(ariaLabel === undefined ? {} : { ariaLabel }),
+      ...(accessibleName === undefined ? {} : { accessibleName }),
+      ...(label === undefined ? {} : { label }),
+      ...(placeholder === undefined ? {} : { placeholder }),
+      ...(title === undefined ? {} : { title }),
+      ...(href === undefined ? {} : { href }),
+      ...(input === undefined || !["checkbox", "radio"].includes(input.type) ? {} : { checked: input.checked }),
+      ...(select === undefined ? {} : {
+        selectedValues: Array.from(select.selectedOptions).map((option) => option.value)
+      }),
+      ...(contentEditable ? { contentEditable: true } : {}),
+      disabled: element.matches(":disabled") || element.getAttribute("aria-disabled") === "true"
+    };
+  };
+  const emit = (type: string, event: Event, extra: Record<string, unknown> = {}): void => {
+    try {
+      sequence += 1;
+      const timeMs = Math.max(0, Date.now() - startedAt);
+      const entry = {
+        eventId: `${timeMs}-${sequence}`,
+        sequence,
+        type,
+        timeMs,
+        url: location.href,
+        title: document.title,
+        frame: {
+          url: location.href,
+          name: window.name || undefined,
+          top: window === window.top
+        },
+        target: targetOf(event, type),
+        ...extra
+      };
+      console.info(marker + JSON.stringify(entry));
+    } catch (error) {
+      console.info(marker + JSON.stringify({
+        type: "recorder-error",
+        timeMs: Math.max(0, Date.now() - startedAt),
+        message: String(error)
+      }));
+    }
+  };
+
+  document.addEventListener("click", (event) => emit("click", event, {
+    pointer: { x: event.clientX, y: event.clientY, button: event.button }
+  }), true);
+  document.addEventListener("input", (event) => emit("input", event), true);
+  document.addEventListener("change", (event) => emit("change", event), true);
+  document.addEventListener("keydown", (event) => emit("keydown", event, {
+    key: event.key,
+    code: event.code,
+    altKey: event.altKey,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey
+  }), true);
+  document.addEventListener("submit", (event) => emit("submit", event), true);
+  console.info(marker + JSON.stringify({
+    type: "recorder-ready",
+    timeMs: Math.max(0, Date.now() - startedAt),
+    url: location.href,
+    title: document.title,
+    frame: {
+      url: location.href,
+      name: window.name || undefined,
+      top: window === window.top
+    }
+  }));
 }
 
 function parseInteractionEventsFromConsole(entries: string[]): InteractionEvent[] {

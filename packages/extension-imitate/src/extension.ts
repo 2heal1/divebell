@@ -1,10 +1,18 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
+import { fileURLToPath } from "node:url";
+
+const recordingSkillPath = fileURLToPath(
+  new URL("../skills/record-divebell-workflow/SKILL.md", import.meta.url)
+);
 
 const extension = {
   schemaVersion: 1,
   name: "record",
   commands: [{
     name: "record",
+    skill: {
+      path: recordingSkillPath
+    },
     commandReferences: [
       {
         category: "Extensions",
@@ -13,18 +21,18 @@ const extension = {
       },
       {
         category: "Extensions",
-        usage: "divebell record start [--out <path>] [--interval <ms>] [--mic]",
-        description: "Prepare a manual recording before the next divebell open; write under ./recordings when out is omitted."
+        usage: "divebell record start [--out <path>] [--interval <ms>]",
+        description: "Prepare browser and optional voice capture before the next divebell open; missing or denied audio is ignored."
       },
       {
         category: "Extensions",
         usage: "divebell record stop --out <path> [--script-out <path>] [--no-script]",
-        description: "Stop a manual recording on the current page, capture final evidence, and draft a script by default."
+        description: "Stop a manual recording, capture final evidence, and generate an executable replay and workflow by default."
       },
       {
         category: "Extensions",
         usage: "divebell record generate-script --input <path> [--out <path>]",
-        description: "Regenerate a JavaScript script draft from an existing .orrec recording."
+        description: "Regenerate an executable JavaScript replay and Agent-readable workflow from an existing .orrec recording."
       },
       {
         category: "Extensions",

@@ -69,11 +69,13 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<unk
   const pageSnapshots: PageSnapshotSample[] = [];
   const domSnapshots: DomSnapshotSample[] = [];
   const interactions: InteractionEvent[] = [];
+  const audioRequested = true;
 
   await mkdir(outputDirectory, { recursive: true });
 
   const manifest = createRecordingManifest({
     args: options.args,
+    audioRequested,
     startedAt,
     intervalMs,
     status: "prepared",
@@ -94,7 +96,7 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<unk
     outputDirectory,
     files,
     startedAt,
-    hasOption(options.args, "mic")
+    audioRequested
   );
   await appendJsonLine(join(outputDirectory, files.operations), controlOperation);
 
@@ -187,6 +189,7 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
     output: outputDirectory,
     manifest: join(outputDirectory, recording.manifest.files.manifest),
     script: generatedScript?.path,
+    workflow: generatedScript?.workflowPath,
     counts: manifest.counts
   };
 }
@@ -201,6 +204,7 @@ async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Pr
     generated: {
       ...(recording.manifest.generated ?? {}),
       script: generatedScript.relativePath,
+      workflow: generatedScript.workflowRelativePath,
       generatedAt
     }
   };
@@ -217,7 +221,8 @@ async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Pr
 
   return {
     input: inputDirectory,
-    script: generatedScript.path
+    script: generatedScript.path,
+    workflow: generatedScript.workflowPath
   };
 }
 
@@ -326,6 +331,7 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
   const endedAt = new Date();
   const manifest = createRecordingManifest({
     args: options.args,
+    audioRequested: false,
     page,
     ...createOptionalStringProperty("sessionId", sessionId),
     startedAt,
@@ -357,6 +363,7 @@ async function runRecordFixedDurationCommand(options: RecordCommandOptions): Pro
 
 function createRecordingManifest(input: {
   args: ParsedCliArgs;
+  audioRequested: boolean;
   page?: CliExtensionPageContext;
   sessionId?: string;
   startedAt: Date;
@@ -392,7 +399,7 @@ function createRecordingManifest(input: {
         status: "not-captured",
         reason: "This prototype records browser snapshots and Divebell state; continuous video capture is reserved for the next stage."
       },
-      audio: createInitialAudioCapture(input.args, input.files, input.status)
+      audio: createInitialAudioCapture(input.audioRequested, input.files, input.status)
     },
     counts: input.counts,
     files: input.files
@@ -412,17 +419,18 @@ function createOptionalGeneratedProperty(generatedScript: GeneratedScriptResult 
   return {
     generated: {
       script: generatedScript.relativePath,
+      workflow: generatedScript.workflowRelativePath,
       generatedAt: new Date().toISOString()
     }
   };
 }
 
 function createInitialAudioCapture(
-  args: ParsedCliArgs,
+  requested: boolean,
   files: RecordingFiles,
   status: "prepared" | "recording" | "completed"
 ): RecordingCaptureStatus {
-  if (!hasOption(args, "mic")) {
+  if (!requested) {
     return {
       requested: false,
       status: "not-requested",
@@ -445,7 +453,7 @@ function createInitialAudioCapture(
     file: files.audio,
     chunks: files.audioChunks,
     transcript: files.transcript,
-    reason: "Microphone capture was requested; audio chunks are written while the browser recording is active."
+    reason: "Microphone capture starts automatically; missing or denied audio never blocks the browser recording."
   };
 }
 
@@ -464,7 +472,7 @@ function createCompletedAudioCapture(files: RecordingFiles, summary: AudioCaptur
       file: files.audio,
       chunks: files.audioChunks,
       transcript: files.transcript,
-      reason: summary.reason ?? "No microphone audio chunks were captured."
+      reason: summary.reason ?? "No usable microphone audio was captured; browser replay generation continued without it."
     };
   }
   return {

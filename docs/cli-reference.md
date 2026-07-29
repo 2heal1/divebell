@@ -29,6 +29,9 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell page-snapshot` - Read the current page snapshot, including actionable element references.
 - `divebell click <ref|selector|text>` - Click an element by page reference, selector, or visible text.
 - `divebell fill <ref|selector> <value>` - Fill an input by page reference or selector.
+- `divebell focus <ref|selector>` - Focus an element by page reference or selector.
+- `divebell press <key>` - Press a keyboard key or shortcut in the currently focused element.
+- `divebell select <ref|selector> <value>` - Select an option in a native dropdown by value or label.
 - `divebell eval <script>` - Run a script in the page, or load one from --file <path>.
 - `divebell wait-eval <script> [--timeout <ms>]` - Poll a page expression until it returns true.
 - `divebell get-window <path>` - Read a dotted path from window/globalThis, such as gf_data_v1.

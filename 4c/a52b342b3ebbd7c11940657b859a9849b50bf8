@@ -1,0 +1,122 @@
+tests/e2e/cli/scenario.ts
+  s_56304f9c5492f8::t_bf308137b55266 3,5-9,11,14-18,35-39,69-74,84-95,97-101,103-106,108-113,120-129,131,135-145,147-152,154-160,175-178
+tests/e2e/cli/fixtures/runtime-sdk-demo.ts
+  s_a101c7b87ffa85::t_f4dbb67eebebfc 1-5,8-12,17-69,71-73,78,81-82,84-88,93,96-98,101,110,113-117,122-123,155,171,215,243-247,267,269-271,273,284,290,294,313-316,319,330-333,335,346-350,352,354,358,362,366
+packages/test/README.md
+  s_a101c7b87ffa85::t_714c7d51d28e76 12-15
+  s_a101c7b87ffa85::t_c563d4c8f5fa13 7-10,17-42
+tests/e2e/extension-troubleshooting/scenario.ts
+  s_012a6da480e9fb::t_894c8ecf8d127d 5-6,8-10,15-24,29,31
+  s_012a6da480e9fb::t_8d2d217ae9a459 32-34
+  s_a101c7b87ffa85::t_42ee83528c2c68 3,35-40
+pnpm-lock.yaml
+  s_56304f9c5492f8::t_54e215333cc93f 227-230
+tests/e2e/e2e.test.ts
+  s_a101c7b87ffa85::t_f24ef730984b0e 3-7,9,19
+packages/test/bin/divebell-test.js
+  s_a101c7b87ffa85::t_7eb82f917569bb 42,47
+packages/test/scripts/prepare-package.mjs
+  s_a101c7b87ffa85::t_55956d0ce8f3dc 1,3,6,11-12,15,20-40
+tests/e2e/tsconfig.json
+  s_a101c7b87ffa85::t_b4eb8cfef397b2 1-33
+packages/test/package.json
+  s_a101c7b87ffa85::t_4367c09e46cf93 25,47,58-60
+  s_a101c7b87ffa85::t_fb72d7527358e8 22-24
+  s_a101c7b87ffa85::t_7905b61f8d62d2 12-21,34-37
+tests/e2e/support/types.ts
+  s_56304f9c5492f8::t_2922a092d8e788 1-5
+tests/e2e/extension-mf/scenario.ts
+  s_a101c7b87ffa85::t_4123a6028fba2a 2-6,9-25,30-32,38-43,50,72,76-81,89-94,105,112-118,128,130,188-189,200,211,215-220
+packages/cli/src/commands/bridge.ts
+  s_a101c7b87ffa85::t_09dfaab6bee0b2 12-13,25-38,76,87,90-91
+packages/cli/src/commands/browser.ts
+  s_a101c7b87ffa85::t_67779cf8a80ac0 45-56,153,164-165
+packages/cli/src/commands/installed.ts
+  s_a101c7b87ffa85::t_cca5228600dce9 57-66,86,89-90,145
+packages/cli/src/commands/runtime.ts
+  s_a101c7b87ffa85::t_ec9afb69aa3c0f 27-32,58-59
+packages/cli/src/index.ts
+  s_a101c7b87ffa85::t_b06c4d12a9ddb5 79-80,86-88
+packages/cli/src/types/shared.ts
+  s_b79741cc0f179a::t_39138f787fbc6c 23-59
+packages/cli/src/utils/output.ts
+  s_b79741cc0f179a::t_88d5967e642c5e 2-13
+packages/extension-mf/package.json
+  s_b79741cc0f179a::t_d79c1132d88f8c 29-33
+packages/extension-mf/src/package.ts
+  s_b79741cc0f179a::t_9d927b57c913b0 3
+packages/extension-mf/src/test-commands.ts
+  s_b79741cc0f179a::t_ebb1f635925fab 1-94
+packages/extension-mf/test/package.test.mjs
+  s_a101c7b87ffa85::t_9f4c4d02d61ab2 178-179,225,228,302,310-311
+packages/extension-troubleshooting/package.json
+  s_a101c7b87ffa85::t_135a9e27687282 13-30,38-39
+packages/extension-troubleshooting/src/index.ts
+  s_a101c7b87ffa85::t_ce2dfefe07c102 5,9-11,34-38
+packages/extension-troubleshooting/src/test-commands.ts
+  s_a101c7b87ffa85::t_4ca0411c505cb3 1-77
+packages/extension-troubleshooting/src/types.ts
+  s_a101c7b87ffa85::t_318f2a8d8f34e8 11-30,49
+packages/extension-troubleshooting/src/verify.ts
+  s_a101c7b87ffa85::t_20342d6daf48af 2-7,34,129
+packages/test/src/commands.ts
+  s_b79741cc0f179a::t_ae123746519949 1-212
+packages/test/src/environment.ts
+  s_b79741cc0f179a::t_3160d8446af134 10-20,22-34,41-49,51,63,75-87,98-99,117,121,125,142-146,153-154,164,169-177,193-197,215,223,225-227,229-233,235,251,253,259-264,279-282,290,293,309-312
+packages/test/src/fake-agent-browser.ts
+  s_b79741cc0f179a::t_c6ce940f6e7bb6 4-45,48,57-58,60,80,104,109-115,141-146,158,165-166,193,201,212-216,230,232,236,256,265-266,269,272,275-291
+packages/test/src/index.ts
+  s_a101c7b87ffa85::t_741975ad08cf7b 1-4
+packages/test/src/internal.ts
+  s_a101c7b87ffa85::t_7237a3aacc22e4 1-6
+packages/test/src/package-resolution.ts
+  s_b79741cc0f179a::t_24c6a029e30597 10,12,15-18,22-24,31,43-46,50-52,55,61-64
+packages/test/src/types.ts
+  s_b79741cc0f179a::t_57ecb24c53fe6f 1-33
+packages/test/tsconfig.json
+  s_a101c7b87ffa85::t_2a5accf7d36aef 1-15
+tests/e2e/support/runtime-fixture.ts
+  s_a101c7b87ffa85::t_d1924b7811b599 1-5,8-9,14-46,48-50,54,57-60,62-66,71,74,80-84,89-90,108,113-114,131,133-135,137,148,154,158,177,180,193-196,198,209-213,215,217,221,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4ca52b342b3ebbd7c11940657b859a9849b50bf8",
+  "prompts": {},
+  "sessions": {
+    "s_012a6da480e9fb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad23-5608-7021-9a8d-75c741ac90b4",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_56304f9c5492f8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad09-45da-71d2-b61a-be9bd141881c",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_a101c7b87ffa85": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fac05-7de7-76d2-8f87-539c24ea474f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_b79741cc0f179a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fad8b-e4cf-7101-87e6-f14a7d844472",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

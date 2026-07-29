@@ -15,7 +15,7 @@ export interface DivebellDemoProps {
   config: DivebellDemoConfig;
 }
 
-type BugKind = 'remote' | 'runtime' | 'shared';
+type BugKind = 'bug' | 'performance' | 'network';
 type BugState = 'active' | 'clearing';
 type ControlMode = 'idle' | 'pointer' | 'keyboard';
 
@@ -43,10 +43,10 @@ interface MotionState {
   initialized: boolean;
 }
 
-const BUG_DETAILS: Record<BugKind, { code: string; label: string }> = {
-  remote: { code: 'RMT', label: 'Remote' },
-  runtime: { code: 'RT', label: 'Runtime' },
-  shared: { code: 'SHR', label: 'Shared' },
+const BUG_DETAILS: Record<BugKind, { label: string }> = {
+  bug: { label: 'Bug' },
+  performance: { label: 'Performance' },
+  network: { label: 'Network' },
 };
 const BUG_KINDS = Object.keys(BUG_DETAILS) as BugKind[];
 const ENVIRONMENTS: DivebellEnvironment[] = [
@@ -127,7 +127,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
   const [bugs, setBugs] = useState<BugTarget[]>([]);
   const [clearedCount, setClearedCount] = useState(0);
   const [controlMode, setControlMode] = useState<ControlMode>('idle');
-  const [lastSignal, setLastSignal] = useState('Find a bug to begin');
+  const [lastSignal, setLastSignal] = useState('Find an issue to begin');
   const [pingCycle, setPingCycle] = useState(0);
 
   const sendPing = useCallback(() => {
@@ -304,9 +304,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
         ),
       );
       setClearedCount((count) => count + hitIds.length);
-      setLastSignal(
-        `${hitLabels.join(' + ')} bug${hitIds.length > 1 ? 's' : ''} cleared`,
-      );
+      setLastSignal(`${hitLabels.join(' + ')} cleared`);
       sendPing();
 
       for (const id of hitIds) {
@@ -450,7 +448,7 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
         ref={oceanRef}
         className="db-ocean"
         tabIndex={0}
-        aria-label="Divebell bug clearing game"
+        aria-label="Divebell issue clearing game"
         aria-describedby="db-control-help"
         aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight W A S D Space"
         onKeyDown={handleKeyDown}
@@ -469,32 +467,32 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
             <span className="db-brand-mark">D</span>
             <div>
               <strong>Divebell</strong>
-              <span>Bug hunt / MF playground</span>
+              <span>Live diagnostics playground</span>
             </div>
           </div>
 
           <div className="db-mission">
             <span className="db-mission-signal" aria-hidden="true" />
             <span>
-              {activeBugCount.toString().padStart(2, '0')} bugs detected
+              {activeBugCount.toString().padStart(2, '0')} issues detected
             </span>
             <strong>{clearedCount.toString().padStart(2, '0')} cleared</strong>
           </div>
         </header>
 
         <div className="db-intro">
-          <p>Module Federation / live mission</p>
+          <p>Development diagnostics / live mission</p>
           <h1>
-            Find the bug.
+            Find the issue.
             <span>Clear the path.</span>
           </h1>
           <p className="db-lede">
-            Steer Divebell into each fault. Contact triggers a golden sonar
-            pulse and clears it from the runtime.
+            Steer Divebell into each signal. Contact triggers a golden sonar
+            pulse and clears it from the scene.
           </p>
         </div>
 
-        <div className="db-context" aria-label="Remote context">
+        <div className="db-context" aria-label="Session context">
           <span>{appName}</span>
           <span>{environment}</span>
           <span>{sessionId}</span>
@@ -516,22 +514,40 @@ const Provider: React.FC<DivebellDemoProps> = (props) => {
                 className={`db-bug is-${bug.kind} is-${bug.state}`}
                 style={bugStyle}
                 role="img"
-                aria-label={`${details.label} bug${bug.state === 'clearing' ? ' cleared' : ''}`}
+                aria-label={`${details.label} issue${bug.state === 'clearing' ? ' cleared' : ''}`}
               >
                 <span className="db-bug-radar" aria-hidden="true" />
                 <span className="db-bug-core">
                   <svg viewBox="0 0 64 64" aria-hidden="true">
-                    <path d="M20 20 14 14M44 20l6-6M17 30H9M47 30h8M17 42l-8 6M47 42l8 6" />
-                    <path d="M22 20c0-6 4-10 10-10s10 4 10 10" />
-                    <rect x="17" y="18" width="30" height="36" rx="15" />
-                    <path d="M32 19v35M18 33h28" />
-                    <circle cx="27" cy="27" r="2" />
-                    <circle cx="38" cy="40" r="2" />
+                    {bug.kind === 'bug' && (
+                      <>
+                        <path d="M20 20 14 14M44 20l6-6M17 30H9M47 30h8M17 42l-8 6M47 42l8 6" />
+                        <path d="M22 20c0-6 4-10 10-10s10 4 10 10" />
+                        <rect x="17" y="18" width="30" height="36" rx="15" />
+                        <path d="M32 19v35M18 33h28" />
+                        <circle cx="27" cy="27" r="2" />
+                        <circle cx="38" cy="40" r="2" />
+                      </>
+                    )}
+                    {bug.kind === 'performance' && (
+                      <>
+                        <path d="M12 43a23 23 0 1 1 40 0" />
+                        <path d="M18 43h28M32 16v5M16 27l5 3M48 27l-5 3" />
+                        <path d="m32 39 12-13" />
+                        <circle cx="32" cy="39" r="4" />
+                      </>
+                    )}
+                    {bug.kind === 'network' && (
+                      <>
+                        <circle cx="32" cy="14" r="6" />
+                        <circle cx="16" cy="46" r="6" />
+                        <circle cx="48" cy="46" r="6" />
+                        <path d="m29 20-10 20M35 20l10 20M22 46h20" />
+                        <circle cx="32" cy="34" r="4" />
+                      </>
+                    )}
                   </svg>
-                  <b>{details.code}</b>
                 </span>
-                <span className="db-bug-label">{details.label} fault</span>
-                <span className="db-bug-cleared">cleared</span>
               </div>
             );
           })}

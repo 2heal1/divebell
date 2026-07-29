@@ -305,12 +305,12 @@
   will-change: transform, opacity;
 }
 
-.db-bug.is-shared {
-  --db-bug-accent: #ff9d73;
+.db-bug.is-performance {
+  --db-bug-accent: #ffb85c;
 }
 
-.db-bug.is-runtime {
-  --db-bug-accent: #ff697f;
+.db-bug.is-network {
+  --db-bug-accent: #7fe0ff;
 }
 
 .db-bug-radar {
@@ -355,62 +355,14 @@
   stroke: none;
 }
 
-.db-bug-core b {
-  position: absolute;
-  right: -5px;
-  bottom: -4px;
-  min-width: 23px;
-  padding: 3px 4px;
-  border-radius: 5px;
-  color: var(--db-trench);
-  background: var(--db-bug-accent);
-  font-family: 'DM Mono', monospace;
-  font-size: 6px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-align: center;
-}
-
-.db-bug-label {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  width: max-content;
-  color: rgba(237, 255, 251, 0.68);
-  font-family: 'DM Mono', monospace;
-  font-size: 6px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transform: translateX(-50%);
-}
-
-.db-bug-cleared {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  color: var(--db-gold);
-  font-family: 'DM Mono', monospace;
-  font-size: 8px;
-  font-weight: 500;
-  letter-spacing: 0.11em;
-  opacity: 0;
-  text-transform: uppercase;
-  transform: translate(-50%, -50%) scale(0.7);
-}
-
 .db-bug.is-clearing {
   filter: drop-shadow(0 0 12px rgba(255, 208, 93, 0.82));
   animation: db-bug-clear 0.62s ease-out both;
 }
 
 .db-bug.is-clearing .db-bug-core,
-.db-bug.is-clearing .db-bug-label,
 .db-bug.is-clearing .db-bug-radar {
   opacity: 0;
-}
-
-.db-bug.is-clearing .db-bug-cleared {
-  animation: db-cleared-label 0.62s ease-out both;
 }
 
 .db-diver {
@@ -652,22 +604,6 @@
     opacity: 0;
     transform: translate3d(var(--db-bug-x), var(--db-bug-y), 0)
       rotate(var(--db-bug-rotation)) scale(1.38);
-  }
-}
-
-@keyframes db-cleared-label {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -30%) scale(0.72);
-  }
-  25%,
-  65% {
-    opacity: 1;
-    transform: translate(-50%, -72%) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -115%) scale(0.9);
   }
 }
 

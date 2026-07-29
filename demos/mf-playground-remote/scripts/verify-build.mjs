@@ -47,7 +47,9 @@ assert.ok(
 assert.ok(
   exposedJavaScript.some(
     (source) =>
-      source.includes('Find the bug.') &&
+      source.includes('Find the issue.') &&
+      source.includes('Performance') &&
+      source.includes('Network') &&
       source.includes('golden sonar pulse'),
   ),
   'The built remote is missing the bug-clearing game.',

@@ -1,9 +1,9 @@
 # @divebell/mf-playground-remote
 
 Interactive Divebell remote used by the Module Federation Playground quick
-start. MF bugs appear throughout the scene; steer Divebell into them with the
-pointer, arrow keys, or WASD to clear them with a golden sonar pulse. Pressing
-Space sends a manual sonar ping.
+start. Bug, performance, and network issues appear throughout the scene; steer
+Divebell into them with the pointer, arrow keys, or WASD to clear them with a
+golden sonar pulse. Pressing Space sends a manual sonar ping.
 
 ## Manifest
 
@@ -31,8 +31,8 @@ The remote intentionally validates its props at runtime. The quick start first
 loads it with the old `title` prop, reports the required `config` shape in the
 Playground Terminal, and succeeds after the consumer passes the props above.
 
-Once loaded, the game continuously introduces `Remote`, `Runtime`, and `Shared`
-faults. Moving Divebell into a fault clears it and updates the score.
+Once loaded, the game continuously introduces `Bug`, `Performance`, and
+`Network` issues. Moving Divebell into an issue clears it and updates the score.
 
 ## Commands
 

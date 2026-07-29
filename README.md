@@ -38,19 +38,20 @@ divebell check --fix
 divebell --help
 ```
 
-Try the hosted operations playground—no repository clone or source checkout
-required:
+Try the Module Federation Playground remote—no repository clone, source
+checkout, or browser extension required:
 
-[Open the playground](https://2heal1.github.io/divebell/quickstart/) ·
+[Open the Module Federation Playground](https://module-federation.io/playground/index.html) ·
 [Follow the Agent-guided walkthrough](./docs/quick-start.md)
 
 After installing the CLI and the
 [Divebell Skill](./skills/divebell/SKILL.md), ask:
 
 ```text
-Use Divebell to complete the official Quick Start. Operate the order page,
-trigger and diagnose the inventory failure, recover it through the
-page-declared action, and finish by opening a Code Usage report.
+Use Divebell to complete the official Quick Start. Open the Module Federation
+Playground, load the Divebell remote with the intentionally wrong props,
+read the Playground Terminal error, update the props to the required config,
+and verify that the remote renders the interactive diagnostics game.
 ```
 
 ## Why Divebell
@@ -134,11 +135,11 @@ These examples are organized around the result a user can experience. Start with
 
 ### Try Divebell
 
-#### [Complete the hosted Quick Start](./docs/quick-start.md)
+#### [Complete the Module Federation Playground Quick Start](./docs/quick-start.md)
 
-Operate one public page, inspect Network and Console evidence, read
-application-declared state, recover through a safe action, and open an advanced
-code-usage report without cloning the repository.
+Load a published remote in the public Module Federation Playground, diagnose
+the runtime prop error from browser evidence, fix the props, and verify the
+interactive Divebell diagnostics game without cloning any source repository.
 
 #### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 

@@ -30,8 +30,8 @@ not require an ordinary page to integrate Runtime SDK before using Divebell.
 Read `references/quickstart.md` when the user asks to try, demo, evaluate, or
 quickly understand Divebell and has not supplied another target page. Use the
 public playground; do not clone this repository or ask for application source.
-Complete the browser, Runtime SDK, and recovery stages before offering the
-optional code-usage or memory stage.
+Complete the Module Federation Playground remote-loading failure and props fix
+flow before offering follow-up integration work.
 
 ### Use capabilities
 

@@ -38,16 +38,17 @@ divebell check --fix
 divebell --help
 ```
 
-直接体验已经部署的订单工作台，不需要克隆仓库，也不需要先获取源码：
+直接体验 Module Federation Playground remote，不需要克隆仓库、获取源码或安装浏览器扩展：
 
-[打开体验页](https://2heal1.github.io/divebell/quickstart/) ·
+[打开 Module Federation Playground](https://module-federation.io/playground/index.html) ·
 [查看 Agent 引导流程](./docs/quick-start.zh-CN.md)
 
 安装 CLI 和 [Divebell Skill](./skills/divebell/SKILL.md) 后，对 Agent 说：
 
 ```text
-使用 Divebell 完成官方 Quick Start：操作订单页面，触发并定位库存失败，
-使用页面声明的重试动作恢复流程，并在最后打开 Code Usage 报告。
+使用 Divebell 完成官方 Quick Start：打开 Module Federation Playground，
+用故意错误的 props 加载 Divebell remote，读取 Playground Terminal 报错，
+把 props 改成要求的 config，并确认页面渲染出可交互的诊断小游戏。
 ```
 
 ## 为什么需要 Divebell
@@ -131,10 +132,10 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 ### 直接体验
 
-#### [完成在线 Quick Start](./docs/quick-start.zh-CN.md)
+#### [完成 Module Federation Playground Quick Start](./docs/quick-start.zh-CN.md)
 
-在一个公开页面里完成操作、查看 Network 和 Console、读取应用声明的状态、执行安全恢复，
-最后打开高阶代码使用报告，全程不需要克隆仓库。
+在公开的 Module Federation Playground 中加载已发布的 remote，从浏览器证据定位运行时
+props 报错，修复 props，并确认 Divebell 诊断小游戏正常渲染，全程不需要克隆源码仓库。
 
 #### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
 

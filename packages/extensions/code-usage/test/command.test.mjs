@@ -17,7 +17,7 @@ import {
 import {
   createDivebellCli,
   parseCliArgs
-} from "../../cli/dist/index.js";
+} from "../../../cli/dist/index.js";
 
 const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;

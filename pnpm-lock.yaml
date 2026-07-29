@@ -188,15 +188,15 @@ importers:
         specifier: 0.10.3
         version: 0.10.3
 
-  packages/extension-code-usage: {}
+  packages/extensions/code-usage: {}
 
-  packages/extension-imitate: {}
+  packages/extensions/imitate: {}
 
-  packages/extension-memory: {}
+  packages/extensions/memory: {}
 
-  packages/extension-mf: {}
+  packages/extensions/mf: {}
 
-  packages/extension-troubleshooting: {}
+  packages/extensions/troubleshooting: {}
 
   packages/test:
     dependencies:
@@ -211,19 +211,19 @@ importers:
         version: link:../core
       '@divebell/extension-code-usage':
         specifier: workspace:^
-        version: link:../extension-code-usage
+        version: link:../extensions/code-usage
       '@divebell/extension-imitate':
         specifier: workspace:^
-        version: link:../extension-imitate
+        version: link:../extensions/imitate
       '@divebell/extension-memory':
         specifier: workspace:^
-        version: link:../extension-memory
+        version: link:../extensions/memory
       '@divebell/extension-mf':
         specifier: workspace:^
-        version: link:../extension-mf
+        version: link:../extensions/mf
       '@divebell/extension-troubleshooting':
         specifier: workspace:^
-        version: link:../extension-troubleshooting
+        version: link:../extensions/troubleshooting
     devDependencies:
       typescript:
         specifier: 5.9.3

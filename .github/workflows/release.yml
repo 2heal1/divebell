@@ -59,7 +59,7 @@ jobs:
           package-manager-cache: false
 
       - name: Install dependencies
-        run: pnpm --filter . --filter "./packages/*" install --frozen-lockfile
+        run: pnpm --filter . --filter "./packages/*" --filter "./packages/extensions/*" install --frozen-lockfile
 
       - name: Install OIDC-capable npm
         run: npm install --global npm@11.15.0

@@ -7,10 +7,10 @@
     { "path": "./packages/rspack-plugin" },
     { "path": "./packages/cli" },
     { "path": "./packages/modern-plugin" },
-    { "path": "./packages/extension-code-usage" },
-    { "path": "./packages/extension-troubleshooting" },
-    { "path": "./packages/extension-imitate" },
-    { "path": "./packages/extension-memory" },
-    { "path": "./packages/extension-mf" }
+    { "path": "./packages/extensions/code-usage" },
+    { "path": "./packages/extensions/troubleshooting" },
+    { "path": "./packages/extensions/imitate" },
+    { "path": "./packages/extensions/memory" },
+    { "path": "./packages/extensions/mf" }
   ]
 }

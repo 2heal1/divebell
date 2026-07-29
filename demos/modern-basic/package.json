@@ -9,9 +9,9 @@
     "verify:chunk-map": "pnpm --dir ../../packages/modern-plugin build && modern build && node ./scripts/verify-chunk-map.mjs",
     "serve": "modern serve",
     "verify": "node ./scripts/verify-divebell.mjs",
-    "verify:memory": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extension-memory build && node ./scripts/run-extension-package.mjs ../../packages/extension-memory memory check --url http://localhost:19081/ --scenario ./scripts/memory-scenario.mjs --artifact-dir ./.memory-artifacts",
+    "verify:memory": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extensions/memory build && node ./scripts/run-extension-package.mjs ../../packages/extensions/memory memory check --url http://localhost:19081/ --scenario ./scripts/memory-scenario.mjs --artifact-dir ./.memory-artifacts",
     "verify:experience": "node ./scripts/verify-experience.mjs",
-    "report:serve": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extension-code-usage build && node ./scripts/run-extension-package.mjs ../../packages/extension-code-usage code-usage serve ./.page-experience-artifacts/report.json --port 4173",
+    "report:serve": "pnpm --dir ../../packages/cli build && pnpm --dir ../../packages/extensions/code-usage build && node ./scripts/run-extension-package.mjs ../../packages/extensions/code-usage code-usage serve ./.page-experience-artifacts/report.json --port 4173",
     "verify:route-component-error": "node ./scripts/verify-route-component-error.mjs"
   },
   "dependencies": {

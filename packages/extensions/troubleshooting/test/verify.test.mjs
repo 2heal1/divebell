@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import extension from "../dist/extension.js";
-import { createDivebellCli } from "../../cli/dist/index.js";
+import { createDivebellCli } from "../../../cli/dist/index.js";
 
 const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;

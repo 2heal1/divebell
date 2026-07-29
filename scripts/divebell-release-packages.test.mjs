@@ -21,6 +21,10 @@ test("uses the fixed package group as the complete public release package list",
     "@divebell/cli"
   ]);
   assert.ok(names.includes("@divebell/extension-mf"));
+  assert.equal(
+    packages.find((item) => item.name === "@divebell/extension-mf")?.directory,
+    "packages/extensions/mf"
+  );
   assert.ok(names.includes("@divebell/test"));
   assert.ok(packages.every((item) => item.packageJson.publishConfig?.access === "public"));
 });

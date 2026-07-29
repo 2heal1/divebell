@@ -37,7 +37,7 @@
     {
       "name": "@divebell/extension-imitate",
       "source": "workspace",
-      "directory": "packages/extension-imitate",
+      "directory": "packages/extensions/imitate",
       "file": "divebell-extension-imitate-0.0.3.tgz"
     }
   ]

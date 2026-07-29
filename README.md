@@ -144,6 +144,8 @@ code-usage report without cloning the repository.
 
 Demonstrate a workflow in a visible browser and let the Agent generate, run, and verify a JavaScript replay from the operated elements and event sequence. Spoken intent is optional.
 
+> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then have the Agent run `divebell record --skill` and follow the returned skill to start recording.
+
 **Demo video**
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946

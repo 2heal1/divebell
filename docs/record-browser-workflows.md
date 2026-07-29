@@ -2,7 +2,7 @@
 
 Chinese version: [录制浏览器操作并生成脚本](record-browser-workflows.zh-CN.md)
 
-`record-divebell-workflow` is an installable Agent skill that turns one manual browser walkthrough into an executable JavaScript replay. It records the operated elements, event order, and final page state. Microphone capture is attempted automatically, but spoken instructions are optional context and missing or denied audio is ignored.
+`@divebell/extension-imitate` is the browser-workflow recording Extension and includes the `record-divebell-workflow` Agent skill. It turns one manual browser walkthrough into an executable JavaScript replay, recording the operated elements, event order, and final page state. Microphone capture is attempted automatically, but spoken instructions are optional context and missing or denied audio is ignored.
 
 Use it when a task is easier to demonstrate than to specify from scratch, such as:
 
@@ -18,7 +18,9 @@ The video shows the complete recording, interaction, and script-generation workf
 
 ## Install
 
-Install Divebell globally and add the recording Extension:
+> Download and install the recording Extension, then have the Agent run `divebell record --skill` to read the bundled skill and follow it to start recording.
+
+Install Divebell globally, then add the recording Extension:
 
 ```bash
 npm install --global @divebell/cli
@@ -26,30 +28,23 @@ divebell check --fix
 divebell extensions add @divebell/extension-imitate
 ```
 
-Install this directory in an Agent that supports skills:
+After installation, have the Agent resolve the skill bundled with the `record` command:
 
-```text
-skills/record-divebell-workflow
+```bash
+divebell record --skill
 ```
 
-For Codex, place the complete directory at:
-
-```text
-~/.codex/skills/record-divebell-workflow
-```
-
-The skill uses the global `divebell` command and does not add the CLI to the
-application.
+This command only prints the path to the packaged `SKILL.md`; it does not start recording. The Agent should read that file and follow it. Users no longer need to copy or install a separate skill directory from the repository.
 
 ## Use
 
 After installation, ask the Agent:
 
 ```text
-Use record-divebell-workflow and start recording my browser workflow.
+Use the recording Extension's bundled skill and start recording my browser workflow.
 ```
 
-The Agent first runs `divebell record start` to prepare recording files, cross-page interaction capture, and supplementary voice capture. It does not ask the user to choose a voice mode. It then runs `divebell open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
+The Agent first runs `divebell record --skill` and reads the returned skill. It then runs `divebell record start` to prepare recording files, cross-page interaction capture, and supplementary voice capture. It does not ask the user to choose a voice mode. It then runs `divebell open about:blank --ui`; the CLI injects the Bridge and the recording Extension injects its capture script into that same page launch. Recordings are saved under `recordings/` in the current project, so the user does not need to provide a URL or output path first.
 
 Then:
 

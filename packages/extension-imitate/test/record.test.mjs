@@ -2,14 +2,37 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import extension from "../dist/extension.js";
 import { createDivebellCli } from "../../cli/dist/index.js";
 
 const cli = createDivebellCli({ extensions: [extension] });
 const runCli = cli.run;
+const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const recordingSkillPath = join(
+  packageDirectory,
+  "skills",
+  "record-divebell-workflow",
+  "SKILL.md"
+);
+
+test("exposes the recording skill without running the record command", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["record", "--skill"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(output.errorText(), "");
+  assert.equal(output.text(), `${recordingSkillPath}\n`);
+  assert.equal(existsSync(recordingSkillPath), true);
+  assert.match(readFileSync(recordingSkillPath, "utf8"), /divebell record start/);
+  assert.match(cli.createHelpText(), /Skill: available for record\./);
+});
 
 test("records the current Divebell page without reopening or closing the browser", async () => {
   const fixture = createRecordingFixture("divebell-recording-");

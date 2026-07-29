@@ -6,7 +6,10 @@ This Divebell Extension records a real browser walkthrough and turns the capture
 
 ```bash
 divebell extensions add @divebell/extension-imitate
+divebell record --skill
 ```
+
+The second command prints the path to the Agent skill shipped inside the Extension package without starting a recording.
 
 ## Record a manual walkthrough
 

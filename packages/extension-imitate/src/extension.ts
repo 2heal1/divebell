@@ -1,10 +1,18 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
+import { fileURLToPath } from "node:url";
+
+const recordingSkillPath = fileURLToPath(
+  new URL("../skills/record-divebell-workflow/SKILL.md", import.meta.url)
+);
 
 const extension = {
   schemaVersion: 1,
   name: "record",
   commands: [{
     name: "record",
+    skill: {
+      path: recordingSkillPath
+    },
     commandReferences: [
       {
         category: "Extensions",

@@ -2,7 +2,7 @@
 
 English version: [Record Browser Workflows with an Agent](record-browser-workflows.md)
 
-`record-divebell-workflow` 是一个可以安装到 Agent 的中文 skill。它让用户先在可见浏览器里完成一次真实操作，再把操作元素、事件顺序和页面结果生成可重复运行的 JavaScript 脚本。录制会默认尝试开启麦克风，但语音只是可选补充；没有说话、没有录到声音或拒绝麦克风权限时都会直接忽略。
+`@divebell/extension-imitate` 是录制浏览器流程的 Extension，并随包提供 `record-divebell-workflow` Agent skill。它让用户先在可见浏览器里完成一次真实操作，再把操作元素、事件顺序和页面结果生成可重复运行的 JavaScript 脚本。录制会默认尝试开启麦克风，但语音只是可选补充；没有说话、没有录到声音或拒绝麦克风权限时都会直接忽略。
 
 这个流程适合“操作过程容易演示，但自动化目标不容易一次说清楚”的任务，例如：
 
@@ -18,7 +18,9 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 ## 安装
 
-先全局安装 Divebell，并添加录制 Extension：
+> 下载并安装录制 Extension，然后让 Agent 执行 `divebell record --skill` 读取 Extension 自带的 skill，并按 skill 开始录制。
+
+先全局安装 Divebell，再添加录制 Extension：
 
 ```bash
 npm install --global @divebell/cli
@@ -26,29 +28,23 @@ divebell check --fix
 divebell extensions add @divebell/extension-imitate
 ```
 
-将仓库中的 skill 目录安装到支持 skill 的 Agent：
+安装成功后，让 Agent 读取 `record` 命令附带的 skill：
 
-```text
-skills/record-divebell-workflow
+```bash
+divebell record --skill
 ```
 
-以 Codex 为例，可以将整个目录放入：
-
-```text
-~/.codex/skills/record-divebell-workflow
-```
-
-skill 直接使用全局 `divebell` 命令，不会把 CLI 加到业务项目中。
+这条命令只返回 Extension 包内的 `SKILL.md` 路径，不会开始录制。Agent 应读取返回的文件并按其中流程执行，不需要用户再从仓库复制或单独安装 skill。
 
 ## 使用
 
 安装后，对 Agent 说：
 
 ```text
-使用 record-divebell-workflow，开始录制浏览器操作。
+使用录制 Extension 自带的 skill，开始录制浏览器操作。
 ```
 
-Agent 会先运行 `divebell record start` 准备录制文件、跨页面操作采集和补充语音采集，再通过 `divebell open about:blank --ui` 打开可见空白页面。Agent 不需要询问用户是否开启语音，也不需要增加额外参数。CLI 自动准备并注入 Bridge，录制扩展在同一次页面打开中注入录制脚本。录制结果默认保存到当前项目的 `recordings/` 目录，用户不需要提前提供网址或保存位置。
+Agent 会先执行 `divebell record --skill` 并读取返回的 skill，再运行 `divebell record start` 准备录制文件、跨页面操作采集和补充语音采集，随后通过 `divebell open about:blank --ui` 打开可见空白页面。Agent 不需要询问用户是否开启语音，也不需要增加额外参数。CLI 自动准备并注入 Bridge，录制扩展在同一次页面打开中注入录制脚本。录制结果默认保存到当前项目的 `recordings/` 目录，用户不需要提前提供网址或保存位置。
 
 接下来正常操作浏览器即可：
 

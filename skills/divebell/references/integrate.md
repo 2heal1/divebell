@@ -25,8 +25,8 @@ Determine which capability the user wants:
   detection, specialized diagnosis, a verification command, or a command skill.
 - **Automation script**: let the script open, wait for, interact with, and query
   pages, then stop the browser and Bridge only when appropriate.
-- **Project integration**: connect a page runtime to Bridge and expose
-  Modern.js, MF, or Garfish state.
+- **Project integration**: connect a page runtime to Bridge and expose stable
+  application-internal facts.
 - **Business capability**: add a target, snapshot, event, action, or durable
   waitable business state.
 
@@ -42,32 +42,15 @@ Inspect existing Divebell initialization, framework configuration,
 dependencies, and nearby code first. Do not create a duplicate runtime or
 install competing integration paths.
 
-When selecting an integration, run the resolver from the actual installed skill
-path:
+For page-side internal facts, use `@divebell/core` and read `runtime-sdk.md`.
+Use browser evidence or an installed Extension when page-side integration is
+not necessary.
 
-```bash
-node <divebell-skill-dir>/scripts/resolve-integration.mjs <path-to-package.json>
-```
-
-Continue from its output:
-
-- For Modern.js, read `modernjs.md`. The Modern runtime plugin is WIP while
-  waiting for a Modern.js release with the required lifecycle hooks. The
-  resolver intentionally chooses `@divebell/core` for every published Modern.js
-  version during this period.
-- For an ordinary frontend project that needs page-side capabilities, use
-  `@divebell/core` and read `core.md`.
-- For Module Federation, use MF observability and read
-  `module-federation.md`. Also follow the MF skill provided by the current
-  environment.
-- For Garfish, read `garfish.md`. Its helpers currently ship from the WIP
-  Modern package, so do not recommend a new stable integration through that
-  package yet.
-
-Prefer hooks exposed by the framework or observability layer. When existing
-hooks are insufficient, decide whether the proper capability belongs in the
-framework, MF observability, or the Divebell SDK. Do not fabricate framework
-lifecycle state by probing the DOM, Console, or Network.
+Do not infer or install optional integrations from framework dependencies.
+Discover installed Extension commands through `divebell --help` and follow
+their command skill when one is available. When the user explicitly selects a
+separately distributed page-side package, follow that package's own
+documentation after confirming it is installed or in scope.
 
 Connect through source or a supported plugin only. Do not use browser `eval` to
 create a temporary Bridge connection and claim the project is integrated.
@@ -88,7 +71,7 @@ Read `runtime-sdk.md` and preserve these boundaries:
   business state declared by the page.
 
 Add a `business:*` target only when the goal needs a stable business
-verification signal. Framework integration, command development, and feature
+verification signal. Runtime integration, command development, and feature
 explanation do not need a fake business target to satisfy troubleshooting
 rules.
 
@@ -172,7 +155,7 @@ workflow as follows:
 
 Run checks that match the change:
 
-- **Project integration**: run typecheck/build, start the application, run
+- **Runtime SDK integration**: run typecheck/build, start the application, run
   `divebell open`, confirm that a runtime is connected, and read at least one
   target or snapshot provided by the new integration.
 - **Target or action**: query the new definition and state. Run actions with

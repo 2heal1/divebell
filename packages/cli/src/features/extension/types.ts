@@ -241,6 +241,9 @@ export interface DivebellBrowserApi {
   pageSnapshot<T = unknown>(): Promise<T>;
   click(target: string): Promise<string>;
   fill(target: string, value: string): Promise<string>;
+  focus(target: string): Promise<string>;
+  press(key: string): Promise<string>;
+  select(target: string, value: string): Promise<string>;
   eval<T = unknown>(script: string): Promise<T>;
   evalFile<T = unknown>(path: string): Promise<T>;
   waitEval(script: string, options?: { timeout?: number }): Promise<DivebellBrowserWaitEvalResult>;

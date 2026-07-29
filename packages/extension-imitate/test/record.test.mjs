@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -89,6 +90,9 @@ test("starts and stops a manual recording on the same current page", async () =>
     const initScript = readFileSync(fixture.browserCalls[0].args[3], "utf8");
     assert.match(initScript, /__DIVEBELL_RECORD_EVENT__/);
     assert.match(initScript, /__DIVEBELL_BRIDGE_MANAGER__/);
+    assert.match(initScript, /locators/);
+    assert.match(initScript, /composedPath/);
+    assert.match(initScript, /selectedValues/);
 
     const stopOutput = createOutput();
     assert.equal(await fixture.run([
@@ -101,6 +105,7 @@ test("starts and stops a manual recording on the same current page", async () =>
     const stopResult = commandData(stopOutput);
     assert.equal(stopResult.status, "completed");
     assert.equal(stopResult.script, join(fixture.outputDir, "generated-script.mjs"));
+    assert.equal(stopResult.workflow, join(fixture.outputDir, "workflow.json"));
     assert.equal(fixture.browserCalls.some((call) => call.args[0] === "close"), false);
     assert.deepEqual(fixture.browserCalls.map((call) => call.args[0]), [
       "open",
@@ -112,6 +117,7 @@ test("starts and stops a manual recording on the same current page", async () =>
     const completedManifest = readJson(join(fixture.outputDir, "manifest.json"));
     assert.equal(completedManifest.status, "completed");
     assert.equal(completedManifest.generated.script, "generated-script.mjs");
+    assert.equal(completedManifest.generated.workflow, "workflow.json");
     assert.equal(completedManifest.counts.runtimeSamples, 1);
     assert.equal(completedManifest.counts.pageSnapshots, 1);
     assert.equal(completedManifest.counts.domSnapshots, 1);
@@ -119,10 +125,13 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.equal(completedManifest.counts.operations, 7);
 
     const script = readFileSync(join(fixture.outputDir, "generated-script.mjs"), "utf8");
-    assert.match(script, /wait-for/);
-    assert.match(script, /orders:list/);
+    assert.match(script, /waitForRecordedTarget/);
+    assert.match(script, /status: "ok"/);
     assert.match(script, /module federation/);
     assert.match(script, /a\[href=/);
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.equal(workflow.startUrl, "http://app.test/");
+    assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press", "click"]);
     assert.deepEqual(readJsonLines(join(fixture.outputDir, "interactions.jsonl")).map((item) => item.type), [
       "recorder-ready",
       "input",
@@ -216,6 +225,142 @@ test("keeps persisted interactions after navigation", async () => {
     assert.match(script, /module federation/);
     assert.match(script, /input\[name=/);
     assert.match(script, /issues-tab/);
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.equal(workflow.startUrl, "https://github.com/");
+    assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press", "click"]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("keeps a repeated input after an action boundary", async () => {
+  const target = "{\"selector\":\"input[name=q]\",\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"same value\"}";
+  const fixture = createRecordingFixture("divebell-repeated-input-", {
+    browserLogs: [
+      `[INFO ] __DIVEBELL_RECORD_EVENT__{"type":"input","timeMs":100,"url":"http://app.test/","target":${target}}`,
+      `[INFO ] __DIVEBELL_RECORD_EVENT__{"type":"change","timeMs":120,"url":"http://app.test/","target":${target}}`,
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":200,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=reset]\",\"tagName\":\"button\",\"text\":\"Reset\"}}",
+      `[INFO ] __DIVEBELL_RECORD_EVENT__{"type":"input","timeMs":300,"url":"http://app.test/","target":${target}}`
+    ].join("\n")
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "click", "fill"]);
+    assert.deepEqual(workflow.steps.filter((step) => step.action === "fill").map((step) => step.value), [
+      "same value",
+      "same value"
+    ]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("records workflow metadata when regenerating an older recording", async () => {
+  const fixture = createRecordingFixture("divebell-regenerated-workflow-", {
+    browserLogs: "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button\",\"tagName\":\"button\",\"text\":\"Run\"}}"
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const manifestPath = join(fixture.outputDir, "manifest.json");
+    const olderManifest = readJson(manifestPath);
+    delete olderManifest.generated.workflow;
+    writeFileSync(manifestPath, `${JSON.stringify(olderManifest, null, 2)}\n`);
+
+    const generateOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "generate-script",
+      "--input",
+      fixture.outputDir
+    ], generateOutput), 0);
+    assert.equal(commandData(generateOutput).workflow, join(fixture.outputDir, "workflow.json"));
+    assert.equal(readJson(manifestPath).generated.workflow, "workflow.json");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("runs the generated workflow as an executable script with ordered browser actions", async () => {
+  const fixture = createRecordingFixture("divebell-generated-replay-", {
+    browserLogs: [
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"input\",\"timeMs\":100,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"target\":{\"selector\":\"input[name=q]\",\"locators\":[{\"kind\":\"name\",\"value\":\"q\",\"selector\":\"input[name=\\\"q\\\"]\"}],\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"keydown\",\"timeMs\":150,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"key\":\"Enter\",\"code\":\"Enter\",\"target\":{\"selector\":\"input[name=q]\",\"locators\":[{\"kind\":\"name\",\"value\":\"q\",\"selector\":\"input[name=\\\"q\\\"]\"}],\"tagName\":\"input\",\"name\":\"q\",\"inputType\":\"text\",\"value\":\"module federation\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":300,\"url\":\"http://app.test/\",\"title\":\"Orders\",\"target\":{\"selector\":\"button[data-testid=refresh]\",\"locators\":[{\"kind\":\"test-id\",\"value\":\"refresh\",\"selector\":\"button[data-testid=\\\"refresh\\\"]\"}],\"tagName\":\"button\",\"text\":\"Refresh\",\"accessibleName\":\"Refresh\"}}"
+    ].join("\n")
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const callsPath = join(fixture.tempDir, "replay-calls.jsonl");
+    const fakeCliPath = join(fixture.tempDir, "fake-divebell.mjs");
+    writeFileSync(fakeCliPath, `#!/usr/bin/env node
+import { appendFileSync } from "node:fs";
+const args = process.argv.slice(2);
+appendFileSync(process.env.REPLAY_CALLS, JSON.stringify(args) + "\\n");
+if (args[0] === "eval") {
+  if (args[1].includes("locateRecordedTargetInPage")) {
+    process.stdout.write(JSON.stringify({
+      found: true,
+      selector: "[data-divebell-replay-target=step]",
+      matchedBy: "test-id:recorded",
+      page: { url: "http://app.test/", title: "Orders", readyState: "complete" }
+    }));
+  } else {
+    process.stdout.write(JSON.stringify({
+      url: "http://app.test/",
+      title: "Orders",
+      readyState: "complete"
+    }));
+  }
+}
+`, "utf8");
+    chmodSync(fakeCliPath, 0o755);
+
+    const stdout = execFileSync(
+      process.execPath,
+      [join(fixture.outputDir, "generated-script.mjs"), "--headless"],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          DIVEBELL_CLI: fakeCliPath,
+          REPLAY_CALLS: callsPath
+        }
+      }
+    );
+    const result = JSON.parse(stdout);
+    assert.equal(result.status, "ok");
+    assert.equal(result.data.completedSteps, 3);
+    const calls = readJsonLines(callsPath);
+    assert.deepEqual(calls.map((args) => args[0]), [
+      "open",
+      "eval",
+      "fill",
+      "eval",
+      "focus",
+      "press",
+      "eval",
+      "click",
+      "eval"
+    ]);
   } finally {
     fixture.cleanup();
   }

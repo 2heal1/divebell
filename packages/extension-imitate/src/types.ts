@@ -22,6 +22,7 @@ export interface RecordingFiles {
   pageSnapshots: string;
   domSnapshots: string;
   interactions: string;
+  workflow: string;
   audio: string;
   audioChunks: string;
   audioEvents: string;
@@ -61,6 +62,7 @@ export interface RecordingManifest {
   files: RecordingFiles;
   generated?: {
     script?: string;
+    workflow?: string;
     generatedAt?: string;
   };
   invalidated?: {
@@ -129,16 +131,80 @@ export interface InteractionEvent {
   timeMs: number;
   url?: string;
   title?: string;
-  target?: {
-    selector?: string;
-    tagName?: string;
-    text?: string;
-    value?: string;
-    role?: string;
-    name?: string;
-    inputType?: string;
-  };
+  target?: RecordedInteractionTarget;
   [key: string]: unknown;
+}
+
+export type RecordedLocatorKind =
+  | "test-id"
+  | "id"
+  | "aria-label"
+  | "label"
+  | "role"
+  | "name"
+  | "placeholder"
+  | "href"
+  | "text"
+  | "css";
+
+export interface RecordedLocatorCandidate {
+  kind: RecordedLocatorKind;
+  value: string;
+  selector?: string;
+  role?: string;
+}
+
+export interface RecordedInteractionTarget {
+  selector?: string;
+  locators?: RecordedLocatorCandidate[];
+  tagName?: string;
+  text?: string;
+  value?: string;
+  role?: string;
+  name?: string;
+  inputType?: string;
+  id?: string;
+  testId?: string;
+  ariaLabel?: string;
+  accessibleName?: string;
+  label?: string;
+  placeholder?: string;
+  title?: string;
+  href?: string;
+  checked?: boolean;
+  selectedValues?: string[];
+  contentEditable?: boolean;
+  disabled?: boolean;
+}
+
+export type RecordedWorkflowAction = "click" | "fill" | "select" | "press";
+
+export interface RecordedWorkflowStep {
+  id: string;
+  action: RecordedWorkflowAction;
+  timeMs: number;
+  page: {
+    url?: string;
+    title?: string;
+  };
+  target: RecordedInteractionTarget;
+  value?: string;
+  key?: string;
+}
+
+export interface RecordedWorkflow {
+  schemaVersion: 1;
+  source: "divebell-recording";
+  startUrl: string;
+  finalState: {
+    url?: string;
+    title?: string;
+    signals?: Array<{
+      selector?: string;
+      text: string;
+    }>;
+  };
+  steps: RecordedWorkflowStep[];
 }
 
 export interface OperationEntry {
@@ -205,4 +271,6 @@ export interface AudioCaptureSummary {
 export interface GeneratedScriptResult {
   path: string;
   relativePath: string;
+  workflowPath: string;
+  workflowRelativePath: string;
 }

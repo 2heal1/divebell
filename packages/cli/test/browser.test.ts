@@ -748,6 +748,43 @@ test("delegates refs and explicit selectors to agent-browser", async () => {
   }
 });
 
+test("delegates recorded focus, keyboard, and select actions to agent-browser", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
+
+  try {
+    for (const command of [
+      ["focus", "e4"],
+      ["press", "Control+a"],
+      ["select", "#region", "cn"]
+    ]) {
+      const exitCode = await runCli(command, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          browserCalls.push(args);
+          return {
+            exitCode: 0,
+            stdout: "ok\n",
+            stderr: ""
+          };
+        })
+      });
+      assert.equal(exitCode, 0);
+    }
+
+    assert.deepEqual(browserCalls, [
+      ["focus", "@e4"],
+      ["press", "Control+a"],
+      ["select", "#region", "cn"]
+    ]);
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("reports interactive text click errors without broad text fallback", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

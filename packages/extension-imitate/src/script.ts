@@ -1,135 +1,439 @@
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import type { GeneratedScriptResult, InteractionEvent, PageSnapshotSample, RecordingData, RuntimeSample, TranscriptData, TranscriptSegment, TranscriptWord } from "./types.js";
+import type {
+  GeneratedScriptResult,
+  RecordedLocatorCandidate,
+  RecordedWorkflow,
+  RecordedWorkflowStep,
+  RecordingData,
+  TranscriptSegment,
+  TranscriptWord
+} from "./types.js";
+import { createRecordedWorkflow } from "./workflow.js";
 
-const DEFAULT_RECORD_START_URL = "about:blank";
 export async function writeGeneratedScript(
   recordingDirectory: string,
   recording: RecordingData,
   outputPath: string | undefined
 ): Promise<GeneratedScriptResult> {
   const scriptPath = resolve(outputPath ?? join(recordingDirectory, "generated-script.mjs"));
-  const content = createGeneratedScriptContent(recording);
+  const workflowPath = resolve(recordingDirectory, recording.manifest.files.workflow);
+  const workflow = createRecordedWorkflow(recording);
+  const content = createGeneratedScriptContent(workflow);
   await mkdir(dirname(scriptPath), { recursive: true });
+  await writeFile(workflowPath, `${JSON.stringify(workflow, null, 2)}\n`, "utf8");
   await writeFile(scriptPath, content, "utf8");
   await chmod(scriptPath, 0o755);
   return {
     path: scriptPath,
-    relativePath: createManifestPath(recordingDirectory, scriptPath)
+    relativePath: createManifestPath(recordingDirectory, scriptPath),
+    workflowPath,
+    workflowRelativePath: createManifestPath(recordingDirectory, workflowPath)
   };
 }
 
-function createGeneratedScriptContent(recording: RecordingData): string {
-  const manifest = recording.manifest;
-  const waitTarget = findWaitTarget(recording.runtimeSamples);
-  const actionNames = findActionNames(recording.runtimeSamples);
-  const pageTitle = findLatestPageTitle(recording.pageSnapshots);
-  const recordedUrl = findLatestRuntimeUrl(recording.runtimeSamples);
-  const manifestUrl = manifest.url ?? DEFAULT_RECORD_START_URL;
-  const manifestOpenedUrl = manifest.openedUrl ?? manifestUrl;
-  const scriptUrl = manifestUrl === DEFAULT_RECORD_START_URL
-    ? recordedUrl ?? manifestOpenedUrl
-    : manifestOpenedUrl;
-  const waitTargetLiteral = waitTarget === undefined ? "undefined" : JSON.stringify(waitTarget, null, 2);
-  const actionsComment = actionNames.length === 0
-    ? "No runtime actions were discovered in the recording."
-    : `Discovered runtime actions: ${actionNames.join(", ")}`;
-  const pageComment = pageTitle === undefined ? "No page title was captured." : `Captured page title: ${pageTitle}`;
-  const interactionSteps = createInteractionScriptSteps(recording.interactions);
-  const interactionComment = interactionSteps.length === 0
-    ? "No browser interaction events were captured."
-    : `Captured browser interaction events: ${recording.interactions.length}`;
-  const transcriptComment = createTranscriptScriptComment(recording.transcript);
-
+function createGeneratedScriptContent(workflow: RecordedWorkflow): string {
+  const locatorSource = locateRecordedTargetInPage.toString();
+  const pageStateSource = readPageStateInPage.toString();
   return `#!/usr/bin/env node
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const cli = process.env.DIVEBELL_CLI ?? "divebell";
-const bridgeUrl = ${JSON.stringify(manifest.bridgeUrl ?? null)};
-const bridgeArgs = bridgeUrl === null ? [] : ["--bridge", bridgeUrl];
-const url = ${JSON.stringify(scriptUrl)};
-const waitTarget = ${waitTargetLiteral};
-
-// Generated from a Divebell recording.
-// ${pageComment}
-// ${actionsComment}
-// ${interactionComment}
-// ${transcriptComment}
-
-async function run(args) {
-  const { stdout, stderr } = await execFileAsync(cli, args, {
-    env: process.env
-  });
-  if (stdout.trim().length > 0) process.stdout.write(stdout);
-  if (stderr.trim().length > 0) process.stderr.write(stderr);
-}
+const workflow = ${JSON.stringify(workflow, null, 2)};
+const locateRecordedTargetSource = ${JSON.stringify(locatorSource)};
+const readPageStateSource = ${JSON.stringify(pageStateSource)};
 
 async function main() {
-  await run(["open", url, ...bridgeArgs, "--ui"]);
+  const args = parseArgs(process.argv.slice(2));
+  const timeoutMs = toPositiveInteger(args.timeout, 15000);
+  const openArgs = ["open", workflow.startUrl];
+  if (args.headless !== true) openArgs.push("--ui");
+  await run(openArgs, timeoutMs);
 
-${interactionSteps.length === 0 ? "  // TODO: no click/input events were captured for this recording." : interactionSteps.map((step) => `  ${step}`).join("\n")}
+  const completed = [];
+  for (const step of workflow.steps) {
+    const valueOverride = args[\`value-\${step.id}\`];
+    const value = typeof valueOverride === "string" ? valueOverride : step.value;
+    if ((step.action === "fill" || step.action === "select") &&
+        (value === "[redacted]" || value === "[file-input]")) {
+      writeJson({
+        status: "needs_input",
+        message: \`Recorded \${step.action} value for \${step.id} cannot be stored safely.\`,
+        options: [{
+          label: step.target.accessibleName ?? step.target.label ?? step.id,
+          value: \`--value-\${step.id}\`
+        }],
+        data: { completed, pendingStep: step }
+      });
+      return;
+    }
 
-  if (waitTarget !== undefined) {
-    await run([
-      "wait-for",
-      ...bridgeArgs,
-      "--url",
-      url,
-      waitTarget.targetId,
-      waitTarget.status,
-      "--timeout",
-      "10000"
-    ]);
+    const located = await waitForRecordedTarget(step, timeoutMs);
+    await runRecordedStep(step, located.selector, value, timeoutMs);
+    completed.push({
+      id: step.id,
+      action: step.action,
+      matchedBy: located.matchedBy,
+      page: located.page
+    });
   }
 
-  await run(["snapshot", ...bridgeArgs, "--url", url]);
-  await run(["events", ...bridgeArgs, "--url", url, "--limit", "50"]);
+  const page = await waitForFinalState(workflow.finalState, timeoutMs);
+  writeJson({
+    status: "ok",
+    data: {
+      startUrl: workflow.startUrl,
+      completedSteps: completed.length,
+      steps: completed,
+      page
+    }
+  });
+}
+
+async function waitForRecordedTarget(step, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let lastResult;
+  let lastError;
+  while (Date.now() <= deadline) {
+    try {
+      const marker = \`divebell-\${step.id}\`;
+      const script = \`(\${locateRecordedTargetSource})(\${JSON.stringify({ step, marker })})\`;
+      const result = await runJson(["eval", script], timeoutMs);
+      lastResult = result;
+      if (result?.found === true && typeof result.selector === "string") return result;
+    } catch (error) {
+      lastError = error;
+    }
+    await delay(250);
+  }
+  const detail = lastResult === undefined ? undefined : lastResult;
+  const reason = lastError instanceof Error ? lastError.message : undefined;
+  throw new Error(\`Could not find the recorded element for \${step.id} (\${step.action}). \${reason ?? JSON.stringify(detail)}\`);
+}
+
+async function runRecordedStep(step, selector, value, timeoutMs) {
+  debug(\`Running \${step.id}: \${step.action} via \${selector}\`);
+  if (step.action === "click") {
+    await run(["click", selector], timeoutMs);
+    return;
+  }
+  if (step.action === "fill") {
+    await run(["fill", selector, String(value ?? "")], timeoutMs);
+    return;
+  }
+  if (step.action === "select") {
+    await run(["select", selector, String(value ?? "")], timeoutMs);
+    return;
+  }
+  if (step.action === "press") {
+    await run(["focus", selector], timeoutMs);
+    await run(["press", step.key], timeoutMs);
+    return;
+  }
+  throw new Error(\`Unsupported recorded action: \${step.action}\`);
+}
+
+async function waitForFinalState(expected, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  let latest;
+  while (Date.now() <= deadline) {
+    try {
+      latest = await runJson(["eval", \`(\${readPageStateSource})()\`], timeoutMs);
+      if (matchesFinalState(expected, latest)) return latest;
+    } catch {
+      // Navigation can briefly destroy the page context. Retry until the deadline.
+    }
+    await delay(250);
+  }
+  throw new Error(\`The replay finished its actions but did not reach the recorded final page: \${JSON.stringify({ expected, latest })}\`);
+}
+
+function matchesFinalState(expected, actual) {
+  if (actual === undefined || actual === null) return false;
+  if (typeof expected.url === "string" && !samePageUrl(expected.url, actual.url)) return false;
+  if (typeof expected.title === "string" && expected.title.length > 0 && actual.title !== expected.title) return false;
+  if (Array.isArray(expected.signals) && expected.signals.length > 0) {
+    const actualSignals = Array.isArray(actual.signals) ? actual.signals : [];
+    if (!expected.signals.every((expectedSignal) =>
+      actualSignals.some((actualSignal) =>
+        actualSignal?.text === expectedSignal.text &&
+        (expectedSignal.selector === undefined || actualSignal?.selector === expectedSignal.selector)
+      )
+    )) return false;
+  }
+  return true;
+}
+
+function samePageUrl(expected, actual) {
+  if (typeof actual !== "string") return false;
+  try {
+    const left = new URL(expected);
+    const right = new URL(actual);
+    left.searchParams.delete("divebellSessionId");
+    right.searchParams.delete("divebellSessionId");
+    return left.origin === right.origin &&
+      left.pathname === right.pathname &&
+      left.search === right.search &&
+      left.hash === right.hash;
+  } catch {
+    return expected === actual;
+  }
+}
+
+async function runJson(args, timeoutMs) {
+  const stdout = await run(args, timeoutMs);
+  const text = stdout.trim();
+  return text.length === 0 ? undefined : JSON.parse(text);
+}
+
+async function run(args, timeoutMs) {
+  const summary = args[0] === "eval" ? "eval <recorded page check>" : args.join(" ");
+  debug(\`$ \${cli} \${summary}\`);
+  try {
+    const result = await execFileAsync(cli, args, {
+      env: process.env,
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: timeoutMs + 5000,
+      killSignal: "SIGTERM"
+    });
+    if (result.stderr.trim().length > 0) debug(result.stderr.trim());
+    return result.stdout;
+  } catch (error) {
+    const stderr = typeof error?.stderr === "string" ? error.stderr.trim() : "";
+    const stdout = typeof error?.stdout === "string" ? error.stdout.trim() : "";
+    throw new Error(stderr || stdout || (error instanceof Error ? error.message : String(error)));
+  }
+}
+
+function parseArgs(argv) {
+  const result = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (!item.startsWith("--")) continue;
+    const key = item.slice(2);
+    const next = argv[index + 1];
+    if (next === undefined || next.startsWith("--")) {
+      result[key] = true;
+    } else {
+      result[key] = next;
+      index += 1;
+    }
+  }
+  return result;
+}
+
+function toPositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function writeJson(value) {
+  process.stdout.write(\`\${JSON.stringify(value, null, 2)}\\n\`);
+}
+
+function debug(message) {
+  process.stderr.write(\`\${message}\\n\`);
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 main().catch((error) => {
-  console.error(error);
+  writeJson({
+    status: "error",
+    message: error instanceof Error ? error.message : String(error)
+  });
   process.exitCode = 1;
 });
 `;
 }
 
-function createTranscriptScriptComment(transcript: TranscriptData): string {
-  if (transcript.segments.length === 0) {
-    return transcript.audio === undefined
-      ? "No voice transcript was captured."
-      : `Voice audio was saved to ${transcript.audio}, but no transcript text is available.`;
+function locateRecordedTargetInPage(input: {
+  step: RecordedWorkflowStep;
+  marker: string;
+}): {
+  found: boolean;
+  selector?: string;
+  matchedBy?: string;
+  reason?: string;
+  page: { url: string; title: string; readyState: string };
+} {
+  const { step, marker } = input;
+  const page = {
+    url: location.href,
+    title: document.title,
+    readyState: document.readyState
+  };
+  const normalize = (value: unknown): string =>
+    String(value ?? "").replace(/\s+/gu, " ").trim();
+  const isVisible = (element: Element): boolean => {
+    if (!(element instanceof HTMLElement)) return false;
+    const style = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== "none" &&
+      style.visibility !== "hidden" &&
+      style.pointerEvents !== "none" &&
+      Number(style.opacity) !== 0 &&
+      rect.width > 0 &&
+      rect.height > 0;
+  };
+  const roleOf = (element: Element): string | undefined => {
+    const explicit = element.getAttribute("role");
+    if (explicit) return explicit;
+    if (element.matches("button,input[type=button],input[type=submit],input[type=reset]")) return "button";
+    if (element.matches("a[href]")) return "link";
+    if (element.matches("input[type=checkbox]")) return "checkbox";
+    if (element.matches("input[type=radio]")) return "radio";
+    if (element.matches("select")) return "combobox";
+    if (element.matches("input:not([type]),input[type=text],input[type=email],input[type=search],textarea")) return "textbox";
+    return undefined;
+  };
+  const labelTextOf = (label: HTMLLabelElement): string => {
+    const clone = label.cloneNode(true) as HTMLLabelElement;
+    clone.querySelectorAll("input,textarea,select,button").forEach((control) => control.remove());
+    return normalize(clone.textContent);
+  };
+  const labelOf = (element: Element): string | undefined => {
+    if (
+      element instanceof HTMLInputElement ||
+      element instanceof HTMLTextAreaElement ||
+      element instanceof HTMLSelectElement
+    ) {
+      const label = Array.from(element.labels ?? [])
+        .map(labelTextOf)
+        .find(Boolean);
+      if (label) return label;
+    }
+    const wrappingLabel = element.closest("label");
+    return (wrappingLabel === null ? "" : labelTextOf(wrappingLabel)) || undefined;
+  };
+  const accessibleNameOf = (element: Element): string => normalize(
+    element.getAttribute("aria-label") ??
+    labelOf(element) ??
+    element.getAttribute("alt") ??
+    element.getAttribute("title") ??
+    element.getAttribute("placeholder") ??
+    (
+      element instanceof HTMLInputElement &&
+      ["button", "submit", "reset"].includes(element.type)
+        ? element.value
+        : undefined
+    ) ??
+    element.textContent
+  );
+  const querySelector = (selector: string): Element[] => {
+    try {
+      return Array.from(document.querySelectorAll(selector)).filter(isVisible);
+    } catch {
+      return [];
+    }
+  };
+  const queryByLocator = (locator: RecordedLocatorCandidate): Element[] => {
+    if (locator.selector) return querySelector(locator.selector);
+    if (locator.kind === "label") {
+      return Array.from(document.querySelectorAll("label"))
+        .filter((label) => labelTextOf(label) === normalize(locator.value))
+        .map((label) => label.control ?? label.querySelector("input,textarea,select,button"))
+        .filter((element): element is Element => element !== null && isVisible(element));
+    }
+    const selector = step.target.tagName ?? [
+      "button",
+      "a[href]",
+      "input",
+      "textarea",
+      "select",
+      "[role=button]",
+      "[role=link]",
+      "[role=menuitem]",
+      "[role=tab]",
+      "[role=option]",
+      "[role=checkbox]",
+      "[role=radio]",
+      "[role=switch]"
+    ].join(",");
+    return querySelector(selector).filter((element) => {
+      if (locator.kind === "role") {
+        return roleOf(element) === locator.role &&
+          accessibleNameOf(element) === normalize(locator.value);
+      }
+      if (locator.kind === "text") {
+        return accessibleNameOf(element) === normalize(locator.value) ||
+          normalize(element.textContent) === normalize(locator.value);
+      }
+      return false;
+    });
+  };
+  const score = (element: Element): number => {
+    let value = 0;
+    if (step.target.tagName && element.tagName.toLowerCase() === step.target.tagName) value += 4;
+    if (step.target.role && roleOf(element) === step.target.role) value += 4;
+    if (step.target.name && element.getAttribute("name") === step.target.name) value += 3;
+    if (step.target.accessibleName &&
+        accessibleNameOf(element) === normalize(step.target.accessibleName)) value += 6;
+    if (step.target.text && normalize(element.textContent) === normalize(step.target.text)) value += 2;
+    return value;
+  };
+  const choose = (elements: Element[]): Element | undefined => {
+    const unique = [...new Set(elements)];
+    if (unique.length === 1) return unique[0];
+    if (unique.length === 0) return undefined;
+    const ranked = unique.map((element) => ({ element, score: score(element) }))
+      .sort((left, right) => right.score - left.score);
+    if (ranked[0] !== undefined && ranked[0].score > (ranked[1]?.score ?? -1)) {
+      return ranked[0].element;
+    }
+    return undefined;
+  };
+
+  document.querySelectorAll("[data-divebell-replay-target]").forEach((element) => {
+    element.removeAttribute("data-divebell-replay-target");
+  });
+  const locators = step.target.locators ?? (
+    step.target.selector === undefined
+      ? []
+      : [{ kind: "css", value: step.target.selector, selector: step.target.selector }]
+  );
+  for (const locator of locators) {
+    const element = choose(queryByLocator(locator));
+    if (element === undefined) continue;
+    element.setAttribute("data-divebell-replay-target", marker);
+    return {
+      found: true,
+      selector: `[data-divebell-replay-target=${JSON.stringify(marker)}]`,
+      matchedBy: `${locator.kind}:${locator.value}`,
+      page
+    };
   }
-  const summary = transcript.segments
-    .slice(0, 4)
-    .map((segment) => `[${segment.startMs}-${segment.endMs}ms] ${segment.text}`)
-    .join(" | ");
-  return `Voice transcript: ${summary}`;
+  return {
+    found: false,
+    reason: `No unique visible element matched ${locators.length} recorded locator candidates.`,
+    page
+  };
 }
 
-function createInteractionScriptSteps(interactions: InteractionEvent[]): string[] {
-  const steps: string[] = [];
-  for (const interaction of compactInteractionEvents(interactions)) {
-    const selector = interaction.target?.selector;
-    if (selector === undefined || selector.length === 0) continue;
-    if ((interaction.type === "input" || interaction.type === "change") && typeof interaction.target?.value === "string") {
-      if (interaction.target.value === "[redacted]") {
-        steps.push(`// ${formatInteractionTime(interaction)} skipped redacted input for ${JSON.stringify(selector)}.`);
-        continue;
-      }
-      steps.push(`await run(["fill", ${JSON.stringify(selector)}, ${JSON.stringify(interaction.target.value)}]); // ${formatInteractionTime(interaction)}`);
-      continue;
-    }
-    if (interaction.type === "click") {
-      steps.push(`await run(["click", ${JSON.stringify(selector)}]); // ${formatInteractionTime(interaction)}`);
-      continue;
-    }
-    if (interaction.type === "keydown" && interaction.key === "Enter") {
-      steps.push(`await run(["eval", ${JSON.stringify(createKeyboardEventScript(selector, "Enter"))}]); // ${formatInteractionTime(interaction)}`);
-    }
-  }
-  return steps;
+function readPageStateInPage(): {
+  url: string;
+  title: string;
+  readyState: string;
+  signals: Array<{ selector: string; text: string }>;
+} {
+  const normalize = (value: unknown): string =>
+    String(value ?? "").replace(/\s+/gu, " ").trim();
+  return {
+    url: location.href,
+    title: document.title,
+    readyState: document.readyState,
+    signals: Array.from(document.querySelectorAll("output,[role=alert],[role=status],[aria-live],dialog"))
+      .map((element) => ({
+        selector: element.id ? `#${CSS.escape(element.id)}` : element.tagName.toLowerCase(),
+        text: normalize(element.textContent).slice(0, 500)
+      }))
+      .filter((item) => item.text.length > 0)
+      .slice(0, 20)
+  };
 }
 
 export function normalizeTranscriptSegments(value: unknown, fallbackText: unknown): TranscriptSegment[] {
@@ -144,11 +448,9 @@ export function normalizeTranscriptSegments(value: unknown, fallbackText: unknow
       if (record === undefined) return undefined;
       const text = getStringProperty(record, "text");
       if (text === undefined) return undefined;
-      const start = getNumberProperty(record, "start");
-      const end = getNumberProperty(record, "end");
       return {
-        startMs: secondsToMs(start),
-        endMs: secondsToMs(end),
+        startMs: secondsToMs(getNumberProperty(record, "start")),
+        endMs: secondsToMs(getNumberProperty(record, "end")),
         text
       };
     })
@@ -176,100 +478,6 @@ function secondsToMs(value: number | undefined): number {
   return value === undefined ? 0 : Math.max(0, Math.round(value * 1000));
 }
 
-function compactInteractionEvents(interactions: InteractionEvent[]): InteractionEvent[] {
-  const output: InteractionEvent[] = [];
-  for (const interaction of interactions) {
-    if (interaction.type === "recorder-ready" || interaction.type === "recorder-error") continue;
-    const previous = output.at(-1);
-    if (
-      previous !== undefined &&
-      (interaction.type === "input" || interaction.type === "change") &&
-      (previous.type === "input" || previous.type === "change") &&
-      previous.target?.selector === interaction.target?.selector &&
-      interaction.timeMs - previous.timeMs < 1200
-    ) {
-      output[output.length - 1] = interaction;
-      continue;
-    }
-    output.push(interaction);
-  }
-  return output;
-}
-
-function createKeyboardEventScript(selector: string, key: string): string {
-  return [
-    "(() => {",
-    `  const element = document.querySelector(${JSON.stringify(selector)});`,
-    "  if (!element) throw new Error('Recorded target was not found.');",
-    "  element.focus?.();",
-    `  element.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, code: ${JSON.stringify(key)}, bubbles: true, cancelable: true }));`,
-    "})()"
-  ].join("\n");
-}
-
-function formatInteractionTime(interaction: InteractionEvent): string {
-  return `t=${Math.round(interaction.timeMs)}ms ${interaction.type}`;
-}
-
-function findWaitTarget(runtimeSamples: RuntimeSample[]): { targetId: string; status: string } | undefined {
-  for (const sample of [...runtimeSamples].reverse()) {
-    const snapshot = asRecord(sample.resources?.snapshot);
-    const targets = asRecord(snapshot?.targets);
-    if (targets === undefined) continue;
-
-    const candidates: Array<{ targetId: string; status: string }> = [];
-    for (const [targetId, targetValue] of Object.entries(targets)) {
-      const target = asRecord(targetValue);
-      const status = getStringProperty(target, "status");
-      if (status === undefined) continue;
-      candidates.push({ targetId, status });
-    }
-    const readyTarget = candidates.find((candidate) => candidate.status === "ready");
-    if (readyTarget !== undefined) return readyTarget;
-    if (candidates[0] !== undefined) return candidates[0];
-  }
-  return undefined;
-}
-
-function findActionNames(runtimeSamples: RuntimeSample[]): string[] {
-  const names = new Set<string>();
-  for (const sample of runtimeSamples) {
-    collectActionNames(sample.resources?.actions, names);
-  }
-  return [...names].slice(0, 8);
-}
-
-function collectActionNames(value: unknown, names: Set<string>): void {
-  if (Array.isArray(value)) {
-    for (const item of value) collectActionNames(item, names);
-    return;
-  }
-
-  const record = asRecord(value);
-  if (record === undefined) return;
-  const name = getStringProperty(record, "name");
-  if (name !== undefined) names.add(name);
-  collectActionNames(record.actions, names);
-  collectActionNames(record.items, names);
-}
-
-function findLatestPageTitle(pageSnapshots: PageSnapshotSample[]): string | undefined {
-  for (const sample of [...pageSnapshots].reverse()) {
-    const result = asRecord(sample.result);
-    const title = getStringProperty(result, "title");
-    if (title !== undefined) return title;
-  }
-  return undefined;
-}
-
-function findLatestRuntimeUrl(runtimeSamples: RuntimeSample[]): string | undefined {
-  for (const sample of [...runtimeSamples].reverse()) {
-    const url = sample.runtime?.url;
-    if (url !== undefined && url.length > 0) return url;
-  }
-  return undefined;
-}
-
 export function createManifestPath(recordingDirectory: string, scriptPath: string): string {
   const relativePath = relative(recordingDirectory, scriptPath);
   if (relativePath.length > 0 && !relativePath.startsWith("..") && !isAbsolute(relativePath)) {
@@ -278,7 +486,24 @@ export function createManifestPath(recordingDirectory: string, scriptPath: strin
   return scriptPath;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
 
-function asRecord(value: unknown): Record<string, unknown> | undefined { return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined; }
-function getStringProperty(record: Record<string, unknown> | undefined, name: string): string | undefined { const value = record?.[name]; return typeof value === "string" ? value : undefined; }
-function getNumberProperty(record: Record<string, unknown> | undefined, name: string): number | undefined { const value = record?.[name]; return typeof value === "number" && Number.isFinite(value) ? value : undefined; }
+function getStringProperty(
+  record: Record<string, unknown> | undefined,
+  name: string
+): string | undefined {
+  const value = record?.[name];
+  return typeof value === "string" ? value : undefined;
+}
+
+function getNumberProperty(
+  record: Record<string, unknown> | undefined,
+  name: string
+): number | undefined {
+  const value = record?.[name];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}

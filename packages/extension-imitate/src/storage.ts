@@ -21,6 +21,7 @@ export function createRecordingFiles(): RecordingFiles {
     pageSnapshots: "page-snapshots.jsonl",
     domSnapshots: "dom-snapshots.jsonl",
     interactions: "interactions.jsonl",
+    workflow: "workflow.json",
     audio: "audio.webm",
     audioChunks: "audio-chunks.jsonl",
     audioEvents: "audio-events.jsonl",

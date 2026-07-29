@@ -187,6 +187,7 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
     output: outputDirectory,
     manifest: join(outputDirectory, recording.manifest.files.manifest),
     script: generatedScript?.path,
+    workflow: generatedScript?.workflowPath,
     counts: manifest.counts
   };
 }
@@ -201,6 +202,7 @@ async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Pr
     generated: {
       ...(recording.manifest.generated ?? {}),
       script: generatedScript.relativePath,
+      workflow: generatedScript.workflowRelativePath,
       generatedAt
     }
   };
@@ -217,7 +219,8 @@ async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Pr
 
   return {
     input: inputDirectory,
-    script: generatedScript.path
+    script: generatedScript.path,
+    workflow: generatedScript.workflowPath
   };
 }
 
@@ -412,6 +415,7 @@ function createOptionalGeneratedProperty(generatedScript: GeneratedScriptResult 
   return {
     generated: {
       script: generatedScript.relativePath,
+      workflow: generatedScript.workflowRelativePath,
       generatedAt: new Date().toISOString()
     }
   };

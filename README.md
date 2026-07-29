@@ -107,7 +107,7 @@ Focused capabilities are published as optional packages and installed only when 
 | --- | --- | --- | --- |
 | `@divebell/extension-memory` | `divebell memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
 | `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
-| `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate a reusable script draft. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
+| `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate an executable, verified JavaScript replay. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
 | `@divebell/extension-troubleshooting` | `divebell verify` | Verify that a page-declared business target reaches the expected result. | [Runtime SDK API](./docs/runtime-sdk-api.md) |
 | `@divebell/modern-plugin` | Modern.js runtime plugin (WIP) | Planned framework-state integration. Do not adopt it yet; it is waiting for a Modern.js release with the required lifecycle hooks. | [Modern.js Integration](./docs/modernjs-integration.md) |
 | `@module-federation/observability-plugin` | Module Federation runtime plugin | Record consumer, remote, manifest, remoteEntry, expose, shared-dependency, and runtime-error evidence through MF observability. | [Module Federation Observability](./docs/module-federation-observability.md) |
@@ -142,7 +142,7 @@ code-usage report without cloning the repository.
 
 #### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
-Demonstrate a workflow in a visible browser and let the agent generate a script draft from the interactions, page context, and optional spoken intent.
+Demonstrate a workflow in a visible browser and let the Agent generate, run, and verify a JavaScript replay from the operated elements and event sequence. Spoken intent is optional.
 
 **Demo video**
 

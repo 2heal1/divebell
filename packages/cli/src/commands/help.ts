@@ -99,6 +99,21 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "divebell focus <ref|selector>",
+    description: "Focus an element by page reference or selector."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell press <key>",
+    description: "Press a keyboard key or shortcut in the currently focused element."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell select <ref|selector> <value>",
+    description: "Select an option in a native dropdown by value or label."
+  },
+  {
+    category: "Bridge and Browser",
     usage: "divebell eval <script>",
     description: "Run a script in the page, or load one from --file <path>."
   },

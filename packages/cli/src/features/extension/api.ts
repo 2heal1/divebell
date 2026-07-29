@@ -169,6 +169,9 @@ function createDivebellBrowserApi(options: {
     pageSnapshot: async <T = unknown>() => await runText(["snapshot"]) as T,
     click: async (target) => await runText(["click", normalizeAgentBrowserTarget(target)]),
     fill: async (target, value) => await runText(["fill", normalizeAgentBrowserTarget(target), value]),
+    focus: async (target) => await runText(["focus", normalizeAgentBrowserTarget(target)]),
+    press: async (key) => await runText(["press", key]),
+    select: async (target, value) => await runText(["select", normalizeAgentBrowserTarget(target), value]),
     eval: async (script) => await runJson(["eval", script]),
     evalFile: async (path) => await runJson(["eval", await readFile(path, "utf8")]),
     waitEval: async (script, waitOptions = {}) =>

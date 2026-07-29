@@ -25,6 +25,7 @@
   },
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "pnpm run build && node --test test/*.test.mjs"
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "test:replay-e2e": "pnpm run build && node test/recording-replay.e2e.mjs"
   }
 }

@@ -1,11 +1,12 @@
 import { after, before } from "node:test";
 
-import { registerCliE2e } from "./cli/scenario.mjs";
-import { registerMfExtensionE2e } from "./extension-mf/scenario.mjs";
-import { registerTroubleshootingExtensionE2e } from "./extension-troubleshooting/scenario.mjs";
-import { DivebellTestEnvironment } from "./support/environment.mjs";
+import { registerCliE2e } from "./cli/scenario.js";
+import { registerMfExtensionE2e } from "./extension-mf/scenario.js";
+import { registerTroubleshootingExtensionE2e } from "./extension-troubleshooting/scenario.js";
+import { DivebellTestEnvironment } from "@divebell/test";
+import type { DivebellE2eContext } from "./support/types.js";
 
-let environment;
+let environment: DivebellTestEnvironment | undefined;
 
 before(async () => {
   environment = await DivebellTestEnvironment.create();
@@ -15,7 +16,7 @@ after(async () => {
   await environment?.close();
 });
 
-const context = {
+const context: DivebellE2eContext = {
   getEnvironment() {
     if (environment === undefined) {
       throw new Error("Divebell e2e environment is not ready.");

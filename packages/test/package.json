@@ -9,6 +9,20 @@
     "directory": "packages/test"
   },
   "author": "2heal1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/internal.js",
+      "default": "./dist/internal.js"
+    }
+  },
   "engines": {
     "node": ">=24.0.0 <25"
   },
@@ -17,6 +31,10 @@
   },
   "files": [
     "bin/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
     "dist/e2e/**/*",
     "scripts/**/*.mjs"
   ],
@@ -26,7 +44,7 @@
   "scripts": {
     "build": "node ./scripts/prepare-package.mjs",
     "prepack": "pnpm run build",
-    "test:e2e": "node ./bin/divebell-test.js"
+    "test:e2e": "pnpm run build && node ./bin/divebell-test.js"
   },
   "dependencies": {
     "@divebell/bridge": "workspace:^",
@@ -37,5 +55,8 @@
     "@divebell/extension-memory": "workspace:^",
     "@divebell/extension-mf": "workspace:^",
     "@divebell/extension-troubleshooting": "workspace:^"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

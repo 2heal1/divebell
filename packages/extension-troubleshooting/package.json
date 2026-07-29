@@ -10,6 +10,24 @@
   },
   "author": "2heal1",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./extension": {
+      "types": "./dist/extension.d.ts",
+      "import": "./dist/extension.js",
+      "default": "./dist/extension.js"
+    },
+    "./test": {
+      "types": "./dist/test-commands.d.ts",
+      "import": "./dist/test-commands.js",
+      "default": "./dist/test-commands.js"
+    }
+  },
   "divebell": {
     "schemaVersion": 1,
     "extensions": [
@@ -17,6 +35,8 @@
     ]
   },
   "files": [
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
     "dist/**/*.js",
     "dist/**/*.js.map"
   ],

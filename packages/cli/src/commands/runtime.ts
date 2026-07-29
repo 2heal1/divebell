@@ -24,6 +24,12 @@ import {
   isFailedWaitResult,
   waitForRuntimeCommand
 } from "../features/runtime/wait.js";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
+
+export interface RuntimesResult {
+  bridgeUrl: string;
+  runtimes: BridgeRuntimeInfo[];
+}
 
 export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): Promise<number | undefined> {
   const {
@@ -49,7 +55,8 @@ export async function runRuntimeCliCommand(options: RuntimeCliCommandOptions): P
       createBridgeStateStore(commandArgs, bridgeStateDirectory)
     );
     const runtimes = await fetchRuntimes(fetcher, bridgeUrl);
-    writeJson(stdout, { bridgeUrl, runtimes });
+    const result: RuntimesResult = { bridgeUrl, runtimes };
+    writeJson(stdout, result);
     return 0;
   }
 

@@ -1,5 +1,10 @@
 import type { DivebellExtensionApi } from "@divebell/cli";
-import type { VerifyTargetClass, VerifyVisibilityResult, VerifyCommandResult } from "./types.js";
+import type {
+  VerifyCommandResult,
+  VerifyTargetClass,
+  VerifyVisibilityResult,
+  VerifyWaitResult
+} from "./types.js";
 
 interface RuntimeTargetDescriptor {
   id: string;
@@ -26,7 +31,7 @@ export async function runVerifyCommand(
   where: RuntimeDataCondition[] | undefined,
   timeout: number | undefined
 ): Promise<VerifyCommandResult> {
-  const waitResult = await divebell.waitFor(
+  const waitResult = await divebell.waitFor<VerifyWaitResult>(
     targetId,
     status,
     {
@@ -121,7 +126,7 @@ function createWaitForFailure(
   status: string,
   where: RuntimeDataCondition[] | undefined,
   reason: string
-): { result: unknown } {
+): { result: VerifyWaitResult } {
   return {
     result: {
       success: false,

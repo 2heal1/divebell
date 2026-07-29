@@ -1,5 +1,16 @@
 import type { CommandErrorKind, CommandOutputMeta, CommandOutputWriter, CommandErrorOptions, CommandOutput } from "../types/shared.js";
-export type { CommandOutputStatus, CommandErrorKind, CommandOutputMeta, CommandOutputWriter, CommandErrorOptions, CommandOutput } from "../types/shared.js";
+export type {
+  CliCommandErrorResult,
+  CliCommandInvocation,
+  CliCommandNeedsInputResult,
+  CliCommandOkResult,
+  CommandOutputStatus,
+  CommandErrorKind,
+  CommandOutputMeta,
+  CommandOutputWriter,
+  CommandErrorOptions,
+  CommandOutput
+} from "../types/shared.js";
 
 export class CommandError extends Error {
   readonly code: string;

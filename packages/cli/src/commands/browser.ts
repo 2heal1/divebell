@@ -42,6 +42,18 @@ import {
 } from "../features/extension/hooks.js";
 import type { ExtensionHookPlan } from "../features/extension/plan.js";
 import type { DivebellExtensionDefinition } from "../types/commands.js";
+
+export interface OpenPageResult {
+  url: string;
+  openedUrl: string;
+  normalizedUrl: string;
+  bridgeUrl: string | null;
+  bridgePort: number | null;
+  sessionId: string | null;
+  openedAt: number;
+  injectedScriptPath?: string;
+}
+
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -138,7 +150,7 @@ export async function runBrowserCliCommand(
       activeExtensions: hookResult.activeExtensions,
       ...(headers === undefined ? {} : { headers })
     });
-    createCommandOutput(stdout, args.command.join(" ")).ok({
+    const output: OpenPageResult = {
       url,
       openedUrl,
       normalizedUrl,
@@ -149,7 +161,8 @@ export async function runBrowserCliCommand(
       ...(result.injectedScriptPath === undefined
         ? {}
         : { injectedScriptPath: result.injectedScriptPath })
-    }, "Page opened.");
+    };
+    createCommandOutput(stdout, args.command.join(" ")).ok(output, "Page opened.");
     if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
       await stopOpenContextBridge(previousOpenContext?.bridgeUrl ?? null, bridgeStateDirectory);
     }

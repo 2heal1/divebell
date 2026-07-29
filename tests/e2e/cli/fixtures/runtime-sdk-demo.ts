@@ -1,40 +1,104 @@
-import { request as httpRequest } from "node:http";
+import {
+  request as httpRequest,
+  type ClientRequest,
+  type IncomingMessage
+} from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
+import type {
+  DivebellCore,
+  DivebellWindowHost
+} from "@divebell/core";
 
 import {
   importFromTestPackage,
   resolvePackagePathFromTestPackage
-} from "../../support/package-resolution.mjs";
+} from "@divebell/test/internal";
 
-const { createBridgeServer } = await importFromTestPackage("@divebell/bridge");
+interface DemoState {
+  orders: number;
+}
+
+interface BridgeManager {
+  close(): void;
+}
+
+interface TestRuntimeGlobal extends DivebellWindowHost {
+  EventSource?: typeof NodeEventSource;
+  location?: {
+    href: string;
+  };
+  __DIVEBELL_BRIDGE_MANAGER__?: BridgeManager;
+  eval(source: string): unknown;
+}
+
+interface RuntimesResponse {
+  runtimes: BridgeRuntimeInfo[];
+}
+
+interface CliBridgeInjectModule {
+  createBridgeInitScript(bridgeUrl: string): string;
+}
+
+interface ServerSentMessage {
+  data: string;
+}
+
+export interface RuntimeSdkDemoFixture {
+  bridgeUrl: string;
+  pageUrl: string;
+  runtimeId: string;
+  childRuntimeId: string;
+  close(): Promise<void>;
+}
+
+export interface RefreshOrdersResult {
+  orders: number;
+  amount: number;
+  source: "cli" | "demo";
+}
+
+export function isRefreshOrdersResult(
+  value: unknown
+): value is RefreshOrdersResult {
+  return isRecord(value)
+    && typeof value.orders === "number"
+    && typeof value.amount === "number"
+    && (value.source === "cli" || value.source === "demo");
+}
+
+const { createBridgeServer } = await importFromTestPackage<
+  typeof import("@divebell/bridge")
+>("@divebell/bridge");
 const {
   createDivebell,
   installDivebellOnWindow,
   uninstallDivebellFromWindow
-} = await importFromTestPackage("@divebell/core");
+} = await importFromTestPackage<typeof import("@divebell/core")>("@divebell/core");
 const createBridgeInitScript = await resolveCliBridgeInitScript();
 
-export async function createRuntimeSdkDemoFixture() {
+export async function createRuntimeSdkDemoFixture(): Promise<RuntimeSdkDemoFixture> {
+  const testGlobal = globalThis as unknown as TestRuntimeGlobal;
   const previousGlobals = {
-    EventSource: globalThis.EventSource,
-    location: globalThis.location,
-    runtime: globalThis.__DIVEBELL__,
-    registry: globalThis.__DIVEBELL_REGISTRY__,
-    manager: globalThis.__DIVEBELL_BRIDGE_MANAGER__
+    EventSource: testGlobal.EventSource,
+    location: testGlobal.location,
+    runtime: testGlobal.__DIVEBELL__,
+    registry: testGlobal.__DIVEBELL_REGISTRY__,
+    manager: testGlobal.__DIVEBELL_BRIDGE_MANAGER__
   };
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
   const pageUrl = "http://divebell-e2e.test/runtime-sdk?divebellSessionId=runtime-sdk-e2e";
-  const state = {
+  const state: DemoState = {
     orders: 3
   };
-  const host = globalThis;
-  let ordersRuntime;
-  let checkoutRuntime;
+  const host = testGlobal;
+  let ordersRuntime: DivebellCore | undefined;
+  let checkoutRuntime: DivebellCore | undefined;
   let closed = false;
 
-  const close = async () => {
+  const close = async (): Promise<void> => {
     if (closed) return;
     closed = true;
     if (checkoutRuntime !== undefined) {
@@ -43,20 +107,20 @@ export async function createRuntimeSdkDemoFixture() {
     if (ordersRuntime !== undefined) {
       uninstallDivebellFromWindow(ordersRuntime, host);
     }
-    globalThis.__DIVEBELL_BRIDGE_MANAGER__?.close();
+    testGlobal.__DIVEBELL_BRIDGE_MANAGER__?.close();
     for (const source of NodeEventSource.instances) source.close();
     await bridge.close();
-    restoreGlobal("EventSource", previousGlobals.EventSource);
-    restoreGlobal("location", previousGlobals.location);
-    restoreGlobal("__DIVEBELL__", previousGlobals.runtime);
-    restoreGlobal("__DIVEBELL_REGISTRY__", previousGlobals.registry);
-    restoreGlobal("__DIVEBELL_BRIDGE_MANAGER__", previousGlobals.manager);
+    restoreGlobal(testGlobal, "EventSource", previousGlobals.EventSource);
+    restoreGlobal(testGlobal, "location", previousGlobals.location);
+    restoreGlobal(testGlobal, "__DIVEBELL__", previousGlobals.runtime);
+    restoreGlobal(testGlobal, "__DIVEBELL_REGISTRY__", previousGlobals.registry);
+    restoreGlobal(testGlobal, "__DIVEBELL_BRIDGE_MANAGER__", previousGlobals.manager);
   };
 
   try {
     NodeEventSource.instances = [];
-    globalThis.EventSource = NodeEventSource;
-    globalThis.location = { href: pageUrl };
+    testGlobal.EventSource = NodeEventSource;
+    testGlobal.location = { href: pageUrl };
 
     ordersRuntime = createDivebell();
     registerOrdersDemo(ordersRuntime, state);
@@ -88,7 +152,7 @@ export async function createRuntimeSdkDemoFixture() {
       parentRuntimeId: "runtime-sdk-orders"
     });
 
-    globalThis.eval(createBridgeInitScript(address.url));
+    testGlobal.eval(createBridgeInitScript(address.url));
     await waitForConnectedRuntimes(address.url, 2);
 
     return {
@@ -104,7 +168,7 @@ export async function createRuntimeSdkDemoFixture() {
   }
 }
 
-function registerOrdersDemo(runtime, state) {
+function registerOrdersDemo(runtime: DivebellCore, state: DemoState): void {
   runtime.registerTarget({
     id: "app:runtime-sdk-demo",
     type: "demo.app",
@@ -148,7 +212,7 @@ function registerOrdersDemo(runtime, state) {
       },
       additionalProperties: false
     },
-    handler: (payload) => {
+    handler: (payload: unknown) => {
       const input = isRecord(payload) ? payload : {};
       const amount = typeof input.amount === "number" && Number.isFinite(input.amount)
         ? Math.max(1, Math.floor(input.amount))
@@ -176,7 +240,11 @@ function registerOrdersDemo(runtime, state) {
   setReady(runtime, state, "demo");
 }
 
-function setReady(runtime, state, updatedBy) {
+function setReady(
+  runtime: DivebellCore,
+  state: DemoState,
+  updatedBy: "cli" | "demo"
+): void {
   runtime.updateSnapshot({
     id: "route:/runtime-sdk",
     status: "ready",
@@ -196,12 +264,13 @@ function setReady(runtime, state, updatedBy) {
 }
 
 class NodeEventSource {
-  static instances = [];
+  static instances: NodeEventSource[] = [];
 
-  #listeners = new Map();
-  #request;
+  readonly #listeners = new Map<string, Array<(event: ServerSentMessage) => void>>();
+  readonly #request: ClientRequest;
+  onerror?: () => void;
 
-  constructor(url) {
+  constructor(url: string | URL) {
     NodeEventSource.instances.push(this);
     this.#request = httpRequest(url, { method: "GET" }, (response) => {
       this.#read(response);
@@ -212,17 +281,17 @@ class NodeEventSource {
     this.#request.end();
   }
 
-  addEventListener(type, listener) {
+  addEventListener(type: string, listener: (event: ServerSentMessage) => void): void {
     const listeners = this.#listeners.get(type) ?? [];
     listeners.push(listener);
     this.#listeners.set(type, listeners);
   }
 
-  close() {
+  close(): void {
     this.#request.destroy();
   }
 
-  #read(response) {
+  #read(response: IncomingMessage): void {
     let buffer = "";
     response.on("data", (chunk) => {
       buffer += chunk.toString("utf8");
@@ -241,10 +310,13 @@ class NodeEventSource {
   }
 }
 
-async function waitForConnectedRuntimes(bridgeUrl, count) {
+async function waitForConnectedRuntimes(
+  bridgeUrl: string,
+  count: number
+): Promise<void> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const response = await fetch(`${bridgeUrl}/runtimes`);
-    const body = await response.json();
+    const body = await response.json() as RuntimesResponse;
     if (
       body.runtimes?.filter((runtime) => runtime.status === "connected").length === count
     ) {
@@ -255,9 +327,12 @@ async function waitForConnectedRuntimes(bridgeUrl, count) {
   throw new Error(`${count} Runtime SDK demo runtimes did not connect to ${bridgeUrl}.`);
 }
 
-function parseServerSentEvent(raw) {
+function parseServerSentEvent(raw: string): {
+  event: string;
+  data: unknown;
+} {
   let event = "message";
-  const data = [];
+  const data: string[] = [];
   for (const line of raw.split("\n")) {
     if (line.startsWith("event: ")) event = line.slice("event: ".length);
     if (line.startsWith("data: ")) data.push(line.slice("data: ".length));
@@ -268,22 +343,26 @@ function parseServerSentEvent(raw) {
   };
 }
 
-function restoreGlobal(name, value) {
+function restoreGlobal(
+  target: TestRuntimeGlobal,
+  name: keyof TestRuntimeGlobal,
+  value: unknown
+): void {
   if (value === undefined) {
-    delete globalThis[name];
+    Reflect.deleteProperty(target, name);
   } else {
-    globalThis[name] = value;
+    Reflect.set(target, name, value);
   }
 }
 
-function isRecord(value) {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-async function resolveCliBridgeInitScript() {
+async function resolveCliBridgeInitScript(): Promise<(bridgeUrl: string) => string> {
   const bridgeInitScriptModule = await import(pathToFileURL(join(
     await resolvePackagePathFromTestPackage("@divebell/cli", "dist/features/bridge"),
     "inject.js"
-  )).href);
+  )).href) as CliBridgeInjectModule;
   return bridgeInitScriptModule.createBridgeInitScript;
 }

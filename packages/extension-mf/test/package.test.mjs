@@ -175,6 +175,8 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(listed.stdout, /package\/dist\/public\.js/);
     assert.match(listed.stdout, /package\/dist\/public\.d\.ts/);
     assert.match(listed.stdout, /package\/dist\/extension\.d\.ts/);
+    assert.match(listed.stdout, /package\/dist\/test-commands\.js/);
+    assert.match(listed.stdout, /package\/dist\/test-commands\.d\.ts/);
     assert.match(listed.stdout, /package\/dist\/observability-chrome-devtool\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/install-observability\.js/);
     assert.match(listed.stdout, /package\/dist\/observability-build\.json/);
@@ -220,9 +222,10 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.equal(packageJson.exports["."].import, "./dist/package.js");
     assert.equal(packageJson.exports["./core"].import, "./dist/public.js");
     assert.equal(packageJson.exports["./extension"].import, "./dist/extension.js");
+    assert.equal(packageJson.exports["./test"].import, "./dist/test-commands.js");
     assert.deepEqual(
       Object.keys(packageJson.exports),
-      [".", "./core", "./extension"]
+      [".", "./core", "./extension", "./test"]
     );
 
     const extracted = join(outputDirectory, "extracted");
@@ -296,6 +299,7 @@ test("packed archive supports real package-name imports for public API and exten
       `const extension = await import("@divebell/extension-mf");
        const api = await import("@divebell/extension-mf/core");
        const extensionFactory = await import("@divebell/extension-mf/extension");
+       const testApi = await import("@divebell/extension-mf/test");
        const names = ["readMfObservability", "parseBrowserReadResult", "parseRuntimeState", "selectStatusInstances", "selectConsumer", "selectRemote", "createStatusResult", "createModuleInfoResult", "createCompatibilitySummary", "filterGlobalShared", "filterRelationshipsForInstances", "collectBridgeOperations", "listBridgeCurrentStates", "selectBridgeTrace", "createBridgeTraceResult", "selectRemoteTrace", "selectRemoteStatus", "createRemoteTraceResult", "createRemoteStatusResult", "buildRemoteTrace", "selectSharedInstances", "createSharedStatusResult", "createSharedTraceResult", "groupSharedTraceOperations"];
        if (!names.every((name) => typeof api[name] === "function")) process.exit(2);
        if (!names.every((name) => typeof extension[name] === "function")) process.exit(4);
@@ -303,7 +307,8 @@ test("packed archive supports real package-name imports for public API and exten
        if (extension.default?.name !== "mf") process.exit(3);
        if (typeof extensionFactory.createMfExtension !== "function") process.exit(6);
        const vmok = extensionFactory.createMfExtension({ commandName: "vmok" });
-       if (vmok.name !== "vmok" || vmok.commands?.[0]?.name !== "vmok") process.exit(7);`
+       if (vmok.name !== "vmok" || vmok.commands?.[0]?.name !== "vmok") process.exit(7);
+       if (typeof testApi.mfTestCommands?.status !== "function") process.exit(8);`
     ], {
       cwd: tempDirectory,
       encoding: "utf8"

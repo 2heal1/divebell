@@ -20,6 +20,43 @@ export interface CommandOutputMeta {
   command: string;
 }
 
+export interface CliCommandInvocation<TSuccess, TFailure = never> {
+  readonly args: readonly string[];
+  readonly result?: {
+    readonly success: TSuccess;
+    readonly failure: TFailure;
+  };
+}
+
+export interface CliCommandOkResult<T> {
+  status: "ok";
+  message?: string;
+  data: T;
+  meta: CommandOutputMeta;
+}
+
+export interface CliCommandErrorResult<T = unknown> {
+  status: "error";
+  message: string;
+  error: {
+    code: string;
+    kind: CommandErrorKind;
+    retryable: boolean;
+    hint?: string;
+    details?: Record<string, unknown>;
+  };
+  data?: T;
+  meta: CommandOutputMeta;
+}
+
+export interface CliCommandNeedsInputResult<T = unknown> {
+  status: "needs_input";
+  message: string;
+  options: readonly unknown[];
+  data?: T;
+  meta: CommandOutputMeta;
+}
+
 export interface CommandOutputWriter {
   write(chunk: string): void;
 }

@@ -1,50 +1,93 @@
-import { request as httpRequest } from "node:http";
+import {
+  request as httpRequest,
+  type ClientRequest,
+  type IncomingMessage
+} from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { BridgeRuntimeInfo } from "@divebell/bridge";
+import type { DivebellWindowHost } from "@divebell/core";
 
 import {
   importFromTestPackage,
   resolvePackagePathFromTestPackage
-} from "./package-resolution.mjs";
+} from "@divebell/test/internal";
 
-const { createBridgeServer } = await importFromTestPackage("@divebell/bridge");
+interface BridgeManager {
+  close(): void;
+}
+
+interface TestRuntimeGlobal extends DivebellWindowHost {
+  EventSource?: typeof NodeEventSource;
+  location?: {
+    href: string;
+  };
+  __DIVEBELL_BRIDGE_MANAGER__?: BridgeManager;
+  eval(source: string): unknown;
+}
+
+interface RuntimesResponse {
+  runtimes: BridgeRuntimeInfo[];
+}
+
+interface CliBridgeInjectModule {
+  createBridgeInitScript(bridgeUrl: string): string;
+}
+
+interface ServerSentMessage {
+  data: string;
+}
+
+export interface TroubleshootingRuntimeFixture {
+  bridgeUrl: string;
+  pageUrl: string;
+  targetId: string;
+  close(): Promise<void>;
+}
+
+const { createBridgeServer } = await importFromTestPackage<
+  typeof import("@divebell/bridge")
+>("@divebell/bridge");
 const {
   createDivebell,
   installDivebellOnWindow
-} = await importFromTestPackage("@divebell/core");
+} = await importFromTestPackage<typeof import("@divebell/core")>("@divebell/core");
 const createBridgeInitScript = await resolveCliBridgeInitScript();
 
-export async function createTroubleshootingRuntimeFixture() {
+export async function createTroubleshootingRuntimeFixture(): Promise<
+  TroubleshootingRuntimeFixture
+> {
+  const testGlobal = globalThis as unknown as TestRuntimeGlobal;
   const previousGlobals = {
-    EventSource: globalThis.EventSource,
-    location: globalThis.location,
-    runtime: globalThis.__DIVEBELL__,
-    registry: globalThis.__DIVEBELL_REGISTRY__,
-    manager: globalThis.__DIVEBELL_BRIDGE_MANAGER__
+    EventSource: testGlobal.EventSource,
+    location: testGlobal.location,
+    runtime: testGlobal.__DIVEBELL__,
+    registry: testGlobal.__DIVEBELL_REGISTRY__,
+    manager: testGlobal.__DIVEBELL_BRIDGE_MANAGER__
   };
   const bridge = createBridgeServer();
   const address = await bridge.listen({ port: 0 });
   const pageUrl = "http://divebell-e2e.test/orders?divebellSessionId=troubleshooting-e2e";
-  let bridgeManager;
+  let bridgeManager: BridgeManager | undefined;
   let closed = false;
 
-  const close = async () => {
+  const close = async (): Promise<void> => {
     if (closed) return;
     closed = true;
     bridgeManager?.close();
     for (const source of NodeEventSource.instances) source.close();
     await bridge.close();
-    restoreGlobal("EventSource", previousGlobals.EventSource);
-    restoreGlobal("location", previousGlobals.location);
-    restoreGlobal("__DIVEBELL__", previousGlobals.runtime);
-    restoreGlobal("__DIVEBELL_REGISTRY__", previousGlobals.registry);
-    restoreGlobal("__DIVEBELL_BRIDGE_MANAGER__", previousGlobals.manager);
+    restoreGlobal(testGlobal, "EventSource", previousGlobals.EventSource);
+    restoreGlobal(testGlobal, "location", previousGlobals.location);
+    restoreGlobal(testGlobal, "__DIVEBELL__", previousGlobals.runtime);
+    restoreGlobal(testGlobal, "__DIVEBELL_REGISTRY__", previousGlobals.registry);
+    restoreGlobal(testGlobal, "__DIVEBELL_BRIDGE_MANAGER__", previousGlobals.manager);
   };
 
   try {
     NodeEventSource.instances = [];
-    globalThis.EventSource = NodeEventSource;
-    globalThis.location = { href: pageUrl };
+    testGlobal.EventSource = NodeEventSource;
+    testGlobal.location = { href: pageUrl };
 
     const runtime = createDivebell();
     runtime.registerTarget({
@@ -62,13 +105,13 @@ export async function createTroubleshootingRuntimeFixture() {
         region: "cn"
       }
     });
-    installDivebellOnWindow(runtime, globalThis, {
+    installDivebellOnWindow(runtime, testGlobal, {
       runtimeId: "troubleshooting-e2e-runtime",
       name: "troubleshooting-e2e",
       source: "divebell-test"
     });
-    globalThis.eval(createBridgeInitScript(address.url));
-    bridgeManager = globalThis.__DIVEBELL_BRIDGE_MANAGER__;
+    testGlobal.eval(createBridgeInitScript(address.url));
+    bridgeManager = testGlobal.__DIVEBELL_BRIDGE_MANAGER__;
 
     await waitForRuntime(address.url, "troubleshooting-e2e-runtime");
 
@@ -85,12 +128,13 @@ export async function createTroubleshootingRuntimeFixture() {
 }
 
 class NodeEventSource {
-  static instances = [];
+  static instances: NodeEventSource[] = [];
 
-  #listeners = new Map();
-  #request;
+  readonly #listeners = new Map<string, Array<(event: ServerSentMessage) => void>>();
+  readonly #request: ClientRequest;
+  onerror?: () => void;
 
-  constructor(url) {
+  constructor(url: string | URL) {
     NodeEventSource.instances.push(this);
     this.#request = httpRequest(url, { method: "GET" }, (response) => {
       this.#read(response);
@@ -101,17 +145,17 @@ class NodeEventSource {
     this.#request.end();
   }
 
-  addEventListener(type, listener) {
+  addEventListener(type: string, listener: (event: ServerSentMessage) => void): void {
     const listeners = this.#listeners.get(type) ?? [];
     listeners.push(listener);
     this.#listeners.set(type, listeners);
   }
 
-  close() {
+  close(): void {
     this.#request.destroy();
   }
 
-  #read(response) {
+  #read(response: IncomingMessage): void {
     let buffer = "";
     response.on("data", (chunk) => {
       buffer += chunk.toString("utf8");
@@ -130,10 +174,10 @@ class NodeEventSource {
   }
 }
 
-async function waitForRuntime(bridgeUrl, runtimeId) {
+async function waitForRuntime(bridgeUrl: string, runtimeId: string): Promise<void> {
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const response = await fetch(`${bridgeUrl}/runtimes`);
-    const body = await response.json();
+    const body = await response.json() as RuntimesResponse;
     if (
       body.runtimes?.some(
         (runtime) => runtime.runtimeId === runtimeId && runtime.status === "connected"
@@ -146,9 +190,12 @@ async function waitForRuntime(bridgeUrl, runtimeId) {
   throw new Error(`Runtime ${runtimeId} did not connect to ${bridgeUrl}.`);
 }
 
-function parseServerSentEvent(raw) {
+function parseServerSentEvent(raw: string): {
+  event: string;
+  data: unknown;
+} {
   let event = "message";
-  const data = [];
+  const data: string[] = [];
   for (const line of raw.split("\n")) {
     if (line.startsWith("event: ")) event = line.slice("event: ".length);
     if (line.startsWith("data: ")) data.push(line.slice("data: ".length));
@@ -159,18 +206,22 @@ function parseServerSentEvent(raw) {
   };
 }
 
-function restoreGlobal(name, value) {
+function restoreGlobal(
+  target: TestRuntimeGlobal,
+  name: keyof TestRuntimeGlobal,
+  value: unknown
+): void {
   if (value === undefined) {
-    delete globalThis[name];
+    Reflect.deleteProperty(target, name);
   } else {
-    globalThis[name] = value;
+    Reflect.set(target, name, value);
   }
 }
 
-async function resolveCliBridgeInitScript() {
+async function resolveCliBridgeInitScript(): Promise<(bridgeUrl: string) => string> {
   const bridgeInitScriptModule = await import(pathToFileURL(join(
     await resolvePackagePathFromTestPackage("@divebell/cli", "dist/features/bridge"),
     "inject.js"
-  )).href);
+  )).href) as CliBridgeInjectModule;
   return bridgeInitScriptModule.createBridgeInitScript;
 }

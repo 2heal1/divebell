@@ -39,13 +39,12 @@ child.once("close", (exitCode, signal) => {
 
 async function resolveTestFile() {
   const candidates = [
-    resolve(packageRoot, "../../tests/e2e/e2e.test.mjs"),
-    resolve(packageRoot, "dist/e2e/e2e.test.mjs")
+    resolve(packageRoot, "dist/e2e/e2e.test.js")
   ];
   for (const candidate of candidates) {
     if (await exists(candidate)) return candidate;
   }
-  throw new Error(`Could not find Divebell e2e tests under ${candidates.join(" or ")}.`);
+  throw new Error(`Could not find compiled Divebell e2e tests under ${candidates.join(" or ")}.`);
 }
 
 async function exists(path) {

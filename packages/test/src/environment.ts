@@ -7,18 +7,48 @@ import {
   packageRoot,
   resolvePackagePathFromTestPackage,
   resolvePackageRootFromTestPackage
-} from "./package-resolution.mjs";
+} from "./package-resolution.js";
+import { divebellTestCommands } from "./commands.js";
+import type {
+  CliRunResult,
+  OfficialExtension,
+  ProcessResult,
+  RunCliFailureOptions,
+  RunCliOptions,
+  RunCliSuccessOptions
+} from "./types.js";
+import type { CliCommandInvocation } from "@divebell/cli";
 
-const testPackageManifest = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"));
+interface TestPackageManifest {
+  dependencies?: Record<string, string>;
+}
+
+interface ProcessOptions {
+  cwd: string;
+  env: NodeJS.ProcessEnv;
+  timeoutMs?: number;
+}
+
+const testPackageManifest = JSON.parse(
+  await readFile(join(packageRoot, "package.json"), "utf8")
+) as TestPackageManifest;
 const cliEntry = await resolvePackagePathFromTestPackage("@divebell/cli", "dist/bin.js");
 const declaredOfficialExtensionNames = Object.keys(testPackageManifest.dependencies ?? {})
   .filter((name) => name.startsWith("@divebell/extension-"))
   .sort();
 
 export class DivebellTestEnvironment {
-  #directory;
+  readonly #directory: string;
+  readonly extensionsDirectory: string;
+  readonly archivesDirectory: string;
+  readonly browserExecutable: string;
+  readonly browserProfileDirectory: string;
+  readonly browserStateFile: string;
+  readonly npmCacheDirectory: string;
+  readonly projectDirectory: string;
+  officialExtensions: OfficialExtension[];
 
-  constructor(directory) {
+  constructor(directory: string) {
     this.#directory = directory;
     this.extensionsDirectory = join(directory, "extensions");
     this.archivesDirectory = join(directory, "archives");
@@ -30,7 +60,7 @@ export class DivebellTestEnvironment {
     this.officialExtensions = [];
   }
 
-  static async create() {
+  static async create(): Promise<DivebellTestEnvironment> {
     const directory = await mkdtemp(join(tmpdir(), "divebell-e2e-"));
     const environment = new DivebellTestEnvironment(directory);
     try {
@@ -42,10 +72,21 @@ export class DivebellTestEnvironment {
     }
   }
 
-  async runCli(args, options = {}) {
+  async runCli<TFailure>(
+    command: CliCommandInvocation<unknown, TFailure>,
+    options: RunCliFailureOptions
+  ): Promise<CliRunResult<TFailure>>;
+  async runCli<TSuccess>(
+    command: CliCommandInvocation<TSuccess, unknown>,
+    options?: RunCliSuccessOptions
+  ): Promise<CliRunResult<TSuccess>>;
+  async runCli(
+    command: CliCommandInvocation<unknown, unknown>,
+    options: RunCliOptions = {}
+  ): Promise<CliRunResult<unknown>> {
+    const args = [...command.args];
     const result = await runProcess(process.execPath, [cliEntry, ...args], {
       cwd: options.cwd ?? this.projectDirectory,
-      timeoutMs: options.timeoutMs,
       env: {
         ...process.env,
         DIVEBELL_DISABLE_EXTENSIONS: "0",
@@ -54,7 +95,8 @@ export class DivebellTestEnvironment {
         DIVEBELL_BROWSER_PROFILE_DIR: this.browserProfileDirectory,
         DIVEBELL_TEST_BROWSER_STATE: this.browserStateFile,
         ...options.env
-      }
+      },
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs })
     });
     const expectedExitCode = options.expectedExitCode ?? 0;
     if (result.exitCode !== expectedExitCode) {
@@ -72,15 +114,15 @@ export class DivebellTestEnvironment {
     }
     return {
       ...result,
-      json: parseJsonOutput(result.stdout, `divebell ${args.join(" ")}`)
+      json: parseJsonOutput<unknown>(result.stdout, `divebell ${args.join(" ")}`)
     };
   }
 
-  async close() {
+  async close(): Promise<void> {
     await rm(this.#directory, { recursive: true, force: true });
   }
 
-  async #prepare() {
+  async #prepare(): Promise<void> {
     await Promise.all([
       mkdir(this.extensionsDirectory, { recursive: true }),
       mkdir(this.archivesDirectory, { recursive: true }),
@@ -97,21 +139,19 @@ export class DivebellTestEnvironment {
         this.archivesDirectory,
         this.npmCacheDirectory
       );
-      const installed = await this.runCli([
-        "extensions",
-        "add",
-        archive,
-        "--extensions-dir",
-        this.extensionsDirectory
-      ]);
+      const installed = await this.runCli(
+        divebellTestCommands.extensions.add(archive, {
+          extensionsDirectory: this.extensionsDirectory
+        })
+      );
       if (installed.json.package?.name !== extension.name) {
         throw new Error(`Installed ${installed.json.package?.name ?? "unknown package"} instead of ${extension.name}.`);
       }
     }
   }
 
-  async #prepareBrowserExecutable() {
-    const fakeBrowserUrl = new URL("./fake-agent-browser.mjs", import.meta.url);
+  async #prepareBrowserExecutable(): Promise<void> {
+    const fakeBrowserUrl = new URL("./fake-agent-browser.js", import.meta.url);
     await writeFile(
       this.browserExecutable,
       `#!/usr/bin/env node\nimport ${JSON.stringify(fakeBrowserUrl.href)};\n`,
@@ -121,12 +161,20 @@ export class DivebellTestEnvironment {
   }
 }
 
-async function discoverOfficialExtensions() {
+async function discoverOfficialExtensions(): Promise<OfficialExtension[]> {
   await validateDeclaredOfficialExtensions();
   const extensions = [];
   for (const name of declaredOfficialExtensionNames) {
     const directory = await resolvePackageRootFromTestPackage(name);
-    const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
+    const manifest = JSON.parse(
+      await readFile(join(directory, "package.json"), "utf8")
+    ) as {
+      name?: unknown;
+      divebell?: {
+        schemaVersion?: unknown;
+        extensions?: unknown;
+      };
+    };
     if (
       manifest.name !== name
       || manifest.divebell?.schemaVersion !== 1
@@ -142,7 +190,11 @@ async function discoverOfficialExtensions() {
   return extensions.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function packExtension(extensionDirectory, destinationDirectory, cacheDirectory) {
+async function packExtension(
+  extensionDirectory: string,
+  destinationDirectory: string,
+  cacheDirectory: string
+): Promise<string> {
   const result = await runProcess("npm", [
     "pack",
     extensionDirectory,
@@ -160,7 +212,7 @@ async function packExtension(extensionDirectory, destinationDirectory, cacheDire
   if (result.exitCode !== 0) {
     throw new Error(`Could not pack ${extensionDirectory}.\n${result.stderr.trim()}`);
   }
-  const output = parseJsonOutput(result.stdout, `npm pack ${extensionDirectory}`);
+  const output = parseJsonOutput<unknown>(result.stdout, `npm pack ${extensionDirectory}`);
   const filename = Array.isArray(output) ? output[0]?.filename : undefined;
   if (typeof filename !== "string") {
     throw new Error(`npm pack did not report an archive for ${extensionDirectory}.`);
@@ -168,13 +220,19 @@ async function packExtension(extensionDirectory, destinationDirectory, cacheDire
   return resolve(destinationDirectory, filename);
 }
 
-async function validateDeclaredOfficialExtensions() {
+async function validateDeclaredOfficialExtensions(): Promise<void> {
   const repositoryRoot = resolve(packageRoot, "../..");
-  let config;
+  let config: {
+    fixed?: string[][];
+  };
   try {
-    config = JSON.parse(await readFile(join(repositoryRoot, ".changeset/config.json"), "utf8"));
+    config = JSON.parse(
+      await readFile(join(repositoryRoot, ".changeset/config.json"), "utf8")
+    ) as {
+      fixed?: string[][];
+    };
   } catch (error) {
-    if (error?.code === "ENOENT") return;
+    if (isNodeError(error) && error.code === "ENOENT") return;
     throw error;
   }
   const fixedPackages = config.fixed?.[0] ?? [];
@@ -190,16 +248,20 @@ async function validateDeclaredOfficialExtensions() {
   }
 }
 
-function parseJsonOutput(stdout, command) {
+function parseJsonOutput<T>(stdout: string, command: string): T {
   try {
-    return JSON.parse(stdout);
+    return JSON.parse(stdout) as T;
   } catch (error) {
     throw new Error(`${command} did not return JSON.\n${stdout.trim()}`, { cause: error });
   }
 }
 
-function runProcess(command, args, options) {
-  return new Promise((resolvePromise, reject) => {
+function runProcess(
+  command: string,
+  args: string[],
+  options: ProcessOptions
+): Promise<ProcessResult> {
+  return new Promise<ProcessResult>((resolvePromise, reject) => {
     const timeoutMs = options.timeoutMs ?? 120_000;
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -214,7 +276,10 @@ function runProcess(command, args, options) {
       settle(reject, new Error(`${command} ${args.join(" ")} timed out after ${timeoutMs}ms.`));
     }, timeoutMs);
     timeout.unref?.();
-    const settle = (callback, value) => {
+    const settle = <T>(
+      callback: (value: T) => void,
+      value: T
+    ): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
@@ -222,10 +287,10 @@ function runProcess(command, args, options) {
     };
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => {
+    child.stdout.on("data", (chunk: string) => {
       stdout += chunk;
     });
-    child.stderr.on("data", (chunk) => {
+    child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
     });
     child.once("error", (error) => {
@@ -240,4 +305,8 @@ function runProcess(command, args, options) {
       });
     });
   });
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error;
 }

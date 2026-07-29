@@ -43,13 +43,11 @@ Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
 Then ask:
 
 ```text
-Use Divebell to complete the official Quick Start. Open the Module Federation
-Playground at https://module-federation.io/playground/index.html, replace the
-manifest with
+Use Divebell to complete the official Quick Start. Use divebell to visit
+https://module-federation.io/playground/index.html, replace the manifest with
 https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json,
-and run the preview. If the Playground reports an error, analyze the visible
-Terminal, Console, and Network evidence, update the Playground inputs as
-needed, and verify that the remote renders the interactive diagnostics game.
+and run the preview. If the Playground reports an error, use the divebell CLI
+to analyze and resolve it.
 ```
 
 ## Why Divebell

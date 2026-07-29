@@ -18,9 +18,18 @@ export interface DivebellModernPluginOptions {
   injectRouteNavigateAction?: boolean;
 }
 
+export interface CreateModernPluginOptions {
+  name?: string;
+  source?: string;
+}
+
 export interface DivebellServerBridgeOptions {
   port?: number;
 }
+
+export type ModernRuntimePluginFactory = (
+  options?: DivebellModernPluginOptions
+) => ModernRuntimePlugin;
 
 export interface ModernRuntimePlugin {
   name: string;

@@ -1,8 +1,13 @@
 import { createPackageInfo } from "@divebell/core";
 
-export { divebellModernPlugin } from "./plugin/create-plugin.js";
+export {
+  createModernPlugin,
+  divebellModernPlugin
+} from "./plugin/create-plugin.js";
 export type {
+  CreateModernPluginOptions,
   ModernRuntimePlugin,
+  ModernRuntimePluginFactory,
   ModernRuntimePluginApi,
   DivebellModernPluginOptions,
   DivebellServerBridgeOptions

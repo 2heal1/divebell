@@ -28,6 +28,27 @@ import { divebellModernPlugin } from "@divebell/modern-plugin";
 export default divebellModernPlugin();
 ```
 
+### Reuse the implementation under another distribution
+
+Use the supported factory when another Modern.js distribution needs the same
+runtime integration under its own plugin identity and Runtime source:
+
+```ts
+import { createModernPlugin } from "@divebell/modern-plugin";
+
+export const edenxModernPlugin = createModernPlugin({
+  name: "@edenx/divebell-plugin",
+  source: "edenx"
+});
+```
+
+The returned `edenxModernPlugin` accepts the same per-app options as
+`divebellModernPlugin`. Its configured source is used by targets, snapshots,
+events, actions, and SSR context. The target ids and types remain `modern:*`
+because they describe the same Modern.js framework facts. The package root
+continues to expose `divebellModernPlugin` with the
+`@divebell/modern-plugin` name and `modern.js` source.
+
 Open the page with the CLI so it can connect every registered runtime, then query it:
 
 ```sh

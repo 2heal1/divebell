@@ -46,10 +46,16 @@ Package name alone is never a correlation key. The same operation id observed in
 
 A full chain can include the trigger, required and requested versions, every candidate and provider, `compatible`, `rejectionReason`, selected version, selection or failure reason, `singleton`, `strictVersion`, `eager`, strategy, registration action, remote, expose, request ids, fallback, recovery, and final report outcome.
 
-## Capability and version behavior
+## Injected trace behavior
 
-Trace checks `state.capabilities.sharedTrace` before reading history. An available capability is used even if the runtime version text is missing, unusual, or appears older.
+Pages used by MF commands are opened with the bundled Runtime and Observability
+collector, so Shared trace does not compare runtime versions or return a
+separate support flag. Injection and reader failures are command errors before
+trace selection begins.
 
-Detailed Shared events require stable Module Federation runtime 2.5.0 or newer. When the capability is unavailable and its reason identifies an older known runtime, the command recommends upgrading to 2.5.0 or newer. When runtime version is missing, the command reports it as unknown and preserves the capability reason without claiming the runtime is too old.
-
-An unavailable capability means the reader cannot provide Shared history; it does not mean that no Shared event happened. When history is partial, available operations are returned with an incomplete-chain warning. When the reader was injected after runtime startup, the command asks the user to reopen the page before reproducing the operation.
+When no captured operation matches, selection is `not-found`. This means no
+matching history was captured; it does not claim that the Shared dependency was
+never registered or loaded. When history is partial, available operations are
+returned with an incomplete-chain warning. When the reader was injected after
+runtime startup, the command asks the user to reopen the page before reproducing
+the operation.

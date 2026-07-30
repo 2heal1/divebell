@@ -258,40 +258,8 @@ test("trace id is the correlation fallback when operationId is absent", () => {
   assert.deepEqual(grouped.map((item) => item.operationId), [undefined, undefined]);
 });
 
-test("sharedTrace unavailable distinguishes low runtime from unknown runtime", () => {
-  const reason = "Shared tracing requires a stable runtime version of 2.5.0 or newer.";
-  const lowState = runtimeState({ instances: [host({ runtimeVersion: "2.4.9" })] });
-  lowState.capabilities.sharedTrace = capability(false, "unavailable", reason);
-  const low = createSharedTraceResult(snapshot(lowState), { package: "react" });
-  assert.equal(low.supported, false);
-  assert.equal(low.capability.minimumRuntimeVersion, "2.5.0");
-  assert.match(low.warnings.join(" "), /Upgrade to 2\.5\.0 or newer/);
-  assert.doesNotMatch(low.warnings.join(" "), /no shared/i);
-
-  const unknownHost = host();
-  delete unknownHost.runtimeVersion;
-  const unknownState = runtimeState({ instances: [unknownHost] });
-  unknownState.capabilities.sharedTrace = capability(false, "unavailable", reason);
-  const unknown = createSharedTraceResult(snapshot(unknownState), { package: "react" });
-  assert.equal(unknown.capability.runtimeVersionKnown, false);
-  assert.equal(unknown.capability.minimumRuntimeVersion, undefined);
-  assert.match(unknown.warnings.join(" "), /runtime version is unknown/);
-  assert.doesNotMatch(unknown.warnings.join(" "), /does not meet/);
-});
-
-test("available capability is used even when runtime version text looks old", () => {
-  const old = host({ runtimeVersion: "2.4.9" });
-  const result = createSharedTraceResult(
-    snapshot(runtimeState({ instances: [old] }), [sharedReport({ runtimeVersion: "2.4.9" })]),
-    { package: "react" }
-  );
-  assert.equal(result.supported, true);
-  assert.equal(result.selection.kind, "detail");
-  assert.equal(result.capability.minimumRuntimeVersion, undefined);
-});
-
-test("injected preview Runtime is not rejected by the stable-version fallback", () => {
-  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+test("shared trace ignores version and reader capability metadata", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260729120109";
   const state = runtimeState({
     instances: [host({ runtimeVersion: previewVersion })]
   });
@@ -310,22 +278,23 @@ test("injected preview Runtime is not rejected by the stable-version fallback", 
     timing: "before-runtime"
   };
   const result = createSharedTraceResult(
-    snapshot(state, [], {
+    snapshot(state, [sharedReport({ runtimeVersion: previewVersion })], {
       marker,
       observabilityVersion: previewVersion
     }),
     { package: "react" }
   );
-  assert.equal(result.supported, true);
-  assert.equal(result.selection.kind, "not-found");
-  assert.equal(result.capability.minimumRuntimeVersion, undefined);
+  assert.equal(result.selection.kind, "detail");
+  assert.equal("supported" in result, false);
+  assert.equal("capability" in result, false);
+  assert.equal("runtimeVersion" in result.operations[0], false);
   assert.doesNotMatch(result.warnings.join(" "), /Upgrade to 2\.5\.0/);
 });
 
-test("preview Observability does not hide an older application Runtime", () => {
-  const previewVersion = "0.0.0-feat-operate-openruntime-20260722064424";
+test("missing history is not-found when reader capability metadata is unavailable", () => {
+  const previewVersion = "0.0.0-feat-operate-openruntime-20260729120109";
   const state = runtimeState({
-    instances: [host({ runtimeVersion: "2.4.9" })]
+    instances: [host({ runtimeVersion: previewVersion })]
   });
   state.capabilities.sharedTrace = capability(
     false,
@@ -347,8 +316,11 @@ test("preview Observability does not hide an older application Runtime", () => {
     }),
     { package: "react" }
   );
-  assert.equal(result.supported, false);
-  assert.equal(result.capability.minimumRuntimeVersion, "2.5.0");
+  assert.equal(result.selection.kind, "not-found");
+  assert.equal(result.operations.length, 0);
+  assert.equal(result.candidates.length, 0);
+  assert.equal("supported" in result, false);
+  assert.doesNotMatch(result.warnings.join(" "), /Upgrade|runtime version/i);
 });
 
 test("partial history and late injection return data with explicit reopen guidance", () => {
@@ -376,7 +348,6 @@ test("partial history and late injection return data with explicit reopen guidan
     snapshot(state, [sharedReport()], { marker }),
     { package: "react" }
   );
-  assert.equal(result.supported, true);
   assert.equal(result.operations.length, 1);
   assert.match(result.warnings.join(" "), /partial/);
   assert.match(result.warnings.join(" "), /injected after/);

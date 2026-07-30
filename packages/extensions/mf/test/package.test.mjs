@@ -141,7 +141,6 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     "remote/selection.js",
     "remote/results.js",
     "remote/types.js",
-    "shared/capability.js",
     "shared/selection.js",
     "shared/status.js",
     "shared/trace.js",

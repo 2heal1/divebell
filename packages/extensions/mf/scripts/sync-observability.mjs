@@ -164,7 +164,7 @@ export async function generateObservabilityArtifacts(inputPackageRoot, options =
     );
   }
 
-  const bundle = result.outputFiles[0].text;
+  const bundle = configureInjectedSharedTracing(result.outputFiles[0].text);
   assertSelfContainedBundle(bundle, context);
   const bundleSha256 = createHash("sha256").update(bundle).digest("hex");
   const template = await readFile(templatePath, "utf8");
@@ -190,6 +190,18 @@ export async function generateObservabilityArtifacts(inputPackageRoot, options =
     metadata,
     bundleSha256
   };
+}
+
+export function configureInjectedSharedTracing(bundle) {
+  return bundle
+    .replace(
+      "const hasStableSharedRuntime = instanceDrafts.some((draft) => supportsRuntimeObservability(draft.origin));",
+      "const hasStableSharedRuntime = true;"
+    )
+    .replace(
+      "guardSharedHooksByRuntimeVersion: true",
+      "guardSharedHooksByRuntimeVersion: false"
+    );
 }
 
 function assertSelfContainedBundle(bundle, context) {

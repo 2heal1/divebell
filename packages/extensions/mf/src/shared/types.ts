@@ -1,5 +1,4 @@
 import type {
-  Capability,
   GlobalSharedState,
   RuntimeReport,
   SharedCandidate,
@@ -28,12 +27,6 @@ export interface SharedTraceSelectors extends SharedInstanceSelectors {
   traceId?: string;
 }
 
-export interface SharedCapabilitySummary extends Capability {
-  runtimeVersions: string[];
-  runtimeVersionKnown: boolean;
-  minimumRuntimeVersion?: string;
-}
-
 export interface SharedStatusResult {
   shared: GlobalSharedState;
 }
@@ -50,7 +43,6 @@ export interface SharedTraceFinalResult {
 export interface SharedTraceOperation {
   instanceRef: string;
   mfName: string;
-  runtimeVersion?: string;
   package: string;
   scopes: string[];
   operationId?: string;
@@ -93,7 +85,6 @@ export interface PresentedSharedTraceCandidate extends SharedTraceCandidate {
 }
 
 export type SharedTraceSelectionKind =
-  | "unsupported"
   | "list"
   | "detail"
   | "ambiguous"
@@ -102,8 +93,6 @@ export type SharedTraceSelectionKind =
 export interface SharedTraceResult {
   schemaVersion: 1;
   command: "mf shared trace";
-  supported: boolean;
-  capability: SharedCapabilitySummary;
   filters: SharedTraceSelectors;
   selection: {
     kind: SharedTraceSelectionKind;

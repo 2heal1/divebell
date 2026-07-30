@@ -6,12 +6,6 @@ import type {
   SharedRegistration
 } from "../types.js";
 import {
-  capabilityActions,
-  capabilityWarnings,
-  createSharedCapabilitySummary
-} from "./capability.js";
-import {
-  matchingSharedInstances,
   selectSharedInstances,
   visibleMfName
 } from "./selection.js";
@@ -40,30 +34,10 @@ export function createSharedTraceResult(
   snapshot: BrowserObservabilitySnapshot,
   selectors: SharedTraceSelectors
 ): SharedTraceResult {
-  const capabilityInstances = matchingSharedInstances(snapshot.state.instances, selectors);
-  const capability = createSharedCapabilitySummary(
-    snapshot,
-    "sharedTrace",
-    capabilityInstances
-  );
-  const warnings = capabilityWarnings("shared trace", capability);
-  const recommendedActions = capabilityActions("sharedTrace", capability);
+  const warnings: string[] = [];
+  const recommendedActions: string[] = [];
 
   appendHistoryWarnings(snapshot, warnings, recommendedActions);
-  if (!capability.available) {
-    return {
-      schemaVersion: 1,
-      command: "mf shared trace",
-      supported: false,
-      capability,
-      filters: { ...selectors },
-      selection: { kind: "unsupported", matchCount: 0 },
-      operations: [],
-      candidates: [],
-      warnings: unique(warnings),
-      recommendedActions: unique(recommendedActions)
-    };
-  }
 
   const selectedInstances = selectSharedInstances(
     snapshot.state.instances,
@@ -96,8 +70,6 @@ export function createSharedTraceResult(
   return {
     schemaVersion: 1,
     command: "mf shared trace",
-    supported: true,
-    capability,
     filters: { ...selectors },
     selection: { kind, matchCount: operations.length },
     operations,
@@ -203,9 +175,6 @@ function finalizeOperation(
   return {
     instanceRef: draft.instanceRef,
     mfName: instance === undefined ? finalReport.hostName ?? "unknown" : visibleMfName(instance),
-    ...(instance?.runtimeVersion === undefined && finalReport.runtimeVersion === undefined
-      ? {}
-      : { runtimeVersion: instance?.runtimeVersion ?? finalReport.runtimeVersion }),
     package: draft.package,
     scopes: scopes.length === 0 ? ["unknown"] : scopes,
     ...(draft.operationId === undefined ? {} : { operationId: draft.operationId }),

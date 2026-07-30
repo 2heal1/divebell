@@ -9,7 +9,7 @@
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 divebell --help
 ```
 

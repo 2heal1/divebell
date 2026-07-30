@@ -5,9 +5,9 @@ import { runCli } from "../dist/index.js";
 import {
   createBrowserInstallArgs,
   isSupportedNodeVersion,
-  runCheckCommand,
+  runSetupCommand,
   SUPPORTED_NODE_RANGE
-} from "../dist/commands/check.js";
+} from "../dist/commands/setup.js";
 import type {
   BrowserRunOptions,
   BrowserRunResult
@@ -21,6 +21,21 @@ import {
 
 const CHROME_USER_AGENT = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36";
 
+test("does not expose the removed check command", async () => {
+  const output = createOutput();
+
+  const exitCode = await runCli(["check"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    env: {}
+  });
+
+  assert.equal(exitCode, 1);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "CLI_UNKNOWN_COMMAND");
+  assert.match(parsed.message, /Unknown command "check"/);
+});
+
 test("checks an isolated Bridge, browser open, and page control path", async () => {
   const output = createOutput();
   const browserCalls: Array<{
@@ -29,7 +44,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   }> = [];
   const lifecycle: string[] = [];
 
-  const exitCode = await runCli(["check"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     lifecycle,
     browserRun: async (args, options) => {
@@ -60,7 +75,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
 
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
-  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("setup", {
     ready: true,
     fixed: false,
     environment: expectedEnvironment(),
@@ -93,10 +108,18 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   assert.equal(browserCalls.length, 3);
   const sessions = new Set(browserCalls.map((call) => call.options?.session));
   assert.equal(sessions.size, 1);
-  assert.match(String([...sessions][0]), /^divebell-check-[a-f0-9]+$/);
+  assert.match(String([...sessions][0]), /^divebell-setup-[a-f0-9]+$/);
   assert.deepEqual(
     browserCalls.map((call) => call.options?.disableRestore),
     [true, true, true]
+  );
+  assert.deepEqual(
+    browserCalls.map((call) => call.options?.headless),
+    [true, true, true]
+  );
+  assert.deepEqual(
+    browserCalls.map((call) => call.options?.idleTimeoutMs),
+    [5000, 5000, 5000]
   );
   assert.equal(browserCalls[0]?.options?.reuseInitialBlankPage, true);
   assert.equal(browserCalls[1]?.options?.reuseInitialBlankPage, undefined);
@@ -108,7 +131,7 @@ test("installs browser requirements only when Chrome is missing", async () => {
   const calls: string[][] = [];
   let openAttempts = 0;
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     browserRun: async (args) => {
       calls.push(args);
@@ -141,7 +164,7 @@ test("installs browser requirements only when Chrome is missing", async () => {
     "close"
   ]);
   assert.deepEqual(calls[2], createBrowserInstallArgs(process.platform));
-  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("setup", {
     ready: true,
     fixed: true,
     environment: expectedEnvironment(),
@@ -183,7 +206,7 @@ test("opens Chrome remote-debugging settings and connects instead of downloading
   let connectAttempts = 0;
   let settingsOpenCount = 0;
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     remoteDebuggingPageOpener: {
       open: async () => {
@@ -238,7 +261,7 @@ test("opens Chrome remote-debugging settings and connects instead of downloading
   assert.equal(existingCalls.every((call) => call.options?.autoConnect === true), true);
   assert.equal(existingCalls.every((call) => call.options?.idleTimeoutMs === 5000), true);
   assert.equal(existingCalls.every((call) => call.options?.session?.endsWith("-existing")), true);
-  assert.deepEqual(JSON.parse(output.text()), commandOutput("check", {
+  assert.deepEqual(JSON.parse(output.text()), commandOutput("setup", {
     ready: true,
     fixed: true,
     environment: expectedEnvironment({
@@ -274,46 +297,12 @@ test("opens Chrome remote-debugging settings and connects instead of downloading
   }, "Divebell is ready. Connected to the existing Chrome session."));
 });
 
-test("plain check reports the repair command without opening Chrome settings", async () => {
-  const output = createOutput();
-  let settingsOpenCount = 0;
-  const calls: string[][] = [];
-
-  const exitCode = await runCli(["check"], createCheckRunOptions({
-    output,
-    remoteDebuggingPageOpener: {
-      open: async () => {
-        settingsOpenCount += 1;
-        return {
-          opened: true
-        };
-      }
-    },
-    browserRun: async (args) => {
-      calls.push(args);
-      if (args[0] === "open") {
-        return failure("Chrome exited early without writing DevToolsActivePort");
-      }
-      if (args[0] === "close") return success("closed");
-      throw new Error(`unexpected browser command: ${args.join(" ")}`);
-    }
-  }));
-
-  assert.equal(exitCode, 1);
-  assert.equal(settingsOpenCount, 0);
-  assert.equal(calls.some((args) => args[0] === "install"), false);
-  const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BROWSER_NOT_READY");
-  assert.match(parsed.error.hint, /divebell check --fix/);
-  assert.equal(parsed.data.fix, undefined);
-});
-
 test("reports required user approval when Chrome remote debugging is not enabled in time", async () => {
   const output = createOutput();
   const calls: string[][] = [];
   let settingsOpenCount = 0;
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     remoteDebuggingPageOpener: {
       open: async () => {
@@ -346,7 +335,7 @@ test("reports required user approval when Chrome remote debugging is not enabled
   const parsed = JSON.parse(output.text());
   assert.equal(
     parsed.error.code,
-    "DIVEBELL_CHECK_REMOTE_DEBUGGING_REQUIRED"
+    "DIVEBELL_SETUP_REMOTE_DEBUGGING_REQUIRED"
   );
   assert.equal(parsed.error.kind, "needs_input");
   assert.equal(parsed.error.retryable, true);
@@ -366,7 +355,7 @@ test("does not install anything when a configured Chrome debugging port is unava
   const output = createOutput();
   const calls: string[][] = [];
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     env: {
       AGENT_BROWSER_CDP: "9222"
@@ -384,7 +373,7 @@ test("does not install anything when a configured Chrome debugging port is unava
   assert.deepEqual(calls.map((args) => args[0]), ["tab"]);
   const parsed = JSON.parse(output.text());
   assert.equal(parsed.status, "error");
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_DEBUG_CONNECTION_REQUIRED");
   assert.equal(parsed.error.kind, "needs_input");
   assert.match(parsed.message, /Chrome DevTools port 9222/);
   assert.match(parsed.error.hint, /--remote-debugging-port=9222/);
@@ -401,7 +390,7 @@ test("reports browser control failures without trying to reinstall Chrome", asyn
   const output = createOutput();
   const calls: string[][] = [];
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     browserRun: async (args) => {
       calls.push(args);
@@ -415,7 +404,7 @@ test("reports browser control failures without trying to reinstall Chrome", asyn
   assert.equal(exitCode, 1);
   assert.deepEqual(calls.map((args) => args[0]), ["open", "eval", "close"]);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_CONTROL_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_CONTROL_FAILED");
   assert.deepEqual(parsed.data.checks, [
     {
       id: "node",
@@ -437,10 +426,10 @@ test("reports browser control failures without trying to reinstall Chrome", asyn
   ]);
 });
 
-test("keeps browser installer errors in the check result", async () => {
+test("keeps browser installer errors in the setup result", async () => {
   const output = createOutput();
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     browserRun: async (args) => {
       if (args[0] === "open") {
@@ -454,7 +443,7 @@ test("keeps browser installer errors in the check result", async () => {
 
   assert.equal(exitCode, 1);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_FIX_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_REPAIR_FAILED");
   assert.match(parsed.message, /installer was blocked/);
   assert.deepEqual(parsed.data.fix, {
     attempted: true,
@@ -469,7 +458,7 @@ test("keeps browser installer errors in the check result", async () => {
 test("reports Chrome download timeouts as retryable network failures", async () => {
   const output = createOutput();
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     browserRun: async (args) => {
       if (args[0] === "open") {
@@ -485,7 +474,7 @@ test("reports Chrome download timeouts as retryable network failures", async () 
 
   assert.equal(exitCode, 1);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BROWSER_DOWNLOAD_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_BROWSER_DOWNLOAD_FAILED");
   assert.equal(parsed.error.retryable, true);
   assert.match(parsed.error.hint, /googlechromelabs\.github\.io/);
   assert.match(parsed.error.hint, /storage\.googleapis\.com/);
@@ -495,7 +484,7 @@ test("checks auto-connected Chrome in a temporary tab without closing the browse
   const output = createOutput();
   const calls: string[][] = [];
 
-  const exitCode = await runCli(["check"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     env: {
       AGENT_BROWSER_AUTO_CONNECT: "1"
@@ -542,7 +531,7 @@ test("stops before touching the browser when the local Bridge cannot start", asy
   const output = createOutput();
   let browserTouched = false;
 
-  const exitCode = await runCli(["check"], {
+  const exitCode = await runCli(["setup"], {
     stdout: output.stdout,
     stderr: output.stderr,
     env: {},
@@ -560,7 +549,7 @@ test("stops before touching the browser when the local Bridge cannot start", asy
   assert.equal(exitCode, 1);
   assert.equal(browserTouched, false);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_BRIDGE_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_BRIDGE_FAILED");
   assert.deepEqual(parsed.data.checks, [
     {
       id: "node",
@@ -596,9 +585,9 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
   let bridgeTouched = false;
   let browserTouched = false;
 
-  const exitCode = await runCheckCommand({
+  const exitCode = await runSetupCommand({
     args: {
-      command: ["check"],
+      command: ["setup"],
       options: new Map()
     },
     stdout: output.stdout,
@@ -628,7 +617,7 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
   assert.equal(bridgeTouched, false);
   assert.equal(browserTouched, false);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_NODE_UNSUPPORTED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_NODE_UNSUPPORTED");
   assert.deepEqual(parsed.data.environment, {
     node: {
       version: "22.14.0",
@@ -677,7 +666,7 @@ test("does not install over a configured browser executable", async () => {
   const output = createOutput();
   const calls: string[][] = [];
 
-  const exitCode = await runCli(["check", "--fix"], createCheckRunOptions({
+  const exitCode = await runCli(["setup"], createSetupRunOptions({
     output,
     env: {
       AGENT_BROWSER_EXECUTABLE_PATH: "/opt/custom/chrome"
@@ -693,7 +682,7 @@ test("does not install over a configured browser executable", async () => {
   assert.equal(exitCode, 1);
   assert.deepEqual(calls.map((args) => args[0]), ["open", "close"]);
   const parsed = JSON.parse(output.text());
-  assert.equal(parsed.error.code, "DIVEBELL_CHECK_CONFIGURED_BROWSER_FAILED");
+  assert.equal(parsed.error.code, "DIVEBELL_SETUP_CONFIGURED_BROWSER_FAILED");
   assert.deepEqual(parsed.data.environment.browser, {
     source: {
       kind: "executable"
@@ -724,7 +713,7 @@ function expectedEnvironment(
   };
 }
 
-function createCheckRunOptions(options: {
+function createSetupRunOptions(options: {
   output: ReturnType<typeof createOutput>;
   browserRun(
     args: string[],
@@ -781,7 +770,7 @@ function createCheckRunOptions(options: {
         reason: "test did not open Chrome"
       })
     },
-    checkWaiter: async () => {}
+    setupWaiter: async () => {}
   };
 }
 

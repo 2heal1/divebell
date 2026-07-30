@@ -48,6 +48,16 @@ test("configures an isolated restore name and headed mode", () => {
   assert.equal(env.AGENT_BROWSER_HEADED, "1");
 });
 
+test("can force an isolated command to ignore headed browser config", () => {
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_HEADED: "1"
+  }, undefined, "browser-check", {
+    headless: true
+  });
+
+  assert.equal(env.AGENT_BROWSER_HEADED, "false");
+});
+
 test("configures automatic connection without inheriting an explicit CDP port", () => {
   const env = createAgentBrowserEnvironment({
     AGENT_BROWSER_CDP: "9222"

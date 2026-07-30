@@ -29,7 +29,7 @@ export const RUNTIME_RESOURCE_COMMAND_NAMES: readonly RuntimeResourceCommandName
 export function createBuiltInCommandNameSet(): Set<string> {
   return new Set([
     "__bridge-server",
-    "check",
+    "setup",
     "start",
     "stop",
     "auth",

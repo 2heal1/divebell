@@ -41,7 +41,7 @@ If the command is unavailable, stop and ask the user to install it globally:
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 ```
 
 Do not install `@divebell/cli` in the user's application.

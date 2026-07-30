@@ -1840,7 +1840,7 @@ test("rejects commands that conflict with built-in commands", () => {
     () => createDivebellCli({
       extensions: [
         createCommandExtension({
-          name: "snapshot",
+          name: "setup",
           run: async () => 0
         })
       ]

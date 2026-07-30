@@ -26,7 +26,7 @@ Install Divebell globally, then add the recording Extension:
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 divebell extensions add @divebell/extension-imitate
 ```
 

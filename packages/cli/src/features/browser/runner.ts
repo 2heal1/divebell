@@ -171,6 +171,8 @@ export function createAgentBrowserEnvironment(
 
   if (options.ui === true) {
     env[AGENT_BROWSER_HEADED_ENV] = "1";
+  } else if (options.headless === true) {
+    env[AGENT_BROWSER_HEADED_ENV] = "false";
   } else {
     delete env[AGENT_BROWSER_HEADED_ENV];
   }

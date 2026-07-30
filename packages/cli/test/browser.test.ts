@@ -308,7 +308,7 @@ test("points browser startup failures to the readiness check", async () => {
     kind: "browser",
     message: "Chrome exited early (unknown code)",
     retryable: true,
-    hint: "Run `divebell check` to verify browser startup, or `divebell check --fix` to install missing browser requirements.",
+    hint: "Run `divebell setup` to prepare browser startup.",
     details: {
       url: "http://app.test/",
       openedUrl: `http://app.test/?divebellSessionId=${sessionId}`,

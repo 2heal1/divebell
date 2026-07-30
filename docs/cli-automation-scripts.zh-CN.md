@@ -86,13 +86,13 @@ Divebell CLI 支持 Node.js 24。
 divebell --help
 ```
 
-使用浏览器命令前先检查环境：
+使用浏览器命令前先执行 setup。它可以重复执行；如果环境已经准备好，只会返回成功，不会修改环境：
 
 ```sh
-divebell check
+divebell setup
 ```
 
-准备环境时可以执行 `divebell check --fix`。它会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
+Setup 会先尝试使用电脑上已经安装的 Chrome。如果 Chrome 需要远程调试权限，命令会打开 `chrome://inspect/#remote-debugging`，等待用户开启远程调试并确认 Chrome 的连接提示，然后自动继续。只有电脑上没有安装 Chrome 时，它才会下载托管的 Chrome for Testing；在 Linux 上还会一并安装浏览器需要的系统组件。Chrome 的安全确认无法静默开启，连接已有桌面 Chrome 时仍需要用户亲自确认。
 
 CI 应在准备步骤中全局安装选定的 CLI 版本，并准备浏览器运行环境。业务项目依赖中只
 保留 Runtime SDK、框架接入等真正运行在页面里的包。

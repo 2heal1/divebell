@@ -88,13 +88,14 @@ Divebell CLI supports Node.js 24.
 divebell --help
 ```
 
-Run a readiness check before using browser commands:
+Run setup before using browser commands. It is safe to repeat and returns
+success without changing an environment that is already ready:
 
 ```sh
-divebell check
+divebell setup
 ```
 
-Use `divebell check --fix` during environment setup. It first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
+Setup first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, the command opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. It downloads the managed Chrome for Testing browser only when Chrome is not installed; on Linux that installation also includes required system libraries. Chrome's security consent cannot be enabled silently, so interactive approval is still required when connecting to an existing desktop Chrome.
 
 CI should install the chosen CLI version globally in its setup step, then
 prepare the browser runtime. Application dependencies should contain only

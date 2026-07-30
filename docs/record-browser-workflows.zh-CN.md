@@ -24,7 +24,7 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 divebell extensions add @divebell/extension-imitate
 ```
 

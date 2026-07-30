@@ -14,7 +14,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Bridge and Browser
 
-- `divebell check [--fix]` - Report Node and browser details, then verify browser startup and control; --fix connects an installed Chrome or installs one only when Chrome is missing.
+- `divebell setup` - Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed.
 - `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `divebell stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
 - `divebell profiles` - List Chrome profiles available to agent-browser.

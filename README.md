@@ -34,9 +34,13 @@ Install the Divebell CLI globally once:
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 divebell --help
 ```
+
+`divebell setup` checks the environment and repairs browser startup only when
+needed. Its browser probe runs in a temporary session and cleans that session up
+when setup finishes.
 
 Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
 

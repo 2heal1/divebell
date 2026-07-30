@@ -11,6 +11,12 @@ import {
 } from "@divebell/core";
 import { BridgeHttpError, getPathSegments, readJson, writeCorsHeaders, writeError, writeJson } from "./http-utils.js";
 import { getCommandFromResource, parseRuntimeQuery } from "./query.js";
+import {
+  createRecordingCompanionPage,
+  createRecordingStartPage,
+  DIVEBELL_RECORDING_PAGE_PATH,
+  DIVEBELL_RECORDING_START_PAGE_PATH
+} from "./recording-page.js";
 import { RuntimeConnectionStore, type RuntimeStream } from "./runtime-store.js";
 import type { BridgeListenOptions, BridgeServer, BridgeServerAddress, CreateBridgeServerOptions } from "./types.js";
 
@@ -90,6 +96,25 @@ class NodeBridgeServer implements BridgeServer {
     try {
       const url = new URL(request.url ?? "/", "http://localhost");
       const segments = getPathSegments(url);
+
+      if (request.method === "GET" && url.pathname === DIVEBELL_RECORDING_PAGE_PATH) {
+        response.writeHead(200, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "permissions-policy": "microphone=(self)"
+        });
+        response.end(createRecordingCompanionPage());
+        return;
+      }
+
+      if (request.method === "GET" && url.pathname === DIVEBELL_RECORDING_START_PAGE_PATH) {
+        response.writeHead(200, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store"
+        });
+        response.end(createRecordingStartPage());
+        return;
+      }
 
       if (request.method === "GET" && segments.length === 1 && segments[0] === "connect") {
         this.#handleRuntimeConnect(url, request, response);

@@ -1,5 +1,10 @@
 import type { DivebellOpenHook } from "@divebell/cli";
 import { createInteractionRecorderScript } from "./capture.js";
+import {
+  createRecordingCompanionUrl,
+  createRecordingStartPageUrl,
+  RECORDING_COMPANION_LABEL
+} from "./audio.js";
 import { clearRecordingControlFile, readRecordingControlFile } from "./session.js";
 import { appendJsonLine, readRecordingManifest, writeJsonFile } from "./storage.js";
 import type { RecordingManifest } from "./types.js";
@@ -18,11 +23,14 @@ export async function runRecordingOpenHook(
   const manifest = await readRecordingManifest(control.outputDirectory);
   if (manifest.status === "completed") return;
 
+  const recordingStartUrl = options.url === "about:blank"
+    ? createRecordingStartPageUrl(options.bridgeUrl, options.openedUrl, control.startedAt)
+    : undefined;
   const page = {
     url: options.url,
-    openedUrl: options.openedUrl,
-    bridgeUrl: createBridgeUrl(options.args),
-    sessionId: readSessionId(options.openedUrl)
+    openedUrl: recordingStartUrl ?? options.openedUrl,
+    bridgeUrl: options.bridgeUrl,
+    sessionId: readSessionId(recordingStartUrl ?? options.openedUrl)
   };
   const operationPath = join(control.outputDirectory, manifest.files.operations);
 
@@ -64,17 +72,29 @@ export async function runRecordingOpenHook(
     });
   }
 
+  const companionUrl = manifest.capture.audio.requested
+    ? createRecordingCompanionUrl(options.bridgeUrl, control.startedAt, manifest.intervalMs)
+    : undefined;
   return {
-    scripts: [createInteractionRecorderScript(Date.parse(control.startedAt))]
+    ...(recordingStartUrl === undefined ? {} : { openedUrl: recordingStartUrl }),
+    scripts: [
+      createInteractionRecorderScript(Date.parse(control.startedAt), {
+        ...(companionUrl === undefined ? {} : { companionUrl })
+      })
+    ],
+    ...(companionUrl === undefined
+      ? {}
+      : {
+          companionPages: [{
+            url: companionUrl,
+            label: RECORDING_COMPANION_LABEL,
+            waitFor: {
+              script: "globalThis.__DIVEBELL_AUDIO_RECORDER__?.status !== 'requesting'",
+              timeout: 30_000
+            }
+          }]
+        })
   };
-}
-
-function createBridgeUrl(args: OpenHookOptions["args"]): string | null {
-  if (args.options.has("no-bridge")) return null;
-  const bridge = args.options.get("bridge")?.at(-1);
-  if (bridge !== undefined) return trimTrailingSlash(bridge);
-  const port = args.options.get("port")?.at(-1);
-  return `http://localhost:${port ?? "17321"}`;
 }
 
 function readSessionId(openedUrl: string): string | null {
@@ -93,8 +113,4 @@ function recordingPageMatches(
     manifest.openedUrl === page.openedUrl &&
     manifest.bridgeUrl === page.bridgeUrl &&
     (manifest.sessionId ?? null) === page.sessionId;
-}
-
-function trimTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value.slice(0, -1) : value;
 }

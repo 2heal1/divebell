@@ -85,6 +85,7 @@ export interface CliOperationLogEntry {
   key: string;
   cwd: string;
   url: string;
+  openedUrl?: string;
   normalizedUrl: string;
   bridgeUrl: string | null;
   bridgePort: number | null;

@@ -157,8 +157,29 @@ function createDomSnapshotScript(): string {
   ].join("\n");
 }
 
-export function createInteractionRecorderScript(recordingStartedAtMs: number): string {
-  return `(${installInteractionRecorder.toString()})(${JSON.stringify(recordingStartedAtMs)}, ${JSON.stringify(RECORD_EVENT_CONSOLE_MARKER)})`;
+export function createInteractionRecorderScript(
+  recordingStartedAtMs: number,
+  options: {
+    companionUrl?: string;
+  } = {}
+): string {
+  const companionPath = getUrlPathname(options.companionUrl);
+  return [
+    "(() => {",
+    `  const companionPath = ${JSON.stringify(companionPath)};`,
+    "  if (companionPath !== undefined && globalThis.location?.pathname === companionPath) return;",
+    `  (${installInteractionRecorder.toString()})(${JSON.stringify(recordingStartedAtMs)}, ${JSON.stringify(RECORD_EVENT_CONSOLE_MARKER)});`,
+    "})()"
+  ].join("\n");
+}
+
+function getUrlPathname(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  try {
+    return new URL(value).pathname;
+  } catch {
+    return undefined;
+  }
 }
 
 function installInteractionRecorder(startedAt: number, marker: string): void {

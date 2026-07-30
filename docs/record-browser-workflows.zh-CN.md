@@ -2,6 +2,13 @@
 
 English version: [Record Browser Workflows with an Agent](record-browser-workflows.md)
 
+将 [`record-divebell-workflow`](../skills/record-divebell-workflow/SKILL.md) skill
+安装到 Agent，然后使用这个 skill，并告诉它你准备演示什么任务：
+
+```text
+使用 $record-divebell-workflow 录制浏览器操作。我会演示如何……
+```
+
 `@divebell/extension-imitate` 是录制浏览器流程的 Extension，并随包提供 `record-divebell-workflow` Agent skill。它让用户先在可见浏览器里完成一次真实操作，再把操作元素、事件顺序和页面结果生成可重复运行的 JavaScript 脚本。录制会默认尝试开启麦克风，但语音只是可选补充；没有说话、没有录到声音或拒绝麦克风权限时都会直接忽略。
 
 这个流程适合“操作过程容易演示，但自动化目标不容易一次说清楚”的任务，例如：
@@ -16,37 +23,12 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 
 视频展示一次完整录制：从浏览器操作到生成可回放脚本。
 
-## 安装
+## 使用方式
 
-> 下载并安装录制 Extension，然后使用它自带的 skill 和 Agent 开始录制。
-
-先全局安装 Divebell，再添加录制 Extension：
-
-```bash
-npm install --global @divebell/cli
-divebell setup
-divebell extensions add @divebell/extension-imitate
-```
-
-安装成功后，获取 `record` 命令附带的 skill：
-
-```bash
-divebell record --skill
-```
-
-这条命令会返回 Extension 包内的 `SKILL.md` 路径。可以按你的 Agent 的方式加载这个
-skill，也可以让 Agent 直接执行这条命令；不需要再从仓库复制一份单独的 skill。
-
-## 使用
-
-安装后，发送这段提示词：
-
-```text
-使用录制 Extension 自带的 skill，开始录制浏览器操作。
-```
-
-随后会打开一个已启用录制的可见浏览器页面。录制结果默认保存到当前项目的
-`recordings/` 目录，不需要提前提供网址或保存位置。
+随后会打开一个已启用录制的可见浏览器页面。浏览器会先主动申请麦克风权限，处理后
+回到带有“在地址栏输入 URL 开始录制网页操作”提示的起始页。录音页会留在后台，不受
+操作页跳转影响。录制结果默认保存到当前项目的 `recordings/` 目录，不需要提前提供
+网址或保存位置。
 
 接下来正常操作浏览器即可：
 
@@ -54,8 +36,6 @@ skill，也可以让 Agent 直接执行这条命令；不需要再从仓库复�
 2. 如果操作本身不能表达最终目标，可以直接说出来，或在聊天中补充一句。
 3. 操作完成后，说“结束”或“完成”。
 4. 录制结束后会生成脚本、实际回放一次、确认结果并关闭页面。
-
-录制命令本身不会重新打开、重置或关闭浏览器。开始准备录制前需要先关闭已有页面；准备完成后必须通过 `divebell open` 打开要录制的页面。如果录制期间被另一次 `divebell open` 替换了页面，停止录制会拒绝混入新页面的数据。
 
 例如，在 GitHub Issues 页面操作时可以说：
 

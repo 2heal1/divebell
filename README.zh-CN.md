@@ -146,7 +146,7 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 在可见浏览器中演示一次操作，把操作元素和事件顺序生成可验证的 JavaScript 回放；语音说明是可选项。
 
-> [下载并安装录制 Extension](./docs/record-browser-workflows.zh-CN.md#安装)，然后用它自带的 skill 开始录制。
+> [安装录制 skill](./docs/record-browser-workflows.zh-CN.md)，然后使用这个 skill，并告诉它你准备演示什么任务。
 
 **演示视频**
 

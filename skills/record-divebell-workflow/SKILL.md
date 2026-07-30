@@ -18,12 +18,12 @@ description: 录制用户在网页中的人工浏览器操作和对应元素，�
   `divebell extensions add @divebell/extension-imitate`。
 - 如果 CLI 或录制命令不可用，读取 `references/divebell-cli.md`，不要回退到项目
   本地依赖或临时下载的 CLI。
-- 默认先运行 `record start` 准备录制，再通过 `divebell open about:blank --ui` 打开可见页面。不要询问用户是否开启语音，也不要增加语音参数；录制会自动尝试麦克风，未说话、未捕获音频或权限被拒绝时直接忽略。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
+- 默认先运行 `record start` 准备录制，再通过 `divebell open about:blank --ui` 打开可见页面。空白起始页会明确提示用户在地址栏输入 URL。不要询问用户是否开启语音，也不要增加语音参数；打开页面时会先主动申请麦克风权限，处理完成后自动回到录制起始页。未说话、未捕获音频或权限被拒绝时直接忽略。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
 - 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
 - 用户说“结束”“完成”“done”后，再调用 stop。
 - `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `divebell stop`。
 - 第一版录制包会保存鼠标点击、输入、键盘事件、事件相对录制开始的时间、页面快照、DOM 摘要、Divebell 结构化状态和可选麦克风音频。连续视频还不是可靠产物。
-- 浏览器会自动申请麦克风权限。成功捕获时把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`；没有可用音频或权限被拒绝时，不把它当成错误，也不要求用户重试。
+- 浏览器会在单独的录音页主动申请麦克风权限，并在用户允许或拒绝后回到操作页。成功捕获时把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`；没有可用音频或权限被拒绝时，不把它当成错误，也不要求用户重试。
 - 页面跳转、搜索或打开新页面后，中间的点击和输入也应该保留在 `interactions.jsonl`。不要只按最后停留的 URL 判断录制结果。
 - 只有 `transcript.json` 已有非空语音文字时，才把语音作为用户意图来源。没有文字时继续根据屏幕操作生成和验证脚本，不自动追问或阻塞。
 - 生成脚本后必须读取脚本、`workflow.json`、`manifest.json`、`interactions.jsonl` 和 `dom-snapshots.jsonl`，再实际运行脚本验证。
@@ -49,7 +49,7 @@ divebell record start
 
 录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。语音采集会自动尝试，不需要额外参数。
 
-2. 用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
+2. 运行 `open` 前先告诉用户：浏览器会先显示麦克风权限提示，处理后会自动进入录制起始页。用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
 
 ```bash
 divebell open about:blank --ui
@@ -62,6 +62,7 @@ divebell open <url> --ui
 ```
 
 `open` 会在同一次页面启动中注入 Bridge 和录制脚本。不要把 URL、Bridge 或页面显示参数传给 `record start`。
+默认空白页会显示“在地址栏输入 URL 开始录制网页操作”，不应再让用户面对没有说明的纯空白页面。
 
 3. `open` 成功后，读取录制包的 `manifest.json`，确认 `status` 已变为 `recording`。然后告诉用户浏览器已经打开，可以开始操作；操作完成后直接说“结束”或“完成”。
 4. 在用户结束前，不要关闭浏览器，也不要提前生成脚本。

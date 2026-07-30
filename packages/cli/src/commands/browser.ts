@@ -17,7 +17,7 @@ import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
 import { normalizeDivebellUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
-import { createGetWindowScript, createInteractiveTextClickScript, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
+import { createGetWindowScript, createInteractiveTextClickScript, parseBrowserJsonOutput, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
 import {
   createOptionalNumberProperty,
   hasOption,
@@ -37,6 +37,7 @@ import { createDivebellExtensionApi } from "../features/extension/api.js";
 import {
   runCloseHooks,
   runOpenHooks,
+  type ExtensionOpenHookCompanionPage,
   type ExtensionHookFailure,
   type ExtensionOpenHookScript
 } from "../features/extension/hooks.js";
@@ -97,20 +98,22 @@ export async function runBrowserCliCommand(
       args,
       url,
       openedUrl,
+      bridgeUrl,
       ...(headers === undefined ? {} : { headers })
     }, openHookPlan);
     writeHookFailures(stderr, hookResult.failures);
+    const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
     let result: BrowserRunResult & { injectedScriptPath?: string };
     try {
       result = await openBrowserPage(
         browserRunner,
         args,
-        openedUrl,
+        effectiveOpenedUrl,
         bridgeUrl,
         hookResult.scripts,
         {
           ui: hasOption(args, "ui"),
-          reuseInitialBlankPage: true,
+          ...(hookResult.openedUrl === undefined ? { reuseInitialBlankPage: true } : {}),
           ...(hasOption(args, "profile")
             || hasOption(args, "state")
             || hasOption(args, "allowed-domains")
@@ -138,12 +141,18 @@ export async function runBrowserCliCommand(
         }
       });
     }
+    const companionFailures = await openCompanionPages(
+      browserRunner,
+      hookResult.companionPages
+    );
+    writeHookFailures(stderr, companionFailures);
 
     const openedAt = Date.now();
-    const normalizedUrl = normalizeDivebellUrlForMatch(openedUrl);
+    const normalizedUrl = normalizeDivebellUrlForMatch(effectiveOpenedUrl);
     await operationLogStore.write({
       command: "open",
       url,
+      openedUrl: effectiveOpenedUrl,
       normalizedUrl,
       bridgeUrl,
       bridgePort,
@@ -155,7 +164,7 @@ export async function runBrowserCliCommand(
     });
     const output: OpenPageResult = {
       url,
-      openedUrl,
+      openedUrl: effectiveOpenedUrl,
       normalizedUrl,
       bridgeUrl,
       bridgePort,
@@ -283,6 +292,73 @@ export async function runExtensionCloseHooks(options: {
     })
   }, options.openHookPlan);
   writeHookFailures(options.stderr, failures);
+}
+
+async function openCompanionPages(
+  browserRunner: BrowserRunner,
+  pages: readonly ExtensionOpenHookCompanionPage[]
+): Promise<ExtensionHookFailure[]> {
+  if (pages.length === 0) return [];
+
+  const activeTabId = await readActiveBrowserTabId(browserRunner);
+  const failures: ExtensionHookFailure[] = [];
+  try {
+    for (const page of pages) {
+      const args = ["tab", "new"];
+      if (page.label !== undefined) {
+        args.push("--label", page.label);
+      }
+      args.push(page.url);
+      const opened = await browserRunner.run(args);
+      if (opened.exitCode !== 0) {
+        failures.push({
+          extension: page.extension,
+          hook: "open",
+          message: opened.stderr.trim() || opened.stdout.trim() || "Could not open companion page."
+        });
+        continue;
+      }
+      if (page.waitFor === undefined) continue;
+      const waited = await waitForBrowserEval(
+        browserRunner,
+        page.waitFor.script,
+        page.waitFor.timeout
+      );
+      if (!waited.success) {
+        failures.push({
+          extension: page.extension,
+          hook: "open",
+          message: waited.reason ?? "Companion page did not become ready."
+        });
+      }
+    }
+  } finally {
+    if (activeTabId !== undefined) {
+      const restored = await browserRunner.run(["tab", activeTabId]);
+      if (restored.exitCode !== 0) {
+        failures.push({
+          extension: pages.at(-1)?.extension ?? "unknown",
+          hook: "open",
+          message: restored.stderr.trim() || restored.stdout.trim() || "Could not return to the opened page."
+        });
+      }
+    }
+  }
+  return failures;
+}
+
+async function readActiveBrowserTabId(browserRunner: BrowserRunner): Promise<string | undefined> {
+  const result = await browserRunner.run(["tab", "--json"]);
+  if (result.exitCode !== 0) return undefined;
+  try {
+    const parsed = parseBrowserJsonOutput(result.stdout) as {
+      tabs?: Array<{ tabId?: unknown; active?: unknown }>;
+    };
+    const tabId = parsed.tabs?.find((tab) => tab.active === true)?.tabId;
+    return typeof tabId === "string" ? tabId : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function prepareOpenBridge(

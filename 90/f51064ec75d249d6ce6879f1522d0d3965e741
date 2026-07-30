@@ -1,0 +1,45 @@
+.changeset/calm-memory-skill.md
+  s_e35412cc139a6a::t_697c127154f53c 1-5
+README.md
+  s_2d3534b9cc1593::t_e2bec48fbf0921 147
+README.zh-CN.md
+  s_2d3534b9cc1593::t_1aed5b68bd6498 143
+docs/memory-analysis.zh-CN.md
+  s_2d3534b9cc1593::t_fd45acf7dc19c9 5-13,17,21-30,32-41,71-73,113
+packages/extensions/memory/package.json
+  s_2d3534b9cc1593::t_190ef5efc23058 21-23
+packages/extensions/memory/skills/analyze-memory-growth/SKILL.md
+  s_2d3534b9cc1593::t_bee8f0559ab0c9 1-112
+packages/extensions/memory/skills/analyze-memory-growth/agents/openai.yaml
+  s_2d3534b9cc1593::t_cda7aa6752aa22 1-4
+packages/extensions/memory/src/extension.ts
+  s_2d3534b9cc1593::t_ba9e146952e92b 2-6,13-15
+packages/extensions/memory/test/package.test.mjs
+  s_2d3534b9cc1593::t_55bf8b665c6245 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "90f51064ec75d249d6ce6879f1522d0d3965e741",
+  "prompts": {},
+  "sessions": {
+    "s_2d3534b9cc1593": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb237-0b2e-7b32-91e1-fd4ec0085a6f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_e35412cc139a6a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb266-92e8-7343-89bf-a02f79d7b904",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

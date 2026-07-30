@@ -42,7 +42,7 @@ export interface CliRunOptions {
   fetcher?: Fetcher;
   browserRunner?: BrowserRunner;
   remoteDebuggingPageOpener?: RemoteDebuggingPageOpener;
-  checkWaiter?: (milliseconds: number) => Promise<void>;
+  setupWaiter?: (milliseconds: number) => Promise<void>;
   bridgeStarter?: BridgeStarter;
   bridgeProcessController?: BridgeProcessController;
   bridgeStateDirectory?: string;

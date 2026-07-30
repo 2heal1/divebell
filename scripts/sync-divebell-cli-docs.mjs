@@ -77,7 +77,7 @@ function createCliReferenceZhCNMarkdown(commandReferences) {
   };
   const categories = ["Bridge and Browser", "Runtime", "Extensions", "External Extensions"];
   const descriptions = new Map([
-    ["divebell check [--fix]", "显示 Node 与浏览器信息，并检查 Divebell 能否正常打开和控制浏览器；--fix 会连接已安装的 Chrome，只有未找到 Chrome 时才会安装。"],
+    ["divebell setup", "准备当前电脑上的 Divebell：检查运行环境，并只在浏览器尚未准备好时修复。"],
     ["divebell extensions add <package-or-path> [--extensions-dir <path>]", "检查并从 npm 包或本地路径安装一个不含运行依赖的 Divebell Extension。"],
     ["divebell extensions list [--extensions-dir <path>]", "列出已安装的 Divebell 扩展包、命令和 Hook。"],
     ["divebell extensions update <package> [--extensions-dir <path>]", "下载并启用扩展包的最新版本；更新失败时保留当前版本。"],

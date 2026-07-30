@@ -4,8 +4,8 @@ export type { CliCommandReference } from "../types/commands.js";
 export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
-    usage: "divebell check [--fix]",
-    description: "Report Node and browser details, then verify browser startup and control; --fix connects an installed Chrome or installs one only when Chrome is missing."
+    usage: "divebell setup",
+    description: "Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed."
   },
   {
     category: "Extensions",

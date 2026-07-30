@@ -14,7 +14,7 @@ English version: [Divebell CLI Reference](cli-reference.md)
 
 ### Bridge 与浏览器
 
-- `divebell check [--fix]` - 显示 Node 与浏览器信息，并检查 Divebell 能否正常打开和控制浏览器；--fix 会连接已安装的 Chrome，只有未找到 Chrome 时才会安装。
+- `divebell setup` - 准备当前电脑上的 Divebell：检查运行环境，并只在浏览器尚未准备好时修复。
 - `divebell start [--port <port>]` - 显式启动或复用 CLI 管理的 Bridge；大多数命令会自动准备它。
 - `divebell stop [--port <port>]` - 关闭浏览器会话，然后停止 CLI 管理的 Bridge。
 - `divebell profiles` - 列出 agent-browser 可以使用的本机 Chrome Profile。

@@ -18,7 +18,7 @@ import { runRuntimeCliCommand } from "./commands/runtime.js";
 import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
-import { runCheckCommand } from "./commands/check.js";
+import { runSetupCommand } from "./commands/setup.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import type {
   CliRunOptions,
@@ -67,8 +67,8 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
       return await runBridgeServerCommand(args, stdout, options.waitUntilClosed);
     }
 
-    if (args.command[0] === "check") {
-      return await runCheckCommand({
+    if (args.command[0] === "setup") {
+      return await runSetupCommand({
         args,
         stdout,
         fetcher,
@@ -79,9 +79,9 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           : { bridgeProcessController: options.bridgeProcessController }),
         remoteDebuggingPageOpener: options.remoteDebuggingPageOpener
           ?? createRemoteDebuggingPageOpener({ env }),
-        ...(options.checkWaiter === undefined
+        ...(options.setupWaiter === undefined
           ? {}
-          : { wait: options.checkWaiter }),
+          : { wait: options.setupWaiter }),
         env
       });
     }

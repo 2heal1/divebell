@@ -34,9 +34,11 @@ Coding Agent 负责阅读和修改代码；Divebell 负责准备可复用的浏�
 
 ```bash
 npm install --global @divebell/cli
-divebell check --fix
+divebell setup
 divebell --help
 ```
+
+`divebell setup` 会检查当前环境，只在浏览器尚未准备好时修复。浏览器验证使用临时会话，并会在 setup 结束后清理。
 
 把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。
 

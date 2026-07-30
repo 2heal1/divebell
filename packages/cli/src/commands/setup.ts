@@ -23,7 +23,6 @@ import {
 import { createBridgeInitScript } from "../features/bridge/inject.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import type { ParsedCliArgs } from "../utils/args.js";
-import { hasOption } from "../utils/command.js";
 import {
   createCommandOutput,
   createError,
@@ -31,12 +30,12 @@ import {
 } from "../utils/output.js";
 import { openBrowserPage } from "./browser.js";
 
-const CHECK_URL = "about:blank";
+const SETUP_URL = "about:blank";
 const EXISTING_CHROME_CONNECT_ATTEMPTS = 30;
 const EXISTING_CHROME_CONNECT_INTERVAL_MS = 2000;
-const EXISTING_CHROME_IDLE_TIMEOUT_MS = 5000;
+const CHECK_BROWSER_IDLE_TIMEOUT_MS = 5000;
 export const SUPPORTED_NODE_RANGE = ">=24.0.0 <25";
-const CHECK_CONTROL_SCRIPT = `(() => {
+const SETUP_CONTROL_SCRIPT = `(() => {
   const manager = globalThis.__DIVEBELL_BRIDGE_MANAGER__;
   if (manager === null || typeof manager !== "object") {
     throw new Error("Divebell Bridge initialization was not installed in the page.");
@@ -86,7 +85,7 @@ type FixMethod =
   | "install-managed-browser"
   | "connect-existing-chrome";
 
-export async function runCheckCommand(options: {
+export async function runSetupCommand(options: {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
   fetcher: Fetcher;
@@ -98,7 +97,7 @@ export async function runCheckCommand(options: {
   nodeVersion?: string;
   wait?: (milliseconds: number) => Promise<void>;
 }): Promise<number> {
-  const output = createCommandOutput(options.stdout, "check");
+  const output = createCommandOutput(options.stdout, "setup");
   const nodeVersion = options.nodeVersion ?? process.versions.node;
   const browserSource = detectBrowserSource(options.env);
   let resolvedBrowserSource = browserSource;
@@ -123,11 +122,11 @@ export async function runCheckCommand(options: {
       }
     ];
     output.error(createError({
-      code: "DIVEBELL_CHECK_NODE_UNSUPPORTED",
+      code: "DIVEBELL_SETUP_NODE_UNSUPPORTED",
       kind: "validation",
       message: `Divebell requires Node.js 24, but this command is running on Node.js ${nodeVersion}.`,
       retryable: false,
-      hint: "Install and select Node.js 24, then run `divebell check` again.",
+      hint: "Install and select Node.js 24, then run `divebell setup` again.",
       data: {
         ready: false,
         fixed: false,
@@ -143,13 +142,14 @@ export async function runCheckCommand(options: {
     return 1;
   }
 
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-check-"));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-setup-"));
   const bridgeStateDirectory = join(temporaryDirectory, "bridge");
   const browserOptions: BrowserRunOptions = {
-    session: `divebell-check-${randomUUID().replaceAll("-", "")}`,
-    disableRestore: true
+    session: `divebell-setup-${randomUUID().replaceAll("-", "")}`,
+    disableRestore: true,
+    headless: true,
+    idleTimeoutMs: CHECK_BROWSER_IDLE_TIMEOUT_MS
   };
-  const fixRequested = hasOption(options.args, "fix");
   let bridge: StartDedicatedBridgeResult | undefined;
   let browserTouched = false;
   let fixed = false;
@@ -199,11 +199,11 @@ export async function runCheckCommand(options: {
         }
       ];
       failure = createError({
-        code: "DIVEBELL_CHECK_BRIDGE_FAILED",
+        code: "DIVEBELL_SETUP_BRIDGE_FAILED",
         kind: "internal",
         message: `Divebell could not start its local Bridge: ${reason}`,
         retryable: true,
-        hint: "Check whether this machine allows local processes to listen on an available port, then run `divebell check` again."
+        hint: "Check whether this machine allows local processes to listen on an available port, then run `divebell setup` again."
       });
     }
 
@@ -236,7 +236,6 @@ export async function runCheckCommand(options: {
       if (
         !probe.ok
         && probe.stage === "browser.open"
-        && fixRequested
         && (
           browserSource.kind === "managed"
           || browserSource.kind === "auto-connect"
@@ -327,7 +326,6 @@ export async function runCheckCommand(options: {
         failure = createProbeFailure(
           probe,
           browserSource,
-          fixRequested,
           fixed
         );
       }
@@ -372,11 +370,11 @@ export async function runCheckCommand(options: {
 
   if (failure === undefined && cleanupFailure !== undefined) {
     failure = createError({
-      code: "DIVEBELL_CHECK_CLEANUP_FAILED",
+      code: "DIVEBELL_SETUP_CLEANUP_FAILED",
       kind: "internal",
       message: `Divebell opened and controlled the browser, but could not clean up the temporary check: ${cleanupFailure}`,
       retryable: true,
-      hint: "Run `divebell check` again after confirming no temporary Divebell process is still running."
+      hint: "Run `divebell setup` again after confirming no temporary Divebell process is still running."
     });
   }
 
@@ -448,7 +446,7 @@ async function runBrowserProbe(
     opened = await openBrowserPage(
       browserRunner,
       args,
-      CHECK_URL,
+      SETUP_URL,
       bridgeUrl,
       [],
       {
@@ -475,7 +473,7 @@ async function runBrowserProbe(
   let controlled: BrowserRunResult;
   try {
     controlled = await browserRunner.run(
-      ["eval", CHECK_CONTROL_SCRIPT],
+      ["eval", SETUP_CONTROL_SCRIPT],
       browserOptions
     );
   } catch (error) {
@@ -509,7 +507,7 @@ async function runExistingBrowserProbe(
   let probe: BrowserProbeResult;
   try {
     const opened = await browserRunner.run(
-      ["tab", "new", CHECK_URL],
+      ["tab", "new", SETUP_URL],
       browserOptions
     );
     if (opened.exitCode !== 0) {
@@ -539,7 +537,7 @@ async function runExistingBrowserProbe(
       };
     } else {
       const controlled = await browserRunner.run(
-        ["eval", CHECK_CONTROL_SCRIPT],
+        ["eval", SETUP_CONTROL_SCRIPT],
         browserOptions
       );
       probe = controlled.exitCode === 0
@@ -639,9 +637,8 @@ function createExistingBrowserOptions(
 ): BrowserRunOptions {
   return {
     ...browserOptions,
-    session: `${browserOptions.session ?? "divebell-check"}-existing`,
-    ...(autoConnect ? { autoConnect: true } : {}),
-    idleTimeoutMs: EXISTING_CHROME_IDLE_TIMEOUT_MS
+    session: `${browserOptions.session ?? "divebell-setup"}-existing`,
+    ...(autoConnect ? { autoConnect: true } : {})
   };
 }
 
@@ -687,16 +684,15 @@ function createBrowserChecks(probe: BrowserProbeResult): CheckEntry[] {
 function createProbeFailure(
   probe: BrowserProbeFailure,
   browserSource: BrowserSource,
-  fixRequested: boolean,
   fixed: boolean
 ): CommandError {
   if (probe.stage === "browser.control") {
     return createError({
-      code: "DIVEBELL_CHECK_CONTROL_FAILED",
+      code: "DIVEBELL_SETUP_CONTROL_FAILED",
       kind: "browser",
       message: `Divebell opened the browser but could not control it: ${probe.reason}`,
       retryable: true,
-      hint: "Close any temporary Divebell browser process, then run `divebell check` again."
+      hint: "Close any temporary Divebell browser process, then run `divebell setup` again."
     });
   }
 
@@ -708,21 +704,21 @@ function createProbeFailure(
       ? "Start Chrome with remote debugging enabled"
       : `Start Chrome with \`--remote-debugging-port=${browserSource.port}\` and a non-default \`--user-data-dir\``;
     return createError({
-      code: "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED",
+      code: "DIVEBELL_SETUP_DEBUG_CONNECTION_REQUIRED",
       kind: "needs_input",
       message: `Divebell could not connect to ${target}: ${probe.reason}`,
       retryable: false,
-      hint: `${setup}, then run \`divebell check\` again.`
+      hint: `${setup}, then run \`divebell setup\` again.`
     });
   }
 
   if (browserSource.kind === "auto-connect") {
     return createError({
-      code: "DIVEBELL_CHECK_DEBUG_CONNECTION_REQUIRED",
+      code: "DIVEBELL_SETUP_DEBUG_CONNECTION_REQUIRED",
       kind: "needs_input",
       message: `Divebell could not find a Chrome instance with remote debugging enabled: ${probe.reason}`,
       retryable: false,
-      hint: "In Chrome 144 or newer, open `chrome://inspect/#remote-debugging`, enable remote debugging, then run `divebell check` again."
+      hint: "In Chrome 144 or newer, open `chrome://inspect/#remote-debugging`, enable remote debugging, then run `divebell setup` again."
     });
   }
 
@@ -732,42 +728,29 @@ function createProbeFailure(
     || browserSource.kind === "executable"
   ) {
     return createError({
-      code: "DIVEBELL_CHECK_CONFIGURED_BROWSER_FAILED",
+      code: "DIVEBELL_SETUP_CONFIGURED_BROWSER_FAILED",
       kind: "needs_input",
       message: `Divebell could not use the configured browser source: ${probe.reason}`,
       retryable: false,
-      hint: "Check the configured browser source and its credentials, then run `divebell check` again."
-    });
-  }
-
-  if (!fixRequested) {
-    const missingBrowser = isMissingBrowserFailure(probe.reason);
-    return createError({
-      code: "DIVEBELL_CHECK_BROWSER_NOT_READY",
-      kind: "browser",
-      message: `Divebell could not open a browser: ${probe.reason}`,
-      retryable: true,
-      hint: missingBrowser
-        ? "Run `divebell check --fix` to install a managed browser and retry."
-        : "Run `divebell check --fix` to connect to the Chrome already installed on this machine."
+      hint: "Check the configured browser source and its credentials, then run `divebell setup` again."
     });
   }
 
   return createError({
-    code: "DIVEBELL_CHECK_BROWSER_FAILED",
+    code: "DIVEBELL_SETUP_BROWSER_FAILED",
     kind: "browser",
     message: `Divebell could not open a browser after the automatic repair: ${probe.reason}`,
     retryable: false,
     hint: fixed
-      ? "Review the browser startup reason and any operating-system security prompt, then run `divebell check` again."
-      : "Install the browser requirements manually, then run `divebell check` again."
+      ? "Review the browser startup reason and any operating-system security prompt, then run `divebell setup` again."
+      : "Install the browser requirements manually, then run `divebell setup` again."
   });
 }
 
 function createInstallFailure(reason: string): CommandError {
   if (isBrowserDownloadFailure(reason)) {
     return createError({
-      code: "DIVEBELL_CHECK_BROWSER_DOWNLOAD_FAILED",
+      code: "DIVEBELL_SETUP_BROWSER_DOWNLOAD_FAILED",
       kind: "browser",
       message: `Divebell could not download Chrome for Testing: ${reason}`,
       retryable: true,
@@ -775,11 +758,11 @@ function createInstallFailure(reason: string): CommandError {
     });
   }
   return createError({
-    code: "DIVEBELL_CHECK_FIX_FAILED",
+    code: "DIVEBELL_SETUP_REPAIR_FAILED",
     kind: "browser",
     message: `Divebell could not install the browser requirements: ${reason}`,
     retryable: false,
-    hint: "Resolve the reported browser installation error, then run `divebell check` again."
+    hint: "Resolve the reported browser installation error, then run `divebell setup` again."
   });
 }
 
@@ -789,14 +772,14 @@ function createExistingChromeFailure(
   openFailure?: string
 ): CommandError {
   const action = settingsOpened
-    ? "The Chrome remote-debugging page was opened, but Divebell did not receive permission before the check timed out."
+    ? "The Chrome remote-debugging page was opened, but Divebell did not receive permission before setup timed out."
     : `Open \`${CHROME_REMOTE_DEBUGGING_URL}\` in Chrome and enable remote debugging.`;
   return createError({
-    code: "DIVEBELL_CHECK_REMOTE_DEBUGGING_REQUIRED",
+    code: "DIVEBELL_SETUP_REMOTE_DEBUGGING_REQUIRED",
     kind: "needs_input",
     message: `Divebell could not connect to the existing Chrome session: ${probe.reason}`,
     retryable: true,
-    hint: `${action} Approve the Chrome connection prompt, then run \`divebell check\` again.`,
+    hint: `${action} Approve the Chrome connection prompt, then run \`divebell setup\` again.`,
     ...(openFailure === undefined
       ? {}
       : {

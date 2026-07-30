@@ -6,6 +6,7 @@ export interface BrowserRunResult {
 
 export interface BrowserRunOptions {
   ui?: boolean;
+  headless?: boolean;
   input?: string;
   session?: string;
   autoConnect?: boolean;

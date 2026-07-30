@@ -126,7 +126,7 @@ export async function runBrowserCliCommand(
         kind: "browser",
         message: result.stderr.trim() || result.stdout.trim() || "Could not open the page.",
         retryable: true,
-        hint: "Run `divebell check` to verify browser startup, or `divebell check --fix` to install missing browser requirements.",
+        hint: "Run `divebell setup` to prepare browser startup.",
         details: {
           url,
           openedUrl,

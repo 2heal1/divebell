@@ -298,11 +298,11 @@ interface DivebellStackDetection {
   name: string;
   version?: string;
   evidence?: readonly string[];
-  recommendedExtensions?: readonly string[];
+  command?: string;
 }
 ```
 
-`detectStack` 只在执行 `divebell stack` 时运行，可以返回一个结果、多个结果或不返回结果。不要在 `evidence` 中包含完整页面配置或敏感值。
+`detectStack` 只在执行 `divebell stack` 时运行，可以返回一个结果、多个结果或不返回结果。`command` 必须是当前 Extension 注册的一级命令；没有后续命令时可以省略。不要在 `evidence` 中包含完整页面配置或敏感值。
 
 `close` 只会通知在同一次 `open` 中成功参与过的 Extension。当这个页面被 `stop`，或被同一工作目录中的另一次 `open` 替换时，它都会运行。清理失败会被记录，但不会阻止页面生命周期继续。
 

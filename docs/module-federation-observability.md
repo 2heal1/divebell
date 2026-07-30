@@ -2,9 +2,11 @@
 
 Chinese version: [Module Federation 可观测接入指南](module-federation-observability.zh-CN.md)
 
+To inspect an MF page through the Divebell CLI, install [`@divebell/extension-mf`](../packages/extensions/mf/README.md), which provides the `divebell mf` command. A one-off page investigation can use `divebell open <url> --mf`; the application does not need to install the observability plugin first.
+
 `@module-federation/observability-plugin` is the official Module Federation-side integration path used by Divebell. It records structured loading evidence from Module Federation's own runtime hooks, allowing a coding agent to identify the exact loading phase and likely owner without reconstructing MF state from DOM or Network results.
 
-This package is a Module Federation runtime plugin, not a CLI Extension. It belongs in the MF consumer and does not add a standalone `divebell` command. Divebell reuses its reports and framework-owned facts in the same page debugging workflow.
+This package is a Module Federation runtime plugin for long-term collection, not a CLI Extension. Add it to the MF consumer only when the application needs to continuously record, upload, or retain MF reports. It does not add a standalone `divebell` command.
 
 ## What the plugin provides
 
@@ -20,9 +22,9 @@ The observability plugin records evidence for:
 
 The report distinguishes runtime loading from business readiness. A remote or expose reaching a loaded state proves that the Module Federation runtime completed that layer of work; it does not prove that the consuming UI rendered correctly or that its data is ready.
 
-## Add the integration
+## Add long-term application integration
 
-Install the package in the MF consumer:
+When the application needs continuous MF reporting, install the package in the MF consumer:
 
 ```bash
 pnpm add @module-federation/observability-plugin

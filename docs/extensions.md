@@ -98,7 +98,7 @@ divebell open https://example.com
 divebell <extension-command>
 ```
 
-`divebell stack` runs stack detectors supplied by Extensions and may recommend a more appropriate focused Extension:
+`divebell stack` runs stack detectors supplied by Extensions and returns the command that matches each detection:
 
 ```sh
 divebell stack

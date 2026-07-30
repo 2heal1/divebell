@@ -97,7 +97,7 @@ divebell open https://example.com
 divebell <extension-command>
 ```
 
-`divebell stack` 会运行 Extension 提供的技术栈识别器，并可能推荐更合适的专项 Extension：
+`divebell stack` 会运行 Extension 提供的技术栈识别器，并返回与识别结果对应的命令入口：
 
 ```sh
 divebell stack

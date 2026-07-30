@@ -88,12 +88,16 @@ export async function runDetectStackHooks(
   for (const batch of plan.batches) {
     const settled = await Promise.allSettled(batch.map(async (extensionName) => {
       const extension = registry.get(extensionName);
-      const run = extension === undefined ? undefined : getDetectStackHook(extension);
+      if (extension === undefined) {
+        throw new Error(`Extension "${extensionName}" detectStack hook is unavailable.`);
+      }
+      const run = getDetectStackHook(extension);
       if (run === undefined) {
         throw new Error(`Extension "${extensionName}" detectStack hook is unavailable.`);
       }
       return {
         extension: extensionName,
+        definition: extension,
         result: await withTimeout(run(options), extensionName, "detectStack")
       };
     }));
@@ -111,7 +115,10 @@ export async function runDetectStackHooks(
         : Array.isArray(result.value.result) ? result.value.result : [result.value.result];
       for (const value of values) {
         try {
-          detections.push({ ...validateDetection(value), extension: extensionName });
+          detections.push({
+            ...validateDetection(value, result.value.definition),
+            extension: extensionName
+          });
         } catch (error) {
           failures.push(failure(extensionName, "detectStack", error));
         }
@@ -152,7 +159,10 @@ export async function runCloseHooks(
   return failures;
 }
 
-function validateDetection(value: DivebellStackDetection): DivebellStackDetection {
+function validateDetection(
+  value: DivebellStackDetection,
+  extension: DivebellExtensionDefinition
+): DivebellStackDetection {
   if (value === null || typeof value !== "object") {
     throw new Error("detectStack must return an object, an array of objects, or undefined.");
   }
@@ -168,8 +178,23 @@ function validateDetection(value: DivebellStackDetection): DivebellStackDetectio
   if (value.evidence !== undefined && !isStringArray(value.evidence)) {
     throw new Error("detectStack result evidence must be an array of strings.");
   }
-  if (value.recommendedExtensions !== undefined && !isStringArray(value.recommendedExtensions)) {
-    throw new Error("detectStack result recommendedExtensions must be an array of strings.");
+  const legacyValue = value as DivebellStackDetection & {
+    recommendedExtensions?: unknown;
+  };
+  if (legacyValue.recommendedExtensions !== undefined) {
+    throw new Error(
+      "detectStack result recommendedExtensions is no longer supported; return command instead."
+    );
+  }
+  if (value.command !== undefined) {
+    if (typeof value.command !== "string" || value.command.length === 0) {
+      throw new Error("detectStack result command must be a non-empty string.");
+    }
+    if (!extension.commands?.some((command) => command.name === value.command)) {
+      throw new Error(
+        `detectStack result command "${value.command}" is not provided by Extension "${extension.name}".`
+      );
+    }
   }
   return value;
 }

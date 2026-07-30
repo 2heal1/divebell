@@ -239,12 +239,12 @@ export const detectStack: NonNullable<
     id: "modernjs",
     name: "Modern.js",
     evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
-    recommendedExtensions: ["@scope/modern-tools"]
+    command: "foo"
   };
 };
 ```
 
-识别结果只返回简短证据，不要包含完整页面配置或敏感值。相同页面和相同识别器集合会复用最近结果；`divebell stack --refresh` 会强制重新识别。
+`command` 是当前 Extension 提供的一级命令，用于告诉 Agent 识别成功后从哪里开始。它必须与当前 Extension 注册的某个 Command 同名。没有后续命令时可以不返回。识别结果只返回简短证据，不要包含完整页面配置或敏感值。相同页面和相同识别器集合会复用最近结果；`divebell stack --refresh` 会强制重新识别。
 
 #### `close`
 

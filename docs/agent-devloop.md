@@ -64,7 +64,7 @@ divebell extensions list
 divebell stack
 ```
 
-`stack` runs detectors supplied by Extensions. A detector may recommend a focused Extension for the current project. Use a command only when its description matches the problem; do not run every diagnostic without a reason.
+`stack` runs detectors supplied by Extensions. A detection may point directly to its matching top-level command. Use a command only when its description matches the problem; do not run every diagnostic without a reason.
 
 Common team Extensions may provide:
 

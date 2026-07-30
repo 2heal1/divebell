@@ -2,9 +2,11 @@
 
 English version: [Module Federation Observability](module-federation-observability.md)
 
+需要通过 Divebell CLI 排查 MF 页面时，安装 [`@divebell/extension-mf`](../packages/extensions/mf/README.md)，它提供 `divebell mf` 命令。一次性页面调试使用 `divebell open <url> --mf` 即可，不要求业务应用预先安装 observability plugin。
+
 `@module-federation/observability-plugin` 是 Divebell 复用的 Module Federation 官方接入路径。它从 MF 自己的 runtime hook 记录结构化加载证据，让 Coding Agent 找到具体失败阶段和可能的负责方，不必根据 DOM 或 Network 结果反推 MF 内部状态。
 
-这个包是 Module Federation runtime plugin，不是 CLI Extension。它应安装在 MF consumer 中，本身不会增加一条独立的 `divebell` 命令。Divebell 会在同一套页面调试流程中复用它的报告和框架内部事实。
+这个包是用于长期采集的 Module Federation runtime plugin，不是 CLI Extension。只有应用需要持续记录、上传或保留 MF 报告时，才应把它安装在 MF consumer 中。它本身不会增加一条独立的 `divebell` 命令。
 
 ## 插件提供什么
 
@@ -20,9 +22,9 @@ observability plugin 会记录：
 
 报告会区分运行时加载和业务 ready。remote 或 expose 已经加载，只能证明 Module Federation runtime 完成了这一层工作，不能证明消费方页面已经正确渲染或业务数据已经准备好。
 
-## 接入方式
+## 长期应用接入
 
-在 MF consumer 中安装：
+应用需要持续采集 MF 报告时，在 MF consumer 中安装：
 
 ```bash
 pnpm add @module-federation/observability-plugin

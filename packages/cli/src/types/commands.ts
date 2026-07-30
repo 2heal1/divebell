@@ -71,7 +71,7 @@ export interface DivebellStackDetection {
   name: string;
   version?: string;
   evidence?: readonly string[];
-  recommendedExtensions?: readonly string[];
+  command?: string;
 }
 
 export interface DivebellOrderedHook<Handler> {

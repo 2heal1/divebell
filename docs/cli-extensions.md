@@ -13,7 +13,7 @@ An Extension packages reusable account and environment preparation, context reco
 - selecting a test account, preparing an environment, or checking access;
 - identifying the application, environment, deployment ID, and other domain resources from the current page;
 - using those resources with an existing SDK, OpenAPI, CLI, or internal platform;
-- detecting the project stack and recommending matching tools;
+- detecting the project stack and pointing agents to the matching command;
 - packaging page-performance, memory, code-usage, or framework-specific diagnosis;
 - running team-specific verification in the same browser session; and
 - shipping an on-demand Agent Skill for a complex command.
@@ -247,12 +247,12 @@ export const detectStack: NonNullable<
     id: "modernjs",
     name: "Modern.js",
     evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
-    recommendedExtensions: ["@scope/modern-tools"]
+    command: "foo"
   };
 };
 ```
 
-Return only short evidence in a detection result. Do not include full page configuration or sensitive values. The latest result is reused for the same page and detector set. `divebell stack --refresh` forces detection again.
+`command` is a top-level command provided by the current Extension. It tells an agent where to start after a match and must name one of that Extension's registered Commands. Omit it when the detection has no follow-up command. Return only short evidence in a detection result. Do not include full page configuration or sensitive values. The latest result is reused for the same page and detector set. `divebell stack --refresh` forces detection again.
 
 #### `close`
 

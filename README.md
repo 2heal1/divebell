@@ -102,7 +102,11 @@ An Extension can identify applications, environments, and resources from the cur
 
 #### Official Extensions
 
-Focused capabilities are published as optional packages and installed only when needed. CLI Extensions add commands outside the page; framework integrations run inside the application and expose facts that the framework already knows:
+Focused capabilities are published as optional packages and installed only when needed. CLI Extensions add commands outside the page; in-application integrations expose facts that the framework already knows.
+
+##### CLI Extensions
+
+These packages are installed into Divebell and add top-level commands:
 
 | Package | Entry | Purpose | Guide |
 | --- | --- | --- | --- |
@@ -110,8 +114,7 @@ Focused capabilities are published as optional packages and installed only when 
 | `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
 | `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate an executable, verified JavaScript replay. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
 | `@divebell/extension-troubleshooting` | `divebell verify` | Verify that a page-declared business target reaches the expected result. | [Runtime SDK API](./docs/runtime-sdk-api.md) |
-| `@divebell/modern-plugin` | Modern.js runtime plugin (WIP) | Planned framework-state integration. Do not adopt it yet; it is waiting for a Modern.js release with the required lifecycle hooks. | [Modern.js Integration](./docs/modernjs-integration.md) |
-| `@module-federation/observability-plugin` | Module Federation runtime plugin | Record consumer, remote, manifest, remoteEntry, expose, shared-dependency, and runtime-error evidence through MF observability. | [Module Federation Observability](./docs/module-federation-observability.md) |
+| `@divebell/extension-mf` | `divebell mf` | Inspect Module Federation instances, remotes, shared dependencies, Bridge operations, and loading traces. | [MF Extension](./packages/extensions/mf/README.md) |
 
 Install a CLI Extension with:
 
@@ -119,7 +122,16 @@ Install a CLI Extension with:
 divebell extensions add @divebell/extension-memory
 ```
 
-Installed Extension commands appear in `divebell --help` and run through the same CLI, browser sessions, and login state as the built-in commands. Framework integration packages are application dependencies and must be wired into the matching framework; they do not add a CLI command by themselves.
+Installed Extension commands appear in `divebell --help` and run through the same CLI, browser sessions, and login state as the built-in commands.
+
+##### In-application integrations
+
+These packages are application dependencies that must be configured in the matching framework. They do not add `divebell` commands:
+
+| Package | Entry | Purpose | Guide |
+| --- | --- | --- | --- |
+| `@divebell/modern-plugin` | Modern.js runtime plugin (WIP) | Planned framework-state integration. Do not adopt it yet; it is waiting for a Modern.js release with the required lifecycle hooks. | [Modern.js Integration](./docs/modernjs-integration.md) |
+| `@module-federation/observability-plugin` | Module Federation runtime plugin | Let an MF application continuously record and upload consumer, remote, shared-dependency, and loading-error evidence. One-off Divebell debugging does not require it in the application. | [Module Federation Observability](./docs/module-federation-observability.md) |
 
 ### Runtime SDK
 

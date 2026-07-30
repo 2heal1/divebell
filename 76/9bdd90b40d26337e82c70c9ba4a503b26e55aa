@@ -1,0 +1,21 @@
+.changeset/tidy-extensions-browse.md
+  s_fa60e9bd50bef6::t_df032c645959eb 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "769bdd90b40d26337e82c70c9ba4a503b26e55aa",
+  "prompts": {},
+  "sessions": {
+    "s_fa60e9bd50bef6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb29e-0fd2-7273-8ffd-b1502eae7ccb",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

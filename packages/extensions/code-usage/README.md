@@ -6,7 +6,11 @@ This Divebell Extension maps browser code coverage back to build chunks, applica
 
 ```bash
 divebell extensions add @divebell/extension-code-usage
+divebell code-usage --skill
 ```
+
+The second command prints the path to the Agent skill shipped inside the
+Extension package without starting an analysis.
 
 The target build must produce an `divebell-chunks.json` file through `@divebell/modern-plugin/chunk-map` or `@divebell/rspack-plugin`. Keep the matching JavaScript files and source maps from the exact deployed build.
 
@@ -17,6 +21,7 @@ Record one or more representative phases with the base CLI:
 ```bash
 divebell open https://example.com/
 divebell coverage start
+divebell reload
 divebell coverage take /tmp/first-screen.coverage.json --label first-screen
 # Perform the next page journey.
 divebell coverage stop /tmp/orders.coverage.json --label orders

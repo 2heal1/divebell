@@ -1,10 +1,18 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
+import { fileURLToPath } from "node:url";
+
+const codeUsageSkillPath = fileURLToPath(
+  new URL("../skills/analyze-code-usage/SKILL.md", import.meta.url)
+);
 
 const extension = {
   schemaVersion: 1,
   name: "code-usage",
   commands: [{
     name: "code-usage",
+    skill: {
+      path: codeUsageSkillPath
+    },
     commandReferences: [
       {
         category: "Extensions",

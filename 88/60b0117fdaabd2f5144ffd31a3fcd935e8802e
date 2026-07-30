@@ -1,0 +1,55 @@
+.changeset/bright-stacks-command.md
+  s_4e0147d157f462::t_e124c735d182af 1-6
+docs/agent-devloop.md
+  s_4e0147d157f462::t_5f35adc838be8a 67
+docs/agent-devloop.zh-CN.md
+  s_4e0147d157f462::t_9d005d883a1492 67
+docs/cli-extensions.md
+  s_4e0147d157f462::t_b009f19f695587 16,250,255
+docs/cli-extensions.zh-CN.md
+  s_4e0147d157f462::t_cb119b7ee52eee 242,247
+docs/extension-api.md
+  s_4e0147d157f462::t_6c60cdc430cb28 301,305
+docs/extension-api.zh-CN.md
+  s_4e0147d157f462::t_093b29d5e43d1a 301,305
+docs/extensions.md
+  s_4e0147d157f462::t_1af9b547986bf5 101
+docs/extensions.zh-CN.md
+  s_4e0147d157f462::t_484bea5b42764c 100
+packages/cli/src/commands/stack.ts
+  s_4e0147d157f462::t_65cd88a4128fbc 48
+packages/cli/src/features/extension/hooks.ts
+  s_4e0147d157f462::t_b2cde7c192bb97 91-94,100,118-121,162-165,181-197
+packages/cli/src/types/commands.ts
+  s_4e0147d157f462::t_932f1c9378ddb2 74
+packages/cli/test/extensions.test.ts
+  s_4e0147d157f462::t_d81be8850585de 15-18,41-46,58-59,111,122-124,142-193
+packages/extensions/mf/README.md
+  s_4e0147d157f462::t_dbfb6869da7557 29-35
+packages/extensions/mf/src/detect-stack.ts
+  s_4e0147d157f462::t_3a88809b24ed2d 1-41
+packages/extensions/mf/src/extension.ts
+  s_4e0147d157f462::t_7e4945fe5ff7c9 34-39
+packages/extensions/mf/test/detect-stack.test.mjs
+  s_4e0147d157f462::t_516a992220a06e 1-148
+packages/extensions/mf/test/package.test.mjs
+  s_4e0147d157f462::t_6987ae194db268 32,36,65,365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8860b0117fdaabd2f5144ffd31a3fcd935e8802e",
+  "prompts": {},
+  "sessions": {
+    "s_4e0147d157f462": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb1dd-bb2d-7e12-9077-fe86766dda46",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

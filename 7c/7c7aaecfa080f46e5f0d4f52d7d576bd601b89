@@ -1,0 +1,23 @@
+packages/test/src/commands.ts
+  s_46f08ac1c90fa6::t_1b25c326ba05b1 49,93
+tests/e2e/extension-mf/scenario.ts
+  s_46f08ac1c90fa6::t_61fc3054eeaea4 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c7c7aaecfa080f46e5f0d4f52d7d576bd601b89",
+  "prompts": {},
+  "sessions": {
+    "s_46f08ac1c90fa6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadb9-2271-7933-8ff8-cfd2e0fe6a99",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -135,4 +135,5 @@ Extension 在页面外部组织开发调试流程；Runtime SDK 在页面内部�
 
 框架缺少必要生命周期时，应优先补正式 hook，而不是在 Divebell 中用 DOM、Console 或 Network 模拟框架状态。
 
-更完整的字段、行为和示例见 [Runtime SDK Reference](../skills/divebell/references/runtime-sdk.md)。
+更完整的字段、行为和示例见 [Runtime SDK API 参考](../skills/divebell-runtime/references/api.md)
+和[接入指南](../skills/divebell-runtime/references/integration.md)。

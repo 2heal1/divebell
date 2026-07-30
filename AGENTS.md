@@ -18,7 +18,7 @@ Extension 可以从当前页面识别应用、环境和部署等资源，调用�
 2. `docs/agent-devloop.md` / `docs/agent-devloop.zh-CN.md`：真实开发调试闭环和最小人工介入原则。
 3. `docs/cli-extensions.md` / `docs/cli-extensions.zh-CN.md`：Extensions 与 Extension API。
 4. `docs/runtime-sdk-api.md` / `docs/runtime-sdk-api.zh-CN.md`：Runtime SDK 的使用边界和公开接入方式。
-5. `skills/divebell/references/runtime-sdk.md`：Target、Snapshot、Event、Action、waitFor 的完整字段和行为。
+5. `skills/divebell-runtime/references/api.md` / `skills/divebell-runtime/references/integration.md`：Runtime SDK 的完整字段、行为和接入方式。
 6. `.codex/skills/mf/SKILL.md`：遇到 Module Federation、remote、shared、manifest、observability、runtime error 时先使用这个 skill。
 
 ## 当前核心设计

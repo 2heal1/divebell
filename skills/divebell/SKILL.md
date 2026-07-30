@@ -1,124 +1,205 @@
 ---
 name: divebell
 description: >-
-  Use, customize, evaluate, or troubleshoot Divebell/@divebell. Divebell
-  is an extensible web development and debugging tool for Coding Agents. Use
-  divebell to reuse authenticated browser profiles and sessions, interact
-  with pages, inspect Console, Network, performance, memory, code execution, and
-  Runtime evidence, invoke Extension commands, verify changes, and develop
-  Extensions, automation scripts, or Runtime SDK integrations. Use when a task
-  explicitly mentions Divebell, asks to use its CLI or Extensions, or needs
-  Divebell evidence for a real web development debugging workflow.
+  Use Divebell to operate, inspect, debug, and verify real web applications.
+  Trigger when the user explicitly asks to use Divebell or requires evidence
+  from a real page through the Divebell CLI. While using Divebell, perform all
+  browser operations through Divebell instead of another browser tool.
 ---
 
 # Divebell
 
-Use Divebell to help Coding Agents reproduce, diagnose, and verify issues in
-real, authorized, and repeatable web scenarios. Let the Coding Agent change the
-code; use Divebell to prepare and reuse browser context, provide debugging
-capabilities, and preserve verification evidence.
+Divebell is an extensible toolkit for Coding Agents to debug, understand, and
+verify real web applications. It makes the real page the Agent's entry point
+and connects browser operations, diagnostic evidence, and optional Extension
+capabilities.
 
-First decide whether the user wants to use capabilities, troubleshoot and fix
-an issue, or customize capabilities. Then read only the corresponding workflow.
-Do not preload every reference merely because a task involves Divebell. Do
-not require an ordinary page to integrate Runtime SDK before using Divebell.
+## Installation
 
-## Choose a workflow
+Use the globally installed Divebell CLI. Do not add `@divebell/cli` to the
+application being inspected.
 
-### Use capabilities
+If the `divebell` command is unavailable, install it globally:
 
-Read `references/use-cli.md` when the task involves any of the following:
+```bash
+npm install --global @divebell/cli
+```
 
-- Explain Divebell capabilities, commands, or options.
-- Inspect or prepare authentication state, a test account, or the current
-  browser session.
-- Invoke a built-in or Extension command for a query, page interaction, or
-  specialized check.
-- Read the current page, Console, Network, runtime, target, snapshot, event, or
-  action.
-- Run a page action or wait without diagnosing and fixing a failure.
+## Browser operation rule
 
-When an ordinary command fails, first correct its input, authentication state,
-or page context from the structured error. Switch to troubleshooting only when
-the user asks for a fix or the original task cannot continue without one.
+When the user explicitly requests Divebell, use Divebell for every browser
+operation in that task.
 
-### Troubleshoot and fix
+This includes:
 
-Read `references/troubleshoot.md` when the user asks to use Divebell to
-diagnose, fix, or verify a web page issue. Reuse existing authentication state
-and page sessions where possible. Start with browser evidence or an Extension
-that matches the issue, then use structured state when the page already
-provides relevant Runtime information.
+- Opening and navigating pages.
+- Reading page content and actionable elements.
+- Clicking, filling, focusing, selecting, and pressing keys.
+- Evaluating page scripts and waiting for page conditions.
+- Reading Console and Network evidence.
+- Taking screenshots and verifying page results.
 
-Continue diagnosing an ordinary page when no runtime is connected. Add Runtime
-SDK, a framework plugin, or a business signal only when browser-visible
-evidence is not reliable enough, the user explicitly requests integration, or
-the capability is worth reusing.
+Do not mix Divebell with another browser automation tool in the same workflow.
+Keep the page, authentication state, browser session, and verification evidence
+inside the Divebell-managed context.
 
-### Customize capabilities
+When an operation is needed, discover the corresponding Divebell command from:
 
-Read `references/integrate.md` when the task involves any of the following:
+```bash
+divebell --help
+divebell <command> --help
+```
 
-- Develop or modify a Divebell Extension, including test-account setup,
-  environment preparation, specialized diagnostics, or verification commands.
-- Write an automation script that owns a complete browser workflow.
-- Integrate Runtime SDK into a project.
-- Register or design targets, snapshots, events, actions, `waitFor` conditions,
-  or durable business verification signals.
+Treat the installed CLI help as the source of truth. Do not guess commands or
+options, and do not switch to another browser tool because a command is
+unfamiliar.
 
-Read `references/runtime-sdk.md` only when the task needs detailed page-side
-API fields, behavior, or examples.
+## Workflow
 
-Do not enter the troubleshooting workflow when there is no actual failure.
-Implement only the requested customization; do not redesign the entire
-application as a side effect.
+### 1. Prepare the environment
 
-## Handle multi-intent tasks
+Run:
 
-- Keep the user's final goal as the primary workflow. When a Divebell query
-  is only one step, return to the primary workflow immediately afterward.
-- Switch explicitly to troubleshooting when a capability query reveals a real
-  failure and fixing it is part of the user's goal.
-- Reuse an existing Profile when authentication is missing during diagnosis, or
-  request only the minimum necessary input. Do not make the user log in
-  repeatedly.
-- Continue with browser evidence or an Extension when Runtime information is
-  unavailable. Switch to integration only when application-internal facts are
-  genuinely required.
-- When the user requests both integration and diagnosis, prioritize the real
-  failure. Integrate only what is needed for current evidence or durable reuse.
+```bash
+divebell setup
+```
 
-## Common rules
+`setup` checks the local environment and repairs browser startup only when
+needed.
 
-- Use the globally installed `divebell` command. Do not add
-  `@divebell/cli` to the user's application. If the command is unavailable,
-  ask the user to install it with
-  `npm install --global @divebell/cli` before continuing.
-- To confirm current commands or Extension commands, first run the available
-  `divebell --help`. Run
-  `divebell <command> --help` for command-specific options and details.
-  Trust actual help output instead of guessing from stale documentation.
-- Find Extension commands under `Extensions` or `External Extensions` in help.
-  Use one only when its description clearly matches the task.
-- If help reports that a command has a skill, run
-  `divebell <command> --skill`, read the returned file in full, and follow it
-  before invoking the command. That command skill governs only its subtask.
-- For protected pages, inspect the current open context and available
-  agent-browser Profile or state first. Reuse the correct account, page, and
-  session. When authorization is missing, request only the minimum access
-  needed for the task.
-- Prefer structured state and declared actions when the page already exposes a
-  relevant target or action. Without Runtime information, use page results,
-  Console, Network, screenshots, and specialized Extensions normally. Do not
-  modify an application merely to manufacture evidence.
-- Verify changes with the same account, environment, and user path as the
-  original issue. Choose the most reliable available evidence for the task; do
-  not force every task to use a business target or one fixed verify command.
-- Use Bridge connections, target registration, snapshot updates, and events
-  only to expose facts. Do not change APIs, routes, business state, or rendering
-  branches through observability wiring.
-- Reuse the original authentication state, session, and page context after a
-  change. Stop the browser only when the full workflow is complete or the task
-  owns the browser lifecycle.
-- Store and use authentication state and debugging artifacts only in trusted
-  environments because they may contain sensitive information.
+### 2. Open the target page
+
+Run:
+
+```bash
+divebell open <url>
+```
+
+After opening the page, continue all browser operations through Divebell.
+Reuse the current Divebell page when it already has the correct URL, account,
+and environment.
+
+### 3. Use the required Divebell capability
+
+Use `divebell --help` to find the smallest built-in or installed Extension
+command that matches the user's task:
+
+```bash
+divebell --help
+divebell <command> --help
+```
+
+A matching Extension is not required for ordinary page interaction or browser
+diagnostics. Use built-in Divebell commands for those operations.
+
+Do not run stack detection merely because a page was opened.
+
+## Optional: discover installed Extension capabilities
+
+Run stack detection only when the task needs a framework-specific or other
+Extension-provided capability, or when identifying an installed Extension that
+matches the current page would help select the next command.
+
+```bash
+divebell stack
+```
+
+`stack` runs `detectStack` hooks from **installed Extensions only**. Divebell
+does not detect frameworks by itself and `stack` does not discover or recommend
+Extensions that are not installed.
+
+If no installed Extension contributes a matching detector, the result can
+contain:
+
+```json
+{
+  "data": {
+    "detections": [],
+    "failures": [],
+    "cached": false
+  }
+}
+```
+
+This is a valid result. It does not mean the page is broken, and it does not
+prove that the page uses no recognizable framework. It only means that the
+currently installed detectors returned no match.
+
+A matched result may look like:
+
+```json
+{
+  "data": {
+    "detections": [
+      {
+        "id": "modernjs",
+        "name": "Modern.js",
+        "extension": "modern-detector",
+        "command": "mf"
+      }
+    ],
+    "failures": [],
+    "cached": false
+  }
+}
+```
+
+Use `data.detections` as the source of truth:
+
+- `id` identifies the detection.
+- `name` describes the detected technology or capability.
+- `extension` identifies the installed Extension that produced the detection.
+- `command` is the top-level Divebell command provided by that Extension.
+- `failures` contains detector failures and must be checked.
+- `cached` indicates whether Divebell reused a compatible previous result.
+
+Do not guess a framework command. Do not use or expect the removed
+`recommendedExtensions` field.
+
+## Optional: use a detected Extension command
+
+Continue to this step only when `data.detections` contains a detection relevant
+to the user's task and that detection provides `command`.
+
+Inspect the command first:
+
+```bash
+divebell <command> --help
+```
+
+If the command reports an attached Skill, print its path:
+
+```bash
+divebell <command> --skill
+```
+
+Read the returned `SKILL.md` in full before invoking that command. The
+command-provided Skill governs only that Extension subtask; return to the
+user's original workflow after it completes.
+
+Then run the required command or subcommand exactly as documented by the
+installed help and command Skill.
+
+When multiple detections are returned, choose the one whose detection and
+command description match the current goal. Do not run every detected command.
+
+When no matching detection exists:
+
+- Continue with built-in Divebell commands if they can complete the task.
+- Read `references/extensions.md` only when the task genuinely requires an
+  Extension-specific capability.
+- Install only a trusted Extension identified by the user, the project, or
+  trusted Divebell documentation.
+- After installing an Extension, rerun:
+
+```bash
+divebell stack --refresh
+```
+
+## Reference
+
+Read `references/extensions.md` only when the task needs to install, manage,
+discover, or use an Extension.
+
+Extension development and Runtime SDK integration are outside this Skill and
+should be handled by their own dedicated Skills.

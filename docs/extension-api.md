@@ -1,7 +1,5 @@
 # Divebell CLI Extension API Reference
 
-Chinese version: [Divebell CLI Extension API 参考](extension-api.zh-CN.md)
-
 Use this reference to look up the current Extension definition, Command, Hook, and `options` types and conventions. For the complete development workflow, see [CLI Extension Development](cli-extensions.md).
 
 Extension development normally imports `DivebellExtensionDefinition`, `DivebellExtensionHooks`, `CliExtensionRunOptions`, and `DivebellExtensionApi` directly from `@divebell/cli`. The sections below also expand the nested structures referenced by those public types so their fields are easy to inspect. Those nested structures do not need to be imported separately; derive them from the public parent types.

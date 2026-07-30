@@ -2,8 +2,6 @@
 
 This guide explains how the Divebell CLI connects to a page and how to select a Runtime when one page exposes multiple instances.
 
-For Chinese, see [浏览器连接与多 Runtime 使用指南](runtime-connections.zh-CN.md).
-
 ## Basic flow
 
 The page only creates and registers Runtimes. It does not connect to the Bridge itself. Each time the CLI opens a page, it starts a dedicated local Bridge on an automatically assigned port and installs a connection manager before page code runs:

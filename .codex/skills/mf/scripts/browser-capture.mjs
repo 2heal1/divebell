@@ -6,10 +6,10 @@
 //
 // Long-chain example:
 //   TAB=$(node capture.mjs https://example.com --keep-tab | jq -r .tabId)
-//   node capture.mjs --tab-id $TAB --click "个人"
-//   node capture.mjs --tab-id $TAB --fill "搜索框placeholder::关键词"
-//   node capture.mjs --tab-id $TAB --select "请选择::选项A"
-//   node capture.mjs --tab-id $TAB --click "添加" --vars __FEDERATION__ --close
+//   node capture.mjs --tab-id $TAB --click "Profile"
+//   node capture.mjs --tab-id $TAB --fill "Search placeholder::keyword"
+//   node capture.mjs --tab-id $TAB --select "Choose an option::Option A"
+//   node capture.mjs --tab-id $TAB --click "Add" --vars __FEDERATION__ --close
 
 const CDP_BASE = 'http://localhost:9222';
 const IDLE_MS = 500;

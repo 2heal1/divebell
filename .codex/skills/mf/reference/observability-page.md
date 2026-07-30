@@ -1,7 +1,7 @@
 # Observability: Page Observation
 
 Use this reference for one-time browser page checks, such as "open/visit this
-URL", "看下 MF 加载情况", or live diagnosis with no report yet.
+URL", "inspect MF loading", or live diagnosis with no report yet.
 
 ## Route
 

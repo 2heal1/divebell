@@ -1,7 +1,5 @@
 # Temporary agent-browser Build Used by Divebell
 
-Chinese version: [Divebell 临时使用的 agent-browser 版本](temporary-agent-browser-fork.zh-CN.md)
-
 ## Current status
 
 Divebell CLI currently pins:

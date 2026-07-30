@@ -1,7 +1,5 @@
 # Modern.js Integration (WIP)
 
-Chinese version: [Modern.js 接入指南](modernjs-integration.zh-CN.md)
-
 > **WIP:** Do not adopt `@divebell/modern-plugin` in a regular project yet. The runtime integration depends on new Modern.js lifecycle hooks that have not been included in a published Modern.js version. Until a compatible release is available and verified, use browser evidence or expose the smallest stable application signal with [`@divebell/core`](runtime-sdk-api.md).
 
 `@divebell/modern-plugin` is the planned official page-side integration for Modern.js. It turns lifecycle information that Modern.js already owns into stable Divebell facts, so a coding agent can inspect framework state instead of inferring it from DOM text, Console messages, or Network timing.

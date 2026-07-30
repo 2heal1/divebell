@@ -1,7 +1,5 @@
 # Divebell Release Process
 
-Chinese version: [Divebell 发版流程](release.zh-CN.md)
-
 Divebell publishes all public packages and the browser-recording runtime through one controlled release. Merging an ordinary feature or fix pull request into `main` does not publish anything.
 
 ## Release scope

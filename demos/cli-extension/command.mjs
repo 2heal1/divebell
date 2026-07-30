@@ -4,14 +4,14 @@ export async function runExtensionDemo(options) {
   if (action === "hello") {
     const name = options.args.options.get("name")?.at(-1) ?? "Divebell";
     return {
-      greeting: `你好，${name}！`,
+      greeting: `Hello, ${name}!`,
       openedPage: options.page?.url ?? null
     };
   }
 
   if (action === "page") {
     if (options.page === undefined) {
-      throw new Error("请先用 divebell open <url> 打开一个页面，再运行 page 子命令。");
+      throw new Error("Open a page with divebell open <url> before running the page subcommand.");
     }
 
     const [title, marker] = await Promise.all([
@@ -25,5 +25,5 @@ export async function runExtensionDemo(options) {
     };
   }
 
-  throw new Error(`不支持子命令 ${JSON.stringify(action)}，请选择 hello 或 page。`);
+  throw new Error(`Unsupported subcommand ${JSON.stringify(action)}. Choose hello or page.`);
 }

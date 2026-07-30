@@ -97,16 +97,16 @@ const PAGE_EXPERIENCE_INIT_SCRIPT = `(() => {
 })();`;
 
 await main().catch((error) => {
-  process.stderr.write(`检查失败：${getErrorMessage(error)}\n`);
+  process.stderr.write(`Verification failed: ${getErrorMessage(error)}\n`);
   process.exitCode = 1;
 });
 
 async function main() {
-  await progress.run("构建页面分析能力", () => buildPackage(modernPluginDirectory));
-  await progress.run("构建检查命令", () => buildPackage(cliDirectory));
-  await progress.run("构建报告页面", () => buildPackage(codeUsageExtensionDirectory));
-  await progress.run("构建内存采集能力", () => buildPackage(memoryExtensionDirectory));
-  await progress.run("确认生产页面与构建一致", () => assertServerMatchesBuild(options.url));
+  await progress.run("Build page analysis support", () => buildPackage(modernPluginDirectory));
+  await progress.run("Build verification commands", () => buildPackage(cliDirectory));
+  await progress.run("Build report pages", () => buildPackage(codeUsageExtensionDirectory));
+  await progress.run("Build memory collection support", () => buildPackage(memoryExtensionDirectory));
+  await progress.run("Confirm the production page matches the build", () => assertServerMatchesBuild(options.url));
 
   await access(cliPath);
   if (options.agentBrowser !== undefined &&
@@ -123,7 +123,7 @@ async function main() {
   let reportSummary;
 
   try {
-    await progress.run("加载报告与内存命令", async () => {
+    await progress.run("Load report and memory commands", async () => {
       await runCli(["extensions", "add", codeUsageExtensionDirectory, "--extensions-dir", extensionsDirectory]);
       await runCli(["extensions", "add", memoryExtensionDirectory, "--extensions-dir", extensionsDirectory]);
     });
@@ -143,14 +143,14 @@ async function main() {
       coveragePath: ordersPath
     };
     const firstScreenExperience = await progress.run(
-      `测量首页并等待 ${options.readyTarget}=ready`,
+      `Measure the home page and wait for ${options.readyTarget}=ready`,
       () => measureRouteExperienceRepeated(firstScreen)
     );
-    await progress.run("记录首页代码执行", () => recordRouteCoverage(firstScreen));
-    const ordersExperience = await progress.run("测量 /orders", () => measureRouteExperienceRepeated(orders));
-    await progress.run("记录 /orders 代码执行", () => recordRouteCoverage(orders));
+    await progress.run("Record home page code execution", () => recordRouteCoverage(firstScreen));
+    const ordersExperience = await progress.run("Measure /orders", () => measureRouteExperienceRepeated(orders));
+    await progress.run("Record /orders code execution", () => recordRouteCoverage(orders));
 
-    await progress.run("生成分析结果", () => runCli([
+    await progress.run("Generate analysis results", () => runCli([
       "code-usage",
       "analyze",
       "--chunk-map",
@@ -162,7 +162,7 @@ async function main() {
       "--output",
       reportPath
     ]));
-    await progress.run("合并加载与内存数据", async () => {
+    await progress.run("Combine loading and memory data", async () => {
       const usage = await readJson(reportPath);
       assertCodeUsagePresent(usage);
       await writeFile(reportPath, `${JSON.stringify({
@@ -198,10 +198,10 @@ async function main() {
   }
 
   process.stdout.write(`${JSON.stringify(reportSummary, null, 2)}\n`);
-  process.stdout.write(`\n页面体验数据: ${reportPath}\n`);
-  process.stdout.write("启动流式报告: pnpm --filter @divebell/demo-modern-basic report:serve\n");
-  process.stdout.write("打开地址: http://127.0.0.1:4173/\n");
-  process.stdout.write(`检查完成，总耗时 ${formatDuration(progress.elapsed())}。\n`);
+  process.stdout.write(`\nPage experience data: ${reportPath}\n`);
+  process.stdout.write("Start the streaming report: pnpm --filter @divebell/demo-modern-basic report:serve\n");
+  process.stdout.write("Open: http://127.0.0.1:4173/\n");
+  process.stdout.write(`Verification completed in ${formatDuration(progress.elapsed())}.\n`);
 }
 
 async function measureRouteExperience(route) {
@@ -223,7 +223,7 @@ async function measureRouteExperience(route) {
 async function measureRouteExperienceRepeated(route) {
   const measurements = [];
   for (let index = 1; index <= options.runs; index += 1) {
-    process.stdout.write(`        第 ${index}/${options.runs} 次冷启动...\n`);
+    process.stdout.write(`        Cold start ${index}/${options.runs}...\n`);
     measurements.push(await measureRouteExperience(route, index));
   }
   const sorted = measurements.slice().sort((left, right) =>
@@ -336,14 +336,14 @@ async function assertServerMatchesBuild(url) {
       }),
       readJson(chunkMapPath)
     ]);
-    if (!response.ok) throw new Error(`服务返回 ${response.status}`);
+    if (!response.ok) throw new Error(`Server returned ${response.status}`);
     const html = await response.text();
     const buildAssets = (chunkMap.chunks ?? [])
       .flatMap((chunk) => chunk.assets ?? [])
       .map((asset) => asset.file)
       .filter((file) => typeof file === "string");
     if (buildAssets.some((file) => file.includes(".hot-update."))) {
-      throw new Error("当前分块数据来自开发页面");
+      throw new Error("The current chunk data comes from a development page");
     }
     const expectedScripts = new Set(buildAssets
       .filter((file) => file.endsWith(".js"))
@@ -352,11 +352,11 @@ async function assertServerMatchesBuild(url) {
       .map((match) => normalizeAssetPath(new URL(match[1], url).pathname))
       .filter((path) => path.endsWith(".js"));
     if (pageScripts.length === 0 || !pageScripts.some((path) => expectedScripts.has(path))) {
-      throw new Error("当前地址不是本次构建的生产页面");
+      throw new Error("The current URL is not serving this production build");
     }
   } catch (error) {
     throw new Error(
-      `无法使用 ${url} 生成代码分析。请停止当前开发服务，先运行 pnpm --filter @divebell/demo-modern-basic verify:chunk-map，再运行 pnpm --filter @divebell/demo-modern-basic serve。`,
+      `Cannot generate code analysis from ${url}. Stop the current development server, run pnpm --filter @divebell/demo-modern-basic verify:chunk-map, and then run pnpm --filter @divebell/demo-modern-basic serve.`,
       { cause: error }
     );
   }
@@ -373,7 +373,7 @@ function assertCodeUsagePresent(usage) {
   if (observedScripts > 0 && matchedChunks === 0) {
     const unmatchedScripts = phases.reduce((sum, phase) => sum + (phase.unmatchedScriptUrls?.length ?? 0), 0);
     throw new Error(
-      `代码分析没有匹配到页面文件（${unmatchedScripts} 个文件无法对应）。请确认页面服务与 dist/divebell-chunks.json 来自同一次生产构建。`
+      `Code analysis did not match the page files (${unmatchedScripts} files were unmatched). Confirm that the page server and dist/divebell-chunks.json come from the same production build.`
     );
   }
 }
@@ -418,10 +418,10 @@ function createProgress(totalSteps) {
       process.stdout.write(`[${currentStep}/${totalSteps}] ${label}...\n`);
       try {
         const result = await action();
-        process.stdout.write(`      完成（${formatDuration(Date.now() - stepStartedAt)}）\n`);
+        process.stdout.write(`      Done (${formatDuration(Date.now() - stepStartedAt)})\n`);
         return result;
       } catch (error) {
-        process.stderr.write(`      失败（${formatDuration(Date.now() - stepStartedAt)}）\n`);
+        process.stderr.write(`      Failed (${formatDuration(Date.now() - stepStartedAt)})\n`);
         throw error;
       }
     }
@@ -429,8 +429,8 @@ function createProgress(totalSteps) {
 }
 
 function formatDuration(milliseconds) {
-  if (milliseconds < 1000) return `${milliseconds} 毫秒`;
-  return `${(milliseconds / 1000).toFixed(1)} 秒`;
+  if (milliseconds < 1000) return `${milliseconds} ms`;
+  return `${(milliseconds / 1000).toFixed(1)} s`;
 }
 
 function summarizePhase(phase) {
@@ -486,7 +486,7 @@ async function waitForReadyTarget(targetId, options = {}, environment) {
       "10000"
     ], { environment });
   } catch (error) {
-    throw new Error(`等待结束标识 ${targetId}=ready 超时。请确认页面已注册并更新这个目标。`, {
+    throw new Error(`Timed out waiting for ${targetId}=ready. Confirm that the page registers and updates this target.`, {
       cause: error
     });
   }
@@ -541,7 +541,7 @@ function parseOptions(args) {
     if (name === "--ready-target" && value !== undefined) parsed.readyTarget = value;
     if (name === "--runs" && value !== undefined) {
       const runs = Number(value);
-      if (!Number.isInteger(runs) || runs <= 0) throw new Error("--runs 必须是正整数。");
+      if (!Number.isInteger(runs) || runs <= 0) throw new Error("--runs must be a positive integer.");
       parsed.runs = runs;
     }
     if (["--url", "--artifact-dir", "--agent-browser", "--ready-target", "--runs"].includes(name)) index += 1;

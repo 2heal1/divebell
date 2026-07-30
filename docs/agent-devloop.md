@@ -1,7 +1,5 @@
 # Coding Agent Development Debugging Loop
 
-Chinese version: [Coding Agent 开发调试闭环](agent-devloop.zh-CN.md)
-
 Divebell helps coding agents reproduce, diagnose, and verify problems in real web scenarios. The coding agent reads and changes source code; Divebell prepares reusable browser context and packages page operations, browser diagnostics, and result verification as capabilities the agent can invoke like any other development tool. Teams can also use Extensions to connect domain knowledge and existing services to the development loop.
 
 Teams can use Extensions to identify development context from the current page and call existing SDKs, OpenAPIs, CLIs, or internal platforms.

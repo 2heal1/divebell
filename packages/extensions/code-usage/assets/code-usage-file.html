@@ -73,20 +73,6 @@
     }
     .meta { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
     .topline-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
-    .language-toggle {
-      flex: 0 0 auto;
-      min-height: 30px;
-      border: 1px solid var(--input);
-      border-radius: 999px;
-      background: var(--card);
-      color: var(--muted-foreground);
-      padding: 4px 10px;
-      box-shadow: var(--shadow);
-      cursor: pointer;
-      font-size: 12px;
-      transition: border-color 160ms ease, color 160ms ease;
-    }
-    .language-toggle:hover { border-color: #c8ced8; color: var(--foreground); }
     .toolbar {
       display: flex;
       align-items: end;
@@ -381,16 +367,6 @@
       color: #9db5b8;
       font-family: var(--utility-face);
     }
-    .language-toggle {
-      min-height: 34px;
-      border-color: #38606a;
-      border-radius: 3px;
-      background: transparent;
-      color: #b9cecf;
-      box-shadow: none;
-      font-family: var(--utility-face);
-    }
-    .language-toggle:hover { border-color: var(--primary); color: var(--foreground); }
     .toolbar {
       gap: 12px;
       margin-bottom: 16px;
@@ -573,48 +549,47 @@
   <main class="shell">
     <header class="topline">
       <div>
-        <a id="report-link" class="back" href="#" data-i18n="backToReport">← Back to code usage analysis</a>
+        <a id="report-link" class="back" href="#">← Back to code usage analysis</a>
         <h1 id="file-name">Executed code</h1>
       </div>
       <div class="topline-actions">
         <p id="part-meta" class="meta"></p>
-        <button id="language-toggle" class="language-toggle" type="button">中文</button>
       </div>
     </header>
 
-    <section class="toolbar" aria-label="Code viewer options" data-i18n-aria="viewerOptions">
-      <label><span data-i18n="recordedPhase">Recorded phase</span>
+    <section class="toolbar" aria-label="Code viewer options">
+      <label><span>Recorded phase</span>
         <select id="phase-select"></select>
       </label>
       <div class="navigation-scope">
-        <span class="toolbar-caption" data-i18n="navigationScope">Navigation scope</span>
-        <div class="segmented-control" role="group" aria-label="Navigation scope" data-i18n-aria="navigationScope">
-          <button id="source-navigation" type="button" aria-pressed="false" hidden><span data-i18n="currentSource">Current source</span> <span id="source-navigation-count">0</span></button>
-          <button id="executed-navigation" type="button" aria-pressed="true"><span data-i18n="allExecuted">All executed</span> <span id="executed-navigation-count">0</span></button>
+        <span class="toolbar-caption">Navigation scope</span>
+        <div class="segmented-control" role="group" aria-label="Navigation scope">
+          <button id="source-navigation" type="button" aria-pressed="false" hidden><span>Current source</span> <span id="source-navigation-count">0</span></button>
+          <button id="executed-navigation" type="button" aria-pressed="true"><span>All executed</span> <span id="executed-navigation-count">0</span></button>
         </div>
       </div>
-      <div class="jump-controls" aria-label="Code location navigation" data-i18n-aria="locationNavigation">
-        <button id="previous-highlight" type="button" data-i18n="previousLocation">Previous</button>
+      <div class="jump-controls" aria-label="Code location navigation">
+        <button id="previous-highlight" type="button">Previous</button>
         <span id="highlight-progress" class="jump-progress" aria-live="polite">0 / 0</span>
-        <button id="next-highlight" type="button" data-i18n="nextLocation">Next</button>
+        <button id="next-highlight" type="button">Next</button>
       </div>
-      <nav class="page-nav" aria-label="Large file section navigation" data-i18n-aria="sectionNavigation">
-        <a id="previous-part" class="page-link" href="#" data-i18n="previousSection">Previous section</a>
-        <a id="next-part" class="page-link" href="#" data-i18n="nextSection">Next section</a>
+      <nav class="page-nav" aria-label="Large file section navigation">
+        <a id="previous-part" class="page-link" href="#">Previous section</a>
+        <a id="next-part" class="page-link" href="#">Next section</a>
       </nav>
     </section>
 
-    <section id="file-stats" class="stats" aria-label="File execution summary" data-i18n-aria="fileSummary">
-      <div class="stat"><div class="stat-label" data-i18n="fileSize">File size</div><div id="total-size" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="bundleExecuted">Bundle executed</div><div id="used-ratio" class="stat-value">—</div></div>
-      <div id="source-stat" class="stat" hidden><div class="stat-label" data-i18n="sourceExecuted">Current source executed</div><div id="source-used-ratio" class="stat-value">—</div></div>
-      <div class="stat"><div class="stat-label" data-i18n="bundleRanges">Bundle ranges</div><div id="range-count" class="stat-value">—</div></div>
+    <section id="file-stats" class="stats" aria-label="File execution summary">
+      <div class="stat"><div class="stat-label">File size</div><div id="total-size" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Bundle executed</div><div id="used-ratio" class="stat-value">—</div></div>
+      <div id="source-stat" class="stat" hidden><div class="stat-label">Current source executed</div><div id="source-used-ratio" class="stat-value">—</div></div>
+      <div class="stat"><div class="stat-label">Bundle ranges</div><div id="range-count" class="stat-value">—</div></div>
     </section>
 
-    <section class="viewer" aria-label="Executed JavaScript" data-i18n-aria="executedJavaScript">
+    <section class="viewer" aria-label="Executed JavaScript">
       <div class="viewer-head">
         <div class="legends">
-          <span class="legend"><i class="legend-mark"></i><span data-i18n="executedInPhase">Executed in current phase</span></span>
+          <span class="legend"><i class="legend-mark"></i><span>Executed in current phase</span></span>
           <label id="source-highlight-control" class="source-highlight-control" hidden>
             <input id="source-highlight-toggle" type="checkbox" checked>
             <i class="source-legend-mark"></i>
@@ -623,21 +598,20 @@
         </div>
         <span id="offset-meta"></span>
       </div>
-      <div id="code-viewport" class="code-viewport" tabindex="0" aria-label="Code content" data-i18n-aria="codeContent" aria-busy="true">
-        <div id="viewer-loading" class="viewer-loading" data-i18n="preparingCode">Preparing code…</div>
+      <div id="code-viewport" class="code-viewport" tabindex="0" aria-label="Code content" aria-busy="true">
+        <div id="viewer-loading" class="viewer-loading">Preparing code…</div>
         <div id="code-spacer" class="code-spacer">
           <div id="code-window" class="code-window"></div>
         </div>
       </div>
     </section>
-    <p class="footer-note" data-i18n="footerNote">This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.</p>
+    <p class="footer-note">This is the bundled JavaScript actually loaded by the browser. Large files are split automatically, and only visible code is rendered while scrolling.</p>
   </main>
 
   <script id="divebell-code-file-data" type="application/json">__DIVEBELL_CODE_FILE_DATA__</script>
   <script>
     (() => {
       const messages = {
-        en: {
           pageTitle: "Divebell Executed Code",
           backToReport: "← Back to code usage analysis",
           viewerOptions: "Code viewer options",
@@ -673,72 +647,11 @@
           emptyCode: "This file has no code to display",
           deferredLoadError: "Code data failed to load. Make sure the data file and page are in the same directory.",
           streamLoadError: "Code data request failed ({status})."
-        },
-        zh: {
-          pageTitle: "Divebell 执行代码",
-          backToReport: "← 返回代码使用分析",
-          viewerOptions: "代码查看选项",
-          recordedPhase: "记录阶段",
-          navigationScope: "定位范围",
-          currentSource: "当前源码",
-          allExecuted: "全部执行",
-          locationNavigation: "代码位置导航",
-          previousLocation: "上一处",
-          nextLocation: "下一处",
-          sectionNavigation: "大文件分段导航",
-          previousSection: "上一段",
-          nextSection: "下一段",
-          fileSummary: "文件执行概览",
-          fileSize: "文件体积",
-          bundleExecuted: "打包文件实际执行",
-          sourceExecuted: "当前源码实际执行",
-          bundleRanges: "打包文件高亮",
-          executedJavaScript: "JavaScript 执行代码",
-          executedInPhase: "当前阶段已执行",
-          codeContent: "代码内容",
-          preparingCode: "正在准备代码…",
-          footerNote: "这里展示的是浏览器实际加载的打包后 JavaScript。超大文件会自动分段，滚动时只绘制当前可见内容。",
-          executedCode: "执行代码",
-          fullFile: "完整文件",
-          partMeta: "第 {current} / {total} 段",
-          position: "位置 {start}–{end}",
-          characterCount: "{count} 个字符",
-          phase: "阶段 {number}",
-          receivingCode: "正在接收代码… {percent}%",
-          sourceMappedCode: "{source} 对应代码",
-          currentSourceCode: "当前源码对应代码",
-          emptyCode: "这个文件没有可展示的代码",
-          deferredLoadError: "代码数据加载失败。请确认数据文件与页面位于同一目录。",
-          streamLoadError: "代码数据请求失败（{status}）。"
-        }
       };
-      let locale = detectBrowserLocale();
       const message = (key, values = {}) => {
-        const template = messages[locale][key] || messages.en[key] || key;
+        const template = messages[key] || key;
         return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
       };
-      const applyDocumentLocale = () => {
-        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-        document.title = message("pageTitle");
-        document.querySelectorAll("[data-i18n]").forEach((element) => {
-          element.textContent = message(element.dataset.i18n);
-        });
-        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
-          element.setAttribute("aria-label", message(element.dataset.i18nAria));
-        });
-      };
-      applyDocumentLocale();
-      const languageToggle = document.getElementById("language-toggle");
-      languageToggle.textContent = locale === "zh" ? "English" : "中文";
-      languageToggle.setAttribute(
-        "aria-label",
-        locale === "zh" ? "切换到英文" : "Switch to Chinese"
-      );
-      languageToggle.addEventListener("click", switchLanguage);
-      window.addEventListener("languagechange", () => {
-        if (new URLSearchParams(location.search).has("lang")) return;
-        if (detectBrowserLocale() !== locale) location.reload();
-      });
 
       const dataHref = __DIVEBELL_CODE_FILE_DATA_HREF__;
       const dataMode = __DIVEBELL_CODE_FILE_DATA_MODE__;
@@ -781,7 +694,7 @@
           ? Math.max(0, data.partEndOffset - data.partStartOffset)
           : initialCode.length;
 
-      document.getElementById("report-link").href = withLanguageContext(data.reportHref || "#");
+      document.getElementById("report-link").href = data.reportHref || "#";
       document.getElementById("file-name").textContent = data.file || message("executedCode");
       document.getElementById("part-meta").textContent = data.partCount > 1
         ? message("partMeta", { current: (data.partIndex || 0) + 1, total: data.partCount })
@@ -1148,7 +1061,7 @@
       }
       function formatInteger(value) {
         return Number.isFinite(value)
-          ? Math.round(value).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")
+          ? Math.round(value).toLocaleString("en-US")
           : "—";
       }
       function shortPath(value) {
@@ -1157,14 +1070,8 @@
         return parts.slice(-4).join("/") || normalized;
       }
       function withSourceContext(href) {
-        const withLanguage = withLanguageContext(href);
-        if (!selectedSourcePath) return withLanguage;
-        return `${withLanguage}${withLanguage.includes("?") ? "&" : "?"}source=${encodeURIComponent(selectedSourcePath)}`;
-      }
-      function withLanguageContext(href) {
-        const explicitLanguage = new URLSearchParams(location.search).get("lang");
-        if (!explicitLanguage || !/^(?:en|zh)(?:$|[-_])/i.test(explicitLanguage)) return href;
-        return `${href}${href.includes("?") ? "&" : "?"}lang=${encodeURIComponent(explicitLanguage)}`;
+        if (!selectedSourcePath) return href;
+        return `${href}${href.includes("?") ? "&" : "?"}source=${encodeURIComponent(selectedSourcePath)}`;
       }
       };
 
@@ -1187,22 +1094,6 @@
 
       function afterFirstPaint(callback) {
         requestAnimationFrame(() => requestAnimationFrame(callback));
-      }
-
-      function detectBrowserLocale() {
-        const explicit = new URLSearchParams(location.search).get("lang");
-        if (explicit && explicit.toLocaleLowerCase().startsWith("zh")) return "zh";
-        if (explicit && explicit.toLocaleLowerCase().startsWith("en")) return "en";
-        const browserLanguage = Array.isArray(navigator.languages) && navigator.languages.length > 0
-          ? navigator.languages[0]
-          : navigator.language;
-        return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
-      }
-
-      function switchLanguage() {
-        const nextUrl = new URL(location.href);
-        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
-        location.href = nextUrl.href;
       }
 
       function loadDeferredData(href) {

@@ -414,7 +414,7 @@ test("captures audio chunks and transcribes a recording", async () => {
         timeMs: 1800,
         startMs: 1000,
         endMs: 1800,
-        text: "获取 closed 状态一周内的 issues",
+        text: "Get issues closed within the last week",
         confidence: 0.9
       }]
     }
@@ -444,7 +444,7 @@ test("captures audio chunks and transcribes a recording", async () => {
     const liveTranscript = readJson(join(fixture.outputDir, "transcript.json"));
     assert.equal(liveTranscript.status, "completed");
     assert.equal(liveTranscript.model, "browser-speech-recognition");
-    assert.equal(liveTranscript.segments[0].text, "获取 closed 状态一周内的 issues");
+    assert.equal(liveTranscript.segments[0].text, "Get issues closed within the last week");
 
     const transcribeOutput = createOutput();
     const transcribeExitCode = await fixture.run([
@@ -459,9 +459,9 @@ test("captures audio chunks and transcribes a recording", async () => {
         assert.equal(String(input), "https://api.openai.com/v1/audio/transcriptions");
         assert.equal(init?.headers.authorization, "Bearer test-key");
         return jsonResponse({
-          text: "打开 issues 页面",
-          segments: [{ start: 1.2, end: 2.4, text: "打开 issues 页面" }],
-          words: [{ word: "打开", start: 1.2, end: 1.5 }]
+          text: "Open the issues page",
+          segments: [{ start: 1.2, end: 2.4, text: "Open the issues page" }],
+          words: [{ word: "Open", start: 1.2, end: 1.5 }]
         });
       }
     });
@@ -472,8 +472,8 @@ test("captures audio chunks and transcribes a recording", async () => {
     assert.equal(transcribeResult.wordCount, 1);
     const transcript = readJson(join(fixture.outputDir, "transcript.json"));
     assert.equal(transcript.segments[0].startMs, 1200);
-    assert.equal(transcript.segments[0].text, "打开 issues 页面");
-    assert.equal(transcript.words[0].text, "打开");
+    assert.equal(transcript.segments[0].text, "Open the issues page");
+    assert.equal(transcript.words[0].text, "Open");
   } finally {
     fixture.cleanup();
   }
@@ -637,7 +637,7 @@ function createRecordingFixture(prefix, options = {}) {
       tabs.push({
         tabId: "t2",
         label: labelIndex < 0 ? null : args[labelIndex + 1],
-        title: "Divebell 麦克风录制",
+        title: "Divebell microphone recording",
         url,
         type: "page",
         active: true

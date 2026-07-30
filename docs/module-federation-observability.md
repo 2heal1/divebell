@@ -1,7 +1,5 @@
 # Module Federation Observability
 
-Chinese version: [Module Federation 可观测接入指南](module-federation-observability.zh-CN.md)
-
 To inspect an MF page through the Divebell CLI, install [`@divebell/extension-mf`](../packages/extensions/mf/README.md), which provides the `divebell mf` command. A one-off page investigation can use `divebell open <url> --mf`; the application does not need to install the observability plugin first.
 
 `@module-federation/observability-plugin` is the official Module Federation-side integration path used by Divebell. It records structured loading evidence from Module Federation's own runtime hooks, allowing a coding agent to identify the exact loading phase and likely owner without reconstructing MF state from DOM or Network results.

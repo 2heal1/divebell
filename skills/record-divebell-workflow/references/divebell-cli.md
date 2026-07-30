@@ -1,11 +1,10 @@
 # Divebell CLI
 
-本 skill 使用全局安装的 Divebell CLI，不向当前业务项目添加依赖，也不临时下载另一
-份 CLI。
+This skill uses the globally installed Divebell CLI. It does not add a dependency to the application project or temporarily download another CLI.
 
-## 安装
+## Installation
 
-如果 `divebell` 命令不存在，先全局安装：
+If the `divebell` command is unavailable, install it globally:
 
 ```bash
 npm install --global @divebell/cli
@@ -13,19 +12,18 @@ divebell setup
 divebell --help
 ```
 
-录制能力由官方 Extension 提供。顶层帮助里没有 `record` 时安装一次：
+The recording capability comes from an official Extension. If top-level help does not include `record`, install it once:
 
 ```bash
 divebell extensions add @divebell/extension-imitate
 divebell record --help
 ```
 
-Extension 默认保存在用户目录，并由同一个全局 CLI 加载。不要在业务项目里安装
-`@divebell/cli` 或录制 Extension。
+Extensions are stored in the user's directory by default and loaded by the same global CLI. Do not install `@divebell/cli` or the recording Extension in the application project.
 
-## 使用
+## Usage
 
-直接执行全局命令：
+Run the global commands directly:
 
 ```bash
 divebell record start
@@ -34,24 +32,16 @@ divebell record stop --out <start-output-path>
 divebell stop
 ```
 
-`record start` 默认录制操作元素和事件，并自动尝试麦克风。捕获成功时会额外保存
-`audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`。浏览器支持时，录音页会
-同步写入语音识别结果，`record stop` 会汇总到 `transcript.json`。没有说话、没有
-捕获到音频或麦克风权限被拒绝时直接忽略，不影响浏览器录制、脚本生成和回放。
+`record start` records operated elements and events and automatically attempts microphone capture. A successful capture also saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. When supported by the browser, the recording page writes speech-recognition results as they arrive, and `record stop` combines them into `transcript.json`. Silence, missing audio, and denied microphone access are ignored and do not affect browser recording, script generation, or replay.
 
-打开默认空白页时，页面会显示“在地址栏输入 URL 开始录制网页操作”。浏览器会先在
-单独的录音页主动申请麦克风权限；用户允许或拒绝后会自动回到这个起始页，录音页在
-后台保留到 `record stop`。
+The default blank page says, “Enter a URL in the address bar to start recording web actions.” The browser first requests microphone permission on a separate recording page. After the user allows or denies access, it returns to the start page and keeps the recording page open in the background until `record stop`.
 
-需要把录音转成文字时间轴时，运行：
+To convert audio to a text timeline, run:
 
 ```bash
 divebell record transcribe --input <start-output-path>
 ```
 
-默认读取 `OPENAI_API_KEY`，也可以传 `--api-key <key>`。只有用户明确说过补充说明、
-已有音频但没有实时语音文字时才需要调用。没有录音或转写不影响根据操作记录生成和
-回放脚本。
+The command reads `OPENAI_API_KEY` by default and also accepts `--api-key <key>`. Use it only when the user explicitly said they provided spoken context and audio exists but no live transcript was captured. Missing audio or transcription does not affect script generation or replay from recorded actions.
 
-`record stop` 会生成 `workflow.json` 和 `generated-script.mjs`。后者默认执行全局
-`divebell`。运行脚本前用 `divebell --help` 确认命令仍然可用。
+`record stop` generates `workflow.json` and `generated-script.mjs`. The generated script runs the global `divebell` by default. Confirm that the command remains available with `divebell --help` before running it.

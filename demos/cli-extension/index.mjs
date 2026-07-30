@@ -3,13 +3,13 @@ const extension = {
   schemaVersion: 1,
   name: "cli-extension-demo",
   displayName: "CLI Extension Demo",
-  description: "演示本地开发 Divebell CLI Extension。",
+  description: "Demonstrates local Divebell CLI Extension development.",
   commands: [{
     name: "extension-demo",
     commandReferences: [{
       category: "Extensions",
       usage: "divebell extension-demo <hello|page> [--name <name>]",
-      description: "运行本地 CLI Extension 开发示例。"
+      description: "Runs the local CLI Extension development example."
     }],
     run: async options =>
       await (await import("./command.mjs")).runExtensionDemo(options)

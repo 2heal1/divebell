@@ -1,7 +1,5 @@
 # Browser Authentication and State
 
-Chinese version: [浏览器登录与状态复用](browser-auth.zh-CN.md)
-
 Divebell composes agent-browser profiles, state, and auth to provide reusable browser sign-in environments for coding agents.
 
 ## What each capability stores

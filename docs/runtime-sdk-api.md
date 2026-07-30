@@ -1,7 +1,5 @@
 # Runtime SDK API
 
-Chinese version: [Runtime SDK API](runtime-sdk-api.zh-CN.md)
-
 `@divebell/core` is Divebell's page-side API. It lets an application expose internal state, key events, declared actions, and wait conditions that cannot be obtained reliably from the browser surface.
 
 Runtime SDK is an optional enhancement. It is not required for the Divebell CLI, login-state reuse, browser diagnostics, or Extensions.

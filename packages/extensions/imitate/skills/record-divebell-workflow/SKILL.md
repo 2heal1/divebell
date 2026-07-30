@@ -1,81 +1,76 @@
 ---
 name: record-divebell-workflow
-description: 录制用户在网页中的人工浏览器操作和对应元素，默认尝试采集可选语音，生成可直接执行并验证最终页面的 JS 脚本；无语音或麦克风权限被拒绝时直接忽略。Use when the user wants an agent-installable workflow skill for recording browser actions and operated elements, converting the recording into an executable JavaScript replay, or drafting a reusable skill from a manual web workflow with the globally installed divebell command.
+description: Record a user's manual browser actions and the operated elements, attempt optional audio capture by default, and generate an executable JavaScript replay that verifies the final page. Ignore missing audio or denied microphone access. Use when the user wants an agent-installable workflow skill for recording browser actions and operated elements, converting the recording into an executable JavaScript replay, or drafting a reusable skill from a manual web workflow with the globally installed divebell command.
 ---
 
-# 录制 Divebell 流程
+# Record a Divebell workflow
 
-本 skill 用于让 Agent 主导一次“用户手动操作浏览器，Agent 录制并生成脚本”的流程。
-本 skill 随 `@divebell/extension-imitate` 发布，并通过 `divebell record --skill` 发现。
-第一版默认生成 JS 脚本，不默认直接生成 skill。脚本更容易运行、验证和修正；当脚本稳定后，再包装成 skill。
+This skill guides an Agent through a workflow in which the user operates a browser manually while the Agent records it and generates a script.
+It ships with `@divebell/extension-imitate` and is discoverable through `divebell record --skill`.
+The first version generates a JavaScript script by default, not a skill. Scripts are easier to run, verify, and correct. Wrap the script as a skill only after it is stable.
 
-## 工作原则
+## Working principles
 
-- 使用全局安装的 `divebell` 命令操作页面，不要向当前业务项目添加
-  `@divebell/cli`。
-- 开始前运行 `divebell record --help`。如果命令不存在，先让用户执行
-  `npm install --global @divebell/cli`；如果缺少 `record`，执行
-  `divebell extensions add @divebell/extension-imitate`。
-- 如果 CLI 或录制命令不可用，读取 `references/divebell-cli.md`，不要回退到项目
-  本地依赖或临时下载的 CLI。
-- 默认先运行 `record start` 准备录制，再通过 `divebell open about:blank --ui` 打开可见页面。空白起始页会明确提示用户在地址栏输入 URL。不要询问用户是否开启语音，也不要增加语音参数；打开页面时会先主动申请麦克风权限，处理完成后自动回到录制起始页。未说话、未捕获音频或权限被拒绝时直接忽略。不要先询问“要录制哪个网页”，除非用户已经主动给了 URL。
-- 默认保存到当前项目的 `recordings/` 目录。不要询问保存位置，除非用户主动指定。
-- 用户说“结束”“完成”“done”后，再调用 stop。
-- `record stop` 会生成 `generated-script.mjs`，但不会关闭浏览器；收尾时必须再运行 `divebell stop`。
-- 第一版录制包会保存鼠标点击、输入、键盘事件、事件相对录制开始的时间、页面快照、DOM 摘要、Divebell 结构化状态和可选麦克风音频。连续视频还不是可靠产物。
-- 浏览器会在单独的录音页主动申请麦克风权限，并在用户允许或拒绝后回到操作页。成功捕获时把音频保存为 `audio.webm`、`audio-chunks.jsonl` 和 `audio-events.jsonl`；没有可用音频或权限被拒绝时，不把它当成错误，也不要求用户重试。
-- 页面跳转、搜索或打开新页面后，中间的点击和输入也应该保留在 `interactions.jsonl`。不要只按最后停留的 URL 判断录制结果。
-- 只有 `transcript.json` 已有非空语音文字时，才把语音作为用户意图来源。没有文字时继续根据屏幕操作生成和验证脚本，不自动追问或阻塞。
-- 生成脚本后必须读取脚本、`workflow.json`、`manifest.json`、`interactions.jsonl` 和 `dom-snapshots.jsonl`，再实际运行脚本验证。
+- Use the globally installed `divebell` command to operate the page. Do not add `@divebell/cli` to the application project.
+- Run `divebell record --help` before starting. If the command is unavailable, ask the user to run `npm install --global @divebell/cli`. If `record` is missing, run `divebell extensions add @divebell/extension-imitate`.
+- If the CLI or recording command is unavailable, read `references/divebell-cli.md`. Do not fall back to a project-local dependency or a temporarily downloaded CLI.
+- By default, run `record start` to prepare recording, then open a visible page with `divebell open about:blank --ui`. The start page clearly tells the user to enter a URL in the address bar. Do not ask whether to enable audio and do not add audio flags. Opening the page proactively requests microphone access on a separate page and returns to the recording start page after the prompt is handled. Ignore silence, missing audio, and denied permission. Do not ask which page to record unless the user already provided a URL.
+- Save to the current project's `recordings/` directory by default. Do not ask where to save unless the user specified another location.
+- Call stop only after the user says “stop,” “finished,” or “done.”
+- `record stop` generates `generated-script.mjs` but does not close the browser. Always run `divebell stop` during cleanup.
+- The first recording format saves mouse clicks, input, keyboard events, time relative to recording start, page snapshots, DOM summaries, structured Divebell state, and optional microphone audio. Continuous video is not yet a reliable artifact.
+- The browser requests microphone access on a separate recording page and returns to the operation page after the user allows or denies access. Successful capture saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. Treat unavailable audio or denied access as a normal condition and do not ask the user to retry.
+- Preserve intermediate clicks and input in `interactions.jsonl` after navigation, search, or opening a new page. Do not judge the recording only from its final URL.
+- Treat speech as a source of user intent only when `transcript.json` contains non-empty text. When it does not, continue generating and verifying the script from screen actions without asking follow-up questions or blocking.
+- After generating the script, read the script, `workflow.json`, `manifest.json`, `interactions.jsonl`, and `dom-snapshots.jsonl`, then run the script to verify it.
 
-## 确认 CLI
+## Confirm the CLI
 
-录制前先运行：
+Run this before recording:
 
 ```bash
 divebell record --help
 ```
 
-如果 `divebell` 不存在，先完成全局安装；如果顶层帮助中没有 `record`，安装录制
-Extension。确认帮助可读后再继续，不要使用项目本地 CLI。
+If `divebell` is unavailable, complete the global installation first. If the top-level help does not include `record`, install the recording Extension. Continue only after help can be read, and do not use a project-local CLI.
 
-## 启动录制
+## Start recording
 
-1. 确认当前没有 Divebell 页面仍在打开。如果有，先运行 `stop`。然后准备录制：
+1. Confirm that no Divebell page is still open. If one is open, run `stop`. Then prepare the recording:
 
 ```bash
 divebell record start
 ```
 
-录制包默认放到当前项目的 `recordings/` 下。读取命令返回的 JSON，确认 `status` 是 `prepared`，并把 `output` 字段记下来，后续 stop 必须使用这个路径。语音采集会自动尝试，不需要额外参数。
+The recording bundle is stored under the current project's `recordings/` directory by default. Read the command's JSON response, confirm that `status` is `prepared`, and save the `output` field. The stop command must use that path. Audio capture is attempted automatically and needs no extra flag.
 
-2. 运行 `open` 前先告诉用户：浏览器会先显示麦克风权限提示，处理后会自动进入录制起始页。用户没有主动给 URL 时，打开可见空白页面。如项目需要指定 Bridge，把 `--bridge <url>` 或 `--port <port>` 放在这条 `open` 命令上：
+2. Before running `open`, tell the user that the browser will first show a microphone permission prompt and will then move to the recording start page. When the user did not provide a URL, open a visible blank page. If the project needs a specific Bridge, add `--bridge <url>` or `--port <port>` to this `open` command:
 
 ```bash
 divebell open about:blank --ui
 ```
 
-用户已经主动给 URL 时，直接把它作为 `open` 的地址：
+When the user already provided a URL, open it directly:
 
 ```bash
 divebell open <url> --ui
 ```
 
-`open` 会在同一次页面启动中注入 Bridge 和录制脚本。不要把 URL、Bridge 或页面显示参数传给 `record start`。
-默认空白页会显示“在地址栏输入 URL 开始录制网页操作”，不应再让用户面对没有说明的纯空白页面。
+`open` injects the Bridge and recording script into the same page launch. Do not pass the URL, Bridge, or display flags to `record start`.
+The default blank page says, “Enter a URL in the address bar to start recording web actions,” so the user never faces an unexplained blank page.
 
-3. `open` 成功后，读取录制包的 `manifest.json`，确认 `status` 已变为 `recording`。然后告诉用户浏览器已经打开，可以开始操作；操作完成后直接说“结束”或“完成”。
-4. 在用户结束前，不要关闭浏览器，也不要提前生成脚本。
+3. After `open` succeeds, read the recording bundle's `manifest.json` and confirm that `status` changed to `recording`. Tell the user that the browser is ready and that they can begin. Ask them to say “stop,” “finished,” or “done” when complete.
+4. Do not close the browser or generate the script before the user finishes.
 
-## 用户说结束后
+## After the user finishes
 
-运行：
+Run:
 
 ```bash
 divebell record stop --out <start-output-path>
 ```
 
-这个命令会采集结束时的 Divebell 状态和页面快照，并在录制包里生成：
+This command captures the final Divebell state and page snapshot and generates these files in the recording bundle:
 
 - `manifest.json`
 - `runtime.jsonl`
@@ -90,52 +85,52 @@ divebell record stop --out <start-output-path>
 - `transcript.json`
 - `generated-script.mjs`
 
-stop 成功后，再通过标准页面流程关闭浏览器：
+After stop succeeds, close the browser through the standard page workflow:
 
 ```bash
 divebell stop
 ```
 
-如果 stop 提示当前页面和录制页面不一致，不要强行继续或混入新页面数据；回到开始录制时的项目和页面后重试。
+If stop reports that the current page differs from the recorded page, do not force it or mix data from the new page into the recording. Return to the project and page where recording started, then retry.
 
-结束后读取 `manifest.json`、`interactions.jsonl`、`workflow.json` 和 `generated-script.mjs`。确认 manifest 的 `status` 是 `completed`，并检查 workflow 是否按顺序包含录到的输入、选择、按键和点击。随后实际运行 `generated-script.mjs`，确认它到达录制结束时的页面状态。不要只因为页面没有 Divebell target 就说“没有录到操作”；先看 `interactions.jsonl`。
+Read `manifest.json`, `interactions.jsonl`, `workflow.json`, and `generated-script.mjs`. Confirm that the manifest `status` is `completed` and that the workflow contains recorded input, selections, key presses, and clicks in order. Run `generated-script.mjs` and confirm that it reaches the page state captured at the end. Do not conclude that nothing was recorded merely because the page has no Divebell target; inspect `interactions.jsonl` first.
 
-读取 `transcript.json`。只有 `segments` 有非空内容时，后续分析才把它作为用户意图来源；状态是 `not-captured` 或内容为空时直接跳过。
+Read `transcript.json`. Use it as a source of intent only when `segments` contains non-empty content. Skip it when the status is `not-captured` or the content is empty.
 
-如果已经捕获音频、用户明确表示说过补充说明、`segments` 仍为空，且环境里有 `OPENAI_API_KEY`，运行：
+If audio was captured, the user explicitly said they provided spoken context, `segments` is still empty, and `OPENAI_API_KEY` is available, run:
 
 ```bash
 divebell record transcribe --input <start-output-path>
 ```
 
-转写完成后重新读取 `transcript.json`。其他情况下不要因为语音为空或无法转写而停下来，浏览器操作生成和回放照常继续。
+Read `transcript.json` again after transcription. In every other case, continue generating and replaying the script even when speech is empty or cannot be transcribed.
 
-## 重新生成脚本
+## Regenerate a script
 
-如果已有 `.orrec` 录制包，只需要重新生成脚本，运行：
+To regenerate only the script from an existing `.orrec` recording bundle, run:
 
 ```bash
 divebell record generate-script --input <path>
 ```
 
-要把脚本写到指定位置：
+To write the script to a specific location:
 
 ```bash
 divebell record generate-script --input <path> --out <script-path>
 ```
 
-## 脚本修正规则
+## Script correction rules
 
-- 优先把脚本补成可验证的 JS，而不是立刻产出新 skill。
-- 优先使用页面声明的 `run-action` 和 `wait-for`；只有录制包里没有足够的 action/target 时，才补 `click`、`fill`、`eval`。
-- 优先从 `workflow.json` 读取已经整理好的执行顺序和元素识别线索；需要追查原始事件时再读取 `interactions.jsonl`。页面上下文来自 `page-snapshots.jsonl` 和 `dom-snapshots.jsonl`；启用语音时，再把 `transcript.json` 按时间和操作对齐。
-- 如果语音文字包含业务结果要求，例如“获取 closed 状态 1 周内的 issues，以及 open 两周内的，后面以 JSON 格式返回”，脚本必须实现这个业务结果，而不是只复现到达页面。可以优先用 GitHub 页面/API/搜索结果读取数据，再输出 JSON。
-- 每个业务步骤之后都补一个明确的验证点，例如 `wait-for <target-id> ready` 或读取 `snapshot`。
-- 不要只依赖截图或 DOM 文本判断成功；如果页面已经暴露 Divebell target，以 target/snapshot/event 为准。
-- 如果脚本还有 TODO，要明确告诉用户哪些步骤需要下一版录屏、文字输入或语音输入来补齐。
-- 运行 `generated-script.mjs` 时直接使用全局 `divebell`，不要设置项目本地 CLI 路径。
+- Complete a verifiable JavaScript script first instead of immediately producing a new skill.
+- Prefer page-declared `run-action` and `wait-for`. Add `click`, `fill`, or `eval` only when the recording bundle lacks enough actions or targets.
+- Read the organized execution sequence and element identification clues from `workflow.json` first. Inspect raw events in `interactions.jsonl` only when necessary. Page context comes from `page-snapshots.jsonl` and `dom-snapshots.jsonl`. When speech is enabled, align `transcript.json` with actions by time.
+- If the transcript contains a business-result requirement, such as “get issues closed within the last week and open within the last two weeks, then return them as JSON,” the script must produce that business result rather than only navigating to the page. Prefer reading data from the GitHub page, API, or search results, then output JSON.
+- Add an explicit verification point after every business step, such as `wait-for <target-id> ready` or a `snapshot` read.
+- Do not rely only on screenshots or DOM text. When the page exposes a Divebell target, use targets, snapshots, or events.
+- If the script still contains TODOs, state which steps require another screen recording, typed input, or spoken input.
+- Run `generated-script.mjs` with the global `divebell`; do not configure a project-local CLI path.
 
-## 需要生成 skill 时
+## When a skill is requested
 
-只有用户明确要求“把这次流程做成 skill”时，才基于 `generated-script.mjs` 和 `.orrec` 继续创建 skill 草稿。
-创建 skill 时，把稳定命令和判断规则写进 `SKILL.md`；不要把原始录制包里的大量 JSON 全量塞进 skill 正文。
+Only create a skill draft from `generated-script.mjs` and the `.orrec` bundle when the user explicitly asks to turn the workflow into a skill.
+Put stable commands and decision rules in `SKILL.md`. Do not copy large amounts of raw JSON from the recording bundle into the skill body.

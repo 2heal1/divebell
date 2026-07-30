@@ -1,0 +1,51 @@
+.changeset/clean-shared-traces.md
+  s_ae32afa64f1f28::t_11563f919610de 1-5
+packages/extensions/mf/README.md
+  s_85259b28c09d28::t_173b90e31fe472 17-21,40-50,304,332-340
+packages/extensions/mf/assets/observability-build.json
+  s_ae32afa64f1f28::t_c807634819b41c 6
+packages/extensions/mf/assets/observability-chrome-devtool.iife.js
+  s_ae32afa64f1f28::t_b98106de7eca4e 5969,7474
+packages/extensions/mf/docs/shared.md
+  s_85259b28c09d28::t_1fdc6daf48dfc0 49-61
+packages/extensions/mf/scripts/sync-observability.mjs
+  s_ae32afa64f1f28::t_8d58c68c35bbed 167,195-206
+packages/extensions/mf/src/shared/format.ts
+  s_ae32afa64f1f28::t_319152ec1a32d2 17
+packages/extensions/mf/src/shared/trace.ts
+  s_ae32afa64f1f28::t_c3b9eec4e43933 37-38
+packages/extensions/mf/test/integration.test.mjs
+  s_ae32afa64f1f28::t_ba8552d3129496 154-160,188,225,229
+packages/extensions/mf/test/open.test.mjs
+  s_85259b28c09d28::t_513a622c41607a 10-13,112-116,195-256
+packages/extensions/mf/test/shared-trace.test.mjs
+  s_ae32afa64f1f28::t_9599da80d355e2 261-262,281,287-290,294-295,297,319-323
+packages/extensions/mf/test/sync.test.mjs
+  s_ae32afa64f1f28::t_15ea1d043a4ba7 17,58-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1b4e6dc2490640fd6e4b02e086299a9950389305",
+  "prompts": {},
+  "sessions": {
+    "s_85259b28c09d28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb20f-d3e8-7391-badb-de3c71722b32",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_ae32afa64f1f28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb217-e7a5-7d31-be1b-6b711928a9c3",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -32,6 +32,10 @@ export interface CliExtensionRunFunction {
   <T = unknown>(extensionName: string, request: CliExtensionRunRequest): Promise<T>;
 }
 
+export interface CliExtensionLoadingFunction {
+  <T>(run: () => T | PromiseLike<T>): Promise<T>;
+}
+
 export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
@@ -39,6 +43,7 @@ export interface CliExtensionRunOptions {
   headers?: Readonly<Record<string, string>>;
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
+  withLoading: CliExtensionLoadingFunction;
 }
 
 export interface DivebellExtensionCommand {
@@ -111,6 +116,10 @@ export interface DivebellExtensionDefinition {
 export interface ExtensionCliCommandOptions {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
+  stderr: {
+    isTTY?: boolean;
+    write(chunk: string): void;
+  };
   fetcher: Fetcher;
   browserRunner: BrowserRunner;
   bridgeStarter: BridgeStarter;

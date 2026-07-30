@@ -70,6 +70,7 @@ interface CliExtensionRunOptions {
   headers?: Readonly<Record<string, string>>;
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
+  withLoading: CliExtensionLoadingFunction;
 }
 ```
 
@@ -81,6 +82,7 @@ interface CliExtensionRunOptions {
 | `options.divebell` | `DivebellExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by Divebell. Normally avoid calling it directly; use `options.divebell` for Bridge and Runtime access. |
 | `options.runExtension` | `CliExtensionRunFunction` | Calls a Command from this Extension or a declared Extension dependency and returns its raw result. |
+| `options.withLoading` | `CliExtensionLoadingFunction` | Wraps work that may take time and shows one terminal loading animation when it is still running after 400 milliseconds. |
 
 ### `options.args`
 
@@ -170,6 +172,22 @@ Declare other Extensions once on the Extension definition, then call one of thei
 `args` contains only positional arguments after the target Command name. `options` accepts scalar values or arrays; the target receives them through its normal `options.args`. The target shares the current page, session, Runtime selection, browser access, and nested `runExtension` capability.
 
 The target result is returned directly to the caller. A nested call does not write a second CLI result and does not trigger lifecycle Hooks. A Command may call another Command in its own Extension without listing itself in `requires`. Calls to another Extension must be declared by the calling Extension. Cyclic calls and call chains deeper than 16 levels fail with the full call chain.
+
+### `options.withLoading`
+
+Wrap the part of a Command that may take noticeable time:
+
+```ts
+interface CliExtensionLoadingFunction {
+  <T>(run: () => T | PromiseLike<T>): Promise<T>;
+}
+
+const report = await options.withLoading(async () => {
+  return await createReport();
+});
+```
+
+Work that finishes within 400 milliseconds produces no animation. Slower work shows one animation only in an interactive terminal, then clears it before the Command writes its final result or error. Nested and concurrent wrappers share the same animation.
 
 ### `options.page`
 

@@ -642,11 +642,14 @@ test("registers a command and merges its help entries", async () => {
       }
     ],
     run: async (options) => {
-      const { args, page, divebell } = options;
-      const snapshot = await divebell.snapshot({ id: "target-1" });
+      const { args, page, divebell, withLoading } = options;
+      const snapshot = await withLoading(async () =>
+        await divebell.snapshot({ id: "target-1" })
+      );
       const browserValue = await divebell.browser.eval("window.answer");
       return {
         command: args.command,
+        hasWithLoadingOption: typeof withLoading === "function",
         hasOutputOption: "output" in options,
         hasStdoutOption: "stdout" in options,
         hasStderrOption: "stderr" in options,
@@ -739,6 +742,7 @@ test("registers a command and merges its help entries", async () => {
     assert.equal(output.errorText(), "");
     assert.deepEqual(JSON.parse(output.text()), commandOutput("demo ping", {
       command: ["demo", "ping"],
+      hasWithLoadingOption: true,
       hasOutputOption: false,
       hasStdoutOption: false,
       hasStderrOption: false,

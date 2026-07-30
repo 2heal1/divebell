@@ -26,8 +26,9 @@ export function createMfExtension(
         usage: command.usage,
         description: command.description
       })),
-      run: async (runOptions) =>
+      run: async (runOptions) => await runOptions.withLoading(async () =>
         await (await import("./index.js")).runMfCommand(runOptions)
+      )
     }],
     hooks: {
       open: async ({ args }) =>

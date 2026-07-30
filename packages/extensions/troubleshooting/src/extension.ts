@@ -10,7 +10,9 @@ const extension = {
       usage: "divebell verify [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--next]",
       description: "Verify a business target; framework targets such as Modern, MF, and Garfish are supporting evidence only."
     }],
-    run: async (options) => await (await import("./index.js")).runVerifyCliCommand(options)
+    run: async (options) => await options.withLoading(async () =>
+      await (await import("./index.js")).runVerifyCliCommand(options)
+    )
   }]
 } satisfies DivebellExtensionDefinition;
 

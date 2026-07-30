@@ -17,7 +17,9 @@ const extension = {
         description: "Run a memory scenario with warmup, repeated operations, metrics, allocation capture, and before-and-after snapshots."
       }
     ],
-    run: async (options) => await (await import("./index.js")).runMemoryCliCommand(options)
+    run: async (options) => await options.withLoading(async () =>
+      await (await import("./index.js")).runMemoryCliCommand(options)
+    )
   }]
 } satisfies DivebellExtensionDefinition;
 

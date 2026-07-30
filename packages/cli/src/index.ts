@@ -11,6 +11,7 @@ export {
 } from "./create.js";
 export type {
   CliExtensionPageContext,
+  CliExtensionLoadingFunction,
   CliExtensionRunFunction,
   CliExtensionRunOptionScalar,
   CliExtensionRunOptionValue,

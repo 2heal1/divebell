@@ -6,6 +6,7 @@ import type { BridgeProcessController, BridgeStarter } from "../features/bridge/
 import type { Fetcher } from "../features/runtime/client.js";
 import type {
   CliExtensionRunFunction,
+  CliExtensionLoadingFunction,
   CliExtensionRunOptionScalar,
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
@@ -22,6 +23,7 @@ import type { ExtensionHookPlans } from "../features/extension/plan.js";
 export type {
   CliExtensionPageContext,
   CliExtensionRunFunction,
+  CliExtensionLoadingFunction,
   CliExtensionRunOptionScalar,
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
@@ -35,6 +37,7 @@ export interface CliRunOptions {
     write(chunk: string): void;
   };
   stderr?: {
+    isTTY?: boolean;
     write(chunk: string): void;
   };
   stdin?: AsyncIterable<string | Uint8Array>;

@@ -1,0 +1,35 @@
+.changeset/tidy-extensions-browse.md
+  s_85259b28c09d28::t_e6342bb565aaed 1-5
+docs/cli-extensions.md
+  s_85259b28c09d28::t_fd341e16520190 320-325
+docs/cli-extensions.zh-CN.md
+  s_85259b28c09d28::t_f1bbc0eb3bd82c 312-313
+docs/extension-api.md
+  s_85259b28c09d28::t_7a5e87190a4780 337-338,344-378
+docs/extension-api.zh-CN.md
+  s_85259b28c09d28::t_b041cd66fc73dd 337-338,344-367
+packages/cli/src/features/extension/api.ts
+  s_85259b28c09d28::t_dbd72f7be52dbe 9,12,32,37-38,147,151-157,176-218,221,229-233,323-366
+packages/cli/src/features/extension/types.ts
+  s_85259b28c09d28::t_dd993382b4bd68 14,235-251,253-256,268
+packages/cli/test/extensions.test.ts
+  s_85259b28c09d28::t_d3ff42afef01f1 12-13,17,23,866-996
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a9a307c62ae1486037b3832497d47d837c0aa446",
+  "prompts": {},
+  "sessions": {
+    "s_85259b28c09d28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb20f-d3e8-7391-badb-de3c71722b32",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

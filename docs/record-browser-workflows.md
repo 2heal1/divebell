@@ -1,12 +1,6 @@
 # Record Browser Workflows with an Agent
 
-Install the [`record-divebell-workflow`](../skills/record-divebell-workflow/SKILL.md)
-skill in your agent. Then invoke the skill and describe the workflow you want to
-demonstrate:
-
-```text
-Use $record-divebell-workflow to record my browser workflow. I will demonstrate how to <task>.
-```
+> Ask your Agent: `Run divebell extensions add @divebell/extension-imitate to install the Extension, then run divebell record --skill and follow the returned Skill to record my browser workflow. I will demonstrate how to <task>.`
 
 `@divebell/extension-imitate` is the browser-workflow recording Extension and includes the `record-divebell-workflow` Agent skill. It turns one manual browser walkthrough into an executable JavaScript replay, recording the operated elements, event order, and final page state. Microphone capture is attempted automatically, but spoken instructions are optional context and missing or denied audio is ignored.
 

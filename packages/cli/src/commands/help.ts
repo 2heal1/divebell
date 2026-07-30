@@ -1,4 +1,5 @@
 import type { CliCommandReference } from "../types/commands.js";
+import { browserCommandReferences } from "./browser-help.js";
 export type { CliCommandReference } from "../types/commands.js";
 
 export const cliCommandReferences: CliCommandReference[] = [
@@ -74,9 +75,10 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]",
-    description: "Open a directory-scoped page with its own automatically assigned Bridge port, optionally using origin-scoped HTTP headers, a Chrome profile, state file, or explicit Bridge."
+    usage: "divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page with Divebell lifecycle management and supported agent-browser launch options."
   },
+  ...browserCommandReferences,
   {
     category: "Bridge and Browser",
     usage: "divebell stack [--refresh]",
@@ -84,7 +86,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell page-snapshot",
+    usage: "divebell page-snapshot [--interactive] [--compact] [--depth <depth>] [--selector <selector>]",
     description: "Read the current page snapshot, including actionable element references."
   },
   {
@@ -109,13 +111,13 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell select <ref|selector> <value>",
-    description: "Select an option in a native dropdown by value or label."
+    usage: "divebell select <ref|selector> <value...>",
+    description: "Select one or more native dropdown options by value or label."
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell eval <script>",
-    description: "Run a script in the page, or load one from --file <path>."
+    usage: "divebell eval [<script> | --file <path> | --base64 <encoded> | --stdin]",
+    description: "Run a script in the page, load one from a file or standard input, or pass base64-encoded JavaScript."
   },
   {
     category: "Bridge and Browser",
@@ -129,7 +131,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell screenshot [name] [--full-page]",
+    usage: "divebell screenshot [name] [--full-page] [--annotate]",
     description: "Capture a screenshot through the Divebell browser layer."
   },
   {
@@ -194,6 +196,13 @@ const HELP_CATEGORIES: CliCommandReference["category"][] = [
   "External Extensions"
 ];
 
+const CATEGORY_LABELS: Record<CliCommandReference["category"], string> = {
+  "Bridge and Browser": "Browser",
+  Runtime: "Runtime",
+  Extensions: "Extensions",
+  "External Extensions": "External Extensions"
+};
+
 const TOP_LEVEL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   console: "Read browser console logs.",
   eval: "Run a script in the current page.",
@@ -213,7 +222,7 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
       .map((reference) => reference.command);
     return [
       "",
-      `${category}:`,
+      `${CATEGORY_LABELS[category]}:`,
       ...topLevelCommands.map((command) =>
         `  divebell ${command.name} - ${command.description}`
       ),
@@ -265,12 +274,6 @@ export function createCommandHelpText(
 
 export function createCliReferenceMarkdown(references: CliReferenceCollection = {}): string {
   const commandReferences = references.commandReferences ?? cliCommandReferences;
-  const categoryLabels: Record<CliCommandReference["category"], string> = {
-    "Bridge and Browser": "Bridge and Browser",
-    Runtime: "Runtime",
-    Extensions: "Extensions",
-    "External Extensions": "External Extensions"
-  };
   const lines = [
     "# Divebell CLI Reference",
     "",
@@ -288,7 +291,7 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
   for (const category of HELP_CATEGORIES) {
     const categoryCommands = commandReferences.filter((item) => item.category === category);
     if (categoryCommands.length === 0) continue;
-    lines.push("", `### ${categoryLabels[category]}`, "");
+    lines.push("", `### ${CATEGORY_LABELS[category]}`, "");
     for (const command of categoryCommands) {
       lines.push(`- \`${command.usage}\` - ${command.description}`);
     }

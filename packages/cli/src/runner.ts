@@ -159,7 +159,8 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
         options.bridgeStateDirectory,
         operationLogStore,
         config.extensions,
-        config.hookPlans.open
+        config.hookPlans.open,
+        options.stdin ?? process.stdin
       );
     }
 

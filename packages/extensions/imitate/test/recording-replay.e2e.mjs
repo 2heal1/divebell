@@ -34,9 +34,15 @@ const server = createServer((_request, response) => {
         </select>
       </label>
       <div id="actions"></div>
+      <output id="key-result">Waiting</output>
       <output id="result">Waiting</output>
     </main>
     <script>
+      document.querySelector("[name=query]").addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          document.querySelector("#key-result").textContent = "Enter pressed";
+        }
+      });
       setTimeout(() => {
         document.querySelector("#actions").innerHTML =
           '<button data-testid="run-workflow"><span>Run workflow</span></button>';
@@ -86,8 +92,17 @@ process.exitCode = await cli.run(process.argv.slice(2));
 
   await runCli(["record", "start", "--out", recordingDirectory], env);
   await runCli(["open", url, "--no-bridge"], env);
+  await runCli(["goto", new URL("/form?mode=recording", url).href], env);
   await runCli(["fill", "input[name=query]", "module federation"], env);
   await runCli(["select", "select[name=region]", "cn"], env);
+  await runCli(["focus", "input[name=query]"], env);
+  await runCli(["press", "Enter"], env);
+  await runCli([
+    "wait-eval",
+    "document.querySelector('#key-result')?.textContent === 'Enter pressed'",
+    "--timeout",
+    "10000"
+  ], env);
   await runCli([
     "wait-eval",
     "document.querySelector('[data-testid=run-workflow]') != null",
@@ -125,11 +140,17 @@ process.exitCode = await cli.run(process.argv.slice(2));
   assert.equal(replayResult.status, "ok");
   assert.deepEqual(
     replayResult.data.steps.map((step) => step.action),
-    ["fill", "select", "click"]
+    ["fill", "select", "press", "fill", "click"]
   );
   assert.deepEqual(
     replayResult.data.steps.map((step) => step.matchedBy),
-    ["label:Search term", "label:Region", "test-id:run-workflow"]
+    [
+      "label:Search term",
+      "label:Region",
+      "label:Search term",
+      "label:Search term",
+      "test-id:run-workflow"
+    ]
   );
   assert.equal(replayResult.data.page.title, "Replay Complete");
 
@@ -149,6 +170,7 @@ process.exitCode = await cli.run(process.argv.slice(2));
   assert.equal(interactions.some((event) => event.target?.label === "Search term"), true);
   assert.equal(interactions.some((event) => event.target?.label === "Region"), true);
   assert.equal(interactions.some((event) => event.target?.selectedValues?.includes("cn")), true);
+  assert.equal(interactions.some((event) => event.type === "keydown" && event.key === "Enter"), true);
   process.stdout.write(`${JSON.stringify({
     status: "ok",
     recordingDirectory,

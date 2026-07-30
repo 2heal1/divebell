@@ -82,6 +82,8 @@ test("prints compact top-level help", async () => {
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
   assert.match(output.text(), /^Usage: divebell <command> \[options\]/);
+  assert.match(output.text(), /\nBrowser:\n/);
+  assert.doesNotMatch(output.text(), /Bridge and Browser:/);
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
@@ -102,7 +104,13 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /divebell profile /);
   assert.doesNotMatch(output.text(), /divebell verify /);
   assert.match(output.text(), /divebell stack/);
-  assert.doesNotMatch(output.text(), /divebell goto /);
+  assert.match(output.text(), /divebell goto /);
+  assert.match(output.text(), /divebell wait /);
+  assert.match(output.text(), /divebell hover /);
+  assert.match(output.text(), /divebell tab /);
+  assert.match(output.text(), /divebell a11y /);
+  assert.match(output.text(), /divebell video /);
+  assert.doesNotMatch(output.text(), /divebell record /);
   assert.doesNotMatch(output.text(), /divebell close/);
   assert.doesNotMatch(output.text(), /\[--open\]/);
   assert.doesNotMatch(output.text(), /open[-]runtime/);
@@ -220,12 +228,14 @@ test("rejects unknown scoped help", async () => {
   assert.equal(exitCode, 1);
   assert.equal(output.errorText(), "");
   assert.equal(JSON.parse(output.text()).error.code, "CLI_UNKNOWN_COMMAND");
-  assert.doesNotMatch(output.text(), /Bridge and Browser:/);
+  assert.doesNotMatch(output.text(), /Browser:/);
 });
 
 test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
+  assert.match(markdown, /### Browser/);
+  assert.doesNotMatch(markdown, /### Bridge and Browser/);
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
@@ -250,7 +260,12 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /<npm-package>/);
   assert.match(markdown, /divebell extensions list/);
   assert.match(markdown, /divebell stack/);
-  assert.doesNotMatch(markdown, /divebell goto /);
+  assert.match(markdown, /divebell goto <url>/);
+  assert.match(markdown, /divebell wait <ref\|selector\|milliseconds>/);
+  assert.match(markdown, /divebell check-element <ref\|selector>/);
+  assert.match(markdown, /divebell network <route\|unroute\|requests\|request\|har>/);
+  assert.match(markdown, /divebell video <start\|stop\|restart>/);
+  assert.doesNotMatch(markdown, /divebell record /);
   assert.doesNotMatch(markdown, /divebell close/);
   assert.doesNotMatch(markdown, /\[--open\]/);
   assert.doesNotMatch(markdown, /\p{Script=Han}/u);

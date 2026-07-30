@@ -12,7 +12,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ## Commands
 
-### Bridge and Browser
+### Browser
 
 - `divebell setup` - Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed.
 - `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
@@ -24,18 +24,72 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `divebell auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `divebell auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui]` - Open a directory-scoped page with its own automatically assigned Bridge port, optionally using origin-scoped HTTP headers, a Chrome profile, state file, or explicit Bridge.
+- `divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page with Divebell lifecycle management and supported agent-browser launch options.
+- `divebell goto <url>` - Navigate the current Divebell page to another URL without replacing its browser session.
+- `divebell navigate <url>` - Alias for `divebell goto`.
+- `divebell back` - Go back in the current page history.
+- `divebell forward` - Go forward in the current page history.
+- `divebell reload` - Reload the current page.
+- `divebell pushstate <url>` - Request client-side navigation in the current single-page application.
+- `divebell read [url] [--filter <text>] [--outline] [--llms <index|full>]` - Read the current page or fetch agent-readable text from a URL.
+- `divebell dblclick <ref|selector>` - Double-click an element.
+- `divebell type <ref|selector> <text>` - Type into an element without clearing its current value.
+- `divebell keyboard <type|inserttext> <text>` - Enter text through the browser keyboard without selecting an element.
+- `divebell keydown <key>` - Hold a keyboard key down.
+- `divebell keyup <key>` - Release a held keyboard key.
+- `divebell hover <ref|selector>` - Hover over an element.
+- `divebell tap <ref|selector>` - Tap an element on a touch-based browser.
+- `divebell swipe <up|down|left|right> [pixels]` - Perform a swipe gesture on a supported mobile browser.
+- `divebell check-element <ref|selector>` - Check a checkbox without reusing the removed Divebell readiness command name.
+- `divebell uncheck <ref|selector>` - Uncheck a checkbox.
+- `divebell drag <source-ref|selector> <target-ref|selector>` - Drag one element onto another.
+- `divebell upload <ref|selector> <file...>` - Upload one or more files through a file input.
+- `divebell download <ref|selector> <path>` - Download a file by clicking an element.
+- `divebell scroll <up|down|left|right> [pixels]` - Scroll the current page.
+- `divebell scrollintoview <ref|selector>` - Scroll an element into view.
+- `divebell wait <ref|selector|milliseconds> [--text <text>] [--url <glob>] [--load <state>] [--fn <script>]` - Wait for an element, text, URL, load state, delay, or page condition.
+- `divebell get <text|html|value|attr|title|url|count|box|styles|cdp-url> [ref|selector] [name]` - Read page or element information.
+- `divebell is <visible|enabled|checked> <ref|selector>` - Check an element state.
+- `divebell find <role|text|label|placeholder|alt|title|testid|first|last|nth> <value> <action> [text]` - Find an element semantically and act on it.
+- `divebell mouse <move|down|up|wheel> [args]` - Control the browser mouse.
+- `divebell set <viewport|device|geo|offline|headers|credentials|media> [value...]` - Change browser page settings.
+- `divebell device list` - List available mobile browser devices.
+- `divebell cookies [get|set|clear] [args]` - Inspect or change cookies in the current browser session.
+- `divebell storage <local|session> [get|set|clear] [args]` - Inspect or change browser storage.
+- `divebell tab [new|list|close|<id-or-label>] [url]` - Create, list, switch, or close browser tabs.
+- `divebell window new` - Open a new browser window.
+- `divebell frame <ref|selector|main>` - Switch the active page context to an iframe or back to the main frame.
+- `divebell dialog <accept|dismiss|status> [text]` - Inspect or respond to a browser dialog.
+- `divebell pdf <path>` - Save the current page as a PDF.
+- `divebell diff <snapshot|screenshot|url> [args]` - Compare page snapshots, screenshots, or URLs.
+- `divebell network <route|unroute|requests|request|har> [args]` - Inspect, record, intercept, block, or mock network traffic.
+- `divebell errors [--clear]` - Read or clear page errors.
+- `divebell console --clear` - Clear browser console logs.
+- `divebell highlight <ref|selector>` - Highlight an element in the browser.
+- `divebell trace <start|stop> [path]` - Capture a browser performance trace.
+- `divebell profiler <start|stop> [path]` - Capture a browser performance profile.
+- `divebell video <start|stop|restart> [path]` - Record the current browser page as video without conflicting with the workflow recording Extension.
+- `divebell inspect` - Open browser developer tools for the current page.
+- `divebell clipboard <read|write|copy|paste> [text]` - Read or change the browser clipboard.
+- `divebell stream <enable|disable|status> [--port <number>]` - Manage browser runtime streaming for the current session.
+- `divebell react <tree|inspect|renders|suspense> [args]` - Inspect React state when the page was opened with React DevTools enabled.
+- `divebell vitals [url] [--json]` - Measure Core Web Vitals and hydration timing.
+- `divebell a11y [url] [--tags <tags>] [--selector <selector>] [--json]` - Run an accessibility audit.
+- `divebell addinitscript <script>` - Register a page initialization script in the current browser session.
+- `divebell removeinitscript <id>` - Remove a registered page initialization script.
+- `divebell confirm <id>` - Approve a browser action waiting for explicit confirmation.
+- `divebell deny <id>` - Deny a browser action waiting for explicit confirmation.
 - `divebell stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
-- `divebell page-snapshot` - Read the current page snapshot, including actionable element references.
+- `divebell page-snapshot [--interactive] [--compact] [--depth <depth>] [--selector <selector>]` - Read the current page snapshot, including actionable element references.
 - `divebell click <ref|selector|text>` - Click an element by page reference, selector, or visible text.
 - `divebell fill <ref|selector> <value>` - Fill an input by page reference or selector.
 - `divebell focus <ref|selector>` - Focus an element by page reference or selector.
 - `divebell press <key>` - Press a keyboard key or shortcut in the currently focused element.
-- `divebell select <ref|selector> <value>` - Select an option in a native dropdown by value or label.
-- `divebell eval <script>` - Run a script in the page, or load one from --file <path>.
+- `divebell select <ref|selector> <value...>` - Select one or more native dropdown options by value or label.
+- `divebell eval [<script> | --file <path> | --base64 <encoded> | --stdin]` - Run a script in the page, load one from a file or standard input, or pass base64-encoded JavaScript.
 - `divebell wait-eval <script> [--timeout <ms>]` - Poll a page expression until it returns true.
 - `divebell get-window <path>` - Read a dotted path from window/globalThis, such as gf_data_v1.
-- `divebell screenshot [name] [--full-page]` - Capture a screenshot through the Divebell browser layer.
+- `divebell screenshot [name] [--full-page] [--annotate]` - Capture a screenshot through the Divebell browser layer.
 - `divebell network [--url <query>]` - List network requests from the current page and optionally filter them by URL text.
 - `divebell console [--level <level>] [--query <keyword>] [--limit <n>]` - Read browser console logs as a fallback; prefer snapshot --query for structured verification and troubleshooting.
 - `divebell coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]` - Capture code executed by the current page in stages to identify loaded but unused application and third-party code.

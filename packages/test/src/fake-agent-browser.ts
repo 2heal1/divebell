@@ -11,6 +11,58 @@ interface BrowserElement {
   textContent: string;
 }
 
+interface BrowserScriptEvent {
+  type: "error" | "load";
+  target: BrowserScriptElement;
+}
+
+interface BrowserScriptElement {
+  parentNode: BrowserParentNode | null;
+  timeout: number;
+  onerror: ((event: BrowserScriptEvent) => unknown) | null;
+  onload: ((event: BrowserScriptEvent) => unknown) | null;
+  src: string;
+  getAttribute(name: string): string | null;
+  setAttribute(name: string, value: string): void;
+}
+
+interface BrowserParentNode {
+  appendChild(element: BrowserScriptElement): BrowserScriptElement;
+  removeChild(element: BrowserScriptElement): BrowserScriptElement;
+}
+
+class TestHtmlScriptElement implements BrowserScriptElement {
+  readonly #attributes = new Map<string, string>();
+  readonly #pageUrl: string;
+  #sourceUrl = "";
+  parentNode: BrowserParentNode | null = null;
+  timeout = 0;
+  onerror: ((event: BrowserScriptEvent) => unknown) | null = null;
+  onload: ((event: BrowserScriptEvent) => unknown) | null = null;
+
+  constructor(pageUrl: string) {
+    this.#pageUrl = pageUrl;
+  }
+
+  get src(): string {
+    return this.#sourceUrl;
+  }
+
+  set src(value: string) {
+    this.#sourceUrl = new URL(value, this.#pageUrl).href;
+    this.#attributes.set("src", this.#sourceUrl);
+  }
+
+  getAttribute(name: string): string | null {
+    return this.#attributes.get(name) ?? null;
+  }
+
+  setAttribute(name: string, value: string): void {
+    this.#attributes.set(name, value);
+    if (name === "src") this.#sourceUrl = new URL(value, this.#pageUrl).href;
+  }
+}
+
 interface ObservabilityReader {
   getRuntimeState(): unknown;
   getReports(options?: { limit?: number }): unknown[];
@@ -22,6 +74,7 @@ interface FederationGlobal {
 }
 
 interface TestBrowserContext extends vm.Context {
+  __DIVEBELL_MF_E2E_ERROR__?: unknown;
   __MF_OBSERVABILITY_INJECTION__?: unknown;
   __DIVEBELL_MF_PROXY_INJECTION__?: unknown;
   __DIVEBELL_MF_E2E_RENDERED__?: unknown;
@@ -31,6 +84,11 @@ interface TestBrowserContext extends vm.Context {
   self: TestBrowserContext;
   top: TestBrowserContext;
   eval(source: unknown): unknown;
+}
+
+interface TestBrowserHarness {
+  context: TestBrowserContext;
+  loadScript(sourceUrl: string): Promise<void>;
 }
 
 interface BrowserState {
@@ -83,7 +141,8 @@ async function open(args: string[]): Promise<void> {
     throw new Error("The test agent-browser open command requires a URL.");
   }
 
-  const context = createBrowserContext(url);
+  const browser = createBrowserContext(url);
+  const { context } = browser;
   if (initScriptPath !== undefined) {
     await runScript(context, await readFile(initScriptPath, "utf8"), initScriptPath);
   }
@@ -93,10 +152,15 @@ async function open(args: string[]): Promise<void> {
     throw new Error(`Could not load ${url}: HTTP ${response.status}.`);
   }
   const html = await response.text();
-  for (const script of readInlineScripts(html)) {
-    await runScript(context, script, url);
+  for (const script of readHtmlScripts(html)) {
+    if (script.src === undefined) {
+      await runScript(context, script.source, url);
+    } else {
+      await browser.loadScript(new URL(script.src, url).href);
+    }
   }
 
+  await waitForMfFixture(context);
   const state = readSerializableBrowserState(context);
   await writeFile(browserStatePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
 }
@@ -113,7 +177,7 @@ async function evaluate(args: string[]): Promise<void> {
     throw new Error("The test agent-browser state file is invalid.");
   }
   const state = parsedState;
-  const context = createBrowserContext(state.url);
+  const { context } = createBrowserContext(state.url);
   context.__MF_OBSERVABILITY_INJECTION__ = state.marker;
   context.__DIVEBELL_MF_PROXY_INJECTION__ = state.proxyMarker;
   context.__FEDERATION__ = {
@@ -162,16 +226,87 @@ function parseOpenArgs(args: string[]): {
   return { url, initScriptPath };
 }
 
-function createBrowserContext(url: string): TestBrowserContext {
+function createBrowserContext(url: string): TestBrowserHarness {
   const elements = new Map<string, BrowserElement>();
-  const context = vm.createContext({
+  const eventListeners = new Map<string, Set<(event: unknown) => void>>();
+  const scripts: BrowserScriptElement[] = [];
+  let context: TestBrowserContext;
+  const pageFetch = (
+    input: string | URL | Request,
+    init?: RequestInit
+  ): Promise<Response> => {
+    if (typeof input === "string" || input instanceof URL) {
+      return fetch(new URL(String(input), url), init);
+    }
+    return fetch(input, init);
+  };
+  const loadScript = async (
+    sourceUrl: string,
+    element?: BrowserScriptElement
+  ): Promise<void> => {
+    const resolvedUrl = new URL(sourceUrl, url).href;
+    const response = await pageFetch(resolvedUrl);
+    if (!response.ok) {
+      throw new Error(`Could not load ${resolvedUrl}: HTTP ${response.status}.`);
+    }
+    await runScript(context, await response.text(), resolvedUrl);
+    element?.onload?.({ type: "load", target: element });
+  };
+  const head: BrowserParentNode = {
+    appendChild(element) {
+      element.parentNode = head;
+      if (!scripts.includes(element)) scripts.push(element);
+      void loadScript(element.src, element).catch((error: unknown) => {
+        if (element.onerror !== null) {
+          element.onerror({ type: "error", target: element });
+          return;
+        }
+        context.__DIVEBELL_MF_E2E_ERROR__ =
+          error instanceof Error ? error.message : String(error);
+      });
+      return element;
+    },
+    removeChild(element) {
+      const index = scripts.indexOf(element);
+      if (index >= 0) scripts.splice(index, 1);
+      element.parentNode = null;
+      return element;
+    }
+  };
+  const document = {
+    defaultView: undefined as TestBrowserContext | undefined,
+    head,
+    body: head,
+    createElement(tagName: string) {
+      if (tagName.toLowerCase() !== "script") {
+        return createScriptElement(url);
+      }
+      return createScriptElement(url);
+    },
+    getElementsByTagName(tagName: string) {
+      return tagName.toLowerCase() === "script" ? scripts : [];
+    },
+    querySelector(selector: string) {
+      const match = selector.match(/^script\[src="([^"]+)"\]$/);
+      if (match?.[1] === undefined) return null;
+      const expected = new URL(match[1], url).href;
+      return scripts.find((script) => script.src === expected) ?? null;
+    },
+    getElementById(id: string) {
+      if (!elements.has(id)) {
+        elements.set(id, { id, textContent: "" });
+      }
+      return elements.get(id);
+    }
+  };
+  context = vm.createContext({
     console: {
       log() {},
       info() {},
       warn() {},
       error() {}
     },
-    fetch,
+    fetch: pageFetch,
     URL,
     URLSearchParams,
     Headers,
@@ -179,26 +314,36 @@ function createBrowserContext(url: string): TestBrowserContext {
     Response,
     TextDecoder,
     TextEncoder,
+    HTMLScriptElement: TestHtmlScriptElement,
     setTimeout,
     clearTimeout,
     setInterval,
     clearInterval,
     queueMicrotask,
     performance,
+    addEventListener(type: string, listener: (event: unknown) => void) {
+      const listeners = eventListeners.get(type) ?? new Set();
+      listeners.add(listener);
+      eventListeners.set(type, listeners);
+    },
+    removeEventListener(type: string, listener: (event: unknown) => void) {
+      eventListeners.get(type)?.delete(listener);
+    },
+    dispatchEvent(event: { type?: unknown }) {
+      if (typeof event.type !== "string") return false;
+      for (const listener of eventListeners.get(event.type) ?? []) {
+        listener(event);
+      }
+      return true;
+    },
     navigator: {
       userAgent: "divebell-test-agent-browser"
     },
     location: new URL(url),
-    document: {
-      getElementById(id: string) {
-        if (!elements.has(id)) {
-          elements.set(id, { id, textContent: "" });
-        }
-        return elements.get(id);
-      }
-    },
+    document,
     postMessage() {}
   }) as TestBrowserContext;
+  document.defaultView = context;
   context.globalThis = context;
   context.window = context;
   context.self = context;
@@ -206,7 +351,15 @@ function createBrowserContext(url: string): TestBrowserContext {
   context.eval = (source) => vm.runInContext(String(source), context, {
     timeout: 5_000
   });
-  return context;
+  return {
+    context,
+    async loadScript(sourceUrl) {
+      const script = createScriptElement(url);
+      script.src = sourceUrl;
+      scripts.push(script);
+      await loadScript(sourceUrl, script);
+    }
+  };
 }
 
 async function runScript(
@@ -227,10 +380,38 @@ async function runScript(
   }
 }
 
-function readInlineScripts(html: string): string[] {
-  return [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
-    .flatMap((match) => match[1] === undefined ? [] : [match[1]])
-    .filter((source) => source.trim().length > 0);
+function createScriptElement(pageUrl: string): BrowserScriptElement {
+  return new TestHtmlScriptElement(pageUrl);
+}
+
+function readHtmlScripts(html: string): Array<{
+  source: string;
+  src?: string;
+}> {
+  return [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+    .map((match) => {
+      const attributes = match[1] ?? "";
+      const source = match[2] ?? "";
+      const src = attributes.match(/\bsrc=(["'])(.*?)\1/i)?.[2];
+      return src === undefined ? { source } : { source, src };
+    })
+    .filter((script) => script.src !== undefined || script.source.trim().length > 0);
+}
+
+async function waitForMfFixture(context: TestBrowserContext): Promise<void> {
+  const timeoutAt = Date.now() + 10_000;
+  while (Date.now() < timeoutAt) {
+    if (typeof context.__DIVEBELL_MF_E2E_ERROR__ === "string") {
+      throw new Error(`The MF fixture failed: ${context.__DIVEBELL_MF_E2E_ERROR__}`);
+    }
+    if (context.__DIVEBELL_MF_E2E_RENDERED__ === "provider widget rendered") {
+      return;
+    }
+    await new Promise<void>((resolvePromise) => {
+      setTimeout(resolvePromise, 10);
+    });
+  }
+  throw new Error("The MF fixture did not render the provider module within 10000ms.");
 }
 
 function readSerializableBrowserState(context: TestBrowserContext): BrowserState {

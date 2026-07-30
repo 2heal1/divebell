@@ -280,6 +280,30 @@ importers:
         specifier: 0.10.3
         version: 0.10.3
 
+  tests/e2e/extension-mf/fixtures/host:
+    devDependencies:
+      '@module-federation/rsbuild-plugin':
+        specifier: 2.5.0
+        version: 2.5.0(@rsbuild/core@2.0.11(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13))))(@rspack/core@2.0.6(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(@swc/helpers@0.5.23))(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)
+      '@rsbuild/core':
+        specifier: 2.0.11
+        version: 2.0.11(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+  tests/e2e/extension-mf/fixtures/provider:
+    devDependencies:
+      '@module-federation/rsbuild-plugin':
+        specifier: 2.5.0
+        version: 2.5.0(@rsbuild/core@2.0.11(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13))))(@rspack/core@2.0.6(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(@swc/helpers@0.5.23))(node-fetch@2.7.0(encoding@0.1.13))(typescript@5.9.3)
+      '@rslib/core':
+        specifier: 0.21.5
+        version: 0.21.5(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(typescript@5.9.3)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
 packages:
 
   '@ast-grep/napi-darwin-arm64@0.37.0':

@@ -19,6 +19,7 @@
     }
   },
   "include": ["**/*.ts"],
+  "exclude": ["extension-mf/fixtures"],
   "references": [
     { "path": "../../packages/core" },
     { "path": "../../packages/bridge" },

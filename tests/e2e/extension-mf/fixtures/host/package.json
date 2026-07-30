@@ -1,0 +1,14 @@
+{
+  "name": "@divebell/test-mf-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rsbuild build"
+  },
+  "devDependencies": {
+    "@module-federation/rsbuild-plugin": "2.5.0",
+    "@rsbuild/core": "2.0.11",
+    "typescript": "5.9.3"
+  }
+}

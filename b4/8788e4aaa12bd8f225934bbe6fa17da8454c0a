@@ -1,0 +1,71 @@
+.changeset/quiet-browsers-setup.md
+  s_0c1a878d834938::t_787f52fb36ab70 1-5
+README.md
+  s_0c1a878d834938::t_23b932e87cb867 37,41-44
+README.zh-CN.md
+  s_0c1a878d834938::t_ca8648f5135768 37,41-42
+docs/cli-automation-scripts.md
+  s_0c1a878d834938::t_77271ca1ebb1e8 91-92,95,98
+docs/cli-automation-scripts.zh-CN.md
+  s_0c1a878d834938::t_99216a3f147fde 89,92,95
+docs/cli-reference.md
+  s_0c1a878d834938::t_61ac9da20ef42c 17
+docs/cli-reference.zh-CN.md
+  s_0c1a878d834938::t_654ea6de42e89d 17
+docs/record-browser-workflows.md
+  s_0c1a878d834938::t_e4bdbaf3db6f84 29
+docs/record-browser-workflows.zh-CN.md
+  s_0c1a878d834938::t_a62564abc696c6 27
+packages/cli/README.md
+  s_0c1a878d834938::t_500026389f8c92 13,18,20-22
+packages/cli/src/commands/browser.ts
+  s_0c1a878d834938::t_be2750953fcbe8 129
+packages/cli/src/commands/help.ts
+  s_0c1a878d834938::t_71d8ad0eaf3048 7-8
+packages/cli/src/commands/names.ts
+  s_0c1a878d834938::t_a2240a967ec295 32
+packages/cli/src/commands/setup.ts
+  s_0c1a878d834938::t_c35dde045c063d 33,36,38,88,100,125,129,145,148-151,202,206,373,377,449,476,510,540,640-641,691,695,707,711,717,721,731,735,740,745-746,753,761,765,775,778,782
+packages/cli/src/features/browser/runner.ts
+  s_0c1a878d834938::t_5560077f38bb04 174-175
+packages/cli/src/features/browser/types.ts
+  s_0c1a878d834938::t_a46f26fba13e79 9
+packages/cli/src/runner.ts
+  s_0c1a878d834938::t_92895ed90d94bb 21,70-71,82,84
+packages/cli/src/types/cli.ts
+  s_0c1a878d834938::t_d385bc2468c807 45
+packages/cli/test/browser.test.ts
+  s_0c1a878d834938::t_bca84d5bff7655 311
+packages/cli/test/extensions.test.ts
+  s_0c1a878d834938::t_4a469fbb567deb 1843
+packages/cli/test/profile.test.ts
+  s_0c1a878d834938::t_f75d0d19fc6053 51-60
+packages/cli/test/setup.test.ts
+  s_0c1a878d834938::t_af1c7f229c6f56 8,10,24-38,47,78,111,116-123,134,167,209,264,305,338,358,376,393,407,429,432,446,461,477,487,534,552,588,590,620,669,685,716,773
+packages/extensions/imitate/skills/record-divebell-workflow/references/divebell-cli.md
+  s_0c1a878d834938::t_1a57ecd773e118 12
+scripts/sync-divebell-cli-docs.mjs
+  s_0c1a878d834938::t_6710d6466c4237 80
+skills/divebell/references/quickstart.md
+  s_0c1a878d834938::t_eb00ace1e9a4a0 44
+skills/record-divebell-workflow/references/divebell-cli.md
+  s_0c1a878d834938::t_a23bc63ad78532 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b48788e4aaa12bd8f225934bbe6fa17da8454c0a",
+  "prompts": {},
+  "sessions": {
+    "s_0c1a878d834938": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb103-056e-7a40-8ada-9b81c7d94b25",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

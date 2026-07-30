@@ -19,7 +19,9 @@
   "files": [
     "assets/**/*",
     "dist/**/*.js",
-    "dist/**/*.js.map"
+    "dist/**/*.js.map",
+    "skills/**/*.md",
+    "skills/**/*.yaml"
   ],
   "publishConfig": {
     "access": "public"

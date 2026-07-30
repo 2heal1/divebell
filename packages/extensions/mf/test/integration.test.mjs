@@ -151,7 +151,13 @@ test("combined structured output keeps Remote, Shared, preload, and Bridge evide
 test("pending, unknown, partial, and unavailable remain distinct in one snapshot", async () => {
   const snapshot = combinedSnapshot({
     remoteReport: loadTrace({ traceId: "remote-pending", pending: true }),
-    sharedTraceCapability: capability(true, "partial", "Earlier Shared events are missing."),
+    completeness: {
+      currentState: "complete",
+      history: "partial",
+      historyCleared: false,
+      lateBoundInstanceRefs: ["mf-1"],
+      recommendation: "Reload or reopen the page."
+    },
     bridgeTraceCapability: capability(false, "unavailable", "Bridge hooks are unavailable.")
   });
   const pending = await runJson(
@@ -179,7 +185,7 @@ test("pending, unknown, partial, and unavailable remain distinct in one snapshot
 
   assert.equal(pending.result, "pending");
   assert.equal(unknown.remote.latestResult, "unknown");
-  assert.equal(partial.supported, true);
+  assert.equal("supported" in partial, false);
   assert.match(partial.warnings.join(" "), /partial|missing/i);
   assert.match(unavailable.warnings.join(" "), /unavailable/i);
   assert.equal(unavailable.selection.kind, "unsupported");
@@ -216,10 +222,11 @@ function combinedSnapshot(options = {}) {
     role: "producer"
   });
   const state = runtimeState({
+    completeness: options.completeness ?? runtimeState().completeness,
     capabilities: {
       ...runtimeState().capabilities,
       bridgeTrace: options.bridgeTraceCapability ?? capability(true, "complete"),
-      sharedTrace: options.sharedTraceCapability ?? capability(true, "complete")
+      sharedTrace: capability(true, "complete")
     },
     instances: [host, producer],
     relationships: [{

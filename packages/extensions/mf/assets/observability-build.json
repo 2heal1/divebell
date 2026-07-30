@@ -3,5 +3,5 @@
   "packageVersion": "0.0.0-feat-operate-openruntime-20260729120109",
   "sourceRevision": "7429c24cb136ec89b1420d532f5e85b5fc6a8602",
   "publicEntry": "./dist/esm/chrome-devtool.js",
-  "bundleSha256": "86fc4e68fcda330ca98462f11968e6d858e64b167c23b07c520c7ba3ff18ef65"
+  "bundleSha256": "2c0ca055353129caedac0ece774549b9567d11fdbb7eee6327d2f6b1a0188d74"
 }

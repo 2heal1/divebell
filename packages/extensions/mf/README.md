@@ -14,7 +14,11 @@ divebell mf shared trace [package] [--mf <name>] [--instance <ref>] [--scope <sc
 divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id <id>] [--operation <id>]
 ```
 
-All commands return structured output by default; `--json` is not required. Compatibility and capability summaries are used internally but are omitted from successful command output. When evidence is incomplete or unavailable, the useful reason remains in `warnings` and the next step remains in `recommendedActions`.
+All commands return structured output by default; `--json` is not required.
+Compatibility details, and the capability details still used by Remote and
+Bridge traces, are omitted from successful command output. When evidence is
+incomplete or unavailable, the useful reason remains in `warnings` and the next
+step remains in `recommendedActions`.
 
 On MF commands, `--mf <name>` selects the visible Module Federation name. On
 `divebell open`, the bare `--mf` flag enables the bundled MF diagnostics.
@@ -33,7 +37,17 @@ When the current page has a running Module Federation instance,
 An empty debug injection is not treated as an MF application. Extensions created
 with a custom `commandName` return that command name instead.
 
-Remote and Shared trace commands analyze facts exposed through the page's safe public Observability reader. Their separate command paths keep the target type explicit; there is no generic `mf trace` mode. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; promises, module values, instance ids, and executable function objects are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
+Remote and Shared trace commands analyze facts exposed through the page's safe
+public Observability reader. Their separate command paths keep the target type
+explicit; there is no generic `mf trace` mode. `mf status` additionally reads a
+bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; promises, module
+values, instance ids, and executable function objects are not returned.
+`complete` means the required evidence is complete. `partial` returns the
+evidence that exists and states that earlier history can be missing. Shared
+trace reports `not-found` when no captured operation matches. For commands that
+still use capability declarations, `unavailable` means the current reader
+cannot provide that history. `unknown` means the available evidence is
+insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install
 
@@ -287,7 +301,7 @@ divebell mf shared trace react --trace-id mf-trace-42
 
 Shared trace correlation uses `operationId` first and falls back to `traceId` or `requestId`; it never combines concurrent loads merely because they use the same package name. When a package matches several operations, the result contains instance, package, scope, operation, and a copyable command for each candidate.
 
-See [docs/shared.md](docs/shared.md) for capability, version, ambiguity, and partial-history behavior.
+See [docs/shared.md](docs/shared.md) for selection, ambiguity, and partial-history behavior.
 
 ## `mf bridge trace`
 
@@ -315,7 +329,15 @@ See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boun
 - `application`: the page exposes one compatible application Observability reader; it is preferred over the injected reader.
 - `unavailable`: `--mf` was enabled, but no compatible public reader is present. Inspect the injection details, then reopen the page.
 
-Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, `options.id`, or other private runtime objects. The only additional global read is the sanitized `__SHARE__` snapshot used by `mf status` and `mf shared status`.
+Every command checks the report schema. Remote and Bridge traces also use the
+reader's capability declarations. Shared trace relies on the bundled injected
+Runtime and collector, and treats an empty match as `not-found`. Partial
+history, late collection, incompatible readers, several application readers,
+expired instance references, child-frame-only results, and unavailable trace
+data are reported explicitly with a next action. The commands do not fall back
+to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, `options.id`, or
+other private runtime objects. The only additional global read is the sanitized
+`__SHARE__` snapshot used by `mf status` and `mf shared status`.
 
 ## Public API for other extensions
 

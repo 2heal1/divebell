@@ -7,6 +7,10 @@ import vm from "node:vm";
 import test from "node:test";
 
 import { createDivebellCli } from "@divebell/cli";
+import {
+  createSharedTraceResult,
+  parseBrowserReadResult
+} from "../dist/public.js";
 import { MF_BROWSER_READ_SCRIPT } from "../dist/reader.js";
 import { openMfObservability } from "../dist/open.js";
 import extension from "../dist/extension.js";
@@ -105,6 +109,11 @@ test("open hook returns one self-contained script with matched Runtime and Obser
   assert.match(source, /ChromeObservabilityPlugin/);
   assert.match(source, /getRuntimeState/);
   assert.match(source, /divebell\/extension-mf/);
+  assert.match(source, /guardSharedHooksByRuntimeVersion: false/);
+  assert.doesNotMatch(
+    source,
+    /hasStableSharedRuntime = instanceDrafts\.some\(\(draft\) => supportsRuntimeObservability/
+  );
   assert.doesNotMatch(source, /\bVmokProxySdk\b/);
   assert.doesNotMatch(source, /\brequire\s*\(/);
   assert.doesNotMatch(source, /^\s*import\s/m);
@@ -181,6 +190,68 @@ test("injection installs the debug constructor before business setup and observe
     new Set(result.state.instances.map((instance) => instance.instanceRef)).size,
     3
   );
+});
+
+test("injected preview Runtime captures Shared traces without version gating", async () => {
+  const { scripts } = await openMfObservability(mfOpenArgs());
+  const context = vm.createContext({
+    console: { log() {}, info() {}, warn() {}, error() {} },
+    URL,
+    setTimeout,
+    clearTimeout,
+    queueMicrotask,
+    postMessage() {}
+  });
+  context.globalThis = context;
+  context.window = context;
+  context.top = context;
+  vm.runInContext(scripts[0], context, { timeout: 5_000 });
+
+  const Runtime = context.__FEDERATION__.__DEBUG_CONSTRUCTOR__;
+  const instance = new Runtime({
+    name: "host",
+    remotes: [],
+    shared: {
+      react: {
+        version: "19.1.1",
+        scope: "default",
+        lib: () => ({ react: true }),
+        shareConfig: {
+          requiredVersion: "*",
+          singleton: true
+        }
+      }
+    }
+  });
+  await instance.loadShare("react");
+  instance.options.remotes.push({
+    name: "catalog",
+    entry: "https://cdn.test/catalog/mf-manifest.json"
+  });
+
+  const browserResult = vm.runInContext(
+    MF_BROWSER_READ_SCRIPT,
+    context,
+    { timeout: 5_000 }
+  );
+  assert.equal(browserResult.state.capabilities.sharedTrace.available, true);
+  const snapshot = parseBrowserReadResult(browserResult).snapshot;
+  const operationId = snapshot.reports
+    .find((report) =>
+      report.shared?.name === "react" &&
+      report.shared.operationId !== undefined
+    )
+    ?.shared?.operationId;
+  assert.equal(typeof operationId, "string");
+
+  const result = createSharedTraceResult(snapshot, {
+    package: "react",
+    operationId
+  });
+  assert.equal(result.selection.kind, "detail");
+  assert.equal(result.operations[0].selectedVersion, "19.1.1");
+  assert.equal(result.operations[0].provider, "host");
+  assert.equal("supported" in result, false);
 });
 
 test("repeated injection keeps the matching debug constructor and global plugin", async () => {

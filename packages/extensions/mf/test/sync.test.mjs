@@ -14,6 +14,7 @@ import vm from "node:vm";
 import test from "node:test";
 
 import {
+  configureInjectedSharedTracing,
   generateObservabilityArtifacts,
   loadPackageContext,
   synchronizeObservability
@@ -53,6 +54,17 @@ function createPackageFixture(root, overrides = {}) {
   execFileSync("git", ["commit", "-qm", "fixture"], { cwd: packageRoot });
   return packageRoot;
 }
+
+test("bundled collector does not gate Shared tracing by runtime version", () => {
+  const bundle = configureInjectedSharedTracing(`
+    const hasStableSharedRuntime = instanceDrafts.some((draft) => supportsRuntimeObservability(draft.origin));
+    const adapterOptions = { guardSharedHooksByRuntimeVersion: true };
+  `);
+  assert.match(bundle, /const hasStableSharedRuntime = true/);
+  assert.match(bundle, /guardSharedHooksByRuntimeVersion: false/);
+  assert.doesNotMatch(bundle, /supportsRuntimeObservability\(draft\.origin\)/);
+  assert.doesNotMatch(bundle, /guardSharedHooksByRuntimeVersion: true/);
+});
 
 test("sync and check share one deterministic public-entry build", async () => {
   const root = mkdtempSync(join(tmpdir(), "divebell-mf-sync-"));

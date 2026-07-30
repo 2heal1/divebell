@@ -11,14 +11,10 @@ export function formatSharedStatus(result: SharedStatusResult): string {
 export function formatSharedTrace(result: PresentedSharedTraceResult): string {
   const lines = [
     "Module Federation shared trace",
-    `Capability: ${formatCapability(result)}`,
-    `Runtime: ${result.capability.runtimeVersions.join(", ") || "unknown"}`,
     `Selection: ${result.selection.kind} (${result.selection.matchCount})`,
     ""
   ];
-  if (!result.supported) {
-    lines.push("Shared trace is not supported by the current reader.", "");
-  } else if (result.operations.length === 0) {
+  if (result.operations.length === 0) {
     lines.push("No matching shared operations.", "");
   } else if (result.selection.kind !== "ambiguous") {
     for (const operation of result.operations) {
@@ -82,13 +78,6 @@ function appendOperation(lines: string[], operation: SharedTraceOperation): void
     `  final result: ${operation.finalResult.status}${operation.finalResult.outcome ? ` / ${operation.finalResult.outcome}` : ""}${operation.finalResult.reason ? ` / ${operation.finalResult.reason}` : ""}`,
     ""
   );
-}
-
-function formatCapability(result: {
-  supported: boolean;
-  capability: { completeness: string; reason?: string };
-}): string {
-  return `${result.supported ? "available" : "unavailable"} / ${result.capability.completeness}${result.capability.reason ? ` (${result.capability.reason})` : ""}`;
 }
 
 function appendWarnings(lines: string[], warnings: string[], actions: string[]): void {

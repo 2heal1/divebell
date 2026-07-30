@@ -5966,7 +5966,7 @@ ${event.message || ""}`;
       const hasLateBinding = lateBoundInstanceRefs.size > 0;
       const historyCleared = getHistoryCleared();
       const hasIncompleteHistory = hasLateBinding || historyCleared;
-      const hasStableSharedRuntime = instanceDrafts.some((draft) => supportsRuntimeObservability(draft.origin));
+      const hasStableSharedRuntime = true;
       const hasSharedState = instances.some((instance) => instance.shareScopes.length > 0);
       const hasRemoteSignals = events.some((event) => Boolean(event.remote));
       const hasSharedSignals = events.some((event) => Boolean(event.shared));
@@ -7471,7 +7471,7 @@ ${event.message || ""}`;
       pluginName: "observability-plugin:chrome-extension",
       fixedBrowserScope: "chrome_extension",
       attachInstanceApi: false,
-      guardSharedHooksByRuntimeVersion: true,
+      guardSharedHooksByRuntimeVersion: false,
       guardRuntimeHooksByRuntimeVersion: true,
       disablePreloadHooks: true,
       returnHookArgs: true,

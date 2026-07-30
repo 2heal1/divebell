@@ -1,4 +1,0 @@
-interface:
-  display_name: "分析页面内存增长"
-  short_description: "重复真实页面操作，判断内存、DOM 节点和监听器是否持续增长"
-  default_prompt: "使用 $analyze-memory-growth 分析当前项目的真实页面流程是否存在持续内存增长，并在修复后复测。"

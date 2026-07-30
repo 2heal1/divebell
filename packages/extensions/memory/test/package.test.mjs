@@ -24,12 +24,8 @@ test("packs and exposes the memory analysis skill", () => {
       encoding: "utf8"
     }).split(/\r?\n/u);
 
-    for (const path of [
-      "package/skills/analyze-memory-growth/SKILL.md",
-      "package/skills/analyze-memory-growth/agents/openai.yaml"
-    ]) {
-      assert.equal(entries.includes(path), true, path);
-    }
+    const skillPath = "package/skills/analyze-memory-growth/SKILL.md";
+    assert.equal(entries.includes(skillPath), true, skillPath);
 
     const extensionsDirectory = join(outputDirectory, "extensions");
     const cliPath = join(repositoryDirectory, "divebell");

@@ -19,8 +19,7 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.js.map",
-    "skills/**/*.md",
-    "skills/**/*.yaml"
+    "skills/**/*.md"
   ],
   "publishConfig": {
     "access": "public"

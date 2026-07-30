@@ -135,4 +135,6 @@ Facts already known by a framework or runtime should come from the corresponding
 
 If a framework lacks a required lifecycle, add a formal hook instead of simulating framework state through DOM, Console, or Network inspection.
 
-See the [Runtime SDK Reference](../skills/divebell/references/runtime-sdk.md) for complete fields, behavior, and examples.
+See the [Runtime SDK API Reference](../skills/divebell-runtime/references/api.md)
+and [integration guide](../skills/divebell-runtime/references/integration.md) for
+complete fields, behavior, and examples.

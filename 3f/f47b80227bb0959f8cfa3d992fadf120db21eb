@@ -1,0 +1,27 @@
+README.md
+  s_4e0147d157f462::t_2cfcf9fdc4d9d6 105-109,117,125-134
+README.zh-CN.md
+  s_4e0147d157f462::t_18cf31f3dec0f0 102-106,114,122-131
+docs/module-federation-observability.md
+  s_4e0147d157f462::t_88161370cf3e5d 5-6,9,25,27
+docs/module-federation-observability.zh-CN.md
+  s_4e0147d157f462::t_71df6f1dac8dc2 5-6,9,25,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3ff47b80227bb0959f8cfa3d992fadf120db21eb",
+  "prompts": {},
+  "sessions": {
+    "s_4e0147d157f462": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb1dd-bb2d-7e12-9077-fe86766dda46",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

@@ -37,6 +37,7 @@ export function registerMfExtensionE2e({
     try {
       const openResult = await environment.runCli(
         divebellTestCommands.open(fixture.hostUrl, {
+          mf: true,
           noBridge: true,
           session: "mf-e2e"
         })

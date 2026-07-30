@@ -46,6 +46,7 @@ export interface WaitForTestCommandOptions extends RuntimeTestCommandOptions {
 
 export interface OpenTestCommandOptions {
   bridge?: string;
+  mf?: boolean;
   noBridge?: boolean;
   session?: string;
   port?: number;
@@ -89,6 +90,7 @@ export const divebellTestCommands = {
       "open",
       url,
       ...option("bridge", options.bridge),
+      ...flag("mf", options.mf),
       ...flag("no-bridge", options.noBridge),
       ...option("session", options.session),
       ...numberOption("port", options.port)

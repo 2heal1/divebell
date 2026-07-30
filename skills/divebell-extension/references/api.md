@@ -7,6 +7,14 @@ Import `DivebellExtensionDefinition`, `DivebellExtensionHooks`,
 Derive nested structures from those public parent types unless the CLI exports
 the nested helper directly.
 
+## Contents
+
+- [Extension definition](#extension-definition)
+- [Command definition](#command-definition)
+- [Command options](#command-options)
+- [Hooks](#hooks)
+- [Divebell APIs](#divebell-apis)
+
 ## Extension definition
 
 ```ts
@@ -301,10 +309,78 @@ Use `options.divebell` as the main API.
 
 ### Browser capabilities
 
+These capabilities do not require Runtime SDK.
+
+#### Run any browser page command
+
+```ts
+import type { DivebellBrowserCommandName } from "@divebell/cli";
+
+interface DivebellBrowserCommandRequest {
+  args?: readonly string[];
+  options?: Readonly<Record<
+    string,
+    string | number | boolean |
+    readonly (string | number | boolean)[]
+  >>;
+  input?: string;
+}
+
+interface DivebellBrowserApi {
+  run(
+    command: DivebellBrowserCommandName,
+    request?: DivebellBrowserCommandRequest
+  ): Promise<string>;
+}
+```
+
+`browser.run` accepts every built-in browser page command shown by
+`divebell --help`. Put positional arguments in `request.args`. Put long options
+in `request.options` without the leading `--`; an array repeats an option and
+`true` supplies a flag. Use `request.input` for commands such as
+`eval --stdin`.
+
+```ts
+await options.divebell.browser.run("hover", {
+  args: ["e8"]
+});
+
+await options.divebell.browser.run("tab", {
+  args: ["new", "https://docs.example.com/"],
+  options: {
+    label: "docs",
+    json: true
+  }
+});
+
+await options.divebell.browser.run("goto", {
+  args: ["https://app.example.com/orders"]
+});
+```
+
+`browser.run` uses Divebell command names and the current opened-page context.
+It applies Divebell aliases, normalizes element references such as `e8`,
+forwards supported options, normalizes browser failures, and preserves the
+current Divebell session during `goto` or `navigate`.
+
+It cannot run `open` or `stop`. An Extension may navigate the current page or
+work with tabs when its declared workflow requires that behavior, but the outer
+workflow owns browser creation, replacement, and shutdown. Use the structured
+`browser.memory` API for memory capture.
+
+The return value is trimmed browser output. Use a typed helper when structured
+data is needed.
+
+#### Typed browser helpers
+
 ```text
+browser.profileDirectory
 browser.pageSnapshot
 browser.click
 browser.fill
+browser.focus
+browser.press
+browser.select
 browser.eval
 browser.evalFile
 browser.waitEval
@@ -316,7 +392,15 @@ browser.memory
 browser.coverage
 ```
 
-These capabilities do not require Runtime SDK.
+`browser.select` accepts either one value or an array of values. The typed
+helpers preserve their existing structured return types and focused options.
+
+#### Low-level escape hatch
+
+`browser.raw` accepts agent-browser arguments directly. It does not apply
+Divebell command translation, page-context checks, session-preserving
+navigation, or normalized errors. Use it only when implementing a capability
+that cannot be expressed through `browser.run` or the typed helpers.
 
 ### Existing Runtime capabilities
 

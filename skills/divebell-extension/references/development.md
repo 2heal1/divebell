@@ -9,6 +9,19 @@ focused diagnostics, and team verification. Use Runtime SDK only when the
 application itself must expose internal state, events, or allowed Actions. Use
 the CLI directly for one-off page operations.
 
+## Contents
+
+- [Extension structure](#extension-structure)
+- [Entry design](#entry-design)
+- [Commands](#commands)
+- [Extension dependencies](#extension-dependencies)
+- [Hooks](#hooks)
+- [Command-provided Skills](#command-provided-skills)
+- [Use the Extension API](#use-the-extension-api)
+- [Local development](#local-development)
+- [Package and install locally](#package-and-install-locally)
+- [Verification checklist](#verification-checklist)
+
 ## Extension structure
 
 A typical TypeScript Extension package contains:
@@ -277,6 +290,34 @@ Use `options.divebell.browser` to operate the page and collect screenshot,
 Network, Console, memory, or code-execution evidence. Use `targets`, `snapshot`,
 `events`, `actions`, `runAction`, and `waitFor` only when the page already
 exposes a connected Runtime.
+
+Prefer a typed browser helper when one matches the operation. For any other
+built-in browser page command, use `options.divebell.browser.run` with the same
+command name shown by `divebell --help`:
+
+```ts
+await options.divebell.browser.run("hover", {
+  args: ["e8"]
+});
+
+await options.divebell.browser.run("wait", {
+  options: {
+    url: "**/orders",
+    load: "networkidle"
+  }
+});
+```
+
+Pass positional arguments through `args`, long options without `--` through
+`options`, and standard input through `input`. Divebell reuses the current
+opened page, translates its command names and element references, and preserves
+the Divebell session during navigation.
+
+An Extension Command may navigate the current page or work with tabs when that
+behavior is part of the documented Command workflow. It must not run `open` or
+`stop`; the outer workflow owns browser creation and shutdown. Prefer
+`browser.run` over `browser.raw`, because `raw` bypasses Divebell page-context
+checks, command translation, session handling, and normalized errors.
 
 Browser capabilities do not require Runtime SDK. After an Action, verify the
 page result or wait for explicit Runtime state; `options.page` existing or an

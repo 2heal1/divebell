@@ -11,6 +11,7 @@ import {
 } from "../runtime/client.js";
 import type { ParsedCliArgs } from "../../utils/args.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
+import type { BrowserCommandName } from "../../types/commands.js";
 
 export type DivebellQueryValue =
   | string
@@ -231,7 +232,28 @@ export interface DivebellBrowserCoverageApi {
   cancel<T = unknown>(): Promise<T>;
 }
 
+export type DivebellBrowserCommandName = Exclude<
+  BrowserCommandName,
+  "open" | "memory"
+>;
+
+export type DivebellBrowserCommandOptionScalar = string | number | boolean;
+
+export type DivebellBrowserCommandOptionValue =
+  | DivebellBrowserCommandOptionScalar
+  | readonly DivebellBrowserCommandOptionScalar[];
+
+export interface DivebellBrowserCommandRequest {
+  args?: readonly string[];
+  options?: Readonly<Record<string, DivebellBrowserCommandOptionValue>>;
+  input?: string;
+}
+
 export interface DivebellBrowserApi {
+  run(
+    command: DivebellBrowserCommandName,
+    request?: DivebellBrowserCommandRequest
+  ): Promise<string>;
   raw(args: string[], options?: { ui?: boolean }): Promise<{
     exitCode: number;
     stdout: string;
@@ -243,7 +265,7 @@ export interface DivebellBrowserApi {
   fill(target: string, value: string): Promise<string>;
   focus(target: string): Promise<string>;
   press(key: string): Promise<string>;
-  select(target: string, value: string): Promise<string>;
+  select(target: string, value: string | readonly string[]): Promise<string>;
   eval<T = unknown>(script: string): Promise<T>;
   evalFile<T = unknown>(path: string): Promise<T>;
   waitEval(script: string, options?: { timeout?: number }): Promise<DivebellBrowserWaitEvalResult>;

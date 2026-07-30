@@ -309,6 +309,8 @@ Command 通过 `options.divebell` 访问 Divebell 能力：
 
 页面没有接入 Runtime SDK 时，浏览器相关能力仍然可用。只有 Command 确实需要应用内部事实时，才要求 connected runtime。
 
+当 Command 需要调用一个没有专用强类型方法的浏览器页面命令时，使用 `divebell.browser.run(command, request)`。它接受 `divebell --help` 展示的同名页面命令，复用当前已经打开的页面，并在页面跳转时保留 Divebell 会话。`open` 和 `stop` 仍由外层流程负责。
+
 执行动作后继续读取页面结果或使用 `waitFor` 等待明确状态。不要仅凭 `page` 存在或动作已经运行就宣布验证成功。
 
 完整方法、字段和边界见 [`DivebellExtensionApi`](extension-api.zh-CN.md#divebellextensionapi)。

@@ -1,0 +1,63 @@
+.changeset/calm-extensions-loading.md
+  s_13d76518edc586::t_c69c6f74603ce3 1-10
+docs/cli-extensions.md
+  s_85259b28c09d28::t_95cda68eb9fe42 186
+docs/cli-extensions.zh-CN.md
+  s_85259b28c09d28::t_0df9438afc566d 178
+docs/extension-api.md
+  s_13d76518edc586::t_d19ec856ada61d 73,85,176-191
+docs/extension-api.zh-CN.md
+  s_13d76518edc586::t_80e84830c1d88e 73,85,176-191
+packages/cli/src/commands/extension.ts
+  s_85259b28c09d28::t_ecbcadd329d0a5 22,45,54,105-106,184-185
+packages/cli/src/features/extension/loading.ts
+  s_85259b28c09d28::t_be5c631dfdb8b8 1-90
+packages/cli/src/index.ts
+  s_85259b28c09d28::t_1b3db2c46bf6be 14
+packages/cli/src/runner.ts
+  s_85259b28c09d28::t_d8cbf862c6e776 193
+packages/cli/src/types/cli.ts
+  s_85259b28c09d28::t_dafd602f4dd0dc 9,26,40
+packages/cli/src/types/commands.ts
+  s_85259b28c09d28::t_d06b17247db16e 35-38,46,119-122
+packages/cli/test/extensions.test.ts
+  s_13d76518edc586::t_2fe9d338ace813 645-648,652,745
+packages/cli/test/loading.test.ts
+  s_13d76518edc586::t_05a0cce0e0c778 1-134
+packages/extensions/code-usage/src/extension.ts
+  s_85259b28c09d28::t_61491542eef061 25-27
+packages/extensions/imitate/src/extension.ts
+  s_13d76518edc586::t_a5be897512265c 43-45
+packages/extensions/memory/src/extension.ts
+  s_13d76518edc586::t_5822bc9ac5ea15 20-22
+packages/extensions/mf/src/extension.ts
+  s_13d76518edc586::t_15751d5fdf6556 29,31
+packages/extensions/troubleshooting/src/extension.ts
+  s_13d76518edc586::t_b2b07ffe107856 13-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "554504c083a29cb3afb6fc253e1473f7b80615b6",
+  "prompts": {},
+  "sessions": {
+    "s_13d76518edc586": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb216-3503-7d62-a9f6-a7fd760a08e0",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_85259b28c09d28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb20f-d3e8-7391-badb-de3c71722b32",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

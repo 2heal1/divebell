@@ -73,7 +73,7 @@ Divebell 将 Web 页面作为 Agent 的工作入口，连接页面上下文、�
 | --- | --- | --- | --- |
 | Web Context & Diagnostics | 将真实 Web 页面作为 Agent 工作入口，提供页面上下文、浏览器诊断和同场景验证 | Divebell CLI | 否 |
 | Extensions | 连接 Web 页面和团队已有的开发调试能力 | CLI 命令、Extension API | 否 |
-| Runtime SDK | 暴露浏览器信息无法稳定表达的应用内部事实 | `@divebell/core`、框架插件 | 是 |
+| Runtime SDK | 提供页面无法观测的应用内部事实，避免污染运行环境 | `@divebell/core`、框架插件 | 是 |
 
 ### Web Context & Diagnostics
 

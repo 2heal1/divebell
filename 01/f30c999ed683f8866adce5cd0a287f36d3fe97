@@ -1,0 +1,23 @@
+README.md
+  s_2947f06f1cb5d1::t_be017f215a5c61 41
+README.zh-CN.md
+  s_2947f06f1cb5d1::t_697046d3ba8b8d 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "01f30c999ed683f8866adce5cd0a287f36d3fe97",
+  "prompts": {},
+  "sessions": {
+    "s_2947f06f1cb5d1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb1c3-e3b5-7383-bbe4-1a703d5069b0",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

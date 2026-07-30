@@ -53,8 +53,7 @@
     "@divebell/extension-code-usage": "workspace:^",
     "@divebell/extension-imitate": "workspace:^",
     "@divebell/extension-memory": "workspace:^",
-    "@divebell/extension-mf": "workspace:^",
-    "@divebell/extension-troubleshooting": "workspace:^"
+    "@divebell/extension-mf": "workspace:^"
   },
   "devDependencies": {
     "typescript": "5.9.3"

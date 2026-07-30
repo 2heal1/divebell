@@ -8,7 +8,6 @@
     { "path": "./packages/cli" },
     { "path": "./packages/modern-plugin" },
     { "path": "./packages/extensions/code-usage" },
-    { "path": "./packages/extensions/troubleshooting" },
     { "path": "./packages/extensions/imitate" },
     { "path": "./packages/extensions/memory" },
     { "path": "./packages/extensions/mf" }

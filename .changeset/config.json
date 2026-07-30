@@ -11,7 +11,6 @@
       "@divebell/modern-plugin",
       "@divebell/cli",
       "@divebell/extension-code-usage",
-      "@divebell/extension-troubleshooting",
       "@divebell/extension-imitate",
       "@divebell/extension-memory",
       "@divebell/extension-mf",

@@ -9,7 +9,6 @@ One release uses the same version for:
 - Runtime SDK, Bridge, Chunk Map, the WIP Modern.js plugin package, and the Rspack plugin;
 - Divebell CLI;
 - `@divebell/extension-code-usage`;
-- `@divebell/extension-troubleshooting`;
 - `@divebell/extension-imitate`;
 - `@divebell/extension-memory`;
 - `@divebell/extension-mf`;
@@ -53,7 +52,6 @@ npm trust github @divebell/rspack-plugin --repo 2heal1/divebell --file release.y
 npm trust github @divebell/modern-plugin --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/cli --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-code-usage --repo 2heal1/divebell --file release.yml --allow-publish --yes
-npm trust github @divebell/extension-troubleshooting --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-imitate --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-memory --repo 2heal1/divebell --file release.yml --allow-publish --yes
 npm trust github @divebell/extension-mf --repo 2heal1/divebell --file release.yml --allow-publish --yes

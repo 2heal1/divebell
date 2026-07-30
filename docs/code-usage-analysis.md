@@ -2,7 +2,7 @@
 
 This optional analysis maps code recorded in the browser back to build chunks, application files, workspace packages, and third-party dependencies. It helps identify code that may be loaded too early or split more effectively.
 
-After installing `@divebell/extension-code-usage`, ask your Agent: `Run divebell code-usage --skill, load the returned $analyze-code-usage Skill, and use it in the current project to generate and open a code-usage size report for the current page.`
+Ask your Agent: `Run divebell extensions add @divebell/extension-code-usage to install the Extension, then run divebell code-usage --skill and follow the returned Skill to analyze the current project and open a code-usage size report for the current page.`
 
 ## What the report shows
 
@@ -18,7 +18,7 @@ Figure 2. Blue marks executed ranges; unhighlighted code did not execute.
 
 ![Figure 2: Code executed in the selected phase](https://github.com/user-attachments/assets/d9d9feea-a00c-48fe-a73a-304e41db5ebf)
 
-## Manual workflow
+## How to use
 
 Basic memory checks do not need this setup. See the [Memory Analysis Guide](memory-analysis.md) when the question is whether a page journey causes sustained memory growth.
 
@@ -32,7 +32,7 @@ divebell extensions add @divebell/extension-code-usage
 Do not add the CLI to the application. Only the matching build integration
 belongs in the project.
 
-## How it works
+### How it works
 
 ```text
 Build plugin creates a Chunk Map and source maps
@@ -46,9 +46,9 @@ Divebell creates JSON and an interactive report
 
 Build metadata, JavaScript files, source maps, and the deployed page must come from the same build. Divebell stops attribution when it cannot identify one exact build file instead of guessing from a filename.
 
-## 1. Add a build plugin
+### 1. Add a build plugin
 
-### Modern.js
+#### Modern.js
 
 The runtime side of `@divebell/modern-plugin` is WIP, but the build-time
 `/chunk-map` entry below does not depend on the unreleased Modern.js lifecycle
@@ -65,7 +65,7 @@ export default defineConfig({
 });
 ```
 
-### Rspack
+#### Rspack
 
 Install `@divebell/rspack-plugin`, then add:
 
@@ -87,7 +87,7 @@ divebellChunkMapPlugin({ filename: 'meta/chunks.json' })
 
 The Rspack plugin supports the same option.
 
-## 2. Record representative page journeys
+### 2. Record representative page journeys
 
 Open the page and start precise code coverage:
 
@@ -113,7 +113,7 @@ divebell coverage stop /tmp/orders.coverage.json \
 
 Each `take` resets execution counts, so every phase describes only the work performed since the previous capture.
 
-## 3. Analyze the recording
+### 3. Analyze the recording
 
 ```bash
 divebell code-usage analyze \
@@ -152,7 +152,7 @@ used by the recorded page.
 
 Repeat `--coverage` in the order the phases should appear in the report.
 
-## 4. Open the report
+### 4. Open the report
 
 ```bash
 divebell code-usage report /tmp/code-usage-report.json

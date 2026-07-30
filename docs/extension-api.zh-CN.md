@@ -334,10 +334,35 @@ interface DivebellStackDetection {
 | --- | --- |
 | 读取应用内部信息 | `targets`、`snapshot`、`events`、`actions` |
 | 执行和等待页面声明能力 | `runAction`、`waitFor` |
-| 操作和读取当前页面 | `browser.pageSnapshot`、`browser.click`、`browser.fill`、`browser.eval`、`browser.evalFile`、`browser.waitEval`、`browser.getWindow` |
+| 调用任意 Divebell 浏览器页面命令 | `browser.run` |
+| 常用的强类型页面操作 | `browser.pageSnapshot`、`browser.click`、`browser.fill`、`browser.eval`、`browser.evalFile`、`browser.waitEval`、`browser.getWindow` |
 | 收集浏览器证据 | `browser.screenshot`、`browser.network`、`browser.console` |
 | 专项底层采集 | `browser.memory`、`browser.coverage` |
 
 页面没有接入 Runtime SDK 时，`browser` 下的页面操作和诊断仍然可用。只有 Command 确实需要应用内部状态时，才要求 connected runtime。
+
+`browser.run(command, request)` 可以调用 `divebell --help` 中列出的全部浏览器页面命令。位置参数放在 `request.args`；长选项放在 `request.options`，名称不带开头的 `--`。单个值表示一个选项值，数组表示重复传入该选项，`true` 表示只传选项名。`eval --stdin` 等命令的标准输入放在 `request.input`。
+
+```ts
+await divebell.browser.run("hover", {
+  args: ["e8"]
+});
+
+await divebell.browser.run("tab", {
+  args: ["new", "https://docs.example.com/"],
+  options: {
+    label: "docs",
+    json: true
+  }
+});
+
+await divebell.browser.run("goto", {
+  args: ["https://app.example.com/orders"]
+});
+```
+
+这个入口使用 Divebell 的命令名和当前已经打开的页面。命令别名、元素引用、选项转换、错误处理以及跳转时的会话参数都与 CLI 保持一致。它不能调用 `open` 或 `stop`，浏览器的创建和关闭仍由外层流程负责。内存采集继续使用强类型入口 `browser.memory`。
+
+`browser.raw` 只用于直接调用 agent-browser 的底层能力。它不会检查 Divebell 页面上下文，也不会进行命令转换和统一错误处理。Extension 的正式功能应优先使用 `browser.run` 或已有的强类型方法。
 
 Coding Agent 仍负责读取和修改项目代码。Extension API 没有统一的代码工作区或开发服务器管理接口；不要把扩展自己的文件访问包装成 Divebell 已经提供的通用代码能力。

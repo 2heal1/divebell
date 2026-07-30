@@ -6,8 +6,10 @@ import {
   createWaitEvalScript,
   parseBrowserJsonOutput,
   resolveBrowserProfileDirectory,
+  type BrowserRunOptions,
   type BrowserRunner
 } from "../browser/runner.js";
+import { createBrowserCommandArgs } from "../browser/command-args.js";
 import {
   canAutoStartBridge,
   createFileBridgeStateStore,
@@ -27,10 +29,13 @@ import {
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../../utils/args.js";
 import { createError } from "../../utils/output.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
+import { isBrowserPageCommand } from "../../commands/names.js";
 
 import type {
   CreateDivebellExtensionApiOptions,
   DivebellBrowserApi,
+  DivebellBrowserCommandName,
+  DivebellBrowserCommandRequest,
   DivebellBrowserConsoleEntry,
   DivebellBrowserConsoleLevel,
   DivebellBrowserConsoleOptions,
@@ -139,11 +144,17 @@ function createDivebellBrowserApi(options: {
   allowWithoutOpenContext: boolean;
   openContext?: CliOperationLogEntry;
 }): DivebellBrowserApi {
-  const runText = async (args: string[]): Promise<string> => {
+  const requireOpenContext = (): void => {
     if (options.openContext === undefined && !options.allowWithoutOpenContext) {
       throw createOpenContextRequiredError();
     }
-    const result = await options.browserRunner.run(args);
+  };
+  const runText = async (
+    args: string[],
+    runOptions: BrowserRunOptions = {}
+  ): Promise<string> => {
+    requireOpenContext();
+    const result = await options.browserRunner.run(args, runOptions);
     if (result.exitCode !== 0) {
       throw createError({
         code: "PAGE_OPERATION_FAILED",
@@ -162,8 +173,52 @@ function createDivebellBrowserApi(options: {
     const output = await runText(args);
     return parseBrowserJsonOutput(output) as T;
   };
+  const runCommand = async (
+    command: DivebellBrowserCommandName,
+    request: DivebellBrowserCommandRequest = {}
+  ): Promise<string> => {
+    if (!isBrowserPageCommand(command)) {
+      throw createUnsupportedBrowserCommandError(command);
+    }
+
+    const commandArgs = createBrowserExtensionCommandArgs(command, request);
+    if (command === "wait-eval") {
+      requireOpenContext();
+      const script = requireBrowserExtensionCommandArgument(commandArgs, 1, "eval script");
+      return JSON.stringify(
+        await waitForBrowserEval(
+          options.browserRunner,
+          script,
+          getNumberOption(commandArgs, "timeout")
+        )
+      );
+    }
+    if (command === "get-window") {
+      const path = requireBrowserExtensionCommandArgument(commandArgs, 1, "window path");
+      return await runText(["eval", createGetWindowScript(path)]);
+    }
+    if (command === "eval") {
+      const file = getOptionValue(commandArgs, "file");
+      if (file !== undefined) {
+        return await runText(["eval", await readFile(file, "utf8")]);
+      }
+      if (hasBrowserExtensionOption(commandArgs, "stdin")) {
+        return await runText(["eval", "--stdin"], { input: request.input ?? "" });
+      }
+    }
+
+    return await runText(
+      createBrowserCommandArgs(commandArgs, {
+        ...(options.openContext?.sessionId === null || options.openContext?.sessionId === undefined
+          ? {}
+          : { sessionId: options.openContext.sessionId })
+      }),
+      request.input === undefined ? {} : { input: request.input }
+    );
+  };
 
   return {
+    run: runCommand,
     raw: async (args, runOptions = {}) => await options.browserRunner.run(args, runOptions),
     profileDirectory: () => resolveBrowserProfileDirectory(),
     pageSnapshot: async <T = unknown>() => await runText(["snapshot"]) as T,
@@ -171,7 +226,11 @@ function createDivebellBrowserApi(options: {
     fill: async (target, value) => await runText(["fill", normalizeAgentBrowserTarget(target), value]),
     focus: async (target) => await runText(["focus", normalizeAgentBrowserTarget(target)]),
     press: async (key) => await runText(["press", key]),
-    select: async (target, value) => await runText(["select", normalizeAgentBrowserTarget(target), value]),
+    select: async (target, value) => await runText([
+      "select",
+      normalizeAgentBrowserTarget(target),
+      ...(typeof value === "string" ? [value] : value)
+    ]),
     eval: async (script) => await runJson(["eval", script]),
     evalFile: async (path) => await runJson(["eval", await readFile(path, "utf8")]),
     waitEval: async (script, waitOptions = {}) =>
@@ -259,6 +318,50 @@ function createDivebellBrowserApi(options: {
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
     }
   };
+}
+
+function createBrowserExtensionCommandArgs(
+  command: DivebellBrowserCommandName,
+  request: DivebellBrowserCommandRequest
+): ParsedCliArgs {
+  const parsedOptions = new Map<string, string[]>();
+  for (const [name, value] of Object.entries(request.options ?? {})) {
+    const values = Array.isArray(value) ? value : [value];
+    parsedOptions.set(name, values.map((item) => String(item)));
+  }
+  return {
+    command: [command, ...(request.args ?? [])],
+    options: parsedOptions
+  };
+}
+
+function hasBrowserExtensionOption(args: ParsedCliArgs, name: string): boolean {
+  return args.options.has(name);
+}
+
+function requireBrowserExtensionCommandArgument(
+  args: ParsedCliArgs,
+  index: number,
+  name: string
+): string {
+  const value = args.command[index];
+  if (value !== undefined && value.length > 0) return value;
+  throw createError({
+    code: "INVALID_BROWSER_COMMAND",
+    kind: "validation",
+    message: `Browser command "${args.command[0] ?? "unknown"}" requires ${name}.`,
+    retryable: false
+  });
+}
+
+function createUnsupportedBrowserCommandError(command: string): Error {
+  return createError({
+    code: "INVALID_BROWSER_COMMAND",
+    kind: "validation",
+    message: `Browser command "${command}" is not available through the Extension page API.`,
+    retryable: false,
+    hint: "Use a browser page command listed by `divebell --help`; open and stop remain owned by the outer workflow."
+  });
 }
 
 function createCoverageCheckpointArgs(

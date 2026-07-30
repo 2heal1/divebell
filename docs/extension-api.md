@@ -334,10 +334,46 @@ Commands and page hooks use `options.divebell` as the primary entry point to Div
 | --- | --- |
 | Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
 | Execute and await page-declared capabilities | `runAction`, `waitFor` |
-| Operate and inspect the current page | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.getWindow` |
+| Run any Divebell browser page command | `browser.run` |
+| Common typed page operations | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.getWindow` |
 | Collect browser evidence | `browser.screenshot`, `browser.network`, `browser.console` |
 | Run focused low-level capture | `browser.memory`, `browser.coverage` |
 
 Page operations and diagnostics under `browser` remain available when the page does not use Runtime SDK. Require a connected Runtime only when a Command truly needs application-internal state.
+
+`browser.run(command, request)` exposes every browser page command listed by
+`divebell --help`. Positional arguments go in `request.args`; long options go
+in `request.options` without the leading `--`. A scalar supplies one option
+value, an array repeats the option, and `true` supplies a flag. Use
+`request.input` with commands such as `eval --stdin`.
+
+```ts
+await divebell.browser.run("hover", {
+  args: ["e8"]
+});
+
+await divebell.browser.run("tab", {
+  args: ["new", "https://docs.example.com/"],
+  options: {
+    label: "docs",
+    json: true
+  }
+});
+
+await divebell.browser.run("goto", {
+  args: ["https://app.example.com/orders"]
+});
+```
+
+This entry point uses Divebell command names and the current opened-page
+context. It applies the same aliases, element-reference normalization, option
+translation, error handling, and session-preserving navigation as the CLI.
+It cannot run `open` or `stop`; those remain owned by the outer workflow.
+`browser.memory` remains the typed entry point for memory capture.
+
+`browser.raw` is only a low-level agent-browser escape hatch. It accepts
+agent-browser arguments directly and does not add Divebell page-context checks,
+command translation, or normalized errors. Prefer `browser.run` or the typed
+helpers for Extension features.
 
 The Coding Agent remains responsible for reading and changing project source code. The Extension API does not provide a standardized code workspace or development-server interface. Do not present an Extension's own file access as a general Divebell code capability.

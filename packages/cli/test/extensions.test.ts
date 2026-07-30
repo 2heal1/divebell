@@ -9,15 +9,18 @@ import {
   createDivebellCliWithExternalExtensions,
   createDivebellCli,
   runCli,
+  type DivebellBrowserCommandName,
+  type DivebellBrowserCommandRequest,
   type DivebellExtensionCommand,
   type DivebellExtensionDefinition
 } from "../dist/index.js";
+import { BROWSER_COMMAND_NAMES } from "../dist/commands/names.js";
 import {
   runDetectStackHooks,
   runOpenHooks
 } from "../dist/features/extension/hooks.js";
 
-import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
+import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
 function createCommandExtension(
   command: DivebellExtensionCommand,
@@ -858,6 +861,137 @@ test("registers a command and merges its help entries", async () => {
   } finally {
     context.cleanup();
   }
+});
+
+test("exposes every browser page command through the Extension API", async () => {
+  const pageCommands = BROWSER_COMMAND_NAMES.filter(
+    (command): command is DivebellBrowserCommandName => command !== "open"
+  );
+  const requests: Partial<Record<DivebellBrowserCommandName, DivebellBrowserCommandRequest>> = {
+    goto: { args: ["http://app.test/orders?region=cn#details"] },
+    navigate: { args: ["http://app.test/customers"] },
+    click: { args: ["e1"] },
+    fill: { args: ["e2", "hello"] },
+    focus: { args: ["e3"] },
+    press: { args: ["Control+a"] },
+    select: { args: ["e4", "cn", "sg"] },
+    eval: { args: ["document.title"] },
+    "wait-eval": { args: ["document.readyState === 'complete'"], options: { timeout: 100 } },
+    "get-window": { args: ["location.href"] },
+    screenshot: { args: ["page.png"], options: { "full-page": true } },
+    coverage: { args: ["status"] },
+    hover: { args: ["e8"] },
+    "check-element": { args: ["e9"] },
+    drag: { args: ["e10", "e11"] },
+    tab: {
+      args: ["new", "http://docs.test/"],
+      options: { label: "docs", json: true }
+    },
+    video: { args: ["start", "flow.webm"] }
+  };
+  const extension = createCommandExtension({
+    name: "browser-api-demo",
+    run: async ({ divebell }) => {
+      const outputs: string[] = [];
+      for (const command of pageCommands) {
+        outputs.push(await divebell.browser.run(command, requests[command]));
+      }
+      await divebell.browser.select("e20", ["cn", "sg"]);
+      return {
+        commands: pageCommands,
+        outputCount: outputs.length
+      };
+    }
+  });
+  const cli = createDivebellCli({ extensions: [extension] });
+  const context = createOpenContextFixture({ sessionId: "session-extension" });
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await cli.run(["browser-api-demo"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        return {
+          exitCode: 0,
+          stdout: args[0] === "eval" && args[1]?.includes("document.readyState")
+            ? "true\n"
+            : "ok\n",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("browser-api-demo", {
+      commands: pageCommands,
+      outputCount: pageCommands.length
+    }));
+    assert.equal(calls.length, pageCommands.length + 1);
+    assert.deepEqual(calls[pageCommands.indexOf("goto")], [
+      "goto",
+      "http://app.test/orders?region=cn&divebellSessionId=session-extension#details"
+    ]);
+    assert.deepEqual(calls[pageCommands.indexOf("navigate")], [
+      "goto",
+      "http://app.test/customers?divebellSessionId=session-extension"
+    ]);
+    assert.deepEqual(calls[pageCommands.indexOf("page-snapshot")], ["snapshot"]);
+    assert.deepEqual(calls[pageCommands.indexOf("hover")], ["hover", "@e8"]);
+    assert.deepEqual(calls[pageCommands.indexOf("check-element")], ["check", "@e9"]);
+    assert.deepEqual(calls[pageCommands.indexOf("drag")], ["drag", "@e10", "@e11"]);
+    assert.deepEqual(calls[pageCommands.indexOf("select")], ["select", "@e4", "cn", "sg"]);
+    assert.deepEqual(calls[pageCommands.indexOf("screenshot")], ["screenshot", "--full", "page.png"]);
+    assert.deepEqual(calls[pageCommands.indexOf("tab")], [
+      "tab",
+      "new",
+      "http://docs.test/",
+      "--label",
+      "docs",
+      "--json"
+    ]);
+    assert.deepEqual(calls[pageCommands.indexOf("video")], ["record", "start", "flow.webm"]);
+    assert.deepEqual(calls[pageCommands.indexOf("coverage")], ["coverage", "status", "--json"]);
+    assert.deepEqual(calls.at(-1), ["select", "@e20", "cn", "sg"]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("keeps browser lifecycle commands outside the Extension page API", async () => {
+  const extension = createCommandExtension({
+    name: "browser-lifecycle-demo",
+    run: async ({ divebell }) =>
+      await divebell.browser.run(
+        "open" as DivebellBrowserCommandName,
+        { args: ["http://app.test/"] }
+      )
+  });
+  const output = createOutput();
+
+  const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+    "browser-lifecycle-demo"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => {
+      throw new Error("The browser runner must not receive lifecycle commands.");
+    })
+  });
+
+  assert.equal(exitCode, 1);
+  assert.equal(output.errorText(), "");
+  assert.deepEqual(JSON.parse(output.text()), errorOutput("browser-lifecycle-demo", {
+    code: "INVALID_BROWSER_COMMAND",
+    kind: "validation",
+    message: "Browser command \"open\" is not available through the Extension page API.",
+    retryable: false,
+    hint: "Use a browser page command listed by `divebell --help`; open and stop remain owned by the outer workflow."
+  }));
 });
 
 test("formats errors thrown by extension commands", async () => {

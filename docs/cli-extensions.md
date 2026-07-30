@@ -317,6 +317,12 @@ A Command accesses Divebell capabilities through `options.divebell`:
 
 Browser capabilities remain available when the page does not use Runtime SDK. Require a connected Runtime only when the Command truly needs application-internal facts.
 
+Use `divebell.browser.run(command, request)` when a Command needs a browser
+page command without a dedicated typed helper. It accepts the same page command
+names shown by `divebell --help`, reuses the current opened page, and preserves
+the Divebell session during navigation. The outer workflow still owns
+`open` and `stop`.
+
 After an action, continue reading the page result or use `waitFor` to await an explicit state. Do not claim verification merely because `page` exists or an action ran.
 
 See [`DivebellExtensionApi`](extension-api.md#divebellextensionapi) for all methods, fields, and boundaries.

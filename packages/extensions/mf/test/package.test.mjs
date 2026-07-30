@@ -29,9 +29,11 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.match(validated.description, /divebell open <url> --mf/);
   assert.deepEqual(validated.commands.map((command) => command.name), ["mf"]);
   assert.equal(typeof validated.hooks.open, "function");
+  assert.equal(typeof validated.hooks.detectStack, "function");
   const entrySource = readFileSync(resolve(packageRoot, "dist/extension.js"), "utf8");
   assert.match(entrySource, /import\("\.\/index\.js"\)/);
   assert.match(entrySource, /import\("\.\/open\.js"\)/);
+  assert.match(entrySource, /import\("\.\/detect-stack\.js"\)/);
   assert.doesNotMatch(entrySource, /getRuntimeState|readFile/);
   const commandReferences = validated.commands[0].commandReferences;
   assert.deepEqual(
@@ -60,6 +62,7 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.equal(vmok.displayName, "Vmok");
   assert.deepEqual(vmok.commands.map((command) => command.name), ["vmok"]);
   assert.equal(typeof vmok.hooks.open, "function");
+  assert.equal(typeof vmok.hooks.detectStack, "function");
   assert.ok(
     vmok.commands[0].commandReferences.every((reference) =>
       reference.usage.startsWith("divebell vmok ")
@@ -359,6 +362,7 @@ test("packed archive installs and loads through the external extension mechanism
     assert.deepEqual(loaded.cli.extensions.map((extension) => extension.name), ["mf"]);
     assert.deepEqual(loaded.cli.extensions[0].commands.map((command) => command.name), ["mf"]);
     assert.equal(typeof loaded.cli.extensions[0].hooks.open, "function");
+    assert.equal(typeof loaded.cli.extensions[0].hooks.detectStack, "function");
     let rootHelp = "";
     const rootHelpExitCode = await loaded.cli.run(["--help"], {
       stdout: { write(chunk) { rootHelp += chunk; } },

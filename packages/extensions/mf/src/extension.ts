@@ -31,7 +31,12 @@ export function createMfExtension(
     }],
     hooks: {
       open: async ({ args }) =>
-        await (await import("./open.js")).openMfObservability(args)
+        await (await import("./open.js")).openMfObservability(args),
+      detectStack: async ({ divebell }) =>
+        await (await import("./detect-stack.js")).detectMfStack(
+          divebell,
+          commandName
+        )
     }
   };
 }

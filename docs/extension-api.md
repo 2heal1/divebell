@@ -298,11 +298,11 @@ interface DivebellStackDetection {
   name: string;
   version?: string;
   evidence?: readonly string[];
-  recommendedExtensions?: readonly string[];
+  command?: string;
 }
 ```
 
-`detectStack` runs only for `divebell stack` and may return one detection, multiple detections, or no result. Do not include full page configuration or sensitive values in `evidence`.
+`detectStack` runs only for `divebell stack` and may return one detection, multiple detections, or no result. `command` must name a top-level command registered by the current Extension; omit it when there is no follow-up command. Do not include full page configuration or sensitive values in `evidence`.
 
 `close` runs only for Extensions that successfully participated in the matching `open`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
 

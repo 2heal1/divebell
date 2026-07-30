@@ -12,7 +12,10 @@ import {
   type DivebellExtensionCommand,
   type DivebellExtensionDefinition
 } from "../dist/index.js";
-import { runOpenHooks } from "../dist/features/extension/hooks.js";
+import {
+  runDetectStackHooks,
+  runOpenHooks
+} from "../dist/features/extension/hooks.js";
 
 import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, jsonResponse } from "./helpers.js";
 
@@ -35,6 +38,12 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     extensions: [{
       schemaVersion: 1,
       name: "modern-detector",
+      commands: [{
+        name: "modern",
+        async run() {
+          return { detected: true };
+        }
+      }],
       hooks: {
         open: async () => {
           calls.push("open");
@@ -46,7 +55,8 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
           return detected ? {
             id: "modernjs",
             name: "Modern.js",
-            evidence: ["window._MODERNJS_ROUTE_MANIFEST"]
+            evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
+            command: "modern"
           } : undefined;
         },
         close: async () => {
@@ -98,6 +108,7 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     const stackResult = JSON.parse(stackOutput.text());
     assert.equal(stackResult.data.detections[0].id, "modernjs");
     assert.equal(stackResult.data.detections[0].extension, "modern-detector");
+    assert.equal(stackResult.data.detections[0].command, "modern");
     assert.equal(stackResult.data.cached, false);
     assert.deepEqual(calls, ["open", "detectStack"]);
 
@@ -108,7 +119,9 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
       operationLogDirectory,
       browserRunner
     }), 0);
-    assert.equal(JSON.parse(cachedOutput.text()).data.cached, true);
+    const cachedResult = JSON.parse(cachedOutput.text());
+    assert.equal(cachedResult.data.cached, true);
+    assert.equal(cachedResult.data.detections[0].command, "modern");
     assert.deepEqual(calls, ["open", "detectStack"]);
 
     const closeOutput = createOutput();
@@ -124,6 +137,58 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
+});
+
+test("rejects a stack command not provided by the detecting Extension", async () => {
+  const result = await runDetectStackHooks([{
+    schemaVersion: 1,
+    name: "broken-detector",
+    commands: [{
+      name: "available",
+      async run() {
+        return {};
+      }
+    }],
+    hooks: {
+      async detectStack() {
+        return {
+          id: "broken",
+          name: "Broken",
+          command: "missing"
+        };
+      }
+    }
+  }], {} as never);
+
+  assert.deepEqual(result.detections, []);
+  assert.equal(result.failures.length, 1);
+  assert.match(
+    result.failures[0]?.message ?? "",
+    /command "missing" is not provided by Extension "broken-detector"/
+  );
+});
+
+test("rejects the removed recommendedExtensions stack field", async () => {
+  const result = await runDetectStackHooks([{
+    schemaVersion: 1,
+    name: "legacy-detector",
+    hooks: {
+      async detectStack() {
+        return {
+          id: "legacy",
+          name: "Legacy",
+          recommendedExtensions: ["legacy-tools"]
+        } as never;
+      }
+    }
+  }], {} as never);
+
+  assert.deepEqual(result.detections, []);
+  assert.equal(result.failures.length, 1);
+  assert.match(
+    result.failures[0]?.message ?? "",
+    /recommendedExtensions is no longer supported; return command instead/
+  );
 });
 
 test("returns the opened page headers unchanged to extension commands", async () => {

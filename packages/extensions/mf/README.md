@@ -26,6 +26,13 @@ so a command that needs one context returns candidates instead of silently
 choosing the first one. Copy the candidate command containing `--instance`; do
 not reuse an instanceRef after reopening the page.
 
+## Stack detection
+
+When the current page has a running Module Federation instance,
+`divebell stack` returns a `module-federation` detection with `command: "mf"`.
+An empty debug injection is not treated as an MF application. Extensions created
+with a custom `commandName` return that command name instead.
+
 Remote and Shared trace commands analyze facts exposed through the page's safe public Observability reader. Their separate command paths keep the target type explicit; there is no generic `mf trace` mode. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; promises, module values, instance ids, and executable function objects are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install

@@ -64,7 +64,7 @@ divebell extensions list
 divebell stack
 ```
 
-`stack` 由 Extensions 提供技术栈识别。识别结果可以推荐更适合当前项目的专项 Extension。只有命令描述和当前问题匹配时才使用，避免无目的地运行所有诊断。
+`stack` 由 Extensions 提供技术栈识别。识别结果可以直接给出对应的一级命令。只有命令描述和当前问题匹配时才使用，避免无目的地运行所有诊断。
 
 团队常见的 Extension 可以包括：
 

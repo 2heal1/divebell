@@ -149,6 +149,67 @@ test("forwards headers alongside the Bridge initialization script", async () => 
   assert.doesNotMatch(output.text(), /secret-token/);
 });
 
+test("forwards supported agent-browser launch options through Divebell open", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--no-bridge",
+    "--init-script",
+    "boot.js",
+    "--enable",
+    "react-devtools",
+    "--restore-save",
+    "always",
+    "--proxy",
+    "http://proxy.test:8080",
+    "--ignore-https-errors",
+    "--allowed-domains",
+    "app.test",
+    "--engine",
+    "chrome",
+    "--screenshot-format",
+    "jpeg"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args, options) => {
+      browserCalls.push(args);
+      browserOptions.push(options);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "--restore-save",
+    "always",
+    "--init-script",
+    "boot.js",
+    "--enable",
+    "react-devtools",
+    "--proxy",
+    "http://proxy.test:8080",
+    "--ignore-https-errors",
+    "--screenshot-format",
+    "jpeg",
+    "--allowed-domains",
+    "app.test",
+    "--engine",
+    "chrome",
+    "open",
+    `http://app.test/?divebellSessionId=${createOperationSessionId()}`
+  ]]);
+  assert.equal(browserOptions[0]?.disableRestore, true);
+});
+
 test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
   const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
@@ -785,6 +846,148 @@ test("delegates recorded focus, keyboard, and select actions to agent-browser", 
   }
 });
 
+test("delegates additional agent-browser page commands without changing recorded commands", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const context = createOpenContextFixture();
+
+  try {
+    for (const command of [
+      ["hover", "e8"],
+      ["tap", "e8"],
+      ["swipe", "up", "500"],
+      ["check-element", "e9"],
+      ["drag", "e10", "e11"],
+      ["wait", "--url", "**/orders", "--load", "networkidle"],
+      ["get", "text", "e12"],
+      ["is", "visible", "e13"],
+      ["network", "har", "start", "--content", "none"],
+      ["video", "start", "flow.webm"],
+      ["tab", "new", "--label", "docs", "http://docs.test/"],
+      ["device", "list"],
+      ["confirm", "pending-1"],
+      ["eval", "--base64", "ZG9jdW1lbnQudGl0bGU="]
+    ]) {
+      const exitCode = await runCli(command, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          browserCalls.push(args);
+          return {
+            exitCode: 0,
+            stdout: "ok\n",
+            stderr: ""
+          };
+        })
+      });
+      assert.equal(exitCode, 0);
+    }
+
+    assert.deepEqual(browserCalls, [
+      ["hover", "@e8"],
+      ["tap", "@e8"],
+      ["swipe", "up", "500"],
+      ["check", "@e9"],
+      ["drag", "@e10", "@e11"],
+      ["wait", "--url", "**/orders", "--load", "networkidle"],
+      ["get", "text", "@e12"],
+      ["is", "visible", "@e13"],
+      ["network", "har", "start", "--content", "none"],
+      ["record", "start", "flow.webm"],
+      ["tab", "new", "http://docs.test/", "--label", "docs"],
+      ["device", "list"],
+      ["confirm", "pending-1"],
+      ["eval", "--base64", "ZG9jdW1lbnQudGl0bGU="]
+    ]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("navigates the current page and keeps its Divebell session", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const context = createOpenContextFixture({ sessionId: "session-recording" });
+
+  try {
+    const exitCode = await runCli(["goto", "http://app.test/orders?region=cn#details"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return {
+          exitCode: 0,
+          stdout: "navigated\n",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.text(), "navigated\n");
+    assert.deepEqual(browserCalls, [[
+      "goto",
+      "http://app.test/orders?region=cn&divebellSessionId=session-recording#details"
+    ]]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards eval scripts from standard input", async () => {
+  const output = createOutput();
+  const browserCalls: Array<{ args: string[]; options: BrowserRunOptions | undefined }> = [];
+  const context = createOpenContextFixture();
+
+  try {
+    const exitCode = await runCli(["eval", "--stdin"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      stdin: createInput("document.title\n"),
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args, options) => {
+        browserCalls.push({ args, options });
+        return {
+          exitCode: 0,
+          stdout: "Recording Replay\n",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.text(), "Recording Replay\n");
+    assert.deepEqual(browserCalls, [{
+      args: ["eval", "--stdin"],
+      options: { input: "document.title\n" }
+    }]);
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("requires a Divebell-opened page before navigation", async () => {
+  const output = createOutput();
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-no-open-"));
+  try {
+    const exitCode = await runCli(["goto", "http://app.test/orders"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        throw new Error("browser should not be called");
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(JSON.parse(output.text()).error.code, "OPEN_CONTEXT_REQUIRED");
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
 test("reports interactive text click errors without broad text fallback", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
@@ -814,6 +1017,14 @@ test("reports interactive text click errors without broad text fallback", async 
     context.cleanup();
   }
 });
+
+function createInput(value: string): AsyncIterable<string> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield value;
+    }
+  };
+}
 
 test("starts the bridge in the background and returns after it is reachable", async () => {
   const output = createOutput();

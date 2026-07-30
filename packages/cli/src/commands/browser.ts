@@ -28,7 +28,7 @@ import {
 import { withDivebellSession } from "../utils/url.js";
 import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
 import { createExtensionPageContext } from "../open-context.js";
-import { createBrowserCommandArgs, getOpenCommandSessionId, normalizeAgentBrowserTarget, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
+import { createBrowserCommandArgs, getOpenCommandSessionId, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
@@ -64,7 +64,8 @@ export async function runBrowserCliCommand(
   bridgeStateDirectory: string | undefined,
   operationLogStore: CliOperationLogStore,
   extensions: readonly DivebellExtensionDefinition[],
-  openHookPlan: ExtensionHookPlan
+  openHookPlan: ExtensionHookPlan,
+  stdin: AsyncIterable<string | Uint8Array>
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
@@ -110,7 +111,9 @@ export async function runBrowserCliCommand(
         {
           ui: hasOption(args, "ui"),
           reuseInitialBlankPage: true,
-          ...(hasOption(args, "profile") || hasOption(args, "state")
+          ...(hasOption(args, "profile")
+            || hasOption(args, "state")
+            || hasOption(args, "allowed-domains")
             ? { disableRestore: true }
             : {})
         }
@@ -169,9 +172,13 @@ export async function runBrowserCliCommand(
     return 0;
   }
 
-  const commandArgs = isBrowserPageCommand(command)
-    ? applyOpenContextDefaultsOrThrow(args, await operationLogStore.read(), "always")
-    : args;
+  const openContext = isBrowserPageCommand(command)
+    ? await operationLogStore.read()
+    : undefined;
+  if (isBrowserPageCommand(command)) {
+    applyOpenContextDefaultsOrThrow(args, openContext, "always");
+  }
+  const commandArgs = args;
 
   if (command === "get-window") {
     const path = requireCommandArgument(commandArgs, 1, "window path");
@@ -190,10 +197,26 @@ export async function runBrowserCliCommand(
   }
 
   if (command === "network") {
+    if (commandArgs.command.length > 1) {
+      return await runBrowserAndPipe(
+        browserRunner,
+        createBrowserCommandArgs(commandArgs),
+        stdout,
+        stderr
+      );
+    }
     return await runNetworkCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
   if (command === "console") {
+    if (hasOption(commandArgs, "clear")) {
+      return await runBrowserAndPipe(
+        browserRunner,
+        createBrowserCommandArgs(commandArgs),
+        stdout,
+        stderr
+      );
+    }
     return await runConsoleCommand(commandArgs, stdout, stderr, browserRunner);
   }
 
@@ -202,9 +225,35 @@ export async function runBrowserCliCommand(
     if (file !== undefined) {
       return await runBrowserAndPipe(browserRunner, ["eval", await readFile(file, "utf8")], stdout, stderr);
     }
+    if (hasOption(commandArgs, "stdin")) {
+      return await runBrowserAndPipe(
+        browserRunner,
+        ["eval", "--stdin"],
+        stdout,
+        stderr,
+        { input: await readInput(stdin) }
+      );
+    }
   }
 
-  return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(commandArgs), stdout, stderr);
+  return await runBrowserAndPipe(
+    browserRunner,
+    createBrowserCommandArgs(commandArgs, {
+      ...(openContext?.sessionId === null || openContext?.sessionId === undefined
+        ? {}
+        : { sessionId: openContext.sessionId })
+    }),
+    stdout,
+    stderr
+  );
+}
+
+async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {
+  let input = "";
+  for await (const chunk of stdin) {
+    input += typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+  }
+  return input;
 }
 
 export async function runExtensionCloseHooks(options: {
@@ -299,7 +348,7 @@ async function runClickCommand(
 ): Promise<number> {
   const target = requireCommandArgument(args, 1, "ref, selector, or text");
   if (!shouldPreferInteractiveTextClick(target)) {
-    return await runBrowserAndPipe(browserRunner, ["click", normalizeAgentBrowserTarget(target)], stdout, stderr);
+    return await runBrowserAndPipe(browserRunner, createBrowserCommandArgs(args), stdout, stderr);
   }
 
   const result = await browserRunner.run(["eval", createInteractiveTextClickScript(target)]);
@@ -370,8 +419,51 @@ export async function openBrowserPage(
 
 function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string[] {
   const launchArgs: string[] = [];
-  appendBrowserOption(launchArgs, args, "profile");
-  appendBrowserOption(launchArgs, args, "state");
+  for (const name of [
+    "profile",
+    "state",
+    "restore",
+    "restore-save",
+    "restore-check-url",
+    "restore-check-text",
+    "restore-check-fn",
+    "session-name",
+    "auto-connect",
+    "namespace",
+    "executable-path",
+    "extension",
+    "init-script",
+    "enable",
+    "args",
+    "user-agent",
+    "proxy",
+    "proxy-bypass",
+    "ignore-https-errors",
+    "allow-file-access",
+    "hide-scrollbars",
+    "provider",
+    "device",
+    "webgpu",
+    "cdp",
+    "color-scheme",
+    "download-path",
+    "screenshot-dir",
+    "screenshot-quality",
+    "screenshot-format",
+    "content-boundaries",
+    "max-output",
+    "allowed-domains",
+    "action-policy",
+    "confirm-actions",
+    "confirm-interactive",
+    "engine",
+    "idle-timeout",
+    "no-auto-dialog",
+    "config",
+    "debug"
+  ]) {
+    appendBrowserOptions(launchArgs, args, name);
+  }
   return [...launchArgs, ...command];
 }
 
@@ -390,6 +482,13 @@ function appendBrowserOption(browserArgs: string[], args: ParsedCliArgs, name: s
   const value = getOptionValue(args, name);
   if (value !== undefined && value !== "true") {
     browserArgs.push(`--${name}`, value);
+  }
+}
+
+function appendBrowserOptions(browserArgs: string[], args: ParsedCliArgs, name: string): void {
+  for (const value of args.options.get(name) ?? []) {
+    browserArgs.push(`--${name}`);
+    if (value !== "true") browserArgs.push(value);
   }
 }
 

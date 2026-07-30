@@ -1,0 +1,23 @@
+packages/extensions/memory/package.json
+  s_35a8aead9780fe::t_96bf6b3048bf23 22
+packages/extensions/memory/test/package.test.mjs
+  s_35a8aead9780fe::t_b6898787ded30d 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "259e4f6d0ca8aee063162f3e77fd0b5f00a31b05",
+  "prompts": {},
+  "sessions": {
+    "s_35a8aead9780fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb240-c8a0-7ce2-9a94-601861675488",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

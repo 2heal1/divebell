@@ -36,7 +36,8 @@ export function applyOpenContextDefaults(
 export function createExtensionPageContext(openContext: CliOperationLogEntry): CliExtensionPageContext {
   return {
     url: openContext.url,
-    openedUrl: withDivebellSession(openContext.url, openContext.sessionId ?? undefined),
+    openedUrl: openContext.openedUrl ??
+      withDivebellSession(openContext.url, openContext.sessionId ?? undefined),
     normalizedUrl: openContext.normalizedUrl,
     bridgeUrl: openContext.bridgeUrl,
     sessionId: openContext.sessionId,

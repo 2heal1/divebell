@@ -78,6 +78,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.key === "string" &&
     typeof entry.cwd === "string" &&
     typeof entry.url === "string" &&
+    (entry.openedUrl === undefined || typeof entry.openedUrl === "string") &&
     typeof entry.normalizedUrl === "string" &&
     (typeof bridgeUrl === "string" || bridgeUrl === null) &&
     (typeof bridgePort === "number" || bridgePort === null) &&

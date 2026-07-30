@@ -139,6 +139,87 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
   }
 });
 
+test("opens companion pages, waits for readiness, and returns to the requested page", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-companion-"));
+  const browserCalls: string[][] = [];
+  let receivedBridgeUrl: string | null | undefined;
+  const cli = createDivebellCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "companion-test",
+      hooks: {
+        open: async (options) => {
+          receivedBridgeUrl = options.bridgeUrl;
+          return {
+            companionPages: [{
+              url: "http://localhost:17321/companion",
+              label: "companion",
+              waitFor: {
+                script: "globalThis.companionReady === true",
+                timeout: 1000
+              }
+            }]
+          };
+        }
+      }
+    }]
+  });
+  const browserRunner = createBrowserRunner(async (args) => {
+    browserCalls.push(args);
+    if (args[0] === "open") return { exitCode: 0, stdout: "", stderr: "" };
+    if (args[0] === "tab" && args[1] === "--json") {
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          tabs: [{ tabId: "t1", url: "http://app.test/", active: true }]
+        }),
+        stderr: ""
+      };
+    }
+    if (args[0] === "tab" && args[1] === "new") {
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({ tabId: "t2" }),
+        stderr: ""
+      };
+    }
+    if (args[0] === "eval") {
+      return { exitCode: 0, stdout: "true", stderr: "" };
+    }
+    if (args[0] === "tab" && args[1] === "t1") {
+      return { exitCode: 0, stdout: JSON.stringify({ tabId: "t1" }), stderr: "" };
+    }
+    throw new Error(`Unexpected browser command: ${args.join(" ")}`);
+  });
+
+  try {
+    const output = createOutput();
+    assert.equal(await cli.run([
+      "open",
+      "http://app.test/",
+      "--no-bridge",
+      "--session",
+      "companion-test"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.equal(output.errorText(), "");
+    assert.equal(receivedBridgeUrl, null);
+    assert.deepEqual(browserCalls, [
+      ["open", "http://app.test/?divebellSessionId=companion-test"],
+      ["tab", "--json"],
+      ["tab", "new", "--label", "companion", "http://localhost:17321/companion"],
+      ["eval", "Boolean((globalThis.companionReady === true))"],
+      ["tab", "t1"]
+    ]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
 test("rejects a stack command not provided by the detecting Extension", async () => {
   const result = await runDetectStackHooks([{
     schemaVersion: 1,
@@ -1087,7 +1168,8 @@ test("runs unordered hooks in parallel and ordered hooks in dependency batches",
   }], {
     args: { command: ["open"], options: new Map() },
     url: "http://app.test/",
-    openedUrl: "http://app.test/"
+    openedUrl: "http://app.test/",
+    bridgeUrl: null
   });
 
   assert.deepEqual(calls, [
@@ -1160,7 +1242,8 @@ test("isolates hook failures and ordering cycles", async () => {
   }], {
     args: { command: ["open"], options: new Map() },
     url: "http://app.test/",
-    openedUrl: "http://app.test/"
+    openedUrl: "http://app.test/",
+    bridgeUrl: null
   });
 
   assert.deepEqual(calls, ["failing", "independent", "soft"]);

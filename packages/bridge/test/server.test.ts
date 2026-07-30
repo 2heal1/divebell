@@ -4,6 +4,40 @@ import { test } from "@rstest/core";
 
 import { createBridgeServer, type BridgeRuntimeInfo } from "../dist/index.js";
 
+test("serves the microphone companion page from a secure local browser origin", async () => {
+  const server = createBridgeServer();
+  const address = await server.listen({ port: 0 });
+
+  try {
+    const response = await fetch(`${address.url}/__divebell/recorder?startedAt=2026-07-30T00%3A00%3A00.000Z`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") ?? "", /text\/html/);
+    assert.equal(response.headers.get("permissions-policy"), "microphone=(self)");
+    assert.match(html, /请允许麦克风访问/);
+    assert.match(html, /getUserMedia/);
+    assert.match(html, /__DIVEBELL_AUDIO_RECORDER__/);
+  } finally {
+    await server.close();
+  }
+});
+
+test("serves a visible start page for recordings without an initial URL", async () => {
+  const server = createBridgeServer();
+  const address = await server.listen({ port: 0 });
+
+  try {
+    const response = await fetch(`${address.url}/__divebell/recording-start`);
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /录制已开始/);
+    assert.match(html, /在地址栏输入 URL/);
+    assert.match(html, /divebell-recording-start/);
+  } finally {
+    await server.close();
+  }
+});
+
 test("lists connected runtimes and forwards target reads", async () => {
   const server = createBridgeServer({
     idGenerator: () => "runtime-1",

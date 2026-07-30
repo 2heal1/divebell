@@ -152,7 +152,7 @@ current page.
 Demonstrate a browser workflow and turn the operated elements and event
 sequence into a verified JavaScript replay. Spoken intent is optional.
 
-> [Download and install the recording Extension](./docs/record-browser-workflows.md#install), then start recording with its bundled skill.
+> [Install the recording skill](./docs/record-browser-workflows.md), then invoke it and describe the workflow you want to demonstrate.
 
 **Demo video**
 

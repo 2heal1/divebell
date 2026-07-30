@@ -1,10 +1,42 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readJsonLinesIfExists, writeJsonFile } from "./storage.js";
+import { readJsonLinesIfExists, writeJsonFile, writeJsonLines } from "./storage.js";
 import { normalizeTranscriptSegments, normalizeTranscriptWords } from "./script.js";
+import type { DivebellBrowserApi } from "@divebell/cli";
 import type { AudioCaptureSummary, AudioChunkEntry, LiveTranscriptEvent, OperationEntry, RecordingFiles, TranscriptData, TranscriptSegment, TranscriptWord } from "./types.js";
 
 const DEFAULT_TRANSCRIPTION_MODEL = "whisper-1";
+const RECORDING_COMPANION_PATH = "/__divebell/recorder";
+const RECORDING_START_PAGE_PATH = "/__divebell/recording-start";
+export const RECORDING_COMPANION_LABEL = "divebell-recorder";
+
+export function createRecordingCompanionUrl(
+  bridgeUrl: string | null | undefined,
+  startedAt: string,
+  chunkMs = 1000
+): string | undefined {
+  if (bridgeUrl === null || bridgeUrl === undefined) return undefined;
+  const url = new URL(RECORDING_COMPANION_PATH, `${bridgeUrl.replace(/\/+$/u, "")}/`);
+  url.searchParams.set("startedAt", startedAt);
+  url.searchParams.set("chunkMs", String(chunkMs));
+  return url.toString();
+}
+
+export function createRecordingStartPageUrl(
+  bridgeUrl: string | null,
+  openedUrl: string,
+  startedAt: string
+): string | undefined {
+  if (bridgeUrl === null) return undefined;
+  const url = new URL(RECORDING_START_PAGE_PATH, `${bridgeUrl.replace(/\/+$/u, "")}/`);
+  url.searchParams.set("startedAt", startedAt);
+  const sessionId = readUrlSearchParam(openedUrl, "divebellSessionId");
+  if (sessionId !== undefined) {
+    url.searchParams.set("divebellSessionId", sessionId);
+  }
+  return url.toString();
+}
+
 export async function transcribeAudioFile(
   fetcher: typeof fetch,
   audioPath: string,
@@ -68,7 +100,12 @@ function createOptionalStringProperty<Name extends string>(
 export async function collectAudioCapture(
   outputDirectory: string,
   files: RecordingFiles,
-  requested: boolean
+  requested: boolean,
+  browser?: DivebellBrowserApi,
+  recorder?: {
+    url: string;
+    startedAt: string;
+  }
 ): Promise<{
   operation: OperationEntry;
   summary: AudioCaptureSummary;
@@ -77,6 +114,27 @@ export async function collectAudioCapture(
   const audioFile = join(outputDirectory, files.audio);
   const chunksFile = join(outputDirectory, files.audioChunks);
   const eventsFile = join(outputDirectory, files.audioEvents);
+  if (requested && browser !== undefined && recorder !== undefined) {
+    try {
+      await persistBrowserAudioCapture(
+        outputDirectory,
+        files,
+        browser,
+        recorder.url,
+        recorder.startedAt
+      );
+    } catch (error) {
+      const existingEvents = await readJsonLinesIfExists<Record<string, unknown>>(eventsFile);
+      await writeJsonLines(eventsFile, [
+        ...existingEvents,
+        {
+          type: "audio-error",
+          timeMs: Math.max(0, Date.now() - Date.parse(recorder.startedAt)),
+          message: error instanceof Error ? error.message : String(error)
+        }
+      ]);
+    }
+  }
   const chunks = await readJsonLinesIfExists<AudioChunkEntry>(chunksFile);
   const events = await readJsonLinesIfExists<Record<string, unknown>>(eventsFile);
   const liveTranscript = createLiveTranscriptFromAudioEvents(files, events);
@@ -113,6 +171,162 @@ export async function collectAudioCapture(
     },
     summary
   };
+}
+
+async function persistBrowserAudioCapture(
+  outputDirectory: string,
+  files: RecordingFiles,
+  browser: DivebellBrowserApi,
+  recorderUrl: string,
+  recordingStartedAt: string
+): Promise<void> {
+  const listed = await browser.raw(["tab", "--json"]);
+  if (listed.exitCode !== 0) {
+    throw new Error(listed.stderr.trim() || listed.stdout.trim() || "Could not inspect browser tabs for microphone audio.");
+  }
+  const parsed = JSON.parse(listed.stdout) as {
+    tabs?: Array<{
+      tabId?: unknown;
+      url?: unknown;
+      active?: unknown;
+    }>;
+  };
+  const tabs = Array.isArray(parsed.tabs) ? parsed.tabs : [];
+  const recorderTab = tabs.find((tab) =>
+    typeof tab.url === "string" && recordingCompanionMatches(tab.url, recorderUrl)
+  );
+  const recorderTabId = typeof recorderTab?.tabId === "string" ? recorderTab.tabId : undefined;
+  if (recorderTabId === undefined) {
+    throw new Error("The microphone recording page was not found.");
+  }
+  const activeTabId = tabs.find((tab) => tab.active === true && typeof tab.tabId === "string")?.tabId;
+  const switched = await browser.raw(["tab", recorderTabId]);
+  if (switched.exitCode !== 0) {
+    throw new Error(switched.stderr.trim() || switched.stdout.trim() || "Could not read the microphone recording page.");
+  }
+
+  try {
+    const capture = await browser.eval<BrowserAudioCaptureResult>(createStopBrowserAudioScript());
+    if (
+      capture === null ||
+      typeof capture !== "object" ||
+      !Number.isInteger(capture.chunkCount) ||
+      capture.chunkCount < 0 ||
+      capture.chunkCount > 100_000 ||
+      !Array.isArray(capture.chunks) ||
+      !Array.isArray(capture.events)
+    ) {
+      throw new Error("The microphone recording page returned invalid audio data.");
+    }
+
+    const audioBuffers: Buffer[] = [];
+    const chunkEntries: AudioChunkEntry[] = [];
+    const chunksDirectory = join(outputDirectory, "audio-chunks");
+    await mkdir(chunksDirectory, { recursive: true });
+    for (let index = 0; index < capture.chunkCount; index += 1) {
+      const metadata = capture.chunks[index];
+      if (metadata === undefined) {
+        throw new Error(`Microphone audio chunk ${index} is missing metadata.`);
+      }
+      const encoded = await browser.eval<string>(createReadBrowserAudioChunkScript(index));
+      if (typeof encoded !== "string") {
+        throw new Error(`Microphone audio chunk ${index} is invalid.`);
+      }
+      const bytes = Buffer.from(encoded, "base64");
+      const fileName = `chunk-${String(index).padStart(6, "0")}.webm`;
+      await writeFile(join(chunksDirectory, fileName), bytes);
+      audioBuffers.push(bytes);
+      const startMs = normalizeAudioTime(metadata.startMs);
+      const endMs = Math.max(startMs, normalizeAudioTime(metadata.endMs));
+      chunkEntries.push({
+        index,
+        startedAt: new Date(Date.parse(recordingStartedAt) + startMs).toISOString(),
+        endedAt: new Date(Date.parse(recordingStartedAt) + endMs).toISOString(),
+        startMs,
+        endMs,
+        durationMs: endMs - startMs,
+        file: `audio-chunks/${fileName}`,
+        mimeType: normalizeAudioMimeType(metadata.mimeType, capture.mimeType),
+        size: bytes.length
+      });
+    }
+    await writeFile(join(outputDirectory, files.audio), Buffer.concat(audioBuffers));
+    await writeJsonLines(join(outputDirectory, files.audioChunks), chunkEntries);
+    await writeJsonLines(join(outputDirectory, files.audioEvents), capture.events);
+  } finally {
+    if (typeof activeTabId === "string" && activeTabId !== recorderTabId) {
+      await browser.raw(["tab", activeTabId]);
+    }
+  }
+}
+
+interface BrowserAudioCaptureResult {
+  status: string;
+  mimeType: string;
+  chunkCount: number;
+  chunks: Array<{
+    startMs?: unknown;
+    endMs?: unknown;
+    mimeType?: unknown;
+    size?: unknown;
+  }>;
+  events: Array<Record<string, unknown>>;
+}
+
+function createStopBrowserAudioScript(): string {
+  return [
+    "(async () => {",
+    "  const recorder = globalThis.__DIVEBELL_AUDIO_RECORDER__;",
+    "  if (recorder === undefined || typeof recorder.stop !== 'function') {",
+    "    throw new Error('The microphone recorder is not ready.');",
+    "  }",
+    "  return await recorder.stop();",
+    "})()"
+  ].join("\n");
+}
+
+function createReadBrowserAudioChunkScript(index: number): string {
+  return [
+    "(async () => {",
+    "  const recorder = globalThis.__DIVEBELL_AUDIO_RECORDER__;",
+    "  if (recorder === undefined || typeof recorder.readChunk !== 'function') {",
+    "    throw new Error('The microphone recorder is not ready.');",
+    "  }",
+    `  return await recorder.readChunk(${JSON.stringify(index)});`,
+    "})()"
+  ].join("\n");
+}
+
+function recordingCompanionMatches(actual: string, expected: string): boolean {
+  try {
+    const actualUrl = new URL(actual);
+    const expectedUrl = new URL(expected);
+    return actualUrl.origin === expectedUrl.origin &&
+      actualUrl.pathname === expectedUrl.pathname &&
+      actualUrl.searchParams.get("startedAt") === expectedUrl.searchParams.get("startedAt");
+  } catch {
+    return actual === expected;
+  }
+}
+
+function normalizeAudioTime(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.round(value))
+    : 0;
+}
+
+function normalizeAudioMimeType(value: unknown, fallback: unknown): string {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (typeof fallback === "string" && fallback.length > 0) return fallback;
+  return "audio/webm";
+}
+
+function readUrlSearchParam(value: string, name: string): string | undefined {
+  try {
+    return new URL(value).searchParams.get(name) ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function createLiveTranscriptFromAudioEvents(files: RecordingFiles, events: Array<Record<string, unknown>>): TranscriptData {

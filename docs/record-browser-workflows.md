@@ -2,6 +2,14 @@
 
 Chinese version: [录制浏览器操作并生成脚本](record-browser-workflows.zh-CN.md)
 
+Install the [`record-divebell-workflow`](../skills/record-divebell-workflow/SKILL.md)
+skill in your agent. Then invoke the skill and describe the workflow you want to
+demonstrate:
+
+```text
+Use $record-divebell-workflow to record my browser workflow. I will demonstrate how to <task>.
+```
+
 `@divebell/extension-imitate` is the browser-workflow recording Extension and includes the `record-divebell-workflow` Agent skill. It turns one manual browser walkthrough into an executable JavaScript replay, recording the operated elements, event order, and final page state. Microphone capture is attempted automatically, but spoken instructions are optional context and missing or denied audio is ignored.
 
 Use it when a task is easier to demonstrate than to specify from scratch, such as:
@@ -17,40 +25,13 @@ https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
 The video shows a full recording session, from browser interaction to the
 generated replay script.
 
-## Install
+## How It Works
 
-> Download and install the recording Extension, then use its bundled skill to
-> start a recording session with your agent.
-
-Install Divebell globally, then add the recording Extension:
-
-```bash
-npm install --global @divebell/cli
-divebell setup
-divebell extensions add @divebell/extension-imitate
-```
-
-After installation, get the skill bundled with the `record` command:
-
-```bash
-divebell record --skill
-```
-
-This command prints the packaged `SKILL.md` path. Use that path with your
-agent's skill-loading method, or let the agent run the command directly. You do
-not need to copy a separate skill from this repository.
-
-## Use
-
-After installation, send this prompt:
-
-```text
-Use the recording Extension's bundled skill and start recording my browser workflow.
-```
-
-A visible browser page opens with recording enabled. Recording files are saved
-under `recordings/` in the current project, so you do not need to provide a URL
-or output path first.
+A visible browser page opens with recording enabled. The browser first requests
+microphone permission, then returns to a start page that tells the user to enter
+a URL in the address bar. The microphone page remains in the background while
+the operated page navigates. Recording files are saved under `recordings/` in
+the current project, so you do not need to provide a URL or output path first.
 
 Then:
 
@@ -59,8 +40,6 @@ Then:
 3. Say “done” when the walkthrough is complete.
 4. A replay script is generated, run once, checked against the final page, and
    the browser is closed.
-
-The recording command does not reopen, reset, or close the browser itself. An existing page must be closed before preparing a recording, and the page to record must then be opened through `divebell open`. Recording refuses to mix evidence if another `divebell open` replaces that page before `record stop`.
 
 For example, while working on a GitHub Issues page, say:
 

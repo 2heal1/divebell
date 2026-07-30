@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -115,6 +115,14 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.match(initScript, /locators/);
     assert.match(initScript, /composedPath/);
     assert.match(initScript, /selectedValues/);
+    assert.equal(
+      fixture.browserCalls.some((call) =>
+        call.args[0] === "tab" &&
+        call.args[1] === "new" &&
+        call.args.includes("divebell-recorder")
+      ),
+      true
+    );
     writeFileSync(join(fixture.outputDir, "audio-events.jsonl"), `${JSON.stringify({
       type: "audio-error",
       message: "NotAllowedError: microphone permission was denied"
@@ -133,7 +141,9 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.equal(stopResult.script, join(fixture.outputDir, "generated-script.mjs"));
     assert.equal(stopResult.workflow, join(fixture.outputDir, "workflow.json"));
     assert.equal(fixture.browserCalls.some((call) => call.args[0] === "close"), false);
-    assert.deepEqual(fixture.browserCalls.map((call) => call.args[0]), [
+    assert.deepEqual(fixture.browserCalls
+      .filter((call) => !isRecorderBrowserCall(call.args))
+      .map((call) => call.args[0]), [
       "open",
       "snapshot",
       "eval",
@@ -396,7 +406,19 @@ if (args[0] === "eval") {
 });
 
 test("captures audio chunks and transcribes a recording", async () => {
-  const fixture = createRecordingFixture("divebell-audio-recording-");
+  const fixture = createRecordingFixture("divebell-audio-recording-", {
+    browserAudio: {
+      chunks: ["fake-audio"],
+      events: [{
+        type: "speech-result",
+        timeMs: 1800,
+        startMs: 1000,
+        endMs: 1800,
+        text: "获取 closed 状态一周内的 issues",
+        confidence: 0.9
+      }]
+    }
+  });
 
   try {
     const startOutput = createOutput();
@@ -408,35 +430,17 @@ test("captures audio chunks and transcribes a recording", async () => {
     ], startOutput), 0);
     await fixture.open("http://app.test/");
 
-    mkdirSync(join(fixture.outputDir, "audio-chunks"), { recursive: true });
-    writeFileSync(join(fixture.outputDir, "audio.webm"), "fake-audio");
-    writeFileSync(join(fixture.outputDir, "audio-chunks", "chunk-000000.webm"), "fake-audio");
-    writeFileSync(join(fixture.outputDir, "audio-chunks.jsonl"), `${JSON.stringify({
-      index: 0,
-      startedAt: "2026-07-01T00:00:00.000Z",
-      endedAt: "2026-07-01T00:00:01.000Z",
-      startMs: 0,
-      endMs: 1000,
-      durationMs: 1000,
-      file: "audio-chunks/chunk-000000.webm",
-      mimeType: "audio/webm",
-      size: 10
-    })}\n`);
-    writeFileSync(join(fixture.outputDir, "audio-events.jsonl"), `${JSON.stringify({
-      type: "speech-result",
-      timeMs: 1800,
-      startMs: 1000,
-      endMs: 1800,
-      text: "获取 closed 状态一周内的 issues",
-      confidence: 0.9
-    })}\n`);
-
     const stopOutput = createOutput();
     assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
     const stoppedManifest = readJson(join(fixture.outputDir, "manifest.json"));
     assert.equal(stoppedManifest.capture.audio.status, "captured");
     assert.equal(stoppedManifest.counts.audioChunks, 1);
     assert.equal(stoppedManifest.counts.transcriptSegments, 1);
+    assert.equal(readFileSync(join(fixture.outputDir, "audio.webm"), "utf8"), "fake-audio");
+    assert.equal(
+      readFileSync(join(fixture.outputDir, "audio-chunks", "chunk-000000.webm"), "utf8"),
+      "fake-audio"
+    );
     const liveTranscript = readJson(join(fixture.outputDir, "transcript.json"));
     assert.equal(liveTranscript.status, "completed");
     assert.equal(liveTranscript.model, "browser-speech-recognition");
@@ -491,8 +495,11 @@ test("uses the current blank page and the default recording output", async () =>
     const manifest = readJson(join(result.output, "manifest.json"));
     assert.equal(manifest.status, "recording");
     assert.equal(manifest.url, "about:blank");
+    assert.match(manifest.openedUrl, /\/__divebell\/recording-start\?/);
     assert.match(manifest.openedUrl, /divebellSessionId=/);
     assert.equal(fixture.browserCalls.filter((call) => call.args[0] === "open").length, 1);
+    const openCall = fixture.browserCalls.find((call) => call.args[0] === "open");
+    assert.equal(openCall.args[1], manifest.openedUrl);
   } finally {
     process.chdir(originalCwd);
     fixture.cleanup();
@@ -563,8 +570,9 @@ test("refuses to stop a recording from a different Divebell page", async () => {
     await fixture.open("http://app.test/");
     await fixture.open("http://other.test/", "other-session");
     assert.equal(existsSync(join(fixture.profileDirectory, "recording-session.json")), false);
+    const openCalls = fixture.browserCalls.filter((call) => call.args[0] === "open");
     assert.doesNotMatch(
-      readFileSync(fixture.browserCalls[1].args[3], "utf8"),
+      readFileSync(openCalls[1].args[3], "utf8"),
       /__DIVEBELL_RECORD_EVENT__/
     );
 
@@ -590,6 +598,8 @@ function createRecordingFixture(prefix, options = {}) {
   const controlPresentWhenOpened = [];
   const fetchUrls = [];
   const sessionId = "recording-session";
+  let activeTabId = "t1";
+  let tabs = [];
   const browserRunner = createBrowserRunner(async (args, runOptions) => {
     browserCalls.push({
       args,
@@ -597,14 +607,93 @@ function createRecordingFixture(prefix, options = {}) {
     });
     if (args[0] === "open") {
       controlPresentWhenOpened.push(existsSync(join(profileDirectory, "recording-session.json")));
+      activeTabId = "t1";
+      tabs = [{
+        tabId: "t1",
+        label: null,
+        title: "Orders",
+        url: args[1] ?? "about:blank",
+        type: "page",
+        active: true
+      }];
       return browserResult("opened");
     }
-    if (args[0] === "close") return browserResult("closed");
+    if (args[0] === "close") {
+      tabs = [];
+      return browserResult("closed");
+    }
+    if (args[0] === "tab" && args[1] === "--json") {
+      return browserResult(JSON.stringify({
+        tabs: tabs.map((tab) => ({
+          ...tab,
+          active: tab.tabId === activeTabId
+        }))
+      }));
+    }
+    if (args[0] === "tab" && args[1] === "new") {
+      const labelIndex = args.indexOf("--label");
+      const url = args.at(-1);
+      activeTabId = "t2";
+      tabs.push({
+        tabId: "t2",
+        label: labelIndex < 0 ? null : args[labelIndex + 1],
+        title: "Divebell 麦克风录制",
+        url,
+        type: "page",
+        active: true
+      });
+      return browserResult(JSON.stringify({ tabId: "t2", url, total: tabs.length }));
+    }
+    if (args[0] === "tab" && /^t\d+$/u.test(args[1] ?? "")) {
+      activeTabId = args[1];
+      return browserResult(JSON.stringify({ tabId: activeTabId }));
+    }
     if (args[0] === "instrumentation") return browserResult("instrumentation set");
     if (args[0] === "snapshot") {
       return browserResult(JSON.stringify({ title: "Orders", elements: [{ ref: "e1", text: "Refresh" }] }));
     }
     if (args[0] === "eval") {
+      const script = args[1] ?? "";
+      if (script.includes("__DIVEBELL_AUDIO_RECORDER__?.status")) {
+        return browserResult("true");
+      }
+      if (script.includes("recorder.stop()")) {
+        if (options.browserAudio === "unavailable") {
+          return {
+            exitCode: 1,
+            stdout: "",
+            stderr: "The microphone recorder is not ready."
+          };
+        }
+        const chunks = options.browserAudio?.chunks ?? [];
+        return browserResult(JSON.stringify({
+          status: chunks.length === 0 ? "denied" : "stopped",
+          mimeType: "audio/webm;codecs=opus",
+          chunkCount: chunks.length,
+          chunks: chunks.map((chunk, index) => ({
+            startMs: index * 1000,
+            endMs: (index + 1) * 1000,
+            mimeType: "audio/webm;codecs=opus",
+            size: Buffer.from(chunk).length
+          })),
+          events: options.browserAudio?.events ?? [{
+            type: "audio-error",
+            timeMs: 10,
+            message: "NotAllowedError: microphone permission was denied"
+          }]
+        }));
+      }
+      if (script.includes("recorder.readChunk(")) {
+        const index = Number(script.match(/readChunk\((\d+)\)/u)?.[1] ?? -1);
+        const chunk = options.browserAudio?.chunks?.[index];
+        return chunk === undefined
+          ? {
+              exitCode: 1,
+              stdout: "",
+              stderr: `Audio chunk ${index} does not exist.`
+            }
+          : browserResult(JSON.stringify(Buffer.from(chunk).toString("base64")));
+      }
       return browserResult(JSON.stringify({
         title: "Orders",
         url: options.domUrl ?? "http://app.test/",
@@ -692,6 +781,11 @@ function createRecordingFixture(prefix, options = {}) {
       rmSync(tempDir, { recursive: true, force: true });
     }
   };
+}
+
+function isRecorderBrowserCall(args) {
+  return args[0] === "tab" ||
+    (args[0] === "eval" && (args[1] ?? "").includes("__DIVEBELL_AUDIO_RECORDER__"));
 }
 
 function createOutput() {

@@ -58,11 +58,23 @@ export interface DivebellOpenHookOptions {
   args: ParsedCliArgs;
   url: string;
   openedUrl: string;
+  bridgeUrl: string | null;
   headers?: Readonly<Record<string, string>>;
 }
 
+export interface DivebellOpenHookCompanionPage {
+  url: string;
+  label?: string;
+  waitFor?: {
+    script: string;
+    timeout?: number;
+  };
+}
+
 export interface DivebellOpenHookResult {
+  openedUrl?: string;
   scripts?: readonly string[];
+  companionPages?: readonly DivebellOpenHookCompanionPage[];
 }
 
 export interface DivebellPageHookOptions {

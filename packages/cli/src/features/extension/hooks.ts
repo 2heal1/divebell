@@ -22,6 +22,16 @@ export interface ExtensionOpenHookScript {
   script: string;
 }
 
+export interface ExtensionOpenHookCompanionPage {
+  extension: string;
+  url: string;
+  label?: string;
+  waitFor?: {
+    script: string;
+    timeout?: number;
+  };
+}
+
 const EXTENSION_HOOK_TIMEOUT_MS = 5_000;
 
 export async function runOpenHooks(
@@ -30,12 +40,17 @@ export async function runOpenHooks(
   plan: ExtensionHookPlan = createExtensionHookPlan(extensions, "open")
 ): Promise<{
   activeExtensions: string[];
+  openedUrl?: string;
   scripts: ExtensionOpenHookScript[];
+  companionPages: ExtensionOpenHookCompanionPage[];
   failures: ExtensionHookFailure[];
 }> {
   const registry = new Map(extensions.map((extension) => [extension.name, extension]));
   const activeExtensions: string[] = [];
+  let openedUrl: string | undefined;
+  let openedUrlExtension: string | undefined;
   const scripts: ExtensionOpenHookScript[] = [];
+  const companionPages: ExtensionOpenHookCompanionPage[] = [];
   const failures: ExtensionHookFailure[] = [...plan.failures];
 
   for (const batch of plan.batches) {
@@ -60,6 +75,21 @@ export async function runOpenHooks(
         continue;
       }
       activeExtensions.push(extensionName);
+      const replacementUrl = result.value.result?.openedUrl;
+      if (replacementUrl !== undefined) {
+        if (typeof replacementUrl !== "string" || replacementUrl.length === 0) {
+          failures.push(failure(extensionName, "open", "Open hook returned an invalid openedUrl."));
+        } else if (openedUrl !== undefined && openedUrl !== replacementUrl) {
+          failures.push(failure(
+            extensionName,
+            "open",
+            `Open hook openedUrl conflicts with Extension "${openedUrlExtension ?? "unknown"}".`
+          ));
+        } else {
+          openedUrl = replacementUrl;
+          openedUrlExtension = extensionName;
+        }
+      }
       for (const script of result.value.result?.scripts ?? []) {
         if (typeof script !== "string") {
           failures.push(failure(extensionName, "open", "Open hook returned a non-string script."));
@@ -67,10 +97,64 @@ export async function runOpenHooks(
           scripts.push({ extension: extensionName, script });
         }
       }
+      for (const page of result.value.result?.companionPages ?? []) {
+        if (
+          page === null ||
+          typeof page !== "object" ||
+          typeof page.url !== "string" ||
+          page.url.length === 0
+        ) {
+          failures.push(failure(extensionName, "open", "Open hook returned an invalid companion page."));
+          continue;
+        }
+        if (page.label !== undefined && (typeof page.label !== "string" || page.label.length === 0)) {
+          failures.push(failure(extensionName, "open", "Companion page label must be a non-empty string."));
+          continue;
+        }
+        if (
+          page.waitFor !== undefined &&
+          (
+            page.waitFor === null ||
+            typeof page.waitFor !== "object" ||
+            typeof page.waitFor.script !== "string" ||
+            page.waitFor.script.length === 0 ||
+            (
+              page.waitFor.timeout !== undefined &&
+              (
+                typeof page.waitFor.timeout !== "number" ||
+                !Number.isFinite(page.waitFor.timeout) ||
+                page.waitFor.timeout <= 0
+              )
+            )
+          )
+        ) {
+          failures.push(failure(extensionName, "open", "Companion page wait condition is invalid."));
+          continue;
+        }
+        companionPages.push({
+          extension: extensionName,
+          url: page.url,
+          ...(page.label === undefined ? {} : { label: page.label }),
+          ...(page.waitFor === undefined
+            ? {}
+            : {
+                waitFor: {
+                  script: page.waitFor.script,
+                  ...(page.waitFor.timeout === undefined ? {} : { timeout: page.waitFor.timeout })
+                }
+              })
+        });
+      }
     }
   }
 
-  return { activeExtensions, scripts, failures };
+  return {
+    activeExtensions,
+    ...(openedUrl === undefined ? {} : { openedUrl }),
+    scripts,
+    companionPages,
+    failures
+  };
 }
 
 export async function runDetectStackHooks(

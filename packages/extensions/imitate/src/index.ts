@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime } from "./capture.js";
-import { collectAudioCapture, transcribeAudioFile } from "./audio.js";
+import { collectAudioCapture, createRecordingCompanionUrl, transcribeAudioFile } from "./audio.js";
 import { clearRecordingControlFile, writeRecordingControlFile } from "./session.js";
 import { createManifestPath, writeGeneratedScript } from "./script.js";
 import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
@@ -141,7 +141,23 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
   await writeJsonLines(join(outputDirectory, recording.manifest.files.interactions), interactionCollection.interactions);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), interactionCollection.operation);
 
-  const audioCollection = await collectAudioCapture(outputDirectory, recording.manifest.files, recording.manifest.capture.audio.requested);
+  const recorderUrl = createRecordingCompanionUrl(
+    recording.manifest.bridgeUrl,
+    recording.manifest.startedAt,
+    recording.manifest.intervalMs
+  );
+  const audioCollection = await collectAudioCapture(
+    outputDirectory,
+    recording.manifest.files,
+    recording.manifest.capture.audio.requested,
+    options.divebell.browser,
+    recorderUrl === undefined
+      ? undefined
+      : {
+          url: recorderUrl,
+          startedAt: recording.manifest.startedAt
+        }
+  );
   await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), audioCollection.operation);
 
   const stopOperation: OperationEntry = {

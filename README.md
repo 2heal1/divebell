@@ -72,7 +72,7 @@ Teams can use Extensions to bring existing capabilities into the current page sc
 | --- | --- | --- | --- |
 | Web Context & Diagnostics | Make a real web page the agent's point of entry and provide page context, browser diagnostics, and same-scenario verification | Divebell CLI | No |
 | Extensions | Connect the web page with the team's existing development and debugging capabilities | CLI commands, Extension API | No |
-| Runtime SDK | Expose application-internal facts that browser information cannot represent reliably | `@divebell/core`, framework plugins | Yes |
+| Runtime SDK | Expose application-internal facts that cannot be observed from the page without polluting the runtime environment | `@divebell/core`, framework plugins | Yes |
 
 ### Web Context & Diagnostics
 

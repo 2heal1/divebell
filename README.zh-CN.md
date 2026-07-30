@@ -40,7 +40,7 @@ divebell --help
 
 `divebell setup` 会检查当前环境，只在浏览器尚未准备好时修复。浏览器验证使用临时会话，并会在 setup 结束后清理。
 
-把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Coding Agent。
+把 [Divebell Skill](./skills/divebell/SKILL.md) 安装到你的 Agent。
 
 然后对 Agent 说：
 

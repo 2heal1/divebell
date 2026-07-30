@@ -42,7 +42,7 @@ divebell --help
 needed. Its browser probe runs in a temporary session and cleans that session up
 when setup finishes.
 
-Install the [Divebell Skill](./skills/divebell/SKILL.md) in your coding agent.
+Install the [Divebell Skill](./skills/divebell/SKILL.md) in your agent.
 
 Then ask:
 

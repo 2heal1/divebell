@@ -144,8 +144,7 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 ## Examples
 
 Explore the official Extension examples for recording browser workflows,
-checking memory growth, analyzing code usage, and connecting team tools to the
-current page.
+analyzing code usage, and connecting team tools to the current page.
 
 ### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
 
@@ -157,10 +156,6 @@ sequence into a verified JavaScript replay. Spoken intent is optional.
 **Demo video**
 
 https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
-
-### [Check memory growth across a real page journey](./docs/memory-analysis.md)
-
-Repeat the same user journey and determine whether JavaScript memory, DOM nodes, or event listeners keep growing.
 
 ### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
 

@@ -1,10 +1,18 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
+import { fileURLToPath } from "node:url";
+
+const memorySkillPath = fileURLToPath(
+  new URL("../skills/analyze-memory-growth/SKILL.md", import.meta.url)
+);
 
 const extension = {
   schemaVersion: 1,
   name: "memory",
   commands: [{
     name: "memory",
+    skill: {
+      path: memorySkillPath
+    },
     commandReferences: [
       {
         category: "Extensions",

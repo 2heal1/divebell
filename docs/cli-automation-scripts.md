@@ -1,7 +1,5 @@
 # Automating with Divebell CLI
 
-Chinese version: [使用 Divebell CLI 编写自动化脚本](cli-automation-scripts.zh-CN.md)
-
 This guide is for standalone automation scripts: a script opens the page, waits for it, runs page operations, reads Runtime information, and optionally stops the browser and Bridge managed by the CLI. Unlike page Commands in [Divebell CLI Extension Development](cli-extensions.md), automation scripts can manage the browser lifecycle.
 
 ## When To Use

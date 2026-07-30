@@ -74,7 +74,7 @@ divebell record \
 divebell stop
 ```
 
-For an Agent-guided installation and workflow, see the [English guide](../../docs/record-browser-workflows.md) or [中文指南](../../docs/record-browser-workflows.zh-CN.md).
+For an Agent-guided installation and workflow, see the [recording guide](../../docs/record-browser-workflows.md).
 
 ## Replay verification
 

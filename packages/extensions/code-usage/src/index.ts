@@ -5,7 +5,6 @@ import type {
 } from "@divebell/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
-import { cliText } from "./locale.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
 import {
   startCodeUsageReportServer,
@@ -26,15 +25,11 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
     kind: "validation",
-    message: t("code-usage requires analyze, report, or serve.", "code-usage 需要 analyze、report 或 serve。"),
-    hint: t(
-      "Run `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`.",
-      "请运行 `divebell code-usage analyze ...`、`divebell code-usage report ...` 或 `divebell code-usage serve ...`。"
-    )
+    message: "code-usage requires analyze, report, or serve.",
+    hint: "Run `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`."
   });
 }
 export { analyzeCodeUsageFiles } from "./code-usage.js";
-export { cliText, detectCliLocale } from "./locale.js";
 export {
   createCodeUsageReportHtml,
   openHtmlReport,
@@ -53,14 +48,8 @@ async function runAnalyze(
     throw commandError({
       code: "CODE_USAGE_ANALYZE_USAGE_INVALID",
       kind: "validation",
-      message: t(
-        "Code usage analysis accepts options instead of positional paths.",
-        "代码使用分析需要使用选项传入路径。"
-      ),
-      hint: t(
-        "Run `divebell code-usage analyze --chunk-map <path> --coverage <path>`.",
-        "请运行 `divebell code-usage analyze --chunk-map <路径> --coverage <路径>`。"
-      )
+      message: "Code usage analysis accepts options instead of positional paths.",
+      hint: "Run `divebell code-usage analyze --chunk-map <path> --coverage <path>`."
     });
   }
   const chunkMap = requireOption(args, "chunk-map");
@@ -69,11 +58,8 @@ async function runAnalyze(
     throw commandError({
       code: "CODE_USAGE_COVERAGE_REQUIRED",
       kind: "validation",
-      message: t("At least one --coverage path is required.", "至少需要一个 --coverage 路径。"),
-      hint: t(
-        "Repeat --coverage for each recorded phase.",
-        "每个记录阶段都需要重复传入 --coverage。"
-      )
+      message: "At least one --coverage path is required.",
+      hint: "Repeat --coverage for each recorded phase."
     });
   }
 
@@ -108,16 +94,13 @@ export async function runCodeUsageReportCommand(
     throw commandError({
       code: "ANALYSIS_REPORT_INPUT_REQUIRED",
       kind: "validation",
-      message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
-      hint: t(
-        "Run `divebell code-usage report <report.json>`.",
-        "请运行 `divebell code-usage report <report.json>`。"
-      )
+      message: "A code usage report JSON path is required.",
+      hint: "Run `divebell code-usage report <report.json>`."
     });
   }
   const inputPath = args.command[2];
   if (inputPath === undefined) {
-    throw new Error(t("Missing report input path.", "缺少报告输入路径。"));
+    throw new Error("Missing report input path.");
   }
   let report;
   try {
@@ -140,11 +123,8 @@ export async function runCodeUsageReportCommand(
       throw commandError({
         code: "ANALYSIS_REPORT_OPEN_FAILED",
         kind: "internal",
-        message: t(
-          `The report was created but could not be opened: ${errorMessage(error)}`,
-          `报告已生成，但无法自动打开：${errorMessage(error)}`
-        ),
-        hint: t(`Open ${report.htmlPath} manually.`, `请手动打开 ${report.htmlPath}。`)
+        message: `The report was created but could not be opened: ${errorMessage(error)}`,
+        hint: `Open ${report.htmlPath} manually.`
       });
     }
   }
@@ -161,16 +141,13 @@ export async function runCodeUsageServeCommand(
     throw commandError({
       code: "CODE_USAGE_SERVE_INPUT_REQUIRED",
       kind: "validation",
-      message: t("A code usage report JSON path is required.", "需要提供代码使用报告 JSON 路径。"),
-      hint: t(
-        "Run `divebell code-usage serve <report.json>`.",
-        "请运行 `divebell code-usage serve <report.json>`。"
-      )
+      message: "A code usage report JSON path is required.",
+      hint: "Run `divebell code-usage serve <report.json>`."
     });
   }
   const inputPath = args.command[2];
   if (inputPath === undefined) {
-    throw new Error(t("Missing report input path.", "缺少报告输入路径。"));
+    throw new Error("Missing report input path.");
   }
   const port = parsePort(getOptionValue(args, "port"));
   try {
@@ -203,10 +180,7 @@ function requireOption(args: ParsedCliArgs, name: string): string {
     throw commandError({
       code: "CLI_REQUIRED_OPTION_MISSING",
       kind: "validation",
-      message: t(
-        `Missing required option "--${name}".`,
-        `缺少必需选项“--${name}”。`
-      )
+      message: `Missing required option "--${name}".`
     });
   }
   return value;
@@ -226,10 +200,7 @@ function parsePort(value: string | undefined): number | undefined {
     throw commandError({
       code: "CODE_USAGE_SERVE_PORT_INVALID",
       kind: "validation",
-      message: t(
-        `Invalid report server port "${value}".`,
-        `报告服务端口“${value}”无效。`
-      )
+      message: `Invalid report server port "${value}".`
     });
   }
   return port;
@@ -252,8 +223,4 @@ function commandError(options: {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function t(english: string, chinese: string): string {
-  return cliText(english, chinese);
 }

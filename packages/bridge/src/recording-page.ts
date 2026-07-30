@@ -3,11 +3,11 @@ export const DIVEBELL_RECORDING_START_PAGE_PATH = "/__divebell/recording-start";
 
 export function createRecordingStartPage(): string {
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Divebell 录制已开始</title>
+  <title>Divebell recording started</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -26,10 +26,10 @@ export function createRecordingStartPage(): string {
 </head>
 <body>
   <main id="divebell-recording-start">
-    <div class="badge"><span class="dot"></span>录制已开始</div>
-    <h1>在地址栏输入 URL<br>开始录制网页操作</h1>
-    <p>输入要操作的网页地址并按回车。Divebell 会继续记录后续页面中的点击、输入和可选语音。</p>
-    <kbd>⌘ L / Ctrl L &nbsp;→&nbsp; 输入 URL &nbsp;→&nbsp; Enter</kbd>
+    <div class="badge"><span class="dot"></span>Recording started</div>
+    <h1>Enter a URL in the address bar<br>to start recording web actions</h1>
+    <p>Enter the page address and press Enter. Divebell will continue recording clicks, input, and optional audio on subsequent pages.</p>
+    <kbd>⌘ L / Ctrl L &nbsp;→&nbsp; Enter URL &nbsp;→&nbsp; Enter</kbd>
   </main>
 </body>
 </html>`;
@@ -37,11 +37,11 @@ export function createRecordingStartPage(): string {
 
 export function createRecordingCompanionPage(): string {
   return `<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Divebell 麦克风录制</title>
+  <title>Divebell microphone recording</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -61,9 +61,9 @@ export function createRecordingCompanionPage(): string {
 <body>
   <main>
     <div class="icon" aria-hidden="true">●</div>
-    <h1 id="recording-title">请允许麦克风访问</h1>
-    <p id="recording-description">请在浏览器弹出的权限提示中选择“允许”。处理完成后，Divebell 会自动回到录制起始页。</p>
-    <div class="status" id="recording-status" data-state="requesting" role="status" aria-live="polite">正在申请录音权限…</div>
+    <h1 id="recording-title">Allow microphone access</h1>
+    <p id="recording-description">Choose Allow in the browser permission prompt. Divebell will return to the recording start page after you respond.</p>
+    <div class="status" id="recording-status" data-state="requesting" role="status" aria-live="polite">Requesting microphone access…</div>
   </main>
   <script>(${installRecordingCompanion.toString()})();</script>
 </body>
@@ -175,7 +175,7 @@ function installRecordingCompanion(): void {
       typeof navigator.mediaDevices?.getUserMedia !== "function" ||
       typeof MediaRecorder === "undefined"
     ) {
-      fail("error", "当前浏览器不支持麦克风录制。");
+      fail("error", "This browser does not support microphone recording.");
       return;
     }
     try {
@@ -218,9 +218,9 @@ function installRecordingCompanion(): void {
       });
       updateStatus(
         "recording",
-        "麦克风录制已开始",
-        "现在可以回到录制页面操作。这个页面会在后台持续保存语音。",
-        "正在录音"
+        "Microphone recording started",
+        "You can now return to the page you want to record. This page will continue saving audio in the background.",
+        "Recording audio"
       );
       startSpeechRecognition();
     } catch (error) {
@@ -295,9 +295,9 @@ function installRecordingCompanion(): void {
     });
     updateStatus(
       status,
-      status === "denied" ? "没有获得麦克风权限" : "麦克风录制未启动",
-      "网页操作仍会正常录制，你可以继续使用录制起始页。",
-      status === "denied" ? "麦克风权限未允许" : "麦克风不可用"
+      status === "denied" ? "Microphone access was not granted" : "Microphone recording did not start",
+      "Web actions will still be recorded. You can continue from the recording start page.",
+      status === "denied" ? "Microphone access denied" : "Microphone unavailable"
     );
   }
 

@@ -1,7 +1,5 @@
 # Divebell CLI Extension Development
 
-Chinese version: [Divebell CLI Extension 开发指南](cli-extensions.zh-CN.md)
-
 This guide is for Extension developers. It follows the workflow for creating an Extension, registering capabilities, developing locally, publishing, and verification. For installing and managing existing Extensions, see [Using Extensions](extensions.md). For complete fields and types, see the [Extension API Reference](extension-api.md).
 
 Extensions connect a team's domain knowledge and existing development capabilities to Divebell. They can reuse the current page and browser diagnostics while calling existing SDKs, OpenAPIs, CLIs, and internal platforms.

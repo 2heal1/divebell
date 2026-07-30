@@ -27,7 +27,7 @@ function createOptions({ command, optionEntries = [], page } = {}) {
   };
 }
 
-test("入口声明的命令可以按需运行", async () => {
+test("runs the command declared by the entry point on demand", async () => {
   assert.equal(extension.name, "cli-extension-demo");
   assert.equal(extension.commands[0].name, "extension-demo");
 
@@ -38,12 +38,12 @@ test("入口声明的命令可以按需运行", async () => {
   const result = await extension.commands[0].run(fixture.options);
 
   assert.deepEqual(result, {
-    greeting: "你好，Codex！",
+    greeting: "Hello, Codex!",
     openedPage: null
   });
 });
 
-test("需要页面时给出下一步，而不是直接失败", async () => {
+test("provides a next step when a page is required", async () => {
   const fixture = createOptions({ command: ["extension-demo", "page"] });
   await assert.rejects(
     extension.commands[0].run(fixture.options),
@@ -51,7 +51,7 @@ test("需要页面时给出下一步，而不是直接失败", async () => {
   );
 });
 
-test("打开页面后读取标题和 open Hook 注入的标记", async () => {
+test("reads the title and marker injected by the open hook", async () => {
   const fixture = createOptions({
     command: ["extension-demo", "page"],
     page: { url: "https://example.com" }
@@ -63,7 +63,7 @@ test("打开页面后读取标题和 open Hook 注入的标记", async () => {
   assert.equal(result.marker.value.loaded, true);
 });
 
-test("Hook 返回可验证的初始化脚本和技术栈识别结果", async () => {
+test("hooks return verifiable initialization scripts and stack detection results", async () => {
   const openResult = await extension.hooks.open({});
   assert.match(openResult.scripts[0], /__DIVEBELL_CLI_EXTENSION_DEMO__/);
 

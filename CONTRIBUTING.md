@@ -1,7 +1,5 @@
 # Contributing to Divebell
 
-Chinese version: [Divebell 贡献指南](./CONTRIBUTING.zh-CN.md)
-
 Thank you for contributing to Divebell. This guide explains how to set up
 the repository, develop its packages, run the current CLI locally, and verify a
 change before opening a pull request.
@@ -71,7 +69,7 @@ directory:
 - `packages/chunk-map`, `packages/modern-plugin`, and
   `packages/rspack-plugin`: build and framework integrations.
 - `demos`: representative applications and Extension examples.
-- `docs`: user and developer documentation in English and Chinese.
+- `docs`: user and developer documentation.
 - `skills`: reusable instructions and runtime assets for coding agents.
 - `scripts`: repository checks, documentation generation, and release tooling.
 
@@ -108,8 +106,7 @@ paths.
 
 ## Documentation and CLI Help
 
-Keep English and Chinese documentation aligned when changing documented
-behavior.
+Keep the documentation aligned with current behavior.
 
 CLI reference pages are generated from the CLI help definitions. After changing
 a command name, option, or help text, update and verify them with:
@@ -119,7 +116,7 @@ pnpm docs:cli
 pnpm docs:cli:check -- --no-build
 ```
 
-Do not edit `docs/cli-reference.md` or `docs/cli-reference.zh-CN.md` by hand.
+Do not edit `docs/cli-reference.md` by hand.
 
 ## Architecture Boundaries
 
@@ -165,7 +162,7 @@ Before opening a pull request, confirm that:
 - the change has focused tests and they pass;
 - `pnpm check` passes;
 - generated CLI reference pages are current when CLI help changed;
-- English and Chinese documentation agree;
+- documentation matches the current product behavior;
 - published package changes include a changeset; and
 - no credentials, browser state, local artifacts, or machine-specific paths
   were committed.

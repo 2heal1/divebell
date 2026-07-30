@@ -1,4 +1,4 @@
 interface:
-  display_name: "录制 Divebell 流程"
-  short_description: "录制网页操作和元素，生成可执行并验证结果的 JS 脚本"
-  default_prompt: "使用 $record-divebell-workflow 打开浏览器录制操作元素和事件顺序，自动尝试可选语音，并生成和验证可执行的 JS 脚本；没有语音时直接忽略。"
+  display_name: "Record a Divebell workflow"
+  short_description: "Record web actions and elements, then generate and verify an executable JavaScript replay"
+  default_prompt: "Use $record-divebell-workflow to open a browser, record operated elements and event order, automatically attempt optional audio capture, and generate and verify an executable JavaScript replay. Ignore missing audio."

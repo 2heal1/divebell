@@ -52,4 +52,4 @@ divebell code-usage serve /tmp/code-usage-report.json --port 4173
 
 “Unused” means that code did not execute during the recorded journeys. It does not prove that the code can be removed.
 
-See the complete [English guide](../../docs/code-usage-analysis.md) or [中文指南](../../docs/code-usage-analysis.zh-CN.md).
+See the complete [code usage guide](../../docs/code-usage-analysis.md).

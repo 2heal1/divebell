@@ -1,80 +1,76 @@
 # Divebell Agent Guide
 
-## 项目目标
+## Project goal
 
-Divebell 是面向 Coding Agent 的可扩展 Web 开发调试工具。它提供开箱即用的真实 Web 场景调试流程，
-并允许团队通过 Extensions 接入自己的账号、环境、内部平台、诊断方法和验证标准。
+Divebell is an extensible web development and debugging tool for Coding Agents. It provides ready-to-use workflows for real web scenarios and lets teams connect their own accounts, environments, internal platforms, diagnostic methods, and acceptance criteria through Extensions.
 
-Coding Agent 负责阅读和修改代码；Divebell 负责把用户入口与团队已有的领域能力连接起来。
-Extension 可以从当前页面识别应用、环境和部署等资源，调用已有 SDK、OpenAPI、CLI 或内部平台，
-再回到相同账号、环境和用户路径验证修改。需要应用内部事实时，再通过 Runtime SDK API 暴露
-状态、事件、声明动作和等待条件。
+The Coding Agent reads and changes code; Divebell connects user entry points with the team's existing domain capabilities. An Extension can identify applications, environments, deployments, and other resources from the current page, call existing SDKs, OpenAPIs, CLIs, or internal platforms, and then verify changes with the same account, environment, and user path. When application-internal facts are needed, expose states, events, declared actions, and wait conditions through the Runtime SDK API.
 
-## 当前可信文档
+## Authoritative documentation
 
-优先级从高到低：
+Use these sources in descending priority:
 
-1. `README.md` / `README.zh-CN.md`：当前产品定位、能力边界和文档入口。
-2. `docs/agent-devloop.md` / `docs/agent-devloop.zh-CN.md`：真实开发调试闭环和最小人工介入原则。
-3. `docs/cli-extensions.md` / `docs/cli-extensions.zh-CN.md`：Extensions 与 Extension API。
-4. `docs/runtime-sdk-api.md` / `docs/runtime-sdk-api.zh-CN.md`：Runtime SDK 的使用边界和公开接入方式。
-5. `skills/divebell-runtime/references/api.md` / `skills/divebell-runtime/references/integration.md`：Runtime SDK 的完整字段、行为和接入方式。
-6. `.codex/skills/mf/SKILL.md`：遇到 Module Federation、remote、shared、manifest、observability、runtime error 时先使用这个 skill。
+1. `README.md`: current product positioning, capability boundaries, and documentation index.
+2. `docs/agent-devloop.md`: the real development and debugging loop and minimal-intervention principles.
+3. `docs/cli-extensions.md`: Extensions and the Extension API.
+4. `docs/runtime-sdk-api.md`: Runtime SDK boundaries and public integration.
+5. `skills/divebell-runtime/references/api.md` and `skills/divebell-runtime/references/integration.md`: complete Runtime SDK fields, behavior, and integration.
+6. `.codex/skills/mf/SKILL.md`: use this skill first for Module Federation, remotes, shared dependencies, manifests, observability, and runtime errors.
 
-## 当前核心设计
+## Current core design
 
-- Runtime SDK 是可选增强，不是使用 Divebell CLI、浏览器调试、agent-browser 登录能力或 Extensions 的前置条件。
-- Extension 在页面外部组织账号、环境、专项诊断和验证；Runtime SDK 在页面内部提供事实和声明动作。
-- Runtime SDK 不内置固定的 target type 或 status。每个 target 的 `type` 和 `statuses` 由 `registerTarget` 声明。
-- Target Registry 回答“页面里有什么可以被引用或等待”。
-- Snapshot 回答“页面当前是什么状态”。
-- Event Log 回答“状态和 action 是怎么变化过来的”。
-- Action Registry 回答“页面声明了哪些动作可以被 Agent 执行”。
-- `runAction` 只执行动作并记录 action event，不自动更新 Snapshot。执行后的验证应继续使用 `waitFor`。
-- `dependsOn` 只表达当前状态里的阻塞线索，主位置在 Snapshot；Event 只通过 `snapshot.updated` 的 payload 记录这次变化。
+- The Runtime SDK is an optional enhancement. It is not required for the Divebell CLI, browser debugging, agent-browser authentication, or Extensions.
+- Extensions organize accounts, environments, specialized diagnostics, and verification outside the page. The Runtime SDK provides facts and declared actions inside the page.
+- The Runtime SDK has no built-in target types or statuses. Each target's `type` and `statuses` are declared by `registerTarget`.
+- The Target Registry describes what the page exposes for reference or waiting.
+- Snapshot describes the page's current state.
+- Event Log describes how states and actions changed.
+- Action Registry describes the actions the page allows an Agent to run.
+- `runAction` only executes an action and records an action event; it does not update Snapshot automatically. Continue verification with `waitFor`.
+- `dependsOn` only describes blocking clues in the current state and belongs primarily in Snapshot. An Event records the change only through the `snapshot.updated` payload.
 
-## Modern.js / MF 接入方向
+## Modern.js and MF integration direction
 
-Divebell 的 Modern.js 接入后续应以 Modern.js plugin 的形式完成，不要写成独立外置 adapter。这个 plugin 负责注册和更新 Modern.js 能直接知道的 target，例如 app、route、loader、route component、SSR、hydration 和 navigation。
+Future Modern.js integration must be implemented as a Modern.js plugin, not as a standalone external adapter. The plugin registers and updates targets Modern.js can know directly, including apps, routes, loaders, route components, SSR, hydration, and navigation.
 
-`@divebell/modern-plugin` 当前是 WIP。它依赖的 Modern.js 生命周期 hook 尚未随正式版本发布。在包含这些 hook 的 Modern.js 新版本发布并完成兼容性验证前，不要把它推荐给普通项目，也不要根据现有版本号或 preview 标记判断可用；需要页面内部事实时先使用 `@divebell/core`。`@divebell/modern-plugin/chunk-map` 是独立的构建期能力，不依赖这批 runtime hook。
+`@divebell/modern-plugin` is currently a work in progress. It depends on Modern.js lifecycle hooks that have not been released in a stable version. Do not recommend it to regular projects until a Modern.js version containing those hooks is released and compatibility has been verified. Do not infer availability from a version number or preview label. Use `@divebell/core` when page-internal facts are needed. `@divebell/modern-plugin/chunk-map` is an independent build-time capability and does not depend on these runtime hooks.
 
-Divebell 的 Module Federation 接入后续应在 MF 仓库的 observability plugin 中完成，并优先复用 MF observability 能力。这个接入负责注册和更新 MF 能直接知道的 target，例如 consumer、remote、manifest、remoteEntry、expose、shared 和 runtime error。
+Future Module Federation integration should be implemented in the MF repository's observability plugin and should reuse MF observability capabilities first. It registers and updates targets MF can know directly, including consumers, remotes, manifests, remote entries, exposes, shared dependencies, and runtime errors.
 
-这些 plugin 需要依赖 Modern.js / MF 暴露的 hook。如果现有 hook 不够，不要在 Divebell 里绕开框架做脆弱探测，应优先在 Modern.js 或 MF 里补 hook。
+These plugins depend on hooks exposed by Modern.js or MF. If the available hooks are insufficient, add the hook to Modern.js or MF instead of adding fragile detection inside Divebell.
 
-## Modern.js 相关上下文
+## Modern.js context
 
-优先从本地仓库读取事实：
+Read facts from the local repository first:
 
-- Modern.js 本地仓库：`/Users/bytedance/fork_repo/modern.js`
-- 应用框架入口：`packages/solutions/app-tools`
-- 路由 / runtime / SSR 相关：`packages/runtime/plugin-runtime`
-- loader / redirect 相关：`packages/cli/plugin-data-loader`
-- server / BFF 相关：`packages/server/*`
-- 早期 MF 评估 demo：`tests/integration/agent-runtime-mf`
+- Modern.js local repository: `/Users/bytedance/fork_repo/modern.js`
+- Application framework entry: `packages/solutions/app-tools`
+- Routing, runtime, and SSR: `packages/runtime/plugin-runtime`
+- Loaders and redirects: `packages/cli/plugin-data-loader`
+- Server and BFF: `packages/server/*`
+- Early MF evaluation demo: `tests/integration/agent-runtime-mf`
 
-如果本地仓库没有足够上下文，再参考官方文档：`https://modernjs.dev/guides/get-started/introduction`。
+If the local repository does not provide enough context, consult the official documentation at `https://modernjs.dev/guides/get-started/introduction`.
 
-## GitHub PR 操作
+## GitHub pull request operations
 
-- 创建或更新 PR 时，本地 Git 负责创建分支、提交和推送；已授权的 GitHub connector/plugin 负责创建、读取和更新 PR。
-- `gh auth status` 显示未登录不能单独作为停止操作的理由，也不要仅因此要求用户登录 `gh`。
-- 确认改动范围并完成验证后，应先尝试使用现有 Git 凭据推送。推送成功后，继续使用 GitHub connector/plugin 创建或更新 PR。
-- `gh` 只作为 GitHub connector/plugin 无法完成目标操作时的备用方式。
-- 只有 Git 推送失败，并且 GitHub connector/plugin 也无法访问目标仓库或完成目标操作时，才需要用户介入。
-- 本节规则优先于通用发布流程中“必须先登录 `gh`”的要求。
+- When creating or updating a pull request, use local Git to create the branch, commit, and push. Use an authorized GitHub connector or plugin to create, read, and update the pull request.
+- An unauthenticated result from `gh auth status` is not by itself a reason to stop, and does not justify asking the user to log in to `gh`.
+- After confirming the change scope and completing verification, first try to push with the existing Git credentials. After a successful push, use the GitHub connector or plugin to create or update the pull request.
+- Use `gh` only when the GitHub connector or plugin cannot complete the required operation.
+- Ask the user to intervene only if the Git push fails and the GitHub connector or plugin also cannot access the repository or complete the operation.
+- These rules override any general publishing requirement to log in to `gh` first.
 
-## 工作规则
+## Working rules
 
-- 不要把 `Agent Runtime` 旧命名当成当前产品名；当前统一叫 Divebell。
-- 不要把 Divebell 定义成 Agent Runtime、Runtime API、浏览器自动化工具或开发运行环境；产品定位是面向 Coding Agent 的可扩展 Web 开发调试工具。
-- 团队已有的账号、环境、资源识别、SDK、OpenAPI、CLI、内部平台、诊断方法和验收标准应优先通过 Extension 接入。
-- 受保护页面优先复用已经准备好的登录状态和 session。测试账号和授权应提前配置、范围明确、可重复使用，不能绕过权限边界。
-- 普通页面没有 Runtime SDK 时，正常使用页面结果、Console、Network、截图和专项 Extension 排查，不要为了开始调试强制修改应用接入 Runtime。
-- 页面外部可以完成且值得复用的需求优先做 Extension；只有需要应用内部事实、声明动作或长期稳定等待条件时才接入 Runtime SDK。
-- 修改后回到与问题相同的账号、环境和用户路径验证。根据问题使用最可靠的现有证据，不强制所有任务增加 business target 或调用固定 verify 命令。
-- 不要从旧文档里的 `items + relations`、`from/to`、`RuntimeRelationEvent`、`waitForEvent`、`action expect` 反推第一版 API。
-- 写 Modern.js 接入方案时，按 Modern.js plugin 思路设计，优先使用或补齐框架 hook。
-- 写 MF 接入方案时，优先在 MF observability plugin 中接入 Divebell，使用已安装的 MF skill，尤其是 observability、remote、shared 和 runtime error 相关能力。
-- 如果实现需要新的生命周期或运行时信号，先判断应该补在 Modern.js / MF hook 里，还是补在 Divebell SDK API 里。
+- Do not use the old `Agent Runtime` name as the current product name. The product is Divebell.
+- Do not define Divebell as an Agent Runtime, Runtime API, browser automation tool, or development runtime. It is an extensible web development and debugging tool for Coding Agents.
+- Connect existing team accounts, environments, resource identification, SDKs, OpenAPIs, CLIs, internal platforms, diagnostic methods, and acceptance criteria through Extensions first.
+- For protected pages, reuse prepared authentication state and sessions. Test accounts and authorization must be configured in advance, clearly scoped, and reusable. Never bypass authorization boundaries.
+- When a regular page has no Runtime SDK, debug it with page results, Console, Network, screenshots, and specialized Extensions. Do not force an application to add the Runtime SDK just to begin debugging.
+- Prefer an Extension for reusable work that can happen outside the page. Add the Runtime SDK only when application-internal facts, declared actions, or long-lived stable wait conditions are required.
+- After a change, verify it with the same account, environment, and user path as the reported problem. Use the most reliable available evidence for the issue; do not require every task to add a business target or run a fixed verification command.
+- Do not derive the first API version from obsolete documentation for `items + relations`, `from/to`, `RuntimeRelationEvent`, `waitForEvent`, or `action expect`.
+- Design Modern.js integration as a Modern.js plugin and prefer using or extending framework hooks.
+- Integrate Divebell with MF through the MF observability plugin first. Use the installed MF skill, especially for observability, remotes, shared dependencies, and runtime errors.
+- If an implementation needs a new lifecycle or runtime signal, first decide whether it belongs in a Modern.js or MF hook or in the Divebell SDK API.

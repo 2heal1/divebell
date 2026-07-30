@@ -48,4 +48,4 @@ divebell memory cancel
 
 Use a repeated `memory check` for leak decisions. A single high reading or one temporary peak is not enough evidence of sustained growth.
 
-See the complete [English guide](../../docs/memory-analysis.md) or [中文指南](../../docs/memory-analysis.zh-CN.md).
+See the complete [memory analysis guide](../../docs/memory-analysis.md).

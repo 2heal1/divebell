@@ -1,7 +1,5 @@
 # Memory Analysis Guide
 
-Chinese version: [内存分析指南](memory-analysis.zh-CN.md)
-
 Memory analysis is provided by an optional Extension package. It works with any Chrome page that Divebell can open and does not require Modern.js, Rspack, Runtime SDK, or build metadata.
 
 Install Divebell globally, then add the Extension once:

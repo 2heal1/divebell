@@ -7,9 +7,7 @@ import { test } from "node:test";
 
 import extension from "../dist/extension.js";
 import {
-  cliText,
   createCodeUsageReportHtml,
-  detectCliLocale,
   runCodeUsageReportCommand,
   startCodeUsageReportServer,
   writeCodeUsageReportHtml
@@ -146,28 +144,18 @@ test("creates a self-contained and safely escaped report", async () => {
 
   assert.match(html, /<html lang="en">/);
   assert.match(html, />Page experience report</);
-  assert.match(html, /data-i18n="reportTitle"/);
-  assert.match(html, /addEventListener\("languagechange"/);
-  assert.match(html, /detectBrowserLocale/);
-  assert.match(html, /id="language-toggle"/);
-  assert.match(html, /Switch to Chinese/);
-  assert.match(html, /切换到英文/);
-  assert.match(html, /function switchLanguage/);
-  assert.match(html, /页面体验报告/);
-  assert.match(html, /页面可用时间、JavaScript 堆内存、资源加载与代码使用数据/);
-  assert.match(html, /页面可用时 JavaScript 堆内存/);
-  assert.doesNotMatch(html, /浏览器加载完成/);
-  assert.doesNotMatch(html, /资源加载完成，不一定代表页面可用/);
-  assert.match(html, /Chunk 加载分析/);
-  assert.match(html, /加载发起方（Initiator）/);
-  assert.match(html, /分包规则/);
+  assert.doesNotMatch(html, /data-i18n|language-toggle|detectBrowserLocale|switchLanguage|languagechange/);
+  assert.doesNotMatch(html, /\p{Script=Han}/u);
+  assert.match(html, /Page readiness, JavaScript heap memory, resource loading, and code usage/);
+  assert.match(html, /JavaScript heap when ready/);
+  assert.match(html, /Chunk loading analysis/);
+  assert.match(html, /Initiator/);
+  assert.match(html, /Split rule/);
   assert.match(html, /optimization\.splitChunks\.cacheGroups\.react/);
-  assert.match(html, /指标摘要[\s\S]*加载、内存与代码使用结果/);
-  assert.match(html, /代码使用分析/);
+  assert.match(html, /Metric summary[\s\S]*Loading, memory, and code usage results/);
+  assert.match(html, /Code usage analysis/);
   assert.match(html, /aria-describedby="code-usage-help"/);
-  assert.match(html, /各阶段 JavaScript 的映射体积、已执行体积、未执行体积和使用率/);
-  assert.doesNotMatch(html, /代码调优明细/);
-  assert.doesNotMatch(html, /先看|再定位|建议检查|可从下方|重新运行页面体验检查/);
+  assert.match(html, /Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase/);
   assert.match(html, /readyDurationMs/);
   assert.match(html, /data-view="application"[^>]*>Application code/);
   assert.match(html, /view: "application"/);
@@ -177,19 +165,6 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.doesNotMatch(html, /__DIVEBELL_REPORT_DATA__/);
   assert.doesNotMatch(html, /<\/script><script>alert\(1\)<\/script>/);
   assert.match(html, /\\u003c\/script\\u003e/);
-});
-
-test("selects English by default and Chinese for Chinese terminal locales", () => {
-  assert.equal(detectCliLocale({}), "en");
-  assert.equal(detectCliLocale({ LANG: "en_US.UTF-8" }), "en");
-  assert.equal(detectCliLocale({ LC_ALL: "zh_CN.UTF-8" }), "zh");
-  assert.equal(detectCliLocale({ LANG: "zh-TW" }), "zh");
-  assert.equal(
-    detectCliLocale({ DIVEBELL_LANG: "en", LANG: "zh_CN.UTF-8" }),
-    "en"
-  );
-  assert.equal(cliText("Report ready", "报告已生成", { LANG: "en_US.UTF-8" }), "Report ready");
-  assert.equal(cliText("Report ready", "报告已生成", { LANG: "zh_CN.UTF-8" }), "报告已生成");
 });
 
 test("code-usage report generates an HTML file without requiring a page session", async () => {
@@ -227,7 +202,8 @@ test("code-usage report generates an HTML file without requiring a page session"
     const mainHtml = readFileSync(outputPath, "utf8");
     assert.match(mainHtml, /codeViewers/);
     assert.match(mainHtml, /visual-report-data\.js/);
-    assert.match(mainHtml, /正在载入报告/);
+    assert.match(mainHtml, /Loading report/);
+    assert.doesNotMatch(mainHtml, /data-i18n|language-toggle|\p{Script=Han}/u);
     assert.doesNotMatch(mainHtml, /const tag/);
     const mainData = readFileSync(join(directory, "visual-report-data.js"), "utf8");
     assert.match(mainData, /first-screen/);
@@ -241,22 +217,19 @@ test("code-usage report generates an HTML file without requiring a page session"
     const viewerHtml = readFileSync(join(result.data.codeDirectory, viewerHtmlFile), "utf8");
     const viewerData = readFileSync(join(result.data.codeDirectory, viewerDataFile), "utf8");
     assert.doesNotMatch(viewerHtml, /const tag/);
-    assert.match(viewerHtml, /正在准备代码/);
+    assert.match(viewerHtml, /Preparing code/);
     assert.match(viewerHtml, /<html lang="en">/);
     assert.match(viewerHtml, />Navigation scope</);
-    assert.match(viewerHtml, /addEventListener\("languagechange"/);
-    assert.match(viewerHtml, /id="language-toggle"/);
-    assert.match(viewerHtml, /function switchLanguage/);
+    assert.doesNotMatch(viewerHtml, /data-i18n|language-toggle|detectBrowserLocale|switchLanguage|languagechange/);
+    assert.doesNotMatch(viewerHtml, /\p{Script=Han}/u);
     assert.match(viewerData, /const tag/);
     assert.match(viewerData, /\\u003c\/script/);
-    assert.match(viewerHtml, /定位范围/);
-    assert.match(viewerHtml, /当前源码/);
-    assert.match(viewerHtml, /全部执行/);
-    assert.match(viewerHtml, /上一处/);
-    assert.match(viewerHtml, /下一处/);
+    assert.match(viewerHtml, /Current source/);
+    assert.match(viewerHtml, /All executed/);
+    assert.match(viewerHtml, />Previous</);
+    assert.match(viewerHtml, />Next</);
     assert.match(viewerHtml, /source-highlight-toggle/);
-    assert.match(viewerHtml, /当前源码实际执行/);
-    assert.doesNotMatch(viewerHtml, /蓝色：|橙色：/);
+    assert.match(viewerHtml, /Current source executed/);
     assert.match(viewerData, /fileRanges|sourcePath/);
   } finally {
     rmSync(directory, { recursive: true, force: true });

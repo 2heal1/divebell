@@ -38,4 +38,4 @@ divebell verify \
 
 The command succeeds only when the requested business target reaches the expected result. If only framework-level evidence exists, the output explains why final business verification is still missing and suggests a suitable business target when one is available.
 
-See [Runtime SDK API](../../docs/runtime-sdk-api.md), [Runtime SDK API 中文版](../../docs/runtime-sdk-api.zh-CN.md), and [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md).
+See [Runtime SDK API](../../docs/runtime-sdk-api.md) and [Browser Connections and Multiple Runtimes](../../docs/runtime-connections.md).

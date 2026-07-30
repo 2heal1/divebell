@@ -1,7 +1,5 @@
 # Record Browser Workflows with an Agent
 
-Chinese version: [录制浏览器操作并生成脚本](record-browser-workflows.zh-CN.md)
-
 Install the [`record-divebell-workflow`](../skills/record-divebell-workflow/SKILL.md)
 skill in your agent. Then invoke the skill and describe the workflow you want to
 demonstrate:

@@ -72,20 +72,6 @@
       font-size: 12px;
       overflow-wrap: anywhere;
     }
-    .language-toggle {
-      flex: 0 0 auto;
-      min-height: 30px;
-      border: 1px solid var(--input);
-      border-radius: 999px;
-      background: var(--card);
-      color: var(--muted-foreground);
-      padding: 4px 10px;
-      box-shadow: var(--shadow);
-      cursor: pointer;
-      font-size: 12px;
-      transition: border-color 160ms ease, color 160ms ease;
-    }
-    .language-toggle:hover { border-color: #c9cfd9; color: var(--foreground); }
     .view-tabs {
       margin-bottom: 14px;
       border-bottom: 1px solid var(--border);
@@ -526,19 +512,6 @@
       font-family: var(--utility-face);
       line-height: 1.55;
     }
-    .language-toggle {
-      min-height: 34px;
-      border-color: var(--input);
-      border-radius: 3px;
-      background: transparent;
-      color: #b8c2d2;
-      box-shadow: none;
-      font-family: var(--utility-face);
-    }
-    .language-toggle:hover {
-      border-color: var(--primary);
-      color: var(--foreground);
-    }
     .experience-stats {
       position: relative;
       z-index: 2;
@@ -883,66 +856,65 @@
   <main id="divebell-code-usage-report" class="shell">
     <header class="heading">
       <div>
-        <h1 data-i18n="reportTitle">Page experience report</h1>
-        <p class="subtitle" data-i18n="reportSubtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
+        <h1>Page experience report</h1>
+        <p class="subtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
       </div>
       <div class="heading-actions">
-        <p id="report-meta" class="meta" data-i18n="loadingReport">Loading report…</p>
-        <button id="language-toggle" class="language-toggle" type="button">中文</button>
+        <p id="report-meta" class="meta">Loading report…</p>
       </div>
     </header>
 
-    <section class="experience-stats" aria-label="Page experience summary" data-i18n-aria="experienceSummary">
+    <section class="experience-stats" aria-label="Page experience summary">
       <article class="card experience-stat">
-        <div class="stat-label" data-i18n="readyTime">Page ready time</div>
+        <div class="stat-label">Page ready time</div>
         <div id="ready-duration" class="stat-value">—</div>
-        <div id="ready-duration-note" class="stat-note" data-i18n="readyTimeDefaultNote">From navigation start until the readiness target reaches ready</div>
+        <div id="ready-duration-note" class="stat-note">From navigation start until the readiness target reaches ready</div>
       </article>
       <article class="card experience-stat">
-        <div class="stat-label" data-i18n="readyMemory">JavaScript heap when ready</div>
+        <div class="stat-label">JavaScript heap when ready</div>
         <div id="ready-memory" class="stat-value">—</div>
-        <div id="stable-memory-note" class="stat-note" data-i18n="stableMemoryDefault">After stabilization —</div>
+        <div id="stable-memory-note" class="stat-note">After stabilization —</div>
       </article>
       <article class="card experience-stat">
-        <div class="stat-label" data-i18n="peakMemory">Peak JavaScript heap during loading</div>
+        <div class="stat-label">Peak JavaScript heap during loading</div>
         <div id="peak-memory" class="stat-value">—</div>
-        <div id="peak-memory-note" class="stat-note" data-i18n="navigationToReady">Navigation start to ready</div>
+        <div id="peak-memory-note" class="stat-note">Navigation start to ready</div>
       </article>
     </section>
 
-    <section class="card panel experience-panel" aria-label="Loading process" data-i18n-aria="loadingProcess">
+    <section class="card panel experience-panel" aria-label="Loading process">
       <div class="panel-head">
         <div>
-          <h2 data-i18n="loadingProcess">Loading process</h2>
-          <p class="hint" data-i18n="loadingProcessDescription">HTML response, JavaScript loading, readiness, and memory changes during navigation</p>
+          <h2>Loading process</h2>
+          <p class="hint">HTML response, JavaScript loading, readiness, and memory changes during navigation</p>
         </div>
-        <span id="experience-mode" class="mode-badge" data-i18n="isolatedColdStart">Isolated cold start</span>
+        <span id="experience-mode" class="mode-badge">Isolated cold start</span>
       </div>
       <div id="timeline" class="timeline"></div>
-      <div class="timeline-legend" aria-label="Timeline legend" data-i18n-aria="timelineLegend">
-        <span><i class="timeline-dot html-dot"></i><span data-i18n="htmlResponse">HTML response</span></span>
+      <div class="timeline-legend" aria-label="Timeline legend">
+        <span><i class="timeline-dot html-dot"></i><span>HTML response</span></span>
         <span><i class="timeline-dot resource-dot"></i>JavaScript</span>
-        <span><i class="timeline-dot ready-dot"></i><span data-i18n="pageReady">Page ready</span></span>
+        <span><i class="timeline-dot ready-dot"></i><span>Page ready</span></span>
       </div>
-      <div id="memory-chart" class="memory-chart" aria-label="JavaScript heap changes" data-i18n-aria="memoryChanges"></div>
+      <div id="memory-chart" class="memory-chart" aria-label="JavaScript heap changes"></div>
     </section>
 
     <section class="diagnosis-layout">
       <article class="card panel">
         <div class="panel-head">
-          <h2 data-i18n="metricSummary">Metric summary</h2>
-          <span class="hint" data-i18n="metricSummaryDescription">Loading, memory, and code usage results</span>
+          <h2>Metric summary</h2>
+          <span class="hint">Loading, memory, and code usage results</span>
         </div>
         <div id="findings" class="findings"></div>
       </article>
       <article class="card panel">
         <div class="panel-head">
-          <h2 data-i18n="chunkLoadingAnalysis">Chunk loading analysis</h2>
-          <span class="hint" data-i18n="chunkLoadingDescription">Initiator source: resource requests and build chunk relationships</span>
+          <h2>Chunk loading analysis</h2>
+          <span class="hint">Initiator source: resource requests and build chunk relationships</span>
         </div>
         <div class="chunk-table-wrap">
           <table class="chunk-table">
-            <thead><tr><th>Chunk</th><th data-i18n="initiator">Initiator</th><th data-i18n="splitRule">Split rule</th><th data-i18n="size">Size</th><th data-i18n="actualUsage">Actual usage</th></tr></thead>
+            <thead><tr><th>Chunk</th><th>Initiator</th><th>Split rule</th><th>Size</th><th>Actual usage</th></tr></thead>
             <tbody id="chunk-diagnostics"></tbody>
           </table>
         </div>
@@ -951,54 +923,54 @@
 
     <div class="section-heading">
       <div class="section-title">
-        <h2 data-i18n="codeUsageAnalysis">Code usage analysis</h2>
+        <h2>Code usage analysis</h2>
         <span class="info-tooltip">
-          <button type="button" class="info-trigger" aria-label="About code usage analysis" data-i18n-aria="codeUsageHelpLabel" aria-describedby="code-usage-help">?</button>
-          <span id="code-usage-help" class="info-content" role="tooltip" data-i18n="codeUsageHelp">Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase.</span>
+          <button type="button" class="info-trigger" aria-label="About code usage analysis" aria-describedby="code-usage-help">?</button>
+          <span id="code-usage-help" class="info-content" role="tooltip">Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase.</span>
         </span>
       </div>
     </div>
 
-    <section class="view-tabs" aria-label="View dimension" data-i18n-aria="viewDimension">
-      <div class="segmented" role="group" aria-label="View dimension" data-i18n-aria="viewDimension">
-        <button type="button" data-view="application" aria-pressed="true" data-i18n="applicationCode">Application code</button>
-        <button type="button" data-view="packages" aria-pressed="false" data-i18n="dependencies">Dependencies</button>
-        <button type="button" data-view="sources" aria-pressed="false" data-i18n="allFiles">All files</button>
-        <button type="button" data-view="chunks" aria-pressed="false" data-i18n="chunks">Chunks</button>
+    <section class="view-tabs" aria-label="View dimension">
+      <div class="segmented" role="group" aria-label="View dimension">
+        <button type="button" data-view="application" aria-pressed="true">Application code</button>
+        <button type="button" data-view="packages" aria-pressed="false">Dependencies</button>
+        <button type="button" data-view="sources" aria-pressed="false">All files</button>
+        <button type="button" data-view="chunks" aria-pressed="false">Chunks</button>
       </div>
     </section>
 
-    <section class="controls" aria-label="Analysis scope" data-i18n-aria="analysisScope">
-      <label><span data-i18n="recordedPhase">Recorded phase</span>
+    <section class="controls" aria-label="Analysis scope">
+      <label><span>Recorded phase</span>
         <select id="phase-select"></select>
       </label>
-      <label class="search-control"><span data-i18n="search">Search</span>
-        <input id="search-input" type="search" placeholder="Search source, package, or file path" data-i18n-placeholder="searchPlaceholder">
+      <label class="search-control"><span>Search</span>
+        <input id="search-input" type="search" placeholder="Search source, package, or file path">
       </label>
-      <label><span data-i18n="sort">Sort</span>
+      <label><span>Sort</span>
         <select id="sort-select">
-          <option value="size" data-i18n="sortBySize">Largest size</option>
-          <option value="low-use" data-i18n="sortByUsage">Lowest usage</option>
-          <option value="used" data-i18n="sortByExecuted">Executed size</option>
+          <option value="size">Largest size</option>
+          <option value="low-use">Lowest usage</option>
+          <option value="used">Executed size</option>
         </select>
       </label>
     </section>
 
-    <section class="stats card" aria-label="Phase summary" data-i18n-aria="phaseSummary">
+    <section class="stats card" aria-label="Phase summary">
       <article class="stat">
-        <div class="stat-label" data-i18n="mappedSize">Mapped size</div>
+        <div class="stat-label">Mapped size</div>
         <div id="total-size" class="stat-value">—</div>
         <div id="item-count" class="stat-note"></div>
       </article>
       <article class="stat">
-        <div class="stat-label" data-i18n="actuallyExecuted">Actually executed</div>
+        <div class="stat-label">Actually executed</div>
         <div id="used-percent" class="stat-value">—</div>
         <div id="used-size" class="stat-note"></div>
       </article>
       <article class="stat">
-        <div class="stat-label" data-i18n="lowUsageItems">Low-usage items</div>
+        <div class="stat-label">Low-usage items</div>
         <div id="candidate-count" class="stat-value">—</div>
-        <div class="stat-note" data-i18n="lowUsageDefinition">At least 1 KB with less than 10% usage</div>
+        <div class="stat-note">At least 1 KB with less than 10% usage</div>
       </article>
     </section>
 
@@ -1013,26 +985,26 @@
           <div class="skeleton-row"></div>
           <div class="skeleton-row"></div>
         </div>
-        <div class="legend" aria-label="Legend" data-i18n-aria="legend">
-          <span><i class="swatch"></i><span data-i18n="executed">Executed</span></span>
-          <span><i class="swatch unused"></i><span data-i18n="notExecuted">Not executed</span></span>
+        <div class="legend" aria-label="Legend">
+          <span><i class="swatch"></i><span>Executed</span></span>
+          <span><i class="swatch unused"></i><span>Not executed</span></span>
         </div>
-        <p class="phase-note" data-i18n="phaseNote">Phases are counted independently. A later phase at 0% means no code ran again in that phase, not that it was never used.</p>
+        <p class="phase-note">Phases are counted independently. A later phase at 0% means no code ran again in that phase, not that it was never used.</p>
       </article>
 
       <aside class="card panel detail" aria-live="polite">
-        <span id="detail-kind" class="hint" data-i18n="itemDetails">Item details</span>
+        <span id="detail-kind" class="hint">Item details</span>
         <div id="detail-name" class="detail-name">—</div>
         <div class="detail-grid">
-          <div><div class="hint" data-i18n="totalSize">Total size</div><div id="detail-total" class="detail-value">—</div></div>
-          <div><div class="hint" data-i18n="executed">Executed</div><div id="detail-used" class="detail-value">—</div></div>
-          <div><div class="hint" data-i18n="notExecuted">Not executed</div><div id="detail-unused" class="detail-value">—</div></div>
-          <div><div class="hint" data-i18n="usageRatio">Usage ratio</div><div id="detail-ratio" class="detail-value">—</div></div>
+          <div><div class="hint">Total size</div><div id="detail-total" class="detail-value">—</div></div>
+          <div><div class="hint">Executed</div><div id="detail-used" class="detail-value">—</div></div>
+          <div><div class="hint">Not executed</div><div id="detail-unused" class="detail-value">—</div></div>
+          <div><div class="hint">Usage ratio</div><div id="detail-ratio" class="detail-value">—</div></div>
         </div>
         <div id="detail-path" class="detail-path"></div>
         <div id="detail-code" class="detail-code" hidden>
           <div class="detail-code-head">
-            <span class="hint" data-i18n="executedCode">Executed code</span>
+            <span class="hint">Executed code</span>
             <span id="detail-code-count" class="hint"></span>
           </div>
           <div id="detail-code-links" class="detail-code-links"></div>
@@ -1046,95 +1018,9 @@
   <script id="divebell-report-data" type="application/json">__DIVEBELL_REPORT_DATA__</script>
   <script>
     (() => {
-      const chineseMessages = {
-        reportTitle: "页面体验报告",
-        reportSubtitle: "页面可用时间、JavaScript 堆内存、资源加载与代码使用数据",
-        loadingReport: "正在载入报告…",
-        experienceSummary: "页面体验概览",
-        readyTime: "页面可用时间",
-        readyTimeDefaultNote: "从页面访问开始到可用标识进入 ready",
-        readyMemory: "页面可用时 JavaScript 堆内存",
-        stableMemoryDefault: "页面稳定后 —",
-        peakMemory: "加载期间 JavaScript 堆内存峰值",
-        navigationToReady: "页面访问开始至可用状态",
-        loadingProcess: "加载过程",
-        loadingProcessDescription: "页面访问期间的 HTML 响应、JavaScript 加载、可用状态与内存变化",
-        isolatedColdStart: "独立冷启动",
-        timelineLegend: "时间线图例",
-        htmlResponse: "HTML 响应",
-        pageReady: "页面可用",
-        memoryChanges: "JavaScript 堆内存变化",
-        metricSummary: "指标摘要",
-        metricSummaryDescription: "加载、内存与代码使用结果",
-        chunkLoadingAnalysis: "Chunk 加载分析",
-        chunkLoadingDescription: "发起方来源：资源请求记录与构建分块关系",
-        initiator: "加载发起方（Initiator）",
-        splitRule: "分包规则",
-        size: "大小",
-        actualUsage: "实际使用",
-        codeUsageAnalysis: "代码使用分析",
-        codeUsageHelpLabel: "代码使用分析说明",
-        codeUsageHelp: "各阶段 JavaScript 的映射体积、已执行体积、未执行体积和使用率。",
-        viewDimension: "查看维度",
-        applicationCode: "业务代码",
-        dependencies: "依赖包",
-        allFiles: "全部文件",
-        chunks: "分块",
-        analysisScope: "分析范围",
-        recordedPhase: "记录阶段",
-        search: "查找",
-        searchPlaceholder: "搜索源码、包名或文件路径",
-        sort: "排序",
-        sortBySize: "体积从大到小",
-        sortByUsage: "使用率从低到高",
-        sortByExecuted: "已使用体积",
-        phaseSummary: "阶段概览",
-        mappedSize: "已映射体积",
-        actuallyExecuted: "实际执行",
-        lowUsageItems: "低使用项",
-        lowUsageDefinition: "至少 1 KB，使用率低于 10%",
-        legend: "图例",
-        executed: "已执行",
-        notExecuted: "未执行",
-        phaseNote: "不同阶段分别计数；后续阶段的 0% 表示该阶段没有再次执行，不代表此前从未使用。",
-        itemDetails: "项目详情",
-        totalSize: "总体积",
-        usageRatio: "使用率",
-        executedCode: "实际执行代码"
-      };
-      let locale = detectBrowserLocale();
-      const localized = (english, chinese, values = {}) => {
-        const template = locale === "zh" ? chinese : english;
+      const formatText = (template, values = {}) => {
         return template.replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ""));
       };
-      const applyDocumentLocale = () => {
-        document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-        document.title = locale === "zh"
-          ? "Divebell 页面体验报告"
-          : "Divebell Page Experience Report";
-        if (locale !== "zh") return;
-        document.querySelectorAll("[data-i18n]").forEach((element) => {
-          element.textContent = chineseMessages[element.dataset.i18n] || element.textContent;
-        });
-        document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
-          element.setAttribute("aria-label", chineseMessages[element.dataset.i18nAria] || element.getAttribute("aria-label") || "");
-        });
-        document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
-          element.setAttribute("placeholder", chineseMessages[element.dataset.i18nPlaceholder] || element.getAttribute("placeholder") || "");
-        });
-      };
-      applyDocumentLocale();
-      const languageToggle = document.getElementById("language-toggle");
-      languageToggle.textContent = locale === "zh" ? "English" : "中文";
-      languageToggle.setAttribute(
-        "aria-label",
-        locale === "zh" ? "切换到英文" : "Switch to Chinese"
-      );
-      languageToggle.addEventListener("click", switchLanguage);
-      window.addEventListener("languagechange", () => {
-        if (new URLSearchParams(location.search).has("lang")) return;
-        if (detectBrowserLocale() !== locale) location.reload();
-      });
 
       const dataHref = __DIVEBELL_REPORT_DATA_HREF__;
       const dataMode = __DIVEBELL_REPORT_DATA_MODE__;
@@ -1151,10 +1037,7 @@
       try {
         const usage = report.usage && Array.isArray(report.usage.phases) ? report.usage : report;
         if (!usage || !Array.isArray(usage.phases) || usage.phases.length === 0) {
-          throw new Error(localized(
-            "The report has no phase data to display.",
-            "报告中没有可展示的阶段数据。"
-          ));
+          throw new Error(formatText("The report has no phase data to display."));
         }
         const experience = report.experience && Array.isArray(report.experience.phases)
           ? report.experience
@@ -1166,13 +1049,13 @@
 
         document.getElementById("report-meta").textContent = [
           report.url || "",
-          usage.buildId ? localized("Build {id}", "构建 {id}", { id: usage.buildId }) : ""
+          usage.buildId ? formatText("Build {id}", { id: usage.buildId }) : ""
         ].filter(Boolean).join(" · ");
 
         usage.phases.forEach((phase, index) => {
           const option = document.createElement("option");
           option.value = String(index);
-          option.textContent = phase.label || localized("Phase {number}", "阶段 {number}", { number: index + 1 });
+          option.textContent = phase.label || formatText("Phase {number}", { number: index + 1 });
           phaseSelect.append(option);
         });
 
@@ -1192,11 +1075,7 @@
                 total: item.totalBytes || 0,
                 used: item.usedBytes || 0,
                 ratio: numberOrNull(item.usedRatio),
-                detail: localized(
-                  "Chunks: {chunks} · Files: {count}",
-                  "分块：{chunks} · 文件数：{count}",
-                  { chunks: (item.chunkIds || []).join(", ") || "—", count: item.sourceCount || 0 }
-                ),
+                detail: formatText("Chunks: {chunks} · Files: {count}", { chunks: (item.chunkIds || []).join(", ") || "—", count: item.sourceCount || 0 }),
                 codeViewers: viewersForChunks(item.chunkIds || [])
               }));
           }
@@ -1205,8 +1084,8 @@
           }
           return (phase.chunks || []).map((item) => ({
             key: `chunk:${item.chunkId}`,
-            name: localized("Chunk {id}", "分块 {id}", { id: item.chunkId }),
-            kind: item.initial ? localized("Initial", "首屏") : localized("Async", "异步"),
+            name: formatText("Chunk {id}", { id: item.chunkId }),
+            kind: item.initial ? formatText("Initial") : formatText("Async"),
             total: item.totalBytes || 0,
             used: item.usedBytes || 0,
             ratio: numberOrNull(item.usedRatio),
@@ -1226,36 +1105,28 @@
           document.getElementById("ready-memory").textContent = formatBytes(numberOrNull(memory.atReadyBytes));
           document.getElementById("peak-memory").textContent = formatBytes(numberOrNull(memory.peakBytes));
           document.getElementById("ready-duration-note").textContent = phaseExperience
-            ? localized(
-              "End condition: {target}=ready{median}",
-              "结束条件：{target}=ready{median}",
-              {
-                target: phaseExperience.readyTarget || localized("readiness target", "可用标识"),
+            ? formatText("End condition: {target}=ready{median}", {
+                target: phaseExperience.readyTarget || formatText("readiness target"),
                 median: phaseExperience.runCount > 1
-                  ? localized(" · median of {count} runs", " · {count} 次中位数", { count: phaseExperience.runCount })
+                  ? formatText(" · median of {count} runs", { count: phaseExperience.runCount })
                   : ""
-              }
-            )
-            : localized("Page ready time unavailable", "页面可用时间无数据");
+              })
+            : formatText("Page ready time unavailable");
           document.getElementById("stable-memory-note").textContent = numberOrNull(memory.stableBytes) === null
-            ? localized("Memory after stabilization unavailable", "页面稳定后内存无数据")
-            : localized("After stabilization {memory}", "页面稳定后 {memory}", {
+            ? formatText("Memory after stabilization unavailable")
+            : formatText("After stabilization {memory}", {
               memory: formatBytes(memory.stableBytes)
             });
           document.getElementById("peak-memory-note").textContent = numberOrNull(memory.peakTimeMs) === null
-            ? localized("Navigation start to ready", "页面访问开始至可用状态")
-            : localized("Peak at {time}", "峰值时间 {time}", {
+            ? formatText("Navigation start to ready")
+            : formatText("Peak at {time}", {
               time: formatMilliseconds(memory.peakTimeMs)
             });
           document.getElementById("experience-mode").textContent = experience.mode === "cold-median"
-            ? localized(
-              "Isolated cold start · median of {count} runs",
-              "独立冷启动 · {count} 次中位数",
-              { count: experience.runCount || phaseExperience && phaseExperience.runCount || 3 }
-            )
+            ? formatText("Isolated cold start · median of {count} runs", { count: experience.runCount || phaseExperience && phaseExperience.runCount || 3 })
             : experience.mode === "cold"
-              ? localized("Isolated cold start", "独立冷启动")
-              : localized("Current browser session", "当前浏览器会话");
+              ? formatText("Isolated cold start")
+              : formatText("Current browser session");
           renderTimeline(phaseExperience);
           renderMemoryChart(phaseExperience);
           renderFindings(phase, phaseExperience);
@@ -1266,7 +1137,7 @@
           const container = document.getElementById("timeline");
           container.replaceChildren();
           if (!phaseExperience) {
-            container.append(createEmpty(localized("Loading process unavailable", "加载过程无数据")));
+            container.append(createEmpty(formatText("Loading process unavailable")));
             return;
           }
           const navigation = phaseExperience.navigation || {};
@@ -1293,8 +1164,8 @@
             axis.append(tick);
           }
 
-          addTimelineMarker(axis, numberOrNull(navigation.responseStartMs), maximum, localized("HTML response", "HTML 响应"), "html");
-          addTimelineMarker(axis, numberOrNull(phaseExperience.readyDurationMs), maximum, localized("Page ready", "页面可用"), "ready");
+          addTimelineMarker(axis, numberOrNull(navigation.responseStartMs), maximum, formatText("HTML response"), "html");
+          addTimelineMarker(axis, numberOrNull(phaseExperience.readyDurationMs), maximum, formatText("Page ready"), "ready");
           for (const resource of resources.slice(0, 80)) {
             const start = numberOrNull(resource.startTimeMs);
             const end = numberOrNull(resource.responseEndMs);
@@ -1317,10 +1188,7 @@
               numberOrNull(sample && sample.timeMs) !== null && numberOrNull(sample && sample.usedBytes) !== null)
             : [];
           if (samples.length < 2) {
-            container.append(createEmpty(localized(
-              "Insufficient continuous memory data",
-              "连续内存数据不足"
-            )));
+            container.append(createEmpty(formatText("Insufficient continuous memory data")));
             return;
           }
           const width = 900;
@@ -1375,30 +1243,26 @@
           if (ready !== null) {
             appendFinding(
               container,
-              localized("Page ready in {time}", "页面可用时间 {time}", {
+              formatText("Page ready in {time}", {
                 time: formatMilliseconds(ready)
               }),
-              localized("Measurement ended at {target}=ready.", "测量结束条件：{target}=ready。", {
-                target: phaseExperience.readyTarget || localized("readiness target", "可用标识")
+              formatText("Measurement ended at {target}=ready.", {
+                target: phaseExperience.readyTarget || formatText("readiness target")
               })
             );
           } else {
             appendFinding(
               container,
-              localized("Page ready time unavailable", "页面可用时间无数据"),
-              localized("This report does not include page ready time.", "本次报告未包含页面可用时间。")
+              formatText("Page ready time unavailable"),
+              formatText("This report does not include page ready time.")
             );
           }
           appendFinding(
             container,
-            localized(
-              "JavaScript {total}, {unused} not executed",
-              "JavaScript {total}，未执行 {unused}",
-              { total: formatBytes(total), unused: formatBytes(unused) }
-            ),
+            formatText("JavaScript {total}, {unused} not executed", { total: formatBytes(total), unused: formatBytes(unused) }),
             total === 0
-              ? localized("No matching build output was found.", "没有匹配到构建产物。")
-              : localized("{ratio} executed in this phase.", "本阶段执行比例 {ratio}。", {
+              ? formatText("No matching build output was found.")
+              : formatText("{ratio} executed in this phase.", {
                 ratio: formatPercent(used / total)
               })
           );
@@ -1408,20 +1272,13 @@
           appendFinding(
             container,
             peak === null
-              ? localized("JavaScript heap peak unavailable", "加载期间 JavaScript 堆内存无数据")
-              : localized("Peak JavaScript heap {memory}", "JavaScript 堆内存峰值 {memory}", {
+              ? formatText("JavaScript heap peak unavailable")
+              : formatText("Peak JavaScript heap {memory}", {
                 memory: formatBytes(peak)
               }),
             stable === null
-              ? localized(
-                "This report does not include memory after stabilization.",
-                "本次报告未包含页面稳定后的内存。"
-              )
-              : localized(
-                "JavaScript heap after stabilization {memory}.",
-                "页面稳定后 JavaScript 堆内存 {memory}。",
-                { memory: formatBytes(stable) }
-              )
+              ? formatText("This report does not include memory after stabilization.")
+              : formatText("JavaScript heap after stabilization {memory}.", { memory: formatBytes(stable) })
           );
         };
 
@@ -1435,7 +1292,7 @@
             const cell = document.createElement("td");
             cell.colSpan = 5;
             cell.className = "empty";
-            cell.textContent = localized("No matching chunks", "没有匹配到 Chunk");
+            cell.textContent = formatText("No matching chunks");
             row.append(cell);
             body.append(row);
             return;
@@ -1452,11 +1309,11 @@
             const timing = document.createElement("span");
             timing.className = "chunk-reason-note";
             timing.textContent = resource
-              ? localized("Started at {start}, loaded in {duration}", "{start} 开始，加载 {duration}", {
+              ? formatText("Started at {start}, loaded in {duration}", {
                 start: formatMilliseconds(resource.startTimeMs),
                 duration: formatMilliseconds(resource.durationMs)
               })
-              : localized("No individual network record", "未找到单独的网络记录");
+              : formatText("No individual network record");
             why.append(timing);
             const split = document.createElement("td");
             split.textContent = chunkSplitRuleLabel(chunk);
@@ -1490,29 +1347,13 @@
           );
 
           document.getElementById("total-size").textContent = formatBytes(total);
-          document.getElementById("item-count").textContent = localized(
-            "{count} {items}",
-            "{count} 个{items}",
-            { count: allItems.length, items: viewLabel(state.view) }
-          );
+          document.getElementById("item-count").textContent = formatText("{count} {items}", { count: allItems.length, items: viewLabel(state.view) });
           document.getElementById("used-percent").textContent = formatPercent(total === 0 ? null : used / total);
-          document.getElementById("used-size").textContent = localized(
-            "{size} executed",
-            "{size} 已执行",
-            { size: formatBytes(used) }
-          );
+          document.getElementById("used-size").textContent = formatText("{size} executed", { size: formatBytes(used) });
           document.getElementById("candidate-count").textContent = String(candidates.length);
-          document.getElementById("list-title").textContent = localized(
-            "{items} usage",
-            "{items}使用情况",
-            { items: viewLabel(state.view) }
-          );
+          document.getElementById("list-title").textContent = formatText("{items} usage", { items: viewLabel(state.view) });
           const visibleItems = items.slice(0, 40);
-          document.getElementById("list-count").textContent = localized(
-            "Preparing 0 / {count}",
-            "准备显示 0 / {count}",
-            { count: visibleItems.length }
-          );
+          document.getElementById("list-count").textContent = formatText("Preparing 0 / {count}", { count: visibleItems.length });
 
           rowsElement.replaceChildren();
           rowsElement.setAttribute("aria-busy", "true");
@@ -1526,15 +1367,11 @@
               && (phase.sources || []).length === 0
               && (phase.packages || []).length === 0;
             empty.textContent = hasNoUsageData && unmatchedCount > 0
-              ? localized(
-                "Code data was not generated because the current page does not match the analyzed build. {count} files could not be mapped. Regenerate the report from the production page.",
-                "未生成代码数据：当前页面与分析使用的构建不一致，{count} 个文件无法对应。请使用生产页面重新生成报告。",
-                { count: unmatchedCount }
-              )
-              : localized("No matching results", "没有符合条件的结果");
+              ? formatText("Code data was not generated because the current page does not match the analyzed build. {count} files could not be mapped. Regenerate the report from the production page.", { count: unmatchedCount })
+              : formatText("No matching results");
             rowsElement.append(empty);
             rowsElement.setAttribute("aria-busy", "false");
-            document.getElementById("list-count").textContent = localized("Showing 0 / 0", "显示 0 / 0");
+            document.getElementById("list-count").textContent = formatText("Showing 0 / 0");
             showDetail(null);
             return;
           }
@@ -1556,11 +1393,7 @@
               index += 1;
             }
             rowsElement.append(fragment);
-            document.getElementById("list-count").textContent = localized(
-              "Showing {current} / {total}",
-              "显示 {current} / {total}",
-              { current: index, total: items.length }
-            );
+            document.getElementById("list-count").textContent = formatText("Showing {current} / {total}", { current: index, total: items.length });
             if (index < items.length) {
               requestAnimationFrame(appendBatch);
             } else {
@@ -1575,11 +1408,7 @@
           button.type = "button";
           button.className = "usage-row";
           button.setAttribute("aria-selected", String(item.key === state.selectedKey));
-          button.setAttribute("aria-label", localized(
-            "{name}, usage ratio {ratio}",
-            "{name}，使用率 {ratio}",
-            { name: item.name, ratio: formatPercent(item.ratio) }
-          ));
+          button.setAttribute("aria-label", formatText("{name}, usage ratio {ratio}", { name: item.name, ratio: formatPercent(item.ratio) }));
 
           const name = document.createElement("span");
           name.className = "row-name";
@@ -1614,7 +1443,7 @@
         const showDetail = (item) => {
           document.getElementById("detail-kind").textContent = item
             ? item.kind
-            : localized("Item details", "项目详情");
+            : formatText("Item details");
           document.getElementById("detail-name").textContent = item ? item.name : "—";
           document.getElementById("detail-total").textContent = item ? formatBytes(item.total) : "—";
           document.getElementById("detail-used").textContent = item ? formatBytes(item.used) : "—";
@@ -1625,11 +1454,7 @@
           const note = document.getElementById("candidate-note");
           note.hidden = !item || !isCandidate(item);
           note.textContent = item && isCandidate(item)
-            ? localized(
-              "This item is {size} with {ratio} executed in this phase, so it meets the low-usage criteria.",
-              "该项体积 {size}，本阶段执行比例 {ratio}，符合低使用项条件。",
-              { size: formatBytes(item.total), ratio: formatPercent(item.ratio) }
-            )
+            ? formatText("This item is {size} with {ratio} executed in this phase, so it meets the low-usage criteria.", { size: formatBytes(item.total), ratio: formatPercent(item.ratio) })
             : "";
         };
 
@@ -1639,12 +1464,12 @@
           links.replaceChildren();
           section.hidden = viewers.length === 0;
           document.getElementById("detail-code-count").textContent = viewers.length > 1
-            ? localized("{count} files", "{count} 个文件", { count: viewers.length })
+            ? formatText("{count} files", { count: viewers.length })
             : "";
           viewers.forEach((viewer) => {
             const link = document.createElement("a");
             link.className = "code-link";
-            link.href = withLanguageContext(viewer.href);
+            link.href = viewer.href;
             link.target = "_blank";
             link.rel = "noopener";
             const name = document.createElement("span");
@@ -1653,8 +1478,8 @@
             const meta = document.createElement("span");
             meta.className = "code-link-meta";
             meta.textContent = viewer.partCount > 1
-              ? localized("{count} sections ↗", "{count} 段 ↗", { count: viewer.partCount })
-              : localized("View ↗", "查看 ↗");
+              ? formatText("{count} sections ↗", { count: viewer.partCount })
+              : formatText("View ↗");
             link.append(name, meta);
             links.append(link);
           });
@@ -1769,7 +1594,7 @@
       }
       function chunkInitiator(chunk, phaseExperience, resource) {
         if (chunk.entry) return { title: "HTML Document" };
-        if (chunk.initial) return { title: localized("Entry Chunk (inferred)", "Entry Chunk（推断）") };
+        if (chunk.initial) return { title: formatText("Entry Chunk (inferred)") };
         const pathname = String(phaseExperience && phaseExperience.pathname || "");
         const routeName = pathname.split("/").filter(Boolean).at(-1) || "home";
         const groups = Array.isArray(chunk.groups) ? chunk.groups.map(String) : [];
@@ -1777,15 +1602,11 @@
           group.toLocaleLowerCase().includes(routeName.toLocaleLowerCase()))
           || (pathname === "/" && groups.some((group) => /(^|\/)page$/i.test(group)));
         if (matchesCurrentRoute) {
-          return { title: localized("Route Dynamic Import (inferred)", "Route Dynamic Import（推断）") };
+          return { title: formatText("Route Dynamic Import (inferred)") };
         }
         if (Array.isArray(chunk.parents) && chunk.parents.length > 0) {
           return {
-            title: localized(
-              "Parent Chunk: {parents} (inferred)",
-              "Parent Chunk：{parents}（推断）",
-              { parents: chunk.parents.slice(0, 2).join(", ") }
-            )
+            title: formatText("Parent Chunk: {parents} (inferred)", { parents: chunk.parents.slice(0, 2).join(", ") })
           };
         }
         if (resource && resource.initiatorType) {
@@ -1808,45 +1629,37 @@
         const rule = chunk && chunk.splitRule;
         if (rule && typeof rule === "object") {
           if (typeof rule.configPath === "string" && rule.configPath.length > 0) {
-            return `${rule.configPath}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+            return `${rule.configPath}${rule.inferred ? formatText(" (inferred)") : ""}`;
           }
           if (rule.kind === "dynamic-import") {
-            return `import() · ${rule.name || "async chunk"}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+            return `import() · ${rule.name || "async chunk"}${rule.inferred ? formatText(" (inferred)") : ""}`;
           }
           if (typeof rule.name === "string" && rule.name.length > 0) {
-            return `${rule.name}${rule.inferred ? localized(" (inferred)", "（推断）") : ""}`;
+            return `${rule.name}${rule.inferred ? formatText(" (inferred)") : ""}`;
           }
         }
-        if (chunk.entry) return localized("Page entry", "页面入口");
+        if (chunk.entry) return formatText("Page entry");
         const names = Array.isArray(chunk.names) ? chunk.names.filter(Boolean) : [];
         const namedShared = names.find((name) => /^(lib|vendor|shared)[-_]/i.test(String(name)));
-        if (namedShared) return localized(
-          "Shared dependency split {name}",
-          "公共依赖拆分 {name}",
-          { name: namedShared }
-        );
+        if (namedShared) return formatText("Shared dependency split {name}", { name: namedShared });
         if (chunk.initial) {
           const entrypoints = Array.isArray(chunk.entrypoints) ? chunk.entrypoints.filter(Boolean) : [];
           return names.length > 0
-            ? localized("Initial split {names}", "首屏拆分 {names}", {
+            ? formatText("Initial split {names}", {
               names: names.slice(0, 2).join(", ")
             })
             : entrypoints.length > 0
-              ? localized("Initial group {names}", "首屏组 {names}", { names: entrypoints.join(", ") })
-              : localized("Initial shared split", "首屏公共拆分");
+              ? formatText("Initial group {names}", { names: entrypoints.join(", ") })
+              : formatText("Initial shared split");
         }
         const groups = Array.isArray(chunk.groups) ? chunk.groups.filter(Boolean) : [];
-        if (groups.length > 0) return localized(
-          "Route or dynamic split {groups}",
-          "路由或动态拆分 {groups}",
-          { groups: groups.slice(0, 2).join(", ") }
-        );
+        if (groups.length > 0) return formatText("Route or dynamic split {groups}", { groups: groups.slice(0, 2).join(", ") });
         const parents = Array.isArray(chunk.parents) ? chunk.parents.filter(Boolean) : [];
         return parents.length > 0
-          ? localized("Dynamic split, parent {parents}", "动态拆分，父 {parents}", {
+          ? formatText("Dynamic split, parent {parents}", {
             parents: parents.slice(0, 2).join(", ")
           })
-          : localized("Async split", "异步拆分");
+          : formatText("Async split");
       }
       function chunkDisplayName(chunk) {
         const names = Array.isArray(chunk.names) ? chunk.names.filter(Boolean) : [];
@@ -1878,16 +1691,12 @@
         return `${(value / 1024 / 1024).toFixed(2)} MB`;
       }
       function kindLabel(kind) {
-        const labels = locale === "zh"
-          ? { application: "业务代码", workspace: "工作区", "third-party": "第三方", runtime: "运行时", unknown: "未知" }
-          : { application: "Application", workspace: "Workspace", "third-party": "Third-party", runtime: "Runtime", unknown: "Unknown" };
+        const labels = { application: "Application", workspace: "Workspace", "third-party": "Third-party", runtime: "Runtime", unknown: "Unknown" };
         return labels[kind] || labels.unknown;
       }
       function viewLabel(view) {
-        const labels = locale === "zh"
-          ? { application: "业务代码", packages: "依赖包", sources: "文件", chunks: "分块" }
-          : { application: "Application code", packages: "Dependencies", sources: "Files", chunks: "Chunks" };
-        return labels[view] || localized("Items", "项目");
+        const labels = { application: "Application code", packages: "Dependencies", sources: "Files", chunks: "Chunks" };
+        return labels[view] || formatText("Items");
       }
       function sourceItem(item, availableViewers) {
         return {
@@ -1897,7 +1706,7 @@
           total: item.totalBytes || 0,
           used: item.usedBytes || 0,
           ratio: numberOrNull(item.usedRatio),
-          detail: localized("Chunks: {chunks} · {path}", "分块：{chunks} · {path}", {
+          detail: formatText("Chunks: {chunks} · {path}", {
             chunks: (item.chunkIds || []).join(", ") || "—",
             path: item.sourcePath
           }),
@@ -1932,11 +1741,6 @@
         const parts = normalized.split("/");
         return parts.slice(-4).join("/") || normalized;
       }
-      function withLanguageContext(href) {
-        const explicitLanguage = new URLSearchParams(location.search).get("lang");
-        if (!explicitLanguage || !/^(?:en|zh)(?:$|[-_])/i.test(explicitLanguage)) return href;
-        return `${href}${href.includes("?") ? "&" : "?"}lang=${encodeURIComponent(explicitLanguage)}`;
-      }
       };
 
       globalThis.__DIVEBELL_RENDER_REPORT__ = renderReport;
@@ -1956,30 +1760,11 @@
         requestAnimationFrame(() => requestAnimationFrame(callback));
       }
 
-      function detectBrowserLocale() {
-        const explicit = new URLSearchParams(location.search).get("lang");
-        if (explicit && explicit.toLocaleLowerCase().startsWith("zh")) return "zh";
-        if (explicit && explicit.toLocaleLowerCase().startsWith("en")) return "en";
-        const browserLanguage = Array.isArray(navigator.languages) && navigator.languages.length > 0
-          ? navigator.languages[0]
-          : navigator.language;
-        return String(browserLanguage || "").toLocaleLowerCase().startsWith("zh") ? "zh" : "en";
-      }
-
-      function switchLanguage() {
-        const nextUrl = new URL(location.href);
-        nextUrl.searchParams.set("lang", locale === "zh" ? "en" : "zh-CN");
-        location.href = nextUrl.href;
-      }
-
       function loadDeferredData(href) {
         const script = document.createElement("script");
         script.src = href;
         script.async = true;
-        script.onerror = () => showLoadError(new Error(localized(
-          "Report data failed to load. Make sure the report data file and HTML are in the same directory.",
-          "报告数据加载失败。请确认报告数据文件与 HTML 位于同一目录。"
-        )));
+        script.onerror = () => showLoadError(new Error(formatText("Report data failed to load. Make sure the report data file and HTML are in the same directory.")));
         document.body.append(script);
       }
 
@@ -1987,11 +1772,7 @@
         try {
           const response = await fetch(href, { cache: "no-store" });
           if (!response.ok || !response.body) {
-            throw new Error(localized(
-              "Report data request failed ({status}).",
-              "报告数据请求失败（{status}）。",
-              { status: response.status }
-            ));
+            throw new Error(formatText("Report data request failed ({status}).", { status: response.status }));
           }
           const reader = response.body.getReader();
           const decoder = new TextDecoder();

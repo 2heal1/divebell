@@ -12,8 +12,6 @@ An extensible toolkit for coding agents to debug, understand, and verify real we
 
 ---
 
-English | [中文](./README.zh-CN.md)
-
 Agent entry point: [Divebell Skill](./skills/divebell/SKILL.md)
 
 # Divebell

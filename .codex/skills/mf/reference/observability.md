@@ -27,10 +27,10 @@ Typical triggers:
 - onEvent
 - production telemetry
 - Chrome extension
-- 怎么接入观测插件
-- 启用观测
-- 使用观测插件
-- 生产环境上报
+- integrate the observability plugin
+- enable observability
+- use the observability plugin
+- production reporting
 
 ### Page Observation
 
@@ -48,10 +48,10 @@ Typical triggers:
 - mf obs
 - debug current page
 - no report
-- 看下 MF 加载情况
-- 看下 Module Federation 加载情况
-- 观测页面
-- 没有报告
+- inspect MF loading
+- inspect Module Federation loading
+- observe the page
+- no report
 
 ### Read
 
@@ -79,10 +79,10 @@ Typical triggers:
 - `.mf/observability/build-info.json`
 - `.mf/observability/build-report.json`
 - Chrome DevTools export
-- 本地收集
-- 读取报告
-- 加载链路
-- 导出报告
+- local collection
+- read the report
+- loading trace
+- export the report
 
 After reading the report, continue with
 [observability-analyze.md](observability-analyze.md).
@@ -107,9 +107,9 @@ Typical triggers:
 - `events`
 - pending loading
 - recovered loading
-- 观测报告
-- 分析报告
-- 判断是谁的问题
+- observability report
+- analyze the report
+- identify the owner
 
 If the report is missing or incomplete, route back to
 [observability-read.md](observability-read.md) or

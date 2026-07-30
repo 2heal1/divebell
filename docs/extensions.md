@@ -1,7 +1,5 @@
 # Using Divebell Extensions
 
-Chinese version: [Divebell Extension 使用指南](extensions.zh-CN.md)
-
 This guide is for agents and developers who install and use Extensions. To build your own Extension, go directly to [CLI Extension Development](cli-extensions.md). To look up fields and methods, use the [Extension API Reference](extension-api.md).
 
 ## What is an Extension?

@@ -21,5 +21,5 @@ export async function detectStack({ divebell }) {
 }
 
 export async function close() {
-  // 这个 demo 没有创建页面外资源，因此不需要额外清理。
+  // This demo creates no resources outside the page, so no additional cleanup is required.
 }

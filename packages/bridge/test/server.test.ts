@@ -14,7 +14,7 @@ test("serves the microphone companion page from a secure local browser origin", 
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") ?? "", /text\/html/);
     assert.equal(response.headers.get("permissions-policy"), "microphone=(self)");
-    assert.match(html, /请允许麦克风访问/);
+    assert.match(html, /Allow microphone access/);
     assert.match(html, /getUserMedia/);
     assert.match(html, /__DIVEBELL_AUDIO_RECORDER__/);
   } finally {
@@ -30,8 +30,8 @@ test("serves a visible start page for recordings without an initial URL", async 
     const response = await fetch(`${address.url}/__divebell/recording-start`);
     const html = await response.text();
     assert.equal(response.status, 200);
-    assert.match(html, /录制已开始/);
-    assert.match(html, /在地址栏输入 URL/);
+    assert.match(html, /Recording started/);
+    assert.match(html, /Enter a URL in the address bar/);
     assert.match(html, /divebell-recording-start/);
   } finally {
     await server.close();

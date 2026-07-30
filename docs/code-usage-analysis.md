@@ -1,7 +1,5 @@
 # Chunk and Code-Usage Analysis
 
-Chinese version: [分块与代码使用分析](code-usage-analysis.zh-CN.md)
-
 This optional analysis maps code recorded in the browser back to build chunks, application files, workspace packages, and third-party dependencies. It helps identify code that may be loaded too early or split more effectively.
 
 ## What the report shows

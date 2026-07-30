@@ -226,8 +226,6 @@ importers:
 
   packages/extensions/mf: {}
 
-  packages/extensions/troubleshooting: {}
-
   packages/test:
     dependencies:
       '@divebell/bridge':
@@ -251,9 +249,6 @@ importers:
       '@divebell/extension-mf':
         specifier: workspace:^
         version: link:../extensions/mf
-      '@divebell/extension-troubleshooting':
-        specifier: workspace:^
-        version: link:../extensions/troubleshooting
     devDependencies:
       typescript:
         specifier: 5.9.3

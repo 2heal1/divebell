@@ -102,7 +102,6 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /divebell export-profile /);
   assert.doesNotMatch(output.text(), /divebell import-profile /);
   assert.doesNotMatch(output.text(), /divebell profile /);
-  assert.doesNotMatch(output.text(), /divebell verify /);
   assert.match(output.text(), /divebell stack/);
   assert.match(output.text(), /divebell goto /);
   assert.match(output.text(), /divebell wait /);
@@ -254,7 +253,6 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /divebell code-usage /);
   assert.doesNotMatch(markdown, /divebell record /);
   assert.match(markdown, /divebell coverage <status\|start\|take\|stop\|cancel>/);
-  assert.doesNotMatch(markdown, /divebell verify /);
   assert.match(markdown, /divebell wait-for .*<target-id> <status>.*--next/);
   assert.match(markdown, /divebell extensions add <package-or-path>/);
   assert.doesNotMatch(markdown, /<npm-package>/);

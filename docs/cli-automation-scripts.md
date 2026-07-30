@@ -15,13 +15,7 @@ Typical use cases:
 - Run stable page validation in CI or local tasks.
 - Compose multiple Divebell CLI commands into a higher-level automation entrypoint.
 
-If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, `wait-for`, or `verify` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime SDK first.
-
-When a script specifically needs to verify an existing business Target, install the Extension that provides `verify`:
-
-```sh
-divebell extensions add @divebell/extension-troubleshooting
-```
+If the page already exposes stable Targets or Actions relevant to the task, a script may use `snapshot`, `run-action`, or `wait-for` for an existing business Target. A regular page can use an explicit page, request, or Extension result without adding Runtime SDK first.
 
 ## Why Use Divebell For Scripts
 
@@ -253,12 +247,6 @@ Run a business Action:
 
 ```sh
 divebell run-action release-note.list-latest --session check-home --payload '{"limit":3}'
-```
-
-When the page already has a business Target and the troubleshooting Extension is installed:
-
-```sh
-divebell verify business:home ready --session check-home --timeout 10000
 ```
 
 ### Output And Errors

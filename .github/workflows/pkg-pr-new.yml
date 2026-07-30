@@ -54,7 +54,6 @@ jobs:
           packages/cli
           packages/modern-plugin
           packages/extensions/code-usage
-          packages/extensions/troubleshooting
           packages/extensions/imitate
           packages/extensions/memory
           packages/extensions/mf

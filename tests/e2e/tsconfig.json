@@ -14,9 +14,6 @@
       "@divebell/modern-plugin": ["packages/modern-plugin/src/index.ts"],
       "@divebell/extension-mf/core": ["packages/extensions/mf/src/public.ts"],
       "@divebell/extension-mf/test": ["packages/extensions/mf/src/test-commands.ts"],
-      "@divebell/extension-troubleshooting/test": [
-        "packages/extensions/troubleshooting/src/test-commands.ts"
-      ],
       "@divebell/test": ["packages/test/src/index.ts"],
       "@divebell/test/internal": ["packages/test/src/internal.ts"]
     }
@@ -27,7 +24,6 @@
     { "path": "../../packages/bridge" },
     { "path": "../../packages/cli" },
     { "path": "../../packages/extensions/mf" },
-    { "path": "../../packages/extensions/troubleshooting" },
     { "path": "../../packages/test" }
   ]
 }

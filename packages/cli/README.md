@@ -52,7 +52,6 @@ Optional team and focused workflows install as Extension packages and appear und
 
 ```sh
 divebell extensions add @divebell/extension-code-usage
-divebell extensions add @divebell/extension-troubleshooting
 divebell extensions add @divebell/extension-imitate
 divebell extensions add @divebell/extension-memory
 divebell extensions list

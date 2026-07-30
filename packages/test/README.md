@@ -36,10 +36,9 @@ try {
 }
 ```
 
-The suite covers the built-in Runtime SDK commands, the troubleshooting
-Extension, and the MF Extension against a real host/provider fixture. Future
-Extension scenarios should be added to the same suite so package installation
-remains a one-time cost.
+The suite covers the built-in Runtime SDK commands and the MF Extension against
+a real host/provider fixture. Future Extension scenarios should be added to the
+same suite so package installation remains a one-time cost.
 
 Run the complete acceptance suite from the repository root:
 

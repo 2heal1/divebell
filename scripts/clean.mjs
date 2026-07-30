@@ -10,7 +10,6 @@ const packageDirs = [
   "cli",
   "modern-plugin",
   "extensions/code-usage",
-  "extensions/troubleshooting",
   "extensions/imitate",
   "extensions/memory",
   "extensions/mf"

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "repository": "2heal1/divebell",
-  "version": "0.0.4",
-  "tag": "recording-skill-runtime-v0.0.4",
+  "version": "0.0.5",
+  "tag": "recording-skill-runtime-v0.0.5",
   "asset": {
-    "name": "divebell-recording-runtime-0.0.4.tgz",
-    "url": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.0.4/divebell-recording-runtime-0.0.4.tgz",
-    "checksumName": "divebell-recording-runtime-0.0.4.tgz.sha256",
-    "checksumUrl": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.0.4/divebell-recording-runtime-0.0.4.tgz.sha256"
+    "name": "divebell-recording-runtime-0.0.5.tgz",
+    "url": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.0.5/divebell-recording-runtime-0.0.5.tgz",
+    "checksumName": "divebell-recording-runtime-0.0.5.tgz.sha256",
+    "checksumUrl": "https://github.com/2heal1/divebell/releases/download/recording-skill-runtime-v0.0.5/divebell-recording-runtime-0.0.5.tgz.sha256"
   },
   "packages": [
     {
@@ -20,25 +20,25 @@
       "name": "@divebell/core",
       "source": "workspace",
       "directory": "packages/core",
-      "file": "divebell-core-0.0.4.tgz"
+      "file": "divebell-core-0.0.5.tgz"
     },
     {
       "name": "@divebell/bridge",
       "source": "workspace",
       "directory": "packages/bridge",
-      "file": "divebell-bridge-0.0.4.tgz"
+      "file": "divebell-bridge-0.0.5.tgz"
     },
     {
       "name": "@divebell/cli",
       "source": "workspace",
       "directory": "packages/cli",
-      "file": "divebell-cli-0.0.4.tgz"
+      "file": "divebell-cli-0.0.5.tgz"
     },
     {
       "name": "@divebell/extension-imitate",
       "source": "workspace",
       "directory": "packages/extensions/imitate",
-      "file": "divebell-extension-imitate-0.0.4.tgz"
+      "file": "divebell-extension-imitate-0.0.5.tgz"
     }
   ]
 }

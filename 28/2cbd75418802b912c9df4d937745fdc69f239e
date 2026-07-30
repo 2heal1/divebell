@@ -1,0 +1,75 @@
+.changeset/clear-recording-start.md
+  s_35a8aead9780fe::t_c03b1d4dbeeb18 1-7
+README.md
+  s_2d3534b9cc1593::t_10fc376c94b5b9 155
+README.zh-CN.md
+  s_2d3534b9cc1593::t_b035c179995fe5 149
+docs/record-browser-workflows.md
+  s_2d3534b9cc1593::t_c37ca118ba33f3 5-12,28,30-34
+docs/record-browser-workflows.zh-CN.md
+  s_2d3534b9cc1593::t_4514e541f09bba 5-11,26,28-31
+packages/bridge/src/recording-page.ts
+  s_35a8aead9780fe::t_bb2b28cf9a772d 1-337
+packages/bridge/src/server.ts
+  s_2d3534b9cc1593::t_8dde7af1c56c31 14-19,100-118
+packages/bridge/test/server.test.ts
+  s_2d3534b9cc1593::t_418f348027f4f8 7-40
+packages/cli/src/commands/browser.ts
+  s_2d3534b9cc1593::t_42815a1308b4c6 20,40,100,104,110,115,141-145,148,152,164,248-314
+packages/cli/src/features/extension/hooks.ts
+  s_2d3534b9cc1593::t_5090699a460974 25-34,43,45,50-51,53,78-92,100-147,151-157
+packages/cli/src/open-context.ts
+  s_2d3534b9cc1593::t_b18687448db1fb 39-40
+packages/cli/src/types/commands.ts
+  s_2d3534b9cc1593::t_fcb496c9e7698a 56,60-68,70,72
+packages/cli/src/types/shared.ts
+  s_2d3534b9cc1593::t_2c0d93e5e97d34 88
+packages/cli/src/utils/operation-log.ts
+  s_2d3534b9cc1593::t_cb4ad1dad1ed4f 81
+packages/cli/test/extensions.test.ts
+  s_2d3534b9cc1593::t_db69cd18e85474 142-222,1167-1168,1241-1242
+packages/extensions/imitate/skills/record-divebell-workflow/SKILL.md
+  s_2d3534b9cc1593::t_bb2a4b64189f80 21,26,52,65
+packages/extensions/imitate/skills/record-divebell-workflow/references/divebell-cli.md
+  s_2d3534b9cc1593::t_8a4446654d2a3a 42-45
+packages/extensions/imitate/src/audio.ts
+  s_2d3534b9cc1593::t_4946ef94f95913 1,3,5,9-39,103-108,117-137,176-331
+packages/extensions/imitate/src/capture.ts
+  s_2d3534b9cc1593::t_4d53fbf3bfb3a5 160-182
+packages/extensions/imitate/src/index.ts
+  s_2d3534b9cc1593::t_bbbff373441b1a 3,144-160
+packages/extensions/imitate/src/open.ts
+  s_2d3534b9cc1593::t_9772d314e49a79 3-7,26-28,31-33,75-77,79-96
+packages/extensions/imitate/test/record.test.mjs
+  s_2d3534b9cc1593::t_11ddcf20fe617a 3,118-125,144-146,409-421,439-443,498,501-502,573,575,601-602,610-618,621-650,656-696,786-790
+skills/record-divebell-workflow/SKILL.md
+  s_2d3534b9cc1593::t_6517d0184dbc0c 21,26,52,65
+skills/record-divebell-workflow/references/divebell-cli.md
+  s_2d3534b9cc1593::t_7b51fc9d3f2fc7 42-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "282cbd75418802b912c9df4d937745fdc69f239e",
+  "prompts": {},
+  "sessions": {
+    "s_2d3534b9cc1593": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb237-0b2e-7b32-91e1-fd4ec0085a6f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_35a8aead9780fe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb240-c8a0-7ce2-9a94-601861675488",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

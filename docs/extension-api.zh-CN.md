@@ -70,6 +70,7 @@ interface CliExtensionRunOptions {
   headers?: Readonly<Record<string, string>>;
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
+  withLoading: CliExtensionLoadingFunction;
 }
 ```
 
@@ -81,6 +82,7 @@ interface CliExtensionRunOptions {
 | `options.divebell` | `DivebellExtensionApi` | 读取 Runtime、操作当前页面、收集浏览器证据和等待结果的主要入口。 |
 | `options.fetcher` | `Fetcher` | Divebell 内部使用的请求入口。通常不应直接调用；访问 Bridge 和 Runtime 时优先使用 `options.divebell`。 |
 | `options.runExtension` | `CliExtensionRunFunction` | 调用当前 Extension 或已声明依赖中的 Command，并直接拿到原始结果。 |
+| `options.withLoading` | `CliExtensionLoadingFunction` | 包裹可能耗时的工作；超过 400 毫秒仍未完成时，在终端显示一个 loading 动画。 |
 
 ### `options.args`
 
@@ -170,6 +172,22 @@ interface CliExtensionRunFunction {
 `args` 只包含目标 Command 名称之后的位置参数。`options` 可以传单值或数组，目标 Command 会从自己的 `options.args` 中正常读取。目标会复用当前页面、会话、Runtime 选择、浏览器能力和嵌套的 `runExtension`。
 
 目标结果会直接返回给调用方。嵌套调用不会额外输出一份 CLI 结果，也不会触发生命周期 Hook。调用同一个 Extension 内的其他 Command 不需要在 `requires` 中声明自己；调用其他 Extension 必须由调用方 Extension 统一声明。循环调用和超过 16 层的调用会失败，并给出完整调用链。
+
+### `options.withLoading`
+
+用它包裹 Command 中可能需要明显等待的部分：
+
+```ts
+interface CliExtensionLoadingFunction {
+  <T>(run: () => T | PromiseLike<T>): Promise<T>;
+}
+
+const report = await options.withLoading(async () => {
+  return await createReport();
+});
+```
+
+400 毫秒内完成的工作不会显示动画。更慢的工作只会在交互式终端中显示一个动画，并在 Command 输出最终结果或错误前清除。嵌套或并行调用也会共用同一个动画。
 
 ### `options.page`
 

@@ -190,6 +190,7 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
     const extensionExitCode = await runExtensionCliCommand({
       args,
       stdout,
+      stderr,
       fetcher,
       browserRunner,
       bridgeStarter,

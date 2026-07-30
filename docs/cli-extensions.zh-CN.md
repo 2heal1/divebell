@@ -175,7 +175,7 @@ export async function runFoo(
 }
 ```
 
-成功时直接返回结果，Divebell 会自动包裹并格式化为统一输出；失败时直接抛出错误，Divebell 会统一格式化错误并返回非零退出码。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
+成功时直接返回结果，Divebell 会自动包裹并格式化为统一输出；失败时直接抛出错误，Divebell 会统一格式化错误并返回非零退出码。耗时明显的工作可以用 `options.withLoading(async () => ...)` 包裹；Divebell 会等待 400 毫秒，再显示一个终端 loading 动画。如果当前页面通过 `open --headers` 打开，Command 可以通过 `options.headers` 读取同一个对象。完整类型见 [`CliExtensionRunOptions`](extension-api.zh-CN.md#cliextensionrunoptions)。
 
 Extension 可以在基础定义的 `requires` 中统一声明依赖，再通过 `runExtension` 复用对方的 Command：
 

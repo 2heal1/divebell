@@ -40,7 +40,9 @@ const extension = {
         description: "Transcribe microphone audio from an .orrec recording into timestamped text."
       }
     ],
-    run: async (options) => await (await import("./index.js")).runRecordCliCommand(options)
+    run: async (options) => await options.withLoading(async () =>
+      await (await import("./index.js")).runRecordCliCommand(options)
+    )
   }],
   hooks: {
     open: async (options) => await (await import("./open.js")).runRecordingOpenHook(options)

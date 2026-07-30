@@ -22,7 +22,9 @@ const extension = {
         description: "Start a local streaming report server for page experience and code-usage data."
       }
     ],
-    run: async (options) => await (await import("./index.js")).runCodeUsageCommand(options)
+    run: async (options) => await options.withLoading(async () =>
+      await (await import("./index.js")).runCodeUsageCommand(options)
+    )
   }]
 } satisfies DivebellExtensionDefinition;
 

@@ -183,7 +183,7 @@ export async function runFoo(
 }
 ```
 
-Return the result directly on success. Divebell wraps and formats it as the standard successful output. Throw an error on failure; Divebell formats the error and returns a non-zero exit code. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
+Return the result directly on success. Divebell wraps and formats it as the standard successful output. Throw an error on failure; Divebell formats the error and returns a non-zero exit code. Wrap noticeable work with `options.withLoading(async () => ...)`; Divebell waits 400 milliseconds before showing one terminal loading animation. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
 An Extension can reuse another Extension's Commands by declaring it once in the Extension-level `requires` list and calling `runExtension`:
 

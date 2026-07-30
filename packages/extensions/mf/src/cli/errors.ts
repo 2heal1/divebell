@@ -81,7 +81,7 @@ function coreErrorHint(
     case "MF_PAGE_NOT_FEDERATED":
       return "Confirm that the opened page uses Module Federation. If it initializes later, wait and run the command again.";
     case "MF_INSTANCE_STATE_UNAVAILABLE":
-      return "Upgrade or configure the MF Observability Plugin, then reopen the page with `divebell open <url>`.";
+      return "Upgrade or configure the MF Observability Plugin, then reopen the page.";
     case "MF_INSTANCE_REF_NOT_FOUND":
       return error.facts.requiredRole === "consumer"
         ? `Run \`${presenter.status()} --role consumer\` and choose a current instanceRef.`

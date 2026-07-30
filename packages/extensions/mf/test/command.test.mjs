@@ -138,8 +138,35 @@ test("missing reader explains current evidence and the next open command", async
   });
   await assert.rejects(
     () => runMfCommand(run.options),
-    (error) => error.code === "MF_OBSERVABILITY_UNAVAILABLE" &&
-      /divebell open/.test(error.hint)
+    (error) => error.code === "MF_OPEN_FLAG_REQUIRED" &&
+      /require.*--mf/i.test(error.message) &&
+      /divebell open <url> --mf/.test(error.hint)
+  );
+});
+
+test("a compatible application reader still requires the page to be opened with --mf", async () => {
+  const state = runtimeState({
+    instances: [instance({
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer"
+    })]
+  });
+  const run = createOptions(
+    ["mf", "status"],
+    new Map(),
+    browserRead(state, [], {
+      mode: "application",
+      selectedScope: "runtime_host",
+      availableScopes: ["runtime_host"],
+      compatibleScopes: ["runtime_host"],
+      marker: undefined
+    })
+  );
+  await assert.rejects(
+    () => runMfCommand(run.options),
+    (error) => error.code === "MF_OPEN_FLAG_REQUIRED" &&
+      /divebell open <url> --mf/.test(error.hint)
   );
 });
 
@@ -151,7 +178,7 @@ test("missing Divebell page context has a dedicated recovery message", async () 
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_PAGE_CONTEXT_REQUIRED" &&
-      /divebell open/.test(error.hint)
+      /divebell open <url> --mf/.test(error.hint)
   );
 });
 

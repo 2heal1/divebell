@@ -37,7 +37,11 @@ function createPackageFixture(root, overrides = {}) {
   writeFileSync(
     join(entryDirectory, "chrome-devtool.js"),
     `export function ChromeObservabilityPlugin() {
-      return { name: "observability-plugin:chrome-extension", apply() {} };
+      return {
+        name: "observability-plugin:chrome-extension",
+        apply() {},
+        getRuntimeState() { return { instances: [] }; }
+      };
     }
     export default ChromeObservabilityPlugin;
     `
@@ -137,6 +141,27 @@ test("package root validation rejects missing, wrong, and private entries", asyn
       exports: { "./chrome-devtool": "./src/chrome-devtool.js" }
     }));
     await assert.rejects(loadPackageContext(privateEntry), /private source code/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("generation rejects an Observability package without the MF reader interface", async () => {
+  const root = mkdtempSync(join(tmpdir(), "divebell-mf-incompatible-"));
+  try {
+    const packageRoot = createPackageFixture(root);
+    writeFileSync(
+      join(packageRoot, "dist", "esm", "chrome-devtool.js"),
+      `export function ChromeObservabilityPlugin() {
+        return { name: "observability-plugin:chrome-extension", apply() {} };
+      }
+      export default ChromeObservabilityPlugin;
+      `
+    );
+    await assert.rejects(
+      generateObservabilityArtifacts(packageRoot),
+      /does not expose the getRuntimeState interface/
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

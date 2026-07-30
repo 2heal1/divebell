@@ -13,12 +13,13 @@ const installerSource = new URL("./install-observability.js", import.meta.url);
 const runtimeInstallerSource = new URL("./install-runtime-debug.js", import.meta.url);
 const proxySdkSource = new URL("./vmok-proxy-sdk.iife.js", import.meta.url);
 
-export function isMfDebugInjectionEnabled(args?: ParsedCliArgs): boolean {
-  const value = args?.options.get("mf-debug")?.at(-1);
-  if (value === undefined || value === "true") return true;
+export function isMfInjectionEnabled(args?: ParsedCliArgs): boolean {
+  const value = args?.options.get("mf")?.at(-1);
+  if (value === undefined) return false;
+  if (value === "true") return true;
   if (value === "false") return false;
   throw new Error(
-    `Invalid --mf-debug value ${JSON.stringify(value)}. Use --mf-debug=true or --mf-debug=false.`
+    `Invalid --mf value ${JSON.stringify(value)}. Use --mf to enable MF debugging or omit it.`
   );
 }
 
@@ -31,7 +32,7 @@ export async function openMfObservability(
     ? await readFile(proxySdkSource, "utf8")
     : undefined;
   const proxyInit = createMfProxyInitScript(proxySdk, overrides);
-  if (!isMfDebugInjectionEnabled(args)) {
+  if (!isMfInjectionEnabled(args)) {
     return { scripts: [proxyInit] };
   }
 

@@ -19,6 +19,13 @@ const injectedMfVersion = JSON.parse(
   )
 ).packageVersion;
 
+function mfOpenArgs(extraOptions = []) {
+  return {
+    command: ["open", "https://app.test"],
+    options: new Map([["mf", ["true"]], ...extraOptions])
+  };
+}
+
 test("generated injection assets agree with their source metadata", () => {
   const bundle = readFileSync(new URL(
     "assets/observability-chrome-devtool.iife.js",
@@ -78,6 +85,7 @@ test("generated injection assets agree with their source metadata", () => {
   );
   assert.match(runtimeMetadata.packageVersion, /^\d+\.\d+\.\d+/);
   assert.match(observabilityMetadata.packageVersion, /^\d+\.\d+\.\d+/);
+  assert.doesNotMatch(bundle, /\b(?:inputOptions|getInputOptions)\b/);
   assert.doesNotMatch(
     `${bundle}\n${installer}\n${runtimeInstaller}\n${JSON.stringify({
       observabilityMetadata,
@@ -89,7 +97,7 @@ test("generated injection assets agree with their source metadata", () => {
 });
 
 test("open hook returns one self-contained script with matched Runtime and Observability installers", async () => {
-  const result = await openMfObservability();
+  const result = await openMfObservability(mfOpenArgs());
   assert.equal(result.scripts.length, 1);
   const source = result.scripts[0];
   assert.match(source, /ModuleFederationDebugRuntime/);
@@ -104,7 +112,9 @@ test("open hook returns one self-contained script with matched Runtime and Obser
 });
 
 test("injection installs the debug constructor before business setup and observes later MF instances", async () => {
-  const [{ scripts }] = await Promise.all([openMfObservability()]);
+  const [{ scripts }] = await Promise.all([
+    openMfObservability(mfOpenArgs())
+  ]);
   const context = vm.createContext({
     console: { log() {}, info() {}, warn() {}, error() {} },
     URL,
@@ -174,7 +184,7 @@ test("injection installs the debug constructor before business setup and observe
 });
 
 test("repeated injection keeps the matching debug constructor and global plugin", async () => {
-  const { scripts } = await openMfObservability();
+  const { scripts } = await openMfObservability(mfOpenArgs());
   const context = vm.createContext({
     console: { log() {}, info() {}, warn() {}, error() {} },
     URL,
@@ -200,7 +210,7 @@ test("repeated injection keeps the matching debug constructor and global plugin"
 });
 
 test("injection replaces a mismatched debug constructor before Runtime creates instances", async () => {
-  const { scripts } = await openMfObservability();
+  const { scripts } = await openMfObservability(mfOpenArgs());
   const oldConstructor = function OldModuleFederation() {};
   const context = vm.createContext({
     console: { log() {}, info() {}, warn() {}, error() {} },
@@ -230,7 +240,7 @@ test("injection replaces a mismatched debug constructor before Runtime creates i
 });
 
 test("late installation marks history timing instead of claiming nothing happened", async () => {
-  const { scripts } = await openMfObservability();
+  const { scripts } = await openMfObservability(mfOpenArgs());
   const context = vm.createContext({
     console: { log() {}, info() {}, warn() {}, error() {} },
     URL,
@@ -251,11 +261,8 @@ test("late installation marks history timing instead of claiming nothing happene
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "late");
 });
 
-test("--mf-debug=false disables Runtime and Observability but retains proxy cleanup", async () => {
-  const result = await openMfObservability({
-    command: ["open", "https://app.test"],
-    options: new Map([["mf-debug", ["false"]]])
-  });
+test("ordinary open skips Runtime and Observability but retains proxy cleanup", async () => {
+  const result = await openMfObservability();
   assert.equal(result.scripts.length, 1);
   assert.match(result.scripts[0], /__DIVEBELL_MF_PROXY_OWNER__/);
   assert.doesNotMatch(result.scripts[0], /ModuleFederationDebugRuntime/);
@@ -263,10 +270,9 @@ test("--mf-debug=false disables Runtime and Observability but retains proxy clea
 });
 
 test("MF proxy is installed before Runtime and Observability and matches an alias", async () => {
-  const { scripts } = await openMfObservability({
-    command: ["open", "https://app.test"],
-    options: new Map([["mf-proxy", ["shop=2.0.0"]]])
-  });
+  const { scripts } = await openMfObservability(mfOpenArgs([
+    ["mf-proxy", ["shop=2.0.0"]]
+  ]));
   const source = scripts[0];
   assert.ok(source.indexOf("VmokProxySdk") < source.indexOf("ModuleFederationDebugRuntime"));
   assert.ok(source.indexOf("ModuleFederationDebugRuntime") < source.indexOf("ChromeObservabilityPlugin"));
@@ -323,13 +329,13 @@ test("MF proxy is installed before Runtime and Observability and matches an alia
   );
 });
 
-test("invalid --mf-debug values fail with a useful message", async () => {
+test("invalid --mf values fail with a useful message", async () => {
   await assert.rejects(
     openMfObservability({
       command: ["open", "https://app.test"],
-      options: new Map([["mf-debug", ["sometimes"]]])
+      options: new Map([["mf", ["sometimes"]]])
     }),
-    /Use --mf-debug=true or --mf-debug=false/
+    /Use --mf to enable MF debugging or omit it/
   );
 });
 
@@ -341,7 +347,12 @@ test("Divebell open passes the MF script as an init script before navigation", a
   let stdout = "";
   let stderr = "";
   try {
-    const exitCode = await cli.run(["open", "https://app.test", "--no-bridge"], {
+    const exitCode = await cli.run([
+      "open",
+      "https://app.test",
+      "--no-bridge",
+      "--mf"
+    ], {
       stdout: { write(chunk) { stdout += chunk; } },
       stderr: { write(chunk) { stderr += chunk; } },
       operationLogDirectory,
@@ -428,6 +439,8 @@ test("Divebell open accepts a local --mf-proxy JSON file", async () => {
             { ...context.__DIVEBELL_MF_PROXY_INJECTION__.overrides },
             { shop: "2.0.0" }
           );
+          assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__, undefined);
+          assert.equal(context.__MF_OBSERVABILITY_INJECTION__, undefined);
           return { exitCode: 0, stdout: "", stderr: "" };
         }
       }
@@ -439,14 +452,14 @@ test("Divebell open accepts a local --mf-proxy JSON file", async () => {
   }
 });
 
-test("Divebell open keeps only proxy cleanup when --mf-debug=false", async () => {
+test("ordinary Divebell open keeps only proxy cleanup", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-mf-disabled-"));
   const cli = createDivebellCli({ extensions: [extension] });
   let stdout = "";
   let stderr = "";
   try {
     const exitCode = await cli.run(
-      ["open", "https://app.test", "--no-bridge", "--mf-debug=false"],
+      ["open", "https://app.test", "--no-bridge"],
       {
         stdout: { write(chunk) { stdout += chunk; } },
         stderr: { write(chunk) { stderr += chunk; } },

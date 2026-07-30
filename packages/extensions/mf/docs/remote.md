@@ -112,7 +112,7 @@ The result uses `state.capabilities.remoteTrace` and page history timing:
 - `partial`: existing evidence is returned, with a warning that earlier stages may be missing. Partial history, partial capability, late injection, or late-bound instances produce this state.
 - `unavailable`: the result explicitly says the current reader cannot support remote tracing and recommends upgrading/configuring observability and reopening the page. It is not reported as an empty successful result.
 
-If the extension was installed after Module Federation had already started, reopen the page with `divebell open <url>` before reproducing the load.
+If the extension was installed after Module Federation had already started, reopen the page before reproducing the load.
 
 ## Public reuse
 

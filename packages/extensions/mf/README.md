@@ -16,7 +16,15 @@ divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id 
 
 All commands return structured output by default; `--json` is not required. Compatibility and capability summaries are used internally but are omitted from successful command output. When evidence is incomplete or unavailable, the useful reason remains in `warnings` and the next step remains in `recommendedActions`.
 
-`--mf` selects the visible Module Federation name. `--instance` selects the exact, session-scoped `instanceRef` reported by `mf status`. The Observability Plugin assigns this reference to an instance object for the current page session; it is not an MF global key and is not used to index `__SHARE__`. Several frames or runtimes can use the same visible name, so a command that needs one context returns candidates instead of silently choosing the first one. Copy the candidate command containing `--instance`; do not reuse an instanceRef after reopening the page.
+On MF commands, `--mf <name>` selects the visible Module Federation name. On
+`divebell open`, the bare `--mf` flag enables the bundled MF diagnostics.
+`--instance` selects the exact, session-scoped `instanceRef` reported by
+`mf status`. The Observability Plugin assigns this reference to an instance
+object for the current page session; it is not an MF global key and is not used
+to index `__SHARE__`. Several frames or runtimes can use the same visible name,
+so a command that needs one context returns candidates instead of silently
+choosing the first one. Copy the candidate command containing `--instance`; do
+not reuse an instanceRef after reopening the page.
 
 Remote and Shared trace commands analyze facts exposed through the page's safe public Observability reader. Their separate command paths keep the target type explicit; there is no generic `mf trace` mode. `mf status` additionally reads a bounded, sanitized snapshot of `__FEDERATION__.__SHARE__`; promises, module values, instance ids, and executable function objects are not returned. `complete` means the required evidence is complete. `partial` returns the evidence that exists and states that earlier history can be missing. `unavailable` means the current reader or runtime cannot provide the capability. `unknown` means the available evidence is insufficient to reach a conclusion; it does not mean success or absence.
 
@@ -28,17 +36,15 @@ divebell extensions add @divebell/extension-mf
 
 The current CLI uses the plural `extensions` command. The older singular form `divebell extension add @divebell/extension-mf` is not supported by this repository version.
 
-After installing or updating the extension, reopen the page with `divebell open`. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
+After installing or updating the extension, add `--mf` when opening a page that needs MF debugging. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
 
 ```sh
-divebell open https://example.com
+divebell open https://example.com --mf
 ```
 
-This behavior is enabled by default. Disable the whole MF debug injection for one open command with:
-
-```sh
-divebell open https://example.com --mf-debug=false
-```
+MF debugging is opt-in. An ordinary `divebell open` does not inject the debug
+Runtime or Observability Plugin. MF commands require the current page to have
+been opened with `--mf`.
 
 ### Proxy remotes while opening
 
@@ -78,8 +84,8 @@ The proxy applies only to that `open` operation. The next ordinary
 `divebell open` restores the browser's previous proxy settings before the
 page starts, so an earlier Divebell proxy does not remain active. Existing
 proxy settings that Divebell did not create are preserved and restored.
-`--mf-proxy` is independent from debug collection and still works together
-with `--mf-debug=false`.
+`--mf-proxy` is independent from debug collection. Add `--mf` as well only
+when the same page also needs the injected MF diagnostics.
 
 After the page opens, use `mf remote status <remote>` to check the optional
 `proxy` field. It reports the configured target, whether the rule matched the
@@ -97,7 +103,29 @@ The checked-in Runtime, Runtime Core, and Observability Plugin are built from
 one Module Federation source revision. Their package versions can differ
 because the Runtime and Observability Plugin are released independently.
 
-Build the three local packages, then pass their package roots:
+By default, download the packages from the latest stable Module Federation
+release and regenerate all checked-in assets:
+
+```sh
+pnpm run sync:mf-observability
+```
+
+Pass `--tag` to use a specific npm dist-tag:
+
+```sh
+pnpm run sync:mf-observability -- --tag next
+```
+
+The command resolves that tag independently for all three packages, verifies
+their npm provenance points to one Module Federation source revision, and
+installs those exact published versions before generating the assets. The
+default tag is `latest`. Generation fails when the selected Observability
+Plugin does not expose the reader interface required by this extension.
+The currently checked-in assets use `next` because the current `latest`
+Observability Plugin does not yet expose that interface.
+
+For unreleased local changes, build the three packages and pass their package
+roots instead:
 
 ```sh
 pnpm run sync:mf-observability -- \
@@ -113,6 +141,13 @@ builds the injected debug class from Runtime Core's public entry and the global
 plugin from Observability Plugin's public Chrome entry.
 
 Use check mode in CI or before publishing. It regenerates everything in memory and fails when any checked-in asset is stale without modifying the repository:
+
+```sh
+pnpm run check:mf-observability
+pnpm run check:mf-observability -- --tag next
+```
+
+Local package roots are also supported in check mode:
 
 ```sh
 pnpm run check:mf-observability -- \
@@ -271,7 +306,7 @@ See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boun
 
 - `injected`: this extension installed its bundled collector before MF runtime startup.
 - `application`: the page exposes one compatible application Observability reader; it is preferred over the injected reader.
-- `unavailable`: no compatible public reader is present. Reopen the page with `divebell open <url>` or configure the MF Observability Plugin in the application.
+- `unavailable`: `--mf` was enabled, but no compatible public reader is present. Inspect the injection details, then reopen the page.
 
 Every command checks the report schema and capabilities. Partial history, late collection, incompatible readers, several application readers, expired instance references, child-frame-only results, and unavailable trace data are reported explicitly with a next action. The commands do not fall back to `__FEDERATION__.__INSTANCES__`, `moduleInfo`, `moduleCache`, `options.id`, or other private runtime objects. The only additional global read is the sanitized `__SHARE__` snapshot used by `mf status` and `mf shared status`.
 

@@ -25,14 +25,6 @@ not require an ordinary page to integrate Runtime SDK before using Divebell.
 
 ## Choose a workflow
 
-### Try the official Quick Start
-
-Read `references/quickstart.md` when the user asks to try, demo, evaluate, or
-quickly understand Divebell and has not supplied another target page. Use the
-public playground; do not clone this repository or ask for application source.
-Complete the Module Federation Playground remote-loading and automatic
-troubleshooting flow before offering follow-up integration work.
-
 ### Use capabilities
 
 Read `references/use-cli.md` when the task involves any of the following:

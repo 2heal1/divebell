@@ -1,0 +1,59 @@
+.changeset/calm-browsers-navigate.md
+  s_85259b28c09d28::t_903beef7b22cc4 1-5
+docs/cli-reference.md
+  s_85259b28c09d28::t_cfab13a3a7d534 15,27-81,83,88-89,92
+docs/cli-reference.zh-CN.md
+  s_85259b28c09d28::t_22040fe184c151 15,27-81,83,88-89,92
+packages/cli/package.json
+  s_85259b28c09d28::t_c1fa2063e0dd35 38-39
+packages/cli/src/commands/browser-help.ts
+  s_85259b28c09d28::t_37875db7948199 1-274
+packages/cli/src/commands/browser.ts
+  s_85259b28c09d28::t_afb9329aec09ae 31,67-68,114-116,175-181,200-207,212-219,228-236,239-256,351,422-466,488-494
+packages/cli/src/commands/help.ts
+  s_85259b28c09d28::t_387961d09343f0 2,78-79,81,89,114-115,119-120,134,199-205,225,294
+packages/cli/src/commands/names.ts
+  s_85259b28c09d28::t_29dd0ec25d65ef 7,9,11-12,14-19,22-23,25-30,35-52,55-69,104
+packages/cli/src/features/browser/command-args.ts
+  s_13d76518edc586::t_eb8bbadcc76180 5-35,47,55-58,60-69,72-74,77-82,85,90-91,94-99,102-104,107,110,112-114,117-125,133-140,144-180
+packages/cli/src/runner.ts
+  s_85259b28c09d28::t_ea87c481b1ef64 162-163
+packages/cli/src/types/commands.ts
+  s_13d76518edc586::t_d7b6e61153a515 179,181,183-184,186-191,194-195,197-202,207-224,227-241
+packages/cli/test/browser-commands.e2e.mjs
+  s_85259b28c09d28::t_1390a166ec62bd 1-97
+packages/cli/test/browser.test.ts
+  s_85259b28c09d28::t_4f317ad357ac9a 152-212,849-990,1021-1028
+packages/cli/test/cli-core.test.ts
+  s_85259b28c09d28::t_19371a48f87ae5 85-86,107-113,231,237-238,263-268
+packages/extensions/imitate/test/recording-replay.e2e.mjs
+  s_85259b28c09d28::t_d8a7ddb100db4d 37,41-45,95,98-105,143,147-153,173
+scripts/sync-divebell-cli-docs.mjs
+  s_85259b28c09d28::t_2d5335412190e5 73,94-148,150,155-156,159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "433364db8b348b5687ace970fe9b251470e70213",
+  "prompts": {},
+  "sessions": {
+    "s_13d76518edc586": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb216-3503-7d62-a9f6-a7fd760a08e0",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    },
+    "s_85259b28c09d28": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb20f-d3e8-7391-badb-de3c71722b32",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

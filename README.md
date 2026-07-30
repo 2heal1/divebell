@@ -141,30 +141,6 @@ It supports registering Targets, updating Snapshots, recording Events, declaring
 
 [Runtime SDK API](./docs/runtime-sdk-api.md)
 
-## Examples
-
-Explore the official Extension examples for recording browser workflows,
-analyzing code usage, and connecting team tools to the current page.
-
-### [Record a real browser walkthrough and generate a reusable script](./docs/record-browser-workflows.md)
-
-Demonstrate a browser workflow and turn the operated elements and event
-sequence into a verified JavaScript replay. Spoken intent is optional.
-
-> [Install the recording skill](./docs/record-browser-workflows.md), then invoke it and describe the workflow you want to demonstrate.
-
-**Demo video**
-
-https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
-
-### [Analyze code delivered to and executed by the page](./docs/code-usage-analysis.md)
-
-Compare the first screen with later interactions and inspect chunk, source-file, and dependency loading and execution.
-
-### [Connect existing team tools to the current page](./demos/cli-extension/README.md)
-
-Create a local Extension that reads the current page and participates in page opening, stack detection, and closing.
-
 ## Contribution
 
 Please read the [contributing guide](./CONTRIBUTING.md) and let's build Divebell together.

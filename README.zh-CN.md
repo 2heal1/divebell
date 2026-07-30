@@ -138,28 +138,6 @@ Runtime SDK 是可选的页面侧 API。当页面 DOM、Console、Network 等浏
 
 [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md)
 
-## Examples
-
-这里是官方 Extension 示例：录制浏览器操作、分析代码使用，以及把团队已有工具接到当前页面。
-
-### [录制一次真实操作并生成可重复脚本](./docs/record-browser-workflows.zh-CN.md)
-
-在可见浏览器中演示一次操作，把操作元素和事件顺序生成可验证的 JavaScript 回放；语音说明是可选项。
-
-> [安装录制 skill](./docs/record-browser-workflows.zh-CN.md)，然后使用这个 skill，并告诉它你准备演示什么任务。
-
-**演示视频**
-
-https://github.com/user-attachments/assets/45669f30-0c10-4a04-9926-5b796c4be946
-
-### [分析页面加载和实际执行的代码](./docs/code-usage-analysis.zh-CN.md)
-
-对比首屏与后续操作，查看分块、源码文件和依赖包的加载与执行情况。
-
-### [把团队已有工具接到当前页面](./demos/cli-extension/README.md)
-
-创建一个本地 Extension，读取当前页面并参与页面打开、技术栈识别和关闭流程。
-
 ## 参与贡献
 
 请阅读 [贡献指南](./CONTRIBUTING.zh-CN.md) 来共同参与 Divebell 的建设。

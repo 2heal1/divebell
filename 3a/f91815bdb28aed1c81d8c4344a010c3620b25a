@@ -1,0 +1,35 @@
+.changeset/wise-code-usage-skill.md
+  s_6230235dbccbe5::t_f4b35118453eb6 1-5
+docs/code-usage-analysis.md
+  s_6230235dbccbe5::t_73be5f2ec68a2f 5-39,54,130,133
+packages/extensions/code-usage/README.md
+  s_6230235dbccbe5::t_afbdb6c236b65e 9,12-14,24
+packages/extensions/code-usage/package.json
+  s_6230235dbccbe5::t_f964d0d46b53c3 22-24
+packages/extensions/code-usage/skills/analyze-code-usage/SKILL.md
+  s_6230235dbccbe5::t_c34d39cc20b11a 1-163
+packages/extensions/code-usage/skills/analyze-code-usage/agents/openai.yaml
+  s_6230235dbccbe5::t_0349140918b952 1-4
+packages/extensions/code-usage/src/extension.ts
+  s_6230235dbccbe5::t_b106e7bc42ff72 2-6,13-15
+packages/extensions/code-usage/test/package.test.mjs
+  s_6230235dbccbe5::t_8cce174da094b1 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3af91815bdb28aed1c81d8c4344a010c3620b25a",
+  "prompts": {},
+  "sessions": {
+    "s_6230235dbccbe5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb261-7578-7a02-91e1-4ecf88a9782f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

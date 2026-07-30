@@ -1,0 +1,21 @@
+docs/code-usage-analysis.md
+  s_6230235dbccbe5::t_9a8895c52d9416 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "be689c616257cc86f4c4dc0754f975012a057f67",
+  "prompts": {},
+  "sessions": {
+    "s_6230235dbccbe5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb261-7578-7a02-91e1-4ecf88a9782f",
+        "model": "unknown"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}

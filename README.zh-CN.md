@@ -99,7 +99,11 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 
 #### 官方扩展
 
-专项能力以可选包发布，需要时再单独安装。CLI Extension 在页面外增加命令；框架接入运行在应用内部，暴露框架本来就知道的事实：
+专项能力以可选包发布，需要时再单独安装。CLI Extension 在页面外增加命令；应用内部接入负责暴露框架本来就知道的事实。
+
+##### CLI Extensions
+
+下面这些包安装到 Divebell，并增加对应的一级命令：
 
 | 扩展包 | 入口 | 用途 | 指南 |
 | --- | --- | --- | --- |
@@ -107,8 +111,7 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 | `@divebell/extension-code-usage` | `divebell code-usage` | 把页面中的代码执行情况还原到分块、源码文件和依赖包。 | [代码使用分析](./docs/code-usage-analysis.zh-CN.md) |
 | `@divebell/extension-imitate` | `divebell record` | 录制一次浏览器操作并生成可执行、可验证的 JavaScript 回放。 | [录制浏览器操作](./docs/record-browser-workflows.zh-CN.md) |
 | `@divebell/extension-troubleshooting` | `divebell verify` | 验证页面声明的业务目标是否到达预期结果。 | [Runtime SDK API](./docs/runtime-sdk-api.zh-CN.md) |
-| `@divebell/modern-plugin` | Modern.js runtime plugin（WIP） | 规划中的框架状态接入。在包含所需生命周期 hook 的 Modern.js 新版本发布前，请勿正式接入。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
-| `@module-federation/observability-plugin` | Module Federation runtime plugin | 通过 MF observability 记录 consumer、remote、manifest、remoteEntry、expose、shared 依赖和运行时错误证据。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
+| `@divebell/extension-mf` | `divebell mf` | 检查 Module Federation 实例、remote、shared、Bridge 和加载链路。 | [MF Extension](./packages/extensions/mf/README.md) |
 
 安装 CLI Extension：
 
@@ -116,7 +119,16 @@ Extension 是连接 Web 页面和团队已有开发能力的扩展机制。
 divebell extensions add @divebell/extension-memory
 ```
 
-安装后的扩展命令会出现在 `divebell --help` 中，并复用同一个 CLI、浏览器会话和登录状态。框架接入包是应用依赖，需要在对应框架中配置，本身不会增加一条 CLI 命令。
+安装后的扩展命令会出现在 `divebell --help` 中，并复用同一个 CLI、浏览器会话和登录状态。
+
+##### 应用内部接入
+
+下面这些包是应用依赖，需要在对应框架中配置，本身不会增加 `divebell` 命令：
+
+| 接入包 | 入口 | 用途 | 指南 |
+| --- | --- | --- | --- |
+| `@divebell/modern-plugin` | Modern.js runtime plugin（WIP） | 规划中的框架状态接入。在包含所需生命周期 hook 的 Modern.js 新版本发布前，请勿正式接入。 | [Modern.js 接入](./docs/modernjs-integration.zh-CN.md) |
+| `@module-federation/observability-plugin` | Module Federation runtime plugin | 让 MF 应用长期记录和上报 consumer、remote、shared 及加载错误证据。一次性 Divebell 调试不要求业务安装它。 | [Module Federation 可观测接入](./docs/module-federation-observability.zh-CN.md) |
 
 ### Runtime SDK
 

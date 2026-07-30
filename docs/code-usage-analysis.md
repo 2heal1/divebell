@@ -2,40 +2,7 @@
 
 This optional analysis maps code recorded in the browser back to build chunks, application files, workspace packages, and third-party dependencies. It helps identify code that may be loaded too early or split more effectively.
 
-## Let an Agent analyze the current project
-
-### 1. Install the Skill
-
-Install Divebell globally, prepare its browser, and add the Code Usage Extension:
-
-```bash
-npm install --global @divebell/cli
-divebell setup
-divebell extensions add @divebell/extension-code-usage
-```
-
-Then get the Skill included with the Extension:
-
-```bash
-divebell code-usage --skill
-```
-
-Install the returned `SKILL.md` in your agent. You can also ask the agent to run
-that command and load the returned Skill. Do not add the CLI or Extension to the
-application project.
-
-### 2. Ask the Agent to use it
-
-From the current project, send:
-
-```text
-Use $analyze-code-usage in the current project to generate and open a code-usage size report for the current page.
-```
-
-The Agent inspects the project build, prepares matching Chunk Map and source-map
-evidence, records the current page and representative interactions, and opens
-the report. If the build cannot be matched exactly or the build tool is not
-supported, it reports the missing setup instead of guessing code ownership.
+After installing `@divebell/extension-code-usage`, ask your Agent: `Run divebell code-usage --skill, load the returned $analyze-code-usage Skill, and use it in the current project to generate and open a code-usage size report for the current page.`
 
 ## What the report shows
 

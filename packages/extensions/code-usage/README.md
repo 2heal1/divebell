@@ -1,5 +1,7 @@
 # @divebell/extension-code-usage
 
+> Ask your Agent: `Run divebell extensions add @divebell/extension-code-usage to install the Extension, then run divebell code-usage --skill and follow the returned Skill to analyze the current project and open a code-usage size report for the current page.`
+
 This Divebell Extension maps browser code coverage back to build chunks, application source files, workspace packages, and third-party dependencies. It can create a JSON result, a standalone interactive report, or a local streaming report for larger page-experience results.
 
 ## Install

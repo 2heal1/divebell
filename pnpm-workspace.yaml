@@ -2,3 +2,4 @@ packages:
   - demos/*
   - packages/*
   - packages/extensions/*
+  - tests/e2e/extension-mf/fixtures/*

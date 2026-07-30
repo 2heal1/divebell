@@ -1,0 +1,14 @@
+{
+  "name": "@divebell/test-mf-provider",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rslib build"
+  },
+  "devDependencies": {
+    "@module-federation/rsbuild-plugin": "2.5.0",
+    "@rslib/core": "0.21.5",
+    "typescript": "5.9.3"
+  }
+}

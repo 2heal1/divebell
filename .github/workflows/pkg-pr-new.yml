@@ -35,7 +35,7 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm --filter . --filter "./packages/*" --filter "./packages/extensions/*" --filter @divebell/mf-playground-remote... install --frozen-lockfile
+        run: pnpm --filter . --filter "./packages/*" --filter "./packages/extensions/*" --filter @divebell/mf-playground-remote... --filter "./tests/e2e/extension-mf/fixtures/*" install --frozen-lockfile
 
       - name: Run checks
         run: pnpm check

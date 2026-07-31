@@ -1,10 +1,6 @@
 ---
 name: divebell-extension
-description: >-
-  Create, modify, review, or verify a Divebell CLI Extension. Use when the task
-  explicitly involves Extension Commands, lifecycle Hooks, detectStack support,
-  Extension dependencies, or a command-provided Skill. Do not use merely to
-  install or invoke an existing Extension.
+description: Create, modify, review, or verify a Divebell CLI Extension. Use when the task explicitly involves Extension Commands, lifecycle Hooks, detectStack support, Extension dependencies, or a command-provided Skill. Do not use merely to install or invoke an existing Extension.
 ---
 
 # Divebell Extension Development

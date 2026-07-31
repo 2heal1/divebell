@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { test } from "@rstest/core";
 
-import { cliPackageInfo, defineExtension, getCliCommandName, runCli, validateExtension } from "../dist/index.js";
+import { cliPackageInfo, createDivebellCli, defineExtension, getCliCommandName, runCli, validateExtension } from "../dist/index.js";
 import { isEntryPoint } from "../dist/utils/entry.js";
 import { createCliReferenceMarkdown } from "../dist/commands/help.js";
 
@@ -134,6 +134,30 @@ test("accepts the short help flag", async () => {
   assert.match(commandOutput.text(), /divebell extensions add <package-or-path>/);
 });
 
+test("prints the installed package version with long and short flags", async () => {
+  const packageJson = JSON.parse(
+    readFileSync(join(process.cwd(), "package.json"), "utf8")
+  ) as { version: string };
+
+  for (const flag of ["--version", "-v"]) {
+    const output = createOutput();
+    assert.equal(await runCli([flag], {
+      stdout: output.stdout,
+      stderr: output.stderr
+    }), 0);
+    assert.equal(output.text(), `${packageJson.version}\n`);
+    assert.equal(output.errorText(), "");
+  }
+
+  const programmaticOutput = createOutput();
+  assert.equal(await createDivebellCli().run(["--version"], {
+    stdout: programmaticOutput.stdout,
+    stderr: programmaticOutput.stderr
+  }), 0);
+  assert.equal(programmaticOutput.text(), `${packageJson.version}\n`);
+  assert.equal(programmaticOutput.errorText(), "");
+});
+
 test("prints progressively scoped command help", async () => {
   const extensionsOutput = createOutput();
   assert.equal(await runCli(["extensions", "--help"], {
@@ -234,6 +258,7 @@ test("generates CLI reference markdown from the help table", () => {
   const markdown = createCliReferenceMarkdown();
 
   assert.match(markdown, /### Browser/);
+  assert.match(markdown, /divebell --version.*divebell -v.*installed CLI version/);
   assert.doesNotMatch(markdown, /### Bridge and Browser/);
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--headers <json>\]/);

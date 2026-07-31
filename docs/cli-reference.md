@@ -7,6 +7,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 ## Binaries
 
 - `divebell`
+- `divebell --version` (or `divebell -v`) - Print the installed CLI version.
 
 ## Commands
 

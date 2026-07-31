@@ -238,7 +238,8 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
     "Usage: divebell <command> [options]",
     ...commandLines,
     "",
-    "Run `divebell <command> --help` (or `-h`) for detailed usage."
+    "Run `divebell <command> --help` (or `-h`) for detailed usage.",
+    "Run `divebell --version` (or `-v`) to print the installed version."
   ].join("\n");
 }
 
@@ -284,6 +285,7 @@ export function createCliReferenceMarkdown(references: CliReferenceCollection = 
     "## Binaries",
     "",
     "- `divebell`",
+    "- `divebell --version` (or `divebell -v`) - Print the installed CLI version.",
     "",
     "## Commands"
   ];

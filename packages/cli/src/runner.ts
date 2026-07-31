@@ -20,6 +20,7 @@ import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
 import { runSetupCommand } from "./commands/setup.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
+import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import type {
   CliRunOptions,
   DivebellCliConfig
@@ -38,6 +39,11 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
   const args = parseCliArgs(argv);
 
   try {
+    if (isCliVersionRequest(args)) {
+      stdout.write(`${CLI_VERSION}\n`);
+      return 0;
+    }
+
     if (args.command.length === 0) {
       stdout.write(`${createHelpText({
         commandReferences: config.commandReferences,

@@ -9,8 +9,8 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     const arg = argv[index];
     if (arg === undefined) continue;
 
-    if (arg === "-h") {
-      appendOption(options, "help", "true");
+    if (arg === "-h" || arg === "-v") {
+      appendOption(options, arg === "-h" ? "help" : "version", "true");
       continue;
     }
 

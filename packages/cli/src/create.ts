@@ -12,8 +12,10 @@ import {
   createHelpText,
   type CliCommandSkillReference
 } from "./commands/help.js";
+import { parseCliArgs } from "./utils/args.js";
 import { runCliWithConfig } from "./runner.js";
 import { createExtensionHookPlans } from "./features/extension/plan.js";
+import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import type {
   CliRunOptions,
   CreateDivebellCliOptions,
@@ -91,6 +93,12 @@ function createExtensionRegistry(
 export const defaultDivebellCli = createDivebellCli();
 
 export async function runCli(argv = process.argv.slice(2), options: CliRunOptions = {}): Promise<number> {
+  const stdout = options.stdout ?? process.stdout;
+  if (isCliVersionRequest(parseCliArgs(argv))) {
+    stdout.write(`${CLI_VERSION}\n`);
+    return 0;
+  }
+
   const stderr = options.stderr ?? process.stderr;
   const loaded = await createDivebellCliWithExternalExtensions();
   for (const record of loaded.extensionLoadRecords) {

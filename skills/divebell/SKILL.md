@@ -1,10 +1,6 @@
 ---
 name: divebell
-description: >-
-  Use Divebell to operate, inspect, debug, and verify real web applications.
-  Trigger when the user explicitly asks to use Divebell or requires evidence
-  from a real page through the Divebell CLI. While using Divebell, perform all
-  browser operations through Divebell instead of another browser tool.
+description: Use Divebell to operate, inspect, debug, and verify real web applications. Use when the user explicitly asks to use Divebell or requires evidence from a real page through the Divebell CLI. While using Divebell, perform all browser operations through Divebell instead of another browser tool.
 ---
 
 # Divebell

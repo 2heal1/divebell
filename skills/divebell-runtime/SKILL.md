@@ -1,11 +1,6 @@
 ---
 name: divebell-runtime
-description: >-
-  Add, modify, review, or verify application-side Divebell Runtime SDK
-  integration with @divebell/core. Use when the task involves creating or
-  reusing a Runtime, registering Targets or Actions, updating Snapshots,
-  exposing application-internal facts, or designing waitable business state.
-  Do not use merely to consume an existing Runtime from a CLI Extension.
+description: Add, modify, review, or verify application-side Divebell Runtime SDK integration with @divebell/core. Use when the task involves creating or reusing a Runtime, registering Targets or Actions, updating Snapshots, exposing application-internal facts, or designing waitable business state. Do not use merely to consume an existing Runtime from a CLI Extension.
 ---
 
 # Divebell Runtime SDK Integration

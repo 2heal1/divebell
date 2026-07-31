@@ -51,21 +51,47 @@ insufficient to reach a conclusion; it does not mean success or absence.
 
 ## Install
 
+Installing the package only registers the `divebell mf` commands. It does not
+enable MF diagnostics for the current page. Every page you want to inspect must
+be opened with the bare `--mf` flag.
+
+1. Install the extension:
+
 ```sh
 divebell extensions add @divebell/extension-mf
 ```
 
-The current CLI uses the plural `extensions` command. The older singular form `divebell extension add @divebell/extension-mf` is not supported by this repository version.
-
-After installing or updating the extension, add `--mf` when opening a page that needs MF debugging. Before navigation, the extension installs a matching MF debug Runtime constructor and global Observability Plugin. Future MF instances use that constructor, so the target project can expose the newer Remote, Shared, and Bridge diagnostics even when its installed Runtime does not contain those hooks. A page that was already open cannot have complete earlier loading history.
+2. Open the target page with MF diagnostics enabled:
 
 ```sh
 divebell open https://example.com --mf
 ```
 
-MF debugging is opt-in. An ordinary `divebell open` does not inject the debug
-Runtime or Observability Plugin. MF commands require the current page to have
-been opened with `--mf`.
+3. Run an MF command against that page:
+
+```sh
+divebell mf status
+```
+
+If the page was opened with an ordinary `divebell open`, the extension is still
+installed, but its MF commands refuse to run and ask you to reopen the page with
+`divebell open <url> --mf`.
+
+The bare `--mf` flag on `divebell open` enables MF diagnostics. It is different
+from `--mf <name>` on some `divebell mf` commands, which only selects an MF
+instance by its visible name and cannot enable diagnostics after the page has
+opened.
+
+Before navigation, the extension installs a matching MF debug Runtime
+constructor and global Observability Plugin. Future MF instances use that
+constructor, so the target project can expose the newer Remote, Shared, and
+Bridge diagnostics even when its installed Runtime does not contain those
+hooks. A page that was already open cannot have complete earlier loading
+history.
+
+The current CLI uses the plural `extensions` command. The older singular form
+`divebell extension add @divebell/extension-mf` is not supported by this
+repository version.
 
 ### Proxy remotes while opening
 

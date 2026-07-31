@@ -1,0 +1,66 @@
+docs/memory-analysis.md
+  s_deeaf87145d6b8::t_b373379a98dfe4 3-4 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a6c17ebb0de7645ccd0482e","tool_type":"agent","tool_id":"apply_patch","line_ranges":[{"Range":[3,4]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bf7297d779160c412851ffd482d3efdc0f919bcd",
+  "prompts": {},
+  "sessions": {
+    "s_deeaf87145d6b8": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a6c17a9b0de7645ccd04822",
+        "model": "gpt-5.5__dev"
+      },
+      "human_author": "2heal1 <TwoHeal@163.com>"
+    }
+  },
+  "attestation_metadata": {
+    "docs/memory-analysis.md": [
+      {
+        "hash": "s_deeaf87145d6b8::t_b373379a98dfe4",
+        "line_ranges": [
+          {
+            "Range": [
+              3,
+              4
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a6c17ebb0de7645ccd0482e",
+            "tool_type": "agent",
+            "tool_id": "apply_patch",
+            "line_ranges": [
+              {
+                "Range": [
+                  3,
+                  4
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_deeaf87145d6b8": {
+      "tool": "trae",
+      "conversation_id": "6a6c17a9b0de7645ccd04822",
+      "session_id": "6a6c17a9b0de7645ccd04822",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_deeaf87145d6b8::t_b373379a98dfe4": {
+      "tool": "trae",
+      "conversation_id": "6a6c17a9b0de7645ccd04822",
+      "session_id": "6a6c17a9b0de7645ccd04822",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}

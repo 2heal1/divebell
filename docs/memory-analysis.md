@@ -1,5 +1,7 @@
 # Memory Analysis Guide
 
+> Ask your Agent: `Run divebell extensions add @divebell/extension-memory to install the Extension, then create a memory scenario for the page journey I want to check and run divebell memory check against it.`
+
 Memory analysis is provided by an optional Extension package. It works with any Chrome page that Divebell can open and does not require Modern.js, Rspack, Runtime SDK, or build metadata.
 
 Install Divebell globally, then add the Extension once:

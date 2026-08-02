@@ -5,6 +5,16 @@ export {
   readMfObservability
 } from "./reader.js";
 export {
+  createModulePerformanceResult
+} from "./module-performance/result.js";
+export {
+  createModulePerformanceInitScript,
+  createReadModulePerformanceScript,
+  isModulePerformanceBrowserSnapshot,
+  readModulePerformanceSnapshot
+} from "./module-performance/open.js";
+export type * from "./module-performance/types.js";
+export {
   createCompatibilitySummary,
   createModuleInfoResult,
   createStatusResult,

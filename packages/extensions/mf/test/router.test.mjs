@@ -13,23 +13,27 @@ test("real MF routes match their own command modules", () => {
     registration: mfCommandRegistry[1],
     positionals: ["catalog"]
   });
-  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["remote", "status", "catalog"]), {
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["module-perf", "catalog/Button"]), {
     registration: mfCommandRegistry[2],
+    positionals: ["catalog/Button"]
+  });
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["remote", "status", "catalog"]), {
+    registration: mfCommandRegistry[3],
     positionals: ["catalog"]
   });
   const match = matchMfCommand(mfCommandRegistry, ["remote", "trace", "catalog/Button"]);
-  assert.equal(match.registration, mfCommandRegistry[3]);
+  assert.equal(match.registration, mfCommandRegistry[4]);
   assert.deepEqual(match.positionals, ["catalog/Button"]);
   assert.deepEqual(matchMfCommand(mfCommandRegistry, ["shared", "status", "react"]), {
-    registration: mfCommandRegistry[4],
-    positionals: ["react"]
-  });
-  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["shared", "trace", "react"]), {
     registration: mfCommandRegistry[5],
     positionals: ["react"]
   });
-  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["bridge", "trace", "catalog"]), {
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["shared", "trace", "react"]), {
     registration: mfCommandRegistry[6],
+    positionals: ["react"]
+  });
+  assert.deepEqual(matchMfCommand(mfCommandRegistry, ["bridge", "trace", "catalog"]), {
+    registration: mfCommandRegistry[7],
     positionals: ["catalog"]
   });
   assert.equal(matchMfCommand(mfCommandRegistry, ["trace", "catalog"]), undefined);
@@ -60,6 +64,7 @@ test("the real registry exposes exactly the implemented commands", () => {
     [
       "status",
       "module-info",
+      "module-perf",
       "remote status",
       "remote trace",
       "shared status",

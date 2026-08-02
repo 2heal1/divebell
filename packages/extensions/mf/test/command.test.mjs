@@ -187,9 +187,10 @@ test("unknown MF commands return the compatible unified help error", async () =>
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_INVALID" &&
-      error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, remote status, remote trace, shared status, shared trace or bridge trace." &&
+      error.message === "Unknown mf subcommand `shared check`. Available commands: status, module-info, module-perf, remote status, remote trace, shared status, shared trace or bridge trace." &&
       /divebell mf status/.test(error.hint) &&
       /divebell mf module-info/.test(error.hint) &&
+      /divebell mf module-perf/.test(error.hint) &&
       /divebell mf bridge trace/.test(error.hint) &&
       /divebell mf remote status/.test(error.hint) &&
       /divebell mf remote trace/.test(error.hint) &&
@@ -198,13 +199,13 @@ test("unknown MF commands return the compatible unified help error", async () =>
   );
 });
 
-test("mf without a subcommand lists the same seven commands without adding help", async () => {
+test("mf without a subcommand lists the same eight commands without adding help", async () => {
   const run = createOptions(["mf"], new Map(), undefined);
   await assert.rejects(
     () => runMfCommand(run.options),
     (error) => error.code === "MF_COMMAND_REQUIRED" &&
       /mf requires a subcommand/.test(error.message) &&
-      /status, module-info, remote status, remote trace, shared status, shared trace or bridge trace/.test(error.message) &&
+      /status, module-info, module-perf, remote status, remote trace, shared status, shared trace or bridge trace/.test(error.message) &&
       !/mf help/.test(`${error.message} ${error.hint}`)
   );
 });
@@ -221,6 +222,20 @@ test("removed trace routes do not silently fall back to a new command", async ()
       (error) => error.code === "MF_COMMAND_INVALID"
     );
   }
+});
+
+test("module-perf rejects more than one positional target before reading the page", async () => {
+  const run = createOptions(
+    ["mf", "module-perf", "shop/Button", "shop/Card"],
+    new Map(),
+    undefined
+  );
+  await assert.rejects(
+    () => runMfCommand(run.options),
+    (error) => error.code === "MF_COMMAND_USAGE_INVALID" &&
+      /at most one remote\/expose/.test(error.message) &&
+      /divebell mf module-perf/.test(error.hint)
+  );
 });
 
 test("candidate commands use the invoked mf or vmok command name", async () => {

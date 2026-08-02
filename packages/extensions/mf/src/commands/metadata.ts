@@ -36,6 +36,13 @@ export const moduleInfoCommandMetadata = {
   description: "Inspect a declared or loaded remote in an unambiguous consumer context."
 } as const satisfies MfCommandMetadata;
 
+export const modulePerformanceCommandMetadata = {
+  path: ["module-perf"],
+  usage: "divebell mf module-perf [remote/expose] [--mf <name>] [--instance <ref>]",
+  summaryUsage: "divebell mf module-perf [remote/expose]",
+  description: "Measure observed producer module loading, expose resources, rendering, and page impact without reloading modules."
+} as const satisfies MfCommandMetadata;
+
 export const bridgeTraceCommandMetadata = {
   path: ["bridge", "trace"],
   usage: "divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id <id>] [--operation <id>]",
@@ -74,6 +81,7 @@ export const sharedStatusCommandMetadata = {
 export const implementedMfCommandMetadata = [
   statusCommandMetadata,
   moduleInfoCommandMetadata,
+  modulePerformanceCommandMetadata,
   remoteStatusCommandMetadata,
   remoteTraceCommandMetadata,
   sharedStatusCommandMetadata,

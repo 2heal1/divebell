@@ -4,6 +4,7 @@ import {
   createMfProxyInitScript,
   readMfProxyOverrides
 } from "./proxy.js";
+import { createModulePerformanceInitScript } from "./module-performance/open.js";
 
 const observabilitySource = new URL(
   "./observability-chrome-devtool.iife.js",
@@ -43,7 +44,7 @@ export async function openMfObservability(
   ]);
   return {
     scripts: [
-      `${proxyInit}\n;${runtimeInstaller}\n;${observability}\n;${installer}`
+      `${proxyInit}\n;${createModulePerformanceInitScript()}\n;${runtimeInstaller}\n;${observability}\n;${installer}`
     ]
   };
 }

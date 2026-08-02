@@ -10,6 +10,7 @@ import type {
   StatusResult
 } from "./types.js";
 import type { RemoteStatusResult } from "./remote/types.js";
+import type { ModulePerformanceResult } from "./module-performance/types.js";
 
 export interface MfTestSelector {
   mf?: string;
@@ -28,6 +29,10 @@ export interface MfModuleInfoTestOptions extends MfTestSelector {
 
 export interface MfRemoteStatusTestOptions extends MfTestSelector {
   remote: string;
+}
+
+export interface MfModulePerformanceTestOptions extends MfTestSelector {
+  target?: string;
 }
 
 type MfTestCommand<T> = CliCommandInvocation<
@@ -53,6 +58,17 @@ export const mfTestCommands = {
       "mf",
       "module-info",
       ...optionalArgument(options.remote),
+      ...selectorArgs(options)
+    ]);
+  },
+
+  modulePerformance(
+    options: MfModulePerformanceTestOptions = {}
+  ): MfTestCommand<ModulePerformanceResult> {
+    return command([
+      "mf",
+      "module-perf",
+      ...optionalArgument(options.target),
       ...selectorArgs(options)
     ]);
   },

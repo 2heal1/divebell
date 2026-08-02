@@ -77,6 +77,10 @@ interface TestBrowserContext extends vm.Context {
   __DIVEBELL_MF_E2E_ERROR__?: unknown;
   __MF_OBSERVABILITY_INJECTION__?: unknown;
   __DIVEBELL_MF_PROXY_INJECTION__?: unknown;
+  __DIVEBELL_MF_MODULE_PERFORMANCE__?: {
+    schemaVersion: 1;
+    snapshot(): unknown;
+  };
   __DIVEBELL_MF_E2E_RENDERED__?: unknown;
   __FEDERATION__?: FederationGlobal;
   globalThis: TestBrowserContext;
@@ -99,6 +103,7 @@ interface BrowserState {
   runtimeState: unknown;
   reports: unknown[];
   share: Record<string, unknown>;
+  modulePerformance?: unknown;
   rendered: unknown;
 }
 
@@ -180,6 +185,14 @@ async function evaluate(args: string[]): Promise<void> {
   const { context } = createBrowserContext(state.url);
   context.__MF_OBSERVABILITY_INJECTION__ = state.marker;
   context.__DIVEBELL_MF_PROXY_INJECTION__ = state.proxyMarker;
+  if (state.modulePerformance !== undefined) {
+    context.__DIVEBELL_MF_MODULE_PERFORMANCE__ = {
+      schemaVersion: 1,
+      snapshot() {
+        return cloneJson(state.modulePerformance);
+      }
+    };
+  }
   context.__FEDERATION__ = {
     ...(context.__FEDERATION__ ?? {}),
     __SHARE__: state.share ?? {},
@@ -231,21 +244,61 @@ function createBrowserContext(url: string): TestBrowserHarness {
   const eventListeners = new Map<string, Set<(event: unknown) => void>>();
   const scripts: BrowserScriptElement[] = [];
   let context: TestBrowserContext;
-  const pageFetch = (
-    input: string | URL | Request,
-    init?: RequestInit
-  ): Promise<Response> => {
-    if (typeof input === "string" || input instanceof URL) {
-      return fetch(new URL(String(input), url), init);
+  const resourceEntries: Array<{
+    name: string;
+    initiatorType: string;
+    startTime: number;
+    responseEnd: number;
+    duration: number;
+    transferSize: number;
+    encodedBodySize: number;
+    decodedBodySize: number;
+  }> = [];
+  const timeOrigin = Date.now();
+  const performanceNow = () => Math.max(0, Date.now() - timeOrigin);
+  const testPerformance = {
+    timeOrigin,
+    now: performanceNow,
+    setResourceTimingBufferSize() {},
+    getEntriesByType(type: string) {
+      return type === "resource" ? resourceEntries : [];
     }
-    return fetch(input, init);
+  };
+  const pageFetch = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+    initiatorType = "fetch"
+  ): Promise<Response> => {
+    const requestUrl = typeof input === "string" || input instanceof URL
+      ? new URL(String(input), url).href
+      : input.url;
+    const started = performanceNow();
+    const response = typeof input === "string" || input instanceof URL
+      ? await fetch(requestUrl, init)
+      : await fetch(input, init);
+    const ended = performanceNow();
+    const contentLength = Number(response.headers.get("content-length"));
+    const size = Number.isFinite(contentLength) && contentLength >= 0
+      ? contentLength
+      : 0;
+    resourceEntries.push({
+      name: requestUrl,
+      initiatorType,
+      startTime: started,
+      responseEnd: ended,
+      duration: Math.max(0, ended - started),
+      transferSize: size,
+      encodedBodySize: size,
+      decodedBodySize: size
+    });
+    return response;
   };
   const loadScript = async (
     sourceUrl: string,
     element?: BrowserScriptElement
   ): Promise<void> => {
     const resolvedUrl = new URL(sourceUrl, url).href;
-    const response = await pageFetch(resolvedUrl);
+    const response = await pageFetch(resolvedUrl, undefined, "script");
     if (!response.ok) {
       throw new Error(`Could not load ${resolvedUrl}: HTTP ${response.status}.`);
     }
@@ -320,7 +373,7 @@ function createBrowserContext(url: string): TestBrowserHarness {
     setInterval,
     clearInterval,
     queueMicrotask,
-    performance,
+    performance: testPerformance,
     addEventListener(type: string, listener: (event: unknown) => void) {
       const listeners = eventListeners.get(type) ?? new Set();
       listeners.add(listener);
@@ -428,6 +481,8 @@ function readSerializableBrowserState(context: TestBrowserContext): BrowserState
       runtimeState: reader?.getRuntimeState?.(),
       reports: reader?.getReports?.({ limit: 200 }) ?? [],
       share: globalThis.__FEDERATION__?.__SHARE__ ?? {},
+      modulePerformance:
+        globalThis.__DIVEBELL_MF_MODULE_PERFORMANCE__?.snapshot?.(),
       rendered: globalThis.__DIVEBELL_MF_E2E_RENDERED__
     };
   })()`, context, {

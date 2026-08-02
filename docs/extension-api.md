@@ -80,7 +80,7 @@ interface CliExtensionRunOptions {
 | `options.divebell` | `DivebellExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by Divebell. Normally avoid calling it directly; use `options.divebell` for Bridge and Runtime access. |
 | `options.runExtension` | `CliExtensionRunFunction` | Calls a Command from this Extension or a declared Extension dependency and returns its raw result. |
-| `options.withLoading` | `CliExtensionLoadingFunction` | Wraps work that may take time and shows one terminal loading animation when it is still running after 400 milliseconds. |
+| `options.withLoading` | `CliExtensionLoadingFunction` | Reuses the current Command's loading animation for nested or concurrent work. The Command already shows loading by default. |
 
 ### `options.args`
 
@@ -173,7 +173,7 @@ The target result is returned directly to the caller. A nested call does not wri
 
 ### `options.withLoading`
 
-Wrap the part of a Command that may take noticeable time:
+Every CLI and Extension Command shows one loading animation by default. Existing Extensions may continue to wrap nested or concurrent work with the shared function:
 
 ```ts
 interface CliExtensionLoadingFunction {
@@ -185,7 +185,7 @@ const report = await options.withLoading(async () => {
 });
 ```
 
-Work that finishes within 400 milliseconds produces no animation. Slower work shows one animation only in an interactive terminal, then clears it before the Command writes its final result or error. Nested and concurrent wrappers share the same animation.
+The wrapper does not start a second animation. Interactive terminals show loading immediately and clear it before the Command writes output or an error. Non-interactive output remains unchanged. New Extensions normally do not need to call `withLoading` themselves.
 
 ### `options.page`
 

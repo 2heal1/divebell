@@ -128,10 +128,7 @@ export interface DivebellExtensionDefinition {
 export interface ExtensionCliCommandOptions {
   args: ParsedCliArgs;
   stdout: { write(chunk: string): void };
-  stderr: {
-    isTTY?: boolean;
-    write(chunk: string): void;
-  };
+  withLoading: CliExtensionLoadingFunction;
   fetcher: Fetcher;
   browserRunner: BrowserRunner;
   bridgeStarter: BridgeStarter;

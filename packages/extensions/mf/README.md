@@ -20,6 +20,14 @@ Bridge traces, are omitted from successful command output. When evidence is
 incomplete or unavailable, the useful reason remains in `warnings` and the next
 step remains in `recommendedActions`.
 
+The package also includes an Agent Skill that explains how to choose a command,
+resolve ambiguous results, and interpret every returned field. Print its path
+without running a page command:
+
+```sh
+divebell mf --skill
+```
+
 On MF commands, `--mf <name>` selects the visible Module Federation name. On
 `divebell open`, the bare `--mf` flag enables the bundled MF diagnostics.
 `--instance` selects the exact, session-scoped `instanceRef` reported by

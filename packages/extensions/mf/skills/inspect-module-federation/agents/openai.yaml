@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inspect Module Federation"
+  short_description: "Inspect Module Federation runtime evidence"
+  default_prompt: "Use $inspect-module-federation to diagnose the current Module Federation page."

@@ -46,7 +46,9 @@
     "dist/**/*.js.map",
     "dist/observability-build.json",
     "dist/runtime-debug-build.json",
-    "dist/proxy-sdk-build.json"
+    "dist/proxy-sdk-build.json",
+    "skills/**/*.md",
+    "skills/**/*.yaml"
   ],
   "publishConfig": {
     "access": "public"

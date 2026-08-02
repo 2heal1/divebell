@@ -18,8 +18,9 @@ divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id 
 All commands return structured output by default; `--json` is not required.
 Compatibility details, and the capability details still used by Remote and
 Bridge traces, are omitted from successful command output. When evidence is
-incomplete or unavailable, the useful reason remains in `warnings` and the next
-step remains in `recommendedActions`.
+incomplete or unavailable, state and trace commands keep the useful reason in
+`warnings` and the next step in `recommendedActions`. `module-perf` instead
+uses its existing outcome, status, match, unobserved, and evidence fields.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path
@@ -320,10 +321,13 @@ unavailable.
 followed a user interaction, and whether `loadRemote` completed before FP, FCP,
 and the currently observed LCP. `bottleneck` compares measured remoteEntry,
 expose resource, get, and factory work. `findings` expose the evidence and fixed
-rule behind each suggestion. Slow remoteEntry recommends preload only; delayed
-synchronous expose assets can recommend exact preloads for an initial-page
-module. Failed, pending, or unknown loads do not receive performance bottleneck
-diagnoses; resolve or complete their loading trace first.
+rule behind each diagnosis. Failed, pending, or unknown loads do not receive
+performance bottleneck diagnoses.
+
+The result omits duplicate `warnings`, `recommendedActions`, and per-finding
+`suggestion` fields. Availability and completeness remain explicit in fields
+such as `outcome`, `lcpStatus`, `manifest.status`, asset `match`,
+`unobservedRemotes`, and each finding's evidence.
 
 `codeUsage` is only a follow-up. When exact expose JavaScript is known, the
 result lists those URLs for a separate Code Usage run. Coverage is not enabled

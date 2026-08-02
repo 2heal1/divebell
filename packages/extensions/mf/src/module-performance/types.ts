@@ -134,7 +134,6 @@ export interface ModulePerformanceFinding {
   severity: "info" | "warning";
   title: string;
   evidence: string[];
-  suggestion: string;
 }
 
 export interface ModulePerformanceCodeUsage {
@@ -167,7 +166,6 @@ export interface ModulePerformanceModule {
   remote: RuntimeRemote;
   expose?: string;
   operations: ModulePerformanceOperation[];
-  warnings: string[];
 }
 
 export interface ModulePerformanceUnobservedRemote {
@@ -197,8 +195,6 @@ export interface ModulePerformanceResult {
   };
   modules: ModulePerformanceModule[];
   unobservedRemotes: ModulePerformanceUnobservedRemote[];
-  warnings: string[];
-  recommendedActions: string[];
 }
 
 export interface ModulePerformanceSelectors {

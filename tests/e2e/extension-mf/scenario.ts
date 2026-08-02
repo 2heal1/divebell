@@ -120,9 +120,12 @@ export function registerMfExtensionE2e({
       assert.equal(modulePerformance.json.status, "ok");
       assert.equal(modulePerformance.json.data.summary.moduleCount, 1);
       assert.equal(modulePerformance.json.data.summary.operationCount, 1);
+      assert.equal("warnings" in modulePerformance.json.data, false);
+      assert.equal("recommendedActions" in modulePerformance.json.data, false);
       const measuredModule = modulePerformance.json.data.modules[0];
       assert.ok(measuredModule !== undefined);
       assert.equal(measuredModule.expose, "./Widget");
+      assert.equal("warnings" in measuredModule, false);
       const operation = measuredModule.operations[0];
       assert.ok(operation !== undefined);
       assert.equal(typeof operation.timing.loadRemote.start, "number");
@@ -134,6 +137,9 @@ export function registerMfExtensionE2e({
       );
       assert.equal(typeof operation.timing.get.duration, "number");
       assert.equal(typeof operation.pageImpact.trigger, "string");
+      assert.ok(operation.findings.every((finding) =>
+        !("suggestion" in finding)
+      ));
       assert.equal(operation.manifest.status, "available");
       assert.ok(operation.manifest.assets.some((asset) =>
         asset.kind === "sync" && asset.match === "matched" &&

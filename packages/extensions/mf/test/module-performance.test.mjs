@@ -71,7 +71,11 @@ test("module performance attributes loadRemote, expose resources, and page impac
   assert.ok(operation.findings.some((finding) =>
     finding.id === "defer-expose-assets"
   ));
+  assert.ok(operation.findings.every((finding) => !("suggestion" in finding)));
   assert.equal(result.summary.operationCount, 1);
+  assert.equal("warnings" in result, false);
+  assert.equal("recommendedActions" in result, false);
+  assert.equal("warnings" in result.modules[0], false);
 });
 
 test("missing Manifest keeps loadRemote and measured get/factory timing explicit", () => {
@@ -94,7 +98,7 @@ test("missing Manifest keeps loadRemote and measured get/factory timing explicit
   assert.equal(operation.timing.get.duration, 2);
   assert.equal(operation.timing.factory.duration, 3);
   assert.equal(operation.codeUsage.status, "unavailable");
-  assert.doesNotMatch(result.modules[0].warnings.join(" "), /render/i);
+  assert.equal("warnings" in result.modules[0], false);
 });
 
 test("unavailable cross-origin resource sizes and cache are omitted", () => {

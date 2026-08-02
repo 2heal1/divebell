@@ -1,4 +1,4 @@
-import { buildRemoteTrace, remoteCapability } from "../remote/results.js";
+import { buildRemoteTrace } from "../remote/results.js";
 import {
   isRemoteTraceReport,
   normalizeExpose,
@@ -55,8 +55,6 @@ export function createModulePerformanceResult(
   const modules = groups.map((group) => createModule(group, performance))
     .sort(compareModules);
   const unobservedRemotes = collectUnobservedRemotes(snapshot, groups, selectors);
-  const warnings = collectWarnings(snapshot, performance, modules, selectors);
-  const recommendedActions = collectRecommendedActions(modules, unobservedRemotes);
   const operations = modules.flatMap((module) => module.operations);
 
   return {
@@ -87,9 +85,7 @@ export function createModulePerformanceResult(
       unobservedRemoteCount: unobservedRemotes.length
     },
     modules,
-    unobservedRemotes,
-    warnings: unique(warnings),
-    recommendedActions: unique(recommendedActions)
+    unobservedRemotes
   };
 }
 
@@ -150,7 +146,6 @@ function createModule(
   group: ModuleGroup,
   performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceModule {
-  const warnings: string[] = [];
   const usedLoads = new Set<string>();
   const operations = group.traces.map((trace) => {
     const load = performance === null
@@ -158,20 +153,12 @@ function createModule(
       : selectLoad(group, trace, performance, usedLoads);
     return createOperation(group, trace, performance, load);
   });
-  if (operations.every((operation) =>
-    operation.manifest.status !== "available"
-  )) {
-    warnings.push(
-      "No unambiguous Manifest expose assets were found; resource-level attribution is unavailable."
-    );
-  }
   return {
     consumer: group.consumer,
     producer: group.producer,
     remote: group.remote,
     ...(group.expose === undefined ? {} : { expose: group.expose }),
-    operations,
-    warnings
+    operations
   };
 }
 
@@ -542,10 +529,7 @@ function createFindings(
       evidence: [
         `loadRemote outcome: ${trace.outcome}.`,
         `Trace: ${trace.traceId}.`
-      ],
-      suggestion: failed
-        ? `Run the Remote trace command with --trace-id ${trace.traceId} and fix the loading failure before optimizing performance.`
-        : "Wait for loadRemote to finish or reproduce the module load, then run module-perf again."
+      ]
     }];
   }
   if (bottleneck.type === "remoteEntry" &&
@@ -555,10 +539,10 @@ function createFindings(
       id: "preload-remote-entry",
       severity: "warning",
       title: "remoteEntry is delaying module access",
-      evidence: bottleneck.evidence,
-      suggestion: remoteEntry === undefined
-        ? "Preload remoteEntry before this module is requested. remoteEntry itself is not a useful Code Usage splitting target."
-        : `Preload remoteEntry before this module is requested: ${remoteEntry}. remoteEntry itself is not a useful Code Usage splitting target.`
+      evidence: [
+        ...bottleneck.evidence,
+        ...(remoteEntry === undefined ? [] : [`remoteEntry: ${remoteEntry}.`])
+      ]
     });
   }
   if ((bottleneck.type === "expose-resource" || bottleneck.type === "mixed") &&
@@ -579,10 +563,7 @@ function createFindings(
         evidence: [
           ...assetNames.map((asset) => `${asset} loaded after get started.`),
           `Trigger classification: ${impact.trigger}.`
-        ],
-        suggestion: shouldPreload
-          ? `Preload the synchronous expose assets: ${assetNames.join(", ")}.`
-          : "Do not promote these assets to initial priority unless this interaction is frequent and user-visible latency remains high."
+        ]
       });
     }
   }
@@ -600,10 +581,7 @@ function createFindings(
         allSyncReady
           ? "All matched synchronous expose assets completed before get started."
           : "Resource timing does not fully explain the get duration."
-      ],
-      suggestion: allSyncReady
-        ? "Inspect shared dependency resolution and profile the get path; preloading more expose files will not address the measured delay."
-        : "Use a performance profile to inspect shared resolution and runtime work inside get. Add a Manifest if expose asset attribution is unavailable."
+      ]
     });
   }
   if ((timing.factory?.duration ?? 0) >= MEANINGFUL_DURATION &&
@@ -612,8 +590,7 @@ function createFindings(
       id: "profile-factory",
       severity: "warning",
       title: "Module initialization is expensive",
-      evidence: [`factory took ${round(timing.factory?.duration ?? 0)} ms.`],
-      suggestion: "Profile top-level module initialization and move non-essential startup work behind the point where it is needed."
+      evidence: [`factory took ${round(timing.factory?.duration ?? 0)} ms.`]
     });
   }
   if (codeUsage.status === "recommended") {
@@ -621,8 +598,7 @@ function createFindings(
       id: "inspect-expose-code-usage",
       severity: "info",
       title: "Expose assets are suitable for a separate Code Usage pass",
-      evidence: codeUsage.assets.map((asset) => `Measured expose asset: ${asset}.`),
-      suggestion: "Run Code Usage on the listed expose assets, then use the unused-code evidence to guide further code splitting."
+      evidence: codeUsage.assets.map((asset) => `Measured expose asset: ${asset}.`)
     });
   }
   if (findings.length === 0) {
@@ -633,8 +609,7 @@ function createFindings(
       evidence: [
         `Longest measured phase: ${bottleneck.type}.`,
         `Trace outcome: ${trace.outcome}.`
-      ],
-      suggestion: "Keep this result as a baseline and compare it after a representative user path changes."
+      ]
     });
   }
   return findings;
@@ -885,48 +860,6 @@ function collectUnobservedRemotes(
     left.consumer.name.localeCompare(right.consumer.name) ||
     left.remote.name.localeCompare(right.remote.name)
   );
-}
-
-function collectWarnings(
-  snapshot: BrowserObservabilitySnapshot,
-  performance: ModulePerformanceBrowserSnapshot | null,
-  modules: ModulePerformanceModule[],
-  selectors: ModulePerformanceSelectors
-): string[] {
-  const warnings: string[] = [];
-  const capability = remoteCapability(snapshot);
-  if (capability.status === "partial") {
-    warnings.push("MF history is partial; earlier module operations may be missing.");
-  }
-  if (performance === null) {
-    warnings.push(
-      "The module performance collector is unavailable; reopen the page with the current extension and --mf."
-    );
-  } else if (performance.page.lcpStatus === "provisional") {
-    warnings.push("LCP is provisional while the page remains visible and may still change.");
-  }
-  if (modules.length === 0) {
-    warnings.push(selectors.target === undefined
-      ? "No observed module load operation is present in the captured page history."
-      : `No observed module load operation matches ${selectors.target}.`);
-  }
-  return warnings;
-}
-
-function collectRecommendedActions(
-  modules: ModulePerformanceModule[],
-  unobserved: ModulePerformanceUnobservedRemote[]
-): string[] {
-  const actions = modules.flatMap((module) => module.operations.flatMap((operation) =>
-    operation.findings.filter((finding) => finding.severity === "warning")
-      .map((finding) => finding.suggestion)
-  ));
-  if (unobserved.length > 0) {
-    actions.push(
-      "Reproduce the page paths that load unobserved remotes before judging their module performance."
-    );
-  }
-  return actions;
 }
 
 function matchesConsumer(

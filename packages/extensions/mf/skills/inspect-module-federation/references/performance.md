@@ -49,6 +49,12 @@ clock as page paint:
   generated container waits for.
 - `factory.start`, `end`, `duration`: execution of the returned module factory.
 
+`start` and `end` are positions on the page's navigation-relative timeline;
+`duration` is time spent in that phase. For example, a remoteEntry with
+`start: 5029.5`, `end: 86751.4`, and `duration: 81721.9` started about 5.0
+seconds after navigation, finished about 86.8 seconds after navigation, and
+itself took about 81.7 seconds.
+
 The command stops at the `loadRemote` result. It does not infer component
 rendering, visible content, data readiness, or interactivity. Some bundler
 integrations request a factory without asking Runtime to execute it, so factory
@@ -131,12 +137,12 @@ guess:
 
 Apply this comparison only when `outcome` is `success` or `recovered`. For an
 error, pending, or unknown result, the command deliberately leaves the
-bottleneck unknown and directs the Agent to complete or troubleshoot the
-loading trace first.
+bottleneck unknown. Complete or troubleshoot the Remote loading trace before
+interpreting performance.
 
 `duration`, `percentage`, `confidence`, and `evidence` expose why that label was
-chosen. `findings` apply fixed evidence rules and include their evidence and a
-concrete suggestion:
+chosen. `findings` apply fixed evidence rules and retain the evidence behind
+their diagnosis:
 
 - Slow remoteEntry: preload remoteEntry. Do not use Code Usage to split it.
 - Delayed synchronous expose assets on an initial page path: preload the exact
@@ -145,8 +151,10 @@ concrete suggestion:
   and profile runtime work; more preload will not fix the measured delay.
 - Slow factory: profile and reduce top-level module initialization.
 
-`recommendedActions` only promotes warning-level findings. Read each finding's
-evidence before changing resource priority.
+The command does not duplicate findings into `recommendedActions` and does not
+return per-finding `suggestion` text. It also omits `warnings`; unavailable or
+incomplete evidence is represented by the corresponding status, match, outcome,
+or unobserved entry.
 
 ## Code Usage follow-up
 

@@ -51,13 +51,20 @@ export async function dispatchMfCommand(
   registrations: readonly MfCommandRegistration[],
   commandName = options.args.command[0] ?? "mf"
 ): Promise<unknown> {
-  const segments = options.args.command.slice(1);
+  const segments = normalizeMfCommandSegments(options.args.command.slice(1));
   const match = matchMfCommand(registrations, segments);
   if (match === undefined) {
     throw commandRouteError(registrations, segments, commandName);
   }
   const definition = await match.registration.load();
   return definition.run({ options, positionals: match.positionals });
+}
+
+function normalizeMfCommandSegments(segments: readonly string[]): string[] {
+  if (segments[0] === "module" && segments[1] === "perf") {
+    return ["module-perf", ...segments.slice(2)];
+  }
+  return [...segments];
 }
 
 function commandRouteError(

@@ -285,6 +285,7 @@ Output distinguishes `declared` from `loaded` and reports only what the public r
 
 ```sh
 divebell mf module-perf
+divebell mf module perf # compatibility alias
 divebell mf module-perf shop/Button
 divebell mf module-perf shop/Button --mf host
 divebell mf module-perf shop/Button --instance mf-1

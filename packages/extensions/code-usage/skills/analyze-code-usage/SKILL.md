@@ -88,7 +88,32 @@ the page from that exact output.
 Change build configuration only when the user requested a report and the
 required integration is missing. Do not redesign unrelated build settings.
 
-## 3. Record the current page and representative workflows
+## 3. Measure page readiness and loading memory when requested
+
+The report shows page-ready time and JavaScript memory only when they were
+measured in a separate page load with code coverage disabled. If the user asks
+for those metrics or a complete page-experience report, open the page with the
+measurement recorder enabled:
+
+```bash
+divebell open <page-url> --code-usage-experience
+# Wait for the same explicit page-ready condition used for verification.
+divebell code-usage experience \
+  --output /tmp/first-screen.experience.json \
+  --label first-screen \
+  --ready-target "<ready-condition>"
+```
+
+The `experience` command captures the end time chosen by the Agent, the heap at
+that point, the loading peak, resource timing, and memory after a short settling
+period. Do not start code coverage before this command finishes. Collect one
+experience file for every coverage phase that will appear in the combined
+report, using exactly the same labels.
+
+If only code usage is requested, skip this step. The generated report will hide
+the page-readiness and memory sections instead of showing empty values.
+
+## 4. Record the current page and representative workflows
 
 Use project documentation, routes, and existing end-to-end tests to identify
 the page URL and an explicit ready condition. Open the page in the intended
@@ -118,7 +143,7 @@ execution counts. Give each phase a name that describes the real action.
 If recording fails, run `divebell coverage cancel`, fix the page, login, or
 wait condition, and retry.
 
-## 4. Generate and open the report
+## 5. Generate and open the report
 
 Use the build output that exactly matches the page:
 
@@ -127,6 +152,8 @@ divebell code-usage analyze \
   --chunk-map <production-output>/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/interaction.coverage.json \
+  --experience /tmp/first-screen.experience.json \
+  --experience /tmp/interaction.experience.json \
   --output /tmp/code-usage-report.json
 
 divebell code-usage report /tmp/code-usage-report.json
@@ -135,12 +162,16 @@ divebell code-usage report /tmp/code-usage-report.json
 Pass `--assets <production-output>` only when the JavaScript and source maps
 are not beside the Chunk Map. Trusted HTTP or HTTPS build URLs are also
 supported, but every artifact must still match the page's exact build.
+Omit `--experience` when step 3 was intentionally skipped. When it is present,
+its labels must exactly match all coverage labels.
 
-## 5. Inspect the result
+## 6. Inspect the result
 
-1. Check unmatched scripts first. Explain external third-party scripts
-   separately. If an application script is unmatched, fix the build mapping
-   before making source-ownership claims.
+1. Check the coverage-scope summary first. Report how many scripts had an
+   address, how many matched the analyzed build, how many were outside the
+   build, and how many had no address. Explain network, generated, and inline
+   scripts separately. If an application script is unmatched, fix the build
+   mapping before making source-ownership claims.
 2. Inspect large, low-use application files, workspace packages, and
    third-party dependencies on the first screen.
 3. Identify their initial or async chunks and the recorded split rule.
@@ -149,15 +180,20 @@ supported, but every artifact must still match the page's exact build.
 5. Change code or chunking only when the user asked for optimization. Rebuild
    and rerun the exact same workflow afterward.
 
-## 6. Report
+## 7. Report
 
 Clearly state:
 
 1. The page and interaction phases that were recorded.
 2. The build output and report path.
-3. Whether any application scripts were unmatched.
-4. The largest low-use sources in the requested phase.
-5. Lazy-loading or chunking candidates and the evidence for each.
-6. Which workflows the "unused" result covers and which remain unrecorded.
-7. If an optimization was made, the before-and-after result from the same
+3. Every generated report path: HTML, data file, and code directory when one
+   exists. Keep them together.
+4. The matched and outside-build script counts, and whether any application
+   scripts were unmatched.
+5. Whether readiness and memory were measured separately. When they were,
+   report the ready time, heap at ready, and loading peak.
+6. The largest low-use sources in the requested phase.
+7. Lazy-loading or chunking candidates and the evidence for each.
+8. Which workflows the "unused" result covers and which remain unrecorded.
+9. If an optimization was made, the before-and-after result from the same
    build and page workflow.

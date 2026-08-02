@@ -291,3 +291,120 @@ test("attributes executed bytes to application and third-party sources", () => {
     executedRanges: [{ startOffset: 0, endOffset: 5 }]
   }]);
 });
+
+test("reports complete chunk bytes and preserves every unmatched script", () => {
+  const chunkMap = createDivebellChunkMap({
+    hash: "coverage-scope-build",
+    assets: [
+      { name: "static/js/main.js", size: 10 },
+      { name: "static/js/main.js.map", size: 100 }
+    ],
+    chunks: [{
+      id: 1,
+      files: ["static/js/main.js"],
+      initial: true,
+      modules: [{
+        identifier: "/repo/src/app.ts",
+        name: "./src/app.ts",
+        nameForCondition: "/repo/src/app.ts",
+        descriptionFileData: { name: "example-app", version: "1.0.0" },
+        descriptionFilePath: "/repo/package.json",
+        size: 10
+      }]
+    }]
+  }, { context: "/repo" });
+
+  const report = analyzeDivebellCodeUsage({
+    chunkMap,
+    checkpoints: [{
+      schemaVersion: 1,
+      label: "first-screen",
+      scripts: [{
+        scriptId: "matched",
+        url: "https://app.test/static/js/main.js",
+        functions: [{
+          functionName: "",
+          ranges: [
+            { startOffset: 0, endOffset: 10, count: 1 },
+            { startOffset: 5, endOffset: 10, count: 0 }
+          ]
+        }]
+      }, {
+        scriptId: "extensionless",
+        url: "https://esm.sh/runtime?bundle",
+        functions: []
+      }, {
+        scriptId: "generated",
+        url: "blob:https://app.test/generated",
+        functions: []
+      }, {
+        scriptId: "inline",
+        url: "about:srcdoc",
+        functions: []
+      }, {
+        scriptId: "anonymous",
+        url: "",
+        functions: []
+      }]
+    }],
+    assets: [{
+      file: "static/js/main.js",
+      code: "aaaa\nbbbb\n",
+      sourceMapPath: "/repo/dist/static/js/main.js.map",
+      sourceMap: {
+        version: 3,
+        sources: ["../../../src/app.ts"],
+        mappings: "AAAA;"
+      }
+    }]
+  });
+
+  const phase = report.phases[0];
+  assert.ok(phase);
+  assert.equal(phase.scriptsCaptured, 5);
+  assert.equal(phase.scriptsObserved, 4);
+  assert.equal(phase.scriptsMatched, 1);
+  assert.equal(phase.scriptsWithoutUrl, 1);
+  assert.deepEqual(phase.unmatchedScriptUrls, [
+    "about:srcdoc",
+    "blob:https://app.test/generated",
+    "https://esm.sh/runtime?bundle"
+  ]);
+  const unmatchedScripts = phase.unmatchedScripts;
+  assert.ok(unmatchedScripts);
+  assert.deepEqual(unmatchedScripts.map((script) => [
+    script.scriptId,
+    script.category,
+    script.reason
+  ]), [
+    ["inline", "inline", "not-found"],
+    ["generated", "generated", "not-found"],
+    ["extensionless", "network", "not-found"]
+  ]);
+  assert.deepEqual(phase.chunks[0], {
+    chunkId: "1",
+    files: ["static/js/main.js"],
+    initial: true,
+    entry: false,
+    names: [],
+    entrypoints: [],
+    groups: [],
+    parents: [],
+    children: [],
+    splitRule: {
+      kind: "unknown",
+      name: "Unknown",
+      configPath: null,
+      inferred: true
+    },
+    totalBytes: 10,
+    usedBytes: 5,
+    usedRatio: 0.5,
+    mappedBytes: 5,
+    mappedUsedBytes: 5,
+    unmappedBytes: 5,
+    unmappedUsedBytes: 0
+  });
+  assert.equal(phase.sources[0]?.totalBytes, 5);
+  assert.equal(phase.sources[0]?.usedBytes, 5);
+});

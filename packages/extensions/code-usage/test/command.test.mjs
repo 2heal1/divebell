@@ -7,7 +7,9 @@ import { test } from "node:test";
 
 import extension from "../dist/extension.js";
 import {
+  captureCodeUsageExperience,
   createCodeUsageReportHtml,
+  openCodeUsageExperience,
   runCodeUsageReportCommand,
   startCodeUsageReportServer,
   writeCodeUsageReportHtml
@@ -77,8 +79,12 @@ const report = {
     }],
     phases: [{
       label: "first-screen",
+      scriptsCaptured: 2,
       scriptsObserved: 2,
+      scriptsMatched: 2,
+      scriptsWithoutUrl: 0,
       unmatchedScriptUrls: [],
+      unmatchedScripts: [],
       chunks: [{
         chunkId: "140",
         files: ["static/js/140.js"],
@@ -97,7 +103,11 @@ const report = {
         },
         totalBytes: 1000,
         usedBytes: 100,
-        usedRatio: 0.1
+        usedRatio: 0.1,
+        mappedBytes: 1000,
+        mappedUsedBytes: 100,
+        unmappedBytes: 0,
+        unmappedUsedBytes: 0
       }],
       sources: [{
         sourcePath: "/repo/node_modules/demo/index.js",
@@ -139,6 +149,105 @@ const report = {
   }
 };
 
+test("injects page-experience sampling only when explicitly enabled", () => {
+  assert.equal(openCodeUsageExperience(parseCliArgs([
+    "open",
+    "https://app.test/"
+  ])), undefined);
+  const enabled = openCodeUsageExperience(parseCliArgs([
+    "open",
+    "https://app.test/",
+    "--code-usage-experience"
+  ]));
+  assert.equal(enabled?.scripts.length, 1);
+  assert.match(enabled?.scripts[0] ?? "", /__DIVEBELL_PAGE_EXPERIENCE__/);
+  assert.match(enabled?.scripts[0] ?? "", /setInterval\(readMemory, 25\)/);
+});
+
+test("captures readiness and loading memory without code coverage", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "divebell-page-experience-"));
+  const outputPath = join(directory, "first-screen.json");
+  let metricReads = 0;
+  const browser = {
+    coverage: {
+      status: async () => ({ coverageApiVersion: 1, active: false })
+    },
+    eval: async () => ({
+      url: "https://app.test/",
+      pathname: "/",
+      readyDurationMs: 640,
+      navigation: {
+        responseStartMs: 30,
+        domContentLoadedMs: 320,
+        loadEventMs: 410,
+        durationMs: 410,
+        transferSize: 200,
+        encodedBodySize: 180,
+        decodedBodySize: 420
+      },
+      memory: {
+        atReadyBytes: 8_000_000,
+        totalAtReadyBytes: 12_000_000,
+        peakBytes: 9_000_000,
+        peakTimeMs: 500
+      },
+      memorySamples: [
+        { timeMs: 0, usedBytes: 4_000_000, totalBytes: 8_000_000 },
+        { timeMs: 640, usedBytes: 8_000_000, totalBytes: 12_000_000 }
+      ],
+      resources: [{
+        url: "https://app.test/main.js",
+        initiatorType: "script",
+        startTimeMs: 40,
+        responseEndMs: 140,
+        durationMs: 100,
+        transferSize: 100,
+        encodedBodySize: 80,
+        decodedBodySize: 200
+      }]
+    }),
+    run: async (command, request) => {
+      assert.equal(command, "wait");
+      assert.deepEqual(request.args, ["250"]);
+      return "";
+    },
+    memory: {
+      metrics: async () => {
+        metricReads += 1;
+        return {
+          memoryApiVersion: 1,
+          browserSession: "test",
+          targetId: "target",
+          url: "https://app.test/",
+          timestamp: new Date().toISOString(),
+          jsHeapUsedSize: metricReads === 1 ? 8_100_000 : 7_500_000,
+          jsHeapTotalSize: 12_000_000,
+          documents: 1,
+          nodes: 10,
+          jsEventListeners: 2
+        };
+      }
+    }
+  };
+
+  try {
+    const result = await captureCodeUsageExperience(browser, {
+      outputPath,
+      label: "first-screen",
+      readyTarget: "sandbox preview ready",
+      settleMs: 250
+    });
+    assert.equal(result.outputPath, outputPath);
+    assert.equal(result.phase.readyDurationMs, 640);
+    assert.equal(result.phase.memory.atReadyBytes, 8_000_000);
+    assert.equal(result.phase.memory.peakBytes, 9_000_000);
+    assert.equal(result.phase.memory.stableBytes, 7_500_000);
+    assert.deepEqual(JSON.parse(readFileSync(outputPath, "utf8")), result.phase);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("creates a self-contained and safely escaped report", async () => {
   const html = await createCodeUsageReportHtml(report);
 
@@ -154,8 +263,13 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.match(html, /optimization\.splitChunks\.cacheGroups\.react/);
   assert.match(html, /Metric summary[\s\S]*Loading, memory, and code usage results/);
   assert.match(html, /Code usage analysis/);
+  assert.match(html, /Coverage scope/);
+  assert.match(html, /scripts outside this build/);
+  assert.match(html, /Source-mapped size/);
+  assert.match(html, /Built file size/);
+  assert.doesNotMatch(html, /items\.slice\(0, 40\)/);
   assert.match(html, /aria-describedby="code-usage-help"/);
-  assert.match(html, /Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase/);
+  assert.match(html, /Built-file size for chunks, source-mapped size for files and dependencies/);
   assert.match(html, /readyDurationMs/);
   assert.match(html, /data-view="application"[^>]*>Application code/);
   assert.match(html, /view: "application"/);
@@ -194,6 +308,7 @@ test("code-usage report generates an HTML file without requiring a page session"
     const result = JSON.parse(output.text());
     assert.equal(result.status, "ok");
     assert.equal(result.data.htmlPath, outputPath);
+    assert.equal(result.data.dataPath, join(directory, "visual-report-data.js"));
     assert.equal(result.data.phaseCount, 1);
     assert.equal(result.data.opened, false);
     assert.equal(result.data.codeFileCount, 1);
@@ -260,6 +375,7 @@ test("splits a large JavaScript file into bounded viewer pages", async () => {
 
   try {
     const result = await writeCodeUsageReportHtml({ inputPath, outputPath });
+    assert.equal(result.dataPath, join(directory, "report-data.js"));
     assert.equal(result.codeFileCount, 1);
     assert.equal(result.codeViewerPageCount, 2);
     const viewerFiles = readdirSync(result.codeDirectory).sort();
@@ -397,6 +513,8 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
   const chunkMapPath = join(assetDirectory, "divebell-chunks.json");
   const firstCoveragePath = join(directory, "first.coverage.json");
   const secondCoveragePath = join(directory, "second.coverage.json");
+  const firstExperiencePath = join(directory, "first.experience.json");
+  const secondExperiencePath = join(directory, "second.experience.json");
   const reportPath = join(directory, "report.json");
   mkdirSync(scriptDirectory, { recursive: true });
   writeFileSync(join(scriptDirectory, "main.js"), "aaaa\nbbbb\n", "utf8");
@@ -472,6 +590,20 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
   });
   writeFileSync(firstCoveragePath, JSON.stringify(checkpoint("first-screen", 0)), "utf8");
   writeFileSync(secondCoveragePath, JSON.stringify(checkpoint("orders", 1)), "utf8");
+  const experiencePhase = (label, pathname) => ({
+    schemaVersion: 1,
+    label,
+    url: `https://online.example${pathname}`,
+    pathname,
+    readyTarget: "page ready",
+    readyDurationMs: 500,
+    navigation: {},
+    memory: {},
+    memorySamples: [],
+    resources: []
+  });
+  writeFileSync(firstExperiencePath, JSON.stringify(experiencePhase("first-screen", "/")), "utf8");
+  writeFileSync(secondExperiencePath, JSON.stringify(experiencePhase("orders", "/orders")), "utf8");
   const output = createOutput();
 
   try {
@@ -484,6 +616,10 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
       firstCoveragePath,
       "--coverage",
       secondCoveragePath,
+      "--experience",
+      firstExperiencePath,
+      "--experience",
+      secondExperiencePath,
       "--output",
       reportPath
     ], {
@@ -497,23 +633,29 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
     assert.equal(commandResult.data.phaseCount, 2);
     assert.equal(commandResult.data.chunkMap, chunkMapPath);
     const analysis = JSON.parse(readFileSync(reportPath, "utf8"));
-    assert.deepEqual(analysis.phases.map((phase) => phase.label), [
+    assert.deepEqual(analysis.experience.phases.map((phase) => phase.label), [
       "first-screen",
       "orders"
     ]);
-    assert.equal(analysis.phases[0].unmatchedScriptUrls.length, 0);
-    const firstDemo = analysis.phases[0].packages.find(
+    assert.equal(analysis.experience.mode, "current");
+    const usage = analysis.usage;
+    assert.deepEqual(usage.phases.map((phase) => phase.label), [
+      "first-screen",
+      "orders"
+    ]);
+    assert.equal(usage.phases[0].unmatchedScriptUrls.length, 0);
+    const firstDemo = usage.phases[0].packages.find(
       (item) => item.packageName === "demo"
     );
-    const secondDemo = analysis.phases[1].packages.find(
+    const secondDemo = usage.phases[1].packages.find(
       (item) => item.packageName === "demo"
     );
     assert.equal(firstDemo.usedBytes, 0);
     assert.equal(secondDemo.usedBytes, 5);
-    const firstDemoSource = analysis.phases[0].sources.find(
+    const firstDemoSource = usage.phases[0].sources.find(
       (item) => item.owner.packageName === "demo"
     );
-    const secondDemoSource = analysis.phases[1].sources.find(
+    const secondDemoSource = usage.phases[1].sources.find(
       (item) => item.owner.packageName === "demo"
     );
     assert.deepEqual(firstDemoSource.fileRanges, [{
@@ -526,15 +668,15 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
       mappedRanges: [{ startOffset: 5, endOffset: 10 }],
       executedRanges: [{ startOffset: 5, endOffset: 10 }]
     }]);
-    assert.deepEqual(analysis.codeFiles, [{
+    assert.deepEqual(usage.codeFiles, [{
       file: "static/js/main.js",
       code: "aaaa\nbbbb\n",
       totalBytes: 10
     }]);
-    assert.deepEqual(analysis.phases[0].codeFiles[0].executedRanges, [
+    assert.deepEqual(usage.phases[0].codeFiles[0].executedRanges, [
       { startOffset: 0, endOffset: 5 }
     ]);
-    assert.deepEqual(analysis.phases[1].codeFiles[0].executedRanges, [
+    assert.deepEqual(usage.phases[1].codeFiles[0].executedRanges, [
       { startOffset: 0, endOffset: 10 }
     ]);
   } finally {

@@ -7,9 +7,10 @@ This optional analysis maps code recorded in the browser back to build chunks, a
 ## What the report shows
 
 After installing `@divebell/extension-code-usage`, you can generate a code-usage report that
-compares mapped size with actual execution across application code, third-party dependencies,
-files, and chunks. In Figure 1, the selected dependency is 62.0 KB but only 2.6% executed in the
-current phase, making it a useful candidate for closer inspection.
+shows complete built-file size for chunks and compares source-mapped size with actual execution
+across application code, third-party dependencies, and files. In Figure 1, the selected
+dependency is 62.0 KB but only 2.6% executed in the current phase, making it a useful candidate
+for closer inspection.
 
 ![Figure 1: Mapped size and actual execution for dependencies](https://github.com/user-attachments/assets/a706172c-c348-431b-a911-c0ea5f4d0b88)
 
@@ -87,7 +88,25 @@ divebellChunkMapPlugin({ filename: 'meta/chunks.json' })
 
 The Rspack plugin supports the same option.
 
-### 2. Record representative page journeys
+### 2. Measure page readiness and loading memory when needed
+
+Page-ready time and loading memory must be measured without code coverage. To
+include them in the report, first open the page with the measurement recorder:
+
+```bash
+divebell open https://example.com/ --code-usage-experience
+# Wait for an explicit application-ready condition.
+divebell code-usage experience \
+  --output /tmp/first-screen.experience.json \
+  --label first-screen \
+  --ready-target "application ready"
+```
+
+Repeat this measurement for every report phase and keep the labels identical
+to the coverage labels. If these metrics are not needed, skip this step; the
+report will hide their sections rather than display empty values.
+
+### 3. Record representative page journeys
 
 Open the page and start precise code coverage:
 
@@ -113,13 +132,15 @@ divebell coverage stop /tmp/orders.coverage.json \
 
 Each `take` resets execution counts, so every phase describes only the work performed since the previous capture.
 
-### 3. Analyze the recording
+### 4. Analyze the recording
 
 ```bash
 divebell code-usage analyze \
   --chunk-map /path/to/production-dist/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
+  --experience /tmp/first-screen.experience.json \
+  --experience /tmp/orders.experience.json \
   --output /tmp/code-usage-report.json
 ```
 
@@ -150,9 +171,10 @@ used as the asset base. Only analyze trusted deployments: the command downloads
 the referenced build files, and every file must still come from the exact build
 used by the recorded page.
 
-Repeat `--coverage` in the order the phases should appear in the report.
+Repeat `--coverage` in the order the phases should appear in the report. The
+optional `--experience` files must cover the same labels exactly.
 
-### 4. Open the report
+### 5. Open the report
 
 ```bash
 divebell code-usage report /tmp/code-usage-report.json
@@ -166,7 +188,9 @@ For large reports, start the local streaming viewer:
 divebell code-usage serve /tmp/code-usage-report.json --port 4173
 ```
 
-Keep the generated HTML and its neighboring `-code` directory together when moving or sharing a report.
+The command result prints the HTML path, its data-file path, and the optional
+`-code` directory. Keep all of them together when moving or sharing a report;
+the HTML is the entry point, not the complete artifact by itself.
 
 ## Read the result
 
@@ -179,7 +203,7 @@ The report presents each phase by application source, dependency, complete file 
 5. change lazy loading or chunking; and
 6. rebuild and repeat the same measurements.
 
-“Unused” means that code did not execute in the explicitly recorded journeys. It does not prove that the code can be deleted. The reported sizes describe source-mapped bytes in built JavaScript, not compressed download size or original source-file size.
+“Unused” means that code did not execute in the explicitly recorded journeys. It does not prove that the code can be deleted. Chunk sizes describe complete built JavaScript files; source and dependency sizes describe source-mapped bytes. Neither is compressed download size or original source-file size.
 
 Code coverage changes JavaScript-engine behavior. Measure loading speed and memory separately with coverage disabled before accepting an optimization.
 

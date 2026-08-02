@@ -93,6 +93,25 @@ export interface DivebellCodeUsagePackageResult {
   usedRatio: number | null;
 }
 
+export type DivebellCodeUsageUnmatchedScriptCategory =
+  | "network"
+  | "generated"
+  | "inline"
+  | "other";
+
+export type DivebellCodeUsageUnmatchedScriptReason =
+  | "not-found"
+  | "ambiguous"
+  | "build-mismatch"
+  | "asset-unavailable";
+
+export interface DivebellCodeUsageUnmatchedScript {
+  scriptId: string;
+  url: string;
+  category: DivebellCodeUsageUnmatchedScriptCategory;
+  reason: DivebellCodeUsageUnmatchedScriptReason;
+}
+
 export interface DivebellCodeUsageChunkResult {
   chunkId: string;
   files: string[];
@@ -107,12 +126,20 @@ export interface DivebellCodeUsageChunkResult {
   totalBytes: number;
   usedBytes: number;
   usedRatio: number | null;
+  mappedBytes?: number;
+  mappedUsedBytes?: number;
+  unmappedBytes?: number;
+  unmappedUsedBytes?: number;
 }
 
 export interface DivebellCodeUsagePhaseResult {
   label: string;
+  scriptsCaptured?: number;
   scriptsObserved: number;
+  scriptsMatched?: number;
+  scriptsWithoutUrl?: number;
   unmatchedScriptUrls: string[];
+  unmatchedScripts?: DivebellCodeUsageUnmatchedScript[];
   chunks: DivebellCodeUsageChunkResult[];
   sources: DivebellCodeUsageSourceResult[];
   packages: DivebellCodeUsagePackageResult[];

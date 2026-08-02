@@ -12,6 +12,7 @@ import type {
   DivebellCodeUsagePhaseResult,
   DivebellCodeUsageReport,
   DivebellCodeUsageSourceResult,
+  DivebellCodeUsageUnmatchedScript,
   DivebellCoverageRange,
   DivebellCoverageScript
 } from "./coverage-types.js";
@@ -70,12 +71,14 @@ function analyzePhase(
   const sourceTotals = new Map<string, DivebellCodeUsageSourceResult>();
   const codeFileTotals = new Map<string, DivebellCodeUsageCodeFileResult>();
   const unmatchedScriptUrls: string[] = [];
-  const matchedScripts = new Map<string, {
+  const unmatchedScripts: DivebellCodeUsageUnmatchedScript[] = [];
+  const matchedScriptGroups = new Map<string, {
     chunk: DivebellChunkMapChunk;
     asset: DivebellCodeUsageAsset;
     file: string;
     scripts: DivebellCoverageScript[];
   }>();
+  let scriptsMatched = 0;
 
   for (const script of scripts) {
     if (script.url.length === 0) continue;
@@ -83,18 +86,31 @@ function analyzePhase(
       expectedBuildId: input.chunkMap.buildId
     });
     if (match.status !== "matched") {
-      if (isExternalJavaScriptUrl(script.url)) unmatchedScriptUrls.push(script.url);
+      unmatchedScriptUrls.push(script.url);
+      unmatchedScripts.push({
+        scriptId: script.scriptId,
+        url: script.url,
+        category: classifyUnmatchedScript(script.url),
+        reason: match.status
+      });
       continue;
     }
     const asset = assets.get(match.asset.file);
     if (asset === undefined) {
       unmatchedScriptUrls.push(script.url);
+      unmatchedScripts.push({
+        scriptId: script.scriptId,
+        url: script.url,
+        category: classifyUnmatchedScript(script.url),
+        reason: "asset-unavailable"
+      });
       continue;
     }
+    scriptsMatched += 1;
     const key = `${match.chunk.id}\u0000${match.asset.file}`;
-    const existing = matchedScripts.get(key);
+    const existing = matchedScriptGroups.get(key);
     if (existing === undefined) {
-      matchedScripts.set(key, {
+      matchedScriptGroups.set(key, {
         chunk: match.chunk,
         asset,
         file: match.asset.file,
@@ -105,11 +121,19 @@ function analyzePhase(
     }
   }
 
-  for (const entry of matchedScripts.values()) {
+  for (const entry of matchedScriptGroups.values()) {
     const executedRanges = mergeRanges(entry.scripts.flatMap(createExecutedRanges));
     const mappedRanges = createMappedRanges(entry.asset);
     const byteOffsets = createByteOffsets(entry.asset.code);
-    addChunkUsage(chunkTotals, entry.chunk, entry.file, mappedRanges, executedRanges, byteOffsets);
+    addChunkUsage(
+      chunkTotals,
+      entry.chunk,
+      entry.file,
+      entry.asset.code.length,
+      mappedRanges,
+      executedRanges,
+      byteOffsets
+    );
     addSourceUsage(sourceTotals, entry.chunk, entry.file, mappedRanges, executedRanges, byteOffsets);
     addCodeFileUsage(
       codeFileTotals,
@@ -126,8 +150,13 @@ function analyzePhase(
     .sort((left, right) => right.totalBytes - left.totalBytes || left.sourcePath.localeCompare(right.sourcePath));
   return {
     label,
+    scriptsCaptured: scripts.length,
     scriptsObserved: scripts.filter((script) => script.url.length > 0).length,
+    scriptsMatched,
+    scriptsWithoutUrl: scripts.filter((script) => script.url.length === 0).length,
     unmatchedScriptUrls: [...new Set(unmatchedScriptUrls)].sort(),
+    unmatchedScripts: unmatchedScripts.sort((left, right) =>
+      left.url.localeCompare(right.url) || left.scriptId.localeCompare(right.scriptId)),
     chunks: [...chunkTotals.values()]
       .map(withChunkRatio)
       .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId)),
@@ -205,15 +234,27 @@ function addChunkUsage(
   totals: Map<string, DivebellCodeUsageChunkResult>,
   chunk: DivebellChunkMapChunk,
   file: string,
+  codeLength: number,
   mappedRanges: MappedRange[],
   executedRanges: OffsetRange[],
   byteOffsets: number[]
 ): void {
-  const totalBytes = mappedRanges.reduce((sum, range) => sum + rangeByteSize(range, byteOffsets), 0);
-  const usedBytes = mappedRanges.reduce(
+  const totalBytes = byteOffsets[codeLength] ?? 0;
+  const usedBytes = intersectionByteSize(
+    { start: 0, end: codeLength },
+    executedRanges,
+    byteOffsets
+  );
+  const mappedBytes = mappedRanges.reduce(
+    (sum, range) => sum + rangeByteSize(range, byteOffsets),
+    0
+  );
+  const mappedUsedBytes = mappedRanges.reduce(
     (sum, range) => sum + intersectionByteSize(range, executedRanges, byteOffsets),
     0
   );
+  const unmappedBytes = Math.max(0, totalBytes - mappedBytes);
+  const unmappedUsedBytes = Math.max(0, usedBytes - mappedUsedBytes);
   const existing = totals.get(chunk.id);
   if (existing === undefined) {
     totals.set(chunk.id, {
@@ -229,13 +270,21 @@ function addChunkUsage(
       splitRule: chunk.splitRule,
       totalBytes,
       usedBytes,
-      usedRatio: null
+      usedRatio: null,
+      mappedBytes,
+      mappedUsedBytes,
+      unmappedBytes,
+      unmappedUsedBytes
     });
     return;
   }
   if (!existing.files.includes(file)) existing.files.push(file);
   existing.totalBytes += totalBytes;
   existing.usedBytes += usedBytes;
+  existing.mappedBytes = (existing.mappedBytes ?? 0) + mappedBytes;
+  existing.mappedUsedBytes = (existing.mappedUsedBytes ?? 0) + mappedUsedBytes;
+  existing.unmappedBytes = (existing.unmappedBytes ?? 0) + unmappedBytes;
+  existing.unmappedUsedBytes = (existing.unmappedUsedBytes ?? 0) + unmappedUsedBytes;
 }
 
 function addSourceUsage(
@@ -541,10 +590,20 @@ function normalizePath(value: string): string {
   return value.replaceAll("\\", "/");
 }
 
-function isExternalJavaScriptUrl(value: string): boolean {
+function classifyUnmatchedScript(
+  value: string
+): DivebellCodeUsageUnmatchedScript["category"] {
   try {
-    return /\.(?:m?js)$/i.test(new URL(value).pathname);
+    const url = new URL(value);
+    if (url.protocol === "http:" || url.protocol === "https:") return "network";
+    if (url.protocol === "blob:" || url.protocol === "data:") return "generated";
+    if (url.protocol === "about:") return "inline";
+    return "other";
   } catch {
-    return /\.(?:m?js)(?:[?#]|$)/i.test(value);
+    return value.startsWith("blob:") || value.startsWith("data:")
+      ? "generated"
+      : value.startsWith("about:")
+        ? "inline"
+        : "other";
   }
 }

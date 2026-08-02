@@ -79,6 +79,7 @@ export async function writeCodeUsageReportHtml(
   const extension = extname(htmlPath);
   const reportStem = basename(htmlPath, extension);
   const dataFilename = `${reportStem}-data.js`;
+  const dataPath = resolve(dirname(htmlPath), dataFilename);
   const html = await createCodeUsageReportHtml(report, viewer.links, {
     dataHref: `./${encodeURIComponent(dataFilename)}`,
     dataMode: "script"
@@ -86,7 +87,7 @@ export async function writeCodeUsageReportHtml(
   const reportData = withoutEmbeddedCode(report, viewer.links);
   await mkdir(dirname(htmlPath), { recursive: true });
   await writeFile(
-    resolve(dirname(htmlPath), dataFilename),
+    dataPath,
     createDeferredDataScript("__DIVEBELL_RENDER_REPORT__", reportData),
     "utf8"
   );
@@ -94,6 +95,7 @@ export async function writeCodeUsageReportHtml(
   return {
     inputPath,
     htmlPath,
+    dataPath,
     phaseCount: getUsagePhases(report).length,
     codeFileCount: viewer.links.length,
     codeViewerPageCount: viewer.pageCount,

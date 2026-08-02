@@ -307,6 +307,16 @@ infer rendering or business readiness from DOM or Bridge activity.
 For a pending operation, `end` is absent and `duration` is only the elapsed time
 at observation.
 
+`timing.remoteEntry.duration` is the complete observed request lifecycle, not
+a download-only measurement. `blockingDuration` is the portion that actually
+overlaps the module's wait before `get`; it is zero when a preload completed
+before `loadRemote` needed the file and never extends past `loadRemote.end`.
+Bottleneck duration and percentage use this blocking time, so a long
+already-completed preload or a late inconsistent resource record is not
+diagnosed as a module bottleneck. Preload findings require a late request on
+the initial page path; a promptly started but slow request is identified as a
+delivery issue.
+
 When an MF Manifest snapshot is available, the command lists the expose's
 synchronous and asynchronous JavaScript assets and matches them to browser
 Resource Timing by asset identity. It returns actual resource start, end,
@@ -320,9 +330,9 @@ unavailable.
 `pageImpact` reports whether the request belongs to the initial page path or
 followed a user interaction, and whether `loadRemote` completed before FP, FCP,
 and the currently observed LCP. `bottleneck` compares measured remoteEntry,
-expose resource, get, and factory work. `findings` expose the evidence and fixed
-rule behind each diagnosis. Failed, pending, or unknown loads do not receive
-performance bottleneck diagnoses.
+expose resource, get, and factory blocking work. `findings` expose the evidence
+and fixed rule behind each diagnosis. Failed, pending, or unknown loads do not
+receive performance bottleneck diagnoses.
 
 The result omits duplicate `warnings`, `recommendedActions`, and per-finding
 `suggestion` fields. Availability and completeness remain explicit in fields

@@ -171,6 +171,7 @@ function createOperation(
   let timing = createTiming(trace, performance, load);
   const manifest = createManifest(group, timing, performance);
   timing = addRemoteEntryResourceTiming(timing, manifest);
+  timing = addRemoteEntryBlockingTiming(timing);
   const pageImpact = createPageImpact(timing, performance);
   const bottleneck = createBottleneck(trace, timing, manifest);
   const codeUsage = createCodeUsage(bottleneck, manifest);
@@ -335,6 +336,29 @@ function addRemoteEntryResourceTiming(
   };
 }
 
+function addRemoteEntryBlockingTiming(
+  timing: ModulePerformanceTiming
+): ModulePerformanceTiming {
+  const remoteEntry = timing.remoteEntry;
+  if (remoteEntry?.end === undefined) return timing;
+  const waitEnds = [timing.get?.start, timing.loadRemote.end]
+    .filter((value): value is number => value !== undefined);
+  if (waitEnds.length === 0) return timing;
+  const waitEnd = Math.min(...waitEnds);
+  const blockingDuration = Math.max(
+    0,
+    Math.min(remoteEntry.end, waitEnd) -
+      Math.max(remoteEntry.start, timing.loadRemote.start)
+  );
+  return {
+    ...timing,
+    remoteEntry: {
+      ...remoteEntry,
+      blockingDuration: round(blockingDuration)
+    }
+  };
+}
+
 function matchAsset(
   asset: string,
   kind: "sync" | "async",
@@ -433,7 +457,7 @@ function createBottleneck(
   const exposeResource = getDuration !== undefined && resourceDuration >= 20 &&
     resourceDuration >= getDuration * 0.5;
   const candidates = [
-    durationCandidate("remoteEntry", timing.remoteEntry?.duration),
+    durationCandidate("remoteEntry", timing.remoteEntry?.blockingDuration),
     durationCandidate(exposeResource ? "expose-resource" : "get", getDuration),
     durationCandidate("factory", timing.factory?.duration)
   ].filter((item): item is { type: Exclude<ModulePerformanceBottleneck["type"], "mixed" | "unknown">; duration: number } =>
@@ -448,23 +472,26 @@ function createBottleneck(
     };
   }
   const total = candidates.reduce((sum, item) => sum + item.duration, 0);
-  const mixed = candidates[1] !== undefined && top.duration > 0 &&
-    candidates[1].duration >= top.duration * 0.85;
+  const second = candidates[1];
+  const mixed = second !== undefined && top.duration > 0 &&
+    second.duration >= top.duration * 0.85;
   const type = mixed ? "mixed" : top.type;
   const duration = mixed
-    ? top.duration + (candidates[1]?.duration ?? 0)
+    ? top.duration + (second?.duration ?? 0)
     : top.duration;
-  const evidence = mixed
+  const evidence = mixed && second !== undefined
     ? [
-        `${top.type} took ${round(top.duration)} ms.`,
-        `${candidates[1]?.type ?? "another phase"} took ${round(candidates[1]?.duration ?? 0)} ms.`
+        candidateEvidence(top, timing),
+        candidateEvidence(second, timing)
       ]
-    : [
-        `${top.type} was the longest measured phase at ${round(top.duration)} ms.`,
-        ...(type === "expose-resource"
-          ? [`Matched synchronous expose resources occupied ${round(resourceDuration)} ms of get.`]
-          : [])
-      ];
+    : type === "remoteEntry"
+      ? remoteEntryEvidence(timing, top.duration)
+      : [
+          `${top.type} was the longest measured phase at ${round(top.duration)} ms.`,
+          ...(type === "expose-resource"
+            ? [`Matched synchronous expose resources occupied ${round(resourceDuration)} ms of get.`]
+            : [])
+        ];
   return {
     type,
     duration: round(duration),
@@ -498,7 +525,7 @@ function createCodeUsage(
       status: "not-applicable",
       assets: [],
       reason: bottleneck.type === "remoteEntry"
-        ? "Code Usage is not suitable for splitting remoteEntry; preload it when its timing justifies doing so."
+        ? "Code Usage is not suitable for splitting remoteEntry; use its blocking and request-lifecycle timing to decide between earlier loading and delivery investigation."
         : "The measured bottleneck is not attributable to a loaded expose JavaScript asset."
     };
   }
@@ -532,15 +559,31 @@ function createFindings(
       ]
     }];
   }
+  const remoteEntryBlocking = timing.remoteEntry?.blockingDuration ?? 0;
   if (bottleneck.type === "remoteEntry" &&
-      (timing.remoteEntry?.duration ?? 0) >= MEANINGFUL_DURATION) {
+      remoteEntryBlocking >= MEANINGFUL_DURATION) {
     const remoteEntry = manifest.remoteEntryResource?.url ?? manifest.remoteEntry;
+    const requestDelay = Math.max(
+      0,
+      (timing.remoteEntry?.start ?? timing.loadRemote.start) -
+        timing.loadRemote.start
+    );
+    const preloadCandidate = impact.trigger === "initial" &&
+      requestDelay >= MEANINGFUL_DURATION;
     findings.push({
-      id: "preload-remote-entry",
+      id: preloadCandidate
+        ? "preload-remote-entry"
+        : "inspect-remote-entry-delivery",
       severity: "warning",
-      title: "remoteEntry is delaying module access",
+      title: preloadCandidate
+        ? "remoteEntry starts after the initial module load needs it"
+        : "remoteEntry request lifecycle is delaying module access",
       evidence: [
         ...bottleneck.evidence,
+        ...(requestDelay <= 0
+          ? ["The remoteEntry request started no later than loadRemote."]
+          : [`The remoteEntry request started ${round(requestDelay)} ms after loadRemote began.`]),
+        `Trigger classification: ${impact.trigger}.`,
         ...(remoteEntry === undefined ? [] : [`remoteEntry: ${remoteEntry}.`])
       ]
     });
@@ -723,6 +766,32 @@ function durationCandidate(
   return duration === undefined || !Number.isFinite(duration)
     ? undefined
     : { type, duration: Math.max(0, duration) };
+}
+
+function candidateEvidence(
+  candidate: {
+    type: Exclude<ModulePerformanceBottleneck["type"], "mixed" | "unknown">;
+    duration: number;
+  },
+  timing: ModulePerformanceTiming
+): string {
+  return candidate.type === "remoteEntry"
+    ? remoteEntryEvidence(timing, candidate.duration)[0] as string
+    : `${candidate.type} took ${round(candidate.duration)} ms.`;
+}
+
+function remoteEntryEvidence(
+  timing: ModulePerformanceTiming,
+  blockingDuration: number
+): string[] {
+  const lifecycleDuration = timing.remoteEntry?.duration;
+  return [
+    `remoteEntry blocked module loading for ${round(blockingDuration)} ms.`,
+    ...(lifecycleDuration === undefined ||
+      Math.abs(lifecycleDuration - blockingDuration) < 0.1
+      ? []
+      : [`Its observed request lifecycle was ${round(lifecycleDuration)} ms.`])
+  ];
 }
 
 function remoteCapabilityFromTrace(trace: RemoteTraceSummary): boolean {

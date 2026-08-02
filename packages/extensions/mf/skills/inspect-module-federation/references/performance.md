@@ -43,17 +43,25 @@ clock as page paint:
   `recovered`, `error`, `pending`, and `unknown` preserve MF's observed result.
   A pending operation has no `end`; its `duration` is elapsed time at the point
   of observation rather than a completed duration.
-- `remoteEntry.start`, `end`, `duration`: remoteEntry loading boundary.
+- `remoteEntry.start`, `end`, `duration`: the complete observed remoteEntry
+  request lifecycle. It can include redirects, browser scheduling, connection,
+  server wait, and transfer; it is not a download-only duration.
+- `remoteEntry.blockingDuration`: the part of that lifecycle that overlaps the
+  module's wait after `loadRemote.start` and before both `get.start` and
+  `loadRemote.end` where those boundaries are available. This is `0` when a
+  preload completed before the module needed the file, or when an inconsistent
+  late resource record starts after the operation already completed.
 - `get.start`, `end`, `duration`: from immediately before the container expose
   `get` call until it returns. This includes synchronous expose chunks that the
   generated container waits for.
 - `factory.start`, `end`, `duration`: execution of the returned module factory.
 
-`start` and `end` are positions on the page's navigation-relative timeline;
-`duration` is time spent in that phase. For example, a remoteEntry with
+`start` and `end` are positions on the page's navigation-relative timeline.
+For example, a remoteEntry with
 `start: 5029.5`, `end: 86751.4`, and `duration: 81721.9` started about 5.0
 seconds after navigation, finished about 86.8 seconds after navigation, and
-itself took about 81.7 seconds.
+had an observed request lifecycle of about 81.7 seconds. That number alone
+does not prove that transferring the JavaScript bytes took 81.7 seconds.
 
 The command stops at the `loadRemote` result. It does not infer component
 rendering, visible content, data readiness, or interactivity. Some bundler
@@ -78,7 +86,9 @@ matched to browser Resource Timing. It uses the same `match`, URL, start/end,
 duration, size, cache, and `loadedBeforeGet` meanings as expose assets. This
 resource supplies `timing.remoteEntry` when an older MF report did not preserve
 its own remoteEntry phase. The match is still based on file identity, not only
-on when the request happened.
+on when the request happened. Cross-origin Resource Timing can expose a
+complete lifecycle without exposing redirect, server-wait, and transfer
+breakdown; unavailable details are omitted rather than reported as zero.
 
 `manifest.assets` lists `js.sync` and optional `js.async` assets declared for
 the expose. Each asset has:
@@ -127,7 +137,9 @@ resources to initial page priority without a demonstrated user-visible benefit.
 `bottleneck` is a deterministic comparison of measured stages, not a generated
 guess:
 
-- `remoteEntry`: remoteEntry is the longest phase.
+- `remoteEntry`: remoteEntry has the longest measured blocking time on the
+  module path. Its full request lifecycle is not used when part or all of the
+  request completed before `loadRemote` needed it.
 - `expose-resource`: matched synchronous expose-resource time occupies at
   least half of get and at least 20 ms.
 - `get`: get is longest but matched resource loading does not explain it.
@@ -141,10 +153,13 @@ bottleneck unknown. Complete or troubleshoot the Remote loading trace before
 interpreting performance.
 
 `duration`, `percentage`, `confidence`, and `evidence` expose why that label was
-chosen. `findings` apply fixed evidence rules and retain the evidence behind
-their diagnosis:
+chosen. For a remoteEntry bottleneck, `duration` and `percentage` use
+`blockingDuration`, not the full request lifecycle. `findings` apply fixed
+evidence rules and retain the evidence behind their diagnosis:
 
-- Slow remoteEntry: preload remoteEntry. Do not use Code Usage to split it.
+- A remoteEntry requested late on the initial page path: consider preloading
+  it. A request that started promptly but remained slow is reported as a
+  delivery problem instead; preload is not presented as the fix.
 - Delayed synchronous expose assets on an initial page path: preload the exact
   listed assets.
 - Slow get after all sync assets were already ready: inspect shared resolution

@@ -136,6 +136,122 @@ test("unavailable cross-origin resource sizes and cache are omitted", () => {
   );
 });
 
+test("remoteEntry bottleneck uses only the request time that blocks module loading", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [traceWithoutRemoteEntryStage({ getStart: 1120 })]
+  ));
+  assert.equal(parsed.ok, true);
+
+  const cases = [{
+    name: "preloaded before loadRemote",
+    start: 100,
+    end: 900,
+    blockingDuration: 0,
+    bottleneck: "factory",
+    bottleneckDuration: 3
+  }, {
+    name: "partially overlaps loadRemote",
+    start: 990,
+    end: 1010,
+    blockingDuration: 10,
+    bottleneck: "remoteEntry",
+    bottleneckDuration: 10
+  }, {
+    name: "blocks until get can start",
+    start: 1005,
+    end: 1120,
+    blockingDuration: 115,
+    bottleneck: "remoteEntry",
+    bottleneckDuration: 115
+  }];
+
+  for (const current of cases) {
+    const result = createModulePerformanceResult(
+      parsed.snapshot,
+      performanceWithRemoteEntry(current.start, current.end)
+    );
+    const operation = result.modules[0].operations[0];
+    assert.deepEqual(operation.timing.remoteEntry, {
+      start: current.start,
+      end: current.end,
+      duration: current.end - current.start,
+      blockingDuration: current.blockingDuration
+    }, current.name);
+    assert.equal(operation.bottleneck.type, current.bottleneck, current.name);
+    assert.equal(
+      operation.bottleneck.duration,
+      current.bottleneckDuration,
+      current.name
+    );
+  }
+});
+
+test("remoteEntry blocking never extends past loadRemote completion", () => {
+  const trace = loadTrace();
+  trace.events = trace.events.filter((event) => event.phase !== "remoteEntry");
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [trace]
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceWithRemoteEntry(1040, 1090);
+  performance.loads = [{
+    id: "late-get",
+    requestId: "@scope/catalog/Button",
+    instanceName: "host",
+    remote: "@scope/catalog",
+    alias: "shop",
+    expose: "./Button",
+    get: { start: 1100, end: 1102, duration: 2 },
+    factory: { start: 1103, end: 1106, duration: 3 },
+    outcome: "success"
+  }];
+
+  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  const operation = result.modules[0].operations[0];
+  assert.equal(operation.timing.loadRemote.end, 1035);
+  assert.equal(operation.timing.get.start, 1100);
+  assert.equal(operation.timing.remoteEntry.duration, 50);
+  assert.equal(operation.timing.remoteEntry.blockingDuration, 0);
+  assert.notEqual(operation.bottleneck.type, "remoteEntry");
+});
+
+test("remoteEntry findings distinguish late initial loading from slow delivery", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [traceWithoutRemoteEntryStage({ getStart: 1120 })]
+  ));
+  assert.equal(parsed.ok, true);
+
+  const lateResult = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceWithRemoteEntry(1060, 1120, { fcp: 1500, lcp: 1800 })
+  );
+  const lateOperation = lateResult.modules[0].operations[0];
+  assert.equal(lateOperation.timing.remoteEntry.blockingDuration, 60);
+  assert.ok(lateOperation.findings.some((finding) =>
+    finding.id === "preload-remote-entry"
+  ));
+  assert.ok(lateOperation.findings.every((finding) =>
+    finding.id !== "inspect-remote-entry-delivery"
+  ));
+
+  const slowResult = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceWithRemoteEntry(1000, 1120, { fcp: 1500, lcp: 1800 })
+  );
+  const slowOperation = slowResult.modules[0].operations[0];
+  assert.equal(slowOperation.timing.remoteEntry.duration, 120);
+  assert.equal(slowOperation.timing.remoteEntry.blockingDuration, 120);
+  assert.ok(slowOperation.findings.some((finding) =>
+    finding.id === "inspect-remote-entry-delivery"
+  ));
+  assert.ok(slowOperation.findings.every((finding) =>
+    finding.id !== "preload-remote-entry"
+  ));
+});
+
 test("two operations mean two page-observed loadRemote histories", () => {
   const parsed = parseBrowserReadResult(browserRead(
     stateWithConsumer(),
@@ -345,4 +461,50 @@ function performanceSnapshot() {
     }],
     loads: []
   };
+}
+
+function performanceWithRemoteEntry(start, end, page = {}) {
+  const snapshot = performanceSnapshot();
+  return {
+    ...snapshot,
+    page: {
+      ...snapshot.page,
+      ...page
+    },
+    resources: [{
+      url: "https://cdn.test/catalog/remoteEntry.js",
+      initiatorType: "script",
+      start,
+      end,
+      duration: end - start
+    }, ...snapshot.resources]
+  };
+}
+
+function traceWithoutRemoteEntryStage({ getStart }) {
+  const current = loadTrace();
+  current.events = current.events.filter((event) =>
+    event.phase !== "remoteEntry"
+  );
+  const timestamps = new Map([
+    ["remoteEntryInit:start", getStart - 2],
+    ["remoteEntryInit:success", getStart - 1],
+    ["expose:start", getStart],
+    ["expose:success", getStart + 2],
+    ["moduleFactory:start", getStart + 3],
+    ["moduleFactory:success", getStart + 6],
+    ["loadRemote:success", getStart + 7],
+    ["loadRemote:complete", getStart + 8]
+  ]);
+  for (const event of current.events) {
+    const timestamp = timestamps.get(`${event.phase}:${event.status}`);
+    if (timestamp === undefined) continue;
+    event.timestamp = timestamp;
+    if (event.phase === "moduleFactory" && event.status === "success") {
+      event.duration = 3;
+    }
+  }
+  current.updatedAt = getStart + 8;
+  current.duration = current.updatedAt - current.startedAt;
+  return current;
 }

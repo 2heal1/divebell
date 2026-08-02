@@ -29,6 +29,9 @@ With a Manifest, the command maps the expose's declared JavaScript assets to
 actual browser resource start/end timing, allowing evidence-based preload
 recommendations. Code Usage remains a separate follow-up for exact expose
 assets because enabling coverage would change the performance measurement.
+For remoteEntry, the full observed request lifecycle remains visible while
+bottleneck calculations use only the part that actually blocked the module;
+cross-origin network phases that the browser does not expose are omitted.
 
 ## What the plugin provides
 

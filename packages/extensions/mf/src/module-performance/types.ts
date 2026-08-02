@@ -68,9 +68,14 @@ export interface ModulePerformanceInterval {
   duration?: number;
 }
 
+export interface ModulePerformanceRemoteEntryInterval
+  extends ModulePerformanceInterval {
+  blockingDuration?: number;
+}
+
 export interface ModulePerformanceTiming {
   loadRemote: ModulePerformanceInterval;
-  remoteEntry?: ModulePerformanceInterval;
+  remoteEntry?: ModulePerformanceRemoteEntryInterval;
   get?: ModulePerformanceInterval;
   factory?: ModulePerformanceInterval;
 }

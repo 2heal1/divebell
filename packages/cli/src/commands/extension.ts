@@ -19,7 +19,6 @@ import type {
 } from "../types/commands.js";
 import type { CliOperationLogEntry, ParsedCliArgs } from "../types/shared.js";
 import { createDivebellExtensionApi } from "../features/extension/api.js";
-import { createExtensionLoadingFunction } from "../features/extension/loading.js";
 
 const MAX_EXTENSION_CALL_DEPTH = 16;
 const INHERITED_CONTEXT_OPTIONS = ["bridge", "port", "runtime", "session", "url"] as const;
@@ -42,7 +41,7 @@ interface ExtensionCommandExecutor {
   openContext: CliOperationLogEntry | undefined;
   extensionRegistry: ExtensionCliCommandOptions["extensionRegistry"];
   commandRegistry: ExtensionCliCommandOptions["commandRegistry"];
-  withLoading: ReturnType<typeof createExtensionLoadingFunction>;
+  withLoading: ExtensionCliCommandOptions["withLoading"];
 }
 
 export async function runExtensionCliCommand(
@@ -51,7 +50,7 @@ export async function runExtensionCliCommand(
   const {
     args,
     stdout,
-    stderr,
+    withLoading,
     fetcher,
     browserRunner,
     bridgeStarter,
@@ -103,7 +102,7 @@ export async function runExtensionCliCommand(
       openContext,
       extensionRegistry,
       commandRegistry,
-      withLoading: createExtensionLoadingFunction(stderr)
+      withLoading
     },
     registered,
     extensionArgs,

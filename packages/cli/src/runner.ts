@@ -21,6 +21,7 @@ import { runExtensionsCommand } from "./commands/installed.js";
 import { runSetupCommand } from "./commands/setup.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import { CLI_VERSION, isCliVersionRequest } from "./version.js";
+import { createLoadingController, type LoadingController } from "./features/loading.js";
 import type {
   CliRunOptions,
   DivebellCliConfig
@@ -69,155 +70,172 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
       return 0;
     }
 
-    if (args.command[0] === "__bridge-server") {
-      return await runBridgeServerCommand(args, stdout, options.waitUntilClosed);
-    }
+    const loading = createLoadingController(stderr);
+    const commandStdout = createLoadingAwareWriter(stdout, loading);
+    const commandStderr = createLoadingAwareWriter(stderr, loading);
+    return await loading.withLoading(async () => {
+      if (args.command[0] === "__bridge-server") {
+        return await runBridgeServerCommand(args, commandStdout, options.waitUntilClosed);
+      }
 
-    if (args.command[0] === "setup") {
-      return await runSetupCommand({
-        args,
-        stdout,
-        fetcher,
-        browserRunner,
-        bridgeStarter,
-        ...(options.bridgeProcessController === undefined
-          ? {}
-          : { bridgeProcessController: options.bridgeProcessController }),
-        remoteDebuggingPageOpener: options.remoteDebuggingPageOpener
-          ?? createRemoteDebuggingPageOpener({ env }),
-        ...(options.setupWaiter === undefined
-          ? {}
-          : { wait: options.setupWaiter }),
-        env
-      });
-    }
-
-    if (args.command[0] === "start") {
-      return await runStartCommand(args, stdout, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
-    }
-
-    if (args.command[0] === "stop") {
-      return await runStopCommand(
-        args,
-        stdout,
-        browserRunner,
-        options.bridgeStateDirectory,
-        operationLogStore,
-        options.bridgeProcessController,
-        async () => await runExtensionCloseHooks({
+      if (args.command[0] === "setup") {
+        return await runSetupCommand({
           args,
-          stderr,
+          stdout: commandStdout,
+          fetcher,
+          browserRunner,
+          bridgeStarter,
+          ...(options.bridgeProcessController === undefined
+            ? {}
+            : { bridgeProcessController: options.bridgeProcessController }),
+          remoteDebuggingPageOpener: options.remoteDebuggingPageOpener
+            ?? createRemoteDebuggingPageOpener({ env }),
+          ...(options.setupWaiter === undefined
+            ? {}
+            : { wait: options.setupWaiter }),
+          env
+        });
+      }
+
+      if (args.command[0] === "start") {
+        return await runStartCommand(args, commandStdout, fetcher, bridgeStarter, createBridgeStateStore(args, options.bridgeStateDirectory));
+      }
+
+      if (args.command[0] === "stop") {
+        return await runStopCommand(
+          args,
+          commandStdout,
+          browserRunner,
+          options.bridgeStateDirectory,
+          operationLogStore,
+          options.bridgeProcessController,
+          async () => await runExtensionCloseHooks({
+            args,
+            stderr: commandStderr,
+            fetcher,
+            browserRunner,
+            bridgeStarter,
+            bridgeStateDirectory: options.bridgeStateDirectory,
+            operationLogStore,
+            extensions: config.extensions,
+            openHookPlan: config.hookPlans.open
+          })
+        );
+      }
+
+      if (args.command[0] === "profiles") {
+        return await runAgentBrowserProfilesCommand(args, commandStdout, commandStderr, browserRunner);
+      }
+
+      if (args.command[0] === "state") {
+        return await runAgentBrowserStateCommand(args, commandStdout, commandStderr, browserRunner);
+      }
+
+      if (args.command[0] === "auth") {
+        return await runAgentBrowserAuthCommand(args, commandStdout, commandStderr, options.stdin ?? process.stdin, browserRunner);
+      }
+
+      if (args.command[0] === "extensions") {
+        return await runExtensionsCommand({
+          args,
+          stdout: commandStdout,
+          ...(options.extensionsDirectory === undefined ? {} : { extensionsDirectory: options.extensionsDirectory }),
+          ...(options.extensionPackageDownloader === undefined ? {} : { extensionPackageDownloader: options.extensionPackageDownloader })
+        });
+      }
+
+      if (args.command[0] === "stack") {
+        return await runStackCommand({
+          args,
+          stdout: commandStdout,
+          stderr: commandStderr,
           fetcher,
           browserRunner,
           bridgeStarter,
           bridgeStateDirectory: options.bridgeStateDirectory,
           operationLogStore,
           extensions: config.extensions,
-          openHookPlan: config.hookPlans.open
-        })
-      );
-    }
+          detectStackHookPlan: config.hookPlans.detectStack
+        });
+      }
 
-    if (args.command[0] === "profiles") {
-      return await runAgentBrowserProfilesCommand(args, stdout, stderr, browserRunner);
-    }
+      if (isBrowserCommand(args.command[0])) {
+        return await runBrowserCliCommand(
+          args,
+          commandStdout,
+          commandStderr,
+          fetcher,
+          browserRunner,
+          bridgeStarter,
+          options.bridgeStateDirectory,
+          operationLogStore,
+          config.extensions,
+          config.hookPlans.open,
+          options.stdin ?? process.stdin
+        );
+      }
 
-    if (args.command[0] === "state") {
-      return await runAgentBrowserStateCommand(args, stdout, stderr, browserRunner);
-    }
-
-    if (args.command[0] === "auth") {
-      return await runAgentBrowserAuthCommand(args, stdout, stderr, options.stdin ?? process.stdin, browserRunner);
-    }
-
-    if (args.command[0] === "extensions") {
-      return await runExtensionsCommand({
+      const runtimeExitCode = await runRuntimeCliCommand({
         args,
-        stdout,
-        ...(options.extensionsDirectory === undefined ? {} : { extensionsDirectory: options.extensionsDirectory }),
-        ...(options.extensionPackageDownloader === undefined ? {} : { extensionPackageDownloader: options.extensionPackageDownloader })
+        stdout: commandStdout,
+        stderr: commandStderr,
+        fetcher,
+        browserRunner,
+        bridgeStarter,
+        bridgeStateDirectory: options.bridgeStateDirectory,
+        operationLogStore
       });
-    }
+      if (runtimeExitCode !== undefined) {
+        return runtimeExitCode;
+      }
 
-    if (args.command[0] === "stack") {
-      return await runStackCommand({
+      const command = args.command[0];
+      if (command === undefined) {
+        throw createError({
+          code: "CLI_COMMAND_MISSING",
+          kind: "validation",
+          message: "Missing command.",
+          hint: "Run `divebell --help` to see available commands."
+        });
+      }
+
+      const extensionExitCode = await runExtensionCliCommand({
         args,
-        stdout,
-        stderr,
+        stdout: commandStdout,
+        withLoading: loading.withLoading,
         fetcher,
         browserRunner,
         bridgeStarter,
         bridgeStateDirectory: options.bridgeStateDirectory,
         operationLogStore,
-        extensions: config.extensions,
-        detectStackHookPlan: config.hookPlans.detectStack
+        extensionRegistry: config.extensionRegistry,
+        commandRegistry: config.commandRegistry
       });
-    }
+      if (extensionExitCode !== undefined) {
+        return extensionExitCode;
+      }
 
-    if (isBrowserCommand(args.command[0])) {
-      return await runBrowserCliCommand(
-        args,
-        stdout,
-        stderr,
-        fetcher,
-        browserRunner,
-        bridgeStarter,
-        options.bridgeStateDirectory,
-        operationLogStore,
-        config.extensions,
-        config.hookPlans.open,
-        options.stdin ?? process.stdin
-      );
-    }
-
-    const runtimeExitCode = await runRuntimeCliCommand({
-      args,
-      stdout,
-      stderr,
-      fetcher,
-      browserRunner,
-      bridgeStarter,
-      bridgeStateDirectory: options.bridgeStateDirectory,
-      operationLogStore
-    });
-    if (runtimeExitCode !== undefined) {
-      return runtimeExitCode;
-    }
-
-    const command = args.command[0];
-    if (command === undefined) {
       throw createError({
-        code: "CLI_COMMAND_MISSING",
+        code: "CLI_UNKNOWN_COMMAND",
         kind: "validation",
-        message: "Missing command.",
+        message: `Unknown command "${args.command.join(" ")}".`,
         hint: "Run `divebell --help` to see available commands."
       });
-    }
-
-    const extensionExitCode = await runExtensionCliCommand({
-      args,
-      stdout,
-      stderr,
-      fetcher,
-      browserRunner,
-      bridgeStarter,
-      bridgeStateDirectory: options.bridgeStateDirectory,
-      operationLogStore,
-      extensionRegistry: config.extensionRegistry,
-      commandRegistry: config.commandRegistry
-    });
-    if (extensionExitCode !== undefined) {
-      return extensionExitCode;
-    }
-
-    throw createError({
-      code: "CLI_UNKNOWN_COMMAND",
-      kind: "validation",
-      message: `Unknown command "${args.command.join(" ")}".`,
-      hint: "Run `divebell --help` to see available commands."
     });
   } catch (error) {
     writeErrorOutput(stdout, args.command.join(" ") || "divebell", error);
     return 1;
   }
+}
+
+function createLoadingAwareWriter(
+  writer: { write(chunk: string): void },
+  loading: LoadingController
+): { write(chunk: string): void } {
+  return {
+    write(chunk) {
+      loading.clear();
+      writer.write(chunk);
+    }
+  };
 }

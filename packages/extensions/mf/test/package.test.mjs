@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  statSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -28,6 +37,11 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.equal(validated.name, "mf");
   assert.match(validated.description, /divebell open <url> --mf/);
   assert.deepEqual(validated.commands.map((command) => command.name), ["mf"]);
+  assert.equal(existsSync(validated.commands[0].skill.path), true);
+  assert.match(
+    validated.commands[0].skill.path,
+    /skills\/inspect-module-federation\/SKILL\.md$/
+  );
   assert.equal(typeof validated.hooks.open, "function");
   assert.equal(typeof validated.hooks.detectStack, "function");
   const entrySource = readFileSync(resolve(packageRoot, "dist/extension.js"), "utf8");
@@ -61,6 +75,7 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.equal(vmok.name, "vmok");
   assert.equal(vmok.displayName, "Vmok");
   assert.deepEqual(vmok.commands.map((command) => command.name), ["vmok"]);
+  assert.equal(vmok.commands[0].skill.path, validated.commands[0].skill.path);
   assert.equal(typeof vmok.hooks.open, "function");
   assert.equal(typeof vmok.hooks.detectStack, "function");
   assert.ok(
@@ -188,6 +203,18 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.match(listed.stdout, /package\/dist\/runtime-debug-build\.json/);
     assert.match(listed.stdout, /package\/dist\/vmok-proxy-sdk\.iife\.js/);
     assert.match(listed.stdout, /package\/dist\/proxy-sdk-build\.json/);
+    assert.match(
+      listed.stdout,
+      /package\/skills\/inspect-module-federation\/SKILL\.md/
+    );
+    assert.match(
+      listed.stdout,
+      /package\/skills\/inspect-module-federation\/agents\/openai\.yaml/
+    );
+    assert.match(
+      listed.stdout,
+      /package\/skills\/inspect-module-federation\/references\/shared\.md/
+    );
     assert.match(listed.stdout, /package\/README\.md/);
     const metadata = spawnSync("tar", [
       "-xOf",
@@ -255,6 +282,51 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     assert.doesNotMatch(
       publishedProxyBundle,
       /\brequire\s*\(|\bimport\s*\(|\bimport\s+[\w{*]/
+    );
+  } finally {
+    rmSync(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test("packed extension exposes its installed command skill", () => {
+  const outputDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-mf-skill-"));
+  try {
+    const packed = spawnSync("pnpm", ["pack", "--pack-destination", outputDirectory], {
+      cwd: packageRoot,
+      encoding: "utf8"
+    });
+    assert.equal(packed.status, 0, packed.stderr);
+    const archive = join(outputDirectory, packageArchiveName);
+    const extensionsDirectory = join(outputDirectory, "extensions");
+    const cliPath = resolve(packageRoot, "../../..", "divebell");
+    const env = {
+      ...process.env,
+      DIVEBELL_EXTENSIONS_DIR: extensionsDirectory
+    };
+    const installed = spawnSync(process.execPath, [
+      cliPath,
+      "extensions",
+      "add",
+      archive,
+      "--extensions-dir",
+      extensionsDirectory
+    ], {
+      cwd: resolve(packageRoot, "../../.."),
+      env,
+      encoding: "utf8"
+    });
+    assert.equal(installed.status, 0, installed.stderr || installed.stdout);
+    const skill = spawnSync(process.execPath, [cliPath, "mf", "--skill"], {
+      cwd: resolve(packageRoot, "../../.."),
+      env,
+      encoding: "utf8"
+    });
+    assert.equal(skill.status, 0, skill.stderr || skill.stdout);
+    const installedSkillPath = skill.stdout.trim();
+    assert.equal(existsSync(installedSkillPath), true);
+    assert.equal(
+      realpathSync(installedSkillPath).startsWith(realpathSync(extensionsDirectory)),
+      true
     );
   } finally {
     rmSync(outputDirectory, { recursive: true, force: true });

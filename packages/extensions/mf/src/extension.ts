@@ -1,6 +1,11 @@
 import type { DivebellExtensionDefinition } from "@divebell/cli";
+import { fileURLToPath } from "node:url";
 
 import { createMfCommandMetadata } from "./commands/metadata.js";
+
+const mfSkillPath = fileURLToPath(
+  new URL("../skills/inspect-module-federation/SKILL.md", import.meta.url)
+);
 
 export interface CreateMfExtensionOptions {
   name?: string;
@@ -21,6 +26,9 @@ export function createMfExtension(
       "Inspect Module Federation state. MF commands require the page to be opened with `divebell open <url> --mf`.",
     commands: [{
       name: commandName,
+      skill: {
+        path: mfSkillPath
+      },
       commandReferences: createMfCommandMetadata(commandName).map((command) => ({
         category: "External Extensions" as const,
         usage: command.usage,

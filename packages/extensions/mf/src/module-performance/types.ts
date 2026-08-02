@@ -26,7 +26,7 @@ export interface ModulePerformanceResourceSnapshot {
   transferSize?: number;
   encodedBodySize?: number;
   decodedBodySize?: number;
-  cache: "cache-or-service-worker" | "network" | "unknown";
+  cache?: "cache-or-service-worker" | "network" | "unknown";
 }
 
 export interface ModulePerformanceExposeAssetsSnapshot {
@@ -115,7 +115,7 @@ export interface ModulePerformanceAssetTiming {
   transferSize?: number;
   encodedBodySize?: number;
   decodedBodySize?: number;
-  cache?: ModulePerformanceResourceSnapshot["cache"];
+  cache?: Exclude<ModulePerformanceResourceSnapshot["cache"], "unknown">;
   candidates?: string[];
 }
 

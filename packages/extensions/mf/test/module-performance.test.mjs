@@ -88,6 +88,41 @@ test("missing Manifest and Bridge keep measured get/factory timing explicit", ()
   assert.match(result.modules[0].warnings.join(" "), /render and first-content timing/);
 });
 
+test("unavailable cross-origin resource sizes and cache are omitted", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+  const result = createModulePerformanceResult(parsed.snapshot, {
+    ...performanceSnapshot(),
+    resources: [{
+      url: "https://cdn.test/catalog/Button.js",
+      initiatorType: "script",
+      start: 1027,
+      end: 1107,
+      duration: 80,
+      transferSize: 0,
+      encodedBodySize: 0,
+      decodedBodySize: 0,
+      cache: "unknown"
+    }]
+  });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.modules[0].operations[0].manifest.assets[0])),
+    {
+      asset: "Button.js",
+      kind: "sync",
+      match: "matched",
+      url: "https://cdn.test/catalog/Button.js",
+      start: 1027,
+      end: 1107,
+      duration: 80,
+      loadedBeforeGet: false
+    }
+  );
+});
+
 test("two operations mean two page-observed loads and do not create render runs", () => {
   const parsed = parseBrowserReadResult(browserRead(
     stateWithConsumer(),
@@ -122,6 +157,15 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
     transferSize: 1200,
     encodedBodySize: 1000,
     decodedBodySize: 3000
+  }, {
+    name: "https://opaque.test/catalog/Hidden.js",
+    initiatorType: "script",
+    startTime: 30,
+    responseEnd: 130,
+    duration: 100,
+    transferSize: 0,
+    encodedBodySize: 0,
+    decodedBodySize: 0
   }];
   const context = vm.createContext({
     URL,
@@ -178,6 +222,13 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
   );
   assert.equal(snapshot.page.url, "https://app.test/page");
   assert.equal(snapshot.resources[0].url, "https://cdn.test/catalog/Button.js");
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.resources[1])), {
+    url: "https://opaque.test/catalog/Hidden.js",
+    initiatorType: "script",
+    start: 30,
+    end: 130,
+    duration: 100
+  });
   assert.equal(snapshot.exposes[0].expose, "./Button");
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot.loads[0].get)), {
     start: 200,

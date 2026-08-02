@@ -437,6 +437,8 @@ function matchAsset(
   const eligible = pathMatches.filter((resource) => resource.start <= getEnd + 10);
   const selected = (eligible.length > 0 ? eligible : pathMatches)
     .sort((left, right) => right.start - left.start)[0] as ModulePerformanceResourceSnapshot;
+  const hasBodySize = (selected.encodedBodySize ?? 0) > 0 ||
+    (selected.decodedBodySize ?? 0) > 0;
   return {
     asset,
     kind,
@@ -448,16 +450,19 @@ function matchAsset(
     ...(timing.get?.start === undefined
       ? {}
       : { loadedBeforeGet: selected.end <= timing.get.start }),
-    ...(selected.transferSize === undefined
+    ...(selected.transferSize === undefined ||
+      (selected.transferSize === 0 && !hasBodySize)
       ? {}
       : { transferSize: selected.transferSize }),
-    ...(selected.encodedBodySize === undefined
+    ...(selected.encodedBodySize === undefined || selected.encodedBodySize === 0
       ? {}
       : { encodedBodySize: selected.encodedBodySize }),
-    ...(selected.decodedBodySize === undefined
+    ...(selected.decodedBodySize === undefined || selected.decodedBodySize === 0
       ? {}
       : { decodedBodySize: selected.decodedBodySize }),
-    cache: selected.cache
+    ...(selected.cache === undefined || selected.cache === "unknown"
+      ? {}
+      : { cache: selected.cache })
   };
 }
 

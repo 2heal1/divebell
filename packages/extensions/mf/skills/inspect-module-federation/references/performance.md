@@ -86,7 +86,10 @@ the expose. Each asset has:
 - `start`, `end`, `duration`: actual browser resource timing, in milliseconds
   from navigation start.
 - `loadedBeforeGet`: whether the resource completed before `get.start`.
-- transfer/body sizes and `cache`: best-effort browser facts.
+- transfer/body sizes and `cache`: best-effort browser facts. These fields are
+  omitted when the browser exposes only zero values and no trustworthy cache
+  classification, which commonly happens for cross-origin resources without
+  Resource Timing access.
   `cache-or-service-worker` deliberately does not claim which of those paths
   supplied a zero-transfer response. Missing sizes can be caused by
   cross-origin timing restrictions and must not be read as zero.

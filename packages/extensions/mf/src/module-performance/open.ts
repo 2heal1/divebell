@@ -85,8 +85,9 @@ function isResource(value: unknown): boolean {
     finite(value.end) && finite(value.duration) &&
     optionalFinite(value.transferSize) && optionalFinite(value.encodedBodySize) &&
     optionalFinite(value.decodedBodySize) &&
-    ["cache-or-service-worker", "network", "unknown"]
-      .includes(String(value.cache));
+    (value.cache === undefined ||
+      ["cache-or-service-worker", "network", "unknown"]
+        .includes(String(value.cache)));
 }
 
 function isExpose(value: unknown): boolean {
@@ -527,23 +528,33 @@ function installModulePerformance(options: {
       const encodedBodySize = finiteNumber(entry.encodedBodySize)
         ? entry.encodedBodySize
         : undefined;
-      const cache = transferSize === 0 && (encodedBodySize ?? 0) > 0
+      const decodedBodySize = finiteNumber(entry.decodedBodySize)
+        ? entry.decodedBodySize
+        : undefined;
+      const hasBodySize = (encodedBodySize ?? 0) > 0 ||
+        (decodedBodySize ?? 0) > 0;
+      const cache = transferSize === 0 && hasBodySize
         ? "cache-or-service-worker"
         : transferSize !== undefined && transferSize > 0
           ? "network"
-          : "unknown";
+          : undefined;
       return [{
         url,
         initiatorType: safeText(entry.initiatorType, 80) ?? "unknown",
         start: Math.max(0, entry.startTime),
         end: Math.max(0, entry.responseEnd ?? entry.startTime + entry.duration),
         duration: Math.max(0, entry.duration),
-        ...(transferSize === undefined ? {} : { transferSize }),
-        ...(encodedBodySize === undefined ? {} : { encodedBodySize }),
-        ...(finiteNumber(entry.decodedBodySize)
-          ? { decodedBodySize: entry.decodedBodySize }
-          : {}),
-        cache
+        ...(transferSize === undefined ||
+          (transferSize === 0 && !hasBodySize)
+          ? {}
+          : { transferSize }),
+        ...(encodedBodySize === undefined || encodedBodySize === 0
+          ? {}
+          : { encodedBodySize }),
+        ...(decodedBodySize === undefined || decodedBodySize === 0
+          ? {}
+          : { decodedBodySize }),
+        ...(cache === undefined ? {} : { cache })
       }];
     });
   };

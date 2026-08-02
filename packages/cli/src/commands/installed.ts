@@ -9,13 +9,14 @@ import {
   rm,
   writeFile
 } from "node:fs/promises";
-import { homedir, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { requireCommandArgument } from "../utils/command.js";
+import { resolveDivebellHomeDirectory } from "../utils/home.js";
 import { createError } from "../utils/output.js";
 import type { DivebellExtensionDefinition } from "../types/commands.js";
 import { validateExtension } from "./definition.js";
@@ -279,8 +280,15 @@ export async function getInstalledExtensionEntryPaths(extensionsDirectory: strin
   return paths;
 }
 
-export function resolveExtensionsDirectory(input?: string): string {
-  return resolve(input ?? process.env[DIVEBELL_EXTENSIONS_DIRECTORY_ENV] ?? join(homedir(), ".divebell", "extensions"));
+export function resolveExtensionsDirectory(
+  input?: string,
+  env: NodeJS.ProcessEnv = process.env
+): string {
+  return resolve(
+    input
+      ?? env[DIVEBELL_EXTENSIONS_DIRECTORY_ENV]
+      ?? join(resolveDivebellHomeDirectory(env), "extensions")
+  );
 }
 
 export function createNpmExtensionPackageDownloader(): ExtensionPackageDownloader {
@@ -292,6 +300,9 @@ export function createNpmExtensionPackageDownloader(): ExtensionPackageDownloade
       }
       let stdout: string;
       try {
+        const npmCache = process.env.npm_config_cache
+          ?? process.env.NPM_CONFIG_CACHE
+          ?? join(resolveDivebellHomeDirectory(), "npm-cache");
         const result = await execFileAsync("npm", [
           "pack",
           spec,
@@ -301,7 +312,11 @@ export function createNpmExtensionPackageDownloader(): ExtensionPackageDownloade
           destinationDirectory
         ], {
           encoding: "utf8",
-          maxBuffer: 1024 * 1024
+          maxBuffer: 1024 * 1024,
+          env: {
+            ...process.env,
+            npm_config_cache: npmCache
+          }
         });
         stdout = result.stdout;
       } catch (error) {

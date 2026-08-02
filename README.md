@@ -40,6 +40,11 @@ divebell --help
 needed. Its browser probe runs in a temporary session and cleans that session up
 when setup finishes.
 
+In a coding-agent sandbox, Divebell automatically moves its own files and the
+bundled browser's files to private temporary directories when the normal user
+directories are read-only. Set `DIVEBELL_HOME` and `AGENT_BROWSER_HOME` only
+when those files need specific durable writable locations.
+
 Install the [Divebell Skill](./skills/divebell/SKILL.md) in your agent.
 
 Then ask:

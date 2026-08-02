@@ -73,6 +73,10 @@ Extensions are installed by default in:
 ~/.divebell/extensions
 ```
 
+If `~/.divebell` is not writable, Divebell uses a private per-user temporary
+directory. Set `DIVEBELL_HOME` to keep all Divebell session and Extension files
+in a specific durable writable directory.
+
 Set a separate directory when needed:
 
 ```sh

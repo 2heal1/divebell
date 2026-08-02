@@ -199,8 +199,8 @@ importers:
   packages/cli:
     dependencies:
       '@divebell/agent-browser':
-        specifier: 0.33.1-divebell.1
-        version: 0.33.1-divebell.1
+        specifier: 0.33.2-divebell.1
+        version: 0.33.2-divebell.1
       '@divebell/bridge':
         specifier: workspace:^
         version: link:../bridge
@@ -423,8 +423,8 @@ packages:
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
 
-  '@divebell/agent-browser@0.33.1-divebell.1':
-    resolution: {integrity: sha512-Fyrb6R+uyOJcf1dOgYsAqcc/0V1h/BCdoXpxjVA6boiyZUq6H9zP4ceQem5TWJPNfXVF4aSnS49FrJxriOB+jQ==}
+  '@divebell/agent-browser@0.33.2-divebell.1':
+    resolution: {integrity: sha512-5UYLyxiePpg7A4w8OJpYELf6iEizU71KCmscSxM4VtAZcmf79myMVE2LkiFsdRIjYTB+4PDbFr3vYbnn9S2KsQ==}
     engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
     hasBin: true
 
@@ -1589,7 +1589,7 @@ snapshots:
       human-id: 4.2.0
       prettier: 2.8.8
 
-  '@divebell/agent-browser@0.33.1-divebell.1': {}
+  '@divebell/agent-browser@0.33.2-divebell.1': {}
 
   '@emnapi/core@1.10.0':
     dependencies:

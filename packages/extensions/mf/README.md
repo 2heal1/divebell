@@ -292,17 +292,19 @@ divebell mf module-perf shop/Button --instance mf-1
 ```
 
 With no target, the command analyzes every producer/expose load already
-observed in the page. It does not load a Remote, repeat a render, or create
+observed in the page. It does not load a Remote, render a module, or create
 benchmark samples. Each item in `operations` is one load that the page actually
 performed.
 
 The top-level `page` values `fp`, `fcp`, and `lcp` are milliseconds elapsed
 from navigation start. `lcpStatus` states whether LCP is still provisional.
-Each operation uses the same clock for `requested` and the start/end timing of
-remoteEntry, expose `get`, factory, producer Bridge render, and first visible
-content. `getToRender` and `getToFirstContent` measure from the start of expose
-`get`. A non-Bridge module still returns get and any factory timing observed by
-Runtime, and explicitly leaves rendering unobserved.
+Each operation uses the same clock for `loadRemote`, remoteEntry, expose `get`,
+and factory timing. `timing.loadRemote` is the complete operation boundary. Its
+`start`, `end`, and `duration` show when MF began and finished the request, and
+`outcome` is the final result reported by `loadRemote`. The command does not
+infer rendering or business readiness from DOM or Bridge activity.
+For a pending operation, `end` is absent and `duration` is only the elapsed time
+at observation.
 
 When an MF Manifest snapshot is available, the command lists the expose's
 synchronous and asynchronous JavaScript assets and matches them to browser
@@ -314,13 +316,14 @@ It never assigns a file by timing proximity alone. Without a Manifest,
 the module lifecycle remains valid but exact expose-resource attribution is
 unavailable.
 
-`pageImpact` reports whether the request belongs to the initial page path,
-followed a user interaction, appeared before LCP, or contains the LCP element.
-`bottleneck` compares measured remoteEntry, expose resource, get, factory, and
-render work. `findings` expose the evidence and fixed rule behind each
-suggestion. Slow remoteEntry recommends preload only; delayed synchronous
-expose assets can recommend exact preloads when the module affects visible page
-work.
+`pageImpact` reports whether the request belongs to the initial page path or
+followed a user interaction, and whether `loadRemote` completed before FP, FCP,
+and the currently observed LCP. `bottleneck` compares measured remoteEntry,
+expose resource, get, and factory work. `findings` expose the evidence and fixed
+rule behind each suggestion. Slow remoteEntry recommends preload only; delayed
+synchronous expose assets can recommend exact preloads for an initial-page
+module. Failed, pending, or unknown loads do not receive performance bottleneck
+diagnoses; resolve or complete their loading trace first.
 
 `codeUsage` is only a follow-up. When exact expose JavaScript is known, the
 result lists those URLs for a separate Code Usage run. Coverage is not enabled

@@ -4,15 +4,14 @@
 
 `module-perf [remote/expose]` analyzes module loads already observed in the
 current page. With no target it returns every observed producer/expose group.
-It never calls `loadRemote`, never repeats a render, and never turns one load
+It never calls `loadRemote`, never renders a module, and never turns one load
 into several benchmark runs. Two entries in `operations` mean the page really
 performed two matching module-load operations.
 
 The target application does not install Slardar or add consumer code for this
 command. `open --mf` installs the bounded page collector before navigation. MF
 loading boundaries come from the official MF observability hooks; paint,
-resource, interaction, and first-visible-content facts come from browser and
-Bridge observation.
+resource, and interaction facts come from the browser.
 
 ## Page timing
 
@@ -38,23 +37,23 @@ order.
 For one operation, `timing` uses the same navigation-relative millisecond
 clock as page paint:
 
-- `requested`: when the module request entered MF.
+- `loadRemote.start`, `end`, `duration`: the complete MF module request, from
+  entering `loadRemote` until its final result. Read the operation's `outcome`
+  with this interval: `success` means `loadRemote` finished successfully;
+  `recovered`, `error`, `pending`, and `unknown` preserve MF's observed result.
+  A pending operation has no `end`; its `duration` is elapsed time at the point
+  of observation rather than a completed duration.
 - `remoteEntry.start`, `end`, `duration`: remoteEntry loading boundary.
 - `get.start`, `end`, `duration`: from immediately before the container expose
   `get` call until it returns. This includes synchronous expose chunks that the
   generated container waits for.
 - `factory.start`, `end`, `duration`: execution of the returned module factory.
-- `render.start`, `end`, `duration`: producer-side Bridge render when observed.
-- `firstContent`: first visible content observed inside that render root.
-- `getToRender`: elapsed time from `get.start` through render return.
-- `getToFirstContent`: elapsed time from `get.start` to the first visible
-  content inside the producer root.
 
-When the module does not use MF Bridge, `render`, `firstContent`,
-`getToRender`, and `getToFirstContent` can be absent. Keep the valid get and
-any observed factory timing; do not call rendering zero milliseconds. Some
-bundler integrations request a factory without asking Runtime to execute it,
-so factory timing can also be absent while get timing remains valid.
+The command stops at the `loadRemote` result. It does not infer component
+rendering, visible content, data readiness, or interactivity. Some bundler
+integrations request a factory without asking Runtime to execute it, so factory
+timing can be absent while the complete `loadRemote` and get timing remain
+valid.
 
 ## Manifest assets and browser resource timing
 
@@ -102,19 +101,20 @@ preloading an async asset merely because it belongs to the same expose.
 `pageImpact` connects the module timeline to the page without claiming that MF
 runtime success proves business readiness:
 
-- `trigger`: `initial` when requested no later than FCP, `interaction` when a
+- `trigger`: `initial` when `loadRemote` started no later than FCP,
+  `interaction` when a
   captured user input immediately preceded the request, `automatic` when it
   started later without a recent input, or `unknown` when evidence is missing.
-- `rendering`: whether a producer Bridge render was observed.
-- `visibleBeforeLcp`: whether the first visible module content appeared no
-  later than the current LCP.
-- `containsLcpElement`: whether the module render root contains the recorded
-  LCP element.
-- `confidence`: evidence strength for this association.
+- `completedBeforeFp`: whether `loadRemote.end` is no later than FP.
+- `completedBeforeFcp`: whether `loadRemote.end` is no later than FCP.
+- `completedBeforeLcp`: whether `loadRemote.end` is no later than the latest
+  observed LCP. Read `page.lcpStatus`; a provisional LCP can still change.
 
-For an interaction-triggered or below-fold module, avoid promoting resources
-to initial page priority without a demonstrated user-visible benefit. A module
-containing the LCP element is stronger evidence that earlier loading can help.
+The completion fields are omitted when either boundary is unavailable. They
+only compare times and can also describe when a failed operation ended, so read
+`outcome` before interpreting them. They do not claim that the module caused a
+paint. For an interaction-triggered or automatic module, avoid promoting
+resources to initial page priority without a demonstrated user-visible benefit.
 
 ## Bottleneck and findings
 
@@ -126,22 +126,24 @@ guess:
   least half of get and at least 20 ms.
 - `get`: get is longest but matched resource loading does not explain it.
 - `factory`: module initialization is longest.
-- `render`: producer render is longest.
 - `mixed`: the two longest phases are within 15 percent.
 - `unknown`: complete phase boundaries are missing.
+
+Apply this comparison only when `outcome` is `success` or `recovered`. For an
+error, pending, or unknown result, the command deliberately leaves the
+bottleneck unknown and directs the Agent to complete or troubleshoot the
+loading trace first.
 
 `duration`, `percentage`, `confidence`, and `evidence` expose why that label was
 chosen. `findings` apply fixed evidence rules and include their evidence and a
 concrete suggestion:
 
 - Slow remoteEntry: preload remoteEntry. Do not use Code Usage to split it.
-- Delayed synchronous expose assets on an initial/LCP path: preload the exact
+- Delayed synchronous expose assets on an initial page path: preload the exact
   listed assets.
 - Slow get after all sync assets were already ready: inspect shared resolution
   and profile runtime work; more preload will not fix the measured delay.
 - Slow factory: profile and reduce top-level module initialization.
-- Slow render: profile the producer component and reduce synchronous render
-  work.
 
 `recommendedActions` only promotes warning-level findings. Read each finding's
 evidence before changing resource priority.

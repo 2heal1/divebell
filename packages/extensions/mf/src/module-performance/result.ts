@@ -1,4 +1,3 @@
-import { collectBridgeOperations } from "../bridge/aggregate.js";
 import { buildRemoteTrace, remoteCapability } from "../remote/results.js";
 import {
   isRemoteTraceReport,
@@ -6,7 +5,6 @@ import {
   reportInstanceRef
 } from "../remote/selection.js";
 import { remotesMatch, visibleInstanceName } from "../selection.js";
-import type { BridgeOperationTrace } from "../bridge/types.js";
 import type {
   RemoteStageEvidence,
   RemoteTraceSummary
@@ -17,7 +15,6 @@ import type {
   RuntimeRemote
 } from "../types.js";
 import type {
-  MatchedRender,
   ModulePerformanceAssetTiming,
   ModulePerformanceBottleneck,
   ModulePerformanceBrowserSnapshot,
@@ -30,7 +27,6 @@ import type {
   ModulePerformanceModule,
   ModulePerformanceOperation,
   ModulePerformancePageImpact,
-  ModulePerformanceRenderSnapshot,
   ModulePerformanceResourceSnapshot,
   ModulePerformanceResult,
   ModulePerformanceSelectors,
@@ -47,7 +43,6 @@ interface ModuleGroup {
   traces: RemoteTraceSummary[];
 }
 
-const RENDER_MATCH_WINDOW = 30_000;
 const INTERACTION_WINDOW = 1_000;
 const MEANINGFUL_DURATION = 50;
 
@@ -57,17 +52,8 @@ export function createModulePerformanceResult(
   selectors: ModulePerformanceSelectors = {}
 ): ModulePerformanceResult {
   const groups = collectGroups(snapshot, selectors);
-  const bridgeOperations = collectBridgeOperations(snapshot)
-    .filter((operation) => operation.operations.includes("render"));
-  const usedRenders = new Set<string>();
-  const usedBridgeOperations = new Set<string>();
-  const modules = groups.map((group) => createModule(
-    group,
-    performance,
-    bridgeOperations,
-    usedRenders,
-    usedBridgeOperations
-  )).sort(compareModules);
+  const modules = groups.map((group) => createModule(group, performance))
+    .sort(compareModules);
   const unobservedRemotes = collectUnobservedRemotes(snapshot, groups, selectors);
   const warnings = collectWarnings(snapshot, performance, modules, selectors);
   const recommendedActions = collectRecommendedActions(modules, unobservedRemotes);
@@ -97,9 +83,6 @@ export function createModulePerformanceResult(
       operationCount: operations.length,
       manifestModuleCount: modules.filter((module) =>
         module.operations.some((operation) => operation.manifest.status === "available")
-      ).length,
-      renderedOperationCount: operations.filter((operation) =>
-        operation.pageImpact.rendering === "observed"
       ).length,
       unobservedRemoteCount: unobservedRemotes.length
     },
@@ -165,10 +148,7 @@ function collectGroups(
 
 function createModule(
   group: ModuleGroup,
-  performance: ModulePerformanceBrowserSnapshot | null,
-  bridgeOperations: BridgeOperationTrace[],
-  usedRenders: Set<string>,
-  usedBridgeOperations: Set<string>
+  performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceModule {
   const warnings: string[] = [];
   const usedLoads = new Set<string>();
@@ -176,25 +156,8 @@ function createModule(
     const load = performance === null
       ? undefined
       : selectLoad(group, trace, performance, usedLoads);
-    const render = performance === null
-      ? selectBridgeOnly(group, trace, bridgeOperations, usedBridgeOperations)
-      : selectRender(
-          group,
-          trace,
-          performance,
-          bridgeOperations,
-          usedRenders,
-          usedBridgeOperations
-        );
-    return createOperation(group, trace, performance, render, load);
+    return createOperation(group, trace, performance, load);
   });
-  if (operations.every((operation) =>
-    operation.pageImpact.rendering === "not-observed"
-  )) {
-    warnings.push(
-      "No producer Bridge render was observed; render and first-content timing are unavailable."
-    );
-  }
   if (operations.every((operation) =>
     operation.manifest.status !== "available"
   )) {
@@ -216,13 +179,12 @@ function createOperation(
   group: ModuleGroup,
   trace: RemoteTraceSummary,
   performance: ModulePerformanceBrowserSnapshot | null,
-  render: MatchedRender,
   load: ModulePerformanceLoadSnapshot | undefined
 ): ModulePerformanceOperation {
-  let timing = createTiming(trace, performance, render, load);
+  let timing = createTiming(trace, performance, load);
   const manifest = createManifest(group, timing, performance);
   timing = addRemoteEntryResourceTiming(timing, manifest);
-  const pageImpact = createPageImpact(timing, performance, render);
+  const pageImpact = createPageImpact(timing, performance);
   const bottleneck = createBottleneck(trace, timing, manifest);
   const codeUsage = createCodeUsage(bottleneck, manifest);
   return {
@@ -238,8 +200,7 @@ function createOperation(
       manifest,
       pageImpact,
       bottleneck,
-      codeUsage,
-      performance
+      codeUsage
     ),
     codeUsage
   };
@@ -248,47 +209,23 @@ function createOperation(
 function createTiming(
   trace: RemoteTraceSummary,
   performance: ModulePerformanceBrowserSnapshot | null,
-  render: MatchedRender,
   load: ModulePerformanceLoadSnapshot | undefined
 ): ModulePerformanceTiming {
   const timeOrigin = performance?.page.timeOrigin ?? trace.startedAt;
-  const requested = relativeTime(trace.startedAt, timeOrigin);
+  const loadRemote = intervalFromEpoch(
+    trace.startedAt,
+    trace.endedAt,
+    trace.duration,
+    timeOrigin
+  );
   const remoteEntry = stageInterval(trace, "remoteEntry", timeOrigin);
   const get = load?.get ?? stageInterval(trace, "expose", timeOrigin);
   const factory = load?.factory ?? stageInterval(trace, "factory", timeOrigin);
-  const renderInterval = render.visual === undefined
-    ? render.bridge === undefined
-      ? undefined
-      : intervalFromEpoch(
-          render.bridge.startedAt,
-          render.bridge.endedAt,
-          render.bridge.duration,
-          timeOrigin
-        )
-    : {
-        start: round(render.visual.start),
-        ...(render.visual.end === undefined
-          ? {}
-          : { end: round(render.visual.end) }),
-        ...(render.visual.duration === undefined
-          ? {}
-          : { duration: round(render.visual.duration) })
-      };
-  const firstContent = render.visual?.firstContent;
-  const getStart = get?.start;
   return {
-    requested: round(requested),
+    loadRemote,
     ...(remoteEntry === undefined ? {} : { remoteEntry }),
     ...(get === undefined ? {} : { get }),
-    ...(factory === undefined ? {} : { factory }),
-    ...(renderInterval === undefined ? {} : { render: renderInterval }),
-    ...(firstContent === undefined ? {} : { firstContent: round(firstContent) }),
-    ...(getStart === undefined || renderInterval?.end === undefined
-      ? {}
-      : { getToRender: round(Math.max(0, renderInterval.end - getStart)) }),
-    ...(getStart === undefined || firstContent === undefined
-      ? {}
-      : { getToFirstContent: round(Math.max(0, firstContent - getStart)) })
+    ...(factory === undefined ? {} : { factory })
   };
 }
 
@@ -468,37 +405,23 @@ function matchAsset(
 
 function createPageImpact(
   timing: ModulePerformanceTiming,
-  performance: ModulePerformanceBrowserSnapshot | null,
-  render: MatchedRender
+  performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformancePageImpact {
   if (performance === null) {
-    return {
-      trigger: "unknown",
-      rendering: render.bridge === undefined ? "not-observed" : "observed",
-      visibleBeforeLcp: "unknown",
-      containsLcpElement: "unknown",
-      confidence: "low"
-    };
+    return { trigger: "unknown" };
   }
-  const visual = render.visual;
-  const trigger = classifyTrigger(timing.requested, performance);
-  const visibleBeforeLcp = visual?.firstContent === undefined ||
-      performance.page.lcp === undefined
-    ? "unknown"
-    : visual.firstContent <= performance.page.lcp;
-  const containsLcpElement = visual?.containsLcpElement ?? "unknown";
+  const completed = timing.loadRemote.end;
   return {
-    trigger,
-    rendering: visual !== undefined || render.bridge !== undefined
-      ? "observed"
-      : "not-observed",
-    visibleBeforeLcp,
-    containsLcpElement,
-    confidence: containsLcpElement !== "unknown" || trigger === "interaction"
-      ? "high"
-      : visual !== undefined
-        ? "medium"
-        : "low"
+    trigger: classifyTrigger(timing.loadRemote.start, performance),
+    ...(completed === undefined || performance.page.fp === undefined
+      ? {}
+      : { completedBeforeFp: completed <= performance.page.fp }),
+    ...(completed === undefined || performance.page.fcp === undefined
+      ? {}
+      : { completedBeforeFcp: completed <= performance.page.fcp }),
+    ...(completed === undefined || performance.page.lcp === undefined
+      ? {}
+      : { completedBeforeLcp: completed <= performance.page.lcp })
   };
 }
 
@@ -507,6 +430,15 @@ function createBottleneck(
   timing: ModulePerformanceTiming,
   manifest: ModulePerformanceManifest
 ): ModulePerformanceBottleneck {
+  if (trace.outcome !== "success" && trace.outcome !== "recovered") {
+    return {
+      type: "unknown",
+      confidence: "low",
+      evidence: [
+        `loadRemote outcome is ${trace.outcome}; performance bottlenecks are diagnosed only after a successful result.`
+      ]
+    };
+  }
   const getDuration = timing.get?.duration;
   const resourceDuration = getDuration === undefined
     ? 0
@@ -516,8 +448,7 @@ function createBottleneck(
   const candidates = [
     durationCandidate("remoteEntry", timing.remoteEntry?.duration),
     durationCandidate(exposeResource ? "expose-resource" : "get", getDuration),
-    durationCandidate("factory", timing.factory?.duration),
-    durationCandidate("render", timing.render?.duration)
+    durationCandidate("factory", timing.factory?.duration)
   ].filter((item): item is { type: Exclude<ModulePerformanceBottleneck["type"], "mixed" | "unknown">; duration: number } =>
     item !== undefined
   ).sort((left, right) => right.duration - left.duration);
@@ -597,10 +528,26 @@ function createFindings(
   manifest: ModulePerformanceManifest,
   impact: ModulePerformancePageImpact,
   bottleneck: ModulePerformanceBottleneck,
-  codeUsage: ModulePerformanceCodeUsage,
-  performance: ModulePerformanceBrowserSnapshot | null
+  codeUsage: ModulePerformanceCodeUsage
 ): ModulePerformanceFinding[] {
   const findings: ModulePerformanceFinding[] = [];
+  if (trace.outcome !== "success" && trace.outcome !== "recovered") {
+    const failed = trace.outcome === "error";
+    return [{
+      id: failed ? "resolve-load-failure" : "complete-load-observation",
+      severity: failed ? "warning" : "info",
+      title: failed
+        ? "Module loading failed before performance could be diagnosed"
+        : `Module loading outcome is ${trace.outcome}`,
+      evidence: [
+        `loadRemote outcome: ${trace.outcome}.`,
+        `Trace: ${trace.traceId}.`
+      ],
+      suggestion: failed
+        ? `Run the Remote trace command with --trace-id ${trace.traceId} and fix the loading failure before optimizing performance.`
+        : "Wait for loadRemote to finish or reproduce the module load, then run module-perf again."
+    }];
+  }
   if (bottleneck.type === "remoteEntry" &&
       (timing.remoteEntry?.duration ?? 0) >= MEANINGFUL_DURATION) {
     const remoteEntry = manifest.remoteEntryResource?.url ?? manifest.remoteEntry;
@@ -622,13 +569,12 @@ function createFindings(
     );
     if (delayedSyncAssets.length > 0) {
       const assetNames = delayedSyncAssets.map((asset) => asset.url ?? asset.asset);
-      const shouldPreload = impact.trigger === "initial" ||
-        impact.containsLcpElement === true || impact.visibleBeforeLcp === true;
+      const shouldPreload = impact.trigger === "initial";
       findings.push({
         id: shouldPreload ? "preload-expose-assets" : "defer-expose-assets",
         severity: shouldPreload ? "warning" : "info",
         title: shouldPreload
-          ? "Expose JavaScript starts too late for visible page work"
+          ? "Expose JavaScript starts too late for the initial page load"
           : "Expose JavaScript is loaded outside the initial page path",
         evidence: [
           ...assetNames.map((asset) => `${asset} loaded after get started.`),
@@ -670,28 +616,6 @@ function createFindings(
       suggestion: "Profile top-level module initialization and move non-essential startup work behind the point where it is needed."
     });
   }
-  if ((timing.render?.duration ?? 0) >= MEANINGFUL_DURATION &&
-      (bottleneck.type === "render" || bottleneck.type === "mixed")) {
-    findings.push({
-      id: "profile-render",
-      severity: "warning",
-      title: "Producer rendering is expensive",
-      evidence: [`render took ${round(timing.render?.duration ?? 0)} ms.`],
-      suggestion: "Profile the producer component render, reduce synchronous work, and move data fetching or below-fold work out of the critical render."
-    });
-  }
-  if (impact.containsLcpElement === true && performance?.page.lcp !== undefined) {
-    findings.push({
-      id: "module-owns-lcp",
-      severity: "warning",
-      title: "This module contains the page LCP element",
-      evidence: [
-        `The module render root contains the LCP element at ${round(performance.page.lcp)} ms.`,
-        `get started at ${round(timing.get?.start ?? timing.requested)} ms.`
-      ],
-      suggestion: "Treat this module as page-critical: request it earlier and prioritize only the remoteEntry and synchronous expose assets shown by this report."
-    });
-  }
   if (codeUsage.status === "recommended") {
     findings.push({
       id: "inspect-expose-code-usage",
@@ -714,41 +638,6 @@ function createFindings(
     });
   }
   return findings;
-}
-
-function selectRender(
-  group: ModuleGroup,
-  trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot,
-  bridgeOperations: BridgeOperationTrace[],
-  usedRenders: Set<string>,
-  usedBridgeOperations: Set<string>
-): MatchedRender {
-  const traceEnd = trace.stages.find((stage) => stage.name === "factory")?.endedAt ??
-    trace.endedAt ?? trace.startedAt;
-  const candidates = performance.renders.filter((render) =>
-    !usedRenders.has(render.id) && renderMatchesGroup(render, group) &&
-    performance.page.timeOrigin + render.start >= traceEnd - 100 &&
-    performance.page.timeOrigin + render.start <= traceEnd + RENDER_MATCH_WINDOW
-  ).sort((left, right) =>
-    Math.abs(performance.page.timeOrigin + left.start - traceEnd) -
-    Math.abs(performance.page.timeOrigin + right.start - traceEnd)
-  );
-  const visual = candidates[0];
-  if (visual !== undefined) usedRenders.add(visual.id);
-  const bridge = selectBridgeOperation(
-    group,
-    trace,
-    bridgeOperations,
-    usedBridgeOperations,
-    visual === undefined
-      ? undefined
-      : performance.page.timeOrigin + visual.start
-  );
-  return {
-    ...(bridge === undefined ? {} : { bridge }),
-    ...(visual === undefined ? {} : { visual })
-  };
 }
 
 function selectLoad(
@@ -776,56 +665,18 @@ function selectLoad(
   return selected;
 }
 
-function selectBridgeOnly(
-  group: ModuleGroup,
-  trace: RemoteTraceSummary,
-  bridgeOperations: BridgeOperationTrace[],
-  usedBridgeOperations: Set<string>
-): MatchedRender {
-  const bridge = selectBridgeOperation(
-    group,
-    trace,
-    bridgeOperations,
-    usedBridgeOperations
-  );
-  return bridge === undefined ? {} : { bridge };
-}
-
-function selectBridgeOperation(
-  group: ModuleGroup,
-  trace: RemoteTraceSummary,
-  operations: BridgeOperationTrace[],
-  used: Set<string>,
-  preferredStart?: number
-): BridgeOperationTrace | undefined {
-  const traceEnd = trace.stages.find((stage) => stage.name === "factory")?.endedAt ??
-    trace.endedAt ?? trace.startedAt;
-  const candidates = operations.filter((operation) => {
-    const key = bridgeKey(operation);
-    return !used.has(key) && bridgeMatchesGroup(operation, group) &&
-      operation.startedAt >= traceEnd - 100 &&
-      operation.startedAt <= traceEnd + RENDER_MATCH_WINDOW;
-  }).sort((left, right) => {
-    const target = preferredStart ?? traceEnd;
-    return Math.abs(left.startedAt - target) - Math.abs(right.startedAt - target);
-  });
-  const selected = candidates[0];
-  if (selected !== undefined) used.add(bridgeKey(selected));
-  return selected;
-}
-
 function classifyTrigger(
-  requested: number,
+  started: number,
   performance: ModulePerformanceBrowserSnapshot
 ): ModulePerformanceTrigger {
   const latestInteraction = performance.page.interactions
-    .filter((interaction) => interaction.time <= requested)
+    .filter((interaction) => interaction.time <= started)
     .sort((left, right) => right.time - left.time)[0];
   if (latestInteraction !== undefined &&
-      requested - latestInteraction.time <= INTERACTION_WINDOW) {
+      started - latestInteraction.time <= INTERACTION_WINDOW) {
     return "interaction";
   }
-  if (performance.page.fcp !== undefined && requested <= performance.page.fcp) {
+  if (performance.page.fcp !== undefined && started <= performance.page.fcp) {
     return "initial";
   }
   if (performance.page.fcp !== undefined) return "automatic";
@@ -1109,40 +960,6 @@ function matchesTarget(
   return remoteNames.some((name) => `${name}/${exposed}` === target);
 }
 
-function renderMatchesGroup(
-  render: ModulePerformanceRenderSnapshot,
-  group: ModuleGroup
-): boolean {
-  if (render.remote !== undefined &&
-      !matchesRemoteName(group.remote, render.remote)) return false;
-  if (render.expose !== undefined && !sameExpose(group.expose, render.expose)) {
-    return false;
-  }
-  return render.remote !== undefined || render.expose !== undefined ||
-    [group.producer.name, group.remote.name, group.remote.alias]
-      .filter((value): value is string => value !== undefined)
-      .includes(render.instanceName) ||
-    render.moduleName === group.producer.name;
-}
-
-function bridgeMatchesGroup(
-  operation: BridgeOperationTrace,
-  group: ModuleGroup
-): boolean {
-  if (operation.remote !== undefined &&
-      !matchesRemoteName(group.remote, operation.remote)) return false;
-  if (operation.expose !== undefined &&
-      !sameExpose(group.expose, operation.expose)) return false;
-  return operation.remote !== undefined || operation.expose !== undefined ||
-    operation.instance.instanceRef === group.consumer.instanceRef ||
-    operation.instance.instanceRef === group.producer.instanceRef ||
-    operation.moduleName === group.producer.name;
-}
-
-function matchesRemoteName(remote: RuntimeRemote, value: string): boolean {
-  return remote.name === value || remote.alias === value;
-}
-
 function sameExpose(left: string | undefined, right: string | undefined): boolean {
   return left === undefined || right === undefined
     ? left === right
@@ -1167,10 +984,6 @@ function compareModules(
   return left.consumer.name.localeCompare(right.consumer.name) ||
     left.remote.name.localeCompare(right.remote.name) ||
     (left.expose ?? "").localeCompare(right.expose ?? "");
-}
-
-function bridgeKey(operation: BridgeOperationTrace): string {
-  return `${operation.instance.instanceRef ?? ""}\u0000${operation.operationId ?? ""}\u0000${operation.bridgeId}\u0000${operation.startedAt}`;
 }
 
 function remoteKey(remote: RuntimeRemote): string {

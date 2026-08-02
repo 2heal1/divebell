@@ -15,7 +15,7 @@ import {
   stateWithConsumer
 } from "./remote-fixtures.mjs";
 
-test("module performance attributes expose resources and page impact without rerunning the module", () => {
+test("module performance attributes loadRemote, expose resources, and page impact without rerunning the module", () => {
   const report = longExposeTrace();
   const producer = instance({
     instanceRef: "mf-producer",
@@ -44,30 +44,37 @@ test("module performance attributes expose resources and page impact without rer
   assert.equal(result.modules.length, 1);
   assert.equal(result.modules[0].operations.length, 1);
   const operation = result.modules[0].operations[0];
-  assert.equal(operation.timing.requested, 1000);
+  assert.deepEqual(operation.timing.loadRemote, {
+    start: 1000,
+    end: 1133,
+    duration: 133
+  });
   assert.deepEqual(operation.timing.get, {
     start: 1027,
     end: 1127,
     duration: 100
   });
-  assert.equal(operation.timing.getToRender, 113);
-  assert.equal(operation.timing.getToFirstContent, 118);
   assert.equal(operation.manifest.status, "available");
   assert.equal(operation.manifest.assets[0].match, "matched");
   assert.equal(operation.manifest.assets[0].loadedBeforeGet, false);
   assert.equal(operation.bottleneck.type, "expose-resource");
-  assert.equal(operation.pageImpact.containsLcpElement, true);
+  assert.deepEqual(operation.pageImpact, {
+    trigger: "automatic",
+    completedBeforeFp: false,
+    completedBeforeFcp: false,
+    completedBeforeLcp: true
+  });
   assert.equal(operation.codeUsage.status, "recommended");
   assert.deepEqual(operation.codeUsage.assets, [
     "https://cdn.test/catalog/Button.js"
   ]);
   assert.ok(operation.findings.some((finding) =>
-    finding.id === "preload-expose-assets"
+    finding.id === "defer-expose-assets"
   ));
   assert.equal(result.summary.operationCount, 1);
 });
 
-test("missing Manifest and Bridge keep measured get/factory timing explicit", () => {
+test("missing Manifest keeps loadRemote and measured get/factory timing explicit", () => {
   const parsed = parseBrowserReadResult(browserRead(
     stateWithConsumer(),
     [loadTrace()]
@@ -75,17 +82,19 @@ test("missing Manifest and Bridge keep measured get/factory timing explicit", ()
   assert.equal(parsed.ok, true);
   const result = createModulePerformanceResult(parsed.snapshot, {
     ...performanceSnapshot(),
-    exposes: [],
-    renders: []
+    exposes: []
   });
   const operation = result.modules[0].operations[0];
   assert.equal(operation.manifest.status, "unavailable");
-  assert.equal(operation.pageImpact.rendering, "not-observed");
+  assert.deepEqual(operation.timing.loadRemote, {
+    start: 1000,
+    end: 1035,
+    duration: 35
+  });
   assert.equal(operation.timing.get.duration, 2);
   assert.equal(operation.timing.factory.duration, 3);
-  assert.equal(operation.timing.render, undefined);
   assert.equal(operation.codeUsage.status, "unavailable");
-  assert.match(result.modules[0].warnings.join(" "), /render and first-content timing/);
+  assert.doesNotMatch(result.modules[0].warnings.join(" "), /render/i);
 });
 
 test("unavailable cross-origin resource sizes and cache are omitted", () => {
@@ -123,7 +132,7 @@ test("unavailable cross-origin resource sizes and cache are omitted", () => {
   );
 });
 
-test("two operations mean two page-observed loads and do not create render runs", () => {
+test("two operations mean two page-observed loadRemote histories", () => {
   const parsed = parseBrowserReadResult(browserRead(
     stateWithConsumer(),
     [
@@ -135,15 +144,43 @@ test("two operations mean two page-observed loads and do not create render runs"
   const result = createModulePerformanceResult(parsed.snapshot, {
     ...performanceSnapshot(),
     exposes: [],
-    loads: [],
-    renders: []
+    loads: []
   });
   assert.deepEqual(
     result.modules[0].operations.map((operation) => operation.traceId),
     ["load-1", "load-2"]
   );
   assert.equal(result.summary.operationCount, 2);
-  assert.equal(result.summary.renderedOperationCount, 0);
+  assert.equal("renderedOperationCount" in result.summary, false);
+});
+
+test("operation outcome and completion boundary follow loadRemote itself", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [
+      loadTrace({ traceId: "failed-load", remoteEntryOutcome: "error" }),
+      loadTrace({ traceId: "pending-load", base: 2000, pending: true })
+    ]
+  ));
+  assert.equal(parsed.ok, true);
+  const result = createModulePerformanceResult(parsed.snapshot, performanceSnapshot());
+  const [failed, pending] = result.modules[0].operations;
+
+  assert.equal(failed.outcome, "error");
+  assert.deepEqual(failed.timing.loadRemote, {
+    start: 1000,
+    end: 1035,
+    duration: 35
+  });
+  assert.equal(failed.bottleneck.type, "unknown");
+  assert.equal(failed.findings[0].id, "resolve-load-failure");
+  assert.equal(pending.outcome, "pending");
+  assert.deepEqual(pending.timing.loadRemote, {
+    start: 2000,
+    duration: 13
+  });
+  assert.deepEqual(pending.pageImpact, { trigger: "automatic" });
+  assert.equal(pending.findings[0].id, "complete-load-observation");
 });
 
 test("the injected collector is bounded and reads Manifest expose assets safely", () => {
@@ -302,21 +339,6 @@ function performanceSnapshot() {
         async: []
       }
     }],
-    loads: [],
-    renders: [{
-      id: "render-1",
-      instanceName: "@scope/catalog",
-      remote: "@scope/catalog",
-      expose: "./Button",
-      framework: "react",
-      start: 1135,
-      end: 1140,
-      duration: 5,
-      firstContent: 1145,
-      firstContentDuration: 10,
-      firstContentElement: "div.hero",
-      containsLcpElement: true,
-      status: "content-observed"
-    }]
+    loads: []
   };
 }

@@ -36,7 +36,7 @@ conclusions.
 - Use `module-info [remote]` for the current declaration and resolved metadata
   of one Remote.
 - Use `module-perf [remote/expose]` for observed producer-module loading,
-  expose resources, rendering, page paint impact, and optimization advice.
+  expose resources, page paint timing impact, and optimization advice.
 - Use `remote status <remote>` for a compact current Remote result.
 - Use `remote trace [remote/expose]` for a Remote load or preload timeline.
 - Use `shared status [package]` for the current Shared registry.

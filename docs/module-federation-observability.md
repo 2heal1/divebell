@@ -18,8 +18,10 @@ This command requires only `divebell open <url> --mf`; consumers and producers
 do not add Slardar, the observability plugin, or application callbacks for a
 one-off run. Divebell installs its bounded collector before navigation and
 combines official MF lifecycle evidence with browser paint, Resource Timing,
-interaction, and producer Bridge-render evidence. It analyzes actual page
-loads and never loads or renders a module merely to create another sample.
+and interaction evidence. It analyzes actual page loads and never loads or
+renders a module merely to create another sample. Module success means that
+the observed `loadRemote` operation finished successfully; the command does not
+claim that the consumer UI rendered or became ready.
 
 Without a target it covers every producer/expose load observed in the page. An
 MF Manifest is optional: get and factory timing remains available without one.

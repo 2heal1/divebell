@@ -40,7 +40,7 @@ export const modulePerformanceCommandMetadata = {
   path: ["module-perf"],
   usage: "divebell mf module-perf [remote/expose] [--mf <name>] [--instance <ref>]",
   summaryUsage: "divebell mf module-perf [remote/expose]",
-  description: "Measure observed producer module loading, expose resources, rendering, and page impact without reloading modules."
+  description: "Measure observed producer module loading, expose resources, and page timing impact without reloading modules."
 } as const satisfies MfCommandMetadata;
 
 export const bridgeTraceCommandMetadata = {

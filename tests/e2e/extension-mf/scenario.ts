@@ -125,13 +125,15 @@ export function registerMfExtensionE2e({
       assert.equal(measuredModule.expose, "./Widget");
       const operation = measuredModule.operations[0];
       assert.ok(operation !== undefined);
-      assert.equal(typeof operation.timing.requested, "number");
+      assert.equal(typeof operation.timing.loadRemote.start, "number");
+      assert.equal(typeof operation.timing.loadRemote.end, "number");
+      assert.equal(typeof operation.timing.loadRemote.duration, "number");
       assert.ok(
         operation.timing.get !== undefined,
         JSON.stringify(modulePerformance.json.data)
       );
       assert.equal(typeof operation.timing.get.duration, "number");
-      assert.equal(operation.pageImpact.rendering, "not-observed");
+      assert.equal(typeof operation.pageImpact.trigger, "string");
       assert.equal(operation.manifest.status, "available");
       assert.ok(operation.manifest.assets.some((asset) =>
         asset.kind === "sync" && asset.match === "matched" &&

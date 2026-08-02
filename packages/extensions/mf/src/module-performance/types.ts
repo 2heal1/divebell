@@ -1,4 +1,3 @@
-import type { BridgeOperationTrace } from "../bridge/types.js";
 import type { RemoteTraceOutcome } from "../remote/types.js";
 import type { RuntimeRemote } from "../types.js";
 
@@ -42,28 +41,6 @@ export interface ModulePerformanceExposeAssetsSnapshot {
   };
 }
 
-export interface ModulePerformanceRenderSnapshot {
-  id: string;
-  instanceName: string;
-  instanceVersion?: string;
-  moduleName?: string;
-  remote?: string;
-  expose?: string;
-  framework: "react" | "vue" | "unknown";
-  start: number;
-  end?: number;
-  duration?: number;
-  firstContent?: number;
-  firstContentDuration?: number;
-  firstContentElement?: string;
-  containsLcpElement?: boolean;
-  status:
-    | "waiting-for-content"
-    | "content-observed"
-    | "render-returned"
-    | "destroyed";
-}
-
 export interface ModulePerformanceLoadSnapshot {
   id: string;
   requestId: string;
@@ -83,7 +60,6 @@ export interface ModulePerformanceBrowserSnapshot {
   resources: ModulePerformanceResourceSnapshot[];
   exposes: ModulePerformanceExposeAssetsSnapshot[];
   loads: ModulePerformanceLoadSnapshot[];
-  renders: ModulePerformanceRenderSnapshot[];
 }
 
 export interface ModulePerformanceInterval {
@@ -93,14 +69,10 @@ export interface ModulePerformanceInterval {
 }
 
 export interface ModulePerformanceTiming {
-  requested: number;
+  loadRemote: ModulePerformanceInterval;
   remoteEntry?: ModulePerformanceInterval;
   get?: ModulePerformanceInterval;
   factory?: ModulePerformanceInterval;
-  render?: ModulePerformanceInterval;
-  firstContent?: number;
-  getToRender?: number;
-  getToFirstContent?: number;
 }
 
 export interface ModulePerformanceAssetTiming {
@@ -136,10 +108,9 @@ export type ModulePerformanceTrigger =
 
 export interface ModulePerformancePageImpact {
   trigger: ModulePerformanceTrigger;
-  rendering: "observed" | "not-observed";
-  visibleBeforeLcp: boolean | "unknown";
-  containsLcpElement: boolean | "unknown";
-  confidence: "high" | "medium" | "low";
+  completedBeforeFp?: boolean;
+  completedBeforeFcp?: boolean;
+  completedBeforeLcp?: boolean;
 }
 
 export type ModulePerformanceBottleneckType =
@@ -147,7 +118,6 @@ export type ModulePerformanceBottleneckType =
   | "expose-resource"
   | "get"
   | "factory"
-  | "render"
   | "mixed"
   | "unknown";
 
@@ -223,7 +193,6 @@ export interface ModulePerformanceResult {
     moduleCount: number;
     operationCount: number;
     manifestModuleCount: number;
-    renderedOperationCount: number;
     unobservedRemoteCount: number;
   };
   modules: ModulePerformanceModule[];
@@ -236,9 +205,4 @@ export interface ModulePerformanceSelectors {
   target?: string;
   name?: string;
   instanceRef?: string;
-}
-
-export interface MatchedRender {
-  bridge?: BridgeOperationTrace;
-  visual?: ModulePerformanceRenderSnapshot;
 }

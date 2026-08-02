@@ -8,7 +8,6 @@ export function createModulePerformanceInitScript(): string {
     key: PERFORMANCE_KEY,
     maxInteractions: 50,
     maxLoads: 500,
-    maxRenders: 300,
     maxResources: 1_000,
     pluginName: PERFORMANCE_PLUGIN_NAME
   })});`;
@@ -57,9 +56,7 @@ export function isModulePerformanceBrowserSnapshot(
     Array.isArray(value.exposes) && value.exposes.length <= 500 &&
     value.exposes.every(isExpose) &&
     Array.isArray(value.loads) && value.loads.length <= 500 &&
-    value.loads.every(isLoad) &&
-    Array.isArray(value.renders) && value.renders.length <= 300 &&
-    value.renders.every(isRender);
+    value.loads.every(isLoad);
 }
 
 function isLoad(value: unknown): boolean {
@@ -100,22 +97,6 @@ function isExpose(value: unknown): boolean {
     stringArray(value.js.sync) && stringArray(value.js.async);
 }
 
-function isRender(value: unknown): boolean {
-  return isRecord(value) && optionalString(value.id, 200) && value.id !== undefined &&
-    optionalString(value.instanceName, 240) && value.instanceName !== undefined &&
-    optionalString(value.instanceVersion, 120) &&
-    optionalString(value.moduleName, 240) && optionalString(value.remote, 240) &&
-    optionalString(value.expose, 240) && optionalString(value.firstContentElement, 200) &&
-    (value.containsLcpElement === undefined ||
-      typeof value.containsLcpElement === "boolean") && finite(value.start) &&
-    optionalFinite(value.end) && optionalFinite(value.duration) &&
-    optionalFinite(value.firstContent) &&
-    optionalFinite(value.firstContentDuration) &&
-    ["react", "vue", "unknown"].includes(String(value.framework)) &&
-    ["waiting-for-content", "content-observed", "render-returned", "destroyed"]
-      .includes(String(value.status));
-}
-
 function stringArray(value: unknown): boolean {
   return Array.isArray(value) && value.length <= 200 &&
     value.every((item) => optionalString(item, 4_096) && item !== undefined);
@@ -142,7 +123,6 @@ function installModulePerformance(options: {
   key: string;
   maxInteractions: number;
   maxLoads: number;
-  maxRenders: number;
   maxResources: number;
   pluginName: string;
 }): void {
@@ -193,7 +173,6 @@ function installModulePerformance(options: {
   let fp: number | undefined;
   let fcp: number | undefined;
   let lcp: number | undefined;
-  let lcpElement: any;
   let lcpFinal = false;
   const observers: any[] = [];
   const observe = (type: string, callback: (entry: any) => void) => {
@@ -218,7 +197,6 @@ function installModulePerformance(options: {
   observe("largest-contentful-paint", (entry) => {
     if (lcpFinal) return;
     lcp = entry.startTime;
-    lcpElement = entry.element;
   });
   try {
     performance?.setResourceTimingBufferSize?.(options.maxResources);
@@ -255,7 +233,6 @@ function installModulePerformance(options: {
           for (const entry of observer.takeRecords?.() ?? []) {
             if (entry.entryType === "largest-contentful-paint") {
               lcp = entry.startTime;
-              lcpElement = entry.element;
             }
           }
         } catch {
@@ -268,103 +245,7 @@ function installModulePerformance(options: {
   }
 
   const loads: any[] = [];
-  const renders: any[] = [];
-  const byContext = new WeakMap<object, any>();
-  const byRoot = new WeakMap<object, any>();
   let loadSequence = 0;
-  let sequence = 0;
-  const isElement = (value: any) =>
-    value !== null && typeof value === "object" && value.nodeType === 1;
-  const visible = (element: any) => {
-    try {
-      const style = root.getComputedStyle?.(element);
-      if (style?.display === "none" || style?.visibility === "hidden" ||
-          style?.opacity === "0") return false;
-      const rect = element.getBoundingClientRect?.();
-      return rect === undefined || rect.width > 0 || rect.height > 0;
-    } catch {
-      return true;
-    }
-  };
-  const hasBackgroundImage = (element: any) => {
-    try {
-      const image = root.getComputedStyle?.(element)?.backgroundImage;
-      return typeof image === "string" && image !== "none" && image.length > 0;
-    } catch {
-      return false;
-    }
-  };
-  const findContent = (value: any): any => {
-    const element = isElement(value) ? value : value?.parentElement;
-    if (!isElement(element)) return undefined;
-    const tag = String(element.tagName ?? "").toLowerCase();
-    if (["script", "style", "link", "meta", "title", "noscript"]
-      .includes(tag) || !visible(element)) return undefined;
-    if (["img", "picture", "svg", "canvas", "video", "object"].includes(tag) ||
-        hasBackgroundImage(element) ||
-        String(element.textContent ?? "").trim().length > 0) return element;
-    for (const child of Array.from(element.children ?? [])) {
-      const match = findContent(child);
-      if (match) return match;
-    }
-    return undefined;
-  };
-  const describeElement = (element: any) => {
-    const tag = String(element?.tagName ?? "element").toLowerCase();
-    const id = typeof element?.id === "string" && element.id.length > 0
-      ? `#${element.id.slice(0, 80)}`
-      : "";
-    const classes = typeof element?.className === "string"
-      ? element.className.trim().split(/\s+/).filter(Boolean).slice(0, 2)
-        .map((item: string) => `.${item.slice(0, 60)}`).join("")
-      : "";
-    return `${tag}${id}${classes}`.slice(0, 200);
-  };
-  const finishContent = (record: any, element: any) => {
-    if (record.firstContent !== undefined) return;
-    const finished = now();
-    record.firstContent = epoch(finished);
-    record.firstContentDuration = Math.max(0, finished - record.startedMonotonic);
-    record.firstContentElement = describeElement(element);
-    record.status = "content-observed";
-    record.observer?.disconnect?.();
-  };
-  const startContentObserver = (record: any, target: any) => {
-    const Observer = root.MutationObserver;
-    if (typeof Observer !== "function") return;
-    try {
-      const observer = new Observer((mutations: any[]) => {
-        for (const mutation of mutations) {
-          for (const node of Array.from(mutation.addedNodes ?? [])) {
-            const content = findContent(node);
-            if (content) {
-              finishContent(record, content);
-              return;
-            }
-          }
-          const content = findContent(mutation.target);
-          if (content) {
-            finishContent(record, content);
-            return;
-          }
-        }
-      });
-      observer.observe(target, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-      record.observer = observer;
-    } catch {
-      // The target stopped being observable.
-    }
-  };
-  const appendRender = (record: any) => {
-    renders.push(record);
-    if (renders.length <= options.maxRenders) return;
-    const removed = renders.splice(0, renders.length - options.maxRenders);
-    for (const item of removed) item.observer?.disconnect?.();
-  };
   const appendLoad = (record: any) => {
     loads.push(record);
     if (loads.length > options.maxLoads) {
@@ -433,67 +314,6 @@ function installModulePerformance(options: {
         );
       }
       record.outcome = args?.error === undefined ? "success" : "error";
-    },
-    beforeBridgeRender(args: any, context: any) {
-      const target = args?.dom;
-      if (context?.side !== "producer" || context?.operation !== "render" ||
-          !isElement(target)) return args;
-      const startedMonotonic = now();
-      sequence += 1;
-      const record = {
-        id: `module-render-${sequence}`,
-        instanceName: String(instance?.options?.name ?? instance?.name ?? "unknown")
-          .slice(0, 240),
-        ...(safeText(instance?.options?.version, 120) === undefined
-          ? {}
-          : { instanceVersion: safeText(instance.options.version, 120) }),
-        ...(safeText(args?.moduleName ?? context?.moduleName, 240) === undefined
-          ? {}
-          : { moduleName: safeText(args?.moduleName ?? context?.moduleName, 240) }),
-        ...(safeText(context?.remote ?? args?.remote, 240) === undefined
-          ? {}
-          : { remote: safeText(context?.remote ?? args?.remote, 240) }),
-        ...(safeText(context?.expose ?? args?.expose, 240) === undefined
-          ? {}
-          : { expose: safeText(context?.expose ?? args?.expose, 240) }),
-        framework: context?.framework === "react" || context?.framework === "vue"
-          ? context.framework
-          : "unknown",
-        start: epoch(startedMonotonic),
-        startedMonotonic,
-        contextRef: context && typeof context === "object" ? context : undefined,
-        targetRef: target,
-        status: "waiting-for-content"
-      };
-      appendRender(record);
-      if (record.contextRef) byContext.set(record.contextRef, record);
-      byRoot.set(target, record);
-      startContentObserver(record, target);
-      return args;
-    },
-    afterBridgeRender(args: any, result: any) {
-      const context = result?.context;
-      const target = args?.dom;
-      const record = context && typeof context === "object"
-        ? byContext.get(context)
-        : isElement(target)
-          ? byRoot.get(target)
-          : undefined;
-      if (!record) return args;
-      const finished = now();
-      record.end = epoch(finished);
-      record.duration = Math.max(0, finished - record.startedMonotonic);
-      if (record.firstContent === undefined) record.status = "render-returned";
-      return args;
-    },
-    beforeBridgeDestroy(args: any) {
-      const target = args?.dom;
-      const record = isElement(target) ? byRoot.get(target) : undefined;
-      if (record && record.firstContent === undefined) {
-        record.status = "destroyed";
-        record.observer?.disconnect?.();
-      }
-      return args;
     }
   });
 
@@ -656,36 +476,6 @@ function installModulePerformance(options: {
                 }
               }),
           outcome: record.outcome
-        })),
-        renders: renders.map((record) => ({
-          id: record.id,
-          instanceName: record.instanceName,
-          ...(record.instanceVersion === undefined
-            ? {}
-            : { instanceVersion: record.instanceVersion }),
-          ...(record.moduleName === undefined ? {} : { moduleName: record.moduleName }),
-          ...(record.remote === undefined ? {} : { remote: record.remote }),
-          ...(record.expose === undefined ? {} : { expose: record.expose }),
-          framework: record.framework,
-          start: relative(record.start),
-          ...(record.end === undefined ? {} : { end: relative(record.end) }),
-          ...(record.duration === undefined ? {} : { duration: record.duration }),
-          ...(record.firstContent === undefined
-            ? {}
-            : { firstContent: relative(record.firstContent) }),
-          ...(record.firstContentDuration === undefined
-            ? {}
-            : { firstContentDuration: record.firstContentDuration }),
-          ...(record.firstContentElement === undefined
-            ? {}
-            : { firstContentElement: record.firstContentElement }),
-          ...(lcpElement === undefined || !isElement(record.targetRef)
-            ? {}
-            : {
-                containsLcpElement: record.targetRef === lcpElement ||
-                  record.targetRef.contains?.(lcpElement) === true
-              }),
-          status: record.status
         }))
       };
     }

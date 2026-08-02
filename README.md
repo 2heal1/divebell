@@ -100,7 +100,7 @@ An Extension can identify applications, environments, and resources from the cur
 
 #### Official Extensions
 
-Focused capabilities are published as optional packages and installed only when needed. CLI Extensions add commands outside the page; in-application integrations expose facts that the framework already knows.
+Focused CLI capabilities are published as optional packages and installed only when needed.
 
 ##### CLI Extensions
 
@@ -120,15 +120,6 @@ divebell extensions add @divebell/extension-memory
 ```
 
 Installed Extension commands appear in `divebell --help` and run through the same CLI, browser sessions, and login state as the built-in commands.
-
-##### In-application integrations
-
-These packages are application dependencies that must be configured in the matching framework. They do not add `divebell` commands:
-
-| Package | Entry | Purpose | Guide |
-| --- | --- | --- | --- |
-| `@divebell/modern-plugin` | Modern.js runtime plugin (WIP) | Planned framework-state integration. Do not adopt it yet; it is waiting for a Modern.js release with the required lifecycle hooks. | [Modern.js Integration](./docs/modernjs-integration.md) |
-| `@module-federation/observability-plugin` | Module Federation runtime plugin | Let an MF application continuously record and upload consumer, remote, shared-dependency, and loading-error evidence. One-off Divebell debugging does not require it in the application. | [Module Federation Observability](./docs/module-federation-observability.md) |
 
 ### Runtime SDK
 

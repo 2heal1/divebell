@@ -371,7 +371,8 @@ function assertCodeUsagePresent(usage) {
   const observedScripts = phases.reduce((sum, phase) => sum + (phase.scriptsObserved ?? 0), 0);
   const matchedChunks = phases.reduce((sum, phase) => sum + (phase.chunks?.length ?? 0), 0);
   if (observedScripts > 0 && matchedChunks === 0) {
-    const unmatchedScripts = phases.reduce((sum, phase) => sum + (phase.unmatchedScriptUrls?.length ?? 0), 0);
+    const unmatchedScripts = phases.reduce((sum, phase) =>
+      sum + (phase.unmatchedScripts?.length ?? phase.unmatchedScriptUrls?.length ?? 0), 0);
     throw new Error(
       `Code analysis did not match the page files (${unmatchedScripts} files were unmatched). Confirm that the page server and dist/divebell-chunks.json come from the same production build.`
     );
@@ -441,7 +442,7 @@ function summarizePhase(phase) {
     label: phase.label,
     chunksObserved: phase.chunks.length,
     sourcesObserved: phase.sources.length,
-    unmatchedScripts: phase.unmatchedScriptUrls.length,
+    unmatchedScripts: phase.unmatchedScripts?.length ?? phase.unmatchedScriptUrls.length,
     largestPackages: phase.packages.slice(0, 8).map(compactUsage),
     lowUseInitialPackages: initialPackages
       .filter((item) => item.totalBytes >= 1024 && (item.usedRatio ?? 1) < 0.1)

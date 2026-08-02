@@ -18,6 +18,21 @@ The target build must produce an `divebell-chunks.json` file through `@divebell/
 
 ## Analyze recorded coverage
 
+To include page-ready time and loading memory, measure them before starting
+code coverage:
+
+```bash
+divebell open https://example.com/ --code-usage-experience
+# Wait for the application's explicit ready condition.
+divebell code-usage experience \
+  --output /tmp/first-screen.experience.json \
+  --label first-screen \
+  --ready-target "application ready"
+```
+
+This separate load prevents code coverage from changing the performance
+measurement.
+
 Record one or more representative phases with the base CLI:
 
 ```bash
@@ -36,8 +51,14 @@ divebell code-usage analyze \
   --chunk-map /path/to/dist/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --coverage /tmp/orders.coverage.json \
+  --experience /tmp/first-screen.experience.json \
+  --experience /tmp/orders.experience.json \
   --output /tmp/code-usage-report.json
 ```
+
+Experience files are optional, but when supplied their labels must match every
+coverage phase. Without them, the report hides readiness and memory instead of
+showing empty cards.
 
 The Chunk Map and asset base can be local paths or HTTP/HTTPS URLs. When
 JavaScript and source maps are not beside the Chunk Map, pass their directory
@@ -56,6 +77,10 @@ Use `--no-open` to create the report without opening it. For a large report, sta
 ```bash
 divebell code-usage serve /tmp/code-usage-report.json --port 4173
 ```
+
+The standalone report is an artifact set. Keep the generated HTML, its reported
+`dataPath`, and the neighboring `-code` directory together when moving or
+sharing it. The command result prints all generated paths.
 
 “Unused” means that code did not execute during the recorded journeys. It does not prove that the code can be removed.
 

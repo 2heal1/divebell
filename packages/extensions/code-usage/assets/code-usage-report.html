@@ -129,6 +129,15 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       margin-bottom: 16px;
     }
+    .coverage-scope { margin-bottom: 16px; padding: 15px 18px; }
+    .coverage-scope-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .coverage-scope-summary { margin-top: 5px; color: var(--muted-foreground); font-size: 13px; }
+    .unmatched-scripts { margin-top: 11px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .unmatched-scripts summary { color: var(--foreground); cursor: pointer; font-size: 13px; font-weight: 500; }
+    .unmatched-script-list { max-height: 260px; margin: 10px 0 0; padding: 0; overflow: auto; list-style: none; }
+    .unmatched-script-list li { padding: 7px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; font-size: 12px; }
+    .unmatched-script-list li:first-child { border-top: 0; }
+    .unmatched-script-note { display: block; margin-top: 2px; color: var(--muted-foreground); }
     .experience-stats {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -856,15 +865,15 @@
   <main id="divebell-code-usage-report" class="shell">
     <header class="heading">
       <div>
-        <h1>Page experience report</h1>
-        <p class="subtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
+        <h1 id="report-title">Page experience report</h1>
+        <p id="report-subtitle" class="subtitle">Page readiness, JavaScript heap memory, resource loading, and code usage</p>
       </div>
       <div class="heading-actions">
         <p id="report-meta" class="meta">Loading report…</p>
       </div>
     </header>
 
-    <section class="experience-stats" aria-label="Page experience summary">
+    <section id="experience-summary" class="experience-stats" aria-label="Page experience summary">
       <article class="card experience-stat">
         <div class="stat-label">Page ready time</div>
         <div id="ready-duration" class="stat-value">—</div>
@@ -882,7 +891,7 @@
       </article>
     </section>
 
-    <section class="card panel experience-panel" aria-label="Loading process">
+    <section id="experience-loading" class="card panel experience-panel" aria-label="Loading process">
       <div class="panel-head">
         <div>
           <h2>Loading process</h2>
@@ -903,7 +912,7 @@
       <article class="card panel">
         <div class="panel-head">
           <h2>Metric summary</h2>
-          <span class="hint">Loading, memory, and code usage results</span>
+          <span id="metric-summary-hint" class="hint">Loading, memory, and code usage results</span>
         </div>
         <div id="findings" class="findings"></div>
       </article>
@@ -926,7 +935,7 @@
         <h2>Code usage analysis</h2>
         <span class="info-tooltip">
           <button type="button" class="info-trigger" aria-label="About code usage analysis" aria-describedby="code-usage-help">?</button>
-          <span id="code-usage-help" class="info-content" role="tooltip">Mapped, executed, and unexecuted JavaScript size and usage ratio for each phase.</span>
+          <span id="code-usage-help" class="info-content" role="tooltip">Built-file size for chunks, source-mapped size for files and dependencies, and execution usage for each phase.</span>
         </span>
       </div>
     </div>
@@ -956,9 +965,21 @@
       </label>
     </section>
 
+    <section class="card coverage-scope" aria-label="Coverage scope">
+      <div class="coverage-scope-head">
+        <h2>Coverage scope</h2>
+        <span class="hint">Only scripts matched to this build are included in size totals</span>
+      </div>
+      <p id="coverage-scope-summary" class="coverage-scope-summary">—</p>
+      <details id="unmatched-script-details" class="unmatched-scripts" hidden>
+        <summary id="unmatched-script-summary">Scripts outside this build</summary>
+        <ul id="unmatched-script-list" class="unmatched-script-list"></ul>
+      </details>
+    </section>
+
     <section class="stats card" aria-label="Phase summary">
       <article class="stat">
-        <div class="stat-label">Mapped size</div>
+        <div id="total-size-label" class="stat-label">Source-mapped size</div>
         <div id="total-size" class="stat-value">—</div>
         <div id="item-count" class="stat-note"></div>
       </article>
@@ -1042,6 +1063,14 @@
         const experience = report.experience && Array.isArray(report.experience.phases)
           ? report.experience
           : { mode: "unknown", phases: [] };
+        const hasExperience = experience.phases.length > 0;
+        if (!hasExperience) {
+          document.getElementById("report-title").textContent = formatText("Code usage report");
+          document.getElementById("report-subtitle").textContent = formatText("Loaded and executed JavaScript by build chunk, source file, and dependency");
+          document.getElementById("experience-summary").hidden = true;
+          document.getElementById("experience-loading").hidden = true;
+          document.getElementById("metric-summary-hint").textContent = formatText("Code usage results");
+        }
         const codeViewers = Array.isArray(usage.codeViewers) ? usage.codeViewers : [];
         const codeViewerByFile = new Map(codeViewers
           .filter((viewer) => viewer && typeof viewer.file === "string" && typeof viewer.href === "string")
@@ -1089,7 +1118,15 @@
             total: item.totalBytes || 0,
             used: item.usedBytes || 0,
             ratio: numberOrNull(item.usedRatio),
-            detail: (item.files || []).join(" · "),
+            detail: [
+              (item.files || []).join(" · "),
+              Number.isFinite(item.mappedBytes)
+                ? formatText("Source-mapped {mapped} · Unmapped {unmapped}", {
+                  mapped: formatBytes(item.mappedBytes),
+                  unmapped: formatBytes(item.unmappedBytes || 0)
+                })
+                : ""
+            ].filter(Boolean).join(" · "),
             codeViewers: (item.files || []).flatMap((file) => {
               const viewer = codeViewerByFile.get(file);
               return viewer ? [viewer] : [];
@@ -1240,22 +1277,24 @@
           const used = (phase.chunks || []).reduce((sum, chunk) => sum + (chunk.usedBytes || 0), 0);
           const unused = Math.max(0, total - used);
           const ready = numberOrNull(phaseExperience && phaseExperience.readyDurationMs);
-          if (ready !== null) {
-            appendFinding(
-              container,
-              formatText("Page ready in {time}", {
-                time: formatMilliseconds(ready)
-              }),
-              formatText("Measurement ended at {target}=ready.", {
-                target: phaseExperience.readyTarget || formatText("readiness target")
-              })
-            );
-          } else {
-            appendFinding(
-              container,
-              formatText("Page ready time unavailable"),
-              formatText("This report does not include page ready time.")
-            );
+          if (hasExperience) {
+            if (ready !== null) {
+              appendFinding(
+                container,
+                formatText("Page ready in {time}", {
+                  time: formatMilliseconds(ready)
+                }),
+                formatText("Measurement ended at {target}=ready.", {
+                  target: phaseExperience.readyTarget || formatText("readiness target")
+                })
+              );
+            } else {
+              appendFinding(
+                container,
+                formatText("Page ready time unavailable"),
+                formatText("This report does not include page ready time.")
+              );
+            }
           }
           appendFinding(
             container,
@@ -1266,20 +1305,22 @@
                 ratio: formatPercent(used / total)
               })
           );
-          const memory = phaseExperience && phaseExperience.memory || {};
-          const peak = numberOrNull(memory.peakBytes);
-          const stable = numberOrNull(memory.stableBytes);
-          appendFinding(
-            container,
-            peak === null
-              ? formatText("JavaScript heap peak unavailable")
-              : formatText("Peak JavaScript heap {memory}", {
-                memory: formatBytes(peak)
-              }),
-            stable === null
-              ? formatText("This report does not include memory after stabilization.")
-              : formatText("JavaScript heap after stabilization {memory}.", { memory: formatBytes(stable) })
-          );
+          if (hasExperience) {
+            const memory = phaseExperience && phaseExperience.memory || {};
+            const peak = numberOrNull(memory.peakBytes);
+            const stable = numberOrNull(memory.stableBytes);
+            appendFinding(
+              container,
+              peak === null
+                ? formatText("JavaScript heap peak unavailable")
+                : formatText("Peak JavaScript heap {memory}", {
+                  memory: formatBytes(peak)
+                }),
+              stable === null
+                ? formatText("This report does not include memory after stabilization.")
+                : formatText("JavaScript heap after stabilization {memory}.", { memory: formatBytes(stable) })
+            );
+          }
         };
 
         const renderChunkDiagnostics = (phase, phaseExperience) => {
@@ -1328,6 +1369,52 @@
           }
         };
 
+        const renderCoverageScope = (phase) => {
+          const observed = Number.isFinite(phase.scriptsObserved) ? phase.scriptsObserved : 0;
+          const unmatchedScripts = Array.isArray(phase.unmatchedScripts)
+            ? phase.unmatchedScripts
+            : (phase.unmatchedScriptUrls || []).map((url) => ({
+              scriptId: "",
+              url,
+              category: classifyScriptUrl(url),
+              reason: "not-found"
+            }));
+          const matched = Number.isFinite(phase.scriptsMatched)
+            ? phase.scriptsMatched
+            : Math.max(0, observed - unmatchedScripts.length);
+          const withoutUrl = Number.isFinite(phase.scriptsWithoutUrl) ? phase.scriptsWithoutUrl : 0;
+          document.getElementById("coverage-scope-summary").textContent = formatText(
+            "{observed} scripts with an address · {matched} matched to this build · {outside} outside this build · {anonymous} without an address",
+            {
+              observed,
+              matched,
+              outside: unmatchedScripts.length,
+              anonymous: withoutUrl
+            }
+          );
+
+          const details = document.getElementById("unmatched-script-details");
+          const list = document.getElementById("unmatched-script-list");
+          list.replaceChildren();
+          details.hidden = unmatchedScripts.length === 0;
+          document.getElementById("unmatched-script-summary").textContent = formatText(
+            "{count} scripts outside this build",
+            { count: unmatchedScripts.length }
+          );
+          for (const script of unmatchedScripts) {
+            const item = document.createElement("li");
+            item.append(document.createTextNode(script.url || formatText("Anonymous script")));
+            const note = document.createElement("span");
+            note.className = "unmatched-script-note";
+            note.textContent = formatText("{category} · {reason}", {
+              category: scriptCategoryLabel(script.category),
+              reason: scriptReasonLabel(script.reason)
+            });
+            item.append(note);
+            list.append(item);
+          }
+        };
+
         let renderVersion = 0;
         const render = () => {
           const version = ++renderVersion;
@@ -1345,14 +1432,18 @@
             phase,
             experience.phases.find((item) => item && item.label === phase.label) || null
           );
+          renderCoverageScope(phase);
 
+          document.getElementById("total-size-label").textContent = state.view === "chunks"
+            ? formatText("Built file size")
+            : formatText("Source-mapped size");
           document.getElementById("total-size").textContent = formatBytes(total);
           document.getElementById("item-count").textContent = formatText("{count} {items}", { count: allItems.length, items: viewLabel(state.view) });
           document.getElementById("used-percent").textContent = formatPercent(total === 0 ? null : used / total);
           document.getElementById("used-size").textContent = formatText("{size} executed", { size: formatBytes(used) });
           document.getElementById("candidate-count").textContent = String(candidates.length);
           document.getElementById("list-title").textContent = formatText("{items} usage", { items: viewLabel(state.view) });
-          const visibleItems = items.slice(0, 40);
+          const visibleItems = items;
           document.getElementById("list-count").textContent = formatText("Preparing 0 / {count}", { count: visibleItems.length });
 
           rowsElement.replaceChildren();
@@ -1360,9 +1451,11 @@
           if (visibleItems.length === 0) {
             const empty = document.createElement("div");
             empty.className = "empty";
-            const unmatchedCount = Array.isArray(phase.unmatchedScriptUrls)
-              ? phase.unmatchedScriptUrls.length
-              : 0;
+            const unmatchedCount = Array.isArray(phase.unmatchedScripts)
+              ? phase.unmatchedScripts.length
+              : Array.isArray(phase.unmatchedScriptUrls)
+                ? phase.unmatchedScriptUrls.length
+                : 0;
             const hasNoUsageData = (phase.chunks || []).length === 0
               && (phase.sources || []).length === 0
               && (phase.packages || []).length === 0;
@@ -1693,6 +1786,26 @@
       function kindLabel(kind) {
         const labels = { application: "Application", workspace: "Workspace", "third-party": "Third-party", runtime: "Runtime", unknown: "Unknown" };
         return labels[kind] || labels.unknown;
+      }
+      function classifyScriptUrl(value) {
+        const url = String(value || "");
+        if (url.startsWith("http://") || url.startsWith("https://")) return "network";
+        if (url.startsWith("blob:") || url.startsWith("data:")) return "generated";
+        if (url.startsWith("about:")) return "inline";
+        return "other";
+      }
+      function scriptCategoryLabel(category) {
+        const labels = { network: "Network script", generated: "Generated script", inline: "Inline document", other: "Other script" };
+        return labels[category] || labels.other;
+      }
+      function scriptReasonLabel(reason) {
+        const labels = {
+          "not-found": "Not present in this build map",
+          ambiguous: "Matches more than one build file",
+          "build-mismatch": "Build identifier does not match",
+          "asset-unavailable": "Matching build file is unavailable"
+        };
+        return labels[reason] || labels["not-found"];
       }
       function viewLabel(view) {
         const labels = { application: "Application code", packages: "Dependencies", sources: "Files", chunks: "Chunks" };

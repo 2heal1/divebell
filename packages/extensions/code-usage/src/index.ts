@@ -5,6 +5,7 @@ import type {
 } from "@divebell/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
+import { captureCodeUsageExperience } from "./experience.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
 import {
   startCodeUsageReportServer,
@@ -16,6 +17,9 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   if (action === "analyze") {
     return await runAnalyze(options.args);
   }
+  if (action === "experience") {
+    return await runExperience(options);
+  }
   if (action === "report") {
     return await runCodeUsageReportCommand(options.args);
   }
@@ -25,11 +29,17 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
     kind: "validation",
-    message: "code-usage requires analyze, report, or serve.",
-    hint: "Run `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`."
+    message: "code-usage requires experience, analyze, report, or serve.",
+    hint: "Run `divebell code-usage experience ...`, `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`."
   });
 }
 export { analyzeCodeUsageFiles } from "./code-usage.js";
+export {
+  captureCodeUsageExperience,
+  isCodeUsageExperienceEnabled,
+  openCodeUsageExperience,
+  PAGE_EXPERIENCE_INIT_SCRIPT
+} from "./experience.js";
 export {
   createCodeUsageReportHtml,
   openHtmlReport,
@@ -54,6 +64,7 @@ async function runAnalyze(
   }
   const chunkMap = requireOption(args, "chunk-map");
   const coverage = getOptionValues(args, "coverage");
+  const experience = getOptionValues(args, "experience");
   if (coverage.length === 0) {
     throw commandError({
       code: "CODE_USAGE_COVERAGE_REQUIRED",
@@ -67,12 +78,14 @@ async function runAnalyze(
     const result = await analyzeCodeUsageFiles({
       chunkMap,
       coverage,
+      ...(experience.length === 0 ? {} : { experience }),
       ...optionalString("assets", getOptionValue(args, "assets")),
       ...optionalString("output", getOptionValue(args, "output"))
     });
     return {
       chunkMap: result.chunkMap,
       coverage: result.coverage,
+      experience: result.experience,
       assets: result.assets,
       output: result.output,
       phaseCount: result.phaseCount
@@ -82,6 +95,54 @@ async function runAnalyze(
       code: "CODE_USAGE_ANALYSIS_FAILED",
       kind: "validation",
       message: errorMessage(error)
+    });
+  }
+}
+
+async function runExperience(
+  options: CliExtensionRunOptions
+): Promise<unknown> {
+  if (options.args.command.length !== 2) {
+    throw commandError({
+      code: "CODE_USAGE_EXPERIENCE_USAGE_INVALID",
+      kind: "validation",
+      message: "Page-experience capture accepts options instead of positional paths.",
+      hint: "Run `divebell code-usage experience --output <path> --label <name>`."
+    });
+  }
+  const outputPath = getOptionValue(options.args, "output")
+    ?? "divebell-page-experience.json";
+  const label = getOptionValue(options.args, "label") ?? "first-screen";
+  const readyTarget = getOptionValue(options.args, "ready-target")
+    ?? "explicit page-ready condition";
+  const settleMs = parseSettleMs(getOptionValue(options.args, "settle-ms"));
+  try {
+    const result = await captureCodeUsageExperience(options.divebell.browser, {
+      outputPath,
+      label,
+      readyTarget,
+      settleMs
+    });
+    return {
+      output: result.outputPath,
+      label: result.phase.label,
+      url: result.phase.url,
+      readyDurationMs: result.phase.readyDurationMs,
+      memoryAtReadyBytes: result.phase.memory.atReadyBytes,
+      peakMemoryBytes: result.phase.memory.peakBytes,
+      stableMemoryBytes: result.phase.memory.stableBytes
+    };
+  } catch (error) {
+    const message = errorMessage(error);
+    throw commandError({
+      code: "CODE_USAGE_EXPERIENCE_CAPTURE_FAILED",
+      kind: "validation",
+      message,
+      ...(message.includes("recorder is missing")
+        ? {
+            hint: "Reopen the page with `divebell open <url> --code-usage-experience`, wait for the explicit ready condition, then retry."
+          }
+        : {})
     });
   }
 }
@@ -204,6 +265,19 @@ function parsePort(value: string | undefined): number | undefined {
     });
   }
   return port;
+}
+
+function parseSettleMs(value: string | undefined): number {
+  if (value === undefined) return 500;
+  const milliseconds = Number(value);
+  if (!Number.isInteger(milliseconds) || milliseconds < 0 || milliseconds > 60_000) {
+    throw commandError({
+      code: "CODE_USAGE_EXPERIENCE_SETTLE_INVALID",
+      kind: "validation",
+      message: `Invalid settle time ${JSON.stringify(value)}. Use a whole number from 0 to 60000 milliseconds.`
+    });
+  }
+  return milliseconds;
 }
 
 function commandError(options: {

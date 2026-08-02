@@ -10,7 +10,12 @@ import {
   type DivebellSourceMap
 } from "@divebell/chunk-map";
 
-import type { AnalyzeCodeUsageFilesOptions, AnalyzeCodeUsageFilesResult } from "./types.js";
+import type {
+  AnalyzeCodeUsageFilesOptions,
+  AnalyzeCodeUsageFilesResult,
+  CodeUsageCombinedReport,
+  CodeUsageExperiencePhase
+} from "./types.js";
 export type { AnalyzeCodeUsageFilesOptions, AnalyzeCodeUsageFilesResult } from "./types.js";
 
 export async function analyzeCodeUsageFiles(
@@ -28,6 +33,9 @@ export async function analyzeCodeUsageFiles(
   const coverageLocations = options.coverage.map((location) => resolve(location));
   const checkpoints = await Promise.all(coverageLocations.map(async (location) =>
     validateCoverageCheckpoint(await readJson(location), location)));
+  const experienceLocations = (options.experience ?? []).map(resolveInputLocation);
+  const experiencePhases = await Promise.all(experienceLocations.map(async (location) =>
+    validateExperiencePhase(await readJson(location), location)));
   const analyzableAssetCount = chunkMap.chunks.flatMap((chunk) => chunk.assets)
     .filter((asset) => asset.file.endsWith(".js") && asset.sourceMap !== null)
     .length;
@@ -38,17 +46,59 @@ export async function analyzeCodeUsageFiles(
   }
   const assets = await readAnalysisAssets(chunkMap, checkpoints, assetBase);
 
-  const report = analyzeDivebellCodeUsage({ chunkMap, checkpoints, assets });
+  const usage = analyzeDivebellCodeUsage({ chunkMap, checkpoints, assets });
+  const report = combineCodeUsageAndExperience(usage, experiencePhases);
   const output = resolve(options.output ?? "divebell-code-usage.json");
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return {
     chunkMap: chunkMapLocation,
     coverage: coverageLocations,
+    experience: experienceLocations,
     assets: assetBase,
     output,
-    phaseCount: report.phases.length,
+    phaseCount: usage.phases.length,
     report
+  };
+}
+
+function combineCodeUsageAndExperience(
+  usage: ReturnType<typeof analyzeDivebellCodeUsage>,
+  experiencePhases: CodeUsageExperiencePhase[]
+): ReturnType<typeof analyzeDivebellCodeUsage> | CodeUsageCombinedReport {
+  if (experiencePhases.length === 0) return usage;
+  const phasesByLabel = new Map<string, CodeUsageExperiencePhase>();
+  for (const phase of experiencePhases) {
+    if (phasesByLabel.has(phase.label)) {
+      throw new Error(`More than one page-experience file uses label ${JSON.stringify(phase.label)}.`);
+    }
+    phasesByLabel.set(phase.label, phase);
+  }
+  const usageLabels = new Set(usage.phases.map((phase) => phase.label));
+  const unexpected = [...phasesByLabel.keys()].filter((label) => !usageLabels.has(label));
+  const missing = [...usageLabels].filter((label) => !phasesByLabel.has(label));
+  if (unexpected.length > 0 || missing.length > 0) {
+    throw new Error(
+      `Page-experience labels must exactly match coverage labels. Missing: ${missing.join(", ") || "none"}; unexpected: ${unexpected.join(", ") || "none"}.`
+    );
+  }
+  const phases = usage.phases.map((phase) => {
+    const experience = phasesByLabel.get(phase.label);
+    if (experience === undefined) {
+      throw new Error(`Missing page-experience data for ${phase.label}.`);
+    }
+    return experience;
+  });
+  return {
+    schemaVersion: 1,
+    url: phases[0]?.url ?? "",
+    capturedAt: new Date().toISOString(),
+    experience: {
+      mode: "current",
+      runCount: 1,
+      phases
+    },
+    usage
   };
 }
 
@@ -161,6 +211,26 @@ function validateCoverageCheckpoint(
     throw new Error(`Coverage checkpoint ${location} must contain a scripts array.`);
   }
   return value as unknown as DivebellCoverageCheckpoint;
+}
+
+function validateExperiencePhase(
+  value: unknown,
+  location: string
+): CodeUsageExperiencePhase {
+  if (
+    !isRecord(value)
+    || value.schemaVersion !== 1
+    || typeof value.label !== "string"
+    || value.label.length === 0
+    || typeof value.url !== "string"
+    || !isRecord(value.navigation)
+    || !isRecord(value.memory)
+    || !Array.isArray(value.memorySamples)
+    || !Array.isArray(value.resources)
+  ) {
+    throw new Error(`Page-experience file ${location} is invalid.`);
+  }
+  return value as unknown as CodeUsageExperiencePhase;
 }
 
 function validateSourceMap(value: unknown, location: string): DivebellSourceMap {

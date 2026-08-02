@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { DIVEBELL_SESSION_QUERY_PARAM } from "@divebell/core";
 
 import type { CliOperationLogEntry, CliOperationLogStore } from "../types/shared.js";
+import { resolveDivebellHomeDirectory } from "./home.js";
 export type { CliOperationLogEntry, CliOperationLogStore } from "../types/shared.js";
 
 export function createFileOperationLogStore(
@@ -40,7 +40,7 @@ export function createFileOperationLogStore(
 }
 
 export function createDefaultOperationLogDirectory(): string {
-  return join(homedir(), ".divebell", "operations");
+  return join(resolveDivebellHomeDirectory(), "operations");
 }
 
 export function createOperationLogKey(cwd: string): string {

@@ -13,11 +13,13 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
-The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.1-divebell.1`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.1`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+
+When `~/.divebell` is not writable, the CLI automatically keeps its session and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory.
 
 `divebell setup` is a repeatable preparation command. It checks the environment and repairs browser startup only when needed. When the environment is already ready, it returns success without changing it.
 
-Setup reports the current Node.js version, browser source, and browser-reported version, then uses a temporary headless session to verify that Divebell can start its Bridge, open a blank page, and control the browser without changing the current project session. Divebell closes that temporary session when setup finishes and also applies a short idle timeout as a cleanup fallback.
+Setup reports the current Node.js version, browser source, and browser-reported version, then uses a temporary headless session to verify that Divebell can start its Bridge, open a local setup page, and control the browser without changing the current project session. Divebell closes that temporary session when setup finishes and also applies a short idle timeout as a cleanup fallback.
 
 Divebell first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, it opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. Setup closes only its own temporary tab; it does not close the user's browser or the Chrome settings tab opened for consent. Divebell downloads a managed Chrome for Testing browser only when no Chrome installation is found. Chrome's security consent still requires the user to approve it.
 

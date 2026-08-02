@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { resolveDivebellHomeDirectory } from "../../utils/home.js";
 const require = createRequire(import.meta.url);
 
 import type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserJsonResponse, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
@@ -127,7 +127,7 @@ function normalizeAgentBrowserRunResult(result: BrowserRunResult, args: string[]
 }
 
 export function createDefaultBrowserProfileDirectory(): string {
-  return join(homedir(), ".divebell", "browser-profile");
+  return join(resolveDivebellHomeDirectory(), "browser-profile");
 }
 
 export function resolveBrowserProfileDirectory(
@@ -135,7 +135,9 @@ export function resolveBrowserProfileDirectory(
   profileDirectory?: string
 ): string {
   return resolve(
-    profileDirectory ?? baseEnv[DIVEBELL_BROWSER_PROFILE_ENV] ?? createDefaultBrowserProfileDirectory()
+    profileDirectory
+      ?? baseEnv[DIVEBELL_BROWSER_PROFILE_ENV]
+      ?? join(resolveDivebellHomeDirectory(baseEnv), "browser-profile")
   );
 }
 

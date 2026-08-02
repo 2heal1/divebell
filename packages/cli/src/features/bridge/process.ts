@@ -1,5 +1,4 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -7,6 +6,7 @@ import { DIVEBELL_BRIDGE_DEFAULT_PORT } from "@divebell/core";
 import type { BridgeRuntimeInfo } from "@divebell/bridge";
 import type { Fetcher } from "../runtime/client.js";
 import { fetchRuntimes, selectRuntime } from "../runtime/client.js";
+import { resolveDivebellHomeDirectory } from "../../utils/home.js";
 
 import type { BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
 export type { BridgeStartOptions, BridgeStartResult, BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
@@ -107,7 +107,7 @@ function stopStartingBridge(pid: number | undefined): void {
 
 export function createFileBridgeStateStore(
   bridgeUrl: string,
-  stateDirectory = join(homedir(), ".divebell")
+  stateDirectory = resolveDivebellHomeDirectory()
 ): BridgeStateStore {
   const stateFile = join(stateDirectory, `${createStateFileName(bridgeUrl)}.json`);
   return {

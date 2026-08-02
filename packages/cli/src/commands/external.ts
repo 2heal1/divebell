@@ -1,6 +1,5 @@
 import { existsSync, statSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import type {
@@ -11,12 +10,12 @@ import type {
   ExternalExtensionModule,
   DivebellExtensionDefinition
 } from "../types/commands.js";
+import { resolveDivebellHomeDirectory } from "../utils/home.js";
 import { validateExtension } from "./definition.js";
 import { getInstalledExtensionEntryPaths } from "./installed.js";
 
 export type { ExtensionLoadRecord, ExternalExtensionLoadResult } from "../types/commands.js";
 
-const DEFAULT_EXTERNAL_EXTENSION_DIR = join(homedir(), ".divebell", "extensions");
 const EXTERNAL_EXTENSION_DIR_ENV = "DIVEBELL_EXTENSIONS_DIR";
 const DISABLE_EXTERNAL_EXTENSIONS_ENV = "DIVEBELL_DISABLE_EXTENSIONS";
 
@@ -30,7 +29,10 @@ export async function loadExternalCliExtensions(options: {
     return { extensions: [], records: [] };
   }
 
-  const directory = resolve(env[EXTERNAL_EXTENSION_DIR_ENV] ?? DEFAULT_EXTERNAL_EXTENSION_DIR);
+  const directory = resolve(
+    env[EXTERNAL_EXTENSION_DIR_ENV]
+      ?? join(resolveDivebellHomeDirectory(env), "extensions")
+  );
   if (!existsSync(directory)) {
     return { extensions: [], records: [] };
   }

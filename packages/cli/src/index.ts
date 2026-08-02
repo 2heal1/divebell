@@ -46,6 +46,10 @@ export {
 } from "./features/browser/runner.js";
 export type * from "./features/browser/runner.js";
 export {
+  DIVEBELL_HOME_ENV,
+  resolveDivebellHomeDirectory
+} from "./utils/home.js";
+export {
   fetchRuntimeResource,
   fetchRuntimes,
   normalizeBridgeUrl,

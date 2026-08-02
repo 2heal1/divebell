@@ -30,7 +30,7 @@ import {
 } from "../utils/output.js";
 import { openBrowserPage } from "./browser.js";
 
-const SETUP_URL = "about:blank";
+const SETUP_URL = "data:text/html,%3Ctitle%3EDivebell%20Setup%3C/title%3E";
 const EXISTING_CHROME_CONNECT_ATTEMPTS = 30;
 const EXISTING_CHROME_CONNECT_INTERVAL_MS = 2000;
 const CHECK_BROWSER_IDLE_TIMEOUT_MS = 5000;
@@ -449,10 +449,7 @@ async function runBrowserProbe(
       SETUP_URL,
       bridgeUrl,
       [],
-      {
-        ...browserOptions,
-        reuseInitialBlankPage: true
-      }
+      browserOptions
     );
   } catch (error) {
     return {

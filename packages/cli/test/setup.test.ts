@@ -50,7 +50,10 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
     browserRun: async (args, options) => {
       browserCalls.push({ args, options });
       if (args[0] === "open") {
-        assert.equal(args[1], "about:blank");
+        assert.equal(
+          args[1],
+          "data:text/html,%3Ctitle%3EDivebell%20Setup%3C/title%3E"
+        );
         assert.equal(args[2], "--init-script");
         assert.match(args[3] ?? "", /divebell-bridge-init\/bridge-[a-f0-9]+\.js$/);
         lifecycle.push("browser open");
@@ -121,9 +124,10 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
     browserCalls.map((call) => call.options?.idleTimeoutMs),
     [5000, 5000, 5000]
   );
-  assert.equal(browserCalls[0]?.options?.reuseInitialBlankPage, true);
-  assert.equal(browserCalls[1]?.options?.reuseInitialBlankPage, undefined);
-  assert.equal(browserCalls[2]?.options?.reuseInitialBlankPage, undefined);
+  assert.equal(
+    browserCalls.every((call) => call.options?.reuseInitialBlankPage === undefined),
+    true
+  );
 });
 
 test("installs browser requirements only when Chrome is missing", async () => {
@@ -518,7 +522,11 @@ test("checks auto-connected Chrome in a temporary tab without closing the browse
     "eval",
     "tab"
   ]);
-  assert.deepEqual(calls[0], ["tab", "new", "about:blank"]);
+  assert.deepEqual(calls[0], [
+    "tab",
+    "new",
+    "data:text/html,%3Ctitle%3EDivebell%20Setup%3C/title%3E"
+  ]);
   assert.match(calls[1]?.[1] ?? "", /const BRIDGE_URL/);
   assert.match(calls[2]?.[1] ?? "", /__DIVEBELL_BRIDGE_MANAGER__/);
   assert.deepEqual(calls[3], ["tab", "close"]);

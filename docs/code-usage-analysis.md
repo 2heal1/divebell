@@ -7,12 +7,12 @@ This optional analysis maps code recorded in the browser back to build chunks, a
 ## What the report shows
 
 After installing `@divebell/extension-code-usage`, you can generate a code-usage report that
-shows complete built-file size for chunks and compares source-mapped size with actual execution
-across application code, third-party dependencies, and files. In Figure 1, the selected
-dependency is 62.0 KB but only 2.6% executed in the current phase, making it a useful candidate
-for closer inspection.
+combines optional page-readiness and loading-memory measurements with complete built-file size
+for chunks and actual execution across application code, third-party dependencies, and files.
+Figure 1 shows populated readiness and heap measurements together with the loading timeline and
+memory curve for the recorded phase.
 
-![Figure 1: Mapped size and actual execution for dependencies](https://github.com/user-attachments/assets/a706172c-c348-431b-a911-c0ea5f4d0b88)
+![Figure 1: Page-ready time, JavaScript heap, and loading timeline](assets/code-usage-page-experience-report.png)
 
 Open a file from the report to see which code actually executed in the selected phase, as shown in
 Figure 2. Blue marks executed ranges; unhighlighted code did not execute.

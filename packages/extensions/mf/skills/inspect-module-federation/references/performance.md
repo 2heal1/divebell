@@ -114,23 +114,25 @@ preloading an async asset merely because it belongs to the same expose.
 
 ## Page impact
 
-`pageImpact` connects the module timeline to the page without claiming that MF
-runtime success proves business readiness:
+`pageImpact` connects the `loadRemote` interval to page paint without claiming
+that the module caused a paint or that application content rendered. It can
+contain `fp`, `fcp`, and `lcp`; a missing browser milestone is omitted. Each
+available milestone contains:
 
-- `trigger`: `initial` when `loadRemote` started no later than FCP,
-  `interaction` when a
-  captured user input immediately preceded the request, `automatic` when it
-  started later without a recent input, or `unknown` when evidence is missing.
-- `completedBeforeFp`: whether `loadRemote.end` is no later than FP.
-- `completedBeforeFcp`: whether `loadRemote.end` is no later than FCP.
-- `completedBeforeLcp`: whether `loadRemote.end` is no later than the latest
-  observed LCP. Read `page.lcpStatus`; a provisional LCP can still change.
+- `startDelta`: `loadRemote.start - milestone`.
+- `endDelta`: `loadRemote.end - milestone`; omitted while the operation has no
+  end.
 
-The completion fields are omitted when either boundary is unavailable. They
-only compare times and can also describe when a failed operation ended, so read
-`outcome` before interpreting them. They do not claim that the module caused a
-paint. For an interaction-triggered or automatic module, avoid promoting
-resources to initial page priority without a demonstrated user-visible benefit.
+A negative delta means the load boundary happened before the milestone, a
+positive delta means it happened after, and zero means the two observed times
+were equal at the command's precision. For example,
+`fcp.startDelta: 284.1` means `loadRemote` began 284.1 ms after FCP, while
+`lcp.endDelta: -553.5` means it ended 553.5 ms before the currently observed
+LCP. Read `page.lcpStatus`; a provisional LCP and its deltas can still change.
+
+These fields only compare times and can also describe a failed operation, so
+read `outcome` before interpreting them. They do not infer whether a request
+was automatic or interaction-triggered and do not observe component rendering.
 
 ## Bottleneck and findings
 
@@ -157,11 +159,11 @@ chosen. For a remoteEntry bottleneck, `duration` and `percentage` use
 `blockingDuration`, not the full request lifecycle. `findings` apply fixed
 evidence rules and retain the evidence behind their diagnosis:
 
-- A remoteEntry requested late on the initial page path: consider preloading
-  it. A request that started promptly but remained slow is reported as a
-  delivery problem instead; preload is not presented as the fix.
-- Delayed synchronous expose assets on an initial page path: preload the exact
-  listed assets.
+- A remoteEntry requested late while `loadRemote` began no later than FCP:
+  consider preloading it. A request that started promptly but remained slow is
+  reported as a delivery problem instead; preload is not presented as the fix.
+- Delayed synchronous expose assets when `loadRemote` began no later than FCP:
+  preload the exact listed assets.
 - Slow get after all sync assets were already ready: inspect shared resolution
   and profile runtime work; more preload will not fix the measured delay.
 - Slow factory: profile and reduce top-level module initialization.

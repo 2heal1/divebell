@@ -59,10 +59,9 @@ test("module performance attributes loadRemote, expose resources, and page impac
   assert.equal(operation.manifest.assets[0].loadedBeforeGet, false);
   assert.equal(operation.bottleneck.type, "expose-resource");
   assert.deepEqual(operation.pageImpact, {
-    trigger: "automatic",
-    completedBeforeFp: false,
-    completedBeforeFcp: false,
-    completedBeforeLcp: true
+    fp: { startDelta: 800, endDelta: 933 },
+    fcp: { startDelta: 500, endDelta: 633 },
+    lcp: { startDelta: -200, endDelta: -67 }
   });
   assert.equal(operation.codeUsage.status, "recommended");
   assert.deepEqual(operation.codeUsage.assets, [
@@ -299,7 +298,11 @@ test("operation outcome and completion boundary follow loadRemote itself", () =>
     start: 2000,
     duration: 13
   });
-  assert.deepEqual(pending.pageImpact, { trigger: "automatic" });
+  assert.deepEqual(pending.pageImpact, {
+    fp: { startDelta: 1800 },
+    fcp: { startDelta: 1500 },
+    lcp: { startDelta: 800 }
+  });
   assert.equal(pending.findings[0].id, "complete-load-observation");
 });
 
@@ -378,6 +381,7 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
     ["divebell-module-performance"]
   );
   assert.equal(snapshot.page.url, "https://app.test/page");
+  assert.equal("interactions" in snapshot.page, false);
   assert.equal(snapshot.resources[0].url, "https://cdn.test/catalog/Button.js");
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot.resources[1])), {
     url: "https://opaque.test/catalog/Hidden.js",
@@ -433,8 +437,7 @@ function performanceSnapshot() {
       fp: 200,
       fcp: 500,
       lcp: 1200,
-      lcpStatus: "provisional",
-      interactions: []
+      lcpStatus: "provisional"
     },
     resources: [{
       url: "https://cdn.test/catalog/Button.js",

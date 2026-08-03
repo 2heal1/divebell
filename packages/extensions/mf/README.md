@@ -313,9 +313,9 @@ overlaps the module's wait before `get`; it is zero when a preload completed
 before `loadRemote` needed the file and never extends past `loadRemote.end`.
 Bottleneck duration and percentage use this blocking time, so a long
 already-completed preload or a late inconsistent resource record is not
-diagnosed as a module bottleneck. Preload findings require a late request on
-the initial page path; a promptly started but slow request is identified as a
-delivery issue.
+diagnosed as a module bottleneck. Preload findings require a late request while
+`loadRemote` began no later than FCP; a promptly started but slow request is
+identified as a delivery issue.
 
 When an MF Manifest snapshot is available, the command lists the expose's
 synchronous and asynchronous JavaScript assets and matches them to browser
@@ -327,9 +327,11 @@ It never assigns a file by timing proximity alone. Without a Manifest,
 the module lifecycle remains valid but exact expose-resource attribution is
 unavailable.
 
-`pageImpact` reports whether the request belongs to the initial page path or
-followed a user interaction, and whether `loadRemote` completed before FP, FCP,
-and the currently observed LCP. `bottleneck` compares measured remoteEntry,
+`pageImpact` reports signed `startDelta` and optional `endDelta` values between
+`loadRemote` and FP, FCP, and the currently observed LCP. Negative values mean
+the load boundary happened before the page milestone; positive values mean it
+happened after. It does not infer an automatic or interaction trigger and does
+not observe component rendering. `bottleneck` compares measured remoteEntry,
 expose resource, get, and factory blocking work. `findings` expose the evidence
 and fixed rule behind each diagnosis. Failed, pending, or unknown loads do not
 receive performance bottleneck diagnoses.

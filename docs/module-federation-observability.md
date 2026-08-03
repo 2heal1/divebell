@@ -32,6 +32,8 @@ assets because enabling coverage would change the performance measurement.
 For remoteEntry, the full observed request lifecycle remains visible while
 bottleneck calculations use only the part that actually blocked the module;
 cross-origin network phases that the browser does not expose are omitted.
+Page impact is expressed as signed start and end deltas between `loadRemote`
+and FP, FCP, and LCP; it does not infer a loading trigger or component render.
 
 ## What the plugin provides
 

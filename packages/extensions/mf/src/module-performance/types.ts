@@ -10,10 +10,6 @@ export interface ModulePerformancePageSnapshot {
   fcp?: number;
   lcp?: number;
   lcpStatus: PageLcpStatus;
-  interactions: Array<{
-    type: string;
-    time: number;
-  }>;
 }
 
 export interface ModulePerformanceResourceSnapshot {
@@ -105,17 +101,15 @@ export interface ModulePerformanceManifest {
   assets: ModulePerformanceAssetTiming[];
 }
 
-export type ModulePerformanceTrigger =
-  | "initial"
-  | "interaction"
-  | "automatic"
-  | "unknown";
+export interface ModulePerformancePageDelta {
+  startDelta: number;
+  endDelta?: number;
+}
 
 export interface ModulePerformancePageImpact {
-  trigger: ModulePerformanceTrigger;
-  completedBeforeFp?: boolean;
-  completedBeforeFcp?: boolean;
-  completedBeforeLcp?: boolean;
+  fp?: ModulePerformancePageDelta;
+  fcp?: ModulePerformancePageDelta;
+  lcp?: ModulePerformancePageDelta;
 }
 
 export type ModulePerformanceBottleneckType =
@@ -186,7 +180,7 @@ export interface ModulePerformanceResult {
   schemaVersion: 1;
   command: "mf module-perf";
   observedAt: number;
-  page: Omit<ModulePerformancePageSnapshot, "timeOrigin" | "url" | "interactions">;
+  page: Omit<ModulePerformancePageSnapshot, "timeOrigin" | "url">;
   selection: {
     target?: string;
     name?: string;

@@ -6,7 +6,6 @@ import type { ModulePerformanceBrowserSnapshot } from "./types.js";
 export function createModulePerformanceInitScript(): string {
   return `(${installModulePerformance.toString()})(${JSON.stringify({
     key: PERFORMANCE_KEY,
-    maxInteractions: 50,
     maxLoads: 500,
     maxResources: 1_000,
     pluginName: PERFORMANCE_PLUGIN_NAME
@@ -45,13 +44,7 @@ export function isModulePerformanceBrowserSnapshot(
   if (!["provisional", "final", "not-observed"].includes(
     String(value.page.lcpStatus)
   )) return false;
-  return Array.isArray(value.page.interactions) &&
-    value.page.interactions.length <= 50 &&
-    value.page.interactions.every((item) =>
-      isRecord(item) && optionalString(item.type, 40) &&
-      item.type !== undefined && finite(item.time)
-    ) &&
-    Array.isArray(value.resources) && value.resources.length <= 1_000 &&
+  return Array.isArray(value.resources) && value.resources.length <= 1_000 &&
     value.resources.every(isResource) &&
     Array.isArray(value.exposes) && value.exposes.length <= 500 &&
     value.exposes.every(isExpose) &&
@@ -121,7 +114,6 @@ function isRecord(value: unknown): value is Record<string, any> {
 
 function installModulePerformance(options: {
   key: string;
-  maxInteractions: number;
   maxLoads: number;
   maxResources: number;
   pluginName: string;
@@ -204,26 +196,6 @@ function installModulePerformance(options: {
     // Reading remains useful with the browser's default resource buffer.
   }
 
-  const interactions: Array<{ type: string; time: number }> = [];
-  const recordInteraction = (event: any) => {
-    interactions.push({
-      type: safeText(event?.type, 40) ?? "input",
-      time: now()
-    });
-    if (interactions.length > options.maxInteractions) {
-      interactions.splice(0, interactions.length - options.maxInteractions);
-    }
-  };
-  for (const type of ["pointerdown", "keydown", "touchstart", "mousedown"]) {
-    try {
-      root.addEventListener?.(type, recordInteraction, {
-        capture: true,
-        passive: true
-      });
-    } catch {
-      // Non-DOM runtime.
-    }
-  }
   try {
     root.document?.addEventListener?.("visibilitychange", () => {
       if (root.document?.visibilityState !== "hidden") return;
@@ -441,8 +413,7 @@ function installModulePerformance(options: {
             ? "not-observed"
             : lcpFinal || documentHidden
               ? "final"
-              : "provisional",
-          interactions: interactions.map((item) => ({ ...item }))
+              : "provisional"
         },
         resources: readResources(),
         exposes: readExposes(),

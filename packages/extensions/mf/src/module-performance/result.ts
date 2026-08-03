@@ -31,7 +31,6 @@ import type {
   ModulePerformanceResult,
   ModulePerformanceSelectors,
   ModulePerformanceTiming,
-  ModulePerformanceTrigger,
   ModulePerformanceUnobservedRemote
 } from "./types.js";
 
@@ -43,7 +42,6 @@ interface ModuleGroup {
   traces: RemoteTraceSummary[];
 }
 
-const INTERACTION_WINDOW = 1_000;
 const MEANINGFUL_DURATION = 50;
 
 export function createModulePerformanceResult(
@@ -418,22 +416,35 @@ function createPageImpact(
   timing: ModulePerformanceTiming,
   performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformancePageImpact {
-  if (performance === null) {
-    return { trigger: "unknown" };
-  }
-  const completed = timing.loadRemote.end;
+  if (performance === null) return {};
   return {
-    trigger: classifyTrigger(timing.loadRemote.start, performance),
-    ...(completed === undefined || performance.page.fp === undefined
+    ...(performance.page.fp === undefined
       ? {}
-      : { completedBeforeFp: completed <= performance.page.fp }),
-    ...(completed === undefined || performance.page.fcp === undefined
+      : { fp: pageDelta(timing.loadRemote, performance.page.fp) }),
+    ...(performance.page.fcp === undefined
       ? {}
-      : { completedBeforeFcp: completed <= performance.page.fcp }),
-    ...(completed === undefined || performance.page.lcp === undefined
+      : { fcp: pageDelta(timing.loadRemote, performance.page.fcp) }),
+    ...(performance.page.lcp === undefined
       ? {}
-      : { completedBeforeLcp: completed <= performance.page.lcp })
+      : { lcp: pageDelta(timing.loadRemote, performance.page.lcp) })
   };
+}
+
+function pageDelta(
+  loadRemote: ModulePerformanceInterval,
+  milestone: number
+): { startDelta: number; endDelta?: number } {
+  return {
+    startDelta: signedDelta(loadRemote.start, milestone),
+    ...(loadRemote.end === undefined
+      ? {}
+      : { endDelta: signedDelta(loadRemote.end, milestone) })
+  };
+}
+
+function signedDelta(boundary: number, milestone: number): number {
+  const delta = round(boundary - milestone);
+  return delta === 0 ? 0 : delta;
 }
 
 function createBottleneck(
@@ -568,7 +579,7 @@ function createFindings(
       (timing.remoteEntry?.start ?? timing.loadRemote.start) -
         timing.loadRemote.start
     );
-    const preloadCandidate = impact.trigger === "initial" &&
+    const preloadCandidate = startedNoLaterThanFcp(impact) &&
       requestDelay >= MEANINGFUL_DURATION;
     findings.push({
       id: preloadCandidate
@@ -583,7 +594,7 @@ function createFindings(
         ...(requestDelay <= 0
           ? ["The remoteEntry request started no later than loadRemote."]
           : [`The remoteEntry request started ${round(requestDelay)} ms after loadRemote began.`]),
-        `Trigger classification: ${impact.trigger}.`,
+        ...fcpStartEvidence(impact),
         ...(remoteEntry === undefined ? [] : [`remoteEntry: ${remoteEntry}.`])
       ]
     });
@@ -596,16 +607,16 @@ function createFindings(
     );
     if (delayedSyncAssets.length > 0) {
       const assetNames = delayedSyncAssets.map((asset) => asset.url ?? asset.asset);
-      const shouldPreload = impact.trigger === "initial";
+      const shouldPreload = startedNoLaterThanFcp(impact);
       findings.push({
         id: shouldPreload ? "preload-expose-assets" : "defer-expose-assets",
         severity: shouldPreload ? "warning" : "info",
         title: shouldPreload
           ? "Expose JavaScript starts too late for the initial page load"
-          : "Expose JavaScript is loaded outside the initial page path",
+          : "Expose JavaScript is loaded after FCP",
         evidence: [
           ...assetNames.map((asset) => `${asset} loaded after get started.`),
-          `Trigger classification: ${impact.trigger}.`
+          ...fcpStartEvidence(impact)
         ]
       });
     }
@@ -683,22 +694,17 @@ function selectLoad(
   return selected;
 }
 
-function classifyTrigger(
-  started: number,
-  performance: ModulePerformanceBrowserSnapshot
-): ModulePerformanceTrigger {
-  const latestInteraction = performance.page.interactions
-    .filter((interaction) => interaction.time <= started)
-    .sort((left, right) => right.time - left.time)[0];
-  if (latestInteraction !== undefined &&
-      started - latestInteraction.time <= INTERACTION_WINDOW) {
-    return "interaction";
-  }
-  if (performance.page.fcp !== undefined && started <= performance.page.fcp) {
-    return "initial";
-  }
-  if (performance.page.fcp !== undefined) return "automatic";
-  return "unknown";
+function startedNoLaterThanFcp(impact: ModulePerformancePageImpact): boolean {
+  return impact.fcp !== undefined && impact.fcp.startDelta <= 0;
+}
+
+function fcpStartEvidence(impact: ModulePerformancePageImpact): string[] {
+  const delta = impact.fcp?.startDelta;
+  if (delta === undefined) return [];
+  if (delta === 0) return ["loadRemote started at FCP."];
+  return [
+    `loadRemote started ${round(Math.abs(delta))} ms ${delta < 0 ? "before" : "after"} FCP.`
+  ];
 }
 
 function syncResourceUnionDuringGet(

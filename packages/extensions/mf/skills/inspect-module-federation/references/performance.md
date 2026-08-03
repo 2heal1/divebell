@@ -10,8 +10,9 @@ performed two matching module-load operations.
 
 The target application does not install Slardar or add consumer code for this
 command. `open --mf` installs the bounded page collector before navigation. MF
-loading boundaries come from the official MF observability hooks; paint,
-resource, and interaction facts come from the browser.
+loading boundaries come from one official MF Observability trace, not a second
+runtime plugin or timestamp matching; paint and resource facts come from the
+browser.
 
 ## Page timing
 
@@ -49,8 +50,7 @@ clock as page paint:
 - `remoteEntry.blockingDuration`: the part of that lifecycle that overlaps the
   module's wait after `loadRemote.start` and before both `get.start` and
   `loadRemote.end` where those boundaries are available. This is `0` when a
-  preload completed before the module needed the file, or when an inconsistent
-  late resource record starts after the operation already completed.
+  preload or another non-blocking request completed outside that wait.
 - `get.start`, `end`, `duration`: from immediately before the container expose
   `get` call until it returns. This includes synchronous expose chunks that the
   generated container waits for.
@@ -179,7 +179,8 @@ or unobserved entry.
 `assets`. Run Code Usage separately against those files, then use its executed
 and unused-code evidence to guide code splitting. The performance command does
 not automatically enable coverage because coverage changes engine behavior and
-would contaminate the measurement.
+would contaminate the measurement. `codeUsage.documentation` links to the
+[Code Usage analysis guide](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
 
 Code Usage is useful for the expose JavaScript, not for `remoteEntry.js`.
 Without an unambiguous Manifest asset match, `codeUsage` remains `unavailable`

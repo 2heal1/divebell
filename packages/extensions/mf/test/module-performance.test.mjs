@@ -67,6 +67,10 @@ test("module performance attributes loadRemote, expose resources, and page impac
   assert.deepEqual(operation.codeUsage.assets, [
     "https://cdn.test/catalog/Button.js"
   ]);
+  assert.equal(
+    operation.codeUsage.documentation,
+    "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
+  );
   assert.ok(operation.findings.some((finding) =>
     finding.id === "defer-expose-assets"
   ));
@@ -97,6 +101,10 @@ test("missing Manifest keeps loadRemote and measured get/factory timing explicit
   assert.equal(operation.timing.get.duration, 2);
   assert.equal(operation.timing.factory.duration, 3);
   assert.equal(operation.codeUsage.status, "unavailable");
+  assert.equal(
+    operation.codeUsage.documentation,
+    "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
+  );
   assert.equal("warnings" in result.modules[0], false);
 });
 
@@ -186,34 +194,25 @@ test("remoteEntry bottleneck uses only the request time that blocks module loadi
   }
 });
 
-test("remoteEntry blocking never extends past loadRemote completion", () => {
-  const trace = loadTrace();
-  trace.events = trace.events.filter((event) => event.phase !== "remoteEntry");
+test("zero blocking time is not reported as a bottleneck", () => {
+  const trace = traceWithoutRemoteEntryStage({ getStart: 1120 });
+  trace.events = trace.events.filter((event) =>
+    event.phase !== "expose" && event.phase !== "moduleFactory"
+  );
   const parsed = parseBrowserReadResult(browserRead(
     stateWithConsumer(),
     [trace]
   ));
   assert.equal(parsed.ok, true);
-  const performance = performanceWithRemoteEntry(1040, 1090);
-  performance.loads = [{
-    id: "late-get",
-    requestId: "@scope/catalog/Button",
-    instanceName: "host",
-    remote: "@scope/catalog",
-    alias: "shop",
-    expose: "./Button",
-    get: { start: 1100, end: 1102, duration: 2 },
-    factory: { start: 1103, end: 1106, duration: 3 },
-    outcome: "success"
-  }];
 
-  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  const result = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceWithRemoteEntry(100, 900)
+  );
   const operation = result.modules[0].operations[0];
-  assert.equal(operation.timing.loadRemote.end, 1035);
-  assert.equal(operation.timing.get.start, 1100);
-  assert.equal(operation.timing.remoteEntry.duration, 50);
   assert.equal(operation.timing.remoteEntry.blockingDuration, 0);
-  assert.notEqual(operation.bottleneck.type, "remoteEntry");
+  assert.equal(operation.bottleneck.type, "unknown");
+  assert.equal("duration" in operation.bottleneck, false);
 });
 
 test("remoteEntry findings distinguish late initial loading from slow delivery", () => {
@@ -262,8 +261,7 @@ test("two operations mean two page-observed loadRemote histories", () => {
   assert.equal(parsed.ok, true);
   const result = createModulePerformanceResult(parsed.snapshot, {
     ...performanceSnapshot(),
-    exposes: [],
-    loads: []
+    exposes: []
   });
   assert.deepEqual(
     result.modules[0].operations.map((operation) => operation.traceId),
@@ -306,8 +304,7 @@ test("operation outcome and completion boundary follow loadRemote itself", () =>
   assert.equal(pending.findings[0].id, "complete-load-observation");
 });
 
-test("the injected collector is bounded and reads Manifest expose assets safely", () => {
-  let clock = 200;
+test("the injected collector reads page, resources, and Manifest expose assets safely", () => {
   const resourceEntries = [{
     name: "https://cdn.test/catalog/Button.js?token=secret",
     initiatorType: "script",
@@ -332,7 +329,6 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
     location: { href: "https://app.test/page?token=secret" },
     performance: {
       timeOrigin: 1000,
-      now: () => clock,
       getEntriesByType(type) {
         return type === "resource" ? resourceEntries : [];
       },
@@ -359,27 +355,10 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
   };
 
   vm.runInContext(createModulePerformanceInitScript(), context);
-  const plugin = context.__FEDERATION__.__GLOBAL_PLUGIN__[0];
-  const hooks = plugin.apply({ options: { name: "host" } });
-  const lifecycleArgs = {
-    id: "@scope/catalog/Button",
-    expose: "./Button",
-    moduleInfo: { name: "@scope/catalog", alias: "shop" }
-  };
-  hooks.beforeGetExpose(lifecycleArgs);
-  clock = 280;
-  hooks.afterGetExpose(lifecycleArgs);
-  clock = 285;
-  hooks.beforeExecuteFactory(lifecycleArgs);
-  clock = 300;
-  hooks.afterExecuteFactory(lifecycleArgs);
   const snapshot = context.__DIVEBELL_MF_MODULE_PERFORMANCE__.snapshot();
 
   assert.equal(isModulePerformanceBrowserSnapshot(snapshot), true);
-  assert.deepEqual(
-    context.__FEDERATION__.__GLOBAL_PLUGIN__.map((plugin) => plugin.name),
-    ["divebell-module-performance"]
-  );
+  assert.deepEqual(context.__FEDERATION__.__GLOBAL_PLUGIN__, []);
   assert.equal(snapshot.page.url, "https://app.test/page");
   assert.equal("interactions" in snapshot.page, false);
   assert.equal(snapshot.resources[0].url, "https://cdn.test/catalog/Button.js");
@@ -391,16 +370,6 @@ test("the injected collector is bounded and reads Manifest expose assets safely"
     duration: 100
   });
   assert.equal(snapshot.exposes[0].expose, "./Button");
-  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.loads[0].get)), {
-    start: 200,
-    end: 280,
-    duration: 80
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.loads[0].factory)), {
-    start: 285,
-    end: 300,
-    duration: 15
-  });
   assert.doesNotMatch(JSON.stringify(snapshot), /secret/);
 });
 
@@ -461,8 +430,7 @@ function performanceSnapshot() {
         sync: ["Button.js"],
         async: []
       }
-    }],
-    loads: []
+    }]
   };
 }
 

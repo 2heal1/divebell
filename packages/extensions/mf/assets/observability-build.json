@@ -1,7 +1,7 @@
 {
   "packageName": "@module-federation/observability-plugin",
-  "packageVersion": "0.0.0-feat-operate-openruntime-20260729120109",
-  "sourceRevision": "7429c24cb136ec89b1420d532f5e85b5fc6a8602",
+  "packageVersion": "0.0.0-feat-operate-openruntime-20260803054425",
+  "sourceRevision": "c1c953bfc8c39287d047c1afcb3444a8a5bcbdea",
   "publicEntry": "./dist/esm/chrome-devtool.js",
-  "bundleSha256": "2c0ca055353129caedac0ece774549b9567d11fdbb7eee6327d2f6b1a0188d74"
+  "bundleSha256": "0b21b84ea4a15e96afe6835e1b29f840239ee48fb1f3624eaee297214d679e5c"
 }

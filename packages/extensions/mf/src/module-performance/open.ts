@@ -1,14 +1,11 @@
 const PERFORMANCE_KEY = "__DIVEBELL_MF_MODULE_PERFORMANCE__";
-const PERFORMANCE_PLUGIN_NAME = "divebell-module-performance";
 
 import type { ModulePerformanceBrowserSnapshot } from "./types.js";
 
 export function createModulePerformanceInitScript(): string {
   return `(${installModulePerformance.toString()})(${JSON.stringify({
     key: PERFORMANCE_KEY,
-    maxLoads: 500,
-    maxResources: 1_000,
-    pluginName: PERFORMANCE_PLUGIN_NAME
+    maxResources: 1_000
   })});`;
 }
 
@@ -47,25 +44,7 @@ export function isModulePerformanceBrowserSnapshot(
   return Array.isArray(value.resources) && value.resources.length <= 1_000 &&
     value.resources.every(isResource) &&
     Array.isArray(value.exposes) && value.exposes.length <= 500 &&
-    value.exposes.every(isExpose) &&
-    Array.isArray(value.loads) && value.loads.length <= 500 &&
-    value.loads.every(isLoad);
-}
-
-function isLoad(value: unknown): boolean {
-  return isRecord(value) && optionalString(value.id, 200) && value.id !== undefined &&
-    optionalString(value.requestId, 300) && value.requestId !== undefined &&
-    optionalString(value.instanceName, 240) && value.instanceName !== undefined &&
-    optionalString(value.remote, 240) && value.remote !== undefined &&
-    optionalString(value.alias, 240) && optionalString(value.expose, 240) &&
-    value.expose !== undefined && isInterval(value.get) &&
-    (value.factory === undefined || isInterval(value.factory)) &&
-    ["success", "error", "pending"].includes(String(value.outcome));
-}
-
-function isInterval(value: unknown): boolean {
-  return isRecord(value) && finite(value.start) && optionalFinite(value.end) &&
-    optionalFinite(value.duration);
+    value.exposes.every(isExpose);
 }
 
 function isResource(value: unknown): boolean {
@@ -114,9 +93,7 @@ function isRecord(value: unknown): value is Record<string, any> {
 
 function installModulePerformance(options: {
   key: string;
-  maxLoads: number;
   maxResources: number;
-  pluginName: string;
 }): void {
   const root = globalThis as Record<string, any>;
   if (root[options.key]?.schemaVersion === 1 &&
@@ -126,11 +103,6 @@ function installModulePerformance(options: {
   const timeOrigin = typeof performance?.timeOrigin === "number"
     ? performance.timeOrigin
     : Date.now();
-  const now = () => typeof performance?.now === "function"
-    ? performance.now()
-    : Math.max(0, Date.now() - timeOrigin);
-  const epoch = (time: number) => timeOrigin + time;
-  const relative = (time: number) => Math.max(0, time - timeOrigin);
   const finiteNumber = (value: any) =>
     typeof value === "number" && Number.isFinite(value);
   const safeText = (value: any, limit = 240) =>
@@ -214,93 +186,6 @@ function installModulePerformance(options: {
     }, { capture: true });
   } catch {
     // Non-DOM runtime.
-  }
-
-  const loads: any[] = [];
-  let loadSequence = 0;
-  const appendLoad = (record: any) => {
-    loads.push(record);
-    if (loads.length > options.maxLoads) {
-      loads.splice(0, loads.length - options.maxLoads);
-    }
-  };
-  const loadKey = (args: any) =>
-    `${String(args?.id ?? "unknown")}\u0000${String(args?.expose ?? "unknown")}`;
-  const pendingLoad = (instance: any, args: any) => {
-    const key = loadKey(args);
-    return [...loads].reverse().find((record) =>
-      record.instanceRef === instance && record.key === key &&
-      record.outcome === "pending"
-    );
-  };
-  const createHooks = (instance: any) => ({
-    beforeGetExpose(args: any) {
-      const remote = safeText(args?.moduleInfo?.name, 240);
-      const expose = safeText(args?.expose, 240);
-      const requestId = safeText(args?.id, 300);
-      if (remote === undefined || expose === undefined || requestId === undefined) {
-        return;
-      }
-      const started = now();
-      loadSequence += 1;
-      appendLoad({
-        id: `module-load-${loadSequence}`,
-        key: loadKey(args),
-        instanceRef: instance,
-        requestId,
-        instanceName: String(instance?.options?.name ?? instance?.name ?? "unknown")
-          .slice(0, 240),
-        remote,
-        ...(safeText(args?.moduleInfo?.alias, 240) === undefined
-          ? {}
-          : { alias: safeText(args.moduleInfo.alias, 240) }),
-        expose: expose.startsWith("./")
-          ? expose
-          : `./${expose.replace(/^\//, "")}`,
-        get: { start: epoch(started) },
-        outcome: "pending"
-      });
-    },
-    afterGetExpose(args: any) {
-      const record = pendingLoad(instance, args);
-      if (!record || record.get.end !== undefined) return;
-      const finished = now();
-      record.get.end = epoch(finished);
-      record.get.duration = Math.max(0, finished - relative(record.get.start));
-      if (args?.error !== undefined) record.outcome = "error";
-    },
-    beforeExecuteFactory(args: any) {
-      const record = pendingLoad(instance, args);
-      if (!record) return;
-      record.factory = { start: epoch(now()) };
-    },
-    afterExecuteFactory(args: any) {
-      const record = pendingLoad(instance, args);
-      if (!record) return;
-      const finished = now();
-      if (record.factory !== undefined) {
-        record.factory.end = epoch(finished);
-        record.factory.duration = Math.max(
-          0,
-          finished - relative(record.factory.start)
-        );
-      }
-      record.outcome = args?.error === undefined ? "success" : "error";
-    }
-  });
-
-  const federation = root.__FEDERATION__ ?? root.__VMOK__ ?? {};
-  if (root.__FEDERATION__ === undefined) root.__FEDERATION__ = federation;
-  if (root.__VMOK__ === undefined) root.__VMOK__ = federation;
-  federation.__GLOBAL_PLUGIN__ ??= [];
-  if (Array.isArray(federation.__GLOBAL_PLUGIN__) &&
-      !federation.__GLOBAL_PLUGIN__.some((plugin: any) =>
-        plugin?.name === options.pluginName
-      )) {
-    federation.__GLOBAL_PLUGIN__.push({
-      name: options.pluginName,
-      apply: createHooks
-    });
   }
 
   const readResources = () => {
@@ -416,38 +301,7 @@ function installModulePerformance(options: {
               : "provisional"
         },
         resources: readResources(),
-        exposes: readExposes(),
-        loads: loads.map((record) => ({
-          id: record.id,
-          requestId: record.requestId,
-          instanceName: record.instanceName,
-          remote: record.remote,
-          ...(record.alias === undefined ? {} : { alias: record.alias }),
-          expose: record.expose,
-          get: {
-            start: relative(record.get.start),
-            ...(record.get.end === undefined
-              ? {}
-              : { end: relative(record.get.end) }),
-            ...(record.get.duration === undefined
-              ? {}
-              : { duration: record.get.duration })
-          },
-          ...(record.factory === undefined
-            ? {}
-            : {
-                factory: {
-                  start: relative(record.factory.start),
-                  ...(record.factory.end === undefined
-                    ? {}
-                    : { end: relative(record.factory.end) }),
-                  ...(record.factory.duration === undefined
-                    ? {}
-                    : { duration: record.factory.duration })
-                }
-              }),
-          outcome: record.outcome
-        }))
+        exposes: readExposes()
       };
     }
   };

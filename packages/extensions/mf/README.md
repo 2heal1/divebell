@@ -93,8 +93,9 @@ instance by its visible name and cannot enable diagnostics after the page has
 opened.
 
 Before navigation, the extension installs a matching MF debug Runtime,
-global Observability Plugin, and bounded module-performance collector. Future MF instances use that
-constructor, so the target project can expose the newer Remote, Shared, and
+global Observability Plugin, and bounded page-performance and Manifest
+collector. Future MF instances use that constructor, so the target project can
+expose the newer Remote, Shared, and
 Bridge diagnostics even when its installed Runtime does not contain those
 hooks. A page that was already open cannot have complete earlier loading
 history.
@@ -300,7 +301,11 @@ performed.
 The top-level `page` values `fp`, `fcp`, and `lcp` are milliseconds elapsed
 from navigation start. `lcpStatus` states whether LCP is still provisional.
 Each operation uses the same clock for `loadRemote`, remoteEntry, expose `get`,
-and factory timing. `timing.loadRemote` is the complete operation boundary. Its
+and factory timing. MF lifecycle intervals all come from the selected
+Observability trace; the
+page collector does not install another runtime plugin or join lifecycle
+records by timestamp.
+`timing.loadRemote` is the complete operation boundary. Its
 `start`, `end`, and `duration` show when MF began and finished the request, and
 `outcome` is the final result reported by `loadRemote`. The command does not
 infer rendering or business readiness from DOM or Bridge activity.
@@ -344,7 +349,9 @@ such as `outcome`, `lcpStatus`, `manifest.status`, asset `match`,
 `codeUsage` is only a follow-up. When exact expose JavaScript is known, the
 result lists those URLs for a separate Code Usage run. Coverage is not enabled
 during performance measurement because it changes runtime behavior, and
-`remoteEntry.js` is not treated as a useful Code Usage splitting target.
+`remoteEntry.js` is not treated as a useful Code Usage splitting target. Its
+`documentation` field links to the
+[Code Usage analysis guide](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
 
 See the installed Skill's
 [`references/performance.md`](skills/inspect-module-federation/references/performance.md)

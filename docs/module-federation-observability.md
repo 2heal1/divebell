@@ -16,10 +16,12 @@ divebell mf module-perf [remote/expose]
 
 This command requires only `divebell open <url> --mf`; consumers and producers
 do not add Slardar, the observability plugin, or application callbacks for a
-one-off run. Divebell installs its bounded collector before navigation and
-combines official MF lifecycle evidence with browser paint, Resource Timing,
-and interaction evidence. It analyzes actual page loads and never loads or
-renders a module merely to create another sample. Module success means that
+one-off run. Divebell installs a bounded browser collector before navigation
+and combines official MF lifecycle evidence with browser paint, Resource
+Timing, and Manifest assets. MF lifecycle intervals come from one
+Observability trace rather than a second runtime plugin. It analyzes actual
+page loads and never loads or renders a module merely to create another
+sample. Module success means that
 the observed `loadRemote` operation finished successfully; the command does not
 claim that the consumer UI rendered or became ready.
 

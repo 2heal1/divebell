@@ -158,7 +158,7 @@ test("injection installs the debug constructor before business setup and observe
   assert.equal(debugInstance.constructor, context.__FEDERATION__.__DEBUG_CONSTRUCTOR__);
   assert.equal(debugInstance.name, "debug-host");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "before-runtime");
-  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 2);
+  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
   const plugin = context.__FEDERATION__.__GLOBAL_PLUGIN__.find(
     (candidate) => candidate.name === "observability-plugin:chrome-extension"
   );
@@ -279,7 +279,7 @@ test("repeated injection keeps the matching debug constructor and global plugin"
   assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "already-installed");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.status, "already-installed");
   assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, firstConstructor);
-  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 2);
+  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
   assert.deepEqual([...context.__FEDERATION__.__GLOBAL_PLUGIN__], firstPlugins);
 });
 
@@ -371,7 +371,6 @@ test("MF proxy is installed before Runtime and Observability and matches an alia
       "mf-chrome-devtools-override-remotes-plugin",
       "mf-chrome-devtools-inject-snapshot-plugin",
       "divebell-mf-proxy-snapshot-override",
-      "divebell-module-performance",
       "observability-plugin:chrome-extension"
     ]
   );
@@ -459,10 +458,7 @@ test("Divebell open passes the MF script as an init script before navigation", a
               context.__FEDERATION__.__GLOBAL_PLUGIN__,
               (plugin) => plugin.name
             ),
-            [
-              "divebell-module-performance",
-              "observability-plugin:chrome-extension"
-            ]
+            ["observability-plugin:chrome-extension"]
           );
           initScriptChecked = true;
           return { exitCode: 0, stdout: "", stderr: "" };

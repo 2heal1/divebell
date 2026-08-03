@@ -37,25 +37,12 @@ export interface ModulePerformanceExposeAssetsSnapshot {
   };
 }
 
-export interface ModulePerformanceLoadSnapshot {
-  id: string;
-  requestId: string;
-  instanceName: string;
-  remote: string;
-  alias?: string;
-  expose: string;
-  get: ModulePerformanceInterval;
-  factory?: ModulePerformanceInterval;
-  outcome: "success" | "error" | "pending";
-}
-
 export interface ModulePerformanceBrowserSnapshot {
   schemaVersion: 1;
   installedAt: number;
   page: ModulePerformancePageSnapshot;
   resources: ModulePerformanceResourceSnapshot[];
   exposes: ModulePerformanceExposeAssetsSnapshot[];
-  loads: ModulePerformanceLoadSnapshot[];
 }
 
 export interface ModulePerformanceInterval {
@@ -139,6 +126,7 @@ export interface ModulePerformanceCodeUsage {
   status: "recommended" | "not-applicable" | "unavailable";
   assets: string[];
   reason: string;
+  documentation: string;
 }
 
 export interface ModulePerformanceOperation {

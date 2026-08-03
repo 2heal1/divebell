@@ -22,7 +22,6 @@ import type {
   ModulePerformanceExposeAssetsSnapshot,
   ModulePerformanceFinding,
   ModulePerformanceInterval,
-  ModulePerformanceLoadSnapshot,
   ModulePerformanceManifest,
   ModulePerformanceModule,
   ModulePerformanceOperation,
@@ -144,13 +143,9 @@ function createModule(
   group: ModuleGroup,
   performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceModule {
-  const usedLoads = new Set<string>();
-  const operations = group.traces.map((trace) => {
-    const load = performance === null
-      ? undefined
-      : selectLoad(group, trace, performance, usedLoads);
-    return createOperation(group, trace, performance, load);
-  });
+  const operations = group.traces.map((trace) =>
+    createOperation(group, trace, performance)
+  );
   return {
     consumer: group.consumer,
     producer: group.producer,
@@ -163,10 +158,9 @@ function createModule(
 function createOperation(
   group: ModuleGroup,
   trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot | null,
-  load: ModulePerformanceLoadSnapshot | undefined
+  performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceOperation {
-  let timing = createTiming(trace, performance, load);
+  let timing = createTiming(trace, performance);
   const manifest = createManifest(group, timing, performance);
   timing = addRemoteEntryResourceTiming(timing, manifest);
   timing = addRemoteEntryBlockingTiming(timing);
@@ -194,8 +188,7 @@ function createOperation(
 
 function createTiming(
   trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot | null,
-  load: ModulePerformanceLoadSnapshot | undefined
+  performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceTiming {
   const timeOrigin = performance?.page.timeOrigin ?? trace.startedAt;
   const loadRemote = intervalFromEpoch(
@@ -205,8 +198,8 @@ function createTiming(
     timeOrigin
   );
   const remoteEntry = stageInterval(trace, "remoteEntry", timeOrigin);
-  const get = load?.get ?? stageInterval(trace, "expose", timeOrigin);
-  const factory = load?.factory ?? stageInterval(trace, "factory", timeOrigin);
+  const get = stageInterval(trace, "expose", timeOrigin);
+  const factory = stageInterval(trace, "factory", timeOrigin);
   return {
     loadRemote,
     ...(remoteEntry === undefined ? {} : { remoteEntry }),
@@ -520,6 +513,7 @@ function createCodeUsage(
   bottleneck: ModulePerformanceBottleneck,
   manifest: ModulePerformanceManifest
 ): ModulePerformanceCodeUsage {
+  const documentation = "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md";
   const assets = manifest.assets.filter((asset) =>
     asset.kind === "sync" && asset.match === "matched" && asset.url !== undefined
   ).map((asset) => asset.url as string);
@@ -527,7 +521,8 @@ function createCodeUsage(
     return {
       status: "unavailable",
       assets: [],
-      reason: "Manifest expose assets are unavailable, so Code Usage cannot target this expose precisely."
+      reason: "Manifest expose assets are unavailable, so Code Usage cannot target this expose precisely.",
+      documentation
     };
   }
   if (!["expose-resource", "get", "mixed"].includes(bottleneck.type) ||
@@ -537,13 +532,15 @@ function createCodeUsage(
       assets: [],
       reason: bottleneck.type === "remoteEntry"
         ? "Code Usage is not suitable for splitting remoteEntry; use its blocking and request-lifecycle timing to decide between earlier loading and delivery investigation."
-        : "The measured bottleneck is not attributable to a loaded expose JavaScript asset."
+        : "The measured bottleneck is not attributable to a loaded expose JavaScript asset.",
+      documentation
     };
   }
   return {
     status: "recommended",
     assets: unique(assets),
-    reason: "Run Code Usage separately for these expose assets before changing code splitting; coverage changes runtime behavior and is not mixed into this measurement."
+    reason: "Run Code Usage separately for these expose assets before changing code splitting; coverage changes runtime behavior and is not mixed into this measurement.",
+    documentation
   };
 }
 
@@ -669,31 +666,6 @@ function createFindings(
   return findings;
 }
 
-function selectLoad(
-  group: ModuleGroup,
-  trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot,
-  used: Set<string>
-): ModulePerformanceLoadSnapshot | undefined {
-  const candidates = performance.loads.filter((load) =>
-    !used.has(load.id) &&
-    (load.remote === group.remote.name || load.remote === group.remote.alias ||
-      load.alias === group.remote.name || load.alias === group.remote.alias) &&
-    sameExpose(load.expose, group.expose) &&
-    (load.instanceName === group.consumer.name ||
-      load.instanceName === trace.instanceName)
-  ).sort((left, right) => {
-    const leftRequest = left.requestId === trace.requestId ? 0 : 1;
-    const rightRequest = right.requestId === trace.requestId ? 0 : 1;
-    return leftRequest - rightRequest ||
-      Math.abs(performance.page.timeOrigin + left.get.start - trace.startedAt) -
-      Math.abs(performance.page.timeOrigin + right.get.start - trace.startedAt);
-  });
-  const selected = candidates[0];
-  if (selected !== undefined) used.add(selected.id);
-  return selected;
-}
-
 function startedNoLaterThanFcp(impact: ModulePerformancePageImpact): boolean {
   return impact.fcp !== undefined && impact.fcp.startDelta <= 0;
 }
@@ -769,9 +741,9 @@ function durationCandidate(
   type: Exclude<ModulePerformanceBottleneck["type"], "mixed" | "unknown">,
   duration: number | undefined
 ): { type: typeof type; duration: number } | undefined {
-  return duration === undefined || !Number.isFinite(duration)
+  return duration === undefined || !Number.isFinite(duration) || duration <= 0
     ? undefined
-    : { type, duration: Math.max(0, duration) };
+    : { type, duration };
 }
 
 function candidateEvidence(

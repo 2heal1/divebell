@@ -136,10 +136,10 @@ export function registerMfExtensionE2e({
         JSON.stringify(modulePerformance.json.data)
       );
       assert.equal(typeof operation.timing.get.duration, "number");
-      const fcpImpact = operation.pageImpact.fcp;
-      assert.ok(fcpImpact !== undefined, JSON.stringify(modulePerformance.json.data));
-      assert.equal(typeof fcpImpact.startDelta, "number");
-      assert.equal(typeof fcpImpact.endDelta, "number");
+      assert.equal(modulePerformance.json.data.page.lcpStatus, "not-observed");
+      assert.equal("fp" in modulePerformance.json.data.page, false);
+      assert.equal("fcp" in modulePerformance.json.data.page, false);
+      assert.deepEqual(operation.pageImpact, {});
       assert.equal("trigger" in operation.pageImpact, false);
       assert.ok(operation.findings.every((finding) =>
         !("suggestion" in finding)

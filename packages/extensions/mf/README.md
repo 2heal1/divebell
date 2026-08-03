@@ -1,12 +1,13 @@
 # @divebell/extension-mf
 
-Read safe Module Federation multi-instance state and captured loading evidence from the MF Observability Plugin in the page. The extension provides seven external commands and a bounded, serializable view of the MF global share table.
+Read safe Module Federation multi-instance state, captured loading evidence, and producer-module performance from the page. The extension provides eight external commands and bounded, serializable MF and browser evidence.
 
 ## Commands
 
 ```text
 divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
 divebell mf module-info [remote] [--mf <name>] [--instance <ref>]
+divebell mf module-perf [remote/expose] [--mf <name>] [--instance <ref>]
 divebell mf remote status <remote> [--mf <name>] [--instance <ref>]
 divebell mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 divebell mf shared status [package] [--scope <scope>] [--version <version>] [--verbose]
@@ -17,8 +18,9 @@ divebell mf bridge trace [remote] [--mf <name>] [--instance <ref>] [--bridge-id 
 All commands return structured output by default; `--json` is not required.
 Compatibility details, and the capability details still used by Remote and
 Bridge traces, are omitted from successful command output. When evidence is
-incomplete or unavailable, the useful reason remains in `warnings` and the next
-step remains in `recommendedActions`.
+incomplete or unavailable, state and trace commands keep the useful reason in
+`warnings` and the next step in `recommendedActions`. `module-perf` instead
+uses its existing outcome, status, match, unobserved, and evidence fields.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path
@@ -90,9 +92,10 @@ from `--mf <name>` on some `divebell mf` commands, which only selects an MF
 instance by its visible name and cannot enable diagnostics after the page has
 opened.
 
-Before navigation, the extension installs a matching MF debug Runtime
-constructor and global Observability Plugin. Future MF instances use that
-constructor, so the target project can expose the newer Remote, Shared, and
+Before navigation, the extension installs a matching MF debug Runtime,
+global Observability Plugin, and bounded page-performance and Manifest
+collector. Future MF instances use that constructor, so the target project can
+expose the newer Remote, Shared, and
 Bridge diagnostics even when its installed Runtime does not contain those
 hooks. A page that was already open cannot have complete earlier loading
 history.
@@ -279,6 +282,80 @@ The command first selects a confirmed consumer. It automatically selects only wh
 The positional `remote` is optional only when the selected consumer has exactly one declared or loaded remote. It matches that consumer's configured remote name or alias; it does not select an MF producer instance by the producer's visible name. When the remote relationship is known, the result includes the matching `producerInstanceRef`.
 
 Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, and first observed loading time. Missing historical evidence remains unknown rather than being inferred from array order; useful gaps and next steps remain in `warnings` and `recommendedActions`.
+
+## `mf module-perf`
+
+```sh
+divebell mf module-perf
+divebell mf module perf # compatibility alias
+divebell mf module-perf shop/Button
+divebell mf module-perf shop/Button --mf host
+divebell mf module-perf shop/Button --instance mf-1
+```
+
+With no target, the command analyzes every producer/expose load already
+observed in the page. It does not load a Remote, render a module, or create
+benchmark samples. Each item in `operations` is one load that the page actually
+performed.
+
+The top-level `page` values `fp`, `fcp`, and `lcp` are milliseconds elapsed
+from navigation start. `lcpStatus` states whether LCP is still provisional.
+Each operation uses the same clock for `loadRemote`, remoteEntry, expose `get`,
+and factory timing. MF lifecycle intervals all come from the selected
+Observability trace; the
+page collector does not install another runtime plugin or join lifecycle
+records by timestamp.
+`timing.loadRemote` is the complete operation boundary. Its
+`start`, `end`, and `duration` show when MF began and finished the request, and
+`outcome` is the final result reported by `loadRemote`. The command does not
+infer rendering or business readiness from DOM or Bridge activity.
+For a pending operation, `end` is absent and `duration` is only the elapsed time
+at observation.
+
+`timing.remoteEntry.duration` is the complete observed request lifecycle, not
+a download-only measurement. `blockingDuration` is the portion that actually
+overlaps the module's wait before `get`; it is zero when a preload completed
+before `loadRemote` needed the file and never extends past `loadRemote.end`.
+Bottleneck duration and percentage use this blocking time, so a long
+already-completed preload or a late inconsistent resource record is not
+diagnosed as a module bottleneck. Preload findings require a late request while
+`loadRemote` began no later than FCP; a promptly started but slow request is
+identified as a delivery issue.
+
+When an MF Manifest snapshot is available, the command lists the expose's
+synchronous and asynchronous JavaScript assets and matches them to browser
+Resource Timing by asset identity. It returns actual resource start, end,
+duration, cache and size evidence, plus whether each resource completed before
+`get`. The matched remoteEntry is returned separately as
+`manifest.remoteEntryResource` and can supply missing remoteEntry phase timing.
+It never assigns a file by timing proximity alone. Without a Manifest,
+the module lifecycle remains valid but exact expose-resource attribution is
+unavailable.
+
+`pageImpact` reports signed `startDelta` and optional `endDelta` values between
+`loadRemote` and FP, FCP, and the currently observed LCP. Negative values mean
+the load boundary happened before the page milestone; positive values mean it
+happened after. It does not infer an automatic or interaction trigger and does
+not observe component rendering. `bottleneck` compares measured remoteEntry,
+expose resource, get, and factory blocking work. `findings` expose the evidence
+and fixed rule behind each diagnosis. Failed, pending, or unknown loads do not
+receive performance bottleneck diagnoses.
+
+The result omits duplicate `warnings`, `recommendedActions`, and per-finding
+`suggestion` fields. Availability and completeness remain explicit in fields
+such as `outcome`, `lcpStatus`, `manifest.status`, asset `match`,
+`unobservedRemotes`, and each finding's evidence.
+
+`codeUsage` is only a follow-up. When exact expose JavaScript is known, the
+result lists those URLs for a separate Code Usage run. Coverage is not enabled
+during performance measurement because it changes runtime behavior, and
+`remoteEntry.js` is not treated as a useful Code Usage splitting target. Its
+`documentation` field links to the
+[Code Usage analysis guide](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
+
+See the installed Skill's
+[`references/performance.md`](skills/inspect-module-federation/references/performance.md)
+for every field, diagnosis threshold, and evidence boundary.
 
 ## Remote loading commands
 

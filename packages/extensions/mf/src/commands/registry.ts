@@ -2,6 +2,7 @@ import type { MfCommandRegistration } from "../cli/router.js";
 import {
   bridgeTraceCommandMetadata,
   moduleInfoCommandMetadata,
+  modulePerformanceCommandMetadata,
   remoteStatusCommandMetadata,
   remoteTraceCommandMetadata,
   sharedStatusCommandMetadata,
@@ -17,6 +18,11 @@ export const mfCommandRegistry: readonly MfCommandRegistration[] = [
   {
     ...moduleInfoCommandMetadata,
     load: async () => (await import("./module-info.js")).moduleInfoCommand
+  },
+  {
+    ...modulePerformanceCommandMetadata,
+    load: async () =>
+      (await import("./module-performance.js")).modulePerformanceCommand
   },
   {
     ...remoteStatusCommandMetadata,

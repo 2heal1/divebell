@@ -159,7 +159,10 @@ test("injection installs the debug constructor before business setup and observe
   assert.equal(debugInstance.name, "debug-host");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "before-runtime");
   assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
-  const plugin = context.__FEDERATION__.__GLOBAL_PLUGIN__[0];
+  const plugin = context.__FEDERATION__.__GLOBAL_PLUGIN__.find(
+    (candidate) => candidate.name === "observability-plugin:chrome-extension"
+  );
+  assert.ok(plugin);
   const first = {
     name: "host-a",
     version: "2.5.4",
@@ -270,14 +273,14 @@ test("repeated injection keeps the matching debug constructor and global plugin"
 
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
   const firstConstructor = context.__FEDERATION__.__DEBUG_CONSTRUCTOR__;
-  const firstPlugin = context.__FEDERATION__.__GLOBAL_PLUGIN__[0];
+  const firstPlugins = [...context.__FEDERATION__.__GLOBAL_PLUGIN__];
   vm.runInContext(scripts[0], context, { timeout: 5_000 });
 
   assert.equal(context.__MF_RUNTIME_DEBUG_INJECTION__.status, "already-installed");
   assert.equal(context.__MF_OBSERVABILITY_INJECTION__.status, "already-installed");
   assert.equal(context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, firstConstructor);
   assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
-  assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__[0], firstPlugin);
+  assert.deepEqual([...context.__FEDERATION__.__GLOBAL_PLUGIN__], firstPlugins);
 });
 
 test("injection replaces a mismatched debug constructor before Runtime creates instances", async () => {
@@ -450,7 +453,13 @@ test("Divebell open passes the MF script as an init script before navigation", a
           assert.equal(typeof context.__FEDERATION__.__DEBUG_CONSTRUCTOR__, "function");
           assert.equal(context.__MF_OBSERVABILITY_INJECTION__.timing, "before-runtime");
           context.__BUSINESS_SCRIPT_STARTED__ = true;
-          assert.equal(context.__FEDERATION__.__GLOBAL_PLUGIN__.length, 1);
+          assert.deepEqual(
+            Array.from(
+              context.__FEDERATION__.__GLOBAL_PLUGIN__,
+              (plugin) => plugin.name
+            ),
+            ["observability-plugin:chrome-extension"]
+          );
           initScriptChecked = true;
           return { exitCode: 0, stdout: "", stderr: "" };
         }

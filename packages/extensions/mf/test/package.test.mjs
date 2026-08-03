@@ -156,6 +156,9 @@ test("public build output has no external runtime imports or embedded MF CLI gui
     "remote/selection.js",
     "remote/results.js",
     "remote/types.js",
+    "module-performance/open.js",
+    "module-performance/result.js",
+    "module-performance/types.js",
     "shared/selection.js",
     "shared/status.js",
     "shared/trace.js",
@@ -170,7 +173,7 @@ test("public build output has no external runtime imports or embedded MF CLI gui
       /(?:from|import\()\s*["'](?!\.\.?\/|node:)/
     );
   }
-  assert.doesNotMatch(sources.join("\n"), /divebell mf (?:status|module-info|remote status|remote trace|shared status|shared trace|bridge trace)/);
+  assert.doesNotMatch(sources.join("\n"), /divebell mf (?:status|module-info|module-perf|remote status|remote trace|shared status|shared trace|bridge trace)/);
 });
 
 test("packed npm archive is self-contained and has no runtime dependencies", () => {
@@ -185,6 +188,11 @@ test("packed npm archive is self-contained and has no runtime dependencies", () 
     const listed = spawnSync("tar", ["-tf", archive], { encoding: "utf8" });
     assert.equal(listed.status, 0, listed.stderr);
     assert.match(listed.stdout, /package\/dist\/extension\.js/);
+    assert.match(listed.stdout, /package\/dist\/module-performance\/result\.js/);
+    assert.match(
+      listed.stdout,
+      /package\/skills\/inspect-module-federation\/references\/performance\.md/
+    );
     assert.doesNotMatch(
       listed.stdout,
       /package\/dist\/commands\/(?:trace|preload-trace|remote-check)\./

@@ -3167,7 +3167,7 @@ ${filtered.slice(0, 5).join("\n")}`;
   var logger = createLogger(PREFIX);
   var infrastructureLogger = createInfrastructureLogger(PREFIX);
 
-  // dist/esm/core-DsPVxJ5T.js
+  // dist/esm/core-t1FzL-KJ.js
   var import_semver = __toESM(require_semver2());
   var reportStatuses = [
     "pending",
@@ -4141,49 +4141,6 @@ ${filtered.slice(0, 5).join("\n")}`;
     });
     return cleanValue;
   }
-  function sanitizeRemote(remote) {
-    if (!remote || !remote.name) return;
-    return {
-      name: remote.name,
-      alias: sanitizeText(remote.alias, 120),
-      entry: clipText(remote.entry, 320),
-      entryGlobalName: sanitizeText(remote.entryGlobalName, 120),
-      type: sanitizeText(remote.type, 80)
-    };
-  }
-  function sanitizeResource(resource) {
-    if (!resource) return;
-    const type = sanitizeText(resource.type, 80);
-    if (!type) return;
-    return omitUndefinedFields({
-      type,
-      initiator: resource.initiator,
-      outcome: resource.outcome,
-      url: sanitizeUrl(resource.url),
-      startedAt: Number.isFinite(resource.startedAt) ? resource.startedAt : Date.now(),
-      endedAt: resource.endedAt !== void 0 && Number.isFinite(resource.endedAt) ? resource.endedAt : void 0,
-      duration: resource.duration !== void 0 && Number.isFinite(resource.duration) ? Math.max(0, resource.duration) : void 0,
-      httpStatus: resource.httpStatus !== void 0 && Number.isFinite(resource.httpStatus) ? resource.httpStatus : void 0,
-      mimeType: sanitizeText(resource.mimeType, 160),
-      redirected: typeof resource.redirected === "boolean" ? resource.redirected : void 0,
-      cacheSource: sanitizeText(resource.cacheSource, 80),
-      errorType: sanitizeText(resource.errorType, 80)
-    });
-  }
-  function createRemoteInfo(remote) {
-    if (!remote?.name) return;
-    return {
-      name: remote.name,
-      alias: remote.alias,
-      entry: remote.entry,
-      entryGlobalName: remote.entryGlobalName,
-      type: remote.type
-    };
-  }
-  function isManifestUrl(value) {
-    const sanitized = sanitizeUrl(value);
-    return Boolean(sanitized && /manifest.*\.json$/i.test(sanitized));
-  }
   function normalizeEventSource(value) {
     return value === "runtime" || value === "business" || value === "react" ? value : void 0;
   }
@@ -4643,6 +4600,63 @@ ${error.stack || ""}`),
       versions,
       existingVersions
     };
+  }
+  var REMOTE_LIFECYCLE_HOOKS = [
+    "afterLoadEntry",
+    "beforeInitRemote",
+    "afterInitRemote",
+    "beforeGetExpose",
+    "afterGetExpose",
+    "beforeExecuteFactory",
+    "afterExecuteFactory"
+  ];
+  function supportsRemoteLifecycleObservability(origin) {
+    if (supportsRuntimeObservability(origin)) return true;
+    const lifecycle = origin?.loaderHook?.lifecycle;
+    return Boolean(lifecycle && REMOTE_LIFECYCLE_HOOKS.every((hookName) => lifecycle[hookName] !== void 0));
+  }
+  function sanitizeRemote(remote) {
+    if (!remote || !remote.name) return;
+    return {
+      name: remote.name,
+      alias: sanitizeText(remote.alias, 120),
+      entry: clipText(remote.entry, 320),
+      entryGlobalName: sanitizeText(remote.entryGlobalName, 120),
+      type: sanitizeText(remote.type, 80)
+    };
+  }
+  function sanitizeResource(resource) {
+    if (!resource) return;
+    const type = sanitizeText(resource.type, 80);
+    if (!type) return;
+    return omitUndefinedFields({
+      type,
+      initiator: resource.initiator,
+      outcome: resource.outcome,
+      url: sanitizeUrl(resource.url),
+      startedAt: Number.isFinite(resource.startedAt) ? resource.startedAt : Date.now(),
+      endedAt: resource.endedAt !== void 0 && Number.isFinite(resource.endedAt) ? resource.endedAt : void 0,
+      duration: resource.duration !== void 0 && Number.isFinite(resource.duration) ? Math.max(0, resource.duration) : void 0,
+      httpStatus: resource.httpStatus !== void 0 && Number.isFinite(resource.httpStatus) ? resource.httpStatus : void 0,
+      mimeType: sanitizeText(resource.mimeType, 160),
+      redirected: typeof resource.redirected === "boolean" ? resource.redirected : void 0,
+      cacheSource: sanitizeText(resource.cacheSource, 80),
+      errorType: sanitizeText(resource.errorType, 80)
+    });
+  }
+  function createRemoteInfo(remote) {
+    if (!remote?.name) return;
+    return {
+      name: remote.name,
+      alias: remote.alias,
+      entry: remote.entry,
+      entryGlobalName: remote.entryGlobalName,
+      type: remote.type
+    };
+  }
+  function isManifestUrl(value) {
+    const sanitized = sanitizeUrl(value);
+    return Boolean(sanitized && /manifest.*\.json$/i.test(sanitized));
   }
   function copyEvent(event) {
     return omitUndefinedFields({
@@ -6112,7 +6126,7 @@ ${event.message || ""}`;
       runtimeObservabilityEnabled = true;
       return true;
     };
-    const supportsRuntimeHookObservability = (origin) => supportsRuntimeObservability({
+    const supportsRuntimeHookObservability = (origin) => supportsRemoteLifecycleObservability({
       ...origin,
       version: sanitizeText(origin?.version, 80) || appliedRuntimeVersion || origin?.version
     });

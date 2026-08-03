@@ -6,6 +6,37 @@ To inspect an MF page through the Divebell CLI, install [`@divebell/extension-mf
 
 This package is a Module Federation runtime plugin for long-term collection, not a CLI Extension. Add it to the MF consumer only when the application needs to continuously record, upload, or retain MF reports. It does not add a standalone `divebell` command.
 
+## One-off module performance analysis
+
+The MF Extension also provides:
+
+```bash
+divebell mf module-perf [remote/expose]
+```
+
+This command requires only `divebell open <url> --mf`; consumers and producers
+do not add Slardar, the observability plugin, or application callbacks for a
+one-off run. Divebell installs a bounded browser collector before navigation
+and combines official MF lifecycle evidence with browser paint, Resource
+Timing, and Manifest assets. MF lifecycle intervals come from one
+Observability trace rather than a second runtime plugin. It analyzes actual
+page loads and never loads or renders a module merely to create another
+sample. Module success means that
+the observed `loadRemote` operation finished successfully; the command does not
+claim that the consumer UI rendered or became ready.
+
+Without a target it covers every producer/expose load observed in the page. An
+MF Manifest is optional: get and factory timing remains available without one.
+With a Manifest, the command maps the expose's declared JavaScript assets to
+actual browser resource start/end timing, allowing evidence-based preload
+recommendations. Code Usage remains a separate follow-up for exact expose
+assets because enabling coverage would change the performance measurement.
+For remoteEntry, the full observed request lifecycle remains visible while
+bottleneck calculations use only the part that actually blocked the module;
+cross-origin network phases that the browser does not expose are omitted.
+Page impact is expressed as signed start and end deltas between `loadRemote`
+and FP, FCP, and LCP; it does not infer a loading trigger or component render.
+
 ## What the plugin provides
 
 The observability plugin records evidence for:

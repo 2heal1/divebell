@@ -1,6 +1,6 @@
 ---
 name: inspect-module-federation
-description: Inspect and explain Module Federation runtime evidence returned by the Divebell MF Extension or a custom command alias. Use when an Agent needs to diagnose MF instances, remotes, shared dependencies, Bridge lifecycle, loading history, ambiguous selections, registrations, candidates, version choice, fallbacks, or incomplete observations from status, module-info, remote trace, shared trace, or bridge trace output.
+description: Inspect and explain Module Federation runtime and module performance evidence returned by the Divebell MF Extension or a custom command alias. Use when an Agent needs to diagnose MF instances, remotes, producer module performance, page paint impact, expose resources, shared dependencies, Bridge lifecycle, loading history, ambiguous selections, registrations, candidates, version choice, fallbacks, or incomplete observations from status, module-info, module-perf, remote trace, shared trace, or bridge trace output.
 ---
 
 # Inspect Module Federation
@@ -35,6 +35,8 @@ conclusions.
 - Use `status` to list current MF instances and loaded Shared entries.
 - Use `module-info [remote]` for the current declaration and resolved metadata
   of one Remote.
+- Use `module-perf [remote/expose]` for observed producer-module loading,
+  expose resources, page paint timing impact, and optimization advice.
 - Use `remote status <remote>` for a compact current Remote result.
 - Use `remote trace [remote/expose]` for a Remote load or preload timeline.
 - Use `shared status [package]` for the current Shared registry.
@@ -68,6 +70,8 @@ chains by eye.
   [common fields](references/common.md).
 - For `status` and `module-info`, read
   [current state and module information](references/state.md).
+- For `module-perf`, read
+  [module performance fields and diagnosis rules](references/performance.md).
 - For `shared status` or `shared trace`, especially `registrations`,
   `candidates`, `ambiguous`, or version choice, read
   [Shared fields](references/shared.md).

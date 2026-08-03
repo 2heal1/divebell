@@ -110,6 +110,45 @@ export function registerMfExtensionE2e({
       assert.equal(remoteStatus.json.data.remote.relationship, "resolved");
       assert.equal(typeof remoteStatus.json.data.remote.latestTraceId, "string");
       assert.deepEqual(remoteStatus.json.data.remote.loadedExposes, ["./Widget"]);
+
+      const modulePerformance = await environment.runCli(
+        mfTestCommands.modulePerformance({
+          target: "provider/Widget",
+          instance: host.instanceRef
+        })
+      );
+      assert.equal(modulePerformance.json.status, "ok");
+      assert.equal(modulePerformance.json.data.summary.moduleCount, 1);
+      assert.equal(modulePerformance.json.data.summary.operationCount, 1);
+      assert.equal("warnings" in modulePerformance.json.data, false);
+      assert.equal("recommendedActions" in modulePerformance.json.data, false);
+      const measuredModule = modulePerformance.json.data.modules[0];
+      assert.ok(measuredModule !== undefined);
+      assert.equal(measuredModule.expose, "./Widget");
+      assert.equal("warnings" in measuredModule, false);
+      const operation = measuredModule.operations[0];
+      assert.ok(operation !== undefined);
+      assert.equal(typeof operation.timing.loadRemote.start, "number");
+      assert.equal(typeof operation.timing.loadRemote.end, "number");
+      assert.equal(typeof operation.timing.loadRemote.duration, "number");
+      assert.ok(
+        operation.timing.get !== undefined,
+        JSON.stringify(modulePerformance.json.data)
+      );
+      assert.equal(typeof operation.timing.get.duration, "number");
+      assert.equal(modulePerformance.json.data.page.lcpStatus, "not-observed");
+      assert.equal("fp" in modulePerformance.json.data.page, false);
+      assert.equal("fcp" in modulePerformance.json.data.page, false);
+      assert.deepEqual(operation.pageImpact, {});
+      assert.equal("trigger" in operation.pageImpact, false);
+      assert.ok(operation.findings.every((finding) =>
+        !("suggestion" in finding)
+      ));
+      assert.equal(operation.manifest.status, "available");
+      assert.ok(operation.manifest.assets.some((asset) =>
+        asset.kind === "sync" && asset.match === "matched" &&
+        typeof asset.start === "number" && typeof asset.end === "number"
+      ));
     } finally {
       if (opened) {
         await environment.runCli(divebellTestCommands.stop());

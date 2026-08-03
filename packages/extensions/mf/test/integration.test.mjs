@@ -18,7 +18,7 @@ const idleRemote = {
   type: "global"
 };
 
-test("all seven commands and both trace modes execute for mf and vmok", async () => {
+test("all eight commands, the module perf alias, and both trace modes execute for mf and vmok", async () => {
   const snapshot = combinedSnapshot();
   const cases = [
     { command: ["mf", "status"], expected: "mf status", compactStatus: true },
@@ -26,6 +26,16 @@ test("all seven commands and both trace modes execute for mf and vmok", async ()
       command: ["mf", "module-info", "shop"],
       options: [["instance", ["mf-1"]]],
       expected: "mf module-info"
+    },
+    {
+      command: ["mf", "module-perf", "shop/Button"],
+      options: [["instance", ["mf-1"]]],
+      expected: "mf module-perf"
+    },
+    {
+      command: ["mf", "module", "perf", "shop/Button"],
+      options: [["instance", ["mf-1"]]],
+      expected: "mf module-perf"
     },
     {
       command: ["mf", "remote", "trace", "shop/Button"],

@@ -281,6 +281,15 @@ test("creates a self-contained and safely escaped report", async () => {
   assert.match(html, /\\u003c\/script\\u003e/);
 });
 
+test("keeps page-experience panels hidden in code-only reports", async () => {
+  const html = await createCodeUsageReportHtml(report.usage);
+
+  assert.match(html, /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
+  assert.match(html, /getElementById\("experience-summary"\)\.hidden = true/);
+  assert.match(html, /getElementById\("experience-loading"\)\.hidden = true/);
+  assert.match(html, /if \(hasExperience\) \{\s*renderExperience\(/);
+});
+
 test("code-usage report generates an HTML file without requiring a page session", async () => {
   const directory = mkdtempSync(join(tmpdir(), "divebell-analysis-report-"));
   const inputPath = join(directory, "report.json");

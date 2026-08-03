@@ -1,4 +1,4 @@
 interface:
   display_name: "Analyze Code Usage"
-  short_description: "Measure executed code by source and dependency"
-  default_prompt: "Use $analyze-code-usage to generate a code-usage size report for the current page."
+  short_description: "Measure readiness, memory, and executed code"
+  default_prompt: "Use $analyze-code-usage to generate a complete page-experience and code-usage report for the current page."

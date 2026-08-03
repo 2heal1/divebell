@@ -30,6 +30,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html { min-width: 320px; }
     body {
       margin: 0;
@@ -1428,10 +1429,12 @@
           const used = allItems.reduce((sum, item) => sum + item.used, 0);
           const candidates = allItems.filter(isCandidate);
 
-          renderExperience(
-            phase,
-            experience.phases.find((item) => item && item.label === phase.label) || null
-          );
+          if (hasExperience) {
+            renderExperience(
+              phase,
+              experience.phases.find((item) => item && item.label === phase.label) || null
+            );
+          }
           renderCoverageScope(phase);
 
           document.getElementById("total-size-label").textContent = state.view === "chunks"

@@ -88,12 +88,15 @@ the page from that exact output.
 Change build configuration only when the user requested a report and the
 required integration is missing. Do not redesign unrelated build settings.
 
-## 3. Measure page readiness and loading memory when requested
+## 3. Measure page readiness and loading memory before coverage
 
-The report shows page-ready time and JavaScript memory only when they were
-measured in a separate page load with code coverage disabled. If the user asks
-for those metrics or a complete page-experience report, open the page with the
-measurement recorder enabled:
+A standard code-usage report includes page-ready time and JavaScript memory.
+Measure them in a separate page load with code coverage disabled before
+recording coverage. Skip this step only when the user explicitly requests a
+code-only report or the target browser cannot provide the measurement; state
+that omission in the final result.
+
+For the first-screen phase, open the page with the measurement recorder enabled:
 
 ```bash
 divebell open <page-url> --code-usage-experience
@@ -106,12 +109,15 @@ divebell code-usage experience \
 
 The `experience` command captures the end time chosen by the Agent, the heap at
 that point, the loading peak, resource timing, and memory after a short settling
-period. Do not start code coverage before this command finishes. Collect one
-experience file for every coverage phase that will appear in the combined
-report, using exactly the same labels.
+period. Do not start code coverage before this command finishes.
 
-If only code usage is requested, skip this step. The generated report will hide
-the page-readiness and memory sections instead of showing empty values.
+Collect one experience file for every coverage phase that will appear in the
+combined report, using exactly the same labels. The recorder finishes after one
+capture, so reopen the page with `--code-usage-experience` for each additional
+phase, reproduce the journey up to that phase with coverage still disabled,
+then capture it. For example, reopen the page, wait for the first screen, perform
+the representative interaction, wait for its explicit ready condition, and
+capture `/tmp/interaction.experience.json` with `--label interaction`.
 
 ## 4. Record the current page and representative workflows
 
@@ -162,8 +168,8 @@ divebell code-usage report /tmp/code-usage-report.json
 Pass `--assets <production-output>` only when the JavaScript and source maps
 are not beside the Chunk Map. Trusted HTTP or HTTPS build URLs are also
 supported, but every artifact must still match the page's exact build.
-Omit `--experience` when step 3 was intentionally skipped. When it is present,
-its labels must exactly match all coverage labels.
+Omit `--experience` only when step 3 was intentionally skipped for a code-only
+report. When it is present, its labels must exactly match all coverage labels.
 
 ## 6. Inspect the result
 

@@ -2,7 +2,7 @@
 
 This optional analysis maps code recorded in the browser back to build chunks, application files, workspace packages, and third-party dependencies. It helps identify code that may be loaded too early or split more effectively.
 
-> Ask your Agent: `Run divebell extensions add @divebell/extension-code-usage to install the Extension, then run divebell code-usage --skill and follow the returned Skill to analyze the current project and open a code-usage size report for the current page.`
+> Ask your Agent: `Run divebell extensions add @divebell/extension-code-usage to install the Extension, then run divebell code-usage --skill and follow the returned Skill to analyze the current project and open a complete page-experience and code-usage report for the current page.`
 
 ## What the report shows
 
@@ -88,10 +88,11 @@ divebellChunkMapPlugin({ filename: 'meta/chunks.json' })
 
 The Rspack plugin supports the same option.
 
-### 2. Measure page readiness and loading memory when needed
+### 2. Measure page readiness and loading memory before coverage
 
-Page-ready time and loading memory must be measured without code coverage. To
-include them in the report, first open the page with the measurement recorder:
+A standard report includes page-ready time and loading memory. They must be
+measured without code coverage, before coverage recording starts. First open
+the page with the measurement recorder:
 
 ```bash
 divebell open https://example.com/ --code-usage-experience
@@ -102,9 +103,10 @@ divebell code-usage experience \
   --ready-target "application ready"
 ```
 
-Repeat this measurement for every report phase and keep the labels identical
-to the coverage labels. If these metrics are not needed, skip this step; the
-report will hide their sections rather than display empty values.
+Repeat this measurement from a fresh recorder-enabled page load for every
+report phase and keep the labels identical to the coverage labels. Skip this
+step only for an explicitly requested code-only report; that report hides the
+page-readiness and memory sections rather than displaying empty values.
 
 ### 3. Record representative page journeys
 

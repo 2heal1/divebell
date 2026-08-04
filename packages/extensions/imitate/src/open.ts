@@ -79,7 +79,8 @@ export async function runRecordingOpenHook(
     ...(recordingStartUrl === undefined ? {} : { openedUrl: recordingStartUrl }),
     scripts: [
       createInteractionRecorderScript(Date.parse(control.startedAt), {
-        ...(companionUrl === undefined ? {} : { companionUrl })
+        excludedPageUrls: [recordingStartUrl, companionUrl]
+          .filter((url): url is string => url !== undefined)
       })
     ],
     ...(companionUrl === undefined

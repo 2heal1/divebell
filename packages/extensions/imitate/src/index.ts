@@ -127,6 +127,19 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
   );
   const stopStartedAt = new Date();
 
+  const recorderUrl = createRecordingCompanionUrl(
+    recording.manifest.bridgeUrl,
+    recording.manifest.startedAt,
+    recording.manifest.intervalMs
+  );
+  const interactionCollection = await collectInteractionEvents(
+    outputDirectory,
+    options.divebell.browser,
+    recorderUrl === undefined ? {} : { companionUrl: recorderUrl }
+  );
+  await writeJsonLines(join(outputDirectory, recording.manifest.files.interactions), interactionCollection.interactions);
+  await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), interactionCollection.operation);
+
   const sampledAt = new Date();
   const [runtimeSample, pageSnapshot, domSnapshot] = await Promise.all([
     sampleRuntimeForPage(options.divebell, runtimeSelector, page, sampledAt),
@@ -136,16 +149,6 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
   await appendJsonLine(join(outputDirectory, recording.manifest.files.runtime), runtimeSample);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.pageSnapshots), pageSnapshot);
   await appendJsonLine(join(outputDirectory, recording.manifest.files.domSnapshots), domSnapshot);
-
-  const interactionCollection = await collectInteractionEvents(outputDirectory, options.divebell.browser);
-  await writeJsonLines(join(outputDirectory, recording.manifest.files.interactions), interactionCollection.interactions);
-  await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), interactionCollection.operation);
-
-  const recorderUrl = createRecordingCompanionUrl(
-    recording.manifest.bridgeUrl,
-    recording.manifest.startedAt,
-    recording.manifest.intervalMs
-  );
   const audioCollection = await collectAudioCapture(
     outputDirectory,
     recording.manifest.files,

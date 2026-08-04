@@ -4,20 +4,22 @@ import { readJsonLinesIfExists } from "./storage.js";
 import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
 
 const RECORD_EVENT_CONSOLE_MARKER = "__DIVEBELL_RECORD_EVENT__";
-export async function collectInteractionEvents(outputDirectory: string, browser: DivebellBrowserApi): Promise<{
+const RECORDING_COMPANION_LABEL = "divebell-recorder";
+
+export async function collectInteractionEvents(
+  outputDirectory: string,
+  browser: DivebellBrowserApi,
+  options: {
+    companionUrl?: string;
+  } = {}
+): Promise<{
   operation: OperationEntry;
   interactions: InteractionEvent[];
 }> {
   const started = new Date();
   const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(join(outputDirectory, "interaction-events.raw.jsonl"));
-  let consoleInteractions: InteractionEvent[] = [];
-  let consoleError: string | undefined;
-  try {
-    const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
-    consoleInteractions = parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args));
-  } catch (error) {
-    consoleError = error instanceof Error ? error.message : String(error);
-  }
+  const consoleCollection = await collectConsoleInteractions(browser, options.companionUrl);
+  const consoleInteractions = consoleCollection.interactions;
   const interactions = mergeInteractionEvents(persistedInteractions, consoleInteractions);
   return {
     operation: {
@@ -27,10 +29,178 @@ export async function collectInteractionEvents(outputDirectory: string, browser:
       count: interactions.length,
       persistedCount: persistedInteractions.length,
       consoleCount: consoleInteractions.length,
-      ...(consoleError === undefined ? {} : { consoleError })
+      inspectedTabCount: consoleCollection.inspectedTabCount,
+      ...(consoleCollection.selectedTabId === undefined
+        ? {}
+        : { selectedTabId: consoleCollection.selectedTabId }),
+      ...(consoleCollection.errors.length === 0
+        ? {}
+        : { consoleErrors: consoleCollection.errors })
     },
     interactions
   };
+}
+
+async function collectConsoleInteractions(
+  browser: DivebellBrowserApi,
+  companionUrl: string | undefined
+): Promise<{
+  interactions: InteractionEvent[];
+  inspectedTabCount: number;
+  selectedTabId?: string;
+  errors: string[];
+}> {
+  const listed = await browser.raw(["tab", "--json"]);
+  if (listed.exitCode !== 0) {
+    return await collectCurrentTabInteractions(browser, [browserResultError(listed, "Could not inspect browser tabs.")]);
+  }
+
+  let parsed: {
+    tabs?: Array<{
+      tabId?: unknown;
+      url?: unknown;
+      label?: unknown;
+      active?: unknown;
+    }>;
+  };
+  try {
+    parsed = JSON.parse(listed.stdout) as typeof parsed;
+  } catch {
+    return await collectCurrentTabInteractions(browser, ["Could not parse the browser tab list."]);
+  }
+
+  const tabs = (Array.isArray(parsed.tabs) ? parsed.tabs : []).flatMap((tab) =>
+    typeof tab.tabId !== "string"
+      ? []
+      : [{
+          tabId: tab.tabId,
+          url: typeof tab.url === "string" ? tab.url : undefined,
+          label: typeof tab.label === "string" ? tab.label : undefined,
+          active: tab.active === true
+        }]
+  );
+  const operationTabs = tabs.filter((tab) =>
+    tab.label !== RECORDING_COMPANION_LABEL &&
+    !recordingCompanionMatches(tab.url, companionUrl)
+  );
+  if (operationTabs.length === 0) {
+    return await collectCurrentTabInteractions(browser, ["The browser operation tab was not found."]);
+  }
+
+  const errors: string[] = [];
+  const collected: Array<{
+    tabId: string;
+    active: boolean;
+    interactions: InteractionEvent[];
+  }> = [];
+  let currentTabId = tabs.find((tab) => tab.active)?.tabId;
+  for (const tab of operationTabs) {
+    if (currentTabId !== tab.tabId) {
+      const switched = await browser.raw(["tab", tab.tabId]);
+      if (switched.exitCode !== 0) {
+        errors.push(browserResultError(switched, `Could not inspect browser tab ${tab.tabId}.`));
+        continue;
+      }
+      currentTabId = tab.tabId;
+    }
+
+    try {
+      const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+      collected.push({
+        tabId: tab.tabId,
+        active: tab.active,
+        interactions: parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args))
+      });
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  const selected = collected.toSorted(compareInteractionTabs).at(-1)
+    ?? operationTabs.find((tab) => tab.active)
+    ?? operationTabs[0];
+  if (selected !== undefined && currentTabId !== selected.tabId) {
+    const restored = await browser.raw(["tab", selected.tabId]);
+    if (restored.exitCode === 0) {
+      currentTabId = selected.tabId;
+    } else {
+      errors.push(browserResultError(restored, "Could not return to the recorded browser tab."));
+    }
+  }
+
+  return {
+    interactions: mergeInteractionEvents(...collected.map((entry) => entry.interactions)),
+    inspectedTabCount: collected.length,
+    ...(currentTabId === undefined ? {} : { selectedTabId: currentTabId }),
+    errors
+  };
+}
+
+async function collectCurrentTabInteractions(
+  browser: DivebellBrowserApi,
+  initialErrors: string[]
+): Promise<{
+  interactions: InteractionEvent[];
+  inspectedTabCount: number;
+  errors: string[];
+}> {
+  try {
+    const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+    return {
+      interactions: parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args)),
+      inspectedTabCount: 1,
+      errors: initialErrors
+    };
+  } catch (error) {
+    return {
+      interactions: [],
+      inspectedTabCount: 0,
+      errors: [
+        ...initialErrors,
+        error instanceof Error ? error.message : String(error)
+      ]
+    };
+  }
+}
+
+function compareInteractionTabs(
+  left: { active: boolean; interactions: InteractionEvent[] },
+  right: { active: boolean; interactions: InteractionEvent[] }
+): number {
+  const leftActionable = countActionableInteractions(left.interactions);
+  const rightActionable = countActionableInteractions(right.interactions);
+  if (leftActionable !== rightActionable) return leftActionable - rightActionable;
+
+  const leftLatest = left.interactions.at(-1)?.timeMs ?? -1;
+  const rightLatest = right.interactions.at(-1)?.timeMs ?? -1;
+  if (leftLatest !== rightLatest) return leftLatest - rightLatest;
+  return Number(left.active) - Number(right.active);
+}
+
+function countActionableInteractions(interactions: InteractionEvent[]): number {
+  return interactions.filter((interaction) =>
+    interaction.type !== "recorder-ready" && interaction.type !== "recorder-error"
+  ).length;
+}
+
+function recordingCompanionMatches(actual: string | undefined, expected: string | undefined): boolean {
+  if (actual === undefined || expected === undefined) return false;
+  try {
+    const actualUrl = new URL(actual);
+    const expectedUrl = new URL(expected);
+    return actualUrl.origin === expectedUrl.origin &&
+      actualUrl.pathname === expectedUrl.pathname &&
+      actualUrl.searchParams.get("startedAt") === expectedUrl.searchParams.get("startedAt");
+  } catch {
+    return actual === expected;
+  }
+}
+
+function browserResultError(
+  result: { stdout: string; stderr: string },
+  fallback: string
+): string {
+  return result.stderr.trim() || result.stdout.trim() || fallback;
 }
 
 export async function sampleRuntime(
@@ -160,26 +330,24 @@ function createDomSnapshotScript(): string {
 export function createInteractionRecorderScript(
   recordingStartedAtMs: number,
   options: {
-    companionUrl?: string;
+    excludedPageUrls?: string[];
   } = {}
 ): string {
-  const companionPath = getUrlPathname(options.companionUrl);
+  const excludedPages = (options.excludedPageUrls ?? []).flatMap((value) => {
+    try {
+      const url = new URL(value);
+      return [{ origin: url.origin, pathname: url.pathname }];
+    } catch {
+      return [];
+    }
+  });
   return [
     "(() => {",
-    `  const companionPath = ${JSON.stringify(companionPath)};`,
-    "  if (companionPath !== undefined && globalThis.location?.pathname === companionPath) return;",
+    `  const excludedPages = ${JSON.stringify(excludedPages)};`,
+    "  if (excludedPages.some((page) => globalThis.location?.origin === page.origin && globalThis.location?.pathname === page.pathname)) return;",
     `  (${installInteractionRecorder.toString()})(${JSON.stringify(recordingStartedAtMs)}, ${JSON.stringify(RECORD_EVENT_CONSOLE_MARKER)});`,
     "})()"
   ].join("\n");
-}
-
-function getUrlPathname(value: string | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  try {
-    return new URL(value).pathname;
-  } catch {
-    return undefined;
-  }
 }
 
 function installInteractionRecorder(startedAt: number, marker: string): void {

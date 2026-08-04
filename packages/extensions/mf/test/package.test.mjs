@@ -89,6 +89,49 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   );
 });
 
+test("command skill keeps MF performance answers inside attributed evidence", () => {
+  const skillRoot = resolve(
+    packageRoot,
+    "skills/inspect-module-federation"
+  );
+  const skill = readFileSync(resolve(skillRoot, "SKILL.md"), "utf8");
+  const performance = readFileSync(
+    resolve(skillRoot, "references/performance.md"),
+    "utf8"
+  );
+  const shared = readFileSync(
+    resolve(skillRoot, "references/shared.md"),
+    "utf8"
+  );
+
+  assert.doesNotMatch(skill, /Scope the performance request/);
+  assert.match(
+    performance,
+    /only when the user explicitly asks about MF[\s\S]*performance/
+  );
+  assert.match(
+    performance,
+    /consumer name\/instanceRef[\s\S]*remote name\/alias\/entry[\s\S]*producer name\/version[\s\S]*expose/
+  );
+  assert.match(performance, /Do\s+not list TTFB, CLS, INP/);
+  assert.match(
+    performance,
+    /remoteEntry\.start - page\.fcp[\s\S]*remoteEntry\.start - loadRemote\.start/
+  );
+  assert.match(
+    performance,
+    /preload-remote-entry[\s\S]*interaction-triggered lazy load/
+  );
+  assert.match(
+    performance,
+    /codeUsage\.status[\s\S]*codeUsage\.assets[\s\S]*do\s+not invent a universal threshold/
+  );
+  assert.match(
+    shared,
+    /Multiple registered or unloaded[\s\S]*do not by[\s\S]*themselves prove a conflict/
+  );
+});
+
 test("configured extension exposes complete vmok help and routing guidance", async () => {
   const { createMfExtension } = await import(
     pathToFileURL(resolve(packageRoot, "dist/extension.js")).href

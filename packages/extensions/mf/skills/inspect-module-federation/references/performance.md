@@ -1,5 +1,18 @@
 # Module performance fields
 
+## Scope the performance request
+
+Use this workflow only when the user explicitly asks about MF, Module
+Federation, or the current command alias's loading performance, runtime
+performance, bottlenecks, or module resource cost. An ordinary question about
+MF state, configuration, Remotes, Shared dependencies, or errors does not
+become a performance task merely because it mentions MF.
+
+Start with `module-perf`. With no target it returns every producer/expose load
+already observed on the page. Use `status` only when the result cannot select
+an exact instance or consumer. Do not add a generic CLI `vitals` command unless
+the user separately asks about whole-page performance.
+
 ## What the command measures
 
 `module-perf [remote/expose]` analyzes module loads already observed in the
@@ -13,6 +26,71 @@ command. `open --mf` installs the bounded page collector before navigation. MF
 loading boundaries come from one official MF Observability trace, not a second
 runtime plugin or timestamp matching; paint and resource facts come from the
 browser.
+
+## Report the MF performance relationship
+
+Organize the answer around the selected MF operation instead of producing a
+generic page-performance report. Preserve this complete identity for every
+module:
+
+```text
+consumer name/instanceRef
+  -> remote name/alias/entry
+  -> producer name/version
+  -> expose
+```
+
+Keep each operation and its Manifest assets under that identity. For an
+operation, report `traceId`, `outcome`, `loadRemote.duration`, measured
+`remoteEntry.blockingDuration`, `get.duration`, `factory.duration`, the
+deterministic `bottleneck`, and applicable findings. Omit unavailable phases
+instead of turning them into zero.
+
+Use page timing only to explain when the selected MF operation happened. Do
+not list TTFB, CLS, INP, or a standalone Core Web Vitals table for an MF
+performance request. FP, FCP, and LCP are relevant only as timeline anchors for
+MF evidence. Prefer explicit relationships such as:
+
+- FCP occurred at `page.fcp` milliseconds after navigation;
+- `loadRemote` began `loadRemote.start - page.fcp` milliseconds before or
+  after FCP;
+- `remoteEntry` began `remoteEntry.start - page.fcp` milliseconds before or
+  after FCP;
+- `remoteEntry` began `remoteEntry.start - loadRemote.start` milliseconds
+  after the module was requested; and
+- the MF operation completed `loadRemote.end - page.fcp` milliseconds before
+  or after FCP.
+
+All of these values use the same navigation-relative clock. State only the
+observed relationship. Do not claim that MF caused FP, FCP, LCP, rendering,
+readiness, or interactivity.
+
+Recommend preloading `remoteEntry` when the `preload-remote-entry` finding
+shows that the initial module request waited for a late request. If
+`remoteEntry` started after FCP because `loadRemote` itself started after FCP,
+report both delays. Recommend preload only conditionally when the module is
+expected for the initial view or a predictable user journey; an
+interaction-triggered lazy load is not an initial-page regression by itself.
+
+Report related JavaScript only inside its producer/expose group. A Manifest
+with `status: available` establishes the declared asset ownership. Browser
+request duration, size, and cache evidence additionally require
+`match: matched`. Describe `not-loaded` only as Manifest-declared but not
+observed loading, and never flatten assets from several modules into one chunk
+table.
+
+For matched synchronous expose assets, report available resource duration,
+transfer size, encoded body size, and decoded body size. Preserve the exact
+cache classification. `cache-or-service-worker` does not identify which path
+served the response, and `decodedBodySize` is uncompressed response size rather
+than runtime memory.
+
+When `codeUsage.status` is `recommended`, recommend a separate Code Usage pass
+using exactly `codeUsage.assets`. If a user or project performance budget says
+a matched asset is too large, Code Usage can also be suggested as a separate
+size investigation using that matched URL; do not present it as proof of the
+current MF bottleneck. Without a stated budget, report the measured size but do
+not invent a universal threshold or recommend code splitting from size alone.
 
 ## Page timing
 

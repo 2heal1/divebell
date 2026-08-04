@@ -34,7 +34,7 @@ divebell stop
 
 `record start` records operated elements and events and automatically attempts microphone capture. A successful capture also saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. When supported by the browser, the recording page writes speech-recognition results as they arrive, and `record stop` combines them into `transcript.json`. Silence, missing audio, and denied microphone access are ignored and do not affect browser recording, script generation, or replay.
 
-The default blank page says, “Enter a URL in the address bar to start recording web actions.” The browser first requests microphone permission on a separate recording page. After the user allows or denies access, it returns to the start page and keeps the recording page open in the background until `record stop`.
+The default workflow page contains a URL form. The browser first requests microphone permission in a separately named audio-only tab. After the user allows or denies access, it returns to the workflow tab and keeps the audio tab open in the background until `record stop`. Paste the target URL and perform all actions in the workflow tab; never navigate the audio tab.
 
 To convert audio to a text timeline, run:
 

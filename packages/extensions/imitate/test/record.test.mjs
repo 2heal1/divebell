@@ -115,6 +115,7 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.match(initScript, /locators/);
     assert.match(initScript, /composedPath/);
     assert.match(initScript, /selectedValues/);
+    assert.match(initScript, /__divebell\/recorder/);
     assert.equal(
       fixture.browserCalls.some((call) =>
         call.args[0] === "tab" &&
@@ -145,9 +146,9 @@ test("starts and stops a manual recording on the same current page", async () =>
       .filter((call) => !isRecorderBrowserCall(call.args))
       .map((call) => call.args[0]), [
       "open",
+      "console",
       "snapshot",
-      "eval",
-      "console"
+      "eval"
     ]);
 
     const completedManifest = readJson(join(fixture.outputDir, "manifest.json"));
@@ -267,6 +268,46 @@ test("keeps persisted interactions after navigation", async () => {
     const workflow = readJson(join(fixture.outputDir, "workflow.json"));
     assert.equal(workflow.startUrl, "https://github.com/");
     assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press", "click"]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("collects interactions from the workflow tab when the audio tab is active", async () => {
+  const fixture = createRecordingFixture("divebell-recording-active-audio-tab-", {
+    browserLogsByTab: {
+      t1: [
+        "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"recorder-ready\",\"timeMs\":10,\"url\":\"http://app.test/\"}",
+        "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":200,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button\",\"tagName\":\"button\",\"text\":\"Run\"}}"
+      ].join("\n"),
+      t2: ""
+    }
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+
+    const tabOutput = createOutput();
+    assert.equal(await fixture.run(["tab", "t2"], tabOutput), 0);
+
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+    assert.equal(commandData(stopOutput).counts.interactions, 2);
+    assert.deepEqual(
+      readJsonLines(join(fixture.outputDir, "interactions.jsonl")).map((event) => event.type),
+      ["recorder-ready", "click"]
+    );
+
+    const snapshotIndex = fixture.browserCalls.findIndex((call) => call.args[0] === "snapshot");
+    assert.equal(snapshotIndex > 0, true);
+    assert.deepEqual(fixture.browserCalls[snapshotIndex - 1]?.args, ["console", "--json"]);
+    assert.deepEqual(fixture.browserCalls[snapshotIndex - 2]?.args, ["tab", "t1"]);
+    const collectOperation = readJsonLines(join(fixture.outputDir, "operations.jsonl"))
+      .find((operation) => operation.type === "interactions.collect");
+    assert.equal(collectOperation.selectedTabId, "t1");
+    assert.equal(collectOperation.inspectedTabCount, 1);
   } finally {
     fixture.cleanup();
   }
@@ -500,6 +541,9 @@ test("uses the current blank page and the default recording output", async () =>
     assert.equal(fixture.browserCalls.filter((call) => call.args[0] === "open").length, 1);
     const openCall = fixture.browserCalls.find((call) => call.args[0] === "open");
     assert.equal(openCall.args[1], manifest.openedUrl);
+    const initScript = readFileSync(openCall.args[3], "utf8");
+    assert.match(initScript, /__divebell\/recording-start/);
+    assert.match(initScript, /__divebell\/recorder/);
   } finally {
     process.chdir(originalCwd);
     fixture.cleanup();
@@ -702,8 +746,9 @@ function createRecordingFixture(prefix, options = {}) {
       }));
     }
     if (args[0] === "console") {
+      const browserLogs = options.browserLogsByTab?.[activeTabId] ?? options.browserLogs ?? "";
       return browserResult(JSON.stringify({
-        messages: (options.browserLogs ?? "")
+        messages: browserLogs
           .split(/\r?\n/u)
           .filter((line) => line.length > 0)
           .map((text) => ({ type: "info", text }))

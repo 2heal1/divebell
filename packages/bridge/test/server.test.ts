@@ -14,7 +14,9 @@ test("serves the microphone companion page from a secure local browser origin", 
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") ?? "", /text\/html/);
     assert.equal(response.headers.get("permissions-policy"), "microphone=(self)");
-    assert.match(html, /Allow microphone access/);
+    assert.match(html, /Audio helper tab/);
+    assert.match(html, /keep this tab open/i);
+    assert.match(html, /workflow only/i);
     assert.match(html, /getUserMedia/);
     assert.match(html, /__DIVEBELL_AUDIO_RECORDER__/);
   } finally {
@@ -30,9 +32,14 @@ test("serves a visible start page for recordings without an initial URL", async 
     const response = await fetch(`${address.url}/__divebell/recording-start`);
     const html = await response.text();
     assert.equal(response.status, 200);
-    assert.match(html, /Recording started/);
-    assert.match(html, /Enter a URL in the address bar/);
+    assert.match(html, /Workflow tab · ready/);
+    assert.match(html, /Start the workflow/);
+    assert.match(html, /divebell-recording-url-form/);
+    assert.match(html, /audio only/i);
     assert.match(html, /divebell-recording-start/);
+    const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/u)?.[1];
+    assert.equal(typeof inlineScript, "string");
+    assert.doesNotThrow(() => new Function(inlineScript ?? ""));
   } finally {
     await server.close();
   }

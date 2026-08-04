@@ -14,7 +14,7 @@ The first version generates a JavaScript script by default, not a skill. Scripts
 - Use the globally installed `divebell` command to operate the page. Do not add `@divebell/cli` to the application project.
 - Run `divebell record --help` before starting. If the command is unavailable, ask the user to run `npm install --global @divebell/cli`. If `record` is missing, run `divebell extensions add @divebell/extension-imitate`.
 - If the CLI or recording command is unavailable, read `references/divebell-cli.md`. Do not fall back to a project-local dependency or a temporarily downloaded CLI.
-- By default, run `record start` to prepare recording, then open a visible page with `divebell open about:blank --ui`. The start page clearly tells the user to enter a URL in the address bar. Do not ask whether to enable audio and do not add audio flags. Opening the page proactively requests microphone access on a separate page and returns to the recording start page after the prompt is handled. Ignore silence, missing audio, and denied permission. Do not ask which page to record unless the user already provided a URL.
+- By default, run `record start` to prepare recording, then open a visible page with `divebell open about:blank --ui`. The browser requests microphone access in a separate audio-only tab and then returns to a clearly named workflow tab with a URL form. Tell the user to paste the target URL and perform all actions in the workflow tab, while keeping the audio tab open in the background without navigating it. Do not ask whether to enable audio and do not add audio flags. Ignore silence, missing audio, and denied permission. Do not ask which page to record unless the user already provided a URL.
 - Save to the current project's `recordings/` directory by default. Do not ask where to save unless the user specified another location.
 - Call stop only after the user says “stop,” “finished,” or “done.”
 - `record stop` generates `generated-script.mjs` but does not close the browser. Always run `divebell stop` during cleanup.
@@ -44,7 +44,7 @@ divebell record start
 
 The recording bundle is stored under the current project's `recordings/` directory by default. Read the command's JSON response, confirm that `status` is `prepared`, and save the `output` field. The stop command must use that path. Audio capture is attempted automatically and needs no extra flag.
 
-2. Before running `open`, tell the user that the browser will first show a microphone permission prompt and will then move to the recording start page. When the user did not provide a URL, open a visible blank page. If the project needs a specific Bridge, add `--bridge <url>` or `--port <port>` to this `open` command:
+2. Before running `open`, tell the user that the browser will first show a microphone permission prompt in an audio-only tab and will then move to the workflow tab. Tell them to keep the audio tab open in the background and perform all navigation and actions in the workflow tab. When the user did not provide a URL, open the visible workflow start page. If the project needs a specific Bridge, add `--bridge <url>` or `--port <port>` to this `open` command:
 
 ```bash
 divebell open about:blank --ui
@@ -57,7 +57,7 @@ divebell open <url> --ui
 ```
 
 `open` injects the Bridge and recording script into the same page launch. Do not pass the URL, Bridge, or display flags to `record start`.
-The default blank page says, “Enter a URL in the address bar to start recording web actions,” so the user never faces an unexplained blank page.
+The default workflow page contains a URL form and explicitly identifies the other tab as audio-only. The start-page form itself is not added to the generated workflow.
 
 3. After `open` succeeds, read the recording bundle's `manifest.json` and confirm that `status` changed to `recording`. Tell the user that the browser is ready and that they can begin. Ask them to say “stop,” “finished,” or “done” when complete.
 4. Do not close the browser or generate the script before the user finishes.

@@ -7,7 +7,7 @@ export function createRecordingStartPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Divebell recording started</title>
+  <title>Divebell · Workflow recording</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -16,21 +16,57 @@ export function createRecordingStartPage(): string {
     .badge { display: inline-flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 999px; color: #166534; background: #f0fdf4; font-size: 14px; font-weight: 700; }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 5px rgba(34,197,94,.12); }
     h1 { margin: 26px 0 12px; font-size: clamp(30px, 5vw, 46px); line-height: 1.08; letter-spacing: -.035em; }
-    p { margin: 0; max-width: 520px; color: #56647a; font-size: 18px; line-height: 1.75; }
-    kbd { display: inline-block; max-width: 100%; margin: 24px 0 0; padding: 11px 14px; border: 1px solid #cbd5e1; border-bottom-width: 3px; border-radius: 10px; color: #334155; background: #f8fafc; font: 650 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: normal; }
+    p { margin: 0; max-width: 520px; color: #56647a; font-size: 17px; line-height: 1.7; }
+    form { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 26px; }
+    label { grid-column: 1 / -1; color: #334155; font-size: 14px; font-weight: 700; }
+    input { min-width: 0; padding: 13px 15px; border: 1px solid #cbd5e1; border-radius: 12px; color: #172033; background: #fff; font: 500 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; outline: none; }
+    input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+    button { padding: 13px 18px; border: 0; border-radius: 12px; color: #fff; background: #2563eb; font-size: 15px; font-weight: 750; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .note { margin-top: 18px; padding: 13px 15px; border-radius: 13px; color: #475569; background: #f8fafc; font-size: 14px; line-height: 1.55; }
+    .note strong { color: #334155; }
+    .error { min-height: 20px; margin-top: 8px; color: #b42318; font-size: 13px; }
     @media (max-width: 520px) {
       main { padding: 30px 26px; }
-      kbd { font-size: 12px; }
+      form { grid-template-columns: 1fr; }
+      label { grid-column: auto; }
     }
   </style>
 </head>
 <body>
   <main id="divebell-recording-start">
-    <div class="badge"><span class="dot"></span>Recording started</div>
-    <h1>Enter a URL in the address bar<br>to start recording web actions</h1>
-    <p>Enter the page address and press Enter. Divebell will continue recording clicks, input, and optional audio on subsequent pages.</p>
-    <kbd>⌘ L / Ctrl L &nbsp;→&nbsp; Enter URL &nbsp;→&nbsp; Enter</kbd>
+    <div class="badge"><span class="dot"></span>Workflow tab · ready</div>
+    <h1>Start the workflow<br>in this tab</h1>
+    <p>Open the page you want to operate here. Divebell will record clicks, input, and navigation after the page loads.</p>
+    <form id="divebell-recording-url-form" novalidate>
+      <label for="divebell-recording-url">Page URL</label>
+      <input id="divebell-recording-url" name="url" type="text" inputmode="url" autocomplete="url" placeholder="https://example.com" autofocus>
+      <button type="submit">Open and record</button>
+    </form>
+    <div class="error" id="divebell-recording-url-error" role="alert" aria-live="polite"></div>
+    <div class="note"><strong>Keep the “Divebell · Audio” tab open.</strong> It records microphone audio only; do not navigate or perform the workflow in that tab.</div>
   </main>
+  <script>
+    (() => {
+      const form = document.getElementById("divebell-recording-url-form");
+      const input = document.getElementById("divebell-recording-url");
+      const error = document.getElementById("divebell-recording-url-error");
+      form?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const raw = input instanceof HTMLInputElement ? input.value.trim() : "";
+        const candidate = /^[a-z][a-z\\d+.-]*:\\/\\//iu.test(raw) ? raw : "https://" + raw;
+        try {
+          const url = new URL(candidate);
+          if (url.protocol !== "http:" && url.protocol !== "https:") {
+            throw new Error("unsupported protocol");
+          }
+          location.assign(url.href);
+        } catch {
+          if (error !== null) error.textContent = "Enter a complete http:// or https:// URL.";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
@@ -41,7 +77,7 @@ export function createRecordingCompanionPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Divebell microphone recording</title>
+  <title>Divebell · Audio (keep open)</title>
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
@@ -61,8 +97,8 @@ export function createRecordingCompanionPage(): string {
 <body>
   <main>
     <div class="icon" aria-hidden="true">●</div>
-    <h1 id="recording-title">Allow microphone access</h1>
-    <p id="recording-description">Choose Allow in the browser permission prompt. Divebell will return to the recording start page after you respond.</p>
+    <h1 id="recording-title">Audio helper tab</h1>
+    <p id="recording-description">Allow microphone access, then keep this tab open in the background. Run the workflow only in the “Divebell · Workflow recording” tab.</p>
     <div class="status" id="recording-status" data-state="requesting" role="status" aria-live="polite">Requesting microphone access…</div>
   </main>
   <script>(${installRecordingCompanion.toString()})();</script>
@@ -218,8 +254,8 @@ function installRecordingCompanion(): void {
       });
       updateStatus(
         "recording",
-        "Microphone recording started",
-        "You can now return to the page you want to record. This page will continue saving audio in the background.",
+        "Microphone recording started — keep this tab open",
+        "This tab records audio only. Divebell has returned to the workflow tab; open the target URL and perform all web actions there.",
         "Recording audio"
       );
       startSpeechRecognition();
@@ -296,7 +332,7 @@ function installRecordingCompanion(): void {
     updateStatus(
       status,
       status === "denied" ? "Microphone access was not granted" : "Microphone recording did not start",
-      "Web actions will still be recorded. You can continue from the recording start page.",
+      "Web actions can still be recorded. Continue only in the “Divebell · Workflow recording” tab.",
       status === "denied" ? "Microphone access denied" : "Microphone unavailable"
     );
   }

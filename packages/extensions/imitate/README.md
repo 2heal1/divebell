@@ -27,7 +27,7 @@ Then open the page through Divebell. The CLI starts and injects the Bridge while
 divebell open https://example.com/ --ui
 ```
 
-The guided workflow can use `about:blank` when no URL is provided, and the output path is optional. When the walkthrough is finished, stop the recording with the output path returned by `start`:
+The guided workflow can use `about:blank` when no URL is provided, and the output path is optional. In that flow, Divebell opens a clearly named workflow tab with a URL form and a separate audio-only tab. Paste the target URL and perform all actions in the workflow tab; keep the audio tab open in the background without navigating it. When the walkthrough is finished, stop the recording with the output path returned by `start`:
 
 ```bash
 divebell record stop --out ./recordings/divebell-<timestamp>.orrec

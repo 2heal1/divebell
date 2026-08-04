@@ -20,10 +20,12 @@ generated replay script.
 ## How It Works
 
 A visible browser page opens with recording enabled. The browser first requests
-microphone permission, then returns to a start page that tells the user to enter
-a URL in the address bar. The microphone page remains in the background while
-the operated page navigates. Recording files are saved under `recordings/` in
-the current project, so you do not need to provide a URL or output path first.
+microphone permission, then returns to the **workflow tab**. Paste the target URL
+into the form in that tab and perform the walkthrough there. A separately named
+**audio tab** remains open in the background; it captures microphone audio only
+and must not be used for navigation or workflow actions. Recording files are
+saved under `recordings/` in the current project, so you do not need to provide
+a URL or output path first.
 
 Then:
 

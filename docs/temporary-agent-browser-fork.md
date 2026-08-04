@@ -5,10 +5,10 @@
 Divebell CLI currently pins:
 
 ```text
-@divebell/agent-browser@0.33.2-divebell.1
+@divebell/agent-browser@0.33.2-divebell.2
 ```
 
-This package comes from the maintained Divebell release branch of the agent-browser fork. It adds the memory diagnostics and code-coverage capture required by Divebell. It also keeps agent-browser-owned state in a writable temporary directory when the normal user state directory is unavailable, discovers Puppeteer's headless browser when full Chrome is unavailable, and preserves an active browser across repeated commands.
+This package comes from the maintained Divebell release branch of the agent-browser fork. It adds the memory diagnostics and code-coverage capture required by Divebell. It also keeps agent-browser-owned state in a writable temporary directory when the normal user state directory is unavailable, discovers Puppeteer's headless browser when full Chrome is unavailable, and preserves an active browser across repeated commands. Version `0.33.2-divebell.2` additionally preserves browser cookie source and partition metadata and lets a state export collect web storage from explicitly included SSO origins.
 
 Divebell uses the executable included with the CLI unless `DIVEBELL_AGENT_BROWSER_EXECUTABLE` points to a custom build. `AGENT_BROWSER_HOME` may be set when an environment needs a specific writable location; otherwise the packaged browser chooses a safe temporary location automatically.
 

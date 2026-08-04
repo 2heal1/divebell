@@ -35,7 +35,7 @@ divebell open https://app.example.com --profile ~/.divebell-profiles/app
 
 A Profile is a directory, not a single export file. Save state when a portable file is needed.
 
-## Export only one URL's login state
+## Export scoped application and sign-in state
 
 Divebell adds this composition on top of agent-browser `state save`. First open the exact URL from the desired Chrome Profile, then save with the same URL:
 
@@ -45,14 +45,25 @@ divebell open https://app.example.com/account --profile "Work" --ui
 divebell state save ./app-state.json --url https://app.example.com/account
 ```
 
+When the application relies on a different SSO origin, add it explicitly. `--url` identifies the one primary application URL; `--include-url` is repeatable:
+
+```bash
+divebell state save ./app-state.json \
+  --url https://app.example.net/account \
+  --include-url https://sso.example.com/login \
+  --include-url https://identity.example.org/
+```
+
 The resulting `app-state.json` remains a standard agent-browser state file and can be loaded directly. The filter:
 
-- keeps only cookies whose domain, path, and secure setting apply to the URL;
-- keeps localStorage and sessionStorage only for the URL's exact origin;
+- keeps only cookies whose domain, path, and secure setting apply to the primary URL or an included URL;
+- keeps localStorage and sessionStorage only for those exact origins;
 - excludes login state for other domains;
 - excludes IndexedDB, service workers, cache, browser extensions, and Chrome's password manager.
 
-Open the URL before saving so its web storage is present in the current browser session. Listing a Profile without visiting the page does not guarantee that storage will be captured.
+HttpOnly cookies are read through the browser protocol and remain in the state file when they match the scoped URLs. `--include-url` also asks agent-browser to collect storage for each additional origin, so an SSO origin can be preserved even when the final page is back on the application. Divebell does not guess related domains: every additional origin broadens the sensitive export and must be named explicitly or supplied by a trusted workflow.
+
+Open the primary URL before saving so its web storage is present in the current browser session. Listing a Profile without visiting the page does not guarantee that storage will be captured.
 
 Without `--url`, this is the native agent-browser full-state save. It includes all cookies in the current session and storage for every origin visited in that session:
 

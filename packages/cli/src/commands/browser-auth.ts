@@ -2,7 +2,8 @@ import type { ParsedCliArgs } from "../utils/args.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { saveUrlScopedBrowserState } from "../features/browser/state.js";
-import { getOptionValue } from "../utils/args.js";
+import { getOptionValues } from "../utils/args.js";
+import { createError } from "../utils/output.js";
 
 const AGENT_BROWSER_BOOLEAN_OPTIONS = new Set([
   "all",
@@ -29,11 +30,30 @@ export async function runAgentBrowserStateCommand(
   stderr: { write(chunk: string): void },
   browserRunner: BrowserRunner
 ): Promise<number> {
-  const url = getOptionValue(args, "url");
+  const urls = getOptionValues(args, "url");
+  const includeUrls = getOptionValues(args, "include-url");
+  if (args.command[1] === "save" && includeUrls.length > 0 && urls.length === 0) {
+    throw createError({
+      code: "STATE_URL_REQUIRED",
+      kind: "validation",
+      message: "--include-url requires one primary --url.",
+      hint: "Use `--url` once for the application URL and repeat `--include-url` for related sign-in URLs."
+    });
+  }
+  if (args.command[1] === "save" && urls.length > 1) {
+    throw createError({
+      code: "STATE_URL_REPEATED",
+      kind: "validation",
+      message: "state save accepts only one primary --url.",
+      hint: "Keep the application URL in `--url` and repeat `--include-url` for additional origins."
+    });
+  }
+  const url = urls[0];
   if (args.command[1] === "save" && url !== undefined) {
     const outputPath = args.command[2];
     const result = await saveUrlScopedBrowserState(browserRunner, {
       url,
+      includeUrls,
       ...(outputPath === undefined ? {} : { outputPath })
     });
     stdout.write(`${JSON.stringify(result, null, 2)}\n`);

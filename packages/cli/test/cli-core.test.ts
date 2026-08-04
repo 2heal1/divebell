@@ -263,7 +263,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
-  assert.match(markdown, /divebell state save <path> \[--url <url>\]/);
+  assert.match(markdown, /divebell state save <path> \[--url <url>\] \[--include-url <url>\.\.\.\]/);
   assert.match(markdown, /divebell state load <path>/);
   assert.match(markdown, /divebell auth save <name>/);
   assert.match(markdown, /divebell auth login <name>/);

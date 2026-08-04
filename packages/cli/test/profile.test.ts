@@ -199,7 +199,7 @@ test("uses the packaged Divebell agent-browser by default", async () => {
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.33\.2-divebell\.1/);
+  assert.match(result.stdout, /agent-browser 0\.33\.2-divebell\.2/);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {
@@ -301,7 +301,7 @@ test("forwards Chrome profile and state launch options when opening a page", asy
   });
 });
 
-test("saves only state that applies to the requested URL", async () => {
+test("saves state for the primary URL and repeatable included sign-in URLs", async () => {
   const tempDirectory = mkdtempSync(join(tmpdir(), "divebell-state-test-"));
   const outputPath = join(tempDirectory, "nested", "app-state.json");
   try {
@@ -311,23 +311,37 @@ test("saves only state that applies to the requested URL", async () => {
       "save",
       outputPath,
       "--url",
-      "https://app.example.com/account/settings"
+      "https://app.example.com/account/settings",
+      "--include-url",
+      "https://sso.example.net/login",
+      "--include-url",
+      "id.example.org"
     ], {
       stdout: output.stdout,
       stderr: output.stderr,
       browserRunner: createBrowserRunner(async (args) => {
         assert.equal(args[0], "state");
         assert.equal(args[1], "save");
-        assert.equal(args[3], "--json");
+        assert.deepEqual(args.slice(3), [
+          "--include-origin",
+          "https://sso.example.net",
+          "--include-origin",
+          "https://id.example.org",
+          "--json"
+        ]);
         writeFileSync(args[2] ?? "", JSON.stringify({
           cookies: [
             { name: "parent", domain: ".example.com", path: "/", secure: true },
             { name: "account", domain: "app.example.com", path: "/account" },
             { name: "admin", domain: "app.example.com", path: "/admin" },
+            { name: "sso", domain: "sso.example.net", path: "/login", httpOnly: true },
+            { name: "id", domain: ".example.org", path: "/", secure: true },
             { name: "other", domain: ".other.example", path: "/" }
           ],
           origins: [
             { origin: "https://app.example.com", localStorage: [{ name: "token", value: "1" }] },
+            { origin: "https://sso.example.net", localStorage: [{ name: "sso", value: "2" }] },
+            { origin: "https://id.example.org", localStorage: [{ name: "id", value: "3" }] },
             { origin: "https://other.example", localStorage: [{ name: "token", value: "2" }] }
           ]
         }));
@@ -340,16 +354,21 @@ test("saves only state that applies to the requested URL", async () => {
     assert.deepEqual(JSON.parse(output.text()), {
       path: resolve(outputPath),
       url: "https://app.example.com/account/settings",
-      cookies: 2,
-      origins: 1
+      includeUrls: ["https://sso.example.net/login", "https://id.example.org/"],
+      cookies: 4,
+      origins: 3
     });
     assert.deepEqual(JSON.parse(readFileSync(outputPath, "utf8")), {
       cookies: [
         { name: "parent", domain: ".example.com", path: "/", secure: true },
-        { name: "account", domain: "app.example.com", path: "/account" }
+        { name: "account", domain: "app.example.com", path: "/account" },
+        { name: "sso", domain: "sso.example.net", path: "/login", httpOnly: true },
+        { name: "id", domain: ".example.org", path: "/", secure: true }
       ],
       origins: [
-        { origin: "https://app.example.com", localStorage: [{ name: "token", value: "1" }] }
+        { origin: "https://app.example.com", localStorage: [{ name: "token", value: "1" }] },
+        { origin: "https://sso.example.net", localStorage: [{ name: "sso", value: "2" }] },
+        { origin: "https://id.example.org", localStorage: [{ name: "id", value: "3" }] }
       ]
     });
   } finally {
@@ -385,6 +404,52 @@ test("requires a path and a valid URL for URL-scoped state saves", async () => {
     browserRunner
   }), 1);
   assert.equal(JSON.parse(invalidUrlOutput.text()).error.code, "STATE_URL_INVALID");
+
+  const invalidIncludeUrlOutput = createOutput();
+  assert.equal(await runCli([
+    "state",
+    "save",
+    "/tmp/app-state.json",
+    "--url",
+    "https://app.example.com",
+    "--include-url",
+    "ftp://sso.example.com"
+  ], {
+    stdout: invalidIncludeUrlOutput.stdout,
+    stderr: invalidIncludeUrlOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(JSON.parse(invalidIncludeUrlOutput.text()).error.code, "STATE_URL_INVALID");
+
+  const missingPrimaryUrlOutput = createOutput();
+  assert.equal(await runCli([
+    "state",
+    "save",
+    "/tmp/app-state.json",
+    "--include-url",
+    "https://sso.example.com"
+  ], {
+    stdout: missingPrimaryUrlOutput.stdout,
+    stderr: missingPrimaryUrlOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(JSON.parse(missingPrimaryUrlOutput.text()).error.code, "STATE_URL_REQUIRED");
+
+  const repeatedPrimaryUrlOutput = createOutput();
+  assert.equal(await runCli([
+    "state",
+    "save",
+    "/tmp/app-state.json",
+    "--url",
+    "https://app.example.com",
+    "--url",
+    "https://sso.example.com"
+  ], {
+    stdout: repeatedPrimaryUrlOutput.stdout,
+    stderr: repeatedPrimaryUrlOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(JSON.parse(repeatedPrimaryUrlOutput.text()).error.code, "STATE_URL_REPEATED");
   assert.equal(browserTouched, false);
 });
 

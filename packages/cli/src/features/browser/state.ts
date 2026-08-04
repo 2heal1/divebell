@@ -13,6 +13,7 @@ interface BrowserStorageState {
 export interface UrlScopedStateSaveResult {
   path: string;
   url: string;
+  includeUrls?: string[];
   cookies: number;
   origins: number;
 }
@@ -21,10 +22,12 @@ export async function saveUrlScopedBrowserState(
   browserRunner: BrowserRunner,
   options: {
     url: string;
+    includeUrls?: string[];
     outputPath?: string;
   }
 ): Promise<UrlScopedStateSaveResult> {
   const url = normalizeStateUrl(options.url);
+  const includeUrls = normalizeIncludedStateUrls(options.includeUrls ?? [], url);
   if (options.outputPath === undefined || options.outputPath.length === 0) {
     throw createError({
       code: "STATE_SAVE_PATH_REQUIRED",
@@ -38,8 +41,18 @@ export async function saveUrlScopedBrowserState(
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-state-export-"));
   const temporaryPath = join(temporaryDirectory, "browser-state.json");
   try {
+    const saveArgs = ["state", "save", temporaryPath];
+    const includedOrigins = new Set(
+      includeUrls
+        .map((includeUrl) => includeUrl.origin)
+        .filter((origin) => origin !== url.origin)
+    );
+    for (const origin of includedOrigins) {
+      saveArgs.push("--include-origin", origin);
+    }
+    saveArgs.push("--json");
     const saveResult = await browserRunner.run(
-      ["state", "save", temporaryPath, "--json"],
+      saveArgs,
       { unencryptedStateOutput: true }
     );
     if (saveResult.exitCode !== 0) {
@@ -52,7 +65,7 @@ export async function saveUrlScopedBrowserState(
     }
 
     const state = parseBrowserStorageState(await readFile(temporaryPath, "utf8"));
-    const scopedState = filterBrowserStateForUrl(state, url);
+    const scopedState = filterBrowserStateForUrls(state, [url, ...includeUrls]);
     await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });
     await writeFile(outputPath, `${JSON.stringify(scopedState, null, 2)}\n`, {
       encoding: "utf8",
@@ -62,6 +75,9 @@ export async function saveUrlScopedBrowserState(
     return {
       path: outputPath,
       url: url.href,
+      ...(includeUrls.length === 0
+        ? {}
+        : { includeUrls: includeUrls.map((includeUrl) => includeUrl.href) }),
       cookies: scopedState.cookies.length,
       origins: scopedState.origins.length
     };
@@ -71,11 +87,28 @@ export async function saveUrlScopedBrowserState(
 }
 
 export function filterBrowserStateForUrl(state: BrowserStorageState, url: URL): BrowserStorageState {
+  return filterBrowserStateForUrls(state, [url]);
+}
+
+export function filterBrowserStateForUrls(state: BrowserStorageState, urls: URL[]): BrowserStorageState {
+  const origins = new Set(urls.map((url) => url.origin));
   return {
     ...state,
-    cookies: state.cookies.filter((cookie) => cookieAppliesToUrl(cookie, url)),
-    origins: state.origins.filter((origin) => origin.origin === url.origin)
+    cookies: state.cookies.filter((cookie) => urls.some((url) => cookieAppliesToUrl(cookie, url))),
+    origins: state.origins.filter((origin) => typeof origin.origin === "string" && origins.has(origin.origin))
   };
+}
+
+function normalizeIncludedStateUrls(inputs: string[], primaryUrl: URL): URL[] {
+  const seen = new Set([primaryUrl.href]);
+  const urls: URL[] = [];
+  for (const input of inputs) {
+    const url = normalizeStateUrl(input);
+    if (seen.has(url.href)) continue;
+    seen.add(url.href);
+    urls.push(url);
+  }
+  return urls;
 }
 
 function parseBrowserStorageState(input: string): BrowserStorageState {

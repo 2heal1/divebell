@@ -45,8 +45,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell state save <path> [--url <url>]",
-    description: "Save agent-browser state; with --url, keep only cookies and web storage that apply to that URL."
+    usage: "divebell state save <path> [--url <url>] [--include-url <url>...]",
+    description: "Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs."
   },
   {
     category: "Bridge and Browser",

@@ -17,7 +17,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `divebell stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
 - `divebell profiles` - List Chrome profiles available to agent-browser.
-- `divebell state save <path> [--url <url>]` - Save agent-browser state; with --url, keep only cookies and web storage that apply to that URL.
+- `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.
 - `divebell state <list|show|rename|clear|clean> [args]` - Inspect and manage agent-browser saved states.
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.

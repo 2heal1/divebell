@@ -43,6 +43,16 @@ Default output includes loaded versions only. `--verbose` also includes
 unloaded versions. An empty default result can therefore mean the package is
 registered but not loaded; retry with `--verbose` before claiming absence.
 
+Treat this status as registry inventory. Multiple registered or unloaded
+versions, singleton declarations, and different required ranges do not by
+themselves prove a conflict, fallback, compatibility problem, or performance
+problem. Diagnose a Shared problem from one selected `shared trace` that shows
+the selected provider and final result together with a rejection, failure,
+fallback, recovery, or other concrete outcome. In a performance diagnosis,
+follow Shared only when `module-perf` identifies `get` or Shared resolution as
+the relevant path and the selected Shared operation matches the same trace,
+instance, Remote, or expose context.
+
 ## `shared trace` result
 
 Top-level fields:

@@ -35,6 +35,7 @@ export type { ParsedCliArgs } from "./utils/args.js";
 export { createDivebellExtensionApi } from "./features/extension/api.js";
 export type * from "./features/extension/api.js";
 export {
+  AGENT_BROWSER_HOME_ENV,
   DIVEBELL_AGENT_BROWSER_EXECUTABLE_ENV,
   DIVEBELL_AGENT_BROWSER_SESSION_ENV,
   DIVEBELL_BROWSER_PROFILE_ENV,

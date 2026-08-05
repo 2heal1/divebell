@@ -6,6 +6,7 @@ import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 import {
+  AGENT_BROWSER_HOME_ENV,
   createAgentBrowserEnvironment,
   createAgentBrowserRunner,
   createDefaultBrowserProfileDirectory,
@@ -35,6 +36,19 @@ test("uses agent-browser automatic restore while preserving native profile and s
     disableRestore: true
   });
   assert.equal(explicitSourceEnv.AGENT_BROWSER_RESTORE, undefined);
+});
+
+test("isolates the bundled agent-browser daemon from other installed clients", () => {
+  const env = createAgentBrowserEnvironment({
+    DIVEBELL_HOME: "/tmp/divebell-home"
+  });
+  assert.equal(env[AGENT_BROWSER_HOME_ENV], "/tmp/divebell-home/agent-browser");
+
+  const custom = createAgentBrowserEnvironment({
+    DIVEBELL_HOME: "/tmp/divebell-home",
+    AGENT_BROWSER_HOME: "/tmp/shared-agent-browser-home"
+  });
+  assert.equal(custom[AGENT_BROWSER_HOME_ENV], "/tmp/shared-agent-browser-home");
 });
 
 test("configures an isolated restore name and headed mode", () => {

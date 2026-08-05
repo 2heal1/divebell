@@ -15,7 +15,7 @@ divebell setup
 
 The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.3`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell, supports portable state across explicitly included SSO origins without contacting those origins while loading state, and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
-When `~/.divebell` is not writable, the CLI automatically keeps its session and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory.
+Divebell keeps its bundled agent-browser daemon under `DIVEBELL_HOME/agent-browser` so another installed browser client cannot make it reuse an older background binary. When `~/.divebell` is not writable, the CLI automatically keeps its browser, session, and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory, or set `AGENT_BROWSER_HOME` to explicitly override only the browser daemon location.
 
 `divebell setup` is a repeatable preparation command. It checks the environment and repairs browser startup only when needed. When the environment is already ready, it returns success without changing it.
 

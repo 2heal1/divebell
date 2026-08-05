@@ -11,6 +11,7 @@ export type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserRu
 export const DIVEBELL_BROWSER_PROFILE_ENV = "DIVEBELL_BROWSER_PROFILE_DIR";
 export const DIVEBELL_AGENT_BROWSER_EXECUTABLE_ENV = "DIVEBELL_AGENT_BROWSER_EXECUTABLE";
 export const DIVEBELL_AGENT_BROWSER_SESSION_ENV = "DIVEBELL_AGENT_BROWSER_SESSION";
+export const AGENT_BROWSER_HOME_ENV = "AGENT_BROWSER_HOME";
 const AGENT_BROWSER_SESSION_ENV = "AGENT_BROWSER_SESSION";
 const AGENT_BROWSER_HEADED_ENV = "AGENT_BROWSER_HEADED";
 const AGENT_BROWSER_RESTORE_ENV = "AGENT_BROWSER_RESTORE";
@@ -155,8 +156,11 @@ export function createAgentBrowserEnvironment(
     session,
     workingDirectory
   );
+  const configuredAgentBrowserHome = baseEnv[AGENT_BROWSER_HOME_ENV]?.trim();
   const env: NodeJS.ProcessEnv = {
     ...baseEnv,
+    [AGENT_BROWSER_HOME_ENV]: configuredAgentBrowserHome
+      || join(resolveDivebellHomeDirectory(baseEnv), "agent-browser"),
     [AGENT_BROWSER_SESSION_ENV]: resolvedSession,
     [AGENT_BROWSER_RESTORE_ENV]: resolvedSession
   };

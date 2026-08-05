@@ -210,6 +210,72 @@ test("forwards supported agent-browser launch options through Divebell open", as
   assert.equal(browserOptions[0]?.disableRestore, true);
 });
 
+test("preserves state-backed browser restore mode across page commands and stop", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    browserCalls.push(args);
+    browserOptions.push(options);
+    return {
+      exitCode: 0,
+      stdout: args[0] === "get" ? "http://app.test/\n" : "ok\n",
+      stderr: ""
+    };
+  });
+
+  const run = async (args: string[]): Promise<number> => {
+    const output = createOutput();
+    const exitCode = await runCli(args, {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner
+    });
+    assert.equal(output.errorText(), "");
+    return exitCode;
+  };
+
+  try {
+    assert.equal(await run([
+      "open",
+      "http://app.test/",
+      "--state",
+      "riff-state.json",
+      "--ui",
+      "--no-bridge"
+    ]), 0);
+
+    const [contextFile] = readdirSync(operationLogDirectory);
+    assert.notEqual(contextFile, undefined);
+    const context = JSON.parse(readFileSync(
+      join(operationLogDirectory, contextFile as string),
+      "utf8"
+    ));
+    assert.equal(context.schemaVersion, 4);
+    assert.equal(context.browserRestoreDisabled, true);
+
+    assert.equal(await run(["wait", "5000"]), 0);
+    assert.equal(await run(["get", "url"]), 0);
+    assert.equal(await run(["stop"]), 0);
+
+    assert.deepEqual(browserCalls, [
+      ["--state", "riff-state.json", "open", `http://app.test/?divebellSessionId=${createOperationSessionId()}`],
+      ["wait", "5000"],
+      ["get", "url"],
+      ["close"]
+    ]);
+    assert.equal(browserOptions[0]?.ui, true);
+    assert.equal(browserOptions[0]?.reuseInitialBlankPage, true);
+    assert.deepEqual(
+      browserOptions.map((options) => options?.disableRestore),
+      [true, true, true, true]
+    );
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
 test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
   const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));

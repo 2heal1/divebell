@@ -4,6 +4,17 @@ import { createError } from "./utils/output.js";
 import { hasOption } from "./utils/command.js";
 import { withDivebellSession } from "./utils/url.js";
 import type { CliExtensionPageContext } from "./types/commands.js";
+import { bindBrowserRunOptions, type BrowserRunner } from "./features/browser/runner.js";
+
+export function applyOpenContextBrowserMode(
+  browserRunner: BrowserRunner,
+  openContext: CliOperationLogEntry | undefined
+): BrowserRunner {
+  return openContext?.browserRestoreDisabled === true
+    ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
+    : browserRunner;
+}
+
 export function applyOpenContextDefaults(
   args: ParsedCliArgs,
   openContext: CliOperationLogEntry | undefined

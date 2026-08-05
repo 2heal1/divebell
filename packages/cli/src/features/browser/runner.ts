@@ -33,6 +33,19 @@ export function createDefaultBrowserRunner(options: DefaultBrowserRunnerOptions 
   });
 }
 
+export function bindBrowserRunOptions(
+  browserRunner: BrowserRunner,
+  boundOptions: BrowserRunOptions
+): BrowserRunner {
+  if (Object.keys(boundOptions).length === 0) return browserRunner;
+  return {
+    run: async (args, options = {}) => await browserRunner.run(args, {
+      ...options,
+      ...boundOptions
+    })
+  };
+}
+
 export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}): BrowserRunner {
   const baseEnv = options.env ?? process.env;
   const profileDirectory = resolveBrowserProfileDirectory(baseEnv, options.profileDirectory);

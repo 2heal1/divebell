@@ -20,7 +20,7 @@ import {
   writeJson
 } from "../utils/command.js";
 import { createBridgeUrl } from "../features/bridge/config.js";
-import { applyOpenContextDefaults } from "../open-context.js";
+import { applyOpenContextBrowserMode, applyOpenContextDefaults } from "../open-context.js";
 
 export interface StopResult {
   browser: {
@@ -66,7 +66,7 @@ export async function runStopCommand(
   const openContext = await operationLogStore.read();
   const commandArgs = applyOpenContextDefaults(args, openContext);
   await beforeBrowserClose?.();
-  const browserStopResult = await browserRunner.run(["close"]);
+  const browserStopResult = await applyOpenContextBrowserMode(browserRunner, openContext).run(["close"]);
   await operationLogStore.remove();
   const bridgeUrl = openContext?.bridgeUrl === null &&
       !commandArgs.options.has("bridge") &&

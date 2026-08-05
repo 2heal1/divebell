@@ -84,6 +84,7 @@ export async function runStackCommand(
     openedAt: openContext.openedAt,
     exitCode: openContext.exitCode,
     activeExtensions: openContext.activeExtensions,
+    browserRestoreDisabled: openContext.browserRestoreDisabled,
     ...(openContext.headers === undefined
       ? {}
       : { headers: openContext.headers }),

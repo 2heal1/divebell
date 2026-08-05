@@ -766,7 +766,8 @@ test("registers a command and merges its help entries", async () => {
   const context = createOpenContextFixture({
     bridgeUrl: "http://bridge.test",
     sessionId: "session-1",
-    url: "http://app.test/"
+    url: "http://app.test/",
+    browserRestoreDisabled: true
   });
   try {
     const output = createOutput();
@@ -812,8 +813,9 @@ test("registers a command and merges its help entries", async () => {
           capturedAt: 5
         });
       },
-      browserRunner: createBrowserRunner(async (args) => {
+      browserRunner: createBrowserRunner(async (args, browserOptions) => {
         assert.deepEqual(args, ["eval", "window.answer"]);
+        assert.equal(browserOptions?.disableRestore, true);
         return {
           exitCode: 0,
           stdout: "42\n",

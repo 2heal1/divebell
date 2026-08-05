@@ -96,7 +96,7 @@ divebell state clear [session-name]
 divebell state clean --older-than 7
 ```
 
-Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
+Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Divebell keeps that restore mode for the current open context, so later page commands and `stop` continue controlling the same browser instead of relaunching it with automatic restore enabled. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
 
 ## Use the auth vault
 

@@ -30,6 +30,7 @@ import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../../utils
 import { createError } from "../../utils/output.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
 import { isBrowserPageCommand } from "../../commands/names.js";
+import { applyOpenContextBrowserMode } from "../../open-context.js";
 
 import type {
   CreateDivebellExtensionApiOptions,
@@ -51,6 +52,7 @@ export type * from "./types.js";
 export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOptions): DivebellExtensionApi {
   const bridgeUrl = createBridgeUrl(options.args);
   const runtimeSelector = createRuntimeSelector(options.args);
+  const browserRunner = applyOpenContextBrowserMode(options.browserRunner, options.openContext);
 
   const ensureLocalBridge = async (
     ensureOptions: { port?: number; timeout?: number } = {}
@@ -113,7 +115,7 @@ export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOp
         waitArgs,
         options.fetcher,
         bridgeUrl,
-        options.browserRunner,
+        browserRunner,
         options.bridgeStarter,
         options.bridgeStateStore ?? createFileBridgeStateStore(bridgeUrl),
         targetId,
@@ -122,7 +124,7 @@ export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOp
       ) as RuntimeResourceResult<T>;
     },
     browser: createDivebellBrowserApi({
-      browserRunner: options.browserRunner,
+      browserRunner,
       allowWithoutOpenContext: hasRuntimeSelectorValue(runtimeSelector),
       ...(options.openContext === undefined ? {} : { openContext: options.openContext })
     })

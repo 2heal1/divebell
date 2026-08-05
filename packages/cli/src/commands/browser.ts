@@ -17,7 +17,7 @@ import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
 import { normalizeDivebellUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
-import { createGetWindowScript, createInteractiveTextClickScript, parseBrowserJsonOutput, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
+import { bindBrowserRunOptions, createGetWindowScript, createInteractiveTextClickScript, parseBrowserJsonOutput, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
 import {
   createOptionalNumberProperty,
   hasOption,
@@ -26,8 +26,7 @@ import {
   writeJson
 } from "../utils/command.js";
 import { withDivebellSession } from "../utils/url.js";
-import { applyOpenContextDefaultsOrThrow } from "../open-context.js";
-import { createExtensionPageContext } from "../open-context.js";
+import { applyOpenContextBrowserMode, applyOpenContextDefaultsOrThrow, createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
@@ -72,6 +71,9 @@ export async function runBrowserCliCommand(
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
     const sessionId = getOpenCommandSessionId(args);
+    const browserRestoreDisabled = hasOption(args, "profile")
+      || hasOption(args, "state")
+      || hasOption(args, "allowed-domains");
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     const previousOpenContext = await operationLogStore.read();
@@ -105,8 +107,11 @@ export async function runBrowserCliCommand(
     const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
     let result: BrowserRunResult & { injectedScriptPath?: string };
     try {
+      const openBrowserRunner = browserRestoreDisabled
+        ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
+        : browserRunner;
       result = await openBrowserPage(
-        browserRunner,
+        openBrowserRunner,
         args,
         effectiveOpenedUrl,
         bridgeUrl,
@@ -114,11 +119,7 @@ export async function runBrowserCliCommand(
         {
           ui: hasOption(args, "ui"),
           ...(hookResult.openedUrl === undefined ? { reuseInitialBlankPage: true } : {}),
-          ...(hasOption(args, "profile")
-            || hasOption(args, "state")
-            || hasOption(args, "allowed-domains")
-            ? { disableRestore: true }
-            : {})
+          ...(browserRestoreDisabled ? { disableRestore: true } : {})
         }
       );
     } catch (error) {
@@ -142,7 +143,9 @@ export async function runBrowserCliCommand(
       });
     }
     const companionFailures = await openCompanionPages(
-      browserRunner,
+      browserRestoreDisabled
+        ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
+        : browserRunner,
       hookResult.companionPages
     );
     writeHookFailures(stderr, companionFailures);
@@ -160,6 +163,7 @@ export async function runBrowserCliCommand(
       openedAt,
       exitCode: result.exitCode,
       activeExtensions: hookResult.activeExtensions,
+      browserRestoreDisabled,
       ...(headers === undefined ? {} : { headers })
     });
     const output: OpenPageResult = {
@@ -187,20 +191,21 @@ export async function runBrowserCliCommand(
   if (isBrowserPageCommand(command)) {
     applyOpenContextDefaultsOrThrow(args, openContext, "always");
   }
+  const pageBrowserRunner = applyOpenContextBrowserMode(browserRunner, openContext);
   const commandArgs = args;
 
   if (command === "get-window") {
     const path = requireCommandArgument(commandArgs, 1, "window path");
-    return await runBrowserAndPipe(browserRunner, ["eval", createGetWindowScript(path)], stdout, stderr);
+    return await runBrowserAndPipe(pageBrowserRunner, ["eval", createGetWindowScript(path)], stdout, stderr);
   }
 
   if (command === "click") {
-    return await runClickCommand(commandArgs, stdout, stderr, browserRunner);
+    return await runClickCommand(commandArgs, stdout, stderr, pageBrowserRunner);
   }
 
   if (command === "wait-eval") {
     const script = requireCommandArgument(commandArgs, 1, "eval script");
-    const result = await waitForBrowserEval(browserRunner, script, getNumberOption(commandArgs, "timeout"));
+    const result = await waitForBrowserEval(pageBrowserRunner, script, getNumberOption(commandArgs, "timeout"));
     writeJson(stdout, result);
     return 0;
   }
@@ -208,35 +213,35 @@ export async function runBrowserCliCommand(
   if (command === "network") {
     if (commandArgs.command.length > 1) {
       return await runBrowserAndPipe(
-        browserRunner,
+        pageBrowserRunner,
         createBrowserCommandArgs(commandArgs),
         stdout,
         stderr
       );
     }
-    return await runNetworkCommand(commandArgs, stdout, stderr, browserRunner);
+    return await runNetworkCommand(commandArgs, stdout, stderr, pageBrowserRunner);
   }
 
   if (command === "console") {
     if (hasOption(commandArgs, "clear")) {
       return await runBrowserAndPipe(
-        browserRunner,
+        pageBrowserRunner,
         createBrowserCommandArgs(commandArgs),
         stdout,
         stderr
       );
     }
-    return await runConsoleCommand(commandArgs, stdout, stderr, browserRunner);
+    return await runConsoleCommand(commandArgs, stdout, stderr, pageBrowserRunner);
   }
 
   if (command === "eval") {
     const file = getOptionValue(commandArgs, "file");
     if (file !== undefined) {
-      return await runBrowserAndPipe(browserRunner, ["eval", await readFile(file, "utf8")], stdout, stderr);
+      return await runBrowserAndPipe(pageBrowserRunner, ["eval", await readFile(file, "utf8")], stdout, stderr);
     }
     if (hasOption(commandArgs, "stdin")) {
       return await runBrowserAndPipe(
-        browserRunner,
+        pageBrowserRunner,
         ["eval", "--stdin"],
         stdout,
         stderr,
@@ -246,7 +251,7 @@ export async function runBrowserCliCommand(
   }
 
   return await runBrowserAndPipe(
-    browserRunner,
+    pageBrowserRunner,
     createBrowserCommandArgs(commandArgs, {
       ...(openContext?.sessionId === null || openContext?.sessionId === undefined
         ? {}

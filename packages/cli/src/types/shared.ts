@@ -80,7 +80,7 @@ export interface CommandOutput {
 
 
 export interface CliOperationLogEntry {
-  schemaVersion: 3;
+  schemaVersion: 4;
   command: "open";
   key: string;
   cwd: string;
@@ -93,6 +93,7 @@ export interface CliOperationLogEntry {
   openedAt: number;
   exitCode: number;
   activeExtensions: string[];
+  browserRestoreDisabled: boolean;
   headers?: Record<string, string>;
   stackDetection?: {
     url: string;

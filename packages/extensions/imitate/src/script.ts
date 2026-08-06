@@ -7,21 +7,35 @@ import type {
   RecordedWorkflowStep,
   RecordingData,
   TranscriptSegment,
-  TranscriptWord
+  TranscriptWord,
+  WorkflowDraftResult
 } from "./types.js";
 import { createRecordedWorkflow } from "./workflow.js";
 
+export async function writeWorkflowDraft(
+  recordingDirectory: string,
+  recording: RecordingData
+): Promise<WorkflowDraftResult> {
+  const workflowPath = resolve(recordingDirectory, recording.manifest.files.workflow);
+  const workflow = createRecordedWorkflow(recording);
+  await writeFile(workflowPath, `${JSON.stringify(workflow, null, 2)}\n`, "utf8");
+  return {
+    path: workflowPath,
+    relativePath: createManifestPath(recordingDirectory, workflowPath),
+    workflow
+  };
+}
+
 export async function writeGeneratedScript(
   recordingDirectory: string,
-  recording: RecordingData,
+  workflow: RecordedWorkflow,
   outputPath: string | undefined
 ): Promise<GeneratedScriptResult> {
   const scriptPath = resolve(outputPath ?? join(recordingDirectory, "generated-script.mjs"));
-  const workflowPath = resolve(recordingDirectory, recording.manifest.files.workflow);
-  const workflow = createRecordedWorkflow(recording);
+  const workflowPath = resolve(recordingDirectory, "workflow.json");
+  assertWorkflowConfirmed(workflow);
   const content = createGeneratedScriptContent(workflow);
   await mkdir(dirname(scriptPath), { recursive: true });
-  await writeFile(workflowPath, `${JSON.stringify(workflow, null, 2)}\n`, "utf8");
   await writeFile(scriptPath, content, "utf8");
   await chmod(scriptPath, 0o755);
   return {
@@ -49,6 +63,12 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const timeoutMs = toPositiveInteger(args.timeout, 15000);
   const openArgs = ["open", workflow.startUrl];
+  const authentication = resolveAuthenticationInput(workflow.requirements.authentication, args);
+  if (authentication.status === "needs_input") {
+    writeJson(authentication);
+    return;
+  }
+  openArgs.push(...authentication.args);
   if (args.headless !== true) openArgs.push("--ui");
   await run(openArgs, timeoutMs);
 
@@ -229,6 +249,51 @@ function toPositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function resolveAuthenticationInput(requirement, args) {
+  const profile = typeof args.profile === "string" ? args.profile : undefined;
+  const state = typeof args.state === "string" ? args.state : undefined;
+  if (profile !== undefined && state !== undefined) {
+    return {
+      status: "needs_input",
+      message: "Pass either --profile or --state, not both.",
+      options: [
+        { label: "Chrome Profile", value: "--profile <name-or-path>" },
+        { label: "Browser State", value: "--state <path>" }
+      ]
+    };
+  }
+  if (requirement.mode === "none") {
+    if (profile !== undefined || state !== undefined) {
+      return {
+        status: "needs_input",
+        message: "This workflow was confirmed without an explicit authentication dependency.",
+        options: [{ label: "Run without authentication input", value: "remove --profile/--state" }]
+      };
+    }
+    return { status: "ok", args: [] };
+  }
+  const expectedValue = requirement.mode === "profile" ? profile : state;
+  if (expectedValue === undefined) {
+    return {
+      status: "needs_input",
+      message: "This workflow requires " + requirement.mode + " " + JSON.stringify(requirement.displayName) + ".",
+      options: [{
+        label: requirement.displayName,
+        value: requirement.parameter + " <value>"
+      }]
+    };
+  }
+  if (requirement.mode === "profile" && state !== undefined ||
+      requirement.mode === "state" && profile !== undefined) {
+    return {
+      status: "needs_input",
+      message: "This workflow requires --" + requirement.mode + "; the other authentication mode was not confirmed.",
+      options: [{ label: requirement.displayName, value: requirement.parameter + " <value>" }]
+    };
+  }
+  return { status: "ok", args: [requirement.parameter, expectedValue] };
+}
+
 function writeJson(value) {
   process.stdout.write(\`\${JSON.stringify(value, null, 2)}\\n\`);
 }
@@ -251,7 +316,7 @@ main().catch((error) => {
 `;
 }
 
-function locateRecordedTargetInPage(input: {
+export function locateRecordedTargetInPage(input: {
   step: RecordedWorkflowStep;
   marker: string;
 }): {
@@ -412,6 +477,18 @@ function locateRecordedTargetInPage(input: {
     reason: `No unique visible element matched ${locators.length} recorded locator candidates.`,
     page
   };
+}
+
+function assertWorkflowConfirmed(workflow: RecordedWorkflow): void {
+  if (
+    workflow.review.status !== "confirmed" ||
+    workflow.requirements.authentication.status !== "confirmed" ||
+    workflow.steps.some((step) => step.status !== "confirmed")
+  ) {
+    throw new Error(
+      "The workflow is still a draft. Review it and run `divebell record confirm --input <path> --all` before generating a script."
+    );
+  }
 }
 
 function readPageStateInPage(): {

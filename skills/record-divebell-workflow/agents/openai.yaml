@@ -1,4 +1,4 @@
 interface:
   display_name: "Record a Divebell workflow"
-  short_description: "Record web actions and elements, then generate and verify an executable JavaScript replay"
-  default_prompt: "Use $record-divebell-workflow to open a browser, record operated elements and event order, automatically attempt optional audio capture, and generate and verify an executable JavaScript replay. Ignore missing audio."
+  short_description: "Record, review, amend, and verify an authenticated browser workflow"
+  default_prompt: "Use $record-divebell-workflow to choose an optional Profile or state, record browser actions as facts, use voice only as supplementary intent, review and amend missing actions with me, then generate and verify the confirmed JavaScript replay."

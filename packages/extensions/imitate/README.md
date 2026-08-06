@@ -1,6 +1,6 @@
 # @divebell/extension-imitate
 
-This Divebell Extension records a real browser walkthrough and turns the captured interactions, operated elements, page context, and Runtime state into an executable JavaScript replay. It also tries to capture spoken intent, but voice is always supplementary and missing or denied audio is ignored.
+This Divebell Extension records a real browser walkthrough, lets the user review or supplement the captured operations and authentication setup, and only then turns the confirmed workflow into an executable JavaScript replay. It also tries to capture spoken intent, but voice is always supplementary and missing or denied audio is ignored.
 
 ## Install
 
@@ -21,10 +21,12 @@ divebell record start
 
 The command tries to start microphone capture automatically. If the user does not speak, the browser cannot capture audio, or microphone permission is denied, recording continues with browser actions only.
 
-Then open the page through Divebell. The CLI starts and injects the Bridge while the recording Extension injects its page capture script into the same browser launch:
+Then open the page through Divebell. Choose at most one explicit authentication environment when the page is protected. The CLI starts and injects the Bridge while the recording Extension injects its page capture script into the same browser launch:
 
 ```bash
 divebell open https://example.com/ --ui
+divebell open https://example.com/ --profile "Work" --ui
+divebell open https://example.com/ --state /path/to/test-account.json --ui
 ```
 
 The guided workflow can use `about:blank` when no URL is provided, and the output path is optional. In that flow, Divebell opens a clearly named workflow tab with a URL form and a separate audio-only tab. Paste the target URL and perform all actions in the workflow tab; keep the audio tab open in the background without navigating it. When the walkthrough is finished, stop the recording with the output path returned by `start`:
@@ -33,7 +35,20 @@ The guided workflow can use `about:blank` when no URL is provided, and the outpu
 divebell record stop --out ./recordings/divebell-<timestamp>.orrec
 ```
 
-Stopping captures final state and writes both `workflow.json` and `generated-script.mjs` by default. `workflow.json` keeps the ordered actions and multiple recorded ways to find each operated element so an Agent can inspect or rearrange the workflow. The generated script waits for each recorded element, replays the action with native browser commands, and verifies the final page state. It leaves the current page open; close it through the normal page lifecycle when the workflow is complete:
+Stopping captures final state and writes a draft `workflow.json`. It keeps step 0 authentication setup, ordered actions, confirmation state, revisions, and multiple recorded ways to find each operated element. Review it before generating a script:
+
+```bash
+divebell record review --input ./recordings/example.orrec
+divebell record confirm --input ./recordings/example.orrec --all
+```
+
+The last command writes `generated-script.mjs` only after every setup item and action is confirmed. The generated script requires the recorded authentication mode as a runtime input and does not embed the selected state path or its contents:
+
+```bash
+node ./recordings/example.orrec/generated-script.mjs --state /path/to/test-account.json
+```
+
+It leaves the current page open; close it through the normal page lifecycle when the workflow is complete:
 
 ```bash
 divebell stop
@@ -43,7 +58,7 @@ Recording preparation refuses to replace an already open page. Close the current
 
 ## Regenerate or transcribe
 
-Regenerate a script from an existing recording:
+Regenerate a script from an already confirmed recording:
 
 ```bash
 divebell record generate-script \
@@ -61,6 +76,27 @@ OPENAI_API_KEY=... divebell record transcribe \
 The default transcription model is `whisper-1`; use `--model` to select another compatible model. Run transcription only when the user says they provided spoken context but the browser did not produce live speech text. Otherwise an empty transcript is ignored.
 
 Audio is supplementary. Only a non-empty transcript is used as Agent context. A recording without usable audio still produces a complete browser replay when the intended result is the demonstrated sequence itself.
+
+## Supplement a missing action
+
+Confirm the setup and correct prefix, close the current page, and prepare an amendment:
+
+```bash
+divebell record confirm --input ./recordings/example.orrec --through step-2
+divebell stop
+divebell record amend start --input ./recordings/example.orrec --after step-2
+divebell open https://example.com/ --state /path/to/test-account.json --ui
+divebell record amend replay --input ./recordings/example.orrec
+```
+
+When the replay result lists potentially mutating steps, obtain user approval before rerunning with `--allow-risky-replay`. Perform only the missing action, stop the amendment, and show its element evidence to the user:
+
+```bash
+divebell record amend stop --input ./recordings/example.orrec
+divebell record confirm --input ./recordings/example.orrec --step <supplemental-step-id>
+```
+
+Prefix replay events are excluded from the amendment, so only the missing action is inserted. `record remove-step` removes a rejected action, while `record amend cancel` abandons an active supplemental recording.
 
 ## Fixed-duration capture
 

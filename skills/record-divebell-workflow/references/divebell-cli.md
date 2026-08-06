@@ -27,8 +27,12 @@ Run the global commands directly:
 
 ```bash
 divebell record start
-divebell open about:blank --ui
+divebell profiles
+divebell state list
+divebell open about:blank [--profile <name|path> | --state <path>] --ui
 divebell record stop --out <start-output-path>
+divebell record review --input <start-output-path>
+divebell record confirm --input <start-output-path> --all
 divebell stop
 ```
 
@@ -44,4 +48,4 @@ divebell record transcribe --input <start-output-path>
 
 The command reads `OPENAI_API_KEY` by default and also accepts `--api-key <key>`. Use it only when the user explicitly said they provided spoken context and audio exists but no live transcript was captured. Missing audio or transcription does not affect script generation or replay from recorded actions.
 
-`record stop` generates `workflow.json` and `generated-script.mjs`. The generated script runs the global `divebell` by default. Confirm that the command remains available with `divebell --help` before running it.
+`record stop` generates a draft `workflow.json`. Browser events are the source of truth; speech is supplementary intent. Review step 0 (authentication) and every concrete browser command before confirmation. Use `record amend` to replay a confirmed prefix and capture only missing actions. `record confirm --all` generates `generated-script.mjs`; a recorded Profile or state must be supplied again when the script runs and is never embedded as credentials.

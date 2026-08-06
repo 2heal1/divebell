@@ -118,7 +118,20 @@ process.exitCode = await cli.run(process.argv.slice(2));
   ], env);
   const stopped = await runCli(["record", "stop", "--out", recordingDirectory], env);
   assert.equal(stopped.status, "ok");
-  assert.equal(stopped.data.status, "completed");
+  assert.equal(stopped.data.status, "needs_confirmation");
+  assert.equal(stopped.data.script, undefined);
+  const reviewed = await runCli(["record", "review", "--input", recordingDirectory], env);
+  assert.equal(reviewed.data.status, "draft");
+  assert.equal(reviewed.data.setup[0].number, 0);
+  const confirmed = await runCli([
+    "record",
+    "confirm",
+    "--input",
+    recordingDirectory,
+    "--all"
+  ], env);
+  assert.equal(confirmed.data.status, "confirmed");
+  assert.equal(confirmed.data.script, join(recordingDirectory, "generated-script.mjs"));
   const manifest = JSON.parse(await readFile(join(recordingDirectory, "manifest.json"), "utf8"));
   const transcript = JSON.parse(await readFile(join(recordingDirectory, "transcript.json"), "utf8"));
   assert.equal(manifest.capture.audio.requested, true);

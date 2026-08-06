@@ -26,8 +26,28 @@ const extension = {
       },
       {
         category: "Extensions",
-        usage: "divebell record stop --out <path> [--script-out <path>] [--no-script]",
-        description: "Stop a manual recording, capture final evidence, and generate an executable replay and workflow by default."
+        usage: "divebell record stop --out <path>",
+        description: "Stop a manual recording, capture final evidence, and create a reviewable workflow draft."
+      },
+      {
+        category: "Extensions",
+        usage: "divebell record review --input <path>",
+        description: "Show authentication setup, concrete commands, element evidence, and confirmation state for a workflow draft."
+      },
+      {
+        category: "Extensions",
+        usage: "divebell record confirm --input <path> (--step <id> | --through <id> | --all) [--no-script]",
+        description: "Confirm reviewed setup or steps and generate the replay only after the complete workflow is confirmed."
+      },
+      {
+        category: "Extensions",
+        usage: "divebell record remove-step --input <path> --step <id>",
+        description: "Remove an unwanted step from the workflow draft and invalidate any earlier generated replay."
+      },
+      {
+        category: "Extensions",
+        usage: "divebell record amend <start|replay|stop|cancel> --input <path> [--after <step-id>]",
+        description: "Replay a confirmed prefix, capture only missing actions, and insert them as element-confirmation proposals."
       },
       {
         category: "Extensions",

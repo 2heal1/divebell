@@ -4,23 +4,36 @@ import { readJsonLinesIfExists } from "./storage.js";
 import type { DomSnapshotSample, InteractionEvent, OperationEntry, PageSnapshotSample, RuntimeSample } from "./types.js";
 
 const RECORD_EVENT_CONSOLE_MARKER = "__DIVEBELL_RECORD_EVENT__";
-const RECORDING_COMPANION_LABEL = "divebell-recorder";
-
 export async function collectInteractionEvents(
   outputDirectory: string,
   browser: DivebellBrowserApi,
   options: {
-    companionUrl?: string;
+    eventsFile?: string;
+    sinceTimeMs?: number;
+    includeConsole?: boolean;
   } = {}
 ): Promise<{
   operation: OperationEntry;
   interactions: InteractionEvent[];
 }> {
   const started = new Date();
-  const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(join(outputDirectory, "interaction-events.raw.jsonl"));
-  const consoleCollection = await collectConsoleInteractions(browser, options.companionUrl);
-  const consoleInteractions = consoleCollection.interactions;
-  const interactions = mergeInteractionEvents(persistedInteractions, consoleInteractions);
+  const persistedInteractions = await readJsonLinesIfExists<InteractionEvent>(
+    options.eventsFile ?? join(outputDirectory, "interaction-events.raw.jsonl")
+  );
+  let consoleInteractions: InteractionEvent[] = [];
+  let consoleError: string | undefined;
+  if (options.includeConsole !== false) {
+    try {
+      const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+      consoleInteractions = parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args));
+    } catch (error) {
+      consoleError = error instanceof Error ? error.message : String(error);
+    }
+  }
+  const interactions = mergeInteractionEvents(persistedInteractions, consoleInteractions)
+    .filter((interaction) =>
+      options.sinceTimeMs === undefined || interaction.timeMs >= options.sinceTimeMs
+    );
   return {
     operation: {
       type: "interactions.collect",

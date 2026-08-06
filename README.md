@@ -115,7 +115,7 @@ These packages are installed into Divebell and add top-level commands:
 | --- | --- | --- | --- |
 | `@divebell/extension-memory` | `divebell memory` | Repeat a real page journey and check memory, DOM-node, and listener growth. | [Memory Analysis](./docs/memory-analysis.md) |
 | `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
-| `@divebell/extension-imitate` | `divebell record` | Record a browser walkthrough and generate an executable, verified JavaScript replay. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
+| `@divebell/extension-imitate` | `divebell record` | Record, review, supplement, and verify an authenticated browser workflow before generating its JavaScript replay. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
 | `@divebell/extension-mf` | `divebell mf` | Inspect Module Federation instances, remotes, shared dependencies, module performance, Bridge operations, and loading traces. | [MF Extension](./packages/extensions/mf/README.md) |
 
 Install a CLI Extension with:

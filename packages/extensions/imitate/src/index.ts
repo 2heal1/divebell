@@ -2,12 +2,19 @@ import { mkdir } from "node:fs/promises";
 import { collectInteractionEvents, sampleDomSnapshot, samplePageSnapshot, sampleRuntime } from "./capture.js";
 import { collectAudioCapture, createRecordingCompanionUrl, transcribeAudioFile } from "./audio.js";
 import { clearRecordingControlFile, writeRecordingControlFile } from "./session.js";
-import { createManifestPath, writeGeneratedScript } from "./script.js";
-import { appendJsonLine, createRecordingFiles, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
+import { createManifestPath, writeGeneratedScript, writeWorkflowDraft } from "./script.js";
+import { appendJsonLine, createRecordingFiles, readJsonFile, readRecordingCounts, readRecordingData, writeJsonFile, writeJsonLines, writeRecordingFiles } from "./storage.js";
+import {
+  runRecordAmendCommand,
+  runRecordConfirmCommand,
+  runRecordRemoveStepCommand,
+  runRecordReviewCommand
+} from "./review.js";
+import { alignWorkflowTranscript } from "./workflow.js";
 import { join, resolve } from "node:path";
 import type { CliExtensionPageContext, CliExtensionRunOptions, ParsedCliArgs } from "@divebell/cli";
 
-import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, GeneratedScriptResult } from "./types.js";
+import type { RecordCommandOptions, RecordingFiles, RecordingManifest, RecordingCaptureStatus, RuntimeSample, PageSnapshotSample, DomSnapshotSample, InteractionEvent, OperationEntry, TranscriptData, AudioCaptureSummary, RecordedWorkflow } from "./types.js";
 export type * from "./types.js";
 const DIVEBELL_SESSION_QUERY_PARAM = "divebellSessionId";
 
@@ -41,6 +48,18 @@ export async function runRecordCommand(options: RecordCommandOptions): Promise<u
   }
   if (subcommand === "generate-script") {
     return await runRecordGenerateScriptCommand(options);
+  }
+  if (subcommand === "review") {
+    return await runRecordReviewCommand(options);
+  }
+  if (subcommand === "confirm") {
+    return await runRecordConfirmCommand(options);
+  }
+  if (subcommand === "remove-step") {
+    return await runRecordRemoveStepCommand(options);
+  }
+  if (subcommand === "amend") {
+    return await runRecordAmendCommand(options);
   }
   if (subcommand === "transcribe") {
     return await runRecordTranscribeCommand(options);
@@ -104,11 +123,16 @@ async function runRecordStartCommand(options: RecordCommandOptions): Promise<unk
     status: "prepared",
     output: outputDirectory,
     manifest: join(outputDirectory, files.manifest),
-    next: "divebell open <url> --ui"
+    next: "Choose no authentication, one Chrome profile, or one state file; then run `divebell open <url> [--profile <name|path> | --state <path>] --ui`."
   };
 }
 
 async function runRecordStopCommand(options: RecordCommandOptions): Promise<unknown> {
+  if (hasOption(options.args, "script-out")) {
+    throw new Error(
+      "record stop now creates a workflow draft. Pass --script-out to `record confirm --all` after review."
+    );
+  }
   const page = requireCurrentPage(options);
   const outputDirectory = resolve(requireOption(options.args, "out"));
   const recording = await readRecordingData(outputDirectory);
@@ -173,19 +197,13 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
   await clearRecordingControlFile();
 
   const refreshedRecording = await readRecordingData(outputDirectory);
-  let generatedScript: GeneratedScriptResult | undefined;
-  if (!hasOption(options.args, "no-script")) {
-    generatedScript = await writeGeneratedScript(
-      outputDirectory,
-      refreshedRecording,
-      getOptionValue(options.args, "script-out")
-    );
-    await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), {
-      type: "script.generated",
-      startedAt: new Date().toISOString(),
-      path: generatedScript.path
-    });
-  }
+  const workflowDraft = await writeWorkflowDraft(outputDirectory, refreshedRecording);
+  await appendJsonLine(join(outputDirectory, recording.manifest.files.operations), {
+    type: "workflow.draft.generated",
+    startedAt: new Date().toISOString(),
+    path: workflowDraft.path,
+    reviewStatus: workflowDraft.workflow.review.status
+  });
 
   const completedAt = new Date();
   const counts = await readRecordingCounts(outputDirectory, recording.manifest.files);
@@ -199,24 +217,39 @@ async function runRecordStopCommand(options: RecordCommandOptions): Promise<unkn
       audio: createCompletedAudioCapture(recording.manifest.files, audioCollection.summary)
     },
     counts,
-    ...createOptionalGeneratedProperty(generatedScript)
+    generated: {
+      workflow: workflowDraft.relativePath,
+      generatedAt: new Date().toISOString()
+    }
   };
   await writeJsonFile(join(outputDirectory, recording.manifest.files.manifest), manifest);
 
   return {
-    status: "completed",
+    status: "needs_confirmation",
     output: outputDirectory,
     manifest: join(outputDirectory, recording.manifest.files.manifest),
-    script: generatedScript?.path,
-    workflow: generatedScript?.workflowPath,
-    counts: manifest.counts
+    workflow: workflowDraft.path,
+    reviewStatus: workflowDraft.workflow.review.status,
+    counts: manifest.counts,
+    next: `divebell record review --input ${JSON.stringify(outputDirectory)}`
   };
 }
 
 async function runRecordGenerateScriptCommand(options: RecordCommandOptions): Promise<unknown> {
   const inputDirectory = resolve(requireOption(options.args, "input"));
   const recording = await readRecordingData(inputDirectory);
-  const generatedScript = await writeGeneratedScript(inputDirectory, recording, getOptionValue(options.args, "out"));
+  let workflow: RecordedWorkflow;
+  try {
+    const existing = await readJsonFile<RecordedWorkflow>(
+      join(inputDirectory, recording.manifest.files.workflow)
+    );
+    workflow = existing.schemaVersion === 2
+      ? existing
+      : (await writeWorkflowDraft(inputDirectory, recording)).workflow;
+  } catch {
+    workflow = (await writeWorkflowDraft(inputDirectory, recording)).workflow;
+  }
+  const generatedScript = await writeGeneratedScript(inputDirectory, workflow, getOptionValue(options.args, "out"));
   const generatedAt = new Date().toISOString();
   const manifest: RecordingManifest = {
     ...recording.manifest,
@@ -267,6 +300,15 @@ async function runRecordTranscribeCommand(options: RecordCommandOptions): Promis
     ...(transcript.words.length > 0 ? { words: transcript.words } : {})
   };
   await writeJsonFile(join(inputDirectory, recording.manifest.files.transcript), transcriptData);
+  try {
+    const workflowPath = join(inputDirectory, recording.manifest.files.workflow);
+    const workflow = await readJsonFile<RecordedWorkflow>(workflowPath);
+    if (workflow.schemaVersion === 2) {
+      await writeJsonFile(workflowPath, alignWorkflowTranscript(workflow, transcript.segments));
+    }
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+  }
   await appendJsonLine(join(inputDirectory, recording.manifest.files.operations), {
     type: "audio.transcribe",
     startedAt: startedAt.toISOString(),
@@ -433,17 +475,6 @@ function createOptionalEndedAtProperties(startedAt: Date, endedAt: Date | undefi
   };
 }
 
-function createOptionalGeneratedProperty(generatedScript: GeneratedScriptResult | undefined): Pick<RecordingManifest, "generated"> | Record<string, never> {
-  if (generatedScript === undefined) return {};
-  return {
-    generated: {
-      script: generatedScript.relativePath,
-      workflow: generatedScript.workflowRelativePath,
-      generatedAt: new Date().toISOString()
-    }
-  };
-}
-
 function createInitialAudioCapture(
   requested: boolean,
   files: RecordingFiles,
@@ -588,7 +619,7 @@ function assertNoLegacyPageLifecycleOptions(args: ParsedCliArgs): void {
 }
 
 function assertNoPageSelectionOptions(args: ParsedCliArgs): void {
-  for (const option of ["url", "bridge", "session", "runtime"]) {
+  for (const option of ["url", "bridge", "session", "runtime", "profile", "state"]) {
     if (hasOption(args, option)) {
       throw new Error(
         `Recording no longer accepts --${option}. Put page and Bridge options on the following \`divebell open <url>\` command.`

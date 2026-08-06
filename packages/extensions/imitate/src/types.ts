@@ -60,6 +60,7 @@ export interface RecordingManifest {
     operations: number;
   };
   files: RecordingFiles;
+  authentication?: RecordedAuthenticationRequirement;
   generated?: {
     script?: string;
     workflow?: string;
@@ -179,8 +180,34 @@ export interface RecordedInteractionTarget {
 
 export type RecordedWorkflowAction = "click" | "fill" | "select" | "press";
 
+export type RecordedReviewStatus = "draft" | "needs-confirmation" | "confirmed";
+
+export type RecordedStepSource = "recording" | "supplemental-recording";
+
+export type RecordedReplayRisk = "safe" | "potentially-mutating";
+
+export type RecordedAuthenticationRequirement =
+  | {
+      id: "setup-auth";
+      mode: "none";
+      required: false;
+      status: RecordedReviewStatus;
+    }
+  | {
+      id: "setup-auth";
+      mode: "profile" | "state";
+      required: true;
+      displayName: string;
+      parameter: "--profile" | "--state";
+      status: RecordedReviewStatus;
+    };
+
 export interface RecordedWorkflowStep {
   id: string;
+  title: string;
+  status: RecordedReviewStatus;
+  source: RecordedStepSource;
+  replayRisk: RecordedReplayRisk;
   action: RecordedWorkflowAction;
   timeMs: number;
   page: {
@@ -190,12 +217,23 @@ export interface RecordedWorkflowStep {
   target: RecordedInteractionTarget;
   value?: string;
   key?: string;
+  evidence: {
+    interactionTimeMs: number;
+    transcript: TranscriptSegment[];
+  };
 }
 
 export interface RecordedWorkflow {
-  schemaVersion: 1;
+  schemaVersion: 2;
   source: "divebell-recording";
   startUrl: string;
+  requirements: {
+    authentication: RecordedAuthenticationRequirement;
+  };
+  review: {
+    status: RecordedReviewStatus;
+    updatedAt: string;
+  };
   finalState: {
     url?: string;
     title?: string;
@@ -205,6 +243,25 @@ export interface RecordedWorkflow {
     }>;
   };
   steps: RecordedWorkflowStep[];
+  revisions: RecordedWorkflowRevision[];
+}
+
+export interface RecordedWorkflowRevision {
+  id: string;
+  type: "insert-after" | "remove" | "confirm";
+  createdAt: string;
+  afterStepId?: string;
+  stepIds: string[];
+  status: "proposed" | "applied";
+  source: "user-confirmation" | "supplemental-recording";
+}
+
+export interface RecordingAmendment {
+  status: "prepared" | "opened" | "capturing";
+  afterStepId: string;
+  startedAt: string;
+  eventsFile: string;
+  armedAtMs?: number;
 }
 
 export interface OperationEntry {
@@ -273,4 +330,10 @@ export interface GeneratedScriptResult {
   relativePath: string;
   workflowPath: string;
   workflowRelativePath: string;
+}
+
+export interface WorkflowDraftResult {
+  path: string;
+  relativePath: string;
+  workflow: RecordedWorkflow;
 }

@@ -1,28 +1,46 @@
 import type {
   DomSnapshotSample,
   InteractionEvent,
+  RecordedAuthenticationRequirement,
   RecordedInteractionTarget,
   RecordedWorkflow,
   RecordedWorkflowStep,
-  RecordingData
+  RecordingData,
+  TranscriptSegment
 } from "./types.js";
 
 const DEFAULT_RECORD_START_URL = "about:blank";
 const NON_ACTION_KEYS = new Set(["Alt", "Control", "Meta", "Shift", "CapsLock"]);
 
 export function createRecordedWorkflow(recording: RecordingData): RecordedWorkflow {
-  const steps = createWorkflowSteps(recording.interactions);
+  const steps = createWorkflowSteps(recording.interactions, recording.transcript.segments);
   const finalState = findFinalState(recording.domSnapshots, recording.interactions);
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     source: "divebell-recording",
     startUrl: findStartUrl(recording, steps, finalState.url),
+    requirements: {
+      authentication: recording.manifest.authentication ?? createNoAuthenticationRequirement()
+    },
+    review: {
+      status: "draft",
+      updatedAt: new Date().toISOString()
+    },
     finalState,
-    steps
+    steps,
+    revisions: []
   };
 }
 
-function createWorkflowSteps(interactions: InteractionEvent[]): RecordedWorkflowStep[] {
+export function createWorkflowSteps(
+  interactions: InteractionEvent[],
+  transcript: TranscriptSegment[] = [],
+  options: {
+    source?: RecordedWorkflowStep["source"];
+    status?: RecordedWorkflowStep["status"];
+    idPrefix?: string;
+  } = {}
+): RecordedWorkflowStep[] {
   const steps: RecordedWorkflowStep[] = [];
   let pendingInput: InteractionEvent | undefined;
   const latestInputValues = new Map<string, string>();
@@ -33,16 +51,25 @@ function createWorkflowSteps(interactions: InteractionEvent[]): RecordedWorkflow
     properties: Pick<RecordedWorkflowStep, "value" | "key"> | Record<string, never> = {}
   ): void => {
     if (interaction.target === undefined) return;
+    const target = interaction.target;
     steps.push({
-      id: `step-${steps.length + 1}`,
+      id: `${options.idPrefix ?? "step"}-${steps.length + 1}`,
+      title: createStepTitle(action, target),
+      status: options.status ?? "draft",
+      source: options.source ?? "recording",
+      replayRisk: createReplayRisk(action),
       action,
       timeMs: interaction.timeMs,
       page: {
         ...(interaction.url === undefined ? {} : { url: stripDivebellSession(interaction.url) }),
         ...(interaction.title === undefined ? {} : { title: interaction.title })
       },
-      target: interaction.target,
-      ...properties
+      target,
+      ...properties,
+      evidence: {
+        interactionTimeMs: interaction.timeMs,
+        transcript: findRelatedTranscript(transcript, interaction.timeMs)
+      }
     });
   };
 
@@ -89,6 +116,80 @@ function createWorkflowSteps(interactions: InteractionEvent[]): RecordedWorkflow
   }
   flushInputs();
   return steps;
+}
+
+export function refreshWorkflowReviewStatus(workflow: RecordedWorkflow): RecordedWorkflow {
+  const statuses = [
+    workflow.requirements.authentication.status,
+    ...workflow.steps.map((step) => step.status)
+  ];
+  const status = statuses.every((item) => item === "confirmed")
+    ? "confirmed"
+    : statuses.some((item) => item === "needs-confirmation")
+      ? "needs-confirmation"
+      : "draft";
+  return {
+    ...workflow,
+    review: {
+      status,
+      updatedAt: new Date().toISOString()
+    }
+  };
+}
+
+export function alignWorkflowTranscript(
+  workflow: RecordedWorkflow,
+  transcript: TranscriptSegment[]
+): RecordedWorkflow {
+  return {
+    ...workflow,
+    review: {
+      ...workflow.review,
+      updatedAt: new Date().toISOString()
+    },
+    steps: workflow.steps.map((step) => ({
+      ...step,
+      evidence: {
+        ...step.evidence,
+        transcript: findRelatedTranscript(transcript, step.evidence.interactionTimeMs)
+      }
+    }))
+  };
+}
+
+export function createNoAuthenticationRequirement(): RecordedAuthenticationRequirement {
+  return {
+    id: "setup-auth",
+    mode: "none",
+    required: false,
+    status: "draft"
+  };
+}
+
+function createStepTitle(
+  action: RecordedWorkflowStep["action"],
+  target: RecordedInteractionTarget
+): string {
+  const name = target.accessibleName ?? target.label ?? target.text ?? target.placeholder ??
+    target.name ?? target.id ?? target.selector ?? "recorded element";
+  if (action === "click") return `Click ${JSON.stringify(name)}`;
+  if (action === "fill") return `Fill ${JSON.stringify(name)}`;
+  if (action === "select") return `Select ${JSON.stringify(name)}`;
+  return `Press key on ${JSON.stringify(name)}`;
+}
+
+function createReplayRisk(action: RecordedWorkflowStep["action"]): RecordedWorkflowStep["replayRisk"] {
+  void action;
+  return "potentially-mutating";
+}
+
+function findRelatedTranscript(
+  segments: TranscriptSegment[],
+  timeMs: number
+): TranscriptSegment[] {
+  return segments.filter((segment) =>
+    segment.startMs <= timeMs + 2_000 && segment.endMs >= timeMs - 2_000
+  );
 }
 
 function isClickControlledInput(target: RecordedInteractionTarget): boolean {

@@ -5,10 +5,14 @@ import {
   createRecordingStartPageUrl,
   RECORDING_COMPANION_LABEL
 } from "./audio.js";
-import { clearRecordingControlFile, readRecordingControlFile } from "./session.js";
-import { appendJsonLine, readRecordingManifest, writeJsonFile } from "./storage.js";
-import type { RecordingManifest } from "./types.js";
-import { join } from "node:path";
+import {
+  clearRecordingControlFile,
+  readRecordingControlFile,
+  updateRecordingControlFile
+} from "./session.js";
+import { appendJsonLine, readJsonFile, readRecordingManifest, writeJsonFile } from "./storage.js";
+import type { RecordedAuthenticationRequirement, RecordedWorkflow, RecordingManifest } from "./types.js";
+import { basename, join } from "node:path";
 
 const DIVEBELL_SESSION_QUERY_PARAM = "divebellSessionId";
 type OpenHookOptions = Parameters<DivebellOpenHook>[0];
@@ -21,6 +25,42 @@ export async function runRecordingOpenHook(
   if (control === undefined) return;
 
   const manifest = await readRecordingManifest(control.outputDirectory);
+  if (control.mode === "amendment") {
+    if (control.amendment === undefined) return;
+    const workflow = await readJsonFile<RecordedWorkflow>(
+      join(control.outputDirectory, manifest.files.workflow)
+    );
+    const authentication = readAuthenticationRequirement(options);
+    if (!samePageUrl(workflow.startUrl, options.url)) {
+      throw new Error(
+        `Supplemental recording must open ${JSON.stringify(workflow.startUrl)}, not ${JSON.stringify(options.url)}.`
+      );
+    }
+    if (workflow.requirements.authentication.mode !== authentication.mode) {
+      throw new Error(
+        `Supplemental recording requires --${workflow.requirements.authentication.mode}; the opened page used ${authentication.mode}.`
+      );
+    }
+    const openedAt = new Date().toISOString();
+    await updateRecordingControlFile({
+      ...control,
+      amendment: {
+        ...control.amendment,
+        status: "opened"
+      }
+    });
+    await appendJsonLine(join(control.outputDirectory, manifest.files.operations), {
+      type: "amend.page.open",
+      startedAt: openedAt,
+      afterStepId: control.amendment.afterStepId,
+      url: options.url,
+      openedUrl: options.openedUrl,
+      authentication
+    });
+    return {
+      scripts: [createInteractionRecorderScript(Date.parse(control.startedAt))]
+    };
+  }
   if (manifest.status === "completed") return;
 
   const recordingStartUrl = options.url === "about:blank"
@@ -60,6 +100,7 @@ export async function runRecordingOpenHook(
     await writeJsonFile(join(control.outputDirectory, manifest.files.manifest), {
       ...manifest,
       status: "recording",
+      authentication: readAuthenticationRequirement(options),
       url: page.url,
       openedUrl: page.openedUrl,
       bridgeUrl: page.bridgeUrl,
@@ -95,6 +136,55 @@ export async function runRecordingOpenHook(
             }
           }]
         })
+  };
+}
+
+function samePageUrl(expected: string, actual: string): boolean {
+  try {
+    const left = new URL(expected);
+    const right = new URL(actual);
+    left.searchParams.delete(DIVEBELL_SESSION_QUERY_PARAM);
+    right.searchParams.delete(DIVEBELL_SESSION_QUERY_PARAM);
+    return left.origin === right.origin &&
+      left.pathname === right.pathname &&
+      left.search === right.search &&
+      left.hash === right.hash;
+  } catch {
+    return expected === actual;
+  }
+}
+
+function readAuthenticationRequirement(options: OpenHookOptions): RecordedAuthenticationRequirement {
+  const profile = options.args.options.get("profile")?.at(-1);
+  const state = options.args.options.get("state")?.at(-1);
+  if (profile !== undefined && state !== undefined) {
+    throw new Error("A recording must use either --profile or --state, not both.");
+  }
+  if (profile !== undefined) {
+    return {
+      id: "setup-auth",
+      mode: "profile",
+      required: true,
+      displayName: profile.includes("/") ? basename(profile) : profile,
+      parameter: "--profile",
+      status: "draft"
+    };
+  }
+  if (state !== undefined) {
+    return {
+      id: "setup-auth",
+      mode: "state",
+      required: true,
+      displayName: basename(state),
+      parameter: "--state",
+      status: "draft"
+    };
+  }
+  return {
+    id: "setup-auth",
+    mode: "none",
+    required: false,
+    status: "draft"
   };
 }
 

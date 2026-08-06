@@ -138,9 +138,10 @@ test("starts and stops a manual recording on the same current page", async () =>
     ], stopOutput), 0);
     assert.equal(stopOutput.errorText(), "");
     const stopResult = commandData(stopOutput);
-    assert.equal(stopResult.status, "completed");
-    assert.equal(stopResult.script, join(fixture.outputDir, "generated-script.mjs"));
+    assert.equal(stopResult.status, "needs_confirmation");
+    assert.equal(stopResult.script, undefined);
     assert.equal(stopResult.workflow, join(fixture.outputDir, "workflow.json"));
+    assert.equal(existsSync(join(fixture.outputDir, "generated-script.mjs")), false);
     assert.equal(fixture.browserCalls.some((call) => call.args[0] === "close"), false);
     assert.deepEqual(fixture.browserCalls
       .filter((call) => !isRecorderBrowserCall(call.args))
@@ -153,7 +154,7 @@ test("starts and stops a manual recording on the same current page", async () =>
 
     const completedManifest = readJson(join(fixture.outputDir, "manifest.json"));
     assert.equal(completedManifest.status, "completed");
-    assert.equal(completedManifest.generated.script, "generated-script.mjs");
+    assert.equal(completedManifest.generated.script, undefined);
     assert.equal(completedManifest.generated.workflow, "workflow.json");
     assert.equal(completedManifest.counts.runtimeSamples, 1);
     assert.equal(completedManifest.counts.pageSnapshots, 1);
@@ -164,14 +165,13 @@ test("starts and stops a manual recording on the same current page", async () =>
     assert.match(completedManifest.capture.audio.reason, /continued without microphone audio/);
     assert.equal(readJson(join(fixture.outputDir, "transcript.json")).status, "not-captured");
 
-    const script = readFileSync(join(fixture.outputDir, "generated-script.mjs"), "utf8");
-    assert.match(script, /waitForRecordedTarget/);
-    assert.match(script, /status: "ok"/);
-    assert.match(script, /module federation/);
-    assert.match(script, /a\[href=/);
     const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.equal(workflow.schemaVersion, 2);
+    assert.equal(workflow.review.status, "draft");
+    assert.equal(workflow.requirements.authentication.mode, "none");
     assert.equal(workflow.startUrl, "http://app.test/");
     assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press", "click"]);
+    assert.deepEqual(workflow.steps.map((step) => step.status), ["draft", "draft", "draft"]);
     assert.deepEqual(readJsonLines(join(fixture.outputDir, "interactions.jsonl")).map((item) => item.type), [
       "recorder-ready",
       "input",
@@ -185,8 +185,36 @@ test("starts and stops a manual recording on the same current page", async () =>
       "interactions.collect",
       "audio.collect",
       "record.stop",
-      "script.generated"
+      "workflow.draft.generated"
     ]);
+
+    const reviewOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "review",
+      "--input",
+      fixture.outputDir
+    ], reviewOutput), 0);
+    const review = commandData(reviewOutput);
+    assert.equal(review.setup[0].number, 0);
+    assert.match(review.steps[0].command, /divebell fill/);
+
+    const confirmOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmOutput), 0);
+    const confirmed = commandData(confirmOutput);
+    assert.equal(confirmed.status, "confirmed");
+    assert.equal(confirmed.script, join(fixture.outputDir, "generated-script.mjs"));
+    const script = readFileSync(join(fixture.outputDir, "generated-script.mjs"), "utf8");
+    assert.match(script, /waitForRecordedTarget/);
+    assert.match(script, /status: "ok"/);
+    assert.match(script, /module federation/);
+    assert.match(script, /a\[href=/);
 
     const closeOutput = createOutput();
     assert.equal(await fixture.run(["stop"], closeOutput), 0);
@@ -261,10 +289,6 @@ test("keeps persisted interactions after navigation", async () => {
     assert.equal(collectOperation.persistedCount, 3);
     assert.equal(collectOperation.consoleCount, 0);
 
-    const script = readFileSync(join(fixture.outputDir, "generated-script.mjs"), "utf8");
-    assert.match(script, /module federation/);
-    assert.match(script, /input\[name=/);
-    assert.match(script, /issues-tab/);
     const workflow = readJson(join(fixture.outputDir, "workflow.json"));
     assert.equal(workflow.startUrl, "https://github.com/");
     assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press", "click"]);
@@ -342,7 +366,51 @@ test("keeps a repeated input after an action boundary", async () => {
   }
 });
 
-test("records workflow metadata when regenerating an older recording", async () => {
+test("removes a rejected draft step and invalidates an earlier script", async () => {
+  const fixture = createRecordingFixture("divebell-remove-step-", {
+    browserLogs: [
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=wrong]\",\"tagName\":\"button\",\"accessibleName\":\"Wrong\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":200,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=right]\",\"tagName\":\"button\",\"accessibleName\":\"Right\"}}"
+    ].join("\n")
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+    const confirmOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmOutput), 0);
+    assert.equal(existsSync(join(fixture.outputDir, "generated-script.mjs")), true);
+
+    const removeOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "remove-step",
+      "--input",
+      fixture.outputDir,
+      "--step",
+      "step-1"
+    ], removeOutput), 0);
+    const revised = commandData(removeOutput);
+    assert.deepEqual(revised.steps.map((step) => step.id), ["step-2"]);
+    const manifest = readJson(join(fixture.outputDir, "manifest.json"));
+    assert.equal(manifest.generated.script, undefined);
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.equal(workflow.revisions.at(-1).type, "remove");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("requires workflow confirmation before regenerating a script", async () => {
   const fixture = createRecordingFixture("divebell-regenerated-workflow-", {
     browserLogs: "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button\",\"tagName\":\"button\",\"text\":\"Run\"}}"
   });
@@ -365,8 +433,18 @@ test("records workflow metadata when regenerating an older recording", async () 
       "generate-script",
       "--input",
       fixture.outputDir
-    ], generateOutput), 0);
-    assert.equal(commandData(generateOutput).workflow, join(fixture.outputDir, "workflow.json"));
+    ], generateOutput), 1);
+    assert.match(generateOutput.text(), /workflow is still a draft/);
+
+    const confirmOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmOutput), 0);
+    assert.equal(commandData(confirmOutput).script, join(fixture.outputDir, "generated-script.mjs"));
     assert.equal(readJson(manifestPath).generated.workflow, "workflow.json");
   } finally {
     fixture.cleanup();
@@ -388,6 +466,14 @@ test("runs the generated workflow as an executable script with ordered browser a
     await fixture.open("http://app.test/");
     const stopOutput = createOutput();
     assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+    const confirmOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmOutput), 0);
 
     const callsPath = join(fixture.tempDir, "replay-calls.jsonl");
     const fakeCliPath = join(fixture.tempDir, "fake-divebell.mjs");
@@ -446,8 +532,263 @@ if (args[0] === "eval") {
   }
 });
 
+test("records an explicit state dependency and requires it when the confirmed script runs", async () => {
+  const fixture = createRecordingFixture("divebell-state-workflow-", {
+    browserLogs: "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=run]\",\"locators\":[{\"kind\":\"test-id\",\"value\":\"run\",\"selector\":\"button[data-testid=\\\"run\\\"]\"}],\"tagName\":\"button\",\"accessibleName\":\"Run\"}}"
+  });
+
+  try {
+    const recordedState = join(fixture.tempDir, "qa-admin-state.json");
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/", fixture.sessionId, ["--state", recordedState]);
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.deepEqual(workflow.requirements.authentication, {
+      id: "setup-auth",
+      mode: "state",
+      required: true,
+      displayName: "qa-admin-state.json",
+      parameter: "--state",
+      status: "draft"
+    });
+    assert.equal(JSON.stringify(workflow).includes(recordedState), false);
+
+    const confirmOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmOutput), 0);
+
+    const scriptPath = join(fixture.outputDir, "generated-script.mjs");
+    const needsInput = JSON.parse(execFileSync(process.execPath, [scriptPath, "--headless"], {
+      encoding: "utf8"
+    }));
+    assert.equal(needsInput.status, "needs_input");
+    assert.match(needsInput.message, /qa-admin-state\.json/);
+
+    const callsPath = join(fixture.tempDir, "state-replay-calls.jsonl");
+    const fakeCliPath = join(fixture.tempDir, "fake-state-divebell.mjs");
+    writeFileSync(fakeCliPath, `#!/usr/bin/env node
+import { appendFileSync } from "node:fs";
+const args = process.argv.slice(2);
+appendFileSync(process.env.REPLAY_CALLS, JSON.stringify(args) + "\\n");
+if (args[0] === "eval") {
+  if (args[1].includes("locateRecordedTargetInPage")) {
+    process.stdout.write(JSON.stringify({
+      found: true,
+      selector: "[data-divebell-replay-target=step]",
+      matchedBy: "test-id:run",
+      page: { url: "http://app.test/", title: "Orders", readyState: "complete" }
+    }));
+  } else {
+    process.stdout.write(JSON.stringify({
+      url: "http://app.test/",
+      title: "Orders",
+      readyState: "complete"
+    }));
+  }
+}
+`, "utf8");
+    chmodSync(fakeCliPath, 0o755);
+    const runtimeState = join(fixture.tempDir, "runtime-state.json");
+    const replay = JSON.parse(execFileSync(
+      process.execPath,
+      [scriptPath, "--headless", "--state", runtimeState],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          DIVEBELL_CLI: fakeCliPath,
+          REPLAY_CALLS: callsPath
+        }
+      }
+    ));
+    assert.equal(replay.status, "ok");
+    assert.deepEqual(readJsonLines(callsPath)[0], [
+      "open",
+      "http://app.test/",
+      "--state",
+      runtimeState
+    ]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("records a selected Chrome Profile as the step zero dependency", async () => {
+  const fixture = createRecordingFixture("divebell-profile-workflow-", {
+    browserLogs: "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button\",\"tagName\":\"button\",\"accessibleName\":\"Open\"}}"
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/", fixture.sessionId, ["--profile", "Work"]);
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+    const reviewOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "review",
+      "--input",
+      fixture.outputDir
+    ], reviewOutput), 0);
+    const review = commandData(reviewOutput);
+    assert.equal(review.setup[0].number, 0);
+    assert.match(review.setup[0].title, /profile.*Work/i);
+    assert.match(review.setup[0].command, /--profile <value>/);
+    assert.equal(JSON.stringify(readJson(join(fixture.outputDir, "workflow.json"))).includes("--state"), false);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("replays a confirmed prefix and inserts only the newly recorded element for confirmation", async () => {
+  const fixture = createRecordingFixture("divebell-amend-workflow-", {
+    browserLogs: [
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":100,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=create]\",\"locators\":[{\"kind\":\"test-id\",\"value\":\"create\",\"selector\":\"button[data-testid=\\\"create\\\"]\"}],\"tagName\":\"button\",\"accessibleName\":\"Create project\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"input\",\"timeMs\":200,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"input[name=name]\",\"locators\":[{\"kind\":\"name\",\"value\":\"name\",\"selector\":\"input[name=\\\"name\\\"]\"}],\"tagName\":\"input\",\"accessibleName\":\"Project name\",\"value\":\"Demo\"}}",
+      "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":300,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button[data-testid=next]\",\"locators\":[{\"kind\":\"test-id\",\"value\":\"next\",\"selector\":\"button[data-testid=\\\"next\\\"]\"}],\"tagName\":\"button\",\"accessibleName\":\"Next\"}}"
+    ].join("\n")
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const confirmPrefixOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--through",
+      "step-2"
+    ], confirmPrefixOutput), 0);
+    assert.equal(commandData(confirmPrefixOutput).status, "draft");
+
+    const closeOutput = createOutput();
+    assert.equal(await fixture.run(["stop"], closeOutput), 0);
+    const amendStartOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "amend",
+      "start",
+      "--input",
+      fixture.outputDir,
+      "--after",
+      "step-2"
+    ], amendStartOutput), 0);
+    assert.equal(commandData(amendStartOutput).status, "prepared");
+
+    await fixture.open("http://app.test/", "amend-session");
+    const replayWarningOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "amend",
+      "replay",
+      "--input",
+      fixture.outputDir
+    ], replayWarningOutput), 0);
+    assert.equal(commandData(replayWarningOutput).status, "needs_confirmation");
+
+    const replayOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "amend",
+      "replay",
+      "--input",
+      fixture.outputDir,
+      "--allow-risky-replay"
+    ], replayOutput), 0);
+    assert.equal(commandData(replayOutput).status, "capturing");
+    const control = readJson(join(fixture.profileDirectory, "recording-session.json"));
+    assert.equal(control.amendment.status, "capturing");
+    writeFileSync(control.amendment.eventsFile, `${JSON.stringify({
+      type: "click",
+      timeMs: control.amendment.armedAtMs + 10,
+      url: "http://app.test/",
+      title: "Create project",
+      target: {
+        selector: "input[data-testid=create-example]",
+        locators: [{
+          kind: "test-id",
+          value: "create-example",
+          selector: "input[data-testid=\"create-example\"]"
+        }],
+        tagName: "input",
+        inputType: "checkbox",
+        role: "checkbox",
+        accessibleName: "Create example data",
+        checked: true
+      }
+    })}\n`);
+
+    const amendStopOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "amend",
+      "stop",
+      "--input",
+      fixture.outputDir
+    ], amendStopOutput), 0);
+    const amendment = commandData(amendStopOutput);
+    assert.equal(amendment.status, "needs_confirmation");
+    assert.equal(amendment.proposedSteps.length, 1);
+    assert.equal(amendment.proposedSteps[0].element.accessibleName, "Create example data");
+    assert.equal(amendment.elementConfirmations[0].highlighted, true);
+    const supplementalId = amendment.proposedSteps[0].id;
+
+    let workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.deepEqual(workflow.steps.map((step) => step.id), [
+      "step-1",
+      "step-2",
+      supplementalId,
+      "step-3"
+    ]);
+    assert.equal(workflow.steps[2].status, "needs-confirmation");
+    assert.equal(workflow.steps[2].source, "supplemental-recording");
+
+    const confirmElementOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--step",
+      supplementalId
+    ], confirmElementOutput), 0);
+    assert.equal(commandData(confirmElementOutput).status, "draft");
+    workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.equal(workflow.revisions.find((revision) => revision.type === "insert-after").status, "applied");
+
+    const confirmAllOutput = createOutput();
+    assert.equal(await fixture.run([
+      "record",
+      "confirm",
+      "--input",
+      fixture.outputDir,
+      "--all"
+    ], confirmAllOutput), 0);
+    assert.equal(commandData(confirmAllOutput).status, "confirmed");
+    assert.equal(existsSync(join(fixture.outputDir, "generated-script.mjs")), true);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("captures audio chunks and transcribes a recording", async () => {
   const fixture = createRecordingFixture("divebell-audio-recording-", {
+    browserLogs: "[INFO ] __DIVEBELL_RECORD_EVENT__{\"type\":\"click\",\"timeMs\":1800,\"url\":\"http://app.test/\",\"target\":{\"selector\":\"button\",\"tagName\":\"button\",\"accessibleName\":\"Open issues\"}}",
     browserAudio: {
       chunks: ["fake-audio"],
       events: [{
@@ -515,6 +856,10 @@ test("captures audio chunks and transcribes a recording", async () => {
     assert.equal(transcript.segments[0].startMs, 1200);
     assert.equal(transcript.segments[0].text, "Open the issues page");
     assert.equal(transcript.words[0].text, "Open");
+    assert.equal(
+      readJson(join(fixture.outputDir, "workflow.json")).steps[0].evidence.transcript[0].text,
+      "Open the issues page"
+    );
   } finally {
     fixture.cleanup();
   }
@@ -649,14 +994,15 @@ function createRecordingFixture(prefix, options = {}) {
       args,
       ...(runOptions === undefined ? {} : { options: runOptions })
     });
-    if (args[0] === "open") {
+    const openIndex = args.indexOf("open");
+    if (openIndex >= 0) {
       controlPresentWhenOpened.push(existsSync(join(profileDirectory, "recording-session.json")));
       activeTabId = "t1";
       tabs = [{
         tabId: "t1",
         label: null,
         title: "Orders",
-        url: args[1] ?? "about:blank",
+        url: args[openIndex + 1] ?? "about:blank",
         type: "page",
         active: true
       }];
@@ -698,6 +1044,18 @@ function createRecordingFixture(prefix, options = {}) {
     }
     if (args[0] === "eval") {
       const script = args[1] ?? "";
+      if (script.includes("locateRecordedTargetInPage")) {
+        return browserResult(JSON.stringify(options.locatedTarget ?? {
+          found: true,
+          selector: "[data-divebell-replay-target=amend]",
+          matchedBy: "test-id:recorded",
+          page: {
+            url: options.domUrl ?? "http://app.test/",
+            title: "Orders",
+            readyState: "complete"
+          }
+        }));
+      }
       if (script.includes("__DIVEBELL_AUDIO_RECORDER__?.status")) {
         return browserResult("true");
       }
@@ -745,6 +1103,9 @@ function createRecordingFixture(prefix, options = {}) {
         htmlLength: 13
       }));
     }
+    if (["click", "fill", "focus", "press", "select", "highlight"].includes(args[0])) {
+      return browserResult("ok");
+    }
     if (args[0] === "console") {
       const browserLogs = options.browserLogsByTab?.[activeTabId] ?? options.browserLogs ?? "";
       return browserResult(JSON.stringify({
@@ -770,7 +1131,7 @@ function createRecordingFixture(prefix, options = {}) {
     browserCalls,
     controlPresentWhenOpened,
     fetchUrls,
-    open: async (url, pageSessionId = sessionId) => {
+    open: async (url, pageSessionId = sessionId, launchOptions = []) => {
       const output = createOutput();
       const exitCode = await runCli([
         "open",
@@ -779,7 +1140,8 @@ function createRecordingFixture(prefix, options = {}) {
         "http://bridge.test",
         "--session",
         pageSessionId,
-        "--ui"
+        "--ui",
+        ...launchOptions
       ], {
         stdout: output.stdout,
         stderr: output.stderr,

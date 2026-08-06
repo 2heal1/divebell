@@ -600,7 +600,7 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
     },
     stdout: output.stdout,
     env: {},
-    nodeVersion: "22.14.0",
+    nodeVersion: "20.18.3",
     fetcher: async () => {
       throw new Error("fetch should not run");
     },
@@ -628,7 +628,7 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
   assert.equal(parsed.error.code, "DIVEBELL_SETUP_NODE_UNSUPPORTED");
   assert.deepEqual(parsed.data.environment, {
     node: {
-      version: "22.14.0",
+      version: "20.18.3",
       requirement: SUPPORTED_NODE_RANGE,
       supported: false
     },
@@ -644,7 +644,7 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
     {
       id: "node",
       status: "failed",
-      message: `Node.js 22.14.0 does not satisfy ${SUPPORTED_NODE_RANGE}.`
+      message: `Node.js 20.18.3 does not satisfy ${SUPPORTED_NODE_RANGE}.`
     },
     {
       id: "bridge",
@@ -661,11 +661,15 @@ test("reports unsupported Node before starting the Bridge or browser", async () 
   ]);
 });
 
-test("recognizes only Node.js 24 as supported", () => {
+test("recognizes Node.js 20.19 through 24 as supported", () => {
+  assert.equal(isSupportedNodeVersion("20.18.3"), false);
+  assert.equal(isSupportedNodeVersion("20.19.0"), true);
+  assert.equal(isSupportedNodeVersion("20.20.2"), true);
   assert.equal(isSupportedNodeVersion("24.0.0"), true);
   assert.equal(isSupportedNodeVersion("24.13.1"), true);
   assert.equal(isSupportedNodeVersion("v24.13.1"), true);
-  assert.equal(isSupportedNodeVersion("23.11.1"), false);
+  assert.equal(isSupportedNodeVersion("19.9.0"), false);
+  assert.equal(isSupportedNodeVersion("23.11.1"), true);
   assert.equal(isSupportedNodeVersion("25.0.0"), false);
   assert.equal(isSupportedNodeVersion("24"), false);
 });

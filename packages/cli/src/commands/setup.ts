@@ -34,7 +34,7 @@ const SETUP_URL = "data:text/html,%3Ctitle%3EDivebell%20Setup%3C/title%3E";
 const EXISTING_CHROME_CONNECT_ATTEMPTS = 30;
 const EXISTING_CHROME_CONNECT_INTERVAL_MS = 2000;
 const CHECK_BROWSER_IDLE_TIMEOUT_MS = 5000;
-export const SUPPORTED_NODE_RANGE = ">=24.0.0 <25";
+export const SUPPORTED_NODE_RANGE = ">=20.19.0 <25";
 const SETUP_CONTROL_SCRIPT = `(() => {
   const manager = globalThis.__DIVEBELL_BRIDGE_MANAGER__;
   if (manager === null || typeof manager !== "object") {
@@ -124,9 +124,9 @@ export async function runSetupCommand(options: {
     output.error(createError({
       code: "DIVEBELL_SETUP_NODE_UNSUPPORTED",
       kind: "validation",
-      message: `Divebell requires Node.js 24, but this command is running on Node.js ${nodeVersion}.`,
+      message: `Divebell requires Node.js ${SUPPORTED_NODE_RANGE}, but this command is running on Node.js ${nodeVersion}.`,
       retryable: false,
-      hint: "Install and select Node.js 24, then run `divebell setup` again.",
+      hint: `Install and select a Node.js version that satisfies ${SUPPORTED_NODE_RANGE}, then run \`divebell setup\` again.`,
       data: {
         ready: false,
         fixed: false,
@@ -909,7 +909,10 @@ function detectBrowserSource(env: NodeJS.ProcessEnv): BrowserSource {
 
 export function isSupportedNodeVersion(version: string): boolean {
   const match = /^(?:v)?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
-  return match?.[1] === "24";
+  if (match === null) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  return (major === 20 && minor >= 19) || (major > 20 && major < 25);
 }
 
 function createEnvironmentData(

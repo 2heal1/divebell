@@ -74,7 +74,7 @@ node scripts/check-home.mjs http://localhost:3000
 Divebell CLI is a global machine tool. Local scripts use the same global
 command and should check it before running:
 
-Divebell CLI supports Node.js 24.
+Divebell CLI requires Node.js 20 or later.
 
 ```sh
 divebell --help

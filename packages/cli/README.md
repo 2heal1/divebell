@@ -6,14 +6,14 @@ Divebell CLI is the main entry point for coding agents using Divebell as a web d
 
 Install the CLI globally. Divebell is a machine-level debugging tool and
 should not be added to each application as a development dependency.
-Divebell CLI supports Node.js 24.
+Divebell CLI requires Node.js 20 or later.
 
 ```sh
 npm install --global @divebell/cli
 divebell setup
 ```
 
-The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.3`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell, supports portable state across explicitly included SSO origins without contacting those origins while loading state, and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.4`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell, supports portable state across explicitly included SSO origins without contacting those origins while loading state, and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
 Divebell keeps its bundled agent-browser daemon under `DIVEBELL_HOME/agent-browser` so another installed browser client cannot make it reuse an older background binary. When `~/.divebell` is not writable, the CLI automatically keeps its browser, session, and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory, or set `AGENT_BROWSER_HOME` to explicitly override only the browser daemon location.
 

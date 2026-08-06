@@ -60,3 +60,56 @@ jobs:
 
       - name: Run Stage 6 evaluation with timing
         run: pnpm run evaluate:stage6:run
+
+  node20-runtime:
+    name: Node 20 Runtime Package
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Setup Node.js for package assembly
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.13.0
+          cache: pnpm
+
+      - name: Install CLI package dependencies
+        run: pnpm --filter @divebell/cli... install --frozen-lockfile
+
+      - name: Build and pack the CLI
+        env:
+          CLI_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-cli-package
+        run: |
+          set -euo pipefail
+          pnpm --filter @divebell/cli build
+          mkdir -p "$CLI_PACKAGE_OUTPUT"
+          pnpm --filter @divebell/cli pack --pack-destination "$CLI_PACKAGE_OUTPUT"
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20.20.2
+
+      - name: Install packed CLI and run setup
+        shell: bash
+        env:
+          CLI_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-cli-package
+          DIVEBELL_RUNTIME_ROOT: ${{ runner.temp }}/divebell-node20-runtime
+        run: |
+          set -euo pipefail
+          package=$(find "$CLI_PACKAGE_OUTPUT" -maxdepth 1 -name '*.tgz' -print -quit)
+          test -n "$package"
+          mkdir -p "$DIVEBELL_RUNTIME_ROOT"/{home,socket,prefix}
+          npm install --global --prefix "$DIVEBELL_RUNTIME_ROOT/prefix" "$package"
+          HOME="$DIVEBELL_RUNTIME_ROOT/home" \
+          DIVEBELL_HOME="$DIVEBELL_RUNTIME_ROOT/home/.divebell" \
+          AGENT_BROWSER_SOCKET_DIR="$DIVEBELL_RUNTIME_ROOT/socket" \
+          "$DIVEBELL_RUNTIME_ROOT/prefix/bin/divebell" setup

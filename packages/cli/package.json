@@ -10,7 +10,7 @@
   },
   "author": "2heal1",
   "engines": {
-    "node": ">=24.0.0 <25"
+    "node": ">=20.19.0 <25"
   },
   "bin": {
     "divebell": "./dist/bin.js"
@@ -39,7 +39,7 @@
     "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
   },
   "dependencies": {
-    "@divebell/agent-browser": "0.33.2-divebell.3",
+    "@divebell/agent-browser": "0.33.2-divebell.4",
     "@divebell/bridge": "workspace:^",
     "@divebell/core": "workspace:^"
   },

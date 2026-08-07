@@ -5,10 +5,10 @@
 Divebell CLI currently pins:
 
 ```text
-@divebell/agent-browser@0.33.2-divebell.3
+@divebell/agent-browser@0.33.2-divebell.4
 ```
 
-This package comes from the maintained Divebell release branch of the agent-browser fork. It adds the memory diagnostics and code-coverage capture required by Divebell. It also keeps agent-browser-owned state in a writable temporary directory when the normal user state directory is unavailable, discovers Puppeteer's headless browser when full Chrome is unavailable, and preserves an active browser across repeated commands. Version `0.33.2-divebell.2` preserves browser cookie source and partition metadata and lets a state export collect web storage from explicitly included SSO origins. Version `0.33.2-divebell.3` restores that storage through intercepted blank responses, so loading a state file does not contact its saved origins or let an authentication flow invalidate restored cookies before the requested page opens. The package also ships its platform binaries directly and no longer runs an npm lifecycle installation script.
+This package comes from the maintained Divebell release branch of the agent-browser fork. It adds the memory diagnostics and code-coverage capture required by Divebell. It also keeps agent-browser-owned state in a writable temporary directory when the normal user state directory is unavailable, discovers Puppeteer's headless browser when full Chrome is unavailable, and preserves an active browser across repeated commands. Version `0.33.2-divebell.2` preserves browser cookie source and partition metadata and lets a state export collect web storage from explicitly included SSO origins. Version `0.33.2-divebell.3` restores that storage through intercepted blank responses, so loading a state file does not contact its saved origins or let an authentication flow invalidate restored cookies before the requested page opens. Version `0.33.2-divebell.4` supports Node.js 20.19 or newer for package installation and its JavaScript wrapper. The package also ships its platform binaries directly and no longer runs an npm lifecycle installation script.
 
 Divebell uses the executable included with the CLI unless `DIVEBELL_AGENT_BROWSER_EXECUTABLE` points to a custom build. By default, Divebell keeps the browser daemon and its state under `DIVEBELL_HOME/agent-browser`. This prevents another installed agent-browser client from leaving Divebell connected to an older background binary. Set `AGENT_BROWSER_HOME` only when the browser daemon needs a different explicitly shared or writable location.
 

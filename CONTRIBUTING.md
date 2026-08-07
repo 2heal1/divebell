@@ -6,8 +6,9 @@ change before opening a pull request.
 
 ## Prerequisites
 
-- Node.js 24.13.0. The exact version is recorded in `.nvmrc` and
-  `.node-version`.
+- Node.js 24.13.0 for repository development. The exact version is recorded
+  in `.nvmrc` and `.node-version`. The published CLI supports Node.js 20.19
+  or later; its precise minimum is declared in `packages/cli/package.json`.
 - pnpm 10.18.1. The required range is recorded in the root `package.json`.
 - Git.
 

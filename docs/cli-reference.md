@@ -16,6 +16,9 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell setup` - Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed.
 - `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `divebell stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
+- `divebell ps` - List running divebell daemon processes with PID, port, uptime, and associated working directories.
+- `divebell kill <index|pid|port> [--force]` - Stop a divebell daemon by ps index, PID, or port number; --force sends SIGKILL instead of SIGTERM.
+- `divebell kill-all [--force]` - Stop all running divebell daemon processes tracked by this user.
 - `divebell profiles` - List Chrome profiles available to agent-browser.
 - `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.

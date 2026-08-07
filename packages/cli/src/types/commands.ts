@@ -174,7 +174,13 @@ export interface ExternalExtensionCandidate {
 
 
 export interface CliCommandReference {
-  category: "Bridge and Browser" | "Runtime" | "Extensions" | "External Extensions";
+  category:
+    | "Daemon and Browser"
+    | "Bridge and Browser"
+    | "Runtime"
+    | "Extensions"
+    | "External Extensions"
+    | "Internal";
   usage: string;
   description: string;
 }

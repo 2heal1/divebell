@@ -40,6 +40,21 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "divebell ps",
+    description: "List running divebell daemon processes with PID, port, uptime, and associated working directories."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell kill <index|pid|port> [--force]",
+    description: "Stop a divebell daemon by ps index, PID, or port number; --force sends SIGKILL instead of SIGTERM."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell kill-all [--force]",
+    description: "Stop all running divebell daemon processes tracked by this user."
+  },
+  {
+    category: "Bridge and Browser",
     usage: "divebell profiles",
     description: "List Chrome profiles available to agent-browser."
   },
@@ -200,14 +215,19 @@ const CATEGORY_LABELS: Record<CliCommandReference["category"], string> = {
   "Bridge and Browser": "Browser",
   Runtime: "Runtime",
   Extensions: "Extensions",
-  "External Extensions": "External Extensions"
+  "External Extensions": "External Extensions",
+  "Daemon and Browser": "Browser",
+  Internal: "Internal"
 };
 
 const TOP_LEVEL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   console: "Read browser console logs.",
   eval: "Run a script in the current page.",
   extensions: "Install, list, update, or remove Divebell extensions.",
-  "wait-for": "Wait for a target to reach a status."
+  "wait-for": "Wait for a target to reach a status.",
+  ps: "List running divebell daemon processes.",
+  kill: "Stop a divebell daemon by ps index, PID, or port.",
+  "kill-all": "Stop all running divebell daemon processes."
 };
 
 export function createHelpText(references: CliReferenceCollection = {}): string {

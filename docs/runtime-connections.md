@@ -2,6 +2,68 @@
 
 This guide explains how the Divebell CLI connects to a page and how to select a Runtime when one page exposes multiple instances.
 
+## Core Concepts
+
+Understanding the following relationships helps you navigate Divebell's architecture:
+
+### Concept hierarchy
+
+```
+Working Directory (cwd)
+  └── Divebell Daemon (1 per directory)
+        └── Browser Session (agent-browser, 1 per daemon)
+              └── Browser Tabs (multiple per session)
+                    └── Runtimes (1~N per tab, registered by page code)
+```
+
+- **Working Directory**: The current `cwd` determines which browser session and daemon you are connected to. Different directories maintain independent sessions.
+- **Divebell Daemon**: A background process started by `divebell open` that handles communication between the CLI and browser. It is reused automatically — you do not need to manage it manually.
+- **Browser Session**: The agent-browser instance (Chrome with Divebell integration). It persists cookies, localStorage, tabs, and navigation history across commands.
+- **Tab**: A single browser tab within the session. You can open new tabs with `divebell tab new <url>`. All tabs in a session share the same daemon and cookies.
+- **Runtime**: An instance registered by page code through the Runtime SDK. Each tab/page can expose one or more Runtimes (e.g., a shell app and a child micro-frontend).
+
+### About the Bridge
+
+The term **Bridge** appears in some internal APIs and implementation details. It refers to the local HTTP service that the daemon exposes for Runtime SDK communication. **You do not need to understand or manage the Bridge.** Divebell handles it automatically:
+
+- `divebell open` starts or reuses a daemon automatically
+- The daemon picks an available port and manages its own lifecycle
+- All subsequent commands in the same directory reuse the same daemon
+
+> **Note**: The `--bridge` option exists for advanced use cases (connecting to an externally managed daemon or a daemon running on a different host). Most users should never need it.
+
+### Examples
+
+```bash
+# First open in a directory — starts daemon + browser session
+divebell open http://localhost:3000
+
+# Open another URL in the same directory — reuses daemon, navigates to new URL
+divebell open http://localhost:4000
+
+# Open a new tab in the current session — daemon unchanged
+divebell tab new http://localhost:5000
+
+# Switch tabs within the session
+divebell tab list
+divebell tab <tab-id>
+
+# Check which Runtimes are connected (per tab/page)
+divebell runtimes
+```
+
+### Quick reference
+
+| Action | Daemon changes? | Session changes? | URL changes? |
+|---|---|---|---|
+| First `open` in a directory | ✅ New daemon | ✅ New session | ✅ |
+| `open` same directory, different URL | ❌ Reuses | ❌ Reuses | ✅ New URL |
+| `tab new` | ❌ | ❌ | ✅ New tab |
+| `tab <id>` (switch) | ❌ | ❌ | ❌ |
+| `goto <url>` | ❌ | ❌ | ✅ Navigate |
+| Different directory, same port | ❌ Reuses | ❌ Reuses | ✅ |
+| Different directory, `--port` | ✅ New daemon | ✅ New session | ✅ |
+
 ## Basic flow
 
 The page only creates and registers Runtimes. It does not connect to the Bridge itself. Each time the CLI opens a page, it starts a dedicated local Bridge on an automatically assigned port and installs a connection manager before page code runs:

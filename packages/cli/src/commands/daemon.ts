@@ -45,8 +45,12 @@ export async function runPsCommand(options: {
 }): Promise<number> {
   const output = createCommandOutput(options.stdout, "ps");
   const result = await listManagedBridges({
-    stateDirectory: options.stateDirectory,
-    processController: options.processController
+    ...(options.stateDirectory === undefined
+      ? {}
+      : { stateDirectory: options.stateDirectory }),
+    ...(options.processController === undefined
+      ? {}
+      : { processController: options.processController })
   });
   output.ok(result);
   return 0;
@@ -68,7 +72,9 @@ export async function runKillCommand(options: {
   const listResult = await listManagedBridges({
     stateDirectory,
     operationLogDirectory,
-    processController: options.processController
+    ...(options.processController === undefined
+      ? {}
+      : { processController: options.processController })
   });
 
   if (listResult.count === 0) {
@@ -94,7 +100,9 @@ export async function runKillCommand(options: {
     state: matched,
     stateStore,
     force,
-    processController: options.processController
+    ...(options.processController === undefined
+      ? {}
+      : { processController: options.processController })
   });
 
   output.ok({
@@ -121,7 +129,9 @@ export async function runKillAllCommand(options: {
 
   const listResult = await listManagedBridges({
     stateDirectory,
-    processController: options.processController
+    ...(options.processController === undefined
+      ? {}
+      : { processController: options.processController })
   });
 
   const items: KillResult[] = [];
@@ -134,7 +144,9 @@ export async function runKillAllCommand(options: {
       state: item,
       stateStore,
       force,
-      processController: options.processController
+      ...(options.processController === undefined
+        ? {}
+        : { processController: options.processController })
     });
     items.push({
       matched: {
@@ -240,7 +252,7 @@ function createKillNotFoundError(
   selection: KillSelection,
   items: readonly ListedManagedBridge[]
 ): never {
-  const maxIndex = items.length > 0 ? items[items.length - 1].index : 0;
+  const maxIndex = items.length > 0 ? items[items.length - 1]!.index : 0;
   const available = items.map((item) => ({
     index: item.index,
     pid: item.pid,

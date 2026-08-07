@@ -42,7 +42,8 @@ export async function synchronizeVmokProxy({
     throw new Error(
       `Cannot read package.json from ${resolvedPackageRoot}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   if (manifest.name !== expectedPackageName) {
@@ -62,7 +63,8 @@ export async function synchronizeVmokProxy({
     throw new Error(
       `Cannot read ${expectedPackageName} ${publicEntry}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   assertSelfContainedBundle(bundle);

@@ -44,7 +44,8 @@ export async function loadPackageContext(inputPackageRoot, options = {}) {
     manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   } catch (error) {
     throw new Error(
-      `Cannot read package.json from ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`
+      `Cannot read package.json from ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error }
     );
   }
   if (manifest.name !== expectedPackageName) {
@@ -100,7 +101,8 @@ export async function loadPackageContext(inputPackageRoot, options = {}) {
       sourceRevision = revisionResult.stdout.trim();
     } catch (error) {
       throw new Error(
-        `Cannot read the source git revision for ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`
+        `Cannot read the source git revision for ${resolvedPackageRoot}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
   }

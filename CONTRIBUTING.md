@@ -96,6 +96,9 @@ pnpm --filter @divebell/cli test
 # Test every package
 pnpm test
 
+# Lint package and repository scripts
+pnpm lint
+
 # Run the complete pre-submission check
 pnpm check
 ```

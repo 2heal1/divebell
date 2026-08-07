@@ -74,7 +74,8 @@ async function loadManifest(inputPackageRoot, optionName, expectedName) {
     throw new Error(
       `Cannot read package.json from ${resolvedPackageRoot}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   if (manifest.name !== expectedName) {
@@ -368,7 +369,8 @@ function parseNpmPackageMetadata(stdout, packageSpec) {
     throw new Error(
       `Cannot parse npm metadata for ${packageSpec}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   const version = metadata?.version;
@@ -406,7 +408,8 @@ function readAttestedSourceRevision(attestations, packageName, version) {
     throw new Error(
       `Cannot parse provenance for ${packageName}@${version}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   const subjectMatches = statement.subject?.some((subject) => {
@@ -475,7 +478,8 @@ async function resolvePublishedPackage({
     throw new Error(
       `Cannot parse npm provenance for ${packageName}@${version}: ${
         error instanceof Error ? error.message : String(error)
-      }`
+      }`,
+      { cause: error }
     );
   }
   return {

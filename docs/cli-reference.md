@@ -14,7 +14,8 @@ This document is generated from the current CLI command table in `packages/cli/s
 ### Browser
 
 - `divebell setup` - Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed.
-- `divebell stop [--port <port>]` - Close the browser session, then stop the divebell daemon started for the current directory.
+- `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
+- `divebell stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.
 - `divebell ps` - List running divebell daemon processes with PID, port, uptime, and associated working directories.
 - `divebell kill <index|pid|port> [--force]` - Stop a divebell daemon by ps index, PID, or port number; --force sends SIGKILL instead of SIGTERM.
 - `divebell kill-all [--force]` - Stop all running divebell daemon processes tracked by this user.
@@ -25,7 +26,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `divebell auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `divebell auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--port <port>] [--session <id>] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page with Divebell lifecycle management and supported agent-browser launch options.
+- `divebell open <url> [--headers <json>] [--profile <name|path>] [--state <path>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page with Divebell lifecycle management and supported agent-browser launch options.
 - `divebell goto <url>` - Navigate the current Divebell page to another URL without replacing its browser session.
 - `divebell navigate <url>` - Alias for `divebell goto`.
 - `divebell back` - Go back in the current page history.
@@ -97,13 +98,13 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Runtime
 
-- `divebell runtimes` - List runtimes from the current directory's opened page.
-- `divebell targets [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read target definitions registered by the selected runtime.
-- `divebell snapshot [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read the current snapshot state from the selected runtime.
-- `divebell events [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - Read runtime event history.
-- `divebell actions [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - List runtime actions declared by the page.
-- `divebell run-action [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - Run a runtime action declared by the page.
-- `divebell wait-for [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]` - Wait for a target to reach a status; --where values are parsed as JSON literals and can match numbers, booleans, or null.
+- `divebell runtimes [--bridge <url>]` - List runtimes from the current directory's opened page, or from an explicitly selected Bridge.
+- `divebell targets [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read target definitions registered by the selected runtime.
+- `divebell snapshot [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--id <id>] [--type <type>] [--source <source>] [--status <status>] [--query <keyword>]` - Read the current snapshot state from the selected runtime.
+- `divebell events [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--target-id <id>] [--type <type>] [--source <source>] [--status <status>] [--action <name>] [--since <event-id>] [--limit <n>] [--query <keyword>]` - Read runtime event history.
+- `divebell actions [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] [--name <name>] [--source <source>] [--risk <risk>] [--enabled <true|false>] [--query <keyword>]` - List runtime actions declared by the page.
+- `divebell run-action [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <action-name> [--payload <json>]` - Run a runtime action declared by the page.
+- `divebell wait-for [--bridge <url>] [--runtime <id> | --session <id> | --url <url>] <target-id> <status> [--where <path=value>] [--timeout <ms>] [--strict] [--next]` - Wait for a target to reach a status; --where values are parsed as JSON literals and can match numbers, booleans, or null.
 
 ### Extensions
 

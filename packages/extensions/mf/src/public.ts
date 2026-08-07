@@ -8,6 +8,9 @@ export {
   createModulePerformanceResult
 } from "./module-performance/result.js";
 export {
+  createModulePerformanceReport
+} from "./module-performance/report.js";
+export {
   createModulePerformanceInitScript,
   createReadModulePerformanceScript,
   isModulePerformanceBrowserSnapshot,

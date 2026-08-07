@@ -6,6 +6,9 @@ import {
   createModulePerformanceResult
 } from "../module-performance/result.js";
 import {
+  createModulePerformanceReport
+} from "../module-performance/report.js";
+import {
   readModulePerformanceSnapshot
 } from "../module-performance/open.js";
 import { visibleInstanceName } from "../selection.js";
@@ -33,6 +36,7 @@ export const modulePerformanceCommand: MfCommandDefinition = {
     const target = positionals[0];
     const name = option(options.args.options, "mf");
     const instanceRef = option(options.args.options, "instance");
+    const report = booleanOption(options.args.options, "report");
     const snapshot = await readCommandSnapshot(options);
     validateConsumer(snapshot, name, instanceRef, commandName);
     let performance;
@@ -51,7 +55,10 @@ export const modulePerformanceCommand: MfCommandDefinition = {
       ...(name === undefined ? {} : { name }),
       ...(instanceRef === undefined ? {} : { instanceRef })
     });
-    return presentCommandResult(result, options);
+    return presentCommandResult(
+      report ? createModulePerformanceReport(result) : result,
+      options
+    );
   }
 };
 
@@ -95,4 +102,16 @@ function validateConsumer(
 
 function option(options: Map<string, string[]>, name: string): string | undefined {
   return options.get(name)?.at(-1);
+}
+
+function booleanOption(options: Map<string, string[]>, name: string): boolean {
+  const value = option(options, name);
+  if (value === undefined || value === "true") return value !== undefined;
+  if (value === "false") return false;
+  throw new MfCommandError({
+    code: "MF_COMMAND_OPTION_INVALID",
+    kind: "validation",
+    message: `Invalid --${name} value ${JSON.stringify(value)}.`,
+    hint: "Use --report or --report=false."
+  });
 }

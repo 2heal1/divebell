@@ -184,6 +184,59 @@ export interface ModulePerformanceResult {
   unobservedRemotes: ModulePerformanceUnobservedRemote[];
 }
 
+export interface ModulePerformanceReportOperation {
+  status: ModulePerformanceOperation["outcome"];
+  timing: ModulePerformanceTiming;
+  pageImpact: ModulePerformancePageImpact;
+  remoteEntry?: ModulePerformanceManifest["remoteEntryResource"];
+  exposeAssets: ModulePerformanceAssetTiming[];
+  bottleneck: ModulePerformanceBottleneck;
+  findings: ModulePerformanceFinding[];
+}
+
+export interface ModulePerformanceReportRecommendation {
+  id:
+    | "preload-remote-entry"
+    | "inspect-remote-entry-delivery"
+    | "preload-expose-assets"
+    | "inspect-get-runtime"
+    | "profile-factory"
+    | "code-usage";
+  severity: ModulePerformanceFinding["severity"];
+  title: string;
+  target: {
+    consumer: ModulePerformanceModule["consumer"];
+    remote: ModulePerformanceModule["remote"];
+    producer: ModulePerformanceModule["producer"];
+    expose?: string;
+  };
+  evidence: string[];
+  assets?: string[];
+  reason: string;
+  documentation?: string;
+}
+
+export interface ModulePerformanceReportModule {
+  consumer: ModulePerformanceModule["consumer"];
+  remote: ModulePerformanceModule["remote"];
+  producer: ModulePerformanceModule["producer"];
+  expose?: string;
+  operations: ModulePerformanceReportOperation[];
+}
+
+export interface ModulePerformanceReport {
+  schemaVersion: 1;
+  command: "mf module-perf --report";
+  report: {
+    page: ModulePerformanceResult["page"];
+    selection: ModulePerformanceResult["selection"];
+    summary: ModulePerformanceResult["summary"];
+    modules: ModulePerformanceReportModule[];
+    unobservedRemotes: ModulePerformanceUnobservedRemote[];
+    recommendations: ModulePerformanceReportRecommendation[];
+  };
+}
+
 export interface ModulePerformanceSelectors {
   target?: string;
   name?: string;

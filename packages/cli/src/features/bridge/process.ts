@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -7,9 +7,44 @@ import type { BridgeRuntimeInfo } from "@divebell/bridge";
 import type { Fetcher } from "../runtime/client.js";
 import { fetchRuntimes, selectRuntime } from "../runtime/client.js";
 import { resolveDivebellHomeDirectory } from "../../utils/home.js";
+import type { CliOperationLogEntry } from "../../utils/operation-log.js";
 
 import type { BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
 export type { BridgeStartOptions, BridgeStartResult, BridgeStarter, ManagedBridgeState, BridgeStateStore, BridgeProcessController, EnsureBridgeOptions, EnsureBridgeResult, StartDedicatedBridgeOptions, StartDedicatedBridgeResult, StopBridgeOptions, StopBridgeResult, WaitForRuntimeSelectionOptions } from "./types.js";
+
+export interface ListedManagedBridge extends ManagedBridgeState {
+  index: number;
+  alive: boolean;
+  stale: boolean;
+  uptimeMs: number | null;
+  uptime: string | null;
+  directories: string[];
+  pages: string[];
+}
+
+export interface ListManagedBridgesOptions {
+  stateDirectory?: string;
+  operationLogDirectory?: string;
+  processController?: BridgeProcessController;
+  now?: number;
+}
+
+export interface KillManagedBridgeResult {
+  bridgeUrl: string;
+  pid?: number;
+  stopped: boolean;
+  killed: boolean;
+  signal?: "SIGTERM" | "SIGKILL";
+  reason?: string;
+  cleanedState: boolean;
+}
+
+export interface KillManagedBridgeOptions {
+  state: ManagedBridgeState;
+  stateStore: BridgeStateStore;
+  force?: boolean;
+  processController?: BridgeProcessController;
+}
 
 export function createDetachedBridgeStarter(entryModuleUrl: string): BridgeStarter {
   return {
@@ -381,4 +416,175 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+}
+
+const BRIDGE_STATE_FILE_PREFIX = "bridge-";
+const BRIDGE_STATE_FILE_SUFFIX = ".json";
+const OPERATION_LOG_FILE_PREFIX = "open-";
+const OPERATION_LOG_FILE_SUFFIX = ".json";
+
+export async function listManagedBridges(
+  options: ListManagedBridgesOptions = {}
+): Promise<{ count: number; items: ListedManagedBridge[] }> {
+  const stateDirectory = options.stateDirectory ?? resolveDivebellHomeDirectory();
+  const operationLogDirectory = options.operationLogDirectory ?? join(stateDirectory, "operations");
+  const processController = options.processController ?? defaultBridgeProcessController;
+  const now = options.now ?? Date.now();
+
+  const [states, operations] = await Promise.all([
+    readBridgeStateFiles(stateDirectory),
+    readOperationLogEntries(operationLogDirectory)
+  ]);
+
+  const byBridgeUrl = new Map<string, { directories: Set<string>; pages: Set<string> }>();
+  for (const operation of operations) {
+    if (operation.bridgeUrl === null) continue;
+    const key = normalizeUrl(operation.bridgeUrl);
+    let bucket = byBridgeUrl.get(key);
+    if (bucket === undefined) {
+      bucket = { directories: new Set(), pages: new Set() };
+      byBridgeUrl.set(key, bucket);
+    }
+    bucket.directories.add(operation.cwd);
+    if (typeof operation.url === "string") bucket.pages.add(operation.url);
+    if (typeof operation.openedUrl === "string") bucket.pages.add(operation.openedUrl);
+  }
+
+  const items: ListedManagedBridge[] = states
+    .slice()
+    .sort((left, right) => left.startedAt - right.startedAt)
+    .map((state, i) => {
+      const alive = processController.isRunning(state.pid);
+      const stale = !alive;
+      const uptimeMs = stale ? null : Math.max(0, now - state.startedAt);
+      const bucket = byBridgeUrl.get(normalizeUrl(state.bridgeUrl));
+      return {
+        ...state,
+        index: i + 1,
+        alive,
+        stale,
+        uptimeMs,
+        uptime: uptimeMs === null ? null : formatUptime(uptimeMs),
+        directories: bucket === undefined ? [] : [...bucket.directories].sort(),
+        pages: bucket === undefined ? [] : [...bucket.pages].sort()
+      };
+    });
+
+  return { count: items.length, items };
+}
+
+export async function killManagedBridge(
+  options: KillManagedBridgeOptions
+): Promise<KillManagedBridgeResult> {
+  const processController = options.processController ?? defaultBridgeProcessController;
+  const { state, stateStore } = options;
+  const result: KillManagedBridgeResult = {
+    bridgeUrl: state.bridgeUrl,
+    pid: state.pid,
+    stopped: false,
+    killed: false,
+    cleanedState: false
+  };
+
+  if (!processController.isRunning(state.pid)) {
+    try {
+      await stateStore.remove();
+      result.cleanedState = true;
+    } catch {}
+    result.reason = "Tracked divebell daemon process is no longer running.";
+    return result;
+  }
+
+  const signal: "SIGTERM" | "SIGKILL" = options.force === true ? "SIGKILL" : "SIGTERM";
+  try {
+    if (signal === "SIGKILL") {
+      process.kill(state.pid, "SIGKILL");
+    } else {
+      processController.stop(state.pid);
+    }
+    result.killed = true;
+    result.stopped = true;
+    result.signal = signal;
+  } catch (error) {
+    result.reason = error instanceof Error ? error.message : String(error);
+    if (!processController.isRunning(state.pid)) result.stopped = true;
+  }
+
+  try {
+    await stateStore.remove();
+    result.cleanedState = true;
+  } catch {}
+
+  return result;
+}
+
+async function readBridgeStateFiles(stateDirectory: string): Promise<ManagedBridgeState[]> {
+  let entries: string[];
+  try {
+    entries = await readdir(stateDirectory);
+  } catch {
+    return [];
+  }
+  const files = entries.filter(
+    (name) =>
+      name.startsWith(BRIDGE_STATE_FILE_PREFIX) && name.endsWith(BRIDGE_STATE_FILE_SUFFIX)
+  );
+  const results: ManagedBridgeState[] = [];
+  for (const file of files) {
+    try {
+      const parsed: unknown = JSON.parse(await readFile(join(stateDirectory, file), "utf8"));
+      if (isManagedBridgeState(parsed)) results.push(parsed);
+    } catch {}
+  }
+  return results;
+}
+
+async function readOperationLogEntries(
+  operationLogDirectory: string
+): Promise<CliOperationLogEntry[]> {
+  let entries: string[];
+  try {
+    entries = await readdir(operationLogDirectory);
+  } catch {
+    return [];
+  }
+  const files = entries.filter(
+    (name) =>
+      name.startsWith(OPERATION_LOG_FILE_PREFIX) && name.endsWith(OPERATION_LOG_FILE_SUFFIX)
+  );
+  const results: CliOperationLogEntry[] = [];
+  for (const file of files) {
+    try {
+      const parsed: unknown = JSON.parse(
+        await readFile(join(operationLogDirectory, file), "utf8")
+      );
+      if (isCliOperationLogEntry(parsed)) results.push(parsed);
+    } catch {}
+  }
+  return results;
+}
+
+function isCliOperationLogEntry(value: unknown): value is CliOperationLogEntry {
+  if (value === null || typeof value !== "object") return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    (entry.schemaVersion === 2 || entry.schemaVersion === 3) &&
+    entry.command === "open" &&
+    typeof entry.cwd === "string" &&
+    typeof entry.url === "string"
+  );
+}
+
+function formatUptime(milliseconds: number): string {
+  const totalSeconds = Math.floor(milliseconds / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (parts.length === 0 || seconds > 0) parts.push(`${seconds}s`);
+  return parts.join(" ");
 }

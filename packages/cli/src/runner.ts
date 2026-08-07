@@ -14,6 +14,7 @@ import { createBridgeStateStore } from "./features/bridge/config.js";
 import { runBrowserCliCommand, runExtensionCloseHooks } from "./commands/browser.js";
 import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
+import { runKillAllCommand, runKillCommand, runPsCommand } from "./commands/daemon.js";
 import { runRuntimeCliCommand } from "./commands/runtime.js";
 import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
@@ -121,6 +122,46 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
             openHookPlan: config.hookPlans.open
           })
         );
+      }
+
+      if (args.command[0] === "ps") {
+        return await runPsCommand({
+          args,
+          stdout: commandStdout,
+          ...(options.bridgeStateDirectory === undefined
+            ? {}
+            : { stateDirectory: options.bridgeStateDirectory }),
+          ...(options.bridgeProcessController === undefined
+            ? {}
+            : { processController: options.bridgeProcessController })
+        });
+      }
+
+      if (args.command[0] === "kill") {
+        return await runKillCommand({
+          args,
+          stdout: commandStdout,
+          stderr: commandStderr,
+          ...(options.bridgeStateDirectory === undefined
+            ? {}
+            : { stateDirectory: options.bridgeStateDirectory }),
+          ...(options.bridgeProcessController === undefined
+            ? {}
+            : { processController: options.bridgeProcessController })
+        });
+      }
+
+      if (args.command[0] === "kill-all") {
+        return await runKillAllCommand({
+          args,
+          stdout: commandStdout,
+          ...(options.bridgeStateDirectory === undefined
+            ? {}
+            : { stateDirectory: options.bridgeStateDirectory }),
+          ...(options.bridgeProcessController === undefined
+            ? {}
+            : { processController: options.bridgeProcessController })
+        });
       }
 
       if (args.command[0] === "profiles") {

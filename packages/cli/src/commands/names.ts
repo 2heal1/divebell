@@ -91,6 +91,9 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "runtimes",
     "run-action",
     "wait-for",
+    "ps",
+    "kill",
+    "kill-all",
     ...BROWSER_COMMAND_NAMES,
     ...RUNTIME_RESOURCE_COMMAND_NAMES
   ]);

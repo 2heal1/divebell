@@ -105,11 +105,42 @@ jobs:
           DIVEBELL_RUNTIME_ROOT: ${{ runner.temp }}/divebell-node20-runtime
         run: |
           set -euo pipefail
+
+          echo "== Environment =="
+          echo "node: $(node --version)"
+          echo "npm: $(npm --version)"
+          echo "pwd: $(pwd)"
+
           package=$(find "$CLI_PACKAGE_OUTPUT" -maxdepth 1 -name '*.tgz' -print -quit)
+          echo "package archive: ${package:-<not found>}"
           test -n "$package"
-          mkdir -p "$DIVEBELL_RUNTIME_ROOT"/{home,socket,prefix}
-          npm install --global --prefix "$DIVEBELL_RUNTIME_ROOT/prefix" "$package"
-          HOME="$DIVEBELL_RUNTIME_ROOT/home" \
-          DIVEBELL_HOME="$DIVEBELL_RUNTIME_ROOT/home/.divebell" \
-          AGENT_BROWSER_SOCKET_DIR="$DIVEBELL_RUNTIME_ROOT/socket" \
-          "$DIVEBELL_RUNTIME_ROOT/prefix/bin/divebell" setup
+
+          mkdir -p "$DIVEBELL_RUNTIME_ROOT"/{home,socket,prefix,work}
+          cd "$DIVEBELL_RUNTIME_ROOT/work"
+          : > .npmrc
+
+          echo "== npm install =="
+          npm_output=$(npm --no-audit --no-fund install \
+            --global \
+            --prefix "$DIVEBELL_RUNTIME_ROOT/prefix" \
+            "$package" 2>&1) || {
+            npm_exit=$?
+            printf "%s\n" "$npm_output"
+            echo "npm install failed with exit code $npm_exit"
+            exit $npm_exit
+          }
+          printf "%s\n" "$npm_output"
+          echo "npm install completed successfully."
+
+          echo "== divebell setup =="
+          export HOME="$DIVEBELL_RUNTIME_ROOT/home"
+          export DIVEBELL_HOME="$DIVEBELL_RUNTIME_ROOT/home/.divebell"
+          export AGENT_BROWSER_SOCKET_DIR="$DIVEBELL_RUNTIME_ROOT/socket"
+          setup_output=$("$DIVEBELL_RUNTIME_ROOT/prefix/bin/divebell" setup 2>&1) || {
+            setup_exit=$?
+            printf "%s\n" "$setup_output"
+            echo "divebell setup failed with exit code $setup_exit"
+            exit $setup_exit
+          }
+          printf "%s\n" "$setup_output"
+          echo "divebell setup completed successfully."

@@ -5,6 +5,11 @@ export type { CliCommandReference } from "../types/commands.js";
 export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
+    usage: "divebell skill",
+    description: "Print the path to the Divebell CLI Skill bundled with this package."
+  },
+  {
+    category: "Bridge and Browser",
     usage: "divebell setup",
     description: "Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed."
   },
@@ -259,6 +264,8 @@ export function createHelpText(references: CliReferenceCollection = {}): string 
     ...commandLines,
     "",
     "Run `divebell <command> --help` (or `-h`) for detailed usage.",
+    "Run `divebell skill` to print the bundled Divebell CLI Skill path.",
+    "For an Extension command Skill, first run `divebell --help`, then run `divebell <command> --skill`.",
     "Run `divebell --version` (or `-v`) to print the installed version."
   ].join("\n");
 }

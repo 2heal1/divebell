@@ -1,8 +1,17 @@
 import { accessSync, constants, existsSync, statSync } from "node:fs";
-import { basename, isAbsolute } from "node:path";
+import { basename, isAbsolute, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { DivebellCommandSkill } from "../types/commands.js";
 export type { DivebellCommandSkill } from "../types/commands.js";
+
+const CLI_SKILL_PATH = fileURLToPath(
+  new URL("../../assets/skills/divebell/SKILL.md", import.meta.url)
+);
+
+export function getCliSkillPath(): string {
+  return resolve(CLI_SKILL_PATH);
+}
 
 export function validateCommandSkill(value: unknown, commandName: string): DivebellCommandSkill {
   if (typeof value !== "object" || value === null) {

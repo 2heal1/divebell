@@ -13,6 +13,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 ### Browser
 
+- `divebell skill` - Print the path to the Divebell CLI Skill bundled with this package.
 - `divebell setup` - Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed.
 - `divebell start [--port <port>]` - Explicitly start or reuse the CLI-managed Bridge. Most commands prepare it automatically.
 - `divebell stop [--port <port>]` - Close the browser session, then stop the CLI-managed Bridge.

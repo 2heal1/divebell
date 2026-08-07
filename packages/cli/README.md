@@ -23,6 +23,20 @@ Setup reports the current Node.js version, browser source, and browser-reported 
 
 Divebell first tries the Chrome already installed on the machine. If Chrome needs remote debugging permission, it opens `chrome://inspect/#remote-debugging`, waits for the user to enable it and approve Chrome's connection prompt, then continues automatically. Setup closes only its own temporary tab; it does not close the user's browser or the Chrome settings tab opened for consent. Divebell downloads a managed Chrome for Testing browser only when no Chrome installation is found. Chrome's security consent still requires the user to approve it.
 
+## Agent Skill
+
+The CLI bundles the main Divebell Skill. Print its local path for an agent that
+does not already have the Skill installed:
+
+```sh
+divebell skill
+```
+
+This is distinct from Skills supplied by installed Extensions. First use
+`divebell --help` to identify an Extension command, inspect that command with
+`divebell <command> --help`, then run `divebell <command> --skill` only when
+the command reports that it provides a Skill.
+
 ## Real Development Debugging Flow
 
 Reuse a prepared Chrome Profile or agent-browser state in a named debugging session:

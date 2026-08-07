@@ -16,6 +16,7 @@ import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
 import { runKillAllCommand, runKillCommand, runPsCommand } from "./commands/daemon.js";
 import { runRuntimeCliCommand } from "./commands/runtime.js";
+import { getCliSkillPath } from "./commands/skill.js";
 import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
@@ -183,6 +184,19 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           ...(options.extensionsDirectory === undefined ? {} : { extensionsDirectory: options.extensionsDirectory }),
           ...(options.extensionPackageDownloader === undefined ? {} : { extensionPackageDownloader: options.extensionPackageDownloader })
         });
+      }
+
+      if (args.command[0] === "skill") {
+        if (args.command.length !== 1 || args.options.size !== 0) {
+          throw createError({
+            code: "CLI_SKILL_USAGE_INVALID",
+            kind: "validation",
+            message: "The Divebell CLI skill command does not accept arguments or options.",
+            hint: "Run `divebell skill` to print the bundled Divebell CLI Skill path."
+          });
+        }
+        commandStdout.write(`${getCliSkillPath()}\n`);
+        return 0;
       }
 
       if (args.command[0] === "stack") {

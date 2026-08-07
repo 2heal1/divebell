@@ -34,7 +34,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -b --pretty false",
+    "build": "tsc -b --pretty false && node ./scripts/sync-cli-skill.mjs",
+    "prepack": "pnpm run build",
     "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run",
     "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
   },

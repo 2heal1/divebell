@@ -7,7 +7,7 @@ Read safe Module Federation multi-instance state, captured loading evidence, and
 ```text
 divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
 divebell mf module-info [remote] [--mf <name>] [--instance <ref>]
-divebell mf module-perf [remote/expose] [--mf <name>] [--instance <ref>]
+divebell mf module-perf [remote/expose] [--report] [--mf <name>] [--instance <ref>]
 divebell mf remote status <remote> [--mf <name>] [--instance <ref>]
 divebell mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 divebell mf shared status [package] [--scope <scope>] [--version <version>] [--verbose]
@@ -233,206 +233,22 @@ Its package version and bundle hash are recorded in
 `assets/proxy-sdk-build.json`; the browser never downloads a latest-version
 Proxy SDK from a CDN.
 
-## `mf status`
+## Diagnose a page
+
+The packaged [Inspect Module Federation Skill](skills/inspect-module-federation/SKILL.md)
+is the authoritative command workflow, result-field reference, and diagnosis
+guide. It is included in every published extension package, so it stays aligned
+with the installed command version.
+
+To locate the installed copy from the CLI:
 
 ```sh
-divebell mf status
-divebell mf status host
-divebell mf status --role consumer
-divebell mf status --instance mf-2
-divebell mf status --verbose
+divebell mf --skill
 ```
 
-Without selectors, the command returns a compact current-state view. Each instance contains only its session-scoped `instanceRef`, visible name, role, active flag, and the current instances that consume it.
-
-The top-level `shared` object is grouped as `scope -> package -> version`. It traverses the values of `__FEDERATION__.__SHARE__[instanceId]`, merges duplicate scope maps, and omits the instance ids. Each version keeps safe Shared fields such as `from`, `useIn`, loading state, scope, dependencies, strategy, and share configuration. By default, only versions with `loaded === true` or a `lib` function are returned.
-
-`loading` is shown only while a version has not finished loading. Once
-`loaded` is true, `loading` is omitted from both `mf status` and
-`mf shared status`.
-
-Function details use two output levels:
-
-| Output | Loaded versions | Unloaded versions | `lib` / `get` details |
-| --- | --- | --- | --- |
-| default | yes | no | omitted |
-| `--verbose` | yes | yes | bounded function source text, generated file URL and line/column, plus original source file and line/column when a usable Source Map is available |
-
-The default command does not collect function locations. With `--verbose`, the generated bundle location remains present when an original source location is found. Location collection is best effort. Native functions, anonymous evaluation scripts, an unavailable browser debugging connection, missing Source Maps, oversized Source Maps, or inaccessible Source Maps can leave some location fields absent. Failure to locate one function does not fail `mf status`. URL credentials, queries, and fragments are removed from returned locations, and function objects are never returned.
-
-When a name matches more than one instance, the command returns candidates such as:
-
-```text
-divebell mf status --instance "mf-2"
-```
-
-It never selects the first same-name instance.
-
-## `mf module-info`
-
-```sh
-divebell mf module-info
-divebell mf module-info catalog
-divebell mf module-info catalog --mf host
-divebell mf module-info catalog --instance mf-1
-```
-
-The command first selects a confirmed consumer. It automatically selects only when exactly one consumer exists. With several consumers, duplicate names, or ambiguous remotes, it returns copyable candidate commands.
-
-The positional `remote` is optional only when the selected consumer has exactly one declared or loaded remote. It matches that consumer's configured remote name or alias; it does not select an MF producer instance by the producer's visible name. When the remote relationship is known, the result includes the matching `producerInstanceRef`.
-
-Output distinguishes `declared` from `loaded` and reports only what the public reader can confirm: the consumer and producer references, manifest and remote entry details, snapshot source, global name, type, public paths, observed exposes, shared summary, dependent remotes, cache state, and first observed loading time. Missing historical evidence remains unknown rather than being inferred from array order; useful gaps and next steps remain in `warnings` and `recommendedActions`.
-
-## `mf module-perf`
-
-```sh
-divebell mf module-perf
-divebell mf module perf # compatibility alias
-divebell mf module-perf shop/Button
-divebell mf module-perf shop/Button --mf host
-divebell mf module-perf shop/Button --instance mf-1
-```
-
-With no target, the command analyzes every producer/expose load already
-observed in the page. It does not load a Remote, render a module, or create
-benchmark samples. Each item in `operations` is one load that the page actually
-performed.
-
-The top-level `page` values `fp`, `fcp`, and `lcp` are milliseconds elapsed
-from navigation start. `lcpStatus` states whether LCP is still provisional.
-Each operation uses the same clock for `loadRemote`, remoteEntry, expose `get`,
-and factory timing. MF lifecycle intervals all come from the selected
-Observability trace; the
-page collector does not install another runtime plugin or join lifecycle
-records by timestamp.
-`timing.loadRemote` is the complete operation boundary. Its
-`start`, `end`, and `duration` show when MF began and finished the request, and
-`outcome` is the final result reported by `loadRemote`. The command does not
-infer rendering or business readiness from DOM or Bridge activity.
-For a pending operation, `end` is absent and `duration` is only the elapsed time
-at observation.
-
-`timing.remoteEntry.duration` is the complete observed request lifecycle, not
-a download-only measurement. `blockingDuration` is the portion that actually
-overlaps the module's wait before `get`; it is zero when a preload completed
-before `loadRemote` needed the file and never extends past `loadRemote.end`.
-Bottleneck duration and percentage use this blocking time, so a long
-already-completed preload or a late inconsistent resource record is not
-diagnosed as a module bottleneck. Preload findings require a late request while
-`loadRemote` began no later than FCP; a promptly started but slow request is
-identified as a delivery issue.
-
-When an MF Manifest snapshot is available, the command lists the expose's
-synchronous and asynchronous JavaScript assets and matches them to browser
-Resource Timing by asset identity. It returns actual resource start, end,
-duration, cache and size evidence, plus whether each resource completed before
-`get`. The matched remoteEntry is returned separately as
-`manifest.remoteEntryResource` and can supply missing remoteEntry phase timing.
-It never assigns a file by timing proximity alone. Without a Manifest,
-the module lifecycle remains valid but exact expose-resource attribution is
-unavailable.
-
-`pageImpact` reports signed `startDelta` and optional `endDelta` values between
-`loadRemote` and FP, FCP, and the currently observed LCP. Negative values mean
-the load boundary happened before the page milestone; positive values mean it
-happened after. It does not infer an automatic or interaction trigger and does
-not observe component rendering. `bottleneck` compares measured remoteEntry,
-expose resource, get, and factory blocking work. `findings` expose the evidence
-and fixed rule behind each diagnosis. Failed, pending, or unknown loads do not
-receive performance bottleneck diagnoses.
-
-The result omits duplicate `warnings`, `recommendedActions`, and per-finding
-`suggestion` fields. Availability and completeness remain explicit in fields
-such as `outcome`, `lcpStatus`, `manifest.status`, asset `match`,
-`unobservedRemotes`, and each finding's evidence.
-
-`codeUsage` is only a follow-up. When exact expose JavaScript is known, the
-result lists those URLs for a separate Code Usage run. Coverage is not enabled
-during performance measurement because it changes runtime behavior, and
-`remoteEntry.js` is not treated as a useful Code Usage splitting target. Its
-`documentation` field links to the
-[Code Usage analysis guide](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
-
-See the installed Skill's
-[`references/performance.md`](skills/inspect-module-federation/references/performance.md)
-for every field, diagnosis threshold, and evidence boundary.
-
-## Remote loading commands
-
-```sh
-divebell mf remote status shop --mf host
-divebell mf remote trace
-divebell mf remote trace shop/Button --instance mf-1 --trace-id mf-trace-1
-divebell mf remote trace shop --preload --instance mf-1
-```
-
-`mf remote status` returns a compact current view: whether the selected consumer declared the remote, whether the remote itself has loaded, which exposes have been observed loading successfully, whether a current consumer-to-producer relationship exists, the latest observed result, and its `traceId`. `loadedExposes` contains only exposes from successful or recovered loads; failed attempts are not counted. When the current page was opened with `--mf-proxy`, the optional `proxy` object also reports the target, name/alias match, whether the proxy actually applied, and the observed manifest URL as `loadedFrom` when available. It only analyzes existing page evidence and does not make a request or execute remote code. Detailed resources and lifecycle stages stay in `mf remote trace`.
-
-`mf remote trace` returns a compact lifecycle for the captured `loadRemote` operation:
-request, remote match, manifest or snapshot resolution, remote entry loading,
-container initialization, expose lookup, factory execution, and final result.
-Each observed phase shows its result, readable start and end times, duration,
-and the lifecycle hooks that opened and closed it. Related resource loading
-details appear only on phases that have them. With no target it lists trace
-items in start-time order; each item keeps its `instance.ref` and `traceId`.
-
-Absolute trace times are returned as `YYYY-MM-DD HH:mm:ss.SSS UTC`. Durations remain numeric milliseconds.
-
-An ordinary load also includes matching preload evidence. It distinguishes a
-preload that finished before loading from one that overlapped loading.
-`not-observed` means that no matching preload report was captured, not that
-preloading definitely did not happen.
-
-`mf remote trace --preload` identifies the operation as `preloadRemote` and displays its
-own lifecycle: target selection, manifest resolution, resource requests, and
-final result. It uses only preload evidence. Ordinary `loadRemote` resources
-are excluded even when both operations target the same remote.
-
-Remote names and aliases are accepted. For `remote/expose`, the full remote name or alias is matched before the expose suffix is parsed, including scoped remote names that contain `/`. Same-name instances and concurrent traces are never reduced to the first result; candidate output includes copyable `--instance` or `--trace-id` commands.
-
-See [docs/remote.md](docs/remote.md) for the result fields, evidence boundaries, and complete compatibility behavior.
-
-## Shared state and loading chains
-
-```sh
-divebell mf shared status
-divebell mf shared status react --scope default
-divebell mf shared status react --scope default --version 18.3.1
-divebell mf shared status react --verbose
-
-divebell mf shared trace
-divebell mf shared trace react --instance mf-1
-divebell mf shared trace react --instance mf-1 --operation loadShare-42
-divebell mf shared trace react --trace-id mf-trace-42
-```
-
-`mf shared status` returns the same `scope -> package -> version` structure as the top-level `shared` field in `mf status`. It reads the merged global Shared registry and does not return an `instances` list. The optional package, `--scope`, and `--version` selectors are exact filters. By default, only loaded versions are returned and `lib` / `get` details are omitted. `--verbose` additionally returns unloaded versions and bounded function source/location details.
-
-`mf shared trace` explains registration, selection, and loading history. Without `--mf` or `--instance`, it selects the first top-level consumer in instance creation order; if relationship evidence cannot identify a top-level consumer, it selects the first created consumer. It reports an error only when no consumer exists. Use `--mf` to choose by visible name or `--instance` to choose one exact current consumer.
-
-Shared trace correlation uses `operationId` first and falls back to `traceId` or `requestId`; it never combines concurrent loads merely because they use the same package name. When a package matches several operations, the result contains instance, package, scope, operation, and a copyable command for each candidate.
-
-See [docs/shared.md](docs/shared.md) for selection, ambiguity, and partial-history behavior.
-
-## `mf bridge trace`
-
-```sh
-divebell mf bridge trace
-divebell mf bridge trace catalog
-divebell mf bridge trace shop --instance mf-1
-divebell mf bridge trace catalog --instance mf-1 --bridge-id bridge-1 --operation bridge-op-1
-divebell mf bridge trace catalog --instance mf-1 --operation bridge-op-1
-```
-
-Without a remote or operation selector, the command returns a summary of the observed Bridge operations. A remote selector accepts the configured remote name or alias within each MF instance. When more than one operation matches, the result lists the instanceRef, bridgeId, operationId, side, operation, and a copyable command that includes `--operation`. Same-name MF instances and same-name remotes remain isolated by instanceRef.
-
-Operations are correlated by operationId within one MF instance. Consumer and producer evidence can share one operation while retaining their side. Missing operationId values are never correlated across reports or sides; those records remain independent and are marked as incomplete associations.
-
-The output distinguishes an operation call, render invocation, operation return, and framework commit. A successful render return does not imply that commit was observed. Even a commit does not establish that the page is rendered for the user, business data is ready, or the application is interactive. Route-sync output uses only the already-sanitized route summary and does not claim final navigation success.
-
-`bridgeTrace` capability controls historical output. `partial` returns available operations with a missing-history warning. `unavailable` returns a structured unsupported result instead of claiming that the page does not use Bridge. If current Bridge state exists, it is still shown while historical operations remain unavailable. Reopen the page before reproducing the operation when observation was installed late.
-
-See [docs/bridge.md](docs/bridge.md) for lifecycle correlation and evidence boundaries.
+Open the page with `--mf`, reproduce the relevant user path, then use the
+Skill to select the smallest command and interpret the result. This includes
+`module-perf --report` and its report-level recommendations.
 
 ## Collection modes and compatibility
 

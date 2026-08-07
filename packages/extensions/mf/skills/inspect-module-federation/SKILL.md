@@ -37,6 +37,9 @@ conclusions.
   of one Remote.
 - Use `module-perf [remote/expose]` for observed producer-module loading,
   expose resources, page paint timing impact, and optimization advice.
+- Use `module-perf [remote/expose] --report` when the user explicitly asks for
+  a fixed, consolidated performance report. It reorganizes the same evidence;
+  it does not rerun a module load.
 - Use `remote status <remote>` for a compact current Remote result.
 - Use `remote trace [remote/expose]` for a Remote load or preload timeline.
 - Use `shared status [package]` for the current Shared registry.

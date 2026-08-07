@@ -4,6 +4,7 @@ import vm from "node:vm";
 
 import {
   createModulePerformanceInitScript,
+  createModulePerformanceReport,
   createModulePerformanceResult,
   isModulePerformanceBrowserSnapshot,
   parseBrowserReadResult
@@ -79,6 +80,61 @@ test("module performance attributes loadRemote, expose resources, and page impac
   assert.equal("warnings" in result, false);
   assert.equal("recommendedActions" in result, false);
   assert.equal("warnings" in result.modules[0], false);
+});
+
+test("module performance report keeps a fixed producer and operation template", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+  const result = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceSnapshot(),
+    { target: "shop/Button" }
+  );
+  const report = createModulePerformanceReport(result);
+
+  assert.equal(report.command, "mf module-perf --report");
+  assert.deepEqual(Object.keys(report.report), [
+    "page",
+    "selection",
+    "summary",
+    "modules",
+    "unobservedRemotes",
+    "recommendations"
+  ]);
+  assert.deepEqual(Object.keys(report.report.modules[0]), [
+    "consumer",
+    "remote",
+    "producer",
+    "expose",
+    "operations"
+  ]);
+  assert.deepEqual(Object.keys(report.report.modules[0].operations[0]), [
+    "status",
+    "timing",
+    "pageImpact",
+    "remoteEntry",
+    "exposeAssets",
+    "bottleneck",
+    "findings"
+  ]);
+  assert.deepEqual(report.report.recommendations, [{
+    id: "code-usage",
+    severity: "info",
+    title: "Analyze matched expose assets with Code Usage",
+    target: {
+      consumer: result.modules[0].consumer,
+      remote: result.modules[0].remote,
+      producer: result.modules[0].producer,
+      expose: result.modules[0].expose
+    },
+    evidence: ["Matched expose asset: https://cdn.test/catalog/Button.js."],
+    assets: ["https://cdn.test/catalog/Button.js"],
+    reason: "Use Code Usage executed and unused-code evidence before changing code splitting; this is not proof that asset size caused the current bottleneck.",
+    documentation: "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
+  }]);
 });
 
 test("missing Manifest keeps loadRemote and measured get/factory timing explicit", () => {

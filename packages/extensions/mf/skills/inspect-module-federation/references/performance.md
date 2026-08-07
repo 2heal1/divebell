@@ -65,13 +65,6 @@ All of these values use the same navigation-relative clock. State only the
 observed relationship. Do not claim that MF caused FP, FCP, LCP, rendering,
 readiness, or interactivity.
 
-Recommend preloading `remoteEntry` when the `preload-remote-entry` finding
-shows that the initial module request waited for a late request. If
-`remoteEntry` started after FCP because `loadRemote` itself started after FCP,
-report both delays. Recommend preload only conditionally when the module is
-expected for the initial view or a predictable user journey; an
-interaction-triggered lazy load is not an initial-page regression by itself.
-
 Report related JavaScript only inside its producer/expose group. A Manifest
 with `status: available` establishes the declared asset ownership. Browser
 request duration, size, and cache evidence additionally require
@@ -84,13 +77,6 @@ transfer size, encoded body size, and decoded body size. Preserve the exact
 cache classification. `cache-or-service-worker` does not identify which path
 served the response, and `decodedBodySize` is uncompressed response size rather
 than runtime memory.
-
-When `codeUsage.status` is `recommended`, recommend a separate Code Usage pass
-using exactly `codeUsage.assets`. If a user or project performance budget says
-a matched asset is too large, Code Usage can also be suggested as a separate
-size investigation using that matched URL; do not present it as proof of the
-current MF bottleneck. Without a stated budget, report the measured size but do
-not invent a universal threshold or recommend code splitting from size alone.
 
 ## Page timing
 
@@ -187,9 +173,6 @@ the expose. Each asset has:
   supplied a zero-transfer response. Missing sizes can be caused by
   cross-origin timing restrictions and must not be read as zero.
 
-Use delayed synchronous expose assets for preload decisions. Do not recommend
-preloading an async asset merely because it belongs to the same expose.
-
 ## Page impact
 
 `pageImpact` connects the `loadRemote` interval to page paint without claiming
@@ -234,32 +217,80 @@ interpreting performance.
 
 `duration`, `percentage`, `confidence`, and `evidence` expose why that label was
 chosen. For a remoteEntry bottleneck, `duration` and `percentage` use
-`blockingDuration`, not the full request lifecycle. `findings` apply fixed
-evidence rules and retain the evidence behind their diagnosis:
+`blockingDuration`, not the full request lifecycle. `findings` preserve the
+fixed diagnosis and its evidence; `--report` turns actionable findings into
+report-level recommendations. The command omits `warnings` and
+`recommendedActions`; unavailable or incomplete evidence is represented by the
+corresponding status, match, outcome, or unobserved entry.
 
-- A remoteEntry requested late while `loadRemote` began no later than FCP:
-  consider preloading it. A request that started promptly but remained slow is
-  reported as a delivery problem instead; preload is not presented as the fix.
-- Delayed synchronous expose assets when `loadRemote` began no later than FCP:
-  preload the exact listed assets.
-- Slow get after all sync assets were already ready: inspect shared resolution
-  and profile runtime work; more preload will not fix the measured delay.
-- Slow factory: profile and reduce top-level module initialization.
+## `--report` return
 
-The command does not duplicate findings into `recommendedActions` and does not
-return per-finding `suggestion` text. It also omits `warnings`; unavailable or
-incomplete evidence is represented by the corresponding status, match, outcome,
-or unobserved entry.
+Use `module-perf --report` when the user explicitly asks for a fixed,
+consolidated performance report. It is a presentation contract over the normal
+`module-perf` result, not another measurement: it does not load a Remote,
+render a module, or create a second sample.
 
-## Code Usage follow-up
+The stable return is:
 
-`codeUsage.status: recommended` provides exact expose JavaScript URLs in
-`assets`. Run Code Usage separately against those files, then use its executed
-and unused-code evidence to guide code splitting. The performance command does
-not automatically enable coverage because coverage changes engine behavior and
-would contaminate the measurement. `codeUsage.documentation` links to the
-[Code Usage analysis guide](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
+```text
+report
+  page
+  selection
+  summary
+  modules[]
+    consumer
+    remote
+    producer
+    expose
+    operations[]
+      status
+      timing
+      pageImpact
+      remoteEntry
+      exposeAssets[]
+      bottleneck
+      findings[]
+  unobservedRemotes[]
+  recommendations[]
+```
 
-Code Usage is useful for the expose JavaScript, not for `remoteEntry.js`.
-Without an unambiguous Manifest asset match, `codeUsage` remains `unavailable`
-instead of guessing a chunk from timing alone.
+`report.page`, `report.selection`, and `report.summary` preserve the normal
+page anchors and selected scope. Every `report.modules` entry keeps one
+complete consumer -> remote -> producer -> expose identity. Omit optional
+`expose` and `remoteEntry` when that evidence is unavailable; do not replace
+them with empty values.
+
+`status` is the observed `loadRemote` result: `success`, `recovered`, `error`,
+`pending`, or `unknown`. The report omits `traceId` to keep the main diagnosis
+focused; use normal `module-perf` or `remote trace` when the underlying
+observability trace must be selected or inspected.
+
+`recommendations` appears after all module findings. Every item includes its
+consumer/remote/producer/expose target, evidence, and an action reason. It can
+contain:
+
+- `preload-remote-entry`: remoteEntry was requested late while `loadRemote`
+  began no later than FCP. Use `preloadRemote` only when the module is needed
+  for the initial view or a predictable journey; an interaction-triggered lazy
+  load is not an initial-page regression by itself.
+- `inspect-remote-entry-delivery`: remoteEntry began promptly but its observed
+  lifecycle still delayed module access. Investigate delivery, cache, CDN, and
+  server timing before adding preload.
+- `preload-expose-assets`: matched synchronous expose assets loaded late on an
+  initial load. Preload only the exact listed synchronous assets, not async
+  assets that merely belong to the expose.
+- `inspect-get-runtime`: `get` remained slow after resource loading did not
+  explain it. Inspect Shared resolution and runtime work; more preload will
+  not fix this path.
+- `profile-factory`: factory execution is expensive. Profile and reduce
+  top-level module initialization.
+- `code-usage`: exact matched expose assets are eligible for a separate
+  [Code Usage analysis](https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md).
+  Use executed and unused-code evidence before changing code splitting. This is
+  not proof that asset size caused the current bottleneck, and it does not
+  apply to `remoteEntry.js`. Without a stated project budget, do not invent a
+  universal size threshold.
+
+The report never auto-enables coverage because it would alter the measurement.
+`recommendations` does not merge Shared registry information into loading
+claims; investigate a version concern with `shared trace` first.

@@ -111,6 +111,10 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
+    /Start with `module-perf`\.[\s\S]*## `--report` return/
+  );
+  assert.match(
+    performance,
     /consumer name\/instanceRef[\s\S]*remote name\/alias\/entry[\s\S]*producer name\/version[\s\S]*expose/
   );
   assert.match(performance, /Do\s+not list TTFB, CLS, INP/);
@@ -120,11 +124,11 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /preload-remote-entry[\s\S]*interaction-triggered lazy load/
+    /## `--report` return[\s\S]*preload-remote-entry[\s\S]*interaction-triggered lazy\s+load/
   );
   assert.match(
     performance,
-    /codeUsage\.status[\s\S]*codeUsage\.assets[\s\S]*do\s+not invent a universal threshold/
+    /## `--report` return[\s\S]*code-usage[\s\S]*universal size threshold/
   );
   assert.match(
     shared,

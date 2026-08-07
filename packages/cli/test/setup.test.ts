@@ -111,7 +111,7 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
   assert.equal(browserCalls.length, 3);
   const sessions = new Set(browserCalls.map((call) => call.options?.session));
   assert.equal(sessions.size, 1);
-  assert.match(String([...sessions][0]), /^divebell-setup-[a-f0-9]+$/);
+  assert.match(String([...sessions][0]), /^ds-[a-f0-9]+$/);
   assert.deepEqual(
     browserCalls.map((call) => call.options?.disableRestore),
     [true, true, true]

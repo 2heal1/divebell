@@ -145,7 +145,7 @@ export async function runSetupCommand(options: {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-setup-"));
   const bridgeStateDirectory = join(temporaryDirectory, "bridge");
   const browserOptions: BrowserRunOptions = {
-    session: `divebell-setup-${randomUUID().replaceAll("-", "")}`,
+    session: `ds-${randomUUID().replaceAll("-", "")}`,
     disableRestore: true,
     headless: true,
     idleTimeoutMs: CHECK_BROWSER_IDLE_TIMEOUT_MS
@@ -634,7 +634,7 @@ function createExistingBrowserOptions(
 ): BrowserRunOptions {
   return {
     ...browserOptions,
-    session: `${browserOptions.session ?? "divebell-setup"}-existing`,
+    session: `${browserOptions.session ?? "ds"}-existing`,
     ...(autoConnect ? { autoConnect: true } : {})
   };
 }

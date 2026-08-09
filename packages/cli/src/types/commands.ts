@@ -175,6 +175,7 @@ export interface ExternalExtensionCandidate {
 
 export interface CliCommandReference {
   category:
+    | "CLI"
     | "Daemon and Browser"
     | "Bridge and Browser"
     | "Runtime"

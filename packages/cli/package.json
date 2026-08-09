@@ -24,18 +24,19 @@
     }
   },
   "files": [
-    "assets/**/*",
     "dist/**/*.d.ts",
     "dist/**/*.d.ts.map",
     "dist/**/*.js",
-    "dist/**/*.js.map"
+    "dist/**/*.js.map",
+    "skills/**/*"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "build": "tsc -b --pretty false",
-    "test": "pnpm run build && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run",
+    "prepublish": "node ./scripts/copy-cli-skill.mjs",
+    "test": "pnpm run build && pnpm run prepublish && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run",
     "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
   },
   "dependencies": {

@@ -82,6 +82,7 @@ test("prints compact top-level help", async () => {
   assert.equal(exitCode, 0);
   assert.equal(output.errorText(), "");
   assert.match(output.text(), /^Usage: divebell <command> \[options\]/);
+  assert.match(output.text(), /\nCLI:\n/);
   assert.match(output.text(), /\nBrowser:\n/);
   assert.doesNotMatch(output.text(), /Bridge and Browser:/);
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
@@ -91,6 +92,11 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell auth - Inspect or delete/);
   assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
   assert.match(output.text(), /Run `divebell <command> --help` \(or `-h`\) for detailed usage\./);
+  assert.match(output.text(), /Run `divebell skill` to print the bundled Divebell CLI Skill path\./);
+  assert.match(
+    output.text(),
+    /For an Extension command Skill, first run `divebell --help`, then run `divebell <command> --skill`\./
+  );
   assert.doesNotMatch(output.text(), /divebell extensions (add|list|update|remove)/);
   assert.doesNotMatch(output.text(), /divebell state (save|load)/);
   assert.doesNotMatch(output.text(), /divebell auth (save|login)/);
@@ -116,6 +122,29 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /Examples:/);
   assert.doesNotMatch(output.text(), /Skill: available/);
   assert.doesNotMatch(output.text(), /\p{Script=Han}/u);
+});
+
+test("prints the bundled Divebell CLI Skill path without resolving Extension Skills", async () => {
+  const output = createOutput();
+  const exitCode = await runCli(["skill"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  });
+  assert.equal(exitCode, 0, output.text());
+
+  const skillPath = output.text().trim();
+  assert.match(skillPath, /SKILL(?:\.[a-f0-9]+)?\.md$/);
+  assert.equal(output.errorText(), "");
+});
+
+test("rejects arguments and options for the bundled Divebell CLI Skill", async () => {
+  const output = createOutput();
+  assert.equal(await runCli(["skill", "extension"], {
+    stdout: output.stdout,
+    stderr: output.stderr
+  }), 1);
+  assert.match(output.text(), /The Divebell CLI skill command does not accept arguments or options\./);
+  assert.match(output.text(), /Run `divebell skill` to print the bundled Divebell CLI Skill path\./);
 });
 
 test("accepts the short help flag", async () => {

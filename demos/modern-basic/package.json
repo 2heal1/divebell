@@ -15,17 +15,19 @@
     "verify:route-component-error": "node ./scripts/verify-route-component-error.mjs"
   },
   "dependencies": {
-    "@modern-js/runtime": "link:../../../../work/modern.js/packages/runtime/plugin-runtime",
+    "@modern-js/runtime": "3.7.0",
     "@divebell/core": "workspace:^",
     "@divebell/modern-plugin": "workspace:^",
-    "react": "link:../../../../work/modern.js/node_modules/.pnpm/react@19.2.7/node_modules/react",
-    "react-dom": "link:../../../../work/modern.js/node_modules/.pnpm/react-dom@19.2.7_react@19.2.7/node_modules/react-dom"
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "@modern-js/app-tools": "link:../../../../work/modern.js/packages/solutions/app-tools",
+    "@modern-js/app-tools": "3.7.0",
     "@divebell/cli": "workspace:^",
-    "@types/react": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react@19.2.17/node_modules/@types/react",
-    "@types/react-dom": "link:../../../../work/modern.js/node_modules/.pnpm/@types+react-dom@19.2.3_@types+react@19.2.17/node_modules/@types/react-dom",
-    "typescript": "5.9.3"
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "react-server-dom-rspack": "0.0.2",
+    "typescript": "5.9.3",
+    "webpack": "5.104.1"
   }
 }

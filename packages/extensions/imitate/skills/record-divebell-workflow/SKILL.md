@@ -19,6 +19,8 @@ The result is a confirmed JavaScript script, not a new skill. Scripts are easier
 - Save to the current project's `recordings/` directory by default. Do not ask where to save unless the user specified another location.
 - Call stop only after the user says “stop,” “finished,” or “done.”
 - `record stop` generates a draft `workflow.json`, not `generated-script.mjs`. Review the setup and every operation with the user. `record confirm --all` generates the script only after everything is confirmed.
+- Treat a request to add, remove, change, or return something as a revision requirement, not as confirmation of the draft. Run `confirm --all` only after the user explicitly confirms the resulting operation sequence.
+- Keep `workflow.json` factual: it contains recorded and confirmed browser operations, not a guessed business-result extraction strategy.
 - The first recording format saves mouse clicks, input, keyboard events, time relative to recording start, page snapshots, DOM summaries, structured Divebell state, and optional microphone audio. Continuous video is not yet a reliable artifact.
 - The browser requests microphone access on a separate recording page and returns to the operation page after the user allows or denies access. Successful capture saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. Treat unavailable audio or denied access as a normal condition and do not ask the user to retry.
 - Preserve intermediate clicks and input in `interactions.jsonl` after navigation, search, or opening a new page. Do not judge the recording only from its final URL.
@@ -195,10 +197,15 @@ divebell record generate-script --input <path> --out <script-path>
 - Prefer page-declared `run-action` and `wait-for`. Add `click`, `fill`, or `eval` only when the recording bundle lacks enough actions or targets.
 - Read the organized execution sequence and element identification clues from `workflow.json` first. Inspect raw events in `interactions.jsonl` only when necessary. Page context comes from `page-snapshots.jsonl` and `dom-snapshots.jsonl`. When speech is enabled, align `transcript.json` with actions by time.
 - If the transcript contains a business-result requirement, such as “get issues closed within the last week and open within the last two weeks, then return them as JSON,” the script must produce that business result rather than only navigating to the page. Prefer reading data from the GitHub page, API, or search results, then output JSON.
+- Analyze how the page produces the requested result before correcting the script. Use the strongest available evidence from Runtime SDK facts, DOM state, Network responses, Console output, page code, or a specialized Extension. Do not encode an inferred extraction mechanism into `workflow.json`.
+- Do not assume a Clipboard API because the user clicked a control labelled “copy.” The page may use `navigator.clipboard.writeText`, `navigator.clipboard.write`, a `copy` event, `document.execCommand`, or no Clipboard API at all. Inspect the implementation or observable result first.
+- Before adding any CLI command that was not generated from the confirmed workflow, run its `--help` and verify its actual output in the same browser session. `divebell clipboard` requires an explicit subcommand, and `clipboard read` may still be denied by browser permissions.
+- When several extraction methods are possible, choose the least invasive method that returns the requested business value reliably. If the evidence is insufficient, state what is unknown instead of inventing a mechanism.
 - Add an explicit verification point after every business step, such as `wait-for <target-id> ready` or a `snapshot` read.
 - Do not rely only on screenshots or DOM text. When the page exposes a Divebell target, use targets, snapshots, or events.
 - If the script still contains TODOs, state which steps require another screen recording, typed input, or spoken input.
 - Run `generated-script.mjs` with the global `divebell`; do not configure a project-local CLI path.
+- Do not report a corrected script as complete until it exits successfully and its returned JSON contains the requested business result.
 
 ## When a skill is requested
 

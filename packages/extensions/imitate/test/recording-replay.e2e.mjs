@@ -153,14 +153,13 @@ process.exitCode = await cli.run(process.argv.slice(2));
   assert.equal(replayResult.status, "ok");
   assert.deepEqual(
     replayResult.data.steps.map((step) => step.action),
-    ["fill", "select", "press", "fill", "click"]
+    ["fill", "select", "press", "click"]
   );
   assert.deepEqual(
     replayResult.data.steps.map((step) => step.matchedBy),
     [
       "label:Search term",
       "label:Region",
-      "label:Search term",
       "label:Search term",
       "test-id:run-workflow"
     ]

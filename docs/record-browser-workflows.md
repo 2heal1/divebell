@@ -72,6 +72,8 @@ Each session creates an `.orrec` directory under `recordings/`, including:
 
 The generated script waits for each recorded element, replays input, dropdown selection, keyboard, and click actions, then verifies the recorded final page state. Voice is considered only when non-empty speech text is available and never invents an operation or locator. Silence, unavailable audio, and denied microphone permission do not block review or replay. Passwords and file-input values are not stored. A recorded Profile or state is represented as step 0 and must be supplied again when the script runs; state contents and paths are not embedded in the workflow.
 
+Business-result extraction is an Agent script-correction task rather than part of the workflow schema. The Agent inspects Runtime SDK facts, DOM state, Network responses, Console output, page code, and available Extensions before choosing a retrieval method. Visible labels such as “copy” are not sufficient evidence for assuming a particular Clipboard API, and every corrected script must be replayed until its returned result is verified.
+
 ## Review and supplement
 
 Stopping creates a draft:

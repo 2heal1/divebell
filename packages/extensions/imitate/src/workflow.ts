@@ -11,6 +11,7 @@ import type {
 
 const DEFAULT_RECORD_START_URL = "about:blank";
 const NON_ACTION_KEYS = new Set(["Alt", "Control", "Meta", "Shift", "CapsLock"]);
+const ENTER_SUBMISSION_WINDOW_MS = 100;
 
 export function createRecordedWorkflow(recording: RecordingData): RecordedWorkflow {
   const steps = createWorkflowSteps(recording.interactions, recording.transcript.segments);
@@ -43,6 +44,7 @@ export function createWorkflowSteps(
 ): RecordedWorkflowStep[] {
   const steps: RecordedWorkflowStep[] = [];
   let pendingInput: InteractionEvent | undefined;
+  let recentEnter: InteractionEvent | undefined;
   const latestInputValues = new Map<string, string>();
 
   const appendStep = (
@@ -92,6 +94,8 @@ export function createWorkflowSteps(
     if (interaction.target === undefined) continue;
     if (interaction.type === "input" || interaction.type === "change") {
       if (isClickControlledInput(interaction.target)) continue;
+      if (isChangeCausedByEnter(interaction, recentEnter)) continue;
+      recentEnter = undefined;
       if (
         pendingInput !== undefined &&
         createTargetIdentity(pendingInput) !== createTargetIdentity(interaction)
@@ -102,6 +106,11 @@ export function createWorkflowSteps(
       continue;
     }
     if (interaction.type === "click") {
+      if (isSyntheticSubmitClick(interaction, recentEnter)) {
+        recentEnter = undefined;
+        continue;
+      }
+      recentEnter = undefined;
       flushInputs();
       appendStep("click", interaction);
       latestInputValues.clear();
@@ -111,6 +120,7 @@ export function createWorkflowSteps(
       if (!isReplayableKey(interaction)) continue;
       flushInputs();
       appendStep("press", interaction, { key: createKeyChord(interaction) });
+      recentEnter = isPlainEnter(interaction) ? interaction : undefined;
       latestInputValues.clear();
     }
   }
@@ -204,6 +214,47 @@ function isReplayableKey(interaction: InteractionEvent): boolean {
     interaction.metaKey === true;
   if (hasModifier) return true;
   return key.length > 1;
+}
+
+function isPlainEnter(interaction: InteractionEvent): boolean {
+  return interaction.key === "Enter" &&
+    interaction.altKey !== true &&
+    interaction.ctrlKey !== true &&
+    interaction.metaKey !== true &&
+    interaction.shiftKey !== true;
+}
+
+function isChangeCausedByEnter(
+  interaction: InteractionEvent,
+  recentEnter: InteractionEvent | undefined
+): boolean {
+  if (recentEnter === undefined) return false;
+  return interaction.type === "change" &&
+    isWithinEnterSubmissionWindow(interaction, recentEnter) &&
+    createTargetIdentity(interaction) === createTargetIdentity(recentEnter) &&
+    interaction.target?.value === recentEnter?.target?.value;
+}
+
+function isSyntheticSubmitClick(
+  interaction: InteractionEvent,
+  recentEnter: InteractionEvent | undefined
+): boolean {
+  if (!isWithinEnterSubmissionWindow(interaction, recentEnter)) return false;
+  const target = interaction.target;
+  const pointer = asRecord(interaction.pointer);
+  const isSubmitControl = target?.tagName === "button" ||
+    (target?.tagName === "input" && ["button", "submit"].includes(target.inputType ?? ""));
+  return isSubmitControl && pointer?.x === 0 && pointer.y === 0;
+}
+
+function isWithinEnterSubmissionWindow(
+  interaction: InteractionEvent,
+  recentEnter: InteractionEvent | undefined
+): boolean {
+  if (recentEnter === undefined || !isPlainEnter(recentEnter)) return false;
+  const elapsed = interaction.timeMs - recentEnter.timeMs;
+  return elapsed >= 0 && elapsed <= ENTER_SUBMISSION_WINDOW_MS &&
+    stripDivebellSession(interaction.url) === stripDivebellSession(recentEnter.url);
 }
 
 function createKeyChord(interaction: InteractionEvent): string {

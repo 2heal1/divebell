@@ -48,6 +48,8 @@ The last command writes `generated-script.mjs` only after every setup item and a
 node ./recordings/example.orrec/generated-script.mjs --state /path/to/test-account.json
 ```
 
+The workflow remains a factual replay of reviewed browser operations. When the user also requires a business result, the Agent inspects the recording evidence and the actual page behavior, corrects the script with a supported extraction method, and verifies the returned result. A control labelled “copy” does not by itself prove which Clipboard API, if any, the page uses.
+
 It leaves the current page open; close it through the normal page lifecycle when the workflow is complete:
 
 ```bash

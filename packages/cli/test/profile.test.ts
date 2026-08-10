@@ -25,6 +25,10 @@ test("uses agent-browser automatic restore while preserving native profile and s
   assert.equal(env.AGENT_BROWSER_STATE, "/tmp/browser-state.json");
   assert.match(env.AGENT_BROWSER_SESSION ?? "", /^divebell-[a-f0-9]{12}$/);
   assert.equal(env.AGENT_BROWSER_RESTORE, env.AGENT_BROWSER_SESSION);
+  assert.equal(env.AGENT_BROWSER_RESTORE_INITIAL_SAVE_DEFAULT, "true");
+  assert.equal(env.AGENT_BROWSER_RESTORE_PERIODIC_SAVE_DEFAULT, "false");
+  assert.equal(env.AGENT_BROWSER_RESTORE_CLOSE_SAVE_DEFAULT, "true");
+  assert.equal(env.AGENT_BROWSER_RESTORE_PERIODIC_SAVE_INTERVAL_MS_DEFAULT, "30000");
   assert.equal(createDefaultBrowserProfileDirectory().endsWith(".divebell/browser-profile"), true);
 
   const exportEnv = createAgentBrowserEnvironment({
@@ -213,7 +217,7 @@ test("uses the packaged Divebell agent-browser by default", async () => {
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.33\.2-divebell\.4/);
+  assert.match(result.stdout, /agent-browser 0\.33\.2-divebell\.5/);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {

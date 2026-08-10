@@ -94,6 +94,7 @@ export interface CliOperationLogEntry {
   exitCode: number;
   activeExtensions: string[];
   browserRestoreDisabled: boolean;
+  browserRestoreOptions?: Record<string, string[]>;
   headers?: Record<string, string>;
   stackDetection?: {
     url: string;

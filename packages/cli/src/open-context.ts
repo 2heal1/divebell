@@ -6,6 +6,21 @@ import { withDivebellSession } from "./utils/url.js";
 import type { CliExtensionPageContext } from "./types/commands.js";
 import { bindBrowserRunOptions, type BrowserRunner } from "./features/browser/runner.js";
 
+const BROWSER_RESTORE_CONTEXT_OPTION_NAMES = [
+  "restore",
+  "restore-save",
+  "restore-initial-save",
+  "restore-periodic-save",
+  "restore-close-save",
+  "restore-periodic-save-interval-ms",
+  "restore-check-url",
+  "restore-check-text",
+  "restore-check-fn",
+  "session-name",
+  "namespace",
+  "config"
+] as const;
+
 export function applyOpenContextBrowserMode(
   browserRunner: BrowserRunner,
   openContext: CliOperationLogEntry | undefined
@@ -37,11 +52,52 @@ export function applyOpenContextDefaults(
       setDefaultOption(options, "session", openContext.sessionId);
     }
   }
+  for (const name of BROWSER_RESTORE_CONTEXT_OPTION_NAMES) {
+    const values = openContext.browserRestoreOptions?.[name];
+    if (values !== undefined && !options.has(name)) {
+      options.set(name, [...values]);
+    }
+  }
 
   return {
     command: args.command,
     options
   };
+}
+
+export function collectBrowserRestoreContextOptions(args: ParsedCliArgs): Record<string, string[]> {
+  return Object.fromEntries(
+    BROWSER_RESTORE_CONTEXT_OPTION_NAMES.flatMap((name) => {
+      const values = args.options.get(name);
+      return values === undefined ? [] : [[name, [...values]]];
+    })
+  );
+}
+
+export function applyBrowserRestoreContextDefaults(
+  args: ParsedCliArgs,
+  openContext: CliOperationLogEntry | undefined
+): ParsedCliArgs {
+  if (openContext?.browserRestoreOptions === undefined) return args;
+  const options = cloneOptions(args.options);
+  for (const name of BROWSER_RESTORE_CONTEXT_OPTION_NAMES) {
+    const values = openContext.browserRestoreOptions[name];
+    if (values !== undefined && !options.has(name)) {
+      options.set(name, [...values]);
+    }
+  }
+  return { command: args.command, options };
+}
+
+export function createBrowserCloseArgs(args: ParsedCliArgs): string[] {
+  const browserArgs = ["close"];
+  for (const name of BROWSER_RESTORE_CONTEXT_OPTION_NAMES) {
+    for (const value of args.options.get(name) ?? []) {
+      browserArgs.push(`--${name}`);
+      if (value !== "true") browserArgs.push(value);
+    }
+  }
+  return browserArgs;
 }
 
 export function createExtensionPageContext(openContext: CliOperationLogEntry): CliExtensionPageContext {

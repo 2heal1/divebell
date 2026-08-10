@@ -164,6 +164,12 @@ test("forwards supported agent-browser launch options through Divebell open", as
     "react-devtools",
     "--restore-save",
     "always",
+    "--restore-initial-save",
+    "false",
+    "--restore-periodic-save",
+    "--restore-close-save",
+    "--restore-periodic-save-interval-ms",
+    "45000",
     "--proxy",
     "http://proxy.test:8080",
     "--ignore-https-errors",
@@ -191,6 +197,12 @@ test("forwards supported agent-browser launch options through Divebell open", as
   assert.deepEqual(browserCalls, [[
     "--restore-save",
     "always",
+    "--restore-initial-save",
+    "false",
+    "--restore-periodic-save",
+    "--restore-close-save",
+    "--restore-periodic-save-interval-ms",
+    "45000",
     "--init-script",
     "boot.js",
     "--enable",
@@ -208,6 +220,61 @@ test("forwards supported agent-browser launch options through Divebell open", as
     `http://app.test/?divebellSessionId=${createOperationSessionId()}`
   ]]);
   assert.equal(browserOptions[0]?.disableRestore, true);
+});
+
+test("preserves command-level restore save policy for a reused daemon and stop", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserCalls: string[][] = [];
+  const browserRunner = createBrowserRunner(async (args) => {
+    browserCalls.push(args);
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  });
+  const run = async (args: string[]): Promise<number> => await runCli(args, {
+    stdout: createOutput().stdout,
+    stderr: createOutput().stderr,
+    operationLogDirectory,
+    browserRunner
+  });
+
+  try {
+    assert.equal(await run([
+      "open",
+      "http://app.test/",
+      "--no-bridge",
+      "--restore-save",
+      "never",
+      "--restore-initial-save",
+      "false",
+      "--restore-periodic-save",
+      "--restore-close-save",
+      "--restore-periodic-save-interval-ms",
+      "45000",
+      "--config",
+      "browser-policy.json"
+    ]), 0);
+    assert.equal(await run(["wait", "5000"]), 0);
+    assert.equal(await run(["stop"]), 0);
+
+    const policyArgs = [
+      "--restore-save",
+      "never",
+      "--restore-initial-save",
+      "false",
+      "--restore-periodic-save",
+      "--restore-close-save",
+      "--restore-periodic-save-interval-ms",
+      "45000",
+      "--config",
+      "browser-policy.json"
+    ];
+    assert.deepEqual(browserCalls, [
+      [...policyArgs, "open", `http://app.test/?divebellSessionId=${createOperationSessionId()}`],
+      ["wait", "5000", ...policyArgs],
+      ["close", ...policyArgs]
+    ]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("preserves state-backed browser restore mode across page commands and stop", async () => {

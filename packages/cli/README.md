@@ -13,7 +13,7 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
-The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.4`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell, supports portable state across explicitly included SSO origins without contacting those origins while loading state, and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.33.2-divebell.5`, a temporary Divebell build that adds the memory and code-coverage capture used by Divebell, supports portable state across explicitly included SSO origins without contacting those origins while loading state, and can run when an agent sandbox makes the normal user state directory read-only. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
 
 Divebell keeps its bundled agent-browser daemon under `DIVEBELL_HOME/agent-browser` so another installed browser client cannot make it reuse an older background binary. When `~/.divebell` is not writable, the CLI automatically keeps its browser, session, and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory, or set `AGENT_BROWSER_HOME` to explicitly override only the browser daemon location.
 
@@ -51,6 +51,8 @@ divebell page-snapshot
 ```
 
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
+
+Automatic Restore State is a portable snapshot of cookies, localStorage, and sessionStorage, not a complete Chrome Profile. Divebell saves it once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
 
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 

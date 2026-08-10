@@ -98,6 +98,49 @@ divebell state clean --older-than 7
 
 Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Divebell keeps that restore mode for the current open context, so later page commands and `stop` continue controlling the same browser instead of relaunching it with automatic restore enabled. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
 
+## Restore State save policy
+
+Restore State is the cookies, localStorage, and sessionStorage snapshot described above. It is not a Chrome Profile and does not contain IndexedDB, service workers, cache, extensions, browser preferences, or other Chrome-owned data.
+
+For automatic Restore State, `divebell open <url> --ui` uses three independent save stages:
+
+1. After the newly opened page has been quiet for about two seconds, save once.
+2. Do not continue saving periodically while the page remains open.
+3. Save the latest State before normal close, `divebell stop`, daemon shutdown, idle timeout, or a compatible browser relaunch.
+
+The next `open` for the same project restores the State written by the close stage. A user who wants the previous periodic behavior can enable it explicitly; its default interval remains about 30 seconds:
+
+```bash
+divebell open https://app.example.com --ui --restore-periodic-save
+# Optional custom interval:
+divebell open https://app.example.com --ui \
+  --restore-periodic-save \
+  --restore-periodic-save-interval-ms 10000
+```
+
+To avoid the one-time post-launch save while preserving close-time persistence:
+
+```bash
+divebell open https://app.example.com --ui --restore-initial-save false
+```
+
+Collecting localStorage and sessionStorage from several origins requires a disposable browser target. agent-browser asks compatible Chromium versions to create it in the background and falls back when that option is unsupported. In a headed window, the fallback can briefly bring the temporary target to the foreground during the initial save. The original page has not refreshed. Disabling the initial stage avoids this post-launch switch; periodic saving remains off and close-time saving remains on.
+
+These options also have camelCase keys in `agent-browser.json`:
+
+```json
+{
+  "restoreInitialSave": false,
+  "restorePeriodicSave": true,
+  "restoreCloseSave": true,
+  "restorePeriodicSaveIntervalMs": 30000
+}
+```
+
+The corresponding environment variables are `AGENT_BROWSER_RESTORE_INITIAL_SAVE`, `AGENT_BROWSER_RESTORE_PERIODIC_SAVE`, `AGENT_BROWSER_RESTORE_CLOSE_SAVE`, and `AGENT_BROWSER_AUTOSAVE_INTERVAL_MS`. Precedence is CLI option, environment variable, project or explicit config file, user config file, then the Divebell defaults above. An explicit config file replaces the normally discovered project and user files. Divebell includes the effective command-level policy on later page commands and `stop`, so changing the policy does not require manually stopping an already-running daemon.
+
+`--restore-save never` has different semantics: it disables initial, periodic, and close-time saving together. Use it only when no State should be written. Turning off `--restore-initial-save` or leaving periodic saving disabled does not turn off close-time saving. Explicit `--profile`, `--state`, and `--allowed-domains` behavior is unchanged.
+
 ## Use the auth vault
 
 Save a password through standard input so it does not appear in shell history:

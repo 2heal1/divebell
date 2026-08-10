@@ -31,6 +31,9 @@ test("exposes the recording skill without running the record command", async () 
   assert.equal(output.text(), `${recordingSkillPath}\n`);
   assert.equal(existsSync(recordingSkillPath), true);
   assert.match(readFileSync(recordingSkillPath, "utf8"), /divebell record start/);
+  assert.match(readFileSync(recordingSkillPath, "utf8"), /not as confirmation of the draft/);
+  assert.match(readFileSync(recordingSkillPath, "utf8"), /Do not assume a Clipboard API/);
+  assert.match(readFileSync(recordingSkillPath, "utf8"), /returned JSON contains the requested business result/);
   assert.match(cli.createHelpText(), /Skill: available for record\./);
 });
 
@@ -361,6 +364,76 @@ test("keeps a repeated input after an action boundary", async () => {
       "same value",
       "same value"
     ]);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("coalesces the change and synthetic submit click caused by pressing Enter", async () => {
+  const searchTarget = {
+    selector: "input[aria-label=\"Search\"]",
+    tagName: "input",
+    inputType: "search",
+    ariaLabel: "Search",
+    accessibleName: "Search",
+    value: "byted-browser"
+  };
+  const events = [
+    {
+      type: "input",
+      timeMs: 100,
+      url: "http://app.test/",
+      target: searchTarget
+    },
+    {
+      type: "keydown",
+      timeMs: 200,
+      url: "http://app.test/",
+      key: "Enter",
+      code: "Enter",
+      target: searchTarget
+    },
+    {
+      type: "change",
+      timeMs: 200,
+      url: "http://app.test/",
+      target: searchTarget
+    },
+    {
+      type: "click",
+      timeMs: 200,
+      url: "http://app.test/",
+      target: {
+        selector: "button[aria-label=\"Search submit\"]",
+        tagName: "button",
+        ariaLabel: "Search submit",
+        accessibleName: "Search submit"
+      },
+      pointer: { x: 0, y: 0, button: 0 }
+    },
+    {
+      type: "submit",
+      timeMs: 201,
+      url: "http://app.test/",
+      target: { selector: "form", tagName: "form" }
+    }
+  ];
+  const fixture = createRecordingFixture("divebell-enter-submit-", {
+    browserLogs: events
+      .map((event) => `[INFO ] __DIVEBELL_RECORD_EVENT__${JSON.stringify(event)}`)
+      .join("\n")
+  });
+
+  try {
+    const startOutput = createOutput();
+    assert.equal(await fixture.run(["record", "start", "--out", fixture.outputDir], startOutput), 0);
+    await fixture.open("http://app.test/");
+    const stopOutput = createOutput();
+    assert.equal(await fixture.run(["record", "stop", "--out", fixture.outputDir], stopOutput), 0);
+
+    const workflow = readJson(join(fixture.outputDir, "workflow.json"));
+    assert.deepEqual(workflow.steps.map((step) => step.action), ["fill", "press"]);
+    assert.deepEqual(workflow.steps.map((step) => step.timeMs), [100, 200]);
   } finally {
     fixture.cleanup();
   }

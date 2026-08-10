@@ -81,27 +81,30 @@ jobs:
           node-version: 24.13.0
           cache: pnpm
 
-      - name: Install CLI package dependencies
+      - name: Install runtime package dependencies
         run: pnpm --filter @divebell/cli... install --frozen-lockfile
 
-      - name: Build and pack the CLI
+      - name: Build and pack local runtime packages
         env:
-          CLI_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-cli-package
+          RUNTIME_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-runtime-packages
         run: |
           set -euo pipefail
-          pnpm --filter @divebell/cli build
-          mkdir -p "$CLI_PACKAGE_OUTPUT"
-          pnpm --filter @divebell/cli pack --pack-destination "$CLI_PACKAGE_OUTPUT"
+          pnpm --filter @divebell/cli... build
+          mkdir -p "$RUNTIME_PACKAGE_OUTPUT"
+          pnpm --filter @divebell/cli... pack --pack-destination "$RUNTIME_PACKAGE_OUTPUT"
+          npm pack packages/cli/node_modules/@divebell/agent-browser \
+            --pack-destination "$RUNTIME_PACKAGE_OUTPUT" \
+            --ignore-scripts
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v6
         with:
           node-version: 20.20.2
 
-      - name: Install packed CLI and run setup
+      - name: Install local runtime packages and run setup
         shell: bash
         env:
-          CLI_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-cli-package
+          RUNTIME_PACKAGE_OUTPUT: ${{ runner.temp }}/divebell-runtime-packages
           DIVEBELL_RUNTIME_ROOT: ${{ runner.temp }}/divebell-node20-runtime
         run: |
           set -euo pipefail
@@ -111,19 +114,23 @@ jobs:
           echo "npm: $(npm --version)"
           echo "pwd: $(pwd)"
 
-          package=$(find "$CLI_PACKAGE_OUTPUT" -maxdepth 1 -name '*.tgz' -print -quit)
-          echo "package archive: ${package:-<not found>}"
-          test -n "$package"
+          mapfile -t package_archives < <(find "$RUNTIME_PACKAGE_OUTPUT" -maxdepth 1 -name '*.tgz' -print | sort)
+          test "${#package_archives[@]}" -gt 0
+          printf "package archive: %s\n" "${package_archives[@]}"
 
           mkdir -p "$DIVEBELL_RUNTIME_ROOT"/{h,s,p,work}
           cd "$DIVEBELL_RUNTIME_ROOT/work"
           : > .npmrc
 
-          echo "== npm install =="
-          npm_output=$(npm --no-audit --no-fund install \
+          echo "== offline npm install =="
+          npm_output=$(npm --cache "$DIVEBELL_RUNTIME_ROOT/npm-cache" \
+            --offline \
+            --no-audit \
+            --no-fund \
+            install \
             --global \
             --prefix "$DIVEBELL_RUNTIME_ROOT/p" \
-            "$package" 2>&1) || {
+            "${package_archives[@]}" 2>&1) || {
             npm_exit=$?
             printf "%s\n" "$npm_output"
             echo "npm install failed with exit code $npm_exit"

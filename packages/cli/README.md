@@ -52,6 +52,8 @@ divebell page-snapshot
 
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
 
+Automatic Restore State is a portable snapshot of cookies, localStorage, and sessionStorage, not a complete Chrome Profile. Divebell saves it once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
+
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 
 ```sh

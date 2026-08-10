@@ -88,6 +88,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
     (schemaVersion !== 4 || typeof entry.browserRestoreDisabled === "boolean") &&
+    isBrowserRestoreOptions(entry.browserRestoreOptions) &&
     isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
   )) {
@@ -102,6 +103,17 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
       ? entry.browserRestoreDisabled
       : false
   } as CliOperationLogEntry;
+}
+
+function isBrowserRestoreOptions(value: unknown): boolean {
+  if (value === undefined) return true;
+  return value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && Object.values(value).every((optionValues) =>
+      Array.isArray(optionValues)
+      && optionValues.every((optionValue) => typeof optionValue === "string")
+    );
 }
 
 function isHeaders(value: unknown): boolean {

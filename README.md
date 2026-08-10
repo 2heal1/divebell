@@ -91,6 +91,8 @@ These capabilities include the current page and user journey, page operations su
 
 For protected pages, Divebell can reuse an existing Chrome profile, browser state, or encrypted credentials explicitly supplied by the user, and work within the account's existing permissions.
 
+Automatic Restore State contains cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Divebell saves it once after a newly opened page is quiet for about two seconds and again before close, while periodic saving is disabled by default. Pass `--restore-initial-save false` to keep only close-time saving or `--restore-periodic-save` to opt into the roughly 30-second periodic saves.
+
 [Browser Authentication and State](./docs/browser-auth.md)
 
 When a script must manage the complete browser flow, see [Automating with Divebell CLI](./docs/cli-automation-scripts.md).

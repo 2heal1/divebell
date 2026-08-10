@@ -108,6 +108,7 @@ export function createOpenContextFixture(overrides: Partial<{
   sessionId: string | null;
   activeExtensions: string[];
   browserRestoreDisabled: boolean;
+  browserRestoreOptions: Record<string, string[]>;
 }> = {}): { operationLogDirectory: string; cleanup(): void } {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
@@ -124,7 +125,8 @@ export function createOpenContextFixture(overrides: Partial<{
     openedAt: 1,
     exitCode: 0,
     activeExtensions: overrides.activeExtensions ?? [],
-    browserRestoreDisabled: overrides.browserRestoreDisabled ?? false
+    browserRestoreDisabled: overrides.browserRestoreDisabled ?? false,
+    browserRestoreOptions: overrides.browserRestoreOptions ?? {}
   };
   writeFileSync(join(operationLogDirectory, `${key}.json`), `${JSON.stringify(entry, null, 2)}\n`, "utf8");
   return {

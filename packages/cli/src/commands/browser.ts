@@ -26,7 +26,7 @@ import {
   writeJson
 } from "../utils/command.js";
 import { withDivebellSession } from "../utils/url.js";
-import { applyOpenContextBrowserMode, applyOpenContextDefaultsOrThrow, createExtensionPageContext } from "../open-context.js";
+import { applyBrowserRestoreContextDefaults, applyOpenContextBrowserMode, applyOpenContextDefaultsOrThrow, collectBrowserRestoreContextOptions, createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
@@ -164,6 +164,7 @@ export async function runBrowserCliCommand(
       exitCode: result.exitCode,
       activeExtensions: hookResult.activeExtensions,
       browserRestoreDisabled,
+      browserRestoreOptions: collectBrowserRestoreContextOptions(args),
       ...(headers === undefined ? {} : { headers })
     });
     const output: OpenPageResult = {
@@ -191,8 +192,10 @@ export async function runBrowserCliCommand(
   if (isBrowserPageCommand(command)) {
     applyOpenContextDefaultsOrThrow(args, openContext, "always");
   }
+  const commandArgs = isBrowserPageCommand(command)
+    ? applyBrowserRestoreContextDefaults(args, openContext)
+    : args;
   const pageBrowserRunner = applyOpenContextBrowserMode(browserRunner, openContext);
-  const commandArgs = args;
 
   if (command === "get-window") {
     const path = requireCommandArgument(commandArgs, 1, "window path");
@@ -505,6 +508,10 @@ function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string
     "state",
     "restore",
     "restore-save",
+    "restore-initial-save",
+    "restore-periodic-save",
+    "restore-close-save",
+    "restore-periodic-save-interval-ms",
     "restore-check-url",
     "restore-check-text",
     "restore-check-fn",

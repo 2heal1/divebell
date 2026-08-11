@@ -1,0 +1,205 @@
+export type ObservationStatus = "armed" | "observing" | "completed" | "stale";
+
+export type HmrOutcome =
+  | "applied"
+  | "failed"
+  | "aborted"
+  | "reloaded"
+  | "no-update"
+  | "incomplete"
+  | "unknown";
+
+export type ResultVerdict = "observed" | "passed" | "failed";
+
+export interface SourceLocation {
+  line: number;
+  column: number;
+}
+
+export interface RuntimeOwnerEvidence {
+  status: "resolved" | "unknown" | "ambiguous";
+  kind: "host" | "remote" | "unknown";
+  ownerId?: string;
+  confidence: "high" | "medium" | "low";
+  evidence: string[];
+  candidates: string[];
+}
+
+export interface RuntimeCandidate {
+  runtimeId: string;
+  kind: "rspack-hmr" | "react-refresh";
+  profile: string;
+  connectionGeneration: number;
+  sessionId: string;
+  documentGeneration: number;
+  executionContextId?: number;
+  scriptId: string;
+  scriptInstanceKey: unknown;
+  url: string;
+  anchor: SourceLocation;
+  owner: RuntimeOwnerEvidence;
+}
+
+export type ProbeEventKind =
+  | "hmr.status"
+  | "hmr.invalidate"
+  | "hmr.abort-error"
+  | "hmr.apply-error"
+  | "refresh.boundary-refresh"
+  | "refresh.boundary-invalidate"
+  | "refresh.non-boundary-invalidate"
+  | "refresh.completed"
+  | "reload.requested";
+
+export interface ProbePlan {
+  runtimeId: string;
+  event: ProbeEventKind;
+  profile: string;
+  sessionId: string;
+  scriptId: string;
+  url: string;
+  location: SourceLocation;
+  expressions: string[];
+  required: boolean;
+}
+
+export interface InstalledProbe extends ProbePlan {
+  probeId: string;
+  actualLocation?: SourceLocation;
+}
+
+export interface HmrExpectations {
+  outcome?: "applied";
+  refresh: boolean;
+  noReload: boolean;
+}
+
+export interface StateCheckDefinition {
+  checks: StateCheckItem[];
+}
+
+export interface StateCheckItem {
+  name: string;
+  selector: string;
+  property?: string;
+  attribute?: string;
+}
+
+export interface StateCheckValue {
+  name: string;
+  found: boolean;
+  value?: unknown;
+}
+
+export interface NormalizedEvent {
+  sequence: number;
+  timestamp: number;
+  type: ProbeEventKind | "document.invalidated" | "document.committed" | "evidence.gap";
+  runtimeId?: string;
+  probeId?: string;
+  status?: string;
+  moduleId?: string;
+  error?: string;
+  location?: SourceLocation;
+}
+
+export interface HmrCycle {
+  cycleId: string;
+  runtimeId: string;
+  startedAtSequence: number;
+  endedAtSequence?: number;
+  statusPath: string[];
+  outcome: HmrOutcome;
+}
+
+export interface SharedProviderEvidence {
+  status: "observed" | "unavailable" | "not-observed" | "ambiguous";
+  package: "react" | "react-dom";
+  operations: Array<{
+    instanceRef: string;
+    mfName: string;
+    scopes: string[];
+    selectedVersion?: string;
+    provider?: string;
+    operationId?: string;
+  }>;
+  reason?: string;
+}
+
+export interface MfRuntimeEvidence {
+  status: "observed" | "unavailable" | "not-observed" | "ambiguous";
+  instances: Array<{
+    instanceRef: string;
+    name: string;
+    role: string;
+  }>;
+  remoteEntries: Array<{
+    consumerInstanceRef: string;
+    remote: string;
+    producerInstanceRef?: string;
+    remoteEntryUrl?: string;
+    publicPath?: string;
+  }>;
+  reason?: string;
+}
+
+export interface ObservationManifest {
+  schemaVersion: 1;
+  observationId: string;
+  status: ObservationStatus;
+  createdAt: string;
+  updatedAt: string;
+  pageUrl: string;
+  connectionGeneration: number;
+  sessionId: string;
+  documentGeneration: number;
+  enabledDebugger: boolean;
+  armedAtSequence: number;
+  latestSequence: number;
+  runtimes: RuntimeCandidate[];
+  probes: InstalledProbe[];
+  events: NormalizedEvent[];
+  expectations: HmrExpectations;
+  consoleBaseline: unknown[];
+  stateCheck?: StateCheckDefinition;
+  beforeState?: StateCheckValue[];
+  result?: HmrResult;
+}
+
+export interface HmrResult {
+  schemaVersion: 1;
+  observationId: string;
+  status: ObservationStatus;
+  verdict: ResultVerdict;
+  outcome: HmrOutcome;
+  errorCode?: string;
+  capabilities: {
+    rspackHmr: "observed" | "unsupported";
+    reactRefresh: "observed" | "not-observed" | "unsupported";
+    compileErrors: "console-fallback";
+    moduleFederation: MfRuntimeEvidence["status"];
+  };
+  runtimes: RuntimeCandidate[];
+  cycles: HmrCycle[];
+  refresh: {
+    boundary: "refreshed" | "queued" | "invalidated" | "non-boundary" | "not-observed";
+    completed: boolean;
+    moduleIds: string[];
+  };
+  statePreservation: {
+    status: "verified-preserved" | "verified-reset" | "not-verified";
+    before?: StateCheckValue[];
+    after?: StateCheckValue[];
+  };
+  shared: {
+    runtime: MfRuntimeEvidence;
+    react: SharedProviderEvidence;
+    reactDom: SharedProviderEvidence;
+  };
+  gaps: Array<{
+    kind: "buffer" | "transport";
+    sequence?: number;
+  }>;
+  warnings: string[];
+  recommendedActions: string[];
+}

@@ -174,6 +174,15 @@ test("status returns compact instances, consumers, and loaded shared dependencie
   assert.doesNotThrow(() => JSON.stringify(result));
 
   const verbose = createStatusResult(parsed.snapshot, {}, { verbose: true });
+  assert.deepEqual(verbose.instances[0].remotes, [
+    {
+      name: "catalog",
+      alias: "shop",
+      entry: "https://cdn.test/catalog/mf-manifest.json",
+      type: "global"
+    }
+  ]);
+  assert.equal(verbose.relationships.length, 2);
   assert.equal(verbose.shared.default.react["17.0.2"].loaded, false);
   assert.equal(
     verbose.shared.default.react["17.0.2"].get.source,

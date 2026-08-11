@@ -882,6 +882,10 @@ test("exposes every browser page command through the Extension API", async () =>
     "get-window": { args: ["location.href"] },
     screenshot: { args: ["page.png"], options: { "full-page": true } },
     coverage: { args: ["status"] },
+    debug: {
+      args: ["status"],
+      options: { "cdp-session": "cdp-page-1", json: true }
+    },
     hover: { args: ["e8"] },
     "check-element": { args: ["e9"] },
     drag: { args: ["e10", "e11"] },
@@ -958,6 +962,13 @@ test("exposes every browser page command through the Extension API", async () =>
     ]);
     assert.deepEqual(calls[pageCommands.indexOf("video")], ["record", "start", "flow.webm"]);
     assert.deepEqual(calls[pageCommands.indexOf("coverage")], ["coverage", "status", "--json"]);
+    assert.deepEqual(calls[pageCommands.indexOf("debug")], [
+      "debug",
+      "status",
+      "--session",
+      "cdp-page-1",
+      "--json"
+    ]);
     assert.deepEqual(calls.at(-1), ["select", "@e20", "cn", "sg"]);
   } finally {
     context.cleanup();

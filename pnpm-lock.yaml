@@ -225,8 +225,8 @@ importers:
   packages/cli:
     dependencies:
       '@divebell/agent-browser':
-        specifier: 0.33.2-divebell.5
-        version: 0.33.2-divebell.5
+        specifier: 0.33.2-divebell.6
+        version: 0.33.2-divebell.6
       '@divebell/bridge':
         specifier: workspace:^
         version: link:../bridge
@@ -251,6 +251,8 @@ importers:
   packages/extensions/memory: {}
 
   packages/extensions/mf: {}
+
+  packages/extensions/rstack: {}
 
   packages/modern-plugin:
     dependencies:
@@ -557,8 +559,8 @@ packages:
     peerDependencies:
       postcss: ^8.4
 
-  '@divebell/agent-browser@0.33.2-divebell.5':
-    resolution: {integrity: sha512-VCF0a4Vh/sXhMTuha9bMzA66IZKMnNAvzXEZ/x8DF0m31AqDS1OPuYnM87PeInuMXKRlXj+VOO+PYhsNbgvrqA==}
+  '@divebell/agent-browser@0.33.2-divebell.6':
+    resolution: {integrity: sha512-MoxVnIQTkAShsI4R3eOVAd4O2pLM6IFgZxPFQwqMStoZmSMjHUo2wlT9iySGwlU9m/7QCItr+CDgBRr0dTuU+w==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -4617,7 +4619,7 @@ snapshots:
     dependencies:
       postcss: 8.5.26
 
-  '@divebell/agent-browser@0.33.2-divebell.5': {}
+  '@divebell/agent-browser@0.33.2-divebell.6': {}
 
   '@emnapi/core@1.10.0':
     dependencies:

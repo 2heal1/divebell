@@ -119,6 +119,7 @@ These packages are installed into Divebell and add top-level commands:
 | `@divebell/extension-code-usage` | `divebell code-usage` | Map recorded code execution back to chunks, source files, and dependencies. | [Code-Usage Analysis](./docs/code-usage-analysis.md) |
 | `@divebell/extension-imitate` | `divebell record` | Record, review, supplement, and verify an authenticated browser workflow before generating its JavaScript replay. | [Record Browser Workflows](./docs/record-browser-workflows.md) |
 | `@divebell/extension-mf` | `divebell mf` | Inspect Module Federation instances, remotes, shared dependencies, module performance, Bridge operations, and loading traces. | [MF Extension](./packages/extensions/mf/README.md) |
+| `@divebell/extension-rstack` | `divebell rstack` | Observe Rspack HMR and React Refresh through compiled-JavaScript logpoints, including MF shared React evidence. | [Rstack HMR Extension](./packages/extensions/rstack/README.md) |
 
 Install a CLI Extension with:
 

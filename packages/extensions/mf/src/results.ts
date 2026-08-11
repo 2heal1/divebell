@@ -43,6 +43,7 @@ export function createStatusResult(
   }
   const selected = selectStatusInstances(snapshot.state, selectors);
   if (!selected.ok) throw selectionError(selected.issue);
+  const instanceRefs = selected.value.instances.map((instance) => instance.instanceRef);
   return {
     instances: selected.value.instances.map((instance) => ({
       instanceRef: instance.instanceRef,
@@ -53,11 +54,25 @@ export function createStatusResult(
         snapshot.state.instances,
         snapshot.state.relationships
       ),
-      active: instance.active
+      active: instance.active,
+      ...(options.verbose === true
+        ? {
+            remotes: instance.remotes,
+            loadedProducers: instance.loadedProducers
+          }
+        : {})
     })),
     shared: filterGlobalShared(snapshot.globalShared, {
       verbose: options.verbose === true
-    })
+    }),
+    ...(options.verbose === true
+      ? {
+          relationships: filterRelationshipsForInstances(
+            snapshot.state.relationships,
+            instanceRefs
+          )
+        }
+      : {})
   };
 }
 

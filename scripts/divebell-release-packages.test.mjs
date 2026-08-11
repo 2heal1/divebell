@@ -21,6 +21,7 @@ test("uses the fixed package group as the complete public release package list",
     "@divebell/cli"
   ]);
   assert.ok(names.includes("@divebell/extension-mf"));
+  assert.ok(names.includes("@divebell/extension-rstack"));
   assert.equal(
     packages.find((item) => item.name === "@divebell/extension-mf")?.directory,
     "packages/extensions/mf"

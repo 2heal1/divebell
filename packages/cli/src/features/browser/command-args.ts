@@ -6,6 +6,7 @@ import { withDivebellSession } from "../../utils/url.js";
 const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "base64",
   "bridge",
+  "cdp-session",
   "file",
   "full-page",
   "no-bridge",
@@ -129,6 +130,13 @@ export function createBrowserCommandArgs(
   }
   if (command === "coverage") {
     return createCoverageBrowserArgs(args);
+  }
+  if (command === "debug") {
+    const browserArgs = ["debug", ...args.command.slice(1)];
+    const cdpSession = getOptionValue(args, "cdp-session");
+    if (cdpSession !== undefined) browserArgs.push("--session", cdpSession);
+    appendForwardedBrowserOptions(browserArgs, args);
+    return browserArgs;
   }
   if (command !== undefined) {
     const agentBrowserCommand = command === "video"

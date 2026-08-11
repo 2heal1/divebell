@@ -12,7 +12,8 @@ const packageDirs = [
   "extensions/code-usage",
   "extensions/imitate",
   "extensions/memory",
-  "extensions/mf"
+  "extensions/mf",
+  "extensions/rstack"
 ];
 
 for (const dir of packageDirs) {

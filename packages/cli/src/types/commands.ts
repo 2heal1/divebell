@@ -264,6 +264,7 @@ export type BrowserCommandName =
   | "removeinitscript"
   | "confirm"
   | "deny"
+  | "debug"
   | "memory"
   | "coverage";
 

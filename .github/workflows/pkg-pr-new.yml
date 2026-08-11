@@ -57,3 +57,4 @@ jobs:
           packages/extensions/imitate
           packages/extensions/memory
           packages/extensions/mf
+          packages/extensions/rstack

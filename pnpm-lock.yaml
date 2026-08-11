@@ -303,6 +303,9 @@ importers:
       '@divebell/extension-mf':
         specifier: workspace:^
         version: link:../extensions/mf
+      '@divebell/extension-rstack':
+        specifier: workspace:^
+        version: link:../extensions/rstack
     devDependencies:
       typescript:
         specifier: 5.9.3

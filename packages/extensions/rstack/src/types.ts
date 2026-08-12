@@ -25,9 +25,11 @@ export interface RuntimeOwnerEvidence {
   candidates: string[];
 }
 
-export interface RuntimeCandidate {
+export type RuntimeKind = "rspack-hmr" | "react-refresh";
+
+export interface RuntimeCandidate<Kind extends RuntimeKind = RuntimeKind> {
   runtimeId: string;
-  kind: "rspack-hmr" | "react-refresh";
+  kind: Kind;
   profile: string;
   connectionGeneration: number;
   sessionId: string;
@@ -39,6 +41,9 @@ export interface RuntimeCandidate {
   anchor: SourceLocation;
   owner: RuntimeOwnerEvidence;
 }
+
+export type HmrRuntimeCandidate = RuntimeCandidate<"rspack-hmr">;
+export type ReactRefreshRuntimeCandidate = RuntimeCandidate<"react-refresh">;
 
 export type ProbeEventKind =
   | "hmr.status"
@@ -53,6 +58,7 @@ export type ProbeEventKind =
 
 export interface ProbePlan {
   runtimeId: string;
+  runtimeKind: RuntimeKind;
   event: ProbeEventKind;
   profile: string;
   sessionId: string;
@@ -203,8 +209,9 @@ export interface ObservationManifest {
   enabledDebugger: boolean;
   readyAtSequence: number;
   latestSequence: number;
-  runtimes: RuntimeCandidate[];
-  probes: InstalledProbe[];
+  hmrRuntimes: HmrRuntimeCandidate[];
+  reactRefreshRuntimes: ReactRefreshRuntimeCandidate[];
+  installedProbes: InstalledProbe[];
   events: NormalizedEvent[];
   expectations: HmrExpectations;
   reactRefreshPreflight?: ReactRefreshPreflight;
@@ -228,7 +235,8 @@ export interface HmrResult {
     compileErrors: "console-fallback";
     moduleFederation: MfRuntimeEvidence["status"];
   };
-  runtimes: RuntimeCandidate[];
+  hmrRuntimes: HmrRuntimeCandidate[];
+  reactRefreshRuntimes: ReactRefreshRuntimeCandidate[];
   cycles: HmrCycle[];
   pageReload: {
     status: "not-observed" | "same-document" | "requested" | "reloaded" | "unknown";

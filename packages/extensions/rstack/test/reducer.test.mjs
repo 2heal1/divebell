@@ -25,7 +25,7 @@ function observation(overrides = {}) {
     enabledDebugger: true,
     readyAtSequence: 10,
     latestSequence: 10,
-    runtimes: [{
+    hmrRuntimes: [{
       runtimeId: "rspack-hmr-runtime",
       kind: "rspack-hmr",
       profile: "rspack-hmr-v1",
@@ -45,7 +45,8 @@ function observation(overrides = {}) {
         candidates: ["mf-remote"]
       }
     }],
-    probes: [],
+    reactRefreshRuntimes: [],
+    installedProbes: [],
     events: [],
     expectations: {
       outcome: "applied",
@@ -143,7 +144,7 @@ test("reduces a complete status path and compatible Refresh into applied", () =>
     consoleEntries: []
   });
   assert.equal(result.verdict, "passed");
-  assert.equal(result.runtimes[0].owner.ownerId, "mf-remote");
+  assert.equal(result.hmrRuntimes[0].owner.ownerId, "mf-remote");
   assert.equal(result.shared.react.operations[0].provider, "host");
 });
 

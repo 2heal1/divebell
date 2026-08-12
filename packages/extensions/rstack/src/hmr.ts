@@ -73,16 +73,20 @@ async function inspectHmr(options: CliExtensionRunOptions): Promise<unknown> {
       selected.sessionId
     );
     const discovery = await discoverRstackProfiles(debug);
-    const runtimes = discovery.runtimes.filter((runtime) =>
+    const hmrRuntimes = discovery.hmrRuntimes.filter((runtime) =>
+      runtime.sessionId === selected.sessionId
+    );
+    const reactRefreshRuntimes = discovery.reactRefreshRuntimes.filter((runtime) =>
       runtime.sessionId === selected.sessionId
     );
     return {
       schemaVersion: 1,
       command: "rstack hmr inspect",
-      supported: runtimes.some((runtime) => runtime.kind === "rspack-hmr"),
-      runtimes,
+      supported: hmrRuntimes.length > 0,
+      hmrRuntimes,
+      reactRefreshRuntimes,
       reactRefreshPreflight,
-      probes: discovery.probes.filter((probe) =>
+      probePlans: discovery.probePlans.filter((probe) =>
         probe.sessionId === selected.sessionId
       ),
       warnings: discovery.warnings
@@ -133,13 +137,13 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
     }
 
     const discovery = await discoverRstackProfiles(debug);
-    const hmrRuntimes = discovery.runtimes.filter((runtime) =>
-      runtime.kind === "rspack-hmr" && runtime.sessionId === selected.sessionId
+    const discoveredHmrRuntimes = discovery.hmrRuntimes.filter((runtime) =>
+      runtime.sessionId === selected.sessionId
     );
-    const selectedProbes = discovery.probes.filter((probe) =>
+    const selectedProbePlans = discovery.probePlans.filter((probe) =>
       probe.sessionId === selected.sessionId
     );
-    if (hmrRuntimes.length === 0) {
+    if (discoveredHmrRuntimes.length === 0) {
       throw rstackError({
         code: "RSTACK_HMR_PROFILE_UNSUPPORTED",
         kind: "runtime",
@@ -152,21 +156,25 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
     const liveRuntimeIds = await installRequiredProbes(
       debug,
       observationId,
-      selectedProbes,
+      selectedProbePlans,
       installed
     );
     await installOptionalProbes(
       debug,
       observationId,
-      selectedProbes.filter((probe) => liveRuntimeIds.has(probe.runtimeId)),
+      selectedProbePlans.filter((probe) => liveRuntimeIds.has(probe.runtimeId)),
       installed,
       discovery.warnings
     );
-    const runtimesWithProbes = discovery.runtimes.filter((runtime) =>
+    const hmrRuntimesWithProbes = discoveredHmrRuntimes.filter((runtime) =>
       runtime.sessionId === selected.sessionId
       && installed.some((probe) => probe.runtimeId === runtime.runtimeId)
     );
-    if (!runtimesWithProbes.some((runtime) => runtime.kind === "rspack-hmr")) {
+    const reactRefreshRuntimesWithProbes = discovery.reactRefreshRuntimes.filter((runtime) =>
+      runtime.sessionId === selected.sessionId
+      && installed.some((probe) => probe.runtimeId === runtime.runtimeId)
+    );
+    if (hmrRuntimesWithProbes.length === 0) {
       throw rstackError({
         code: "RSTACK_HMR_PROBE_BIND_FAILED",
         kind: "browser",
@@ -178,8 +186,12 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       ? undefined
       : await captureState(options.divebell.browser, stateCheck);
     const mf = await collectMfEvidence(options.runExtension);
-    const runtimes = applyMfRuntimeOwners(runtimesWithProbes, mf.runtime);
-    const session = hmrRuntimes[0];
+    const hmrRuntimes = applyMfRuntimeOwners(hmrRuntimesWithProbes, mf.runtime);
+    const reactRefreshRuntimes = applyMfRuntimeOwners(
+      reactRefreshRuntimesWithProbes,
+      mf.runtime
+    );
+    const session = discoveredHmrRuntimes[0];
     if (session === undefined) throw new Error("Rspack runtime disappeared while preparing the observation.");
     const provisional: ObservationManifest = {
       schemaVersion: 1,
@@ -194,8 +206,9 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       enabledDebugger,
       readyAtSequence: baseline.latestSequence,
       latestSequence: baseline.latestSequence,
-      runtimes,
-      probes: installed,
+      hmrRuntimes,
+      reactRefreshRuntimes,
+      installedProbes: installed,
       events: [],
       expectations,
       reactRefreshPreflight,
@@ -237,10 +250,9 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       status: "ready",
       readyAtSequence: observation.readyAtSequence,
       nextAction: "change-source",
-      runtimeCount: observation.runtimes.filter((runtime) =>
-        runtime.kind === "rspack-hmr"
-      ).length,
-      probeCount: observation.probes.length,
+      hmrRuntimeCount: observation.hmrRuntimes.length,
+      reactRefreshRuntimeCount: observation.reactRefreshRuntimes.length,
+      installedProbeCount: observation.installedProbes.length,
       expectations,
       reactRefreshPreflight,
       nextCommand: `divebell rstack hmr wait ${observationId} --timeout ${DEFAULT_WAIT_TIMEOUT}`,
@@ -326,7 +338,7 @@ async function stopHmr(
   const store = createObservationStore(options);
   let observation = await store.read(observationId);
   const debug = new DebugClient(options.divebell.browser);
-  const cleanup = await removeProbes(debug, observation.probes);
+  const cleanup = await removeProbes(debug, observation.installedProbes);
   observation = {
     ...observation,
     status: observation.status === "completed" ? "completed" : "stale",
@@ -613,7 +625,7 @@ function verboseResult(
     evidence: {
       readyAtSequence: observation.readyAtSequence,
       latestSequence: observation.latestSequence,
-      probes: observation.probes,
+      installedProbes: observation.installedProbes,
       events: observation.events
     }
   };

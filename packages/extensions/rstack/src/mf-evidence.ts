@@ -222,10 +222,10 @@ async function collectSharedEvidence(
   };
 }
 
-export function applyMfRuntimeOwners(
-  runtimes: RuntimeCandidate[],
+export function applyMfRuntimeOwners<Runtime extends RuntimeCandidate>(
+  runtimes: Runtime[],
   evidence: MfRuntimeEvidence
-): RuntimeCandidate[] {
+): Runtime[] {
   return runtimes.map((runtime) => {
     if (runtime.url.length === 0 || evidence.status !== "observed") return runtime;
     const exact = evidence.remoteEntries.filter((entry) =>
@@ -251,7 +251,7 @@ export function applyMfRuntimeOwners(
           evidence: [exact.length > 0 ? "mf.remote-entry-url" : "mf.remote-public-path"],
           candidates: ownerIds
         }
-      };
+      } as Runtime;
     }
     if (ownerIds.length > 1) {
       return {
@@ -263,7 +263,7 @@ export function applyMfRuntimeOwners(
           evidence: [exact.length > 0 ? "mf.remote-entry-url" : "mf.remote-public-path"],
           candidates: ownerIds
         }
-      };
+      } as Runtime;
     }
     const hostCandidates = evidence.instances
       .filter((instance) => instance.role === "consumer" || instance.role === "mixed")
@@ -277,7 +277,7 @@ export function applyMfRuntimeOwners(
           ? {}
           : { evidence: ["mf.consumer-candidate-only"] })
       }
-    };
+    } as Runtime;
   });
 }
 

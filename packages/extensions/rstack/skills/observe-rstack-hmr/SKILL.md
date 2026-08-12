@@ -38,8 +38,8 @@ presence is separate capability evidence and is checked by `inspect`.
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.
 
-`ready` means the current CDP document and compiled runtimes are fixed, the
-required HMR status logpoint is bound, optional probes have been attempted,
+`ready` means the current CDP document and compiled HMR/Refresh components are
+fixed, the required HMR status logpoint is bound, optional probes have been attempted,
 and the event/Console/state/MF baselines and observation ID are durable. It
 does not mean a source edit was detected or that an HMR cycle succeeded.
 
@@ -64,6 +64,48 @@ registry.
 Plain Rspack HMR does not require React, React Refresh, Bridge, or Module
 Federation. React Refresh is an additional result, never the definition of
 whether the module HMR cycle applied.
+
+## Read command results
+
+`inspect` is a compatibility and discovery report. Read its fields as follows:
+
+- `supported` answers only whether at least one supported Rspack HMR runtime
+  was found. It does not mean React Refresh is ready.
+- `hmrRuntimes` contains Rspack HMR state machines. These produce HMR status
+  paths and apply/fail/abort outcomes.
+- `reactRefreshRuntimes` contains React Refresh adapters. They classify React
+  boundaries and may schedule Refresh, invalidate a boundary, or request a
+  reload. An HMR runtime and a React Refresh adapter may be compiled into the
+  same script; that is not two HMR state machines.
+- `reactRefreshPreflight` checks the loaded ReactDOM build, the global DevTools
+  hook, and the registered Refresh-capable renderer. Its `reactDom.scripts`
+  entries are source evidence, not a renderer count or proof of ownership.
+- `probePlans` lists non-pausing logpoint locations that `start` can attempt to
+  install. No plan is installed by `inspect`. Associate each plan with one of
+  the two runtime lists through `runtimeKind` and `runtimeId`.
+- `warnings` records partial source-search or profile-recognition failures.
+
+`start` returns `hmrRuntimeCount`, `reactRefreshRuntimeCount`, and
+`installedProbeCount`. These count only runtime components selected for the
+current CDP page session and probes successfully installed for the observation.
+Do not edit source until `status: "ready"` is returned.
+
+`status` and `wait` return the current or final HMR result:
+
+- `outcome` and `cycles` describe Rspack HMR; each `cycles[].runtimeId`
+  references `hmrRuntimes`.
+- `refresh` describes the React Refresh boundary path and is interpreted with
+  `reactRefreshRuntimes` and `reactRefreshPreflight`.
+- `pageReload` is independent evidence of a reload request and main-document
+  commit.
+- `shared` reports optional MF runtime and shared `react`/`react-dom` provider
+  evidence. Do not infer shared ownership from a script URL alone.
+- `capabilities`, `gaps`, `warnings`, and `recommendedActions` state which
+  conclusions were supported and what to do next.
+
+With `--verbose`, `evidence.installedProbes` lists the logpoints actually owned
+by the observation and `evidence.events` lists their normalized events. These
+are diagnostic details, not additional success criteria.
 
 To verify page state, pass a JSON file through `--state-check`:
 

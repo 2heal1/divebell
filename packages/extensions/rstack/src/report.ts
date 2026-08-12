@@ -76,7 +76,7 @@ export function createHmrResult(
   if (reloadRequested && outcome !== "reloaded") {
     warnings.push("A page reload was requested, but a new document commit was not observed yet.");
   }
-  if (observation.runtimes.every((runtime) => runtime.kind !== "react-refresh")) {
+  if (observation.reactRefreshRuntimes.length === 0) {
     warnings.push("No supported compiled React Refresh runtime was observed.");
   }
   const reactRefreshPreflight = observation.reactRefreshPreflight
@@ -100,17 +100,18 @@ export function createHmrResult(
       timedOut: options.timedOut === true
     }),
     capabilities: {
-      rspackHmr: observation.runtimes.some((runtime) => runtime.kind === "rspack-hmr")
+      rspackHmr: observation.hmrRuntimes.length > 0
         ? "observed"
         : "unsupported",
-      reactRefreshRuntime: observation.runtimes.some((runtime) => runtime.kind === "react-refresh")
+      reactRefreshRuntime: observation.reactRefreshRuntimes.length > 0
         ? "observed"
         : "not-observed",
       refreshRenderer: reactRefreshPreflight.refreshRenderer.status,
       compileErrors: "console-fallback",
       moduleFederation: options.mf.runtime.status
     },
-    runtimes: observation.runtimes,
+    hmrRuntimes: observation.hmrRuntimes,
+    reactRefreshRuntimes: observation.reactRefreshRuntimes,
     cycles,
     pageReload: {
       status: gaps.length > 0

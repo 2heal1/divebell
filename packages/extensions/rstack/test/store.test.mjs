@@ -22,8 +22,9 @@ test("stores observations privately and resolves the single active id", async ()
     enabledDebugger: true,
     readyAtSequence: 10,
     latestSequence: 10,
-    runtimes: [],
-    probes: [],
+    hmrRuntimes: [],
+    reactRefreshRuntimes: [],
+    installedProbes: [],
     events: [],
     expectations: { refresh: false, noReload: false },
     consoleBaseline: []
@@ -61,8 +62,37 @@ test("reads legacy armed observations as ready", async () => {
       enabledDebugger: true,
       armedAtSequence: 10,
       latestSequence: 10,
-      runtimes: [],
-      probes: [],
+      runtimes: [{
+        runtimeId: "rspack-hmr-legacy",
+        kind: "rspack-hmr",
+        profile: "rspack-hmr-v1",
+        connectionGeneration: 1,
+        sessionId: "cdp",
+        documentGeneration: 1,
+        scriptId: "script-1",
+        scriptInstanceKey: null,
+        url: "http://localhost:3000/main.js",
+        anchor: { line: 1, column: 1 },
+        owner: {
+          status: "unknown",
+          kind: "unknown",
+          confidence: "low",
+          evidence: [],
+          candidates: []
+        }
+      }],
+      probes: [{
+        runtimeId: "rspack-hmr-legacy",
+        event: "hmr.status",
+        profile: "rspack-hmr-v1",
+        sessionId: "cdp",
+        scriptId: "script-1",
+        url: "http://localhost:3000/main.js",
+        location: { line: 1, column: 1 },
+        expressions: ["newStatus"],
+        required: true,
+        probeId: "probe-legacy"
+      }],
       events: [],
       expectations: { refresh: false, noReload: false },
       consoleBaseline: []
@@ -70,7 +100,12 @@ test("reads legacy armed observations as ready", async () => {
     const migrated = await store.read(observationId);
     assert.equal(migrated.status, "ready");
     assert.equal(migrated.readyAtSequence, 10);
+    assert.equal(migrated.hmrRuntimes[0].runtimeId, "rspack-hmr-legacy");
+    assert.deepEqual(migrated.reactRefreshRuntimes, []);
+    assert.equal(migrated.installedProbes[0].runtimeKind, "rspack-hmr");
     assert.equal("armedAtSequence" in migrated, false);
+    assert.equal("runtimes" in migrated, false);
+    assert.equal("probes" in migrated, false);
   } finally {
     await rm(home, { recursive: true, force: true });
   }

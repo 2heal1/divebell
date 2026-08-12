@@ -12,7 +12,14 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { rstackError } from "./errors.js";
-import type { ObservationManifest } from "./types.js";
+import type {
+  HmrResult,
+  HmrRuntimeCandidate,
+  InstalledProbe,
+  ObservationManifest,
+  ReactRefreshRuntimeCandidate,
+  RuntimeCandidate
+} from "./types.js";
 
 export class ObservationStore {
   readonly directory: string;
@@ -136,21 +143,119 @@ function normalizeObservation(value: unknown): ObservationManifest | undefined {
     && (value as { schemaVersion?: unknown }).schemaVersion === 1
     && typeof (value as { observationId?: unknown }).observationId === "string";
   if (!valid) return undefined;
-  const legacy = value as Omit<ObservationManifest, "status" | "readyAtSequence"> & {
+  const legacy = value as Omit<
+    ObservationManifest,
+    | "status"
+    | "readyAtSequence"
+    | "hmrRuntimes"
+    | "reactRefreshRuntimes"
+    | "installedProbes"
+    | "result"
+  > & {
     status: ObservationManifest["status"] | "armed";
     armedAtSequence?: number;
     readyAtSequence?: number;
+    hmrRuntimes?: HmrRuntimeCandidate[];
+    reactRefreshRuntimes?: ReactRefreshRuntimeCandidate[];
+    installedProbes?: LegacyInstalledProbe[];
+    runtimes?: RuntimeCandidate[];
+    probes?: LegacyInstalledProbe[];
+    result?: LegacyHmrResult;
   };
   const readyAtSequence = typeof legacy.readyAtSequence === "number"
     ? legacy.readyAtSequence
     : legacy.armedAtSequence;
   if (typeof readyAtSequence !== "number") return undefined;
-  const { armedAtSequence: _, ...current } = legacy;
+  const hmrRuntimes = legacy.hmrRuntimes
+    ?? legacy.runtimes?.filter(isHmrRuntime)
+    ?? [];
+  const reactRefreshRuntimes = legacy.reactRefreshRuntimes
+    ?? legacy.runtimes?.filter(isReactRefreshRuntime)
+    ?? [];
+  const installedProbes = normalizeInstalledProbes(
+    legacy.installedProbes ?? legacy.probes ?? [],
+    hmrRuntimes,
+    reactRefreshRuntimes
+  );
+  const result = normalizeHmrResult(legacy.result);
+  const {
+    armedAtSequence: _,
+    runtimes: _runtimes,
+    probes: _probes,
+    hmrRuntimes: _hmrRuntimes,
+    reactRefreshRuntimes: _reactRefreshRuntimes,
+    installedProbes: _installedProbes,
+    result: _result,
+    ...current
+  } = legacy;
   return {
     ...current,
     status: legacy.status === "armed" ? "ready" : legacy.status,
-    readyAtSequence
+    readyAtSequence,
+    hmrRuntimes,
+    reactRefreshRuntimes,
+    installedProbes,
+    ...(result === undefined ? {} : { result })
   };
+}
+
+type LegacyHmrResult = Omit<
+  HmrResult,
+  "hmrRuntimes" | "reactRefreshRuntimes"
+> & {
+  runtimes?: RuntimeCandidate[];
+  hmrRuntimes?: HmrRuntimeCandidate[];
+  reactRefreshRuntimes?: ReactRefreshRuntimeCandidate[];
+};
+
+type LegacyInstalledProbe = Omit<InstalledProbe, "runtimeKind"> & {
+  runtimeKind?: InstalledProbe["runtimeKind"];
+};
+
+function normalizeHmrResult(
+  value: LegacyHmrResult | undefined
+): HmrResult | undefined {
+  if (value === undefined) return undefined;
+  const hmrRuntimes = value.hmrRuntimes
+    ?? value.runtimes?.filter(isHmrRuntime)
+    ?? [];
+  const reactRefreshRuntimes = value.reactRefreshRuntimes
+    ?? value.runtimes?.filter(isReactRefreshRuntime)
+    ?? [];
+  const {
+    runtimes: _runtimes,
+    hmrRuntimes: _hmrRuntimes,
+    reactRefreshRuntimes: _reactRefreshRuntimes,
+    ...current
+  } = value;
+  return { ...current, hmrRuntimes, reactRefreshRuntimes };
+}
+
+function normalizeInstalledProbes(
+  probes: LegacyInstalledProbe[],
+  hmrRuntimes: HmrRuntimeCandidate[],
+  reactRefreshRuntimes: ReactRefreshRuntimeCandidate[]
+): InstalledProbe[] {
+  const kinds = new Map<string, InstalledProbe["runtimeKind"]>([
+    ...hmrRuntimes.map((runtime) => [runtime.runtimeId, runtime.kind] as const),
+    ...reactRefreshRuntimes.map((runtime) => [runtime.runtimeId, runtime.kind] as const)
+  ]);
+  return probes.flatMap((probe) => {
+    const runtimeKind = probe.runtimeKind ?? kinds.get(probe.runtimeId);
+    return runtimeKind === undefined ? [] : [{ ...probe, runtimeKind }];
+  });
+}
+
+function isHmrRuntime(
+  runtime: RuntimeCandidate
+): runtime is HmrRuntimeCandidate {
+  return runtime.kind === "rspack-hmr";
+}
+
+function isReactRefreshRuntime(
+  runtime: RuntimeCandidate
+): runtime is ReactRefreshRuntimeCandidate {
+  return runtime.kind === "react-refresh";
 }
 
 function isMissingFile(error: unknown): boolean {

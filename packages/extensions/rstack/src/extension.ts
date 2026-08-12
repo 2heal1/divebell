@@ -17,7 +17,7 @@ const extension = {
       {
         category: "External Extensions",
         usage: "divebell rstack hmr inspect",
-        description: "Discover supported Rspack HMR and React Refresh runtimes in the compiled JavaScript loaded by the current page."
+        description: "Discover supported Rspack HMR state machines, React Refresh adapters, preflight evidence, and candidate probe plans in the compiled JavaScript loaded by the current page."
       },
       {
         category: "External Extensions",

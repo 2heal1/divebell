@@ -34,6 +34,17 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
     const browser = new FakeBrowser();
     const base = baseOptions(browser);
 
+    const inspected = await runRstackCommand({
+      ...base,
+      args: cliArgs(["rstack", "hmr", "inspect"])
+    });
+    assert.equal(inspected.supported, true);
+    assert.equal(inspected.hmrRuntimes.length, 1);
+    assert.equal(inspected.reactRefreshRuntimes.length, 0);
+    assert.equal(inspected.probePlans[0].runtimeKind, "rspack-hmr");
+    assert.equal("runtimes" in inspected, false);
+    assert.equal("probes" in inspected, false);
+
     const started = await runRstackCommand({
       ...base,
       args: cliArgs(["rstack", "hmr", "start"], {
@@ -43,6 +54,11 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
     });
     assert.equal(started.status, "ready");
     assert.equal(started.nextAction, "change-source");
+    assert.equal(started.hmrRuntimeCount, 1);
+    assert.equal(started.reactRefreshRuntimeCount, 0);
+    assert.equal(started.installedProbeCount, 2);
+    assert.equal("runtimeCount" in started, false);
+    assert.equal("probeCount" in started, false);
     assert.match(started.observationId, /^rstack-hmr-/u);
     assert.match(started.nextCommand, new RegExp(started.observationId, "u"));
 
@@ -56,6 +72,9 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
     assert.equal(waited.status, "completed");
     assert.equal(waited.outcome, "applied");
     assert.equal(waited.verdict, "passed");
+    assert.equal(waited.hmrRuntimes.length, 1);
+    assert.equal(waited.reactRefreshRuntimes.length, 0);
+    assert.equal("runtimes" in waited, false);
     assert.deepEqual(waited.cycles[0].statusPath, [
       "check",
       "prepare",

@@ -2,8 +2,11 @@ import { createHash } from "node:crypto";
 
 import type { DebugClient, DebugScript } from "./debug-client.js";
 import type {
+  HmrRuntimeCandidate,
   ProbePlan,
+  ReactRefreshRuntimeCandidate,
   RuntimeCandidate,
+  RuntimeKind,
   RuntimeOwnerEvidence,
   SourceLocation
 } from "./types.js";
@@ -12,8 +15,9 @@ const HMR_FINGERPRINT = "check() is only allowed in idle status";
 const REFRESH_FINGERPRINT = "shouldInvalidateReactRefreshBoundary";
 
 export interface ProfileDiscovery {
-  runtimes: RuntimeCandidate[];
-  probes: ProbePlan[];
+  hmrRuntimes: HmrRuntimeCandidate[];
+  reactRefreshRuntimes: ReactRefreshRuntimeCandidate[];
+  probePlans: ProbePlan[];
   warnings: string[];
 }
 
@@ -34,14 +38,16 @@ export async function discoverRstackProfiles(debug: DebugClient): Promise<Profil
     }
   }
 
-  const runtimes: RuntimeCandidate[] = [];
-  const probes: ProbePlan[] = [];
+  const hmrRuntimes: HmrRuntimeCandidate[] = [];
+  const reactRefreshRuntimes: ReactRefreshRuntimeCandidate[] = [];
+  const probePlans: ProbePlan[] = [];
   for (const key of sourceKeys.values()) {
     try {
       const loaded = await debug.source(key.scriptId, key.sessionId);
       const discovered = discoverProfilesInSource(loaded.script, loaded.scriptSource);
-      runtimes.push(...discovered.runtimes);
-      probes.push(...discovered.probes);
+      hmrRuntimes.push(...discovered.hmrRuntimes);
+      reactRefreshRuntimes.push(...discovered.reactRefreshRuntimes);
+      probePlans.push(...discovered.probePlans);
       warnings.push(...discovered.warnings);
     } catch (error) {
       warnings.push(
@@ -51,9 +57,13 @@ export async function discoverRstackProfiles(debug: DebugClient): Promise<Profil
   }
 
   return {
-    runtimes: uniqueBy(runtimes, (runtime) => runtime.runtimeId),
-    probes: uniqueBy(
-      probes,
+    hmrRuntimes: uniqueBy(hmrRuntimes, (runtime) => runtime.runtimeId),
+    reactRefreshRuntimes: uniqueBy(
+      reactRefreshRuntimes,
+      (runtime) => runtime.runtimeId
+    ),
+    probePlans: uniqueBy(
+      probePlans,
       (probe) => `${probe.runtimeId}\u0000${probe.event}\u0000${probe.location.line}:${probe.location.column}`
     ),
     warnings
@@ -64,8 +74,9 @@ export function discoverProfilesInSource(
   script: DebugScript,
   source: string
 ): ProfileDiscovery {
-  const runtimes: RuntimeCandidate[] = [];
-  const probes: ProbePlan[] = [];
+  const hmrRuntimes: HmrRuntimeCandidate[] = [];
+  const reactRefreshRuntimes: ReactRefreshRuntimeCandidate[] = [];
+  const probePlans: ProbePlan[] = [];
   const warnings: string[] = [];
 
   if (source.includes(HMR_FINGERPRINT)) {
@@ -77,9 +88,10 @@ export function discoverProfilesInSource(
     }
     for (const status of statuses) {
       const runtime = createRuntime(script, "rspack-hmr", "rspack-hmr-v1", status.location);
-      runtimes.push(runtime);
-      probes.push({
+      hmrRuntimes.push(runtime);
+      probePlans.push({
         runtimeId: runtime.runtimeId,
+        runtimeKind: runtime.kind,
         event: "hmr.status",
         profile: runtime.profile,
         sessionId: runtime.sessionId,
@@ -89,7 +101,7 @@ export function discoverProfilesInSource(
         expressions: [status.expression],
         required: true
       });
-      addNamedHmrProbes(source, runtime, probes);
+      addNamedHmrProbes(source, runtime, probePlans);
     }
   }
 
@@ -108,12 +120,12 @@ export function discoverProfilesInSource(
         `React Refresh fingerprint matched ${script.url ?? script.scriptId}, but no supported boundary branch was recognized.`
       );
     } else {
-      runtimes.push(runtime);
-      probes.push(...refreshProbes);
+      reactRefreshRuntimes.push(runtime);
+      probePlans.push(...refreshProbes);
     }
   }
 
-  return { runtimes, probes, warnings };
+  return { hmrRuntimes, reactRefreshRuntimes, probePlans, warnings };
 }
 
 function findHmrStatusAssignments(source: string): Array<{
@@ -254,6 +266,7 @@ function probe(
 ): ProbePlan {
   return {
     runtimeId: runtime.runtimeId,
+    runtimeKind: runtime.kind,
     event,
     profile: runtime.profile,
     sessionId: runtime.sessionId,
@@ -265,12 +278,12 @@ function probe(
   };
 }
 
-function createRuntime(
+function createRuntime<Kind extends RuntimeKind>(
   script: DebugScript,
-  kind: RuntimeCandidate["kind"],
+  kind: Kind,
   profile: string,
   anchor: SourceLocation
-): RuntimeCandidate {
+): RuntimeCandidate<Kind> {
   const identity = JSON.stringify({
     scriptInstanceKey: script.scriptInstanceKey ?? {
       connectionGeneration: script.connectionGeneration,

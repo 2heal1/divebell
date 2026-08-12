@@ -44,7 +44,7 @@ divebell rstack hmr stop <observation-id>
 when exactly one observation is active in the current project.
 
 `ready` has a precise meaning: the debugger is enabled for the current CDP
-page session, the loaded compiled-JavaScript runtimes have been identified,
+page session, the loaded HMR and React Refresh runtime components have been identified,
 the required HMR status logpoint is bound, optional Refresh/error/reload
 logpoints have been attempted, and the event, Console, optional page-state,
 and MF evidence baselines have been persisted. It does not mean that a source
@@ -62,6 +62,17 @@ or mixed runtime instance.
 2. whether `globalThis.__REACT_DEVTOOLS_GLOBAL_HOOK__` is installed;
 3. registered renderer build and the `scheduleRefresh` / `setRefreshHandler`
    helpers.
+
+Its discovery output keeps `hmrRuntimes` and `reactRefreshRuntimes` separate.
+The first list contains Rspack HMR state machines; the second contains React
+Refresh adapters, even when both components are compiled into the same file.
+`probePlans` are candidate non-pausing logpoint locations and are not installed
+until `start`. Each plan includes `runtimeKind` and `runtimeId` so it can be
+associated with the corresponding runtime list. `start` reports
+`hmrRuntimeCount`, `reactRefreshRuntimeCount`, and `installedProbeCount`.
+
+Run `divebell rstack --skill` for the full field semantics and decision rules
+for `inspect`, `start`, `status`, and `wait`.
 
 `start --expect-refresh` fails before becoming ready when no compatible
 development ReactDOM renderer is ready. This does not block plain Rspack HMR

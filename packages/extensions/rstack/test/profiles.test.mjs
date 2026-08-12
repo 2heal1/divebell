@@ -69,19 +69,19 @@ function flushRefresh(callback) {
 
 test("discovers runtime-scoped HMR and Refresh probes from compiled JavaScript", () => {
   const result = discoverProfilesInSource(script, source);
-  const hmr = result.runtimes.filter((runtime) => runtime.kind === "rspack-hmr");
-  const refresh = result.runtimes.filter((runtime) => runtime.kind === "react-refresh");
+  const hmr = result.hmrRuntimes;
+  const refresh = result.reactRefreshRuntimes;
 
   assert.equal(hmr.length, 1);
   assert.equal(refresh.length, 1);
   assert.equal(hmr[0].sessionId, "cdp-page");
   assert.equal(hmr[0].owner.status, "unknown");
   assert.deepEqual(
-    result.probes.filter((probe) => probe.required).map((probe) => probe.event),
+    result.probePlans.filter((probe) => probe.required).map((probe) => probe.event),
     ["hmr.status"]
   );
   assert.deepEqual(
-    new Set(result.probes.map((probe) => probe.event)),
+    new Set(result.probePlans.map((probe) => probe.event)),
     new Set([
       "hmr.status",
       "hmr.invalidate",
@@ -93,6 +93,14 @@ test("discovers runtime-scoped HMR and Refresh probes from compiled JavaScript",
       "refresh.completed",
       "reload.requested"
     ])
+  );
+  assert.equal(
+    result.probePlans.find((probe) => probe.event === "hmr.status")?.runtimeKind,
+    "rspack-hmr"
+  );
+  assert.equal(
+    result.probePlans.find((probe) => probe.event === "refresh.completed")?.runtimeKind,
+    "react-refresh"
   );
 });
 

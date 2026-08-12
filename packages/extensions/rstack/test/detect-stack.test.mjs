@@ -34,7 +34,7 @@ for (const script of node.querySelectorAll("script[data-rspack]")) {}
 test("detectStack recommends rstack when data-rspack was observed while loading", async () => {
   const browser = new DetectBrowser({ observedDataRspack: true });
   const result = await detectRstackStack({ browser }, "rstack");
-  assert.equal(result?.id, "rspack-hmr");
+  assert.equal(result?.id, "rspack");
   assert.equal(result?.command, "rstack");
   assert.match(result?.evidence[0] ?? "", /script\[data-rspack\] observed/u);
   assert.equal(browser.enabled, false);
@@ -43,8 +43,16 @@ test("detectStack recommends rstack when data-rspack was observed while loading"
 test("detectStack falls back to the compiled Rspack load-script marker", async () => {
   const browser = new DetectBrowser({ sourceMarker: true });
   const result = await detectRstackStack({ browser }, "rstack");
-  assert.equal(result?.id, "rspack-hmr");
+  assert.equal(result?.id, "rspack");
   assert.match(result?.evidence[0] ?? "", /compiled Rspack load-script marker/u);
+  assert.equal(browser.enabled, false);
+});
+
+test("detectStack identifies production Rspack without requiring HMR", async () => {
+  const browser = new DetectBrowser({ sourceMarker: true, hmr: false });
+  const result = await detectRstackStack({ browser }, "rstack");
+  assert.equal(result?.id, "rspack");
+  assert.match(result?.evidence[1] ?? "", /HMR runtime not detected/u);
   assert.equal(browser.enabled, false);
 });
 
@@ -58,9 +66,14 @@ test("detectStack does not call a generic compatible HMR runtime Rstack", async 
 class DetectBrowser {
   enabled = false;
 
-  constructor({ observedDataRspack = false, sourceMarker = false } = {}) {
+  constructor({
+    observedDataRspack = false,
+    sourceMarker = false,
+    hmr = true
+  } = {}) {
     this.observedDataRspack = observedDataRspack;
     this.sourceMarker = sourceMarker;
+    this.hmr = hmr;
   }
 
   async eval() {
@@ -123,7 +136,8 @@ class DetectBrowser {
         });
       }
       return json({
-        matches: args[2] === "check() is only allowed in idle status"
+        matches: this.hmr
+          && args[2] === "check() is only allowed in idle status"
           ? [{
               scriptId: "runtime",
               sessionId: "page",

@@ -34,20 +34,21 @@ export async function detectRstackStack(
     const hmr = discovery.runtimes.filter((runtime) =>
       runtime.kind === "rspack-hmr"
     );
-    if (hmr.length === 0) return undefined;
     const observedDataRspack = (preloadedEvidence?.dataRspackScriptCount ?? 0) > 0;
     if (!observedDataRspack && sourceMarkerCount === 0) return undefined;
     const refresh = discovery.runtimes.some((runtime) =>
       runtime.kind === "react-refresh"
     );
     return {
-      id: "rspack-hmr",
-      name: "Rspack HMR",
+      id: "rspack",
+      name: "Rspack",
       evidence: [
         observedDataRspack
           ? "script[data-rspack] observed during document loading"
           : `${sourceMarkerCount} compiled Rspack load-script marker${sourceMarkerCount === 1 ? "" : "s"}`,
-        `${hmr.length} loaded compatible HMR runtime${hmr.length === 1 ? "" : "s"}`,
+        hmr.length > 0
+          ? `${hmr.length} loaded compatible HMR runtime${hmr.length === 1 ? "" : "s"}`
+          : "compatible HMR runtime not detected",
         refresh
           ? "compiled React Refresh runtime detected"
           : "compiled React Refresh runtime not detected"

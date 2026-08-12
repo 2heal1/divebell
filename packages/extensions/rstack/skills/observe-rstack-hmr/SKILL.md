@@ -19,8 +19,8 @@ read source maps or accept TypeScript source locations.
    Add `--mf` when Module Federation ownership and shared React evidence are
    required.
 2. Run `divebell stack --refresh`. Continue with the Rstack workflow only when
-   it reports `id: "rspack-hmr"` from Rspack-specific script or compiled
-   runtime evidence plus a compatible HMR runtime.
+   it reports `id: "rspack"` from Rspack-specific script or compiled runtime
+   evidence. A production page may be detected without an HMR runtime.
 3. Run `divebell rstack hmr inspect` if compatibility is not known.
 4. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "armed"`.
@@ -32,7 +32,8 @@ read source maps or accept TypeScript source locations.
 Do not infer Rstack from the generic HMR state-machine fingerprint alone; it is
 also present in Webpack. The stack detector requires either a transient
 `script[data-rspack]` observed from document start or the corresponding
-`setAttribute("data-rspack", ...)` marker in loaded compiled JavaScript.
+`setAttribute("data-rspack", ...)` marker in loaded compiled JavaScript. HMR
+runtime presence is separate capability evidence and is checked by `inspect`.
 
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.

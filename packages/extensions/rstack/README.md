@@ -23,11 +23,11 @@ settle, so querying the DOM later is not reliable. If no live insertion was
 observed, `stack` falls back to the loaded compiled runtime's
 `setAttribute("data-rspack", ...)` marker.
 
-Rstack is reported only when one of those Rspack-specific signals is paired
-with a compatible loaded HMR runtime. A generic Webpack-compatible HMR state
-machine by itself is not identified as Rstack. Use `stack --refresh` after
-upgrading this Extension or when the same page URL already has a cached stack
-result.
+Rspack is reported from either of those Rspack-specific signals even when a
+production page has no HMR runtime. HMR and React Refresh are reported as
+separate capability evidence. A generic Webpack-compatible HMR state machine
+by itself is not identified as Rstack. Use `stack --refresh` after upgrading
+this Extension or when the same page URL already has a cached stack result.
 
 Add `@divebell/extension-mf` and open with `--mf` only when Module Federation
 ownership or shared React evidence is needed.

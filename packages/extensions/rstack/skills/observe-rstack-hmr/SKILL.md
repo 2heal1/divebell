@@ -17,9 +17,10 @@ read source maps or accept TypeScript source locations.
 1. Open the development page. Add `--mf` when Module Federation ownership and
    shared React evidence are required.
 2. Run `divebell stack --refresh`. Continue with the Rstack workflow only when
-   it reports `id: "rspack"`. Detection checks at most one fetched `index*`,
-   `*main*`, and `runtime*` entry for the `data-rspack` string. A production
-   page may be detected without an HMR runtime.
+   it reports `id: "rspack"`. Detection sequentially checks every distinct
+   fetched `index*`, `*main*`, and `runtime*` entry until one contains the
+   `data-rspack` string. A production page may be detected without an HMR
+   runtime.
 3. Run `divebell rstack hmr inspect` if compatibility is not known.
 4. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "ready"` and `nextAction: "change-source"`.

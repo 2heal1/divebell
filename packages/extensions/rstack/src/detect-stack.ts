@@ -34,8 +34,8 @@ export function createRstackFetchDetectionScript(): string {
           if (url.protocol !== "http:" && url.protocol !== "https:") return;
           const name = (url.pathname.split("/").pop() || "").slice(0, 200);
           const kind = classifyFilename(name);
-          if (kind === undefined || selected.has(kind)) return;
-          selected.set(kind, { kind, name, url: url.href });
+          if (kind === undefined || selected.has(url.href)) return;
+          selected.set(url.href, { kind, name, url: url.href });
         } catch {}
       };
 
@@ -50,8 +50,7 @@ export function createRstackFetchDetectionScript(): string {
 
       const checked = [];
       let failureCount = 0;
-      const candidates = ["index", "main", "runtime"]
-        .flatMap((kind) => selected.has(kind) ? [selected.get(kind)] : []);
+      const candidates = Array.from(selected.values());
       for (const candidate of candidates) {
         checked.push(candidate.name);
         const controller = new AbortController();

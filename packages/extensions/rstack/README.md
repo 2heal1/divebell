@@ -17,10 +17,10 @@ divebell rstack hmr inspect
 
 Stack detection does not install a DOM observer or enable the Debugger. After
 the page loads, it collects JavaScript URLs from `document.scripts` and Script
-Resource Timing entries, selects at most one `index*`, `*main*`, and
-`runtime*` filename, and fetches them sequentially with `cache: "force-cache"`.
-The first source containing `data-rspack` identifies Rspack. Each request has
-a 1.2 second timeout; fetch, CORS, CSP, and response failures produce no page
+Resource Timing entries, keeps only `index*`, `*main*`, and `runtime*`
+filenames, and fetches every distinct match sequentially with
+`cache: "force-cache"` until one contains `data-rspack`. Each request has a
+1.2 second timeout; fetch, CORS, CSP, and response failures produce no page
 exception and no positive detection.
 
 Production Rspack can be detected without HMR. HMR and React Refresh are

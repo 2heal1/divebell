@@ -83,17 +83,25 @@ type DebugOptionValue = DivebellBrowserCommandOptionValue;
 
 export class DebugClient {
   readonly browser: DivebellBrowserApi;
+  // Follow-up debugger commands use the stable tab selector. Forwarding the
+  // CDP ID as `--session` can be consumed as an agent-browser daemon session
+  // during process bootstrap instead of as the debugger page selector.
+  private readonly tabBySession = new Map<string, string>();
 
   constructor(browser: DivebellBrowserApi) {
     this.browser = browser;
   }
 
   async status(): Promise<DebugStatus> {
-    return await this.run<DebugStatus>(["status"]);
+    const result = await this.run<DebugStatus>(["status"]);
+    this.rememberTabs(result.sessions);
+    return result;
   }
 
   async enable(): Promise<DebugEnableResult> {
-    return await this.run<DebugEnableResult>(["enable"]);
+    const result = await this.run<DebugEnableResult>(["enable"]);
+    this.rememberTabs(result.sessions);
+    return result;
   }
 
   async disable(sessionId: string): Promise<unknown> {
@@ -168,13 +176,16 @@ export class DebugClient {
   private async run<T>(
     args: readonly string[],
     options: Readonly<Record<string, DebugOptionValue>> = {},
-    cdpSession?: string
+    debugSessionId?: string
   ): Promise<T> {
+    const tabId = debugSessionId === undefined
+      ? undefined
+      : this.tabBySession.get(debugSessionId);
     const output = await this.browser.run("debug", {
       args,
       options: {
         ...options,
-        ...(cdpSession === undefined ? {} : { "cdp-session": cdpSession }),
+        ...(tabId === undefined ? {} : { tab: tabId }),
         json: true
       }
     });
@@ -189,6 +200,16 @@ export class DebugClient {
         }`,
         details: { output }
       });
+    }
+  }
+
+  private rememberTabs(
+    sessions: ReadonlyArray<{ sessionId: string; tabId?: string }>
+  ): void {
+    for (const session of sessions) {
+      if (session.tabId !== undefined) {
+        this.tabBySession.set(session.sessionId, session.tabId);
+      }
     }
   }
 }

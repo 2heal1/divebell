@@ -44,7 +44,7 @@ test("detectStack treats fetch failures and missing markers as no detection", as
   }
 });
 
-test("fetch detection checks at most one index, main, and runtime resource", async () => {
+test("fetch detection checks every matching entry until data-rspack is found", async () => {
   const fetched = [];
   const context = vm.createContext({
     AbortController,
@@ -54,7 +54,8 @@ test("fetch detection checks at most one index, main, and runtime resource", asy
     document: {
       scripts: [
         { src: "https://example.com/vendor.js" },
-        { src: "https://example.com/index.123.js" },
+        { src: "https://example.com/index~0.123.js" },
+        { src: "https://example.com/index~2.123.js" },
         { src: "https://example.com/app-main.123.js" },
         { src: "https://example.com/another-main.js" }
       ]
@@ -64,7 +65,7 @@ test("fetch detection checks at most one index, main, and runtime resource", asy
       return {
         ok: true,
         async text() {
-          return url.includes("runtime")
+          return url.includes("index~2")
             ? `script.setAttribute("data-rspack", key)`
             : "ordinary source";
         }
@@ -93,13 +94,12 @@ test("fetch detection checks at most one index, main, and runtime resource", asy
   );
 
   assert.equal(result.status, "found");
-  assert.equal(result.matched, "runtime~app.js");
+  assert.equal(result.matched, "index~2.123.js");
   assert.deepEqual(Array.from(result.checked), [
-    "index.123.js",
-    "app-main.123.js",
-    "runtime~app.js"
+    "index~0.123.js",
+    "index~2.123.js"
   ]);
-  assert.equal(fetched.length, 3);
+  assert.equal(fetched.length, 2);
   assert.equal(fetched.every(({ options }) =>
     options.cache === "force-cache"
     && options.credentials === "same-origin"

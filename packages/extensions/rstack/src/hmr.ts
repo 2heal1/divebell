@@ -67,14 +67,14 @@ async function inspectHmr(options: CliExtensionRunOptions): Promise<unknown> {
     session.sessionId === selected.sessionId && session.enabled
   );
   try {
-    const discovery = await discoverRstackProfiles(debug);
-    const runtimes = discovery.runtimes.filter((runtime) =>
-      runtime.sessionId === selected.sessionId
-    );
     const reactRefreshPreflight = await collectReactRefreshPreflight(
       debug,
       options.divebell.browser,
       selected.sessionId
+    );
+    const discovery = await discoverRstackProfiles(debug);
+    const runtimes = discovery.runtimes.filter((runtime) =>
+      runtime.sessionId === selected.sessionId
     );
     return {
       schemaVersion: 1,
@@ -114,23 +114,6 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
   try {
     const baseline = await debug.events(0);
     const initialConsole = (await options.divebell.browser.console()).entries;
-    const discovery = await discoverRstackProfiles(debug);
-    const hmrRuntimes = discovery.runtimes.filter((runtime) =>
-      runtime.kind === "rspack-hmr" && runtime.sessionId === selected.sessionId
-    );
-    const selectedProbes = discovery.probes.filter((probe) =>
-      probe.sessionId === selected.sessionId
-    );
-    if (hmrRuntimes.length === 0) {
-      throw rstackError({
-        code: "RSTACK_HMR_PROFILE_UNSUPPORTED",
-        kind: "runtime",
-        message: "No supported Rspack HMR runtime was found in the compiled JavaScript loaded by the current page.",
-        hint: "Run `divebell rstack hmr inspect` and confirm the page is a development build with HMR enabled.",
-        details: { warnings: discovery.warnings }
-      });
-    }
-
     const reactRefreshPreflight = await collectReactRefreshPreflight(
       debug,
       options.divebell.browser,
@@ -146,6 +129,23 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
         message: "HMR observation cannot become ready because no compatible development ReactDOM renderer is available for React Fast Refresh.",
         hint: "Inspect reactRefreshPreflight: load development ReactDOM after the global hook is installed, then mount the React root and retry.",
         details: reactRefreshPreflight
+      });
+    }
+
+    const discovery = await discoverRstackProfiles(debug);
+    const hmrRuntimes = discovery.runtimes.filter((runtime) =>
+      runtime.kind === "rspack-hmr" && runtime.sessionId === selected.sessionId
+    );
+    const selectedProbes = discovery.probes.filter((probe) =>
+      probe.sessionId === selected.sessionId
+    );
+    if (hmrRuntimes.length === 0) {
+      throw rstackError({
+        code: "RSTACK_HMR_PROFILE_UNSUPPORTED",
+        kind: "runtime",
+        message: "No supported Rspack HMR runtime was found in the compiled JavaScript loaded by the current page.",
+        hint: "Run `divebell rstack hmr inspect` and confirm the page is a development build with HMR enabled.",
+        details: { warnings: discovery.warnings }
       });
     }
 

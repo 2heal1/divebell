@@ -131,6 +131,22 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
     /## `--report` return[\s\S]*code-usage[\s\S]*universal size threshold/
   );
   assert.match(
+    performance,
+    /additive field in the existing report schema[\s\S]*swimlane or timing diagram/
+  );
+  assert.match(
+    performance,
+    /Timeline presentation example[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/
+  );
+  assert.match(
+    performance,
+    /Label[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omit the[\s\S]*entire lane[\s\S]*Preserve observed overlap/
+  );
+  assert.match(
+    performance,
+    /Ordinary page preload resources are omitted[\s\S]*does not create an MF preload lane/
+  );
+  assert.match(
     shared,
     /Multiple registered or unloaded[\s\S]*do not by[\s\S]*themselves prove a conflict/
   );

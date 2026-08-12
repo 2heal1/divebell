@@ -6,15 +6,29 @@ export type PageLcpStatus = "provisional" | "final" | "not-observed";
 export interface ModulePerformancePageSnapshot {
   timeOrigin: number;
   url: string;
+  document?: ModulePerformanceDocumentTiming;
   fp?: number;
   fcp?: number;
   lcp?: number;
   lcpStatus: PageLcpStatus;
 }
 
+export interface ModulePerformanceDocumentTiming {
+  start: number;
+  responseStart?: number;
+  end: number;
+  duration: number;
+}
+
+export type ModulePerformanceResourceDeclaration =
+  | "script"
+  | "preload"
+  | "modulepreload";
+
 export interface ModulePerformanceResourceSnapshot {
   url: string;
   initiatorType: string;
+  declarations?: ModulePerformanceResourceDeclaration[];
   start: number;
   end: number;
   duration: number;
@@ -58,9 +72,32 @@ export interface ModulePerformanceRemoteEntryInterval
 
 export interface ModulePerformanceTiming {
   loadRemote: ModulePerformanceInterval;
+  manifest?: ModulePerformanceInterval;
   remoteEntry?: ModulePerformanceRemoteEntryInterval;
+  containerInit?: ModulePerformanceInterval;
   get?: ModulePerformanceInterval;
   factory?: ModulePerformanceInterval;
+}
+
+export type ModulePerformancePreloadInitiator =
+  | "preloadRemote"
+  | "link-preload"
+  | "modulepreload";
+
+export type ModulePerformancePreloadAssetRole =
+  | "remoteEntry"
+  | "expose-sync"
+  | "expose-async"
+  | "remote-js";
+
+export interface ModulePerformancePreloadTiming {
+  asset: string;
+  role: ModulePerformancePreloadAssetRole;
+  initiators: ModulePerformancePreloadInitiator[];
+  start: number;
+  end?: number;
+  duration?: number;
+  outcome?: "success" | "error" | "timeout" | "cached" | "recovered";
 }
 
 export interface ModulePerformanceAssetTiming {
@@ -134,6 +171,7 @@ export interface ModulePerformanceOperation {
   outcome: Exclude<RemoteTraceOutcome, "unavailable">;
   timing: ModulePerformanceTiming;
   manifest: ModulePerformanceManifest;
+  preloadJs: ModulePerformancePreloadTiming[];
   pageImpact: ModulePerformancePageImpact;
   bottleneck: ModulePerformanceBottleneck;
   findings: ModulePerformanceFinding[];
@@ -168,7 +206,13 @@ export interface ModulePerformanceResult {
   schemaVersion: 1;
   command: "mf module-perf";
   observedAt: number;
-  page: Omit<ModulePerformancePageSnapshot, "timeOrigin" | "url">;
+  page: Omit<ModulePerformancePageSnapshot, "timeOrigin" | "url"> & {
+    clock?: {
+      origin: "navigationStart";
+      unit: "ms";
+    };
+    scripts?: ModulePerformanceResourceSnapshot[];
+  };
   selection: {
     target?: string;
     name?: string;
@@ -190,8 +234,61 @@ export interface ModulePerformanceReportOperation {
   pageImpact: ModulePerformancePageImpact;
   remoteEntry?: ModulePerformanceManifest["remoteEntryResource"];
   exposeAssets: ModulePerformanceAssetTiming[];
+  preloadJs: ModulePerformancePreloadTiming[];
   bottleneck: ModulePerformanceBottleneck;
   findings: ModulePerformanceFinding[];
+}
+
+export interface ModulePerformanceTimelineMarker {
+  id: "fp" | "fcp" | "lcp";
+  label: "FP" | "FCP" | "LCP";
+  at: number;
+  status?: PageLcpStatus;
+}
+
+export type ModulePerformanceTimelineStatus =
+  | ModulePerformanceOperation["outcome"]
+  | NonNullable<ModulePerformancePreloadTiming["outcome"]>;
+
+export interface ModulePerformanceTimelinePoint {
+  id: string;
+  type: "point";
+  label: string;
+  at: number;
+  source: "browser" | "module-federation";
+  status?: ModulePerformanceTimelineStatus;
+}
+
+export interface ModulePerformanceTimelineSpan {
+  id: string;
+  type: "span";
+  label: string;
+  start: number;
+  end?: number;
+  duration?: number;
+  source: "browser" | "module-federation";
+  status?: ModulePerformanceTimelineStatus;
+}
+
+export type ModulePerformanceTimelineItem =
+  | ModulePerformanceTimelinePoint
+  | ModulePerformanceTimelineSpan;
+
+export interface ModulePerformanceTimelineLane {
+  id: string;
+  kind: "page" | "page-script" | "mf-consumer" | "mf-provider" | "mf-preload";
+  label: string;
+  items: ModulePerformanceTimelineItem[];
+}
+
+export interface ModulePerformanceTimeline {
+  schemaVersion: 1;
+  clock: {
+    origin: "navigationStart";
+    unit: "ms";
+  };
+  markers: ModulePerformanceTimelineMarker[];
+  lanes: ModulePerformanceTimelineLane[];
 }
 
 export interface ModulePerformanceReportRecommendation {
@@ -231,6 +328,7 @@ export interface ModulePerformanceReport {
     page: ModulePerformanceResult["page"];
     selection: ModulePerformanceResult["selection"];
     summary: ModulePerformanceResult["summary"];
+    timeline?: ModulePerformanceTimeline;
     modules: ModulePerformanceReportModule[];
     unobservedRemotes: ModulePerformanceUnobservedRemote[];
     recommendations: ModulePerformanceReportRecommendation[];

@@ -21,6 +21,10 @@ Bridge traces, are omitted from successful command output. When evidence is
 incomplete or unavailable, state and trace commands keep the useful reason in
 `warnings` and the next step in `recommendedActions`. `module-perf` instead
 uses its existing outcome, status, match, unobserved, and evidence fields.
+`module-perf --report` also returns a navigation-relative timeline with page
+paint markers and MF consumer/provider lanes. Its optional MF preload lane is
+limited to JavaScript attributed to the selected Remote/expose; unrelated page
+preloads are omitted.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path

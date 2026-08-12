@@ -84,6 +84,13 @@ than runtime memory.
 start, not durations of the paint operation itself and not wall-clock
 timestamps.
 
+When available, `page.clock` identifies `navigationStart` as the shared origin,
+and `page.document` gives the main HTML response interval from browser
+Navigation Timing. `page.scripts` contains external script resources that were
+still declared by `script[src]` when the snapshot was read. Their position on
+the same clock is observed browser evidence; it does not prove that one of
+those scripts initialized MF or triggered a particular `loadRemote` call.
+
 - `fp`: first paint.
 - `fcp`: first contentful paint.
 - `lcp`: latest observed largest contentful paint.
@@ -108,6 +115,8 @@ clock as page paint:
   `recovered`, `error`, `pending`, and `unknown` preserve MF's observed result.
   A pending operation has no `end`; its `duration` is elapsed time at the point
   of observation rather than a completed duration.
+- `manifest.start`, `end`, `duration`: the Manifest or deployment snapshot
+  resolution observed inside the selected MF trace.
 - `remoteEntry.start`, `end`, `duration`: the complete observed remoteEntry
   request lifecycle. It can include redirects, browser scheduling, connection,
   server wait, and transfer; it is not a download-only duration.
@@ -115,6 +124,9 @@ clock as page paint:
   module's wait after `loadRemote.start` and before both `get.start` and
   `loadRemote.end` where those boundaries are available. This is `0` when a
   preload or another non-blocking request completed outside that wait.
+- `containerInit.start`, `end`, `duration`: initialization of the selected
+  provider container, from the official `beforeInitRemote`/`afterInitRemote`
+  lifecycle. This is not consumer-runtime initialization.
 - `get.start`, `end`, `duration`: from immediately before the container expose
   `get` call until it returns. This includes synchronous expose chunks that the
   generated container waits for.
@@ -172,6 +184,20 @@ the expose. Each asset has:
   `cache-or-service-worker` deliberately does not claim which of those paths
   supplied a zero-transfer response. Missing sizes can be caused by
   cross-origin timing restrictions and must not be read as zero.
+
+`preloadJs` contains only JavaScript that can be attributed to this MF target:
+
+- official `preloadRemote` JavaScript from the same consumer, Remote, and
+  compatible expose; or
+- a browser `preload`/`modulepreload` resource that matches the target's
+  Manifest remoteEntry or expose asset.
+
+`initiators` says which of these mechanisms was observed. `role` distinguishes
+`remoteEntry`, synchronous expose assets, asynchronous expose assets, and
+Remote JavaScript observed through official MF preload evidence without a
+matching Manifest asset. Ordinary page preload resources are omitted. When no
+attributed MF preload JavaScript exists, `preloadJs` is empty and the report
+does not create an MF preload lane.
 
 ## Page impact
 
@@ -237,6 +263,10 @@ report
   page
   selection
   summary
+  timeline
+    clock
+    markers[]
+    lanes[]
   modules[]
     consumer
     remote
@@ -248,11 +278,65 @@ report
       pageImpact
       remoteEntry
       exposeAssets[]
+      preloadJs[]
       bottleneck
       findings[]
   unobservedRemotes[]
   recommendations[]
 ```
+
+`timeline` is an additive field in the existing report schema and is present
+when the page performance collector supplied a navigation-relative clock. Its
+lane kinds are:
+
+- `page`: navigation start and the main HTML response interval;
+- `page-script`: observed external script resources, excluding JavaScript
+  attributed to the selected MF modules;
+- `mf-consumer`: the official `loadRemote` interval. Do not rename this to
+  consumer initialization because the current MF evidence has no consumer-init
+  boundary;
+- `mf-provider`: Manifest, remoteEntry, provider container initialization,
+  expose get/synchronous chunks, factory execution, and the final MF result;
+  and
+- `mf-preload`: attributed MF preload JavaScript only. The lane is omitted when
+  there is no such evidence.
+
+`markers` places FP, FCP, and the latest observed LCP on the same clock. LCP
+keeps its provisional/final status. Render these markers across the lanes and
+render spans in chronological proportion. Prefer a swimlane or timing diagram
+over a simple arrow chain because page scripts, MF resources, and preload
+resources can overlap. Do not draw a causal arrow between browser resources
+and MF events unless the report contains explicit evidence for that relation.
+
+### Timeline presentation example
+
+Render a result in a compact form similar to this. The labels contain the
+authoritative times; horizontal spacing illustrates chronological order and
+overlap.
+
+```text
+navigationStart = 0 ms
+
+time (ms)       0          100          200          300          400          500
+Paint                                 │ FP 142 ms    │ FCP 231 ms               │ LCP 480 ms
+Page            ● Visit URL
+                [ Main HTML response 0–84 ms ]
+Page scripts               [ main.js 91–219 ms              ]
+MF preload                   [ Button.js 110–176 ms ]
+MF consumer                                      [ loadRemote 190–338 ms           ]
+MF provider                                      [ Manifest 192–205 ms ]
+                                                    [ remoteEntry 205–267 ms ]
+                                                                  [ container init 267–272 ms ]
+                                                                   [ get/chunks 272–329 ms     ]
+                                                                                 [ factory 329–337 ms ] ● module loaded 338 ms
+```
+
+Read every boundary from `timeline`; never estimate a missing value. Paint
+markers show temporal relationships, not proof that MF caused a paint. Label
+the consumer interval `loadRemote`, not consumer initialization. Include the
+`MF preload` lane only when an `mf-preload` lane exists; otherwise omit the
+entire lane. Preserve observed overlap instead of converting it into a serial
+arrow chain.
 
 `report.page`, `report.selection`, and `report.summary` preserve the normal
 page anchors and selected scope. Every `report.modules` entry keeps one

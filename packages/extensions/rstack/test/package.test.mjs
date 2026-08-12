@@ -23,6 +23,10 @@ test("publishes a self-contained Extension runtime and its command skill", async
     const source = await readFile(join(distDirectory.pathname, name), "utf8");
     assert.doesNotMatch(source, /from ["']@divebell\/cli["']/u);
   }
+  const definition = (await import("../dist/extension.js")).default;
+  assert.equal(definition.requires, undefined);
+  assert.equal(typeof definition.hooks?.open, "function");
+  assert.equal(typeof definition.hooks?.detectStack, "function");
 });
 
 test("packed archive supports real package-name imports", () => {

@@ -1,6 +1,7 @@
 import type { DivebellBrowserConsoleEntry } from "@divebell/cli";
 
 import { currentOutcome, reduceCycles, refreshSummary } from "./reducer.js";
+import { unavailableReactRefreshPreflight } from "./react-refresh-preflight.js";
 import { compareState } from "./state-check.js";
 import type {
   HmrOutcome,
@@ -10,6 +11,8 @@ import type {
   SharedProviderEvidence,
   StateCheckValue
 } from "./types.js";
+
+export const PAGE_RELOAD_SETTLE_MS = 1_000;
 
 export interface CreateHmrResultOptions {
   mf: {
@@ -40,6 +43,9 @@ export function createHmrResult(
   const reloadRequested = observation.events.some((event) =>
     event.type === "reload.requested"
   );
+  const documentCommitted = observation.events.some((event) =>
+    event.type === "document.committed"
+  );
   const gaps = observation.events
     .filter((event) => event.type === "evidence.gap")
     .map((event) => ({
@@ -51,6 +57,7 @@ export function createHmrResult(
     || observation.expectations.noReload
     || observation.stateCheck !== undefined;
   const terminal = (outcome !== "incomplete" || options.timedOut === true)
+    && (outcome !== "applied" || pageReloadSettled(observation, Date.now()))
     && (observation.stateCheck === undefined || options.stateAfter !== undefined);
   const failures = expectationFailures(observation, {
     outcome,
@@ -69,15 +76,13 @@ export function createHmrResult(
   if (reloadRequested && outcome !== "reloaded") {
     warnings.push("A page reload was requested, but a new document commit was not observed yet.");
   }
-  if (options.mf.runtime.status === "unavailable") {
-    warnings.push(
-      options.mf.runtime.reason
-      ?? "Module Federation runtime ownership evidence is unavailable."
-    );
-  }
   if (observation.runtimes.every((runtime) => runtime.kind !== "react-refresh")) {
     warnings.push("No supported compiled React Refresh runtime was observed.");
   }
+  const reactRefreshPreflight = observation.reactRefreshPreflight
+    ?? unavailableReactRefreshPreflight(
+      "The observation was created before React Refresh preflight evidence was recorded."
+    );
 
   return {
     schemaVersion: 1,
@@ -98,14 +103,31 @@ export function createHmrResult(
       rspackHmr: observation.runtimes.some((runtime) => runtime.kind === "rspack-hmr")
         ? "observed"
         : "unsupported",
-      reactRefresh: observation.runtimes.some((runtime) => runtime.kind === "react-refresh")
+      reactRefreshRuntime: observation.runtimes.some((runtime) => runtime.kind === "react-refresh")
         ? "observed"
         : "not-observed",
+      refreshRenderer: reactRefreshPreflight.refreshRenderer.status,
       compileErrors: "console-fallback",
       moduleFederation: options.mf.runtime.status
     },
     runtimes: observation.runtimes,
     cycles,
+    pageReload: {
+      status: gaps.length > 0
+        ? "unknown"
+        : documentCommitted
+          ? "reloaded"
+          : reloadRequested
+            ? "requested"
+            : outcome === "applied"
+              && pageReloadSettled(observation, Date.now())
+              ? "same-document"
+              : "not-observed",
+      requested: reloadRequested,
+      documentCommitted,
+      settleWindowMs: PAGE_RELOAD_SETTLE_MS
+    },
+    reactRefreshPreflight,
     refresh,
     statePreservation: {
       status: stateStatus,
@@ -118,7 +140,7 @@ export function createHmrResult(
     recommendedActions: recommendedActions({
       outcome,
       refresh,
-      mf: options.mf.runtime,
+      refreshRenderer: reactRefreshPreflight.refreshRenderer.status,
       gaps: gaps.length > 0
     })
   };
@@ -126,7 +148,8 @@ export function createHmrResult(
 
 export function resultShouldFinish(
   result: HmrResult,
-  observation: ObservationManifest
+  observation: ObservationManifest,
+  now = Date.now()
 ): boolean {
   if (["unknown", "reloaded", "failed", "aborted", "no-update"].includes(result.outcome)) {
     return true;
@@ -136,10 +159,25 @@ export function resultShouldFinish(
     event.type === "refresh.boundary-refresh"
   );
   if (refreshWasQueued && !result.refresh.completed) return false;
-  if (!observation.expectations.refresh) return true;
-  return result.refresh.completed
+  const refreshFinished = !observation.expectations.refresh
+    || result.refresh.completed
     || result.refresh.boundary === "invalidated"
     || result.refresh.boundary === "non-boundary";
+  if (!refreshFinished) return false;
+  return pageReloadSettled(observation, now);
+}
+
+function pageReloadSettled(
+  observation: ObservationManifest,
+  now: number
+): boolean {
+  const lastTerminalAt = Math.max(0, ...observation.events
+    .filter((event) =>
+      (event.type === "hmr.status" && event.status === "idle")
+      || event.type === "refresh.completed"
+    )
+    .map((event) => event.timestamp));
+  return lastTerminalAt > 0 && now - lastTerminalAt >= PAGE_RELOAD_SETTLE_MS;
 }
 
 function expectationFailures(
@@ -245,7 +283,7 @@ function findNewCompileError(
 function recommendedActions(input: {
   outcome: HmrOutcome;
   refresh: HmrResult["refresh"];
-  mf: MfRuntimeEvidence;
+  refreshRenderer: HmrResult["capabilities"]["refreshRenderer"];
   gaps: boolean;
 }): string[] {
   const actions: string[] = [];
@@ -258,8 +296,14 @@ function recommendedActions(input: {
   if (input.refresh.boundary === "invalidated" || input.refresh.boundary === "non-boundary") {
     actions.push("Inspect the changed module exports; React Refresh invalidated the previous boundary.");
   }
-  if (input.mf.status === "unavailable") {
-    actions.push("Reopen the page with `divebell open <url> --mf` to capture MF runtime and shared React evidence.");
+  if (input.refreshRenderer === "react-dom-production") {
+    actions.push("Use a development ReactDOM build for the renderer that owns the mounted root; production ReactDOM does not expose React Refresh scheduling hooks.");
+  } else if (input.refreshRenderer === "hook-missing") {
+    actions.push("Install the React Refresh global hook before ReactDOM is evaluated.");
+  } else if (input.refreshRenderer === "hook-incompatible") {
+    actions.push("Use an enabled React DevTools global hook that supports Fiber before ReactDOM is evaluated.");
+  } else if (input.refreshRenderer === "renderer-missing") {
+    actions.push("Reload with the React Refresh global hook installed before ReactDOM so the renderer can register with it.");
   }
   return unique(actions);
 }

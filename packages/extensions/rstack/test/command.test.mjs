@@ -106,6 +106,33 @@ test("refuses to arm across a compilation failure race and cleans up probes", as
   }
 });
 
+test("fails Fast Refresh preflight before arming with production ReactDOM", async () => {
+  const home = await mkdtemp(join(tmpdir(), "divebell-rstack-refresh-preflight-"));
+  const previousHome = process.env.DIVEBELL_HOME;
+  process.env.DIVEBELL_HOME = home;
+  try {
+    const browser = new FakeBrowser({ reactDomBuild: "production" });
+    await assert.rejects(
+      async () => await runRstackCommand({
+        ...baseOptions(browser),
+        args: cliArgs(["rstack", "hmr", "start"], {
+          expect: "applied",
+          "expect-refresh": "true"
+        })
+      }),
+      (error) =>
+        error.code === "RSTACK_REFRESH_PRECONDITION_FAILED"
+        && error.details?.refreshRenderer?.status === "react-dom-production"
+    );
+    assert.equal(browser.probes.size, 0);
+    assert.equal(browser.enabled, false);
+  } finally {
+    if (previousHome === undefined) delete process.env.DIVEBELL_HOME;
+    else process.env.DIVEBELL_HOME = previousHome;
+    await rm(home, { recursive: true, force: true });
+  }
+});
+
 class FakeBrowser {
   constructor(options = {}) {
     this.enabled = false;
@@ -116,6 +143,7 @@ class FakeBrowser {
     this.observationId = undefined;
     this.runtimeId = undefined;
     this.armCompileError = options.armCompileError === true;
+    this.reactDomBuild = options.reactDomBuild;
     this.consoleCalls = 0;
   }
 
@@ -146,10 +174,34 @@ class FakeBrowser {
               line: 12,
               column: 3
             }]
+          : args[2] === "rendererPackageName" && this.reactDomBuild !== undefined
+            ? [{
+                scriptId: "script-react-dom",
+                sessionId: "cdp-page",
+                url: "http://localhost:3000/react-dom.js",
+                line: 1,
+                column: 1
+              }]
           : []
       });
     }
     if (args[0] === "source") {
+      if (args[1] === "script-react-dom") {
+        return json({
+          script: {
+            connectionGeneration: 2,
+            sessionId: "cdp-page",
+            documentGeneration: 1,
+            scriptId: "script-react-dom",
+            executionContextId: 7,
+            url: "http://localhost:3000/react-dom.js",
+            scriptInstanceKey: null
+          },
+          scriptSource: this.reactDomBuild === "production"
+            ? `var renderer={bundleType:0,version:"18.3.1",rendererPackageName:"react-dom"};`
+            : `var renderer={bundleType:1,version:"18.3.1",rendererPackageName:"react-dom"};`
+        });
+      }
       return json({
         script: {
           connectionGeneration: 2,
@@ -265,6 +317,29 @@ class FakeBrowser {
         warn: 0,
         error: entries.length
       }
+    };
+  }
+
+  async eval() {
+    if (this.reactDomBuild === "production") {
+      return {
+        status: "installed",
+        supportsFiber: true,
+        rendererCount: 1,
+        renderers: [{
+          id: "1",
+          packageName: "react-dom",
+          version: "18.3.1",
+          build: "production",
+          hasScheduleRefresh: false,
+          hasSetRefreshHandler: false
+        }]
+      };
+    }
+    return {
+      status: "missing",
+      rendererCount: 0,
+      renderers: []
     };
   }
 }

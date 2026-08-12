@@ -226,6 +226,18 @@ test("waits for a queued debounced React Refresh before completing", () => {
       moduleIds: ["./App"]
     }
   }, armed), false);
+  const completed = {
+    ...armed,
+    events: [
+      ...armed.events,
+      {
+        sequence: 12,
+        timestamp: 1012,
+        type: "refresh.completed",
+        runtimeId: "refresh-runtime"
+      }
+    ]
+  };
   assert.equal(resultShouldFinish({
     outcome: "applied",
     refresh: {
@@ -233,5 +245,57 @@ test("waits for a queued debounced React Refresh before completing", () => {
       completed: true,
       moduleIds: ["./App"]
     }
-  }, armed), true);
+  }, completed, 1012 + 1000), true);
+});
+
+test("does not complete applied HMR before the page reload settle window", () => {
+  const terminalAt = 10_000;
+  const armed = observation({
+    expectations: {
+      outcome: "applied",
+      refresh: false,
+      noReload: true
+    },
+    events: [{
+      sequence: 11,
+      timestamp: terminalAt,
+      type: "hmr.status",
+      runtimeId: "rspack-hmr-runtime",
+      status: "idle"
+    }]
+  });
+  const result = {
+    outcome: "applied",
+    refresh: {
+      boundary: "not-observed",
+      completed: false,
+      moduleIds: []
+    }
+  };
+  assert.equal(resultShouldFinish(result, armed, terminalAt + 999), false);
+  assert.equal(resultShouldFinish(result, armed, terminalAt + 1000), true);
+});
+
+test("a document commit overrides an earlier applied HMR cycle", () => {
+  const statuses = ["check", "prepare", "dispose", "apply", "idle"];
+  const reduced = appendDebugEvents(observation(), {
+    events: [
+      ...statuses.map((status, index) =>
+        hit(11 + index, "hmr.status", [{ expression: "newStatus", value: status }])
+      ),
+      {
+        sequence: 16,
+        timestamp: 1016,
+        type: "document-committed",
+        connectionGeneration: 2,
+        sessionId: "cdp-page",
+        documentGeneration: 2
+      }
+    ],
+    latestSequence: 16,
+    gap: false,
+    bufferGap: false,
+    transportGap: false
+  });
+  assert.equal(currentOutcome(reduced.events), "reloaded");
 });

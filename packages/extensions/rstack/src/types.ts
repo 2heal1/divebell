@@ -74,6 +74,53 @@ export interface HmrExpectations {
   noReload: boolean;
 }
 
+export type ReactDomBuildKind = "development" | "production" | "unknown";
+
+export interface ReactDomBuildEvidence {
+  status: "observed" | "not-observed" | "ambiguous";
+  builds: ReactDomBuildKind[];
+  scripts: Array<{
+    scriptId: string;
+    url: string;
+    build: ReactDomBuildKind;
+  }>;
+}
+
+export interface ReactRefreshHookEvidence {
+  status: "installed" | "missing" | "unavailable";
+  supportsFiber?: boolean;
+  disabled?: boolean;
+  rendererCount: number;
+  reason?: string;
+}
+
+export interface ReactRefreshRendererEvidence {
+  status:
+    | "ready"
+    | "react-dom-production"
+    | "hook-missing"
+    | "hook-incompatible"
+    | "renderer-missing"
+    | "renderer-incompatible"
+    | "not-observed"
+    | "ambiguous";
+  renderers: Array<{
+    id: string;
+    packageName?: string;
+    version?: string;
+    build: ReactDomBuildKind;
+    hasScheduleRefresh: boolean;
+    hasSetRefreshHandler: boolean;
+  }>;
+  reason: string;
+}
+
+export interface ReactRefreshPreflight {
+  reactDom: ReactDomBuildEvidence;
+  globalHook: ReactRefreshHookEvidence;
+  refreshRenderer: ReactRefreshRendererEvidence;
+}
+
 export interface StateCheckDefinition {
   checks: StateCheckItem[];
 }
@@ -160,6 +207,7 @@ export interface ObservationManifest {
   probes: InstalledProbe[];
   events: NormalizedEvent[];
   expectations: HmrExpectations;
+  reactRefreshPreflight?: ReactRefreshPreflight;
   consoleBaseline: unknown[];
   stateCheck?: StateCheckDefinition;
   beforeState?: StateCheckValue[];
@@ -175,12 +223,20 @@ export interface HmrResult {
   errorCode?: string;
   capabilities: {
     rspackHmr: "observed" | "unsupported";
-    reactRefresh: "observed" | "not-observed" | "unsupported";
+    reactRefreshRuntime: "observed" | "not-observed" | "unsupported";
+    refreshRenderer: ReactRefreshRendererEvidence["status"];
     compileErrors: "console-fallback";
     moduleFederation: MfRuntimeEvidence["status"];
   };
   runtimes: RuntimeCandidate[];
   cycles: HmrCycle[];
+  pageReload: {
+    status: "not-observed" | "same-document" | "requested" | "reloaded" | "unknown";
+    requested: boolean;
+    documentCommitted: boolean;
+    settleWindowMs: number;
+  };
+  reactRefreshPreflight: ReactRefreshPreflight;
   refresh: {
     boundary: "refreshed" | "queued" | "invalidated" | "non-boundary" | "not-observed";
     completed: boolean;

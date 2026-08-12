@@ -13,6 +13,7 @@ import {
 } from "./mf-evidence.js";
 import { ObservationStore } from "./observation-store.js";
 import { discoverRstackProfiles } from "./profiles.js";
+import { collectReactRefreshPreflight } from "./react-refresh-preflight.js";
 import { appendDebugEvents } from "./reducer.js";
 import { createHmrResult, resultShouldFinish } from "./report.js";
 import { captureState, loadStateCheck } from "./state-check.js";
@@ -70,11 +71,17 @@ async function inspectHmr(options: CliExtensionRunOptions): Promise<unknown> {
     const runtimes = discovery.runtimes.filter((runtime) =>
       runtime.sessionId === selected.sessionId
     );
+    const reactRefreshPreflight = await collectReactRefreshPreflight(
+      debug,
+      options.divebell.browser,
+      selected.sessionId
+    );
     return {
       schemaVersion: 1,
       command: "rstack hmr inspect",
       supported: runtimes.some((runtime) => runtime.kind === "rspack-hmr"),
       runtimes,
+      reactRefreshPreflight,
       probes: discovery.probes.filter((probe) =>
         probe.sessionId === selected.sessionId
       ),
@@ -121,6 +128,24 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
         message: "No supported Rspack HMR runtime was found in the compiled JavaScript loaded by the current page.",
         hint: "Run `divebell rstack hmr inspect` and confirm the page is a development build with HMR enabled.",
         details: { warnings: discovery.warnings }
+      });
+    }
+
+    const reactRefreshPreflight = await collectReactRefreshPreflight(
+      debug,
+      options.divebell.browser,
+      selected.sessionId
+    );
+    if (
+      expectations.refresh
+      && reactRefreshPreflight.refreshRenderer.status !== "ready"
+    ) {
+      throw rstackError({
+        code: "RSTACK_REFRESH_PRECONDITION_FAILED",
+        kind: "runtime",
+        message: "React Fast Refresh cannot be armed because no compatible development ReactDOM renderer is ready.",
+        hint: "Inspect reactRefreshPreflight: load development ReactDOM after the global hook is installed, then mount the React root and retry.",
+        details: reactRefreshPreflight
       });
     }
 
@@ -173,6 +198,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       probes: installed,
       events: [],
       expectations,
+      reactRefreshPreflight,
       consoleBaseline: initialConsole,
       ...(stateCheck === undefined ? {} : { stateCheck }),
       ...(beforeState === undefined ? {} : { beforeState })
@@ -212,6 +238,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       ).length,
       probeCount: observation.probes.length,
       expectations,
+      reactRefreshPreflight,
       nextCommand: `divebell rstack hmr wait ${observationId} --timeout ${DEFAULT_WAIT_TIMEOUT}`,
       warnings: discovery.warnings
     };

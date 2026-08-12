@@ -14,15 +14,25 @@ read source maps or accept TypeScript source locations.
 
 ## Required order
 
-1. Open the development page. Add `--mf` when Module Federation ownership and
-   shared React evidence are required.
-2. Run `divebell rstack hmr inspect` if compatibility is not known.
-3. Run `divebell rstack hmr start ...` and wait until it returns `status:
+1. Open the development page after installing the Rstack Extension. This lets
+   its document-start Hook record transient `script[data-rspack]` evidence.
+   Add `--mf` when Module Federation ownership and shared React evidence are
+   required.
+2. Run `divebell stack --refresh`. Continue with the Rstack workflow only when
+   it reports `id: "rspack-hmr"` from Rspack-specific script or compiled
+   runtime evidence plus a compatible HMR runtime.
+3. Run `divebell rstack hmr inspect` if compatibility is not known.
+4. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "armed"`.
-4. Only after `armed`, change the source file.
-5. Run `divebell rstack hmr wait <observation-id> --timeout 15000`.
-6. Run `divebell rstack hmr stop <observation-id>` when no more evidence is
+5. Only after `armed`, change the source file.
+6. Run `divebell rstack hmr wait <observation-id> --timeout 15000`.
+7. Run `divebell rstack hmr stop <observation-id>` when no more evidence is
    needed.
+
+Do not infer Rstack from the generic HMR state-machine fingerprint alone; it is
+also present in Webpack. The stack detector requires either a transient
+`script[data-rspack]` observed from document start or the corresponding
+`setAttribute("data-rspack", ...)` marker in loaded compiled JavaScript.
 
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.
@@ -37,6 +47,22 @@ does not mean a source edit was detected or that an HMR cycle succeeded.
 Use `--expect applied` to require a complete apply-to-idle path. Add
 `--expect-refresh` for a compatible React Refresh boundary and completed
 refresh call. Add `--expect-no-reload` to reject reload fallback.
+
+Before arming React Refresh, read `reactRefreshPreflight` in this order:
+
+1. `reactDom` identifies the loaded development/production renderer builds;
+2. `globalHook` reports whether the React DevTools global hook exists;
+3. `refreshRenderer` reports renderer registration and required Refresh
+   scheduling helpers.
+
+Production ReactDOM and a missing/late global hook are different failures.
+Production ReactDOM exposes no Refresh scheduling helpers. A development
+ReactDOM evaluated before the hook may also be absent from the hook's renderer
+registry.
+
+Plain Rspack HMR does not require React, React Refresh, Bridge, or Module
+Federation. React Refresh is an additional result, never the definition of
+whether the module HMR cycle applied.
 
 To verify page state, pass a JSON file through `--state-check`:
 
@@ -65,6 +91,13 @@ Keep these identities separate in every conclusion:
 A Remote using React supplied by the Host does not make the Host the owner of
 the Remote's HMR update. Missing or ambiguous MF evidence must remain
 `unavailable`, `not-observed`, or `ambiguous`.
+
+## Page reload boundary
+
+Treat a main-document commit as `reloaded`, even if an apply-to-idle HMR path
+was observed first. The command waits through its page-reload settle window
+before returning applied success. Do not use DOM changes, React renders, or
+Bridge lifecycle calls as evidence that the page stayed in the same document.
 
 ## Failure follow-up
 

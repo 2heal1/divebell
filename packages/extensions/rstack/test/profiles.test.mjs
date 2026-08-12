@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   discoverProfilesInSource,
-  locationAt
+  locationAt,
+  reactDomBuildsInSource
 } from "../dist/index.js";
 
 const script = {
@@ -102,4 +103,18 @@ test("compiled locations use one-based UTF-16 columns", () => {
     line: 1,
     column: unicode.slice(0, index).length + 1
   });
+});
+
+test("classifies development and production ReactDOM before renderer readiness", () => {
+  assert.deepEqual(reactDomBuildsInSource(`
+    injectIntoDevTools({
+      bundleType: 1,
+      version: ReactVersion,
+      rendererPackageName: 'react-dom'
+    });
+  `), ["development"]);
+  assert.deepEqual(reactDomBuildsInSource(`
+    var renderer = {bundleType:0,version:"18.3.1",rendererPackageName:"react-dom"};
+    var internals = {scheduleRefresh:null,setRefreshHandler:null};
+  `), ["production"]);
 });

@@ -10,7 +10,6 @@ const extension = {
   name: "rstack",
   displayName: "Rstack HMR",
   description: "Observe Rspack HMR and React Refresh in the compiled JavaScript loaded by the current Chromium page.",
-  requires: ["mf"],
   commands: [{
     name: "rstack",
     skill: { path: skillPath },
@@ -42,7 +41,16 @@ const extension = {
       }
     ],
     run: async (options) => await (await import("./index.js")).runRstackCommand(options)
-  }]
+  }],
+  hooks: {
+    open: async () =>
+      await (await import("./open.js")).openRstackStackDetection(),
+    detectStack: async ({ divebell }) =>
+      await (await import("./detect-stack.js")).detectRstackStack(
+        divebell,
+        "rstack"
+      )
+  }
 } satisfies DivebellExtensionDefinition;
 
 export default extension;

@@ -5,13 +5,32 @@ compiled JavaScript loaded by Chromium. The Extension does not require source
 maps and does not integrate `@divebell/core` into the application or
 `@rspack/plugin-react-refresh`.
 
-Install both the Rstack and MF Extensions, then open the page:
+Install the Rstack Extension, then open the page. The MF Extension is optional
+and only adds runtime ownership and shared-provider evidence:
 
 ```sh
-divebell extensions add @divebell/extension-mf
 divebell extensions add @divebell/extension-rstack
-divebell open http://localhost:3000 --mf
+divebell open http://localhost:3000
+divebell stack --refresh
+divebell rstack hmr inspect
 ```
+
+The Rstack `open` Hook installs a document-start observer before application
+scripts run. It watches only direct children added to `<head>`, records the
+first transient `script[data-rspack]`, and disconnects on the first match or
+the document `load` event. Rspack removes these loader scripts after they
+settle, so querying the DOM later is not reliable. If no live insertion was
+observed, `stack` falls back to the loaded compiled runtime's
+`setAttribute("data-rspack", ...)` marker.
+
+Rstack is reported only when one of those Rspack-specific signals is paired
+with a compatible loaded HMR runtime. A generic Webpack-compatible HMR state
+machine by itself is not identified as Rstack. Use `stack --refresh` after
+upgrading this Extension or when the same page URL already has a cached stack
+result.
+
+Add `@divebell/extension-mf` and open with `--mf` only when Module Federation
+ownership or shared React evidence is needed.
 
 Arm before changing code:
 
@@ -36,6 +55,22 @@ The report keeps the HMR runtime, React Refresh runtime, changed module owner,
 and MF shared React provider as separate evidence. Shared `react` and
 `react-dom` traces are collected independently for every current MF consumer
 or mixed runtime instance.
+
+`inspect` reports React Fast Refresh preconditions in this order:
+
+1. loaded ReactDOM build (`development`, `production`, or ambiguous);
+2. whether `globalThis.__REACT_DEVTOOLS_GLOBAL_HOOK__` is installed;
+3. registered renderer build and the `scheduleRefresh` / `setRefreshHandler`
+   helpers.
+
+`start --expect-refresh` fails before arming when no compatible development
+ReactDOM renderer is ready. This does not block plain Rspack HMR observation.
+
+Page reload and module HMR are separate outcomes. After an apply-to-idle path,
+`wait` keeps observing for a short settle window. A main-document commit during
+that window produces `outcome: "reloaded"`; it cannot pass as applied HMR.
+`pageReload` separately reports a reload request and the observed document
+commit.
 
 Use `wait` with `--expect applied` for a pass/fail answer. On failure, rerun
 `status <observation-id> --verbose` to inspect the runtime-scoped status path,

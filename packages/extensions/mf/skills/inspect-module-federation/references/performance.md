@@ -308,6 +308,36 @@ over a simple arrow chain because page scripts, MF resources, and preload
 resources can overlap. Do not draw a causal arrow between browser resources
 and MF events unless the report contains explicit evidence for that relation.
 
+### Timeline presentation example
+
+Render a result in a compact form similar to this. The labels contain the
+authoritative times; horizontal spacing illustrates chronological order and
+overlap.
+
+```text
+navigationStart = 0 ms
+
+time (ms)       0          100          200          300          400          500
+Paint                                 │ FP 142 ms    │ FCP 231 ms               │ LCP 480 ms
+Page            ● Visit URL
+                [ Main HTML response 0–84 ms ]
+Page scripts               [ main.js 91–219 ms              ]
+MF preload                   [ Button.js 110–176 ms ]
+MF consumer                                      [ loadRemote 190–338 ms           ]
+MF provider                                      [ Manifest 192–205 ms ]
+                                                    [ remoteEntry 205–267 ms ]
+                                                                  [ container init 267–272 ms ]
+                                                                   [ get/chunks 272–329 ms     ]
+                                                                                 [ factory 329–337 ms ] ● module loaded 338 ms
+```
+
+Read every boundary from `timeline`; never estimate a missing value. Paint
+markers show temporal relationships, not proof that MF caused a paint. Label
+the consumer interval `loadRemote`, not consumer initialization. Include the
+`MF preload` lane only when an `mf-preload` lane exists; otherwise omit the
+entire lane. Preserve observed overlap instead of converting it into a serial
+arrow chain.
+
 `report.page`, `report.selection`, and `report.summary` preserve the normal
 page anchors and selected scope. Every `report.modules` entry keeps one
 complete consumer -> remote -> producer -> expose identity. Omit optional

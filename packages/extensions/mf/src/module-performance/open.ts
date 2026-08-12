@@ -38,6 +38,9 @@ export function isModulePerformanceBrowserSnapshot(
   }
   if (!optionalFinite(value.page.fp) || !optionalFinite(value.page.fcp) ||
       !optionalFinite(value.page.lcp)) return false;
+  if (value.page.document !== undefined && !isDocumentTiming(
+    value.page.document
+  )) return false;
   if (!["provisional", "final", "not-observed"].includes(
     String(value.page.lcpStatus)
   )) return false;
@@ -52,11 +55,22 @@ function isResource(value: unknown): boolean {
     value.url !== undefined && optionalString(value.initiatorType, 80) &&
     value.initiatorType !== undefined && finite(value.start) &&
     finite(value.end) && finite(value.duration) &&
+    (value.declarations === undefined || (
+      Array.isArray(value.declarations) && value.declarations.length <= 3 &&
+      value.declarations.every((item: unknown) =>
+        ["script", "preload", "modulepreload"].includes(String(item))
+      )
+    )) &&
     optionalFinite(value.transferSize) && optionalFinite(value.encodedBodySize) &&
     optionalFinite(value.decodedBodySize) &&
     (value.cache === undefined ||
       ["cache-or-service-worker", "network", "unknown"]
         .includes(String(value.cache)));
+}
+
+function isDocumentTiming(value: unknown): boolean {
+  return isRecord(value) && finite(value.start) && finite(value.end) &&
+    finite(value.duration) && optionalFinite(value.responseStart);
 }
 
 function isExpose(value: unknown): boolean {
@@ -134,6 +148,65 @@ function installModulePerformance(options: {
       .filter((item): item is string => item !== undefined))).slice(0, 200)
     : [];
 
+  const readDocumentTiming = () => {
+    let navigation: any;
+    try {
+      navigation = performance?.getEntriesByType?.("navigation")?.[0];
+    } catch {
+      return undefined;
+    }
+    if (navigation === undefined || !finiteNumber(navigation.responseEnd)) {
+      return undefined;
+    }
+    const start = finiteNumber(navigation.fetchStart)
+      ? navigation.fetchStart
+      : finiteNumber(navigation.startTime)
+        ? navigation.startTime
+        : 0;
+    const end = Math.max(start, navigation.responseEnd);
+    return {
+      start: Math.max(0, start),
+      ...(finiteNumber(navigation.responseStart)
+        ? { responseStart: Math.max(0, navigation.responseStart) }
+        : {}),
+      end,
+      duration: Math.max(0, end - start)
+    };
+  };
+
+  const readResourceDeclarations = () => {
+    const declarations = new Map<string, Set<string>>();
+    const add = (value: any, declaration: string) => {
+      const url = safeUrl(value);
+      if (url === undefined) return;
+      const current = declarations.get(url) ?? new Set<string>();
+      current.add(declaration);
+      declarations.set(url, current);
+    };
+    try {
+      for (const script of Array.from(root.document?.scripts ?? [])) {
+        add((script as any)?.src, "script");
+      }
+      for (const link of Array.from(
+        root.document?.querySelectorAll?.("link[rel][href]") ?? []
+      )) {
+        const element = link as any;
+        const relations = String(element?.rel ?? "").toLowerCase()
+          .split(/\s+/).filter(Boolean);
+        if (relations.includes("modulepreload")) {
+          add(element.href, "modulepreload");
+        }
+        if (relations.includes("preload") &&
+            String(element?.as ?? "").toLowerCase() === "script") {
+          add(element.href, "preload");
+        }
+      }
+    } catch {
+      // DOM declarations are optional evidence.
+    }
+    return declarations;
+  };
+
   let fp: number | undefined;
   let fcp: number | undefined;
   let lcp: number | undefined;
@@ -195,6 +268,7 @@ function installModulePerformance(options: {
     } catch {
       return [];
     }
+    const declarations = readResourceDeclarations();
     return entries.slice(-options.maxResources).flatMap((entry) => {
       const url = safeUrl(entry?.name);
       if (url === undefined || !finiteNumber(entry?.startTime) ||
@@ -215,9 +289,15 @@ function installModulePerformance(options: {
         : transferSize !== undefined && transferSize > 0
           ? "network"
           : undefined;
+      const declaredAs = url === undefined
+        ? undefined
+        : declarations.get(url);
       return [{
         url,
         initiatorType: safeText(entry.initiatorType, 80) ?? "unknown",
+        ...(declaredAs === undefined || declaredAs.size === 0
+          ? {}
+          : { declarations: Array.from(declaredAs).sort() }),
         start: Math.max(0, entry.startTime),
         end: Math.max(0, entry.responseEnd ?? entry.startTime + entry.duration),
         duration: Math.max(0, entry.duration),
@@ -285,12 +365,16 @@ function installModulePerformance(options: {
     installedAt: Date.now(),
     snapshot() {
       const documentHidden = root.document?.visibilityState === "hidden";
+      const documentTiming = readDocumentTiming();
       return {
         schemaVersion: 1,
         installedAt: this.installedAt,
         page: {
           timeOrigin,
           url: safeUrl(root.location?.href) ?? "",
+          ...(documentTiming === undefined
+            ? {}
+            : { document: documentTiming }),
           ...(fp === undefined ? {} : { fp }),
           ...(fcp === undefined ? {} : { fcp }),
           ...(lcp === undefined ? {} : { lcp }),

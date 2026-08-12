@@ -13,6 +13,7 @@ import { browserRead, instance } from "./fixtures.mjs";
 import {
   catalogRemote,
   loadTrace,
+  preloadTrace,
   stateWithConsumer
 } from "./remote-fixtures.mjs";
 
@@ -37,6 +38,10 @@ test("module performance attributes loadRemote, expose resources, and page impac
   );
 
   assert.deepEqual(result.page, {
+    clock: {
+      origin: "navigationStart",
+      unit: "ms"
+    },
     fp: 200,
     fcp: 500,
     lcp: 1200,
@@ -95,11 +100,13 @@ test("module performance report keeps a fixed producer and operation template", 
   );
   const report = createModulePerformanceReport(result);
 
+  assert.equal(report.schemaVersion, 1);
   assert.equal(report.command, "mf module-perf --report");
   assert.deepEqual(Object.keys(report.report), [
     "page",
     "selection",
     "summary",
+    "timeline",
     "modules",
     "unobservedRemotes",
     "recommendations"
@@ -117,9 +124,28 @@ test("module performance report keeps a fixed producer and operation template", 
     "pageImpact",
     "remoteEntry",
     "exposeAssets",
+    "preloadJs",
     "bottleneck",
     "findings"
   ]);
+  assert.deepEqual(report.report.timeline.markers, [{
+    id: "fp",
+    label: "FP",
+    at: 200
+  }, {
+    id: "fcp",
+    label: "FCP",
+    at: 500
+  }, {
+    id: "lcp",
+    label: "LCP",
+    at: 1200,
+    status: "provisional"
+  }]);
+  assert.deepEqual(
+    report.report.timeline.lanes.map((lane) => lane.kind),
+    ["page", "mf-consumer", "mf-provider"]
+  );
   assert.deepEqual(report.report.recommendations, [{
     id: "code-usage",
     severity: "info",
@@ -135,6 +161,160 @@ test("module performance report keeps a fixed producer and operation template", 
     reason: "Use Code Usage executed and unused-code evidence before changing code splitting; this is not proof that asset size caused the current bottleneck.",
     documentation: "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
   }]);
+});
+
+test("the report timeline aligns navigation, page scripts, paints, and MF phases", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceSnapshot();
+  performance.page.document = {
+    start: 0,
+    responseStart: 60,
+    end: 90,
+    duration: 90
+  };
+  performance.resources.push({
+    url: "https://app.test/main.js",
+    initiatorType: "script",
+    declarations: ["script"],
+    start: 70,
+    end: 180,
+    duration: 110
+  }, {
+    url: "https://app.test/catalog/Button.js",
+    initiatorType: "script",
+    declarations: ["script"],
+    start: 75,
+    end: 185,
+    duration: 110
+  });
+
+  const timeline = createModulePerformanceReport(
+    createModulePerformanceResult(parsed.snapshot, performance)
+  ).report.timeline;
+  const page = timeline.lanes.find((lane) => lane.kind === "page");
+  const scripts = timeline.lanes.find((lane) => lane.kind === "page-script");
+  const provider = timeline.lanes.find((lane) => lane.kind === "mf-provider");
+  assert.deepEqual(page.items, [{
+    id: "navigation-start",
+    type: "point",
+    label: "Visit URL",
+    at: 0,
+    source: "browser"
+  }, {
+    id: "main-document",
+    type: "span",
+    label: "Main HTML response",
+    start: 0,
+    end: 90,
+    duration: 90,
+    source: "browser"
+  }]);
+  assert.deepEqual(
+    scripts.items.map((item) => item.label),
+    ["main.js", "Button.js"]
+  );
+  assert.deepEqual(
+    provider.items.map((item) => item.label),
+    [
+      "Manifest",
+      "remoteEntry",
+      "Provider container init",
+      "Expose get / sync chunks",
+      "Module factory",
+      "Provider module loaded"
+    ]
+  );
+});
+
+test("the report shows only Manifest-attributed MF preload JavaScript", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceSnapshot();
+  performance.resources = [{
+    ...performance.resources[0],
+    declarations: ["modulepreload"]
+  }, {
+    url: "https://app.test/unrelated-preload.js",
+    initiatorType: "link",
+    declarations: ["preload"],
+    start: 20,
+    end: 40,
+    duration: 20
+  }];
+
+  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  const operation = result.modules[0].operations[0];
+  assert.deepEqual(operation.preloadJs, [{
+    asset: "https://cdn.test/catalog/Button.js",
+    role: "expose-sync",
+    initiators: ["modulepreload"],
+    start: 1027,
+    end: 1107,
+    duration: 80
+  }]);
+  const report = createModulePerformanceReport(result);
+  const preloadLanes = report.report.timeline.lanes.filter((lane) =>
+    lane.kind === "mf-preload"
+  );
+  assert.equal(preloadLanes.length, 1);
+  assert.match(preloadLanes[0].items[0].label, /Button\.js/);
+  assert.doesNotMatch(JSON.stringify(report), /unrelated-preload/);
+});
+
+test("official preloadRemote JavaScript creates an MF preload lane", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [preloadTrace({ base: 900 }), longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+
+  const result = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceSnapshot()
+  );
+  const operation = result.modules[0].operations[0];
+  assert.deepEqual(operation.preloadJs, [{
+    asset: "https://cdn.test/catalog/Button.js",
+    role: "expose-sync",
+    initiators: ["preloadRemote"],
+    start: 901,
+    end: 911,
+    duration: 10,
+    outcome: "success"
+  }]);
+  assert.ok(createModulePerformanceReport(result).report.timeline.lanes.some((lane) =>
+    lane.kind === "mf-preload"
+  ));
+});
+
+test("remote-wide preload evidence omits JavaScript not owned by the selected expose", () => {
+  const unrelated = preloadTrace({
+    base: 900,
+    resourceUrl: "https://cdn.test/catalog/Other.js"
+  });
+  delete unrelated.expose;
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [unrelated, longExposeTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+
+  const result = createModulePerformanceResult(
+    parsed.snapshot,
+    performanceSnapshot(),
+    { target: "shop/Button" }
+  );
+  assert.deepEqual(result.modules[0].operations[0].preloadJs, []);
+  assert.ok(createModulePerformanceReport(result).report.timeline.lanes.every((lane) =>
+    lane.kind !== "mf-preload"
+  ));
 });
 
 test("missing Manifest keeps loadRemote and measured get/factory timing explicit", () => {
@@ -379,6 +559,15 @@ test("the injected collector reads page, resources, and Manifest expose assets s
     transferSize: 0,
     encodedBodySize: 0,
     decodedBodySize: 0
+  }, {
+    name: "https://app.test/main.js?token=secret",
+    initiatorType: "script",
+    startTime: 12,
+    responseEnd: 26,
+    duration: 14,
+    transferSize: 800,
+    encodedBodySize: 700,
+    decodedBodySize: 1400
   }];
   const context = vm.createContext({
     URL,
@@ -386,12 +575,33 @@ test("the injected collector reads page, resources, and Manifest expose assets s
     performance: {
       timeOrigin: 1000,
       getEntriesByType(type) {
-        return type === "resource" ? resourceEntries : [];
+        if (type === "resource") return resourceEntries;
+        if (type === "navigation") return [{
+          startTime: 0,
+          fetchStart: 0,
+          responseStart: 8,
+          responseEnd: 11
+        }];
+        return [];
       },
       setResourceTimingBufferSize() {}
     },
     addEventListener() {},
-    document: { addEventListener() {}, visibilityState: "visible" }
+    document: {
+      addEventListener() {},
+      visibilityState: "visible",
+      scripts: [{ src: "https://app.test/main.js?token=secret" }],
+      querySelectorAll() {
+        return [{
+          rel: "modulepreload",
+          href: "https://cdn.test/catalog/Button.js?token=secret"
+        }, {
+          rel: "preload",
+          as: "script",
+          href: "https://opaque.test/catalog/Hidden.js"
+        }];
+      }
+    }
   });
   context.globalThis = context;
   context.window = context;
@@ -416,15 +626,30 @@ test("the injected collector reads page, resources, and Manifest expose assets s
   assert.equal(isModulePerformanceBrowserSnapshot(snapshot), true);
   assert.deepEqual(context.__FEDERATION__.__GLOBAL_PLUGIN__, []);
   assert.equal(snapshot.page.url, "https://app.test/page");
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.page.document)), {
+    start: 0,
+    responseStart: 8,
+    end: 11,
+    duration: 11
+  });
   assert.equal("interactions" in snapshot.page, false);
   assert.equal(snapshot.resources[0].url, "https://cdn.test/catalog/Button.js");
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot.resources[1])), {
     url: "https://opaque.test/catalog/Hidden.js",
     initiatorType: "script",
+    declarations: ["preload"],
     start: 30,
     end: 130,
     duration: 100
   });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(snapshot.resources[0].declarations)),
+    ["modulepreload"]
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(snapshot.resources[2].declarations)),
+    ["script"]
+  );
   assert.equal(snapshot.exposes[0].expose, "./Button");
   assert.doesNotMatch(JSON.stringify(snapshot), /secret/);
 });

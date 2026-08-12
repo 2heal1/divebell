@@ -37,6 +37,14 @@ cross-origin network phases that the browser does not expose are omitted.
 Page impact is expressed as signed start and end deltas between `loadRemote`
 and FP, FCP, and LCP; it does not infer a loading trigger or component render.
 
+`module-perf --report` additionally returns a navigation-relative swimlane
+timeline. It aligns the main HTML response, observed page scripts, FP/FCP/LCP,
+consumer `loadRemote`, and the provider Manifest, remoteEntry, container-init,
+get, factory, and result phases. An MF preload lane is included only for
+official `preloadRemote` JavaScript attributed to the same MF target or for a
+browser `preload`/`modulepreload` resource that matches that target's Manifest
+assets. Unrelated page preloads are not included.
+
 ## What the plugin provides
 
 The observability plugin records evidence for:

@@ -26,6 +26,8 @@ import type {
   ModulePerformanceModule,
   ModulePerformanceOperation,
   ModulePerformancePageImpact,
+  ModulePerformancePreloadAssetRole,
+  ModulePerformancePreloadTiming,
   ModulePerformanceResourceSnapshot,
   ModulePerformanceResult,
   ModulePerformanceSelectors,
@@ -39,6 +41,7 @@ interface ModuleGroup {
   remote: RuntimeRemote;
   expose?: string;
   traces: RemoteTraceSummary[];
+  preloadTraces: RemoteTraceSummary[];
 }
 
 const MEANINGFUL_DURATION = 50;
@@ -58,14 +61,7 @@ export function createModulePerformanceResult(
     schemaVersion: 1,
     command: "mf module-perf",
     observedAt: snapshot.state.observedAt,
-    page: performance === null
-      ? { lcpStatus: "not-observed" }
-      : {
-          ...(performance.page.fp === undefined ? {} : { fp: round(performance.page.fp) }),
-          ...(performance.page.fcp === undefined ? {} : { fcp: round(performance.page.fcp) }),
-          ...(performance.page.lcp === undefined ? {} : { lcp: round(performance.page.lcp) }),
-          lcpStatus: performance.page.lcpStatus
-        },
+    page: createPageResult(performance),
     selection: {
       ...(selectors.target === undefined ? {} : { target: selectors.target }),
       ...(selectors.name === undefined ? {} : { name: selectors.name }),
@@ -83,6 +79,47 @@ export function createModulePerformanceResult(
     },
     modules,
     unobservedRemotes
+  };
+}
+
+function createPageResult(
+  performance: ModulePerformanceBrowserSnapshot | null
+): ModulePerformanceResult["page"] {
+  if (performance === null) return { lcpStatus: "not-observed" };
+  const scripts = performance.resources.filter((resource) =>
+    resource.declarations?.includes("script")
+  ).map(roundResource);
+  const document = performance.page.document;
+  return {
+    clock: { origin: "navigationStart", unit: "ms" },
+    ...(document === undefined
+      ? {}
+      : {
+          document: {
+            start: round(document.start),
+            ...(document.responseStart === undefined
+              ? {}
+              : { responseStart: round(document.responseStart) }),
+            end: round(document.end),
+            duration: round(document.duration)
+          }
+        }),
+    ...(performance.page.fp === undefined ? {} : { fp: round(performance.page.fp) }),
+    ...(performance.page.fcp === undefined ? {} : { fcp: round(performance.page.fcp) }),
+    ...(performance.page.lcp === undefined ? {} : { lcp: round(performance.page.lcp) }),
+    lcpStatus: performance.page.lcpStatus,
+    ...(scripts.length === 0 ? {} : { scripts })
+  };
+}
+
+function roundResource(
+  resource: ModulePerformanceResourceSnapshot
+): ModulePerformanceResourceSnapshot {
+  return {
+    ...resource,
+    start: round(resource.start),
+    end: round(resource.end),
+    duration: round(resource.duration)
   };
 }
 
@@ -125,7 +162,8 @@ function collectGroups(
         producer,
         remote,
         ...(trace.expose === undefined ? {} : { expose: trace.expose }),
-        traces: [trace]
+        traces: [trace],
+        preloadTraces: []
       });
     } else {
       existing.traces.push(trace);
@@ -136,7 +174,29 @@ function collectGroups(
   for (const group of groups) {
     group.traces.sort((left, right) => left.startedAt - right.startedAt);
   }
+  for (const report of snapshot.reports) {
+    if (!isRemoteTraceReport(report, "preload") || report.remote === undefined) {
+      continue;
+    }
+    const trace = buildRemoteTrace(report, "preload");
+    for (const group of groups) {
+      if (preloadMatchesGroup(trace, group)) group.preloadTraces.push(trace);
+    }
+  }
+  for (const group of groups) {
+    group.preloadTraces.sort((left, right) => left.startedAt - right.startedAt);
+  }
   return groups;
+}
+
+function preloadMatchesGroup(
+  trace: RemoteTraceSummary,
+  group: ModuleGroup
+): boolean {
+  if (trace.remote === undefined || trace.instanceRef !== group.consumer.instanceRef ||
+      !remotesMatch(trace.remote, group.remote)) return false;
+  return trace.expose === undefined || group.expose === undefined ||
+    sameExpose(trace.expose, group.expose);
 }
 
 function createModule(
@@ -162,6 +222,12 @@ function createOperation(
 ): ModulePerformanceOperation {
   let timing = createTiming(trace, performance);
   const manifest = createManifest(group, timing, performance);
+  const preloadJs = createPreloadJs(
+    group.preloadTraces,
+    trace,
+    manifest,
+    performance
+  );
   timing = addRemoteEntryResourceTiming(timing, manifest);
   timing = addRemoteEntryBlockingTiming(timing);
   const pageImpact = createPageImpact(timing, performance);
@@ -172,6 +238,7 @@ function createOperation(
     outcome: trace.outcome,
     timing,
     manifest,
+    preloadJs,
     pageImpact,
     bottleneck,
     findings: createFindings(
@@ -197,12 +264,16 @@ function createTiming(
     trace.duration,
     timeOrigin
   );
+  const manifest = stageInterval(trace, "manifest", timeOrigin);
   const remoteEntry = stageInterval(trace, "remoteEntry", timeOrigin);
+  const containerInit = stageInterval(trace, "containerInit", timeOrigin);
   const get = stageInterval(trace, "expose", timeOrigin);
   const factory = stageInterval(trace, "factory", timeOrigin);
   return {
     loadRemote,
+    ...(manifest === undefined ? {} : { manifest }),
     ...(remoteEntry === undefined ? {} : { remoteEntry }),
+    ...(containerInit === undefined ? {} : { containerInit }),
     ...(get === undefined ? {} : { get }),
     ...(factory === undefined ? {} : { factory })
   };
@@ -308,6 +379,128 @@ function createManifest(
         }),
     assets
   };
+}
+
+function createPreloadJs(
+  preloadTraces: RemoteTraceSummary[],
+  loadTrace: RemoteTraceSummary,
+  manifest: ModulePerformanceManifest,
+  performance: ModulePerformanceBrowserSnapshot | null
+): ModulePerformancePreloadTiming[] {
+  if (performance === null) return [];
+  const timeOrigin = performance.page.timeOrigin;
+  const official = preloadTraces.filter((trace) =>
+    trace.startedAt <= loadTrace.startedAt
+  ).flatMap((preloadTrace) => {
+    const exactExpose = loadTrace.expose === undefined ||
+      (preloadTrace.expose !== undefined &&
+        sameExpose(preloadTrace.expose, loadTrace.expose));
+    return preloadTrace.stages.flatMap((stage) =>
+      stage.resources.flatMap((resource): ModulePerformancePreloadTiming[] => {
+        if (resource.initiator !== "preloadRemote" ||
+            !/^(?:js|script)$/i.test(resource.type) ||
+            resource.url === undefined) return [];
+        const role = preloadAssetRole(resource.url, manifest);
+        if (role === undefined && !exactExpose) return [];
+        return [{
+          asset: sanitizeUrl(resource.url) ?? resource.url,
+          role: role ?? "remote-js",
+          initiators: ["preloadRemote"],
+          start: round(relativeTime(resource.startedAt, timeOrigin)),
+          ...(resource.endedAt === undefined
+            ? {}
+            : { end: round(relativeTime(resource.endedAt, timeOrigin)) }),
+          ...(resource.duration === undefined
+            ? {}
+            : { duration: round(resource.duration) }),
+          ...(resource.outcome === undefined ? {} : { outcome: resource.outcome })
+        }];
+      })
+    );
+  });
+  const declared = performance.resources.flatMap((resource) => {
+    const preloadDeclarations = resource.declarations?.filter((declaration) =>
+      declaration === "preload" || declaration === "modulepreload"
+    ) ?? [];
+    if (preloadDeclarations.length === 0) return [];
+    const role = preloadAssetRole(resource.url, manifest);
+    if (role === undefined) return [];
+    return [{
+      asset: resource.url,
+      role,
+      initiators: preloadDeclarations.map((declaration) =>
+        declaration === "modulepreload" ? "modulepreload" : "link-preload"
+      ),
+      start: round(resource.start),
+      end: round(resource.end),
+      duration: round(resource.duration)
+    } satisfies ModulePerformancePreloadTiming];
+  });
+  return mergePreloadTimings([...official, ...declared]);
+}
+
+function preloadAssetRole(
+  resourceUrl: string,
+  manifest: ModulePerformanceManifest
+): ModulePerformancePreloadAssetRole | undefined {
+  if (manifest.status !== "available") return undefined;
+  const remoteEntryUrls = [
+    manifest.remoteEntryResource?.url,
+    ...assetUrls(manifest.remoteEntry ?? "", manifest.publicPath)
+  ].filter((value): value is string => value !== undefined && value.length > 0);
+  if (remoteEntryUrls.some((candidate) =>
+    resourcesMatch(resourceUrl, candidate)
+  )) return "remoteEntry";
+  for (const asset of manifest.assets) {
+    const candidates = [
+      asset.url,
+      ...assetUrls(asset.asset, manifest.publicPath)
+    ].filter((value): value is string => value !== undefined && value.length > 0);
+    if (candidates.some((candidate) => resourcesMatch(resourceUrl, candidate))) {
+      return asset.kind === "sync" ? "expose-sync" : "expose-async";
+    }
+  }
+  return undefined;
+}
+
+function resourcesMatch(left: string, right: string): boolean {
+  const sanitizedLeft = sanitizeUrl(left);
+  const sanitizedRight = sanitizeUrl(right);
+  return sanitizedLeft !== undefined && sanitizedRight !== undefined &&
+    (sanitizedLeft === sanitizedRight || sameResourcePath(sanitizedLeft, sanitizedRight));
+}
+
+function mergePreloadTimings(
+  values: ModulePerformancePreloadTiming[]
+): ModulePerformancePreloadTiming[] {
+  const merged: ModulePerformancePreloadTiming[] = [];
+  for (const value of values.sort((left, right) =>
+    left.start - right.start || left.asset.localeCompare(right.asset)
+  )) {
+    const existing = merged.find((candidate) =>
+      resourcesMatch(candidate.asset, value.asset) &&
+      Math.abs(candidate.start - value.start) <= 10
+    );
+    if (existing === undefined) {
+      merged.push(value);
+      continue;
+    }
+    existing.initiators = unique([
+      ...existing.initiators,
+      ...value.initiators
+    ]) as ModulePerformancePreloadTiming["initiators"];
+    if (existing.end === undefined && value.end !== undefined) existing.end = value.end;
+    if (existing.duration === undefined && value.duration !== undefined) {
+      existing.duration = value.duration;
+    }
+    if (existing.outcome === undefined && value.outcome !== undefined) {
+      existing.outcome = value.outcome;
+    }
+    if (existing.role === "remote-js" && value.role !== "remote-js") {
+      existing.role = value.role;
+    }
+  }
+  return merged;
 }
 
 function addRemoteEntryResourceTiming(

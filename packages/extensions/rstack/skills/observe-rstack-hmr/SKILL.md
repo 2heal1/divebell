@@ -22,8 +22,8 @@ read source maps or accept TypeScript source locations.
    page may be detected without an HMR runtime.
 3. Run `divebell rstack hmr inspect` if compatibility is not known.
 4. Run `divebell rstack hmr start ...` and wait until it returns `status:
-   "armed"`.
-5. Only after `armed`, change the source file.
+   "ready"` and `nextAction: "change-source"`.
+5. Only after `ready`, change the source file.
 6. Run `divebell rstack hmr wait <observation-id> --timeout 15000`.
 7. Run `divebell rstack hmr stop <observation-id>` when no more evidence is
    needed.
@@ -37,7 +37,7 @@ presence is separate capability evidence and is checked by `inspect`.
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.
 
-`armed` means the current CDP document and compiled runtimes are fixed, the
+`ready` means the current CDP document and compiled runtimes are fixed, the
 required HMR status logpoint is bound, optional probes have been attempted,
 and the event/Console/state/MF baselines and observation ID are durable. It
 does not mean a source edit was detected or that an HMR cycle succeeded.
@@ -48,7 +48,7 @@ Use `--expect applied` to require a complete apply-to-idle path. Add
 `--expect-refresh` for a compatible React Refresh boundary and completed
 refresh call. Add `--expect-no-reload` to reject reload fallback.
 
-Before arming React Refresh, read `reactRefreshPreflight` in this order:
+Before preparing React Refresh observation, read `reactRefreshPreflight` in this order:
 
 1. `reactDom` identifies the loaded development/production renderer builds;
 2. `globalHook` reports whether the React DevTools global hook exists;

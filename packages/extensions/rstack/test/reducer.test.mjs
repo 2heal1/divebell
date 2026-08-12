@@ -15,7 +15,7 @@ function observation(overrides = {}) {
   return {
     schemaVersion: 1,
     observationId: "rstack-hmr-test",
-    status: "armed",
+    status: "ready",
     createdAt: "2026-08-11T00:00:00.000Z",
     updatedAt: "2026-08-11T00:00:00.000Z",
     pageUrl: "http://localhost:3000/",
@@ -23,7 +23,7 @@ function observation(overrides = {}) {
     sessionId: "cdp-page",
     documentGeneration: 1,
     enabledDebugger: true,
-    armedAtSequence: 10,
+    readyAtSequence: 10,
     latestSequence: 10,
     runtimes: [{
       runtimeId: "rspack-hmr-runtime",
@@ -209,7 +209,7 @@ test("does not claim state preservation when the baseline selector was missing",
 });
 
 test("waits for a queued debounced React Refresh before completing", () => {
-  const armed = observation({
+  const ready = observation({
     events: [{
       sequence: 11,
       timestamp: 1011,
@@ -225,11 +225,11 @@ test("waits for a queued debounced React Refresh before completing", () => {
       completed: false,
       moduleIds: ["./App"]
     }
-  }, armed), false);
+  }, ready), false);
   const completed = {
-    ...armed,
+    ...ready,
     events: [
-      ...armed.events,
+      ...ready.events,
       {
         sequence: 12,
         timestamp: 1012,
@@ -250,7 +250,7 @@ test("waits for a queued debounced React Refresh before completing", () => {
 
 test("does not complete applied HMR before the page reload settle window", () => {
   const terminalAt = 10_000;
-  const armed = observation({
+  const ready = observation({
     expectations: {
       outcome: "applied",
       refresh: false,
@@ -272,8 +272,8 @@ test("does not complete applied HMR before the page reload settle window", () =>
       moduleIds: []
     }
   };
-  assert.equal(resultShouldFinish(result, armed, terminalAt + 999), false);
-  assert.equal(resultShouldFinish(result, armed, terminalAt + 1000), true);
+  assert.equal(resultShouldFinish(result, ready, terminalAt + 999), false);
+  assert.equal(resultShouldFinish(result, ready, terminalAt + 1000), true);
 });
 
 test("a document commit overrides an earlier applied HMR cycle", () => {

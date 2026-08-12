@@ -22,12 +22,12 @@ const extension = {
       {
         category: "External Extensions",
         usage: "divebell rstack hmr start [--expect applied] [--expect-refresh] [--expect-no-reload] [--state-check <file>]",
-        description: "Arm non-pausing compiled-JavaScript logpoints before changing source code."
+        description: "Prepare non-pausing compiled-JavaScript logpoints before changing source code."
       },
       {
         category: "External Extensions",
         usage: "divebell rstack hmr wait [observation-id] [--timeout <ms>] [--verbose]",
-        description: "Wait for the armed HMR observation to apply, fail, invalidate, reload, or time out."
+        description: "Wait for the ready HMR observation to apply, fail, invalidate, reload, or time out."
       },
       {
         category: "External Extensions",

@@ -31,11 +31,11 @@ result.
 Add `@divebell/extension-mf` and open with `--mf` only when Module Federation
 ownership or shared React evidence is needed.
 
-Arm before changing code:
+Prepare the observation before changing code:
 
 ```sh
 divebell rstack hmr start --expect applied --expect-refresh --expect-no-reload
-# edit the source file only after status is armed
+# edit the source file only after status is ready
 divebell rstack hmr wait <observation-id> --timeout 15000
 divebell rstack hmr stop <observation-id>
 ```
@@ -43,12 +43,13 @@ divebell rstack hmr stop <observation-id>
 `start` returns the `observationId`; `status`, `wait`, and `stop` may omit it
 when exactly one observation is active in the current project.
 
-`armed` has a precise meaning: the debugger is enabled for the current CDP
+`ready` has a precise meaning: the debugger is enabled for the current CDP
 page session, the loaded compiled-JavaScript runtimes have been identified,
 the required HMR status logpoint is bound, optional Refresh/error/reload
 logpoints have been attempted, and the event, Console, optional page-state,
 and MF evidence baselines have been persisted. It does not mean that a source
-edit has already been detected. Make the edit only after this result.
+edit has already been detected. The result also returns
+`nextAction: "change-source"`; make the edit only after this result.
 
 The report keeps the HMR runtime, React Refresh runtime, changed module owner,
 and MF shared React provider as separate evidence. Shared `react` and
@@ -62,8 +63,9 @@ or mixed runtime instance.
 3. registered renderer build and the `scheduleRefresh` / `setRefreshHandler`
    helpers.
 
-`start --expect-refresh` fails before arming when no compatible development
-ReactDOM renderer is ready. This does not block plain Rspack HMR observation.
+`start --expect-refresh` fails before becoming ready when no compatible
+development ReactDOM renderer is ready. This does not block plain Rspack HMR
+observation.
 
 Page reload and module HMR are separate outcomes. After an apply-to-idle path,
 `wait` keeps observing for a short settle window. A main-document commit during

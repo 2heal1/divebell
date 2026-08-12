@@ -26,7 +26,7 @@ function createModuleHotObject(moduleId) {
 }
 `;
 
-test("runs start, armed, wait, status, and stop in the required order", async () => {
+test("runs start, ready, wait, status, and stop in the required order", async () => {
   const home = await mkdtemp(join(tmpdir(), "divebell-rstack-command-"));
   const previousHome = process.env.DIVEBELL_HOME;
   process.env.DIVEBELL_HOME = home;
@@ -41,7 +41,8 @@ test("runs start, armed, wait, status, and stop in the required order", async ()
         "expect-no-reload": "true"
       })
     });
-    assert.equal(started.status, "armed");
+    assert.equal(started.status, "ready");
+    assert.equal(started.nextAction, "change-source");
     assert.match(started.observationId, /^rstack-hmr-/u);
     assert.match(started.nextCommand, new RegExp(started.observationId, "u"));
 
@@ -84,7 +85,7 @@ test("runs start, armed, wait, status, and stop in the required order", async ()
   }
 });
 
-test("refuses to arm across a compilation failure race and cleans up probes", async () => {
+test("refuses to become ready across a compilation failure race and cleans up probes", async () => {
   const home = await mkdtemp(join(tmpdir(), "divebell-rstack-arm-race-"));
   const previousHome = process.env.DIVEBELL_HOME;
   process.env.DIVEBELL_HOME = home;
@@ -95,7 +96,7 @@ test("refuses to arm across a compilation failure race and cleans up probes", as
         ...baseOptions(browser),
         args: cliArgs(["rstack", "hmr", "start"])
       }),
-      (error) => error.code === "RSTACK_HMR_ARM_RACED_WITH_UPDATE"
+      (error) => error.code === "RSTACK_HMR_PREPARE_RACED_WITH_UPDATE"
     );
     assert.equal(browser.probes.size, 0);
     assert.equal(browser.enabled, false);
@@ -106,7 +107,7 @@ test("refuses to arm across a compilation failure race and cleans up probes", as
   }
 });
 
-test("fails Fast Refresh preflight before arming with production ReactDOM", async () => {
+test("fails Fast Refresh preflight before becoming ready with production ReactDOM", async () => {
   const home = await mkdtemp(join(tmpdir(), "divebell-rstack-refresh-preflight-"));
   const previousHome = process.env.DIVEBELL_HOME;
   process.env.DIVEBELL_HOME = home;

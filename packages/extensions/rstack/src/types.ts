@@ -1,4 +1,4 @@
-export type ObservationStatus = "armed" | "observing" | "completed" | "stale";
+export type ObservationStatus = "ready" | "observing" | "completed" | "stale";
 
 export type HmrOutcome =
   | "applied"
@@ -201,7 +201,7 @@ export interface ObservationManifest {
   sessionId: string;
   documentGeneration: number;
   enabledDebugger: boolean;
-  armedAtSequence: number;
+  readyAtSequence: number;
   latestSequence: number;
   runtimes: RuntimeCandidate[];
   probes: InstalledProbe[];

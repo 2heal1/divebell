@@ -143,7 +143,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       throw rstackError({
         code: "RSTACK_REFRESH_PRECONDITION_FAILED",
         kind: "runtime",
-        message: "React Fast Refresh cannot be armed because no compatible development ReactDOM renderer is ready.",
+        message: "HMR observation cannot become ready because no compatible development ReactDOM renderer is available for React Fast Refresh.",
         hint: "Inspect reactRefreshPreflight: load development ReactDOM after the global hook is installed, then mount the React root and retry.",
         details: reactRefreshPreflight
       });
@@ -180,11 +180,11 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
     const mf = await collectMfEvidence(options.runExtension);
     const runtimes = applyMfRuntimeOwners(runtimesWithProbes, mf.runtime);
     const session = hmrRuntimes[0];
-    if (session === undefined) throw new Error("Rspack runtime disappeared during arming.");
+    if (session === undefined) throw new Error("Rspack runtime disappeared while preparing the observation.");
     const provisional: ObservationManifest = {
       schemaVersion: 1,
       observationId,
-      status: "armed",
+      status: "ready",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pageUrl: options.page?.url ?? "",
@@ -192,7 +192,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       sessionId: selected.sessionId,
       documentGeneration: session.documentGeneration,
       enabledDebugger,
-      armedAtSequence: baseline.latestSequence,
+      readyAtSequence: baseline.latestSequence,
       latestSequence: baseline.latestSequence,
       runtimes,
       probes: installed,
@@ -203,36 +203,40 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       ...(stateCheck === undefined ? {} : { stateCheck }),
       ...(beforeState === undefined ? {} : { beforeState })
     };
-    const armBatch = await debug.events(baseline.latestSequence);
-    const armCheck = appendDebugEvents(provisional, armBatch);
-    const armedConsole = (await options.divebell.browser.console()).entries;
-    const armCompileErrors = newCompileErrors(initialConsole, armedConsole);
+    const preparationBatch = await debug.events(baseline.latestSequence);
+    const preparationCheck = appendDebugEvents(provisional, preparationBatch);
+    const readyConsole = (await options.divebell.browser.console()).entries;
+    const preparationCompileErrors = newCompileErrors(initialConsole, readyConsole);
     if (
-      armCheck.events.length > 0
-      || armBatchHasUpdateEvidence(armBatch)
-      || armCompileErrors.length > 0
+      preparationCheck.events.length > 0
+      || preparationBatchHasUpdateEvidence(preparationBatch)
+      || preparationCompileErrors.length > 0
     ) {
       throw rstackError({
-        code: "RSTACK_HMR_ARM_RACED_WITH_UPDATE",
+        code: "RSTACK_HMR_PREPARE_RACED_WITH_UPDATE",
         kind: "runtime",
-        message: "A compile, HMR, reload, or debugger gap occurred while the observation was being armed.",
+        message: "A compile, HMR, reload, or debugger gap occurred while the observation was being prepared.",
         hint: "Wait for the page to become idle, start a new observation, and only then edit the file.",
-        details: { events: armCheck.events, compileErrors: armCompileErrors }
+        details: {
+          events: preparationCheck.events,
+          compileErrors: preparationCompileErrors
+        }
       });
     }
     const observation: ObservationManifest = {
       ...provisional,
-      armedAtSequence: armBatch.latestSequence,
-      latestSequence: armBatch.latestSequence,
-      consoleBaseline: armedConsole
+      readyAtSequence: preparationBatch.latestSequence,
+      latestSequence: preparationBatch.latestSequence,
+      consoleBaseline: readyConsole
     };
     await store.write(observation);
     return {
       schemaVersion: 1,
       command: "rstack hmr start",
       observationId,
-      status: "armed",
-      armedAtSequence: observation.armedAtSequence,
+      status: "ready",
+      readyAtSequence: observation.readyAtSequence,
+      nextAction: "change-source",
       runtimeCount: observation.runtimes.filter((runtime) =>
         runtime.kind === "rspack-hmr"
       ).length,
@@ -335,7 +339,7 @@ async function stopHmr(
     const otherActive = (await store.list()).some((candidate) =>
       candidate.observationId !== observation.observationId
       && candidate.sessionId === observation.sessionId
-      && (candidate.status === "armed" || candidate.status === "observing")
+      && (candidate.status === "ready" || candidate.status === "observing")
     );
     const [logpoints, breakpoints] = await Promise.all([
       debug.listLogpoints().catch(() => ({ probes: [{}] })),
@@ -607,7 +611,7 @@ function verboseResult(
   return {
     ...result,
     evidence: {
-      armedAtSequence: observation.armedAtSequence,
+      readyAtSequence: observation.readyAtSequence,
       latestSequence: observation.latestSequence,
       probes: observation.probes,
       events: observation.events
@@ -629,7 +633,7 @@ function emptyMfEvidence(): MfEvidence {
   return { runtime, react: shared("react"), reactDom: shared("react-dom") };
 }
 
-function armBatchHasUpdateEvidence(batch: DebugEventsResult): boolean {
+function preparationBatchHasUpdateEvidence(batch: DebugEventsResult): boolean {
   return batch.events.some((event) => {
     if (event.type === "document-invalidated" || event.type === "document-committed") {
       return true;

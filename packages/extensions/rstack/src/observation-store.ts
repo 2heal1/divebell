@@ -52,10 +52,11 @@ export class ObservationStore {
     const resolvedId = id ?? await this.resolveSingleActiveId();
     try {
       const parsed: unknown = JSON.parse(await readFile(this.path(resolvedId), "utf8"));
-      if (!isObservation(parsed) || parsed.observationId !== resolvedId) {
+      const observation = normalizeObservation(parsed);
+      if (observation === undefined || observation.observationId !== resolvedId) {
         throw new Error("Observation file has an unsupported schema.");
       }
-      return parsed;
+      return observation;
     } catch (error) {
       if (isMissingFile(error)) {
         throw rstackError({
@@ -84,7 +85,7 @@ export class ObservationStore {
           const parsed: unknown = JSON.parse(
             await readFile(join(this.directory, name), "utf8")
           );
-          return isObservation(parsed) ? parsed : undefined;
+          return normalizeObservation(parsed);
         } catch {
           return undefined;
         }
@@ -107,7 +108,7 @@ export class ObservationStore {
 
   private async resolveSingleActiveId(): Promise<string> {
     const active = (await this.list()).filter((item) =>
-      item.status === "armed" || item.status === "observing"
+      item.status === "ready" || item.status === "observing"
     );
     if (active.length === 1) return (active[0] as ObservationManifest).observationId;
     if (active.length === 0) {
@@ -128,12 +129,28 @@ export class ObservationStore {
   }
 }
 
-function isObservation(value: unknown): value is ObservationManifest {
-  return value !== null
+function normalizeObservation(value: unknown): ObservationManifest | undefined {
+  const valid = value !== null
     && typeof value === "object"
     && !Array.isArray(value)
     && (value as { schemaVersion?: unknown }).schemaVersion === 1
     && typeof (value as { observationId?: unknown }).observationId === "string";
+  if (!valid) return undefined;
+  const legacy = value as Omit<ObservationManifest, "status" | "readyAtSequence"> & {
+    status: ObservationManifest["status"] | "armed";
+    armedAtSequence?: number;
+    readyAtSequence?: number;
+  };
+  const readyAtSequence = typeof legacy.readyAtSequence === "number"
+    ? legacy.readyAtSequence
+    : legacy.armedAtSequence;
+  if (typeof readyAtSequence !== "number") return undefined;
+  const { armedAtSequence: _, ...current } = legacy;
+  return {
+    ...current,
+    status: legacy.status === "armed" ? "ready" : legacy.status,
+    readyAtSequence
+  };
 }
 
 function isMissingFile(error: unknown): boolean {

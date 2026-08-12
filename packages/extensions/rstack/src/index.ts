@@ -33,7 +33,8 @@ export {
   createRstackFetchDetectionScript,
   detectRstackStack,
   extractRspackRuntimeDetails,
-  getRstackStatus
+  getRstackStatus,
+  runtimeDetailsToRspackConfig
 } from "./detect-stack.js";
 export { reactDomBuildsInSource } from "./react-refresh-preflight.js";
 export { appendDebugEvents, currentOutcome, reduceCycles, refreshSummary } from "./reducer.js";

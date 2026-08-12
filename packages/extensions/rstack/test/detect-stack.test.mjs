@@ -7,7 +7,8 @@ import {
   createRstackFetchDetectionScript,
   detectRstackStack,
   extractRspackRuntimeDetails,
-  getRstackStatus
+  getRstackStatus,
+  runtimeDetailsToRspackConfig
 } from "../dist/index.js";
 
 test("classifies only index, main, and runtime entry filenames", () => {
@@ -46,7 +47,7 @@ test("detectStack recommends rstack only when fetched source has data-rspack", a
   assert.doesNotMatch(browser.script, /MutationObserver|Debugger/u);
 });
 
-test("rstack status returns bundler runtime details outside stack detection", async () => {
+test("rstack status returns only official recoverable Rspack config fields", async () => {
   const result = await getRstackStatus({
     browser: new DetectBrowser({
       schemaVersion: 1,
@@ -58,10 +59,45 @@ test("rstack status returns bundler runtime details outside stack detection", as
         mode: "webpack-compatible",
         requireExpression: "__webpack_require__",
         globals: {
+          publicPath: {
+            expression: "__webpack_require__.p",
+            kind: "value",
+            value: "/assets/"
+          },
           runtimeId: {
             expression: "__webpack_require__.j",
             kind: "value",
             value: "campaign"
+          },
+          rspackVersion: {
+            expression: "__webpack_require__.rv",
+            kind: "function",
+            value: "1.5.0"
+          },
+          rspackUniqueId: {
+            expression: "__webpack_require__.ruid",
+            kind: "value",
+            value: "bundler=rspack@1.5.0"
+          },
+          getChunkScriptFilename: {
+            expression: "__webpack_require__.u",
+            kind: "function"
+          },
+          getChunkCssFilename: {
+            expression: "__webpack_require__.k",
+            kind: "function"
+          },
+          getChunkUpdateScriptFilename: {
+            expression: "__webpack_require__.hu",
+            kind: "function"
+          },
+          getUpdateManifestFilename: {
+            expression: "__webpack_require__.hmrF",
+            kind: "function"
+          },
+          baseURI: {
+            expression: "__webpack_require__.b",
+            kind: "dynamic"
           }
         }
       }
@@ -71,19 +107,22 @@ test("rstack status returns bundler runtime details outside stack detection", as
   assert.deepEqual(result, {
     schemaVersion: 1,
     status: "found",
-    bundlerRuntime: {
-      script: "runtime.js",
-      mode: "webpack-compatible",
-      requireExpression: "__webpack_require__",
-      globals: {
-        runtimeId: {
-          expression: "__webpack_require__.j",
-          kind: "value",
-          value: "campaign"
+    script: "runtime.js",
+    rspackConfig: {
+      experiments: {
+        rspackFuture: {
+          bundlerInfo: {
+            bundler: "rspack",
+            version: "1.5.0"
+          }
         }
+      },
+      output: {
+        publicPath: "/assets/"
       }
     }
   });
+  assert.equal("bundlerRuntime" in result, false);
 });
 
 test("rstack status keeps fetch diagnostics on unsuccessful detection", async () => {
@@ -102,6 +141,32 @@ test("rstack status keeps fetch diagnostics on unsuccessful detection", async ()
     diagnostics: {
       checkedScripts: ["runtime.js"],
       failureCount: 1
+    }
+  });
+});
+
+test("maps Rspack 2 bundler information to output.bundlerInfo", () => {
+  assert.deepEqual(runtimeDetailsToRspackConfig({
+    mode: "webpack-compatible",
+    requireExpression: "__webpack_require__",
+    globals: {
+      rspackVersion: {
+        expression: "__webpack_require__.rv",
+        kind: "function",
+        value: "2.1.7"
+      },
+      rspackUniqueId: {
+        expression: "__webpack_require__.ruid",
+        kind: "value",
+        value: "bundler=rspack@2.1.7"
+      }
+    }
+  }), {
+    output: {
+      bundlerInfo: {
+        bundler: "rspack",
+        version: "2.1.7"
+      }
     }
   });
 });

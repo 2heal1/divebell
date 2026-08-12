@@ -26,14 +26,14 @@ exception and no positive detection.
 
 `stack` returns only compact Rspack detection evidence and the recommended
 `rstack` command. Run `divebell rstack status` for the matched script and
-bundler runtime configuration. `rstack status` recognizes `__webpack_require__.*` and
-`__rspack_context.*` assignments for public path (`p`), runtime ID (`j`),
-Rspack version/unique ID (`rv`/`ruid`), `getChunkScriptFilename` /
-`getChunkCssFilename` (`u`/`k`), update filename globals (`hu`/`hk`/`hmrF`),
-and base URI (`b`). The field names follow Rspack's `RuntimeGlobals` names.
-Static primitives are reported as `value`; functions and dynamic expressions
-are identified without executing the fetched bundle. Missing fields mean only
-that the matched runtime source did not emit a supported assignment.
+statically recoverable official Rspack configuration. `rspackConfig` preserves
+the documented config hierarchy and may include `output.publicPath` and
+bundler information. Rspack 2 uses `output.bundlerInfo`; Rspack 1
+uses `experiments.rspackFuture.bundlerInfo`, as specified by the current Rspack
+documentation. Runtime IDs, base URI, dynamic expressions, and generated
+filename functions are omitted because they cannot be mapped unambiguously to
+authored configuration. The fetched bundle is never executed. A missing field
+means only that its exact config value was not statically recoverable.
 
 Production Rspack can be detected without HMR. HMR and React Refresh are
 inspected separately by `rstack hmr inspect`. Use `stack --refresh` after

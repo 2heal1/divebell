@@ -17,7 +17,7 @@ const extension = {
       {
         category: "External Extensions",
         usage: "divebell rstack status",
-        description: "Inspect Rspack detection and compact bundler runtime globals from the matched compiled entry script."
+        description: "Inspect official Rspack configuration fields recovered from the matched compiled entry script."
       },
       {
         category: "External Extensions",

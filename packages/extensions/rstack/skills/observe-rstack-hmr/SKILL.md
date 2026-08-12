@@ -1,6 +1,6 @@
 ---
 name: observe-rstack-hmr
-description: Detect Rspack/Rsbuild, inspect compact Rspack bundler-runtime configuration, and verify Rspack HMR separately from React Refresh in the compiled JavaScript loaded by Chromium, including Module Federation shared React ownership evidence.
+description: Detect Rspack/Rsbuild, recover official Rspack configuration fields from compiled runtime evidence, and verify Rspack HMR separately from React Refresh in the compiled JavaScript loaded by Chromium, including Module Federation shared React ownership evidence.
 ---
 
 # Observe Rstack HMR
@@ -21,7 +21,7 @@ read source maps or accept TypeScript source locations.
    fetched `index*`, `*main*`, and `runtime*` entry until one contains the
    `data-rspack` string. A production page may be detected without an HMR
    runtime. Keep this result as detection evidence only.
-3. Run `divebell rstack status` when bundler runtime configuration is needed.
+3. Run `divebell rstack status` when inferred Rspack configuration is needed.
 4. Run `divebell rstack hmr inspect` if compatibility is not known.
 5. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "ready"` and `nextAction: "change-source"`.
@@ -36,30 +36,30 @@ Resource Timing so a removed script URL may still be considered. Fetch, CORS,
 CSP, timeout, or response failures are not positive evidence. HMR runtime
 presence is separate capability evidence and is checked by `inspect`.
 
-## Read Rstack runtime status
+## Read recovered Rspack config
 
 `divebell rstack status` reads assignments from the fetched compiled source;
 it never executes the fetched bundle. `divebell stack` does not return these
-details. Interpret `bundlerRuntime` as follows:
+details. A successful result contains `script` and `rspackConfig`:
 
 - `script` names the fetched `index*`, `*main*`, or `runtime*` file containing
   `data-rspack`.
-- `mode` is `webpack-compatible` for `__webpack_require__.*`, `rspack` for
-  `__rspack_context.*`, or `unknown` when no supported assignment was found.
-- `requireExpression` is the runtime-global base expression.
-- `globals` uses Rspack `RuntimeGlobals` names and may contain `publicPath`,
-  `runtimeId`, `rspackVersion`, `rspackUniqueId`,
-  `getChunkScriptFilename`, `getChunkCssFilename`,
-  `getChunkUpdateScriptFilename`, `getChunkUpdateCssFilename`,
-  `getUpdateManifestFilename`, and `baseURI`.
-- `kind: "value"` is a statically decoded primitive assignment;
-  `kind: "function"` means the runtime global is generated as a function; and
-  `kind: "dynamic"` means its value depends on another runtime expression.
-- A `rspackVersion` function may include a statically decoded return `value`.
-  No other function is called to derive an example filename.
+- `rspackConfig.output.publicPath` comes from a statically decoded `.p` string.
+- Recover bundler `version` from a constant `.rv` return and recover `bundler`
+  plus a fallback version from a static `.ruid` value of
+  `bundler=<name>@<version>`. For Rspack 2, place these values under
+  `rspackConfig.output.bundlerInfo`. For Rspack 1, use
+  `rspackConfig.experiments.rspackFuture.bundlerInfo`. If the emitted version
+  has no recognizable major version, omit bundler information rather than
+  guessing its config path.
 
-Treat a missing global only as "not emitted in the matched runtime source".
-Do not infer that the related feature or output option is disabled. Rerun
+Use only configuration paths documented by Rspack. Omit `.j`, `.b`, `.u`,
+`.k`, `.hu`, `.hk`, `.hmrF`, dynamic expressions, and other runtime functions
+because their emitted values do not prove the authored config template. In particular,
+do not infer `experiments.runtimeMode`, an entry key, `entry.runtime`, or a
+filename template from runtime-global presence. Treat a missing field only as
+"not statically recoverable from the matched runtime source". Do not infer that
+the related feature is disabled. Rerun
 `rstack status` after loaded assets change. Rerun `stack --refresh` separately
 when the cached technology-stack detection itself must be refreshed.
 
@@ -95,9 +95,10 @@ whether the module HMR cycle applied.
 
 ## Read command results
 
-`rstack status` describes Rspack bundler-runtime configuration. Its `status` is
-`found`, `not-found`, or `unavailable`; only `found` includes
-`bundlerRuntime`. This command does not read or create an HMR observation.
+`rstack status` describes official Rspack config fields recovered from compiled
+runtime evidence. Its `status` is `found`, `not-found`, or `unavailable`; only
+`found` includes `script` and `rspackConfig`. This command does not read or
+create an HMR observation.
 
 `inspect` is a compatibility and discovery report. Read its fields as follows:
 

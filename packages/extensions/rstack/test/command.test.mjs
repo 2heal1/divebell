@@ -39,11 +39,9 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
       args: cliArgs(["rstack", "status"])
     });
     assert.equal(rstackStatus.status, "found");
-    assert.equal(rstackStatus.bundlerRuntime.script, "runtime.js");
-    assert.equal(
-      rstackStatus.bundlerRuntime.globals.publicPath.value,
-      "/assets/"
-    );
+    assert.equal(rstackStatus.script, "runtime.js");
+    assert.equal(rstackStatus.rspackConfig.output.publicPath, "/assets/");
+    assert.equal("bundlerRuntime" in rstackStatus, false);
 
     const inspected = await runRstackCommand({
       ...base,

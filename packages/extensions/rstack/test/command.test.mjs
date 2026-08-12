@@ -34,6 +34,17 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
     const browser = new FakeBrowser();
     const base = baseOptions(browser);
 
+    const rstackStatus = await runRstackCommand({
+      ...base,
+      args: cliArgs(["rstack", "status"])
+    });
+    assert.equal(rstackStatus.status, "found");
+    assert.equal(rstackStatus.bundlerRuntime.script, "runtime.js");
+    assert.equal(
+      rstackStatus.bundlerRuntime.globals.publicPath.value,
+      "/assets/"
+    );
+
     const inspected = await runRstackCommand({
       ...base,
       args: cliArgs(["rstack", "hmr", "inspect"])
@@ -380,7 +391,27 @@ class FakeBrowser {
     };
   }
 
-  async eval() {
+  async eval(script) {
+    if (script.includes('cache: "force-cache"')) {
+      return {
+        schemaVersion: 1,
+        status: "found",
+        checked: ["runtime.js"],
+        failureCount: 0,
+        matched: "runtime.js",
+        runtime: {
+          mode: "webpack-compatible",
+          requireExpression: "__webpack_require__",
+          globals: {
+            publicPath: {
+              expression: "__webpack_require__.p",
+              kind: "value",
+              value: "/assets/"
+            }
+          }
+        }
+      };
+    }
     if (this.reactDomBuild === "production") {
       return {
         status: "installed",

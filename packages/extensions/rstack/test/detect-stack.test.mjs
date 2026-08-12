@@ -6,7 +6,8 @@ import {
   classifyRstackEntryFilename,
   createRstackFetchDetectionScript,
   detectRstackStack,
-  extractRspackRuntimeDetails
+  extractRspackRuntimeDetails,
+  getRstackStatus
 } from "../dist/index.js";
 
 test("classifies only index, main, and runtime entry filenames", () => {
@@ -40,22 +41,69 @@ test("detectStack recommends rstack only when fetched source has data-rspack", a
   assert.equal(result?.id, "rspack");
   assert.equal(result?.command, "rstack");
   assert.match(result?.evidence[0] ?? "", /data-rspack.*main\.123\.js/u);
-  assert.deepEqual(result?.details, {
+  assert.equal("details" in result, false);
+  assert.match(browser.script, /performance\.getEntriesByType/u);
+  assert.doesNotMatch(browser.script, /MutationObserver|Debugger/u);
+});
+
+test("rstack status returns bundler runtime details outside stack detection", async () => {
+  const result = await getRstackStatus({
+    browser: new DetectBrowser({
+      schemaVersion: 1,
+      status: "found",
+      checked: ["runtime.js"],
+      failureCount: 0,
+      matched: "runtime.js",
+      runtime: {
+        mode: "webpack-compatible",
+        requireExpression: "__webpack_require__",
+        globals: {
+          runtimeId: {
+            expression: "__webpack_require__.j",
+            kind: "value",
+            value: "campaign"
+          }
+        }
+      }
+    })
+  });
+
+  assert.deepEqual(result, {
+    schemaVersion: 1,
+    status: "found",
     bundlerRuntime: {
-      script: "main.123.js",
+      script: "runtime.js",
       mode: "webpack-compatible",
       requireExpression: "__webpack_require__",
       globals: {
-        publicPath: {
-          expression: "__webpack_require__.p",
+        runtimeId: {
+          expression: "__webpack_require__.j",
           kind: "value",
-          value: "/assets/"
+          value: "campaign"
         }
       }
     }
   });
-  assert.match(browser.script, /performance\.getEntriesByType/u);
-  assert.doesNotMatch(browser.script, /MutationObserver|Debugger/u);
+});
+
+test("rstack status keeps fetch diagnostics on unsuccessful detection", async () => {
+  const result = await getRstackStatus({
+    browser: new DetectBrowser({
+      schemaVersion: 1,
+      status: "unavailable",
+      checked: ["runtime.js"],
+      failureCount: 1
+    })
+  });
+
+  assert.deepEqual(result, {
+    schemaVersion: 1,
+    status: "unavailable",
+    diagnostics: {
+      checkedScripts: ["runtime.js"],
+      failureCount: 1
+    }
+  });
 });
 
 test("detectStack treats fetch failures and missing markers as no detection", async () => {
@@ -121,7 +169,7 @@ test("fetch detection checks every matching entry until data-rspack is found", a
     setTimeout
   });
   const result = await vm.runInContext(
-    createRstackFetchDetectionScript(),
+    createRstackFetchDetectionScript(true),
     context
   );
 

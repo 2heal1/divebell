@@ -245,9 +245,6 @@ export const detectStack: NonNullable<
     id: "modernjs",
     name: "Modern.js",
     evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
-    details: {
-      routeManifest: { present: true }
-    },
     command: "foo"
   };
 };
@@ -255,9 +252,9 @@ export const detectStack: NonNullable<
 
 `command` is a top-level command provided by the current Extension. It tells an agent where to start after a match and must name one of that Extension's registered Commands. Omit it when the detection has no follow-up command. Return only short evidence in a detection result. Do not include full page configuration or sensitive values. The latest result is reused for the same page and detector set. `divebell stack --refresh` forces detection again.
 
-Use `details` only for compact structured JSON facts that make a positive
-detection easier to inspect. It is limited to 20 KB. Never include fetched
-source, credentials, signed URLs, or other sensitive page configuration.
+Keep `stack` output compact. Return detector-specific diagnostics and
+configuration from the recommended Extension command instead. Fields outside
+the detection interface are dropped from the public result.
 
 #### `close`
 

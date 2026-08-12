@@ -1,7 +1,6 @@
 import type {
   DivebellExtensionApi,
-  DivebellStackDetection,
-  DivebellStackDetailObject
+  DivebellStackDetection
 } from "@divebell/cli";
 
 const FETCH_TIMEOUT_MS = 1_200;
@@ -10,7 +9,7 @@ export type RstackEntryKind = "index" | "main" | "runtime";
 
 export type RstackRuntimeMode = "webpack-compatible" | "rspack" | "unknown";
 
-interface RstackRuntimeGlobalDetailBase extends DivebellStackDetailObject {
+interface RstackRuntimeGlobalDetailBase {
   expression: string;
 }
 
@@ -26,7 +25,7 @@ export type RstackRuntimeGlobalDetail =
   | (RstackRuntimeGlobalDetailBase & { kind: "function" })
   | (RstackRuntimeGlobalDetailBase & { kind: "dynamic" });
 
-interface RstackBundlerRuntimeDetailsBase extends DivebellStackDetailObject {
+interface RstackBundlerRuntimeDetailsBase {
   globals: Record<string, RstackRuntimeGlobalDetail>;
 }
 
@@ -45,6 +44,21 @@ export interface RstackFetchDetectionResult {
   matched?: string;
   runtime?: RstackBundlerRuntimeDetails;
 }
+
+export type RstackStatusResult =
+  | {
+      schemaVersion: 1;
+      status: "found";
+      bundlerRuntime: RstackBundlerRuntimeDetails & { script: string };
+    }
+  | {
+      schemaVersion: 1;
+      status: "not-found" | "unavailable";
+      diagnostics: {
+        checkedScripts: string[];
+        failureCount: number;
+      };
+    };
 
 export function classifyRstackEntryFilename(
   fileName: string
@@ -146,7 +160,9 @@ export function extractRspackRuntimeDetails(
   return { mode: "unknown", globals: {} };
 }
 
-export function createRstackFetchDetectionScript(): string {
+export function createRstackFetchDetectionScript(
+  includeRuntime = false
+): string {
   return `(async () => {
     try {
       const classifyFilename = ${classifyRstackEntryFilename.toString()};
@@ -198,7 +214,9 @@ export function createRstackFetchDetectionScript(): string {
               checked,
               failureCount,
               matched: candidate.name,
-              runtime: extractRuntimeDetails(source)
+              ...(${includeRuntime} ? {
+                runtime: extractRuntimeDetails(source)
+              } : {})
             };
           }
         } catch {
@@ -226,40 +244,72 @@ export function createRstackFetchDetectionScript(): string {
   })()`;
 }
 
+async function inspectRstackBundlerRuntime(
+  divebell: DivebellExtensionApi,
+  includeRuntime = false
+): Promise<RstackFetchDetectionResult> {
+  try {
+    return await divebell.browser.eval<RstackFetchDetectionResult>(
+      createRstackFetchDetectionScript(includeRuntime)
+    );
+  } catch {
+    return {
+      schemaVersion: 1,
+      status: "unavailable",
+      checked: [],
+      failureCount: 0
+    };
+  }
+}
+
+function safeScriptName(value: unknown): string {
+  return typeof value === "string"
+    ? value.replace(/[\u0000-\u001f\u007f]/gu, "?").slice(0, 200)
+    : "entry script";
+}
+
+export async function getRstackStatus(
+  divebell: DivebellExtensionApi
+): Promise<RstackStatusResult> {
+  const result = await inspectRstackBundlerRuntime(divebell, true);
+  const found = result.schemaVersion === 1 && result.status === "found";
+  if (found) {
+    return {
+      schemaVersion: 1,
+      status: "found",
+      bundlerRuntime: {
+        script: safeScriptName(result.matched),
+        ...(result.runtime ?? { mode: "unknown", globals: {} })
+      }
+    };
+  }
+  return {
+    schemaVersion: 1,
+    status: result.status === "not-found" ? "not-found" : "unavailable",
+    diagnostics: {
+      checkedScripts: Array.isArray(result.checked) ? result.checked : [],
+      failureCount: Number.isInteger(result.failureCount)
+        ? result.failureCount
+        : 0
+    }
+  };
+}
+
 export async function detectRstackStack(
   divebell: DivebellExtensionApi,
   command: string
 ): Promise<DivebellStackDetection | undefined> {
-  let result: RstackFetchDetectionResult;
-  try {
-    result = await divebell.browser.eval<RstackFetchDetectionResult>(
-      createRstackFetchDetectionScript()
-    );
-  } catch {
-    return undefined;
-  }
+  const result = await inspectRstackBundlerRuntime(divebell);
   if (result?.schemaVersion !== 1 || result.status !== "found") {
     return undefined;
   }
-  const matched = typeof result.matched === "string"
-    ? result.matched.replace(/[\u0000-\u001f\u007f]/gu, "?").slice(0, 200)
-    : "entry script";
+  const matched = safeScriptName(result.matched);
   return {
     id: "rspack",
     name: "Rspack",
     evidence: [
       `data-rspack found in fetched ${matched}`
     ],
-    ...(result.runtime === undefined
-      ? {}
-      : {
-          details: {
-            bundlerRuntime: {
-              script: matched,
-              ...result.runtime
-            }
-          }
-        }),
     command
   };
 }

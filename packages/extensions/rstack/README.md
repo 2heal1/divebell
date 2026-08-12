@@ -12,6 +12,7 @@ and only adds runtime ownership and shared-provider evidence:
 divebell extensions add @divebell/extension-rstack
 divebell open http://localhost:3000
 divebell stack --refresh
+divebell rstack status
 divebell rstack hmr inspect
 ```
 
@@ -23,8 +24,9 @@ filenames, and fetches every distinct match sequentially with
 1.2 second timeout; fetch, CORS, CSP, and response failures produce no page
 exception and no positive detection.
 
-When a match is found, `stack` also returns `details.bundlerRuntime` from that
-same compiled source. It recognizes `__webpack_require__.*` and
+`stack` returns only compact Rspack detection evidence and the recommended
+`rstack` command. Run `divebell rstack status` for the matched script and
+bundler runtime configuration. `rstack status` recognizes `__webpack_require__.*` and
 `__rspack_context.*` assignments for public path (`p`), runtime ID (`j`),
 Rspack version/unique ID (`rv`/`ruid`), `getChunkScriptFilename` /
 `getChunkCssFilename` (`u`/`k`), update filename globals (`hu`/`hk`/`hmrF`),
@@ -36,7 +38,7 @@ that the matched runtime source did not emit a supported assignment.
 Production Rspack can be detected without HMR. HMR and React Refresh are
 inspected separately by `rstack hmr inspect`. Use `stack --refresh` after
 upgrading this Extension or when the same page URL already has a cached stack
-result.
+result. `rstack status` performs a fresh bounded inspection on each run.
 
 Add `@divebell/extension-mf` and open with `--mf` only when Module Federation
 ownership or shared React evidence is needed.
@@ -50,8 +52,9 @@ divebell rstack hmr wait <observation-id> --timeout 15000
 divebell rstack hmr stop <observation-id>
 ```
 
-`start` returns the `observationId`; `status`, `wait`, and `stop` may omit it
-when exactly one observation is active in the current project.
+`hmr start` returns the `observationId`; `hmr status`, `hmr wait`, and
+`hmr stop` may omit it when exactly one observation is active in the current
+project.
 
 `ready` has a precise meaning: the debugger is enabled for the current CDP
 page session, the loaded HMR and React Refresh runtime components have been identified,
@@ -83,7 +86,7 @@ readiness under `rspackHmr` and `reactRefresh`. Use `start --verbose` to read
 the Refresh preflight and installed probe count.
 
 Run `divebell rstack --skill` for the full field semantics and decision rules
-for `inspect`, `start`, `status`, and `wait`.
+for `rstack status` and the `rstack hmr` workflow.
 
 `start --expect-refresh` fails before becoming ready when no compatible
 development ReactDOM renderer is ready. This does not block plain Rspack HMR
@@ -95,7 +98,7 @@ that window produces `rspackHmr.outcome: "reloaded"`; it cannot pass as applied
 HMR. `rspackHmr.sameDocument` reports whether the observed update stayed in the
 same document.
 
-`status` and `wait` return compact results with independent `rspackHmr`,
+`hmr status` and `hmr wait` return compact results with independent `rspackHmr`,
 `reactRefresh`, and `ui` sections. `expectations.verdict` grades only the
 expectations selected by `start`; it is not an overall UI success claim. An
 applied Rspack cycle can coexist with

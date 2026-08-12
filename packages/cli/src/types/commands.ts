@@ -88,23 +88,7 @@ export interface DivebellStackDetection {
   name: string;
   version?: string;
   evidence?: readonly string[];
-  details?: DivebellStackDetailObject;
   command?: string;
-}
-
-export type DivebellStackDetailValue =
-  | string
-  | number
-  | boolean
-  | null
-  | DivebellStackDetailArray
-  | DivebellStackDetailObject;
-
-export interface DivebellStackDetailArray
-  extends ReadonlyArray<DivebellStackDetailValue> {}
-
-export interface DivebellStackDetailObject {
-  readonly [key: string]: DivebellStackDetailValue;
 }
 
 export interface DivebellOrderedHook<Handler> {

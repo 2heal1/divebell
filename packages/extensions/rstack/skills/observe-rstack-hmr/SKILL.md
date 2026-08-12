@@ -20,14 +20,14 @@ read source maps or accept TypeScript source locations.
    it reports `id: "rspack"`. Detection sequentially checks every distinct
    fetched `index*`, `*main*`, and `runtime*` entry until one contains the
    `data-rspack` string. A production page may be detected without an HMR
-   runtime. Read `details.bundlerRuntime` for the compact runtime configuration
-   found in that same compiled script.
-3. Run `divebell rstack hmr inspect` if compatibility is not known.
-4. Run `divebell rstack hmr start ...` and wait until it returns `status:
+   runtime. Keep this result as detection evidence only.
+3. Run `divebell rstack status` when bundler runtime configuration is needed.
+4. Run `divebell rstack hmr inspect` if compatibility is not known.
+5. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "ready"` and `nextAction: "change-source"`.
-5. Only after `ready`, change the source file.
-6. Run `divebell rstack hmr wait <observation-id> --timeout 15000`.
-7. Run `divebell rstack hmr stop <observation-id>` when no more evidence is
+6. Only after `ready`, change the source file.
+7. Run `divebell rstack hmr wait <observation-id> --timeout 15000`.
+8. Run `divebell rstack hmr stop <observation-id>` when no more evidence is
    needed.
 
 The stack detector does not install page-load DOM observers or enable the
@@ -36,10 +36,11 @@ Resource Timing so a removed script URL may still be considered. Fetch, CORS,
 CSP, timeout, or response failures are not positive evidence. HMR runtime
 presence is separate capability evidence and is checked by `inspect`.
 
-## Read stack runtime details
+## Read Rstack runtime status
 
-`stack` reads assignments from the fetched compiled source; it never executes
-the fetched bundle. Interpret `details.bundlerRuntime` as follows:
+`divebell rstack status` reads assignments from the fetched compiled source;
+it never executes the fetched bundle. `divebell stack` does not return these
+details. Interpret `bundlerRuntime` as follows:
 
 - `script` names the fetched `index*`, `*main*`, or `runtime*` file containing
   `data-rspack`.
@@ -59,8 +60,8 @@ the fetched bundle. Interpret `details.bundlerRuntime` as follows:
 
 Treat a missing global only as "not emitted in the matched runtime source".
 Do not infer that the related feature or output option is disabled. Rerun
-`stack --refresh` after the page or deployed assets change because stack results
-are cached by page URL and detector set.
+`rstack status` after loaded assets change. Rerun `stack --refresh` separately
+when the cached technology-stack detection itself must be refreshed.
 
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.
@@ -94,6 +95,10 @@ whether the module HMR cycle applied.
 
 ## Read command results
 
+`rstack status` describes Rspack bundler-runtime configuration. Its `status` is
+`found`, `not-found`, or `unavailable`; only `found` includes
+`bundlerRuntime`. This command does not read or create an HMR observation.
+
 `inspect` is a compatibility and discovery report. Read its fields as follows:
 
 - `supported` answers only whether at least one supported Rspack HMR runtime
@@ -116,7 +121,7 @@ whether the module HMR cycle applied.
 Use `start --verbose` for the preflight and installed probe count. Do not edit
 source until `status: "ready"` is returned.
 
-`status` and `wait` return the current or final HMR result:
+`hmr status` and `hmr wait` return the current or final HMR result:
 
 - `rspackHmr` reports the Rspack apply outcome, latest status path, and whether
   the result stayed in the same document.

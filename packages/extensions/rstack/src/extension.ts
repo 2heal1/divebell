@@ -16,6 +16,11 @@ const extension = {
     commandReferences: [
       {
         category: "External Extensions",
+        usage: "divebell rstack status",
+        description: "Inspect Rspack detection and compact bundler runtime globals from the matched compiled entry script."
+      },
+      {
+        category: "External Extensions",
         usage: "divebell rstack hmr inspect",
         description: "Discover supported Rspack HMR state machines, React Refresh adapters, preflight evidence, and candidate probe plans in the compiled JavaScript loaded by the current page."
       },

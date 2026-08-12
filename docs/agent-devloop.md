@@ -48,6 +48,27 @@ Open the target page with a named session:
 divebell open https://example.com/orders --session orders-debug --ui
 ```
 
+`open` waits for the full navigation's browser `load` event. Its default page
+operation timeout is 25 seconds. This timeout covers page-load completion, not
+only process startup: the browser window may already be open and visibly
+navigating when the command reports a timeout. Divebell records a new opened-page
+context only after `open` succeeds, so a timed-out command can leave no current
+context or preserve the previous one.
+
+There is currently no `divebell open --timeout` option. The agent-browser-wide
+default can be changed in milliseconds for the command:
+
+```sh
+AGENT_BROWSER_DEFAULT_TIMEOUT=28000 \
+  divebell open https://example.com/orders --session orders-debug --ui
+```
+
+The variable affects other browser operations as well. Ordinary command
+transport has a 30-second read timeout, so values above 30 seconds may fail at
+the transport layer before the page operation reports its own timeout. If a
+page never emits `load`, increasing the budget does not fix the underlying wait
+condition.
+
 Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
 Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.

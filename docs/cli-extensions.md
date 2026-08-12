@@ -321,6 +321,42 @@ names shown by `divebell --help`, reuses the current opened page, and preserves
 the Divebell session during navigation. The outer workflow still owns
 `open` and `stop`.
 
+Debugger IDs are not taken from `options.page.sessionId`. That field is the
+Divebell session created by `divebell open --session` and used to correlate the
+opened page with Runtime SDK connections. To operate on compiled JavaScript,
+first run `debug enable` or `debug status`, then read the debugger session's
+`sessionId` and `tabId` from the returned `sessions` array. Prefer its stable
+`tabId` as the selector for later debugger commands:
+
+```ts
+const enabled = JSON.parse(await options.divebell.browser.run("debug", {
+  args: ["enable"],
+  options: { json: true }
+})) as {
+  sessions: Array<{ sessionId: string; tabId?: string }>;
+};
+
+const current = enabled.sessions[0];
+if (current?.tabId === undefined) {
+  throw new Error("No debugger tab is available for the current page.");
+}
+
+const matches = await options.divebell.browser.run("debug", {
+  args: ["source", "search", "rendererPackageName"],
+  options: {
+    tab: current.tabId,
+    "max-results": 1000,
+    json: true
+  }
+});
+```
+
+The debugger `sessionId` is a Chrome CDP target-session identity, while `tabId`
+is agent-browser's stable tab selector. Do not pass `options.page.sessionId` to
+debugger commands, and do not treat either value as an agent-browser daemon
+session. See [Debugger identity and selection](extension-api.md#debugger-identity-and-selection)
+for the complete identity rules.
+
 After an action, continue reading the page result or use `waitFor` to await an explicit state. Do not claim verification merely because `page` exists or an action ran.
 
 See [`DivebellExtensionApi`](extension-api.md#divebellextensionapi) for all methods, fields, and boundaries.

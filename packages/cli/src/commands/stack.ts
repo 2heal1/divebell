@@ -45,7 +45,7 @@ export async function runStackCommand(
     .filter((extension) => extension.hooks?.detectStack !== undefined)
     .map((extension) => extension.name)
     .sort();
-  const detectorSignature = ["stack-detection-command-v1", ...detectorNames].join("\n");
+  const detectorSignature = ["stack-detection-command-v2", ...detectorNames].join("\n");
   if (
     !args.options.has("refresh") &&
     openContext.stackDetection?.url === currentUrl &&

@@ -280,7 +280,13 @@ function validateDetection(
       );
     }
   }
-  return value;
+  return {
+    id: value.id,
+    name: value.name,
+    ...(value.version === undefined ? {} : { version: value.version }),
+    ...(value.evidence === undefined ? {} : { evidence: value.evidence }),
+    ...(value.command === undefined ? {} : { command: value.command })
+  };
 }
 
 async function withTimeout<T>(

@@ -495,6 +495,8 @@ export interface StatusInstance {
   role: InstanceRole;
   consumers: StatusConsumer[];
   active: boolean;
+  remotes?: RuntimeRemote[];
+  loadedProducers?: RuntimeRemote[];
 }
 
 export type MfIssueKind = "not_found" | "needs_input" | "runtime";
@@ -525,6 +527,7 @@ export type MfRecommendedAction =
 export interface StatusResult {
   instances: StatusInstance[];
   shared: GlobalSharedState;
+  relationships?: RuntimeRelationship[];
 }
 
 export interface ModuleInfoResult {

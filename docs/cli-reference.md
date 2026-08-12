@@ -85,6 +85,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell removeinitscript <id>` - Remove a registered page initialization script.
 - `divebell confirm <id>` - Approve a browser action waiting for explicit confirmation.
 - `divebell deny <id>` - Deny a browser action waiting for explicit confirmation.
+- `divebell debug <enable|disable|status|scripts|source|breakpoint|logpoint|pause|resume|step-over|step-into|step-out|stack|eval|events> [--cdp-session <id>] [options]` - Inspect and trace the compiled JavaScript loaded by Chromium without requiring source maps.
 - `divebell stack [--refresh]` - Run stack detectors from installed extensions and summarize matches for the current page.
 - `divebell page-snapshot [--interactive] [--compact] [--depth <depth>] [--selector <selector>]` - Read the current page snapshot, including actionable element references.
 - `divebell click <ref|selector|text>` - Click an element by page reference, selector, or visible text.

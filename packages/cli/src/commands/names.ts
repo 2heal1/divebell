@@ -67,6 +67,7 @@ export const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
   "removeinitscript",
   "confirm",
   "deny",
+  "debug",
   "coverage"
 ];
 

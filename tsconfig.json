@@ -10,6 +10,7 @@
     { "path": "./packages/extensions/code-usage" },
     { "path": "./packages/extensions/imitate" },
     { "path": "./packages/extensions/memory" },
-    { "path": "./packages/extensions/mf" }
+    { "path": "./packages/extensions/mf" },
+    { "path": "./packages/extensions/rstack" }
   ]
 }

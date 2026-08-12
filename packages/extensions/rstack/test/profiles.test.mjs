@@ -1,0 +1,128 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  discoverProfilesInSource,
+  locationAt,
+  reactDomBuildsInSource
+} from "../dist/index.js";
+
+const script = {
+  connectionGeneration: 3,
+  sessionId: "cdp-page",
+  documentGeneration: 2,
+  scriptId: "script-9",
+  executionContextId: 11,
+  url: "http://localhost:3000/static/js/main.js",
+  scriptInstanceKey: {
+    connectionGeneration: 3,
+    sessionId: "cdp-page",
+    documentGeneration: 2,
+    scriptId: "script-9"
+  }
+};
+
+const source = `
+var currentStatus = "idle";
+var registeredStatusHandlers = [];
+function setStatus(newStatus) {
+  currentStatus = newStatus;
+  return Promise.all(registeredStatusHandlers.map(function (handler) {
+    return handler(newStatus);
+  })).then(function () {});
+}
+function hotCheck() {
+  throw new Error("check() is only allowed in idle status");
+}
+function hotApply() {
+  throw new Error("apply() is only allowed in ready status");
+}
+function createModuleHotObject(moduleId) {
+  return { invalidate: function () {
+    this._selfInvalidated = true;
+    setStatus("ready");
+  }};
+}
+function internalApply(error, errors) {
+  if (errors.length) throw errors[0];
+  return setStatus("fail").then(function () { throw error; });
+}
+console.warn("[HMR] unexpected require(");
+
+function shouldInvalidateReactRefreshBoundary() { return false; }
+function executeRuntime(moduleExports, moduleId, hot, error) {
+  if (shouldInvalidateReactRefreshBoundary()) {
+    hot.invalidate();
+  } else {
+    enqueueUpdate();
+  }
+  if (!moduleExports) {
+    hot.invalidate();
+  }
+  if (error) location.reload();
+}
+function flushRefresh(callback) {
+  performReactRefresh();
+  if (callback) callback();
+}
+`;
+
+test("discovers runtime-scoped HMR and Refresh probes from compiled JavaScript", () => {
+  const result = discoverProfilesInSource(script, source);
+  const hmr = result.hmrRuntimes;
+  const refresh = result.reactRefreshRuntimes;
+
+  assert.equal(hmr.length, 1);
+  assert.equal(refresh.length, 1);
+  assert.equal(hmr[0].sessionId, "cdp-page");
+  assert.equal(hmr[0].owner.status, "unknown");
+  assert.deepEqual(
+    result.probePlans.filter((probe) => probe.required).map((probe) => probe.event),
+    ["hmr.status"]
+  );
+  assert.deepEqual(
+    new Set(result.probePlans.map((probe) => probe.event)),
+    new Set([
+      "hmr.status",
+      "hmr.invalidate",
+      "hmr.abort-error",
+      "hmr.apply-error",
+      "refresh.boundary-refresh",
+      "refresh.boundary-invalidate",
+      "refresh.non-boundary-invalidate",
+      "refresh.completed",
+      "reload.requested"
+    ])
+  );
+  assert.equal(
+    result.probePlans.find((probe) => probe.event === "hmr.status")?.runtimeKind,
+    "rspack-hmr"
+  );
+  assert.equal(
+    result.probePlans.find((probe) => probe.event === "refresh.completed")?.runtimeKind,
+    "react-refresh"
+  );
+});
+
+test("compiled locations use one-based UTF-16 columns", () => {
+  const unicode = "const marker = '😀'; currentStatus = newStatus;";
+  const index = unicode.indexOf("currentStatus");
+  assert.deepEqual(locationAt(unicode, index), {
+    line: 1,
+    column: unicode.slice(0, index).length + 1
+  });
+});
+
+test("classifies development and production ReactDOM before renderer readiness", () => {
+  assert.deepEqual(reactDomBuildsInSource(`
+    injectIntoDevTools({
+      bundleType: 1,
+      version: ReactVersion,
+      rendererPackageName: 'react-dom'
+    });
+  `), ["development"]);
+  assert.deepEqual(reactDomBuildsInSource(`
+    var renderer = {bundleType:0,version:"18.3.1",rendererPackageName:"react-dom"};
+    var internals = {scheduleRefresh:null,setRefreshHandler:null};
+  `), ["production"]);
+});

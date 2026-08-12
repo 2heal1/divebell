@@ -270,5 +270,10 @@ export const browserCommandReferences: CliCommandReference[] = [
     category: "Bridge and Browser",
     usage: "divebell deny <id>",
     description: "Deny a browser action waiting for explicit confirmation."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell debug <enable|disable|status|scripts|source|breakpoint|logpoint|pause|resume|step-over|step-into|step-out|stack|eval|events> [--cdp-session <id>] [options]",
+    description: "Inspect and trace the compiled JavaScript loaded by Chromium without requiring source maps."
   }
 ];

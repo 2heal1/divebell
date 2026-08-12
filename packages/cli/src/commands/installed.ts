@@ -182,26 +182,12 @@ export async function addExtensionPackage(options: {
         installed
       ].sort((left, right) => left.name.localeCompare(right.name))
     };
-    const keepsExistingFiles = previous !== undefined &&
-      previous.version === inspected.version &&
-      resolveInstalledDirectory(extensionsDirectory, previous.directory) === finalDirectory;
-    if (!keepsExistingFiles) {
-      await mkdir(dirname(finalDirectory), { recursive: true });
-      await rm(finalDirectory, { recursive: true, force: true });
-      try {
-        await cp(unpackedDirectory, finalDirectory, {
-          recursive: true,
-          errorOnExist: true,
-          force: false
-        });
-        await writeInstalledExtensionPackageRegistry(extensionsDirectory, nextRegistry);
-      } catch (error) {
-        await rm(finalDirectory, { recursive: true, force: true });
-        throw error;
-      }
-    } else {
-      await writeInstalledExtensionPackageRegistry(extensionsDirectory, nextRegistry);
-    }
+    await replaceInstalledExtensionDirectory({
+      sourceDirectory: unpackedDirectory,
+      finalDirectory,
+      writeRegistry: async () =>
+        await writeInstalledExtensionPackageRegistry(extensionsDirectory, nextRegistry)
+    });
 
     if (previous !== undefined && previous.directory !== installed.directory) {
       await removeInstalledDirectory(extensionsDirectory, previous.directory);
@@ -213,6 +199,46 @@ export async function addExtensionPackage(options: {
     };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+async function replaceInstalledExtensionDirectory(options: {
+  sourceDirectory: string;
+  finalDirectory: string;
+  writeRegistry: () => Promise<void>;
+}): Promise<void> {
+  const parent = dirname(options.finalDirectory);
+  await mkdir(parent, { recursive: true });
+  const staging = await mkdtemp(join(parent, `.${basename(options.finalDirectory)}-install-`));
+  await rm(staging, { recursive: true, force: true });
+  let backup: string | undefined;
+  try {
+    await cp(options.sourceDirectory, staging, {
+      recursive: true,
+      errorOnExist: true,
+      force: false
+    });
+    if (existsSync(options.finalDirectory)) {
+      backup = await mkdtemp(join(parent, `.${basename(options.finalDirectory)}-backup-`));
+      await rm(backup, { recursive: true, force: true });
+      await rename(options.finalDirectory, backup);
+    }
+    await rename(staging, options.finalDirectory);
+    try {
+      await options.writeRegistry();
+    } catch (error) {
+      await rm(options.finalDirectory, { recursive: true, force: true });
+      if (backup !== undefined) {
+        await rename(backup, options.finalDirectory);
+        backup = undefined;
+      }
+      throw error;
+    }
+  } finally {
+    await rm(staging, { recursive: true, force: true });
+    if (backup !== undefined) {
+      await rm(backup, { recursive: true, force: true });
+    }
   }
 }
 

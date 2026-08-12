@@ -200,9 +200,10 @@ interface CliExtensionPageContext {
 }
 ```
 
-- `url` is the latest recorded page URL; `openedUrl` is the original URL passed to `divebell open`.
+- `url` is the URL requested by the latest successful `divebell open`; `openedUrl` is the effective URL opened after Divebell adds its session query and applies Extension open hooks.
 - `normalizedUrl` supports stable page comparisons; `openedAt` is a millisecond timestamp.
 - `bridgeUrl` and `sessionId` may be null. Their presence must not be used to assume that a page uses Runtime SDK.
+- `sessionId` is the Divebell session created by `divebell open --session` (or generated automatically) and used to correlate the opened page with Runtime SDK connections. It is not an agent-browser daemon session, a debugger/CDP session, or a tab ID.
 - This object is historical context for the latest opened page. Continue through `options.divebell.browser` when current page state must be confirmed.
 
 ### Command results and errors
@@ -318,7 +319,14 @@ interface DivebellStackDetection {
 }
 ```
 
-`detectStack` runs only for `divebell stack` and may return one detection, multiple detections, or no result. `command` must name a top-level command registered by the current Extension; omit it when there is no follow-up command. Do not include full page configuration or sensitive values in `evidence`.
+`detectStack` runs only for `divebell stack` and may return one detection,
+multiple detections, or no result. `command` must name a top-level command
+registered by the current Extension; omit it when there is no follow-up
+command. Keep detections compact. Put detector-specific diagnostics and
+configuration behind the Extension command rather than in the stack result.
+Fields outside the detection interface are dropped from the public result.
+Do not include full page configuration, source text, credentials, signed URLs,
+or other sensitive values in `evidence`.
 
 `close` runs only for Extensions that successfully participated in the matching `open`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
 
@@ -368,6 +376,63 @@ context. It applies the same aliases, element-reference normalization, option
 translation, error handling, and session-preserving navigation as the CLI.
 It cannot run `open` or `stop`; those remain owned by the outer workflow.
 `browser.memory` remains the typed entry point for memory capture.
+
+### Debugger identity and selection
+
+Extensions that use the compiled-JavaScript debugger must obtain debugger IDs
+from `browser.run("debug", ...)`; `options.page` does not contain them. Enabling
+without a selector targets the active tab and returns its debugger identity.
+Retain the mapping returned in `sessions`:
+
+```ts
+interface DebuggerEnableResult {
+  connectionGeneration: number;
+  sessions: Array<{
+    sessionId: string;
+    tabId?: string;
+  }>;
+}
+
+const enabled = JSON.parse(await divebell.browser.run("debug", {
+  args: ["enable"],
+  options: { json: true }
+})) as DebuggerEnableResult;
+```
+
+`debug status` can be used before enabling to record whether the selected
+renderer was already enabled, but an unfiltered status can contain every tab.
+Do not assume its first session is the active page; either use the single
+session returned by an unfiltered `debug enable`, or explicitly select the
+intended tab.
+
+The IDs have separate namespaces and must not be substituted for each other:
+
+| Value | Meaning | Extension usage |
+| --- | --- | --- |
+| `options.page.sessionId` | Divebell page/Runtime correlation session from `divebell open` | Select Runtime SDK connections; never use it as a debugger selector |
+| debugger `sessions[].sessionId` | Chrome CDP target-session identity | Correlate scripts and events with the renderer that produced them |
+| debugger `sessions[].tabId` | Stable agent-browser tab selector, such as `t1` | Preferred selector for follow-up `debug` commands through `browser.run` |
+| debugger `scriptId` | Chrome's script ID within one document and CDP session | Use only with the matching debugger session and document generation |
+| debugger `scriptInstanceKey` | Script identity including connection generation, CDP session, document generation, and script ID | Retain when a probe must distinguish navigation or reconnect generations |
+
+For a follow-up command, pass the returned `tabId` as the `tab` option:
+
+```ts
+const selected = enabled.sessions[0];
+if (selected?.tabId === undefined) {
+  throw new Error("No debugger tab is available for the current page.");
+}
+
+await divebell.browser.run("debug", {
+  args: ["scripts"],
+  options: { tab: selected.tabId, json: true }
+});
+```
+
+Do not forward a debugger CDP `sessionId` as a generic `session` option. That
+name is also used by agent-browser process routing and can select the wrong
+daemon. A bare `scriptId` is likewise not stable across navigation or browser
+reconnection; use the returned script identity fields together.
 
 `browser.raw` is only a low-level agent-browser escape hatch. It accepts
 agent-browser arguments directly and does not add Divebell page-context checks,

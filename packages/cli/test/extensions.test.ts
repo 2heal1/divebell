@@ -275,6 +275,31 @@ test("rejects the removed recommendedExtensions stack field", async () => {
   );
 });
 
+test("keeps stack detections compact by dropping detector-specific fields", async () => {
+  const result = await runDetectStackHooks([{
+    schemaVersion: 1,
+    name: "details-detector",
+    hooks: {
+      async detectStack() {
+        return {
+          id: "details",
+          name: "Details",
+          evidence: ["detected"],
+          details: { bundlerRuntime: { publicPath: "/assets/" } }
+        } as never;
+      }
+    }
+  }], {} as never);
+
+  assert.equal(result.failures.length, 0);
+  assert.deepEqual(result.detections, [{
+    id: "details",
+    name: "Details",
+    evidence: ["detected"],
+    extension: "details-detector"
+  }]);
+});
+
 test("returns the opened page headers unchanged to extension commands", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-command-headers-"));
   const headers = JSON.stringify({
@@ -495,6 +520,8 @@ test("installs, loads, lists, and removes a self-contained npm extension package
   const extensionsDirectory = join(tempDir, "extensions");
   const packageRoot = join(tempDir, "fixture", "package");
   const archivePath = join(tempDir, "demo-command-1.0.0.tgz");
+  const sameVersionPackageRoot = join(tempDir, "fixture-same-version", "package");
+  const sameVersionArchivePath = join(tempDir, "demo-command-1.0.0-updated.tgz");
   const updatedPackageRoot = join(tempDir, "fixture-updated", "package");
   const updatedArchivePath = join(tempDir, "demo-command-1.1.0.tgz");
   mkdirSync(packageRoot, { recursive: true });
@@ -524,6 +551,32 @@ export async function run() { return { installed: true }; }
     encoding: "utf8"
   });
   assert.equal(tarResult.status, 0, tarResult.stderr);
+  mkdirSync(sameVersionPackageRoot, { recursive: true });
+  writeFileSync(join(sameVersionPackageRoot, "package.json"), `${JSON.stringify({
+    name: "@demo/command-hello",
+    version: "1.0.0",
+    type: "module",
+    divebell: {
+      schemaVersion: 1,
+      extensions: ["./index.mjs"]
+    }
+  }, null, 2)}\n`, "utf8");
+  writeFileSync(join(sameVersionPackageRoot, "index.mjs"), `export default {
+  schemaVersion: 1,
+  name: "hello-installed",
+  commands: [{
+    name: "hello-installed",
+    async run() { return { installed: true, sameVersionUpdated: true }; }
+  }]
+};\n`, "utf8");
+  const sameVersionTarResult = spawnSync("tar", [
+    "-czf",
+    sameVersionArchivePath,
+    "-C",
+    join(tempDir, "fixture-same-version"),
+    "package"
+  ], { encoding: "utf8" });
+  assert.equal(sameVersionTarResult.status, 0, sameVersionTarResult.stderr);
   mkdirSync(updatedPackageRoot, { recursive: true });
   writeFileSync(join(updatedPackageRoot, "package.json"), `${JSON.stringify({
     name: "@demo/command-hello",
@@ -582,6 +635,31 @@ export async function run() { return { installed: true }; }
       installed: true
     }));
     assert.equal((globalThis as { __DIVEBELL_LAZY_EXTENSION_TEST__?: number }).__DIVEBELL_LAZY_EXTENSION_TEST__, 1);
+
+    const sameVersionOutput = createOutput();
+    assert.equal(await cli.run([
+      "extensions",
+      "add",
+      sameVersionArchivePath
+    ], {
+      stdout: sameVersionOutput.stdout,
+      stderr: sameVersionOutput.stderr,
+      extensionsDirectory,
+      extensionPackageDownloader: {
+        download: async () => sameVersionArchivePath
+      }
+    }), 0);
+    assert.equal(JSON.parse(sameVersionOutput.text()).status, "updated");
+    assert.match(
+      readFileSync(join(
+        extensionsDirectory,
+        ".packages",
+        "%40demo%2Fcommand-hello",
+        "1.0.0",
+        "index.mjs"
+      ), "utf8"),
+      /sameVersionUpdated/u
+    );
 
     const listOutput = createOutput();
     assert.equal(await cli.run(["extensions", "list"], {
@@ -882,6 +960,10 @@ test("exposes every browser page command through the Extension API", async () =>
     "get-window": { args: ["location.href"] },
     screenshot: { args: ["page.png"], options: { "full-page": true } },
     coverage: { args: ["status"] },
+    debug: {
+      args: ["status"],
+      options: { "cdp-session": "cdp-page-1", json: true }
+    },
     hover: { args: ["e8"] },
     "check-element": { args: ["e9"] },
     drag: { args: ["e10", "e11"] },
@@ -958,6 +1040,13 @@ test("exposes every browser page command through the Extension API", async () =>
     ]);
     assert.deepEqual(calls[pageCommands.indexOf("video")], ["record", "start", "flow.webm"]);
     assert.deepEqual(calls[pageCommands.indexOf("coverage")], ["coverage", "status", "--json"]);
+    assert.deepEqual(calls[pageCommands.indexOf("debug")], [
+      "debug",
+      "status",
+      "--session",
+      "cdp-page-1",
+      "--json"
+    ]);
     assert.deepEqual(calls.at(-1), ["select", "@e20", "cn", "sg"]);
   } finally {
     context.cleanup();

@@ -1,8 +1,41 @@
-import type { DivebellExtensionApi } from "@divebell/cli";
+import type {
+  DivebellExtensionApi,
+  DivebellStackDetection,
+  DivebellStackDetailObject
+} from "@divebell/cli";
 
 const FETCH_TIMEOUT_MS = 1_200;
 
 export type RstackEntryKind = "index" | "main" | "runtime";
+
+export type RstackRuntimeMode = "webpack-compatible" | "rspack" | "unknown";
+
+interface RstackRuntimeGlobalDetailBase extends DivebellStackDetailObject {
+  expression: string;
+}
+
+export type RstackRuntimeGlobalDetail =
+  | (RstackRuntimeGlobalDetailBase & {
+      kind: "value";
+      value: string | number | boolean | null;
+    })
+  | (RstackRuntimeGlobalDetailBase & {
+      kind: "function";
+      value: string;
+    })
+  | (RstackRuntimeGlobalDetailBase & { kind: "function" })
+  | (RstackRuntimeGlobalDetailBase & { kind: "dynamic" });
+
+interface RstackBundlerRuntimeDetailsBase extends DivebellStackDetailObject {
+  globals: Record<string, RstackRuntimeGlobalDetail>;
+}
+
+export type RstackBundlerRuntimeDetails =
+  | (RstackBundlerRuntimeDetailsBase & {
+      mode: Exclude<RstackRuntimeMode, "unknown">;
+      requireExpression: string;
+    })
+  | (RstackBundlerRuntimeDetailsBase & { mode: "unknown" });
 
 export interface RstackFetchDetectionResult {
   schemaVersion: 1;
@@ -10,6 +43,7 @@ export interface RstackFetchDetectionResult {
   checked: string[];
   failureCount: number;
   matched?: string;
+  runtime?: RstackBundlerRuntimeDetails;
 }
 
 export function classifyRstackEntryFilename(
@@ -22,10 +56,101 @@ export function classifyRstackEntryFilename(
   return undefined;
 }
 
+export function extractRspackRuntimeDetails(
+  source: string
+): RstackBundlerRuntimeDetails {
+  const definitions = [
+    ["publicPath", "p"],
+    ["runtimeId", "j"],
+    ["rspackVersion", "rv"],
+    ["rspackUniqueId", "ruid"],
+    ["getChunkScriptFilename", "u"],
+    ["getChunkCssFilename", "k"],
+    ["getChunkUpdateScriptFilename", "hu"],
+    ["getChunkUpdateCssFilename", "hk"],
+    ["getUpdateManifestFilename", "hmrF"],
+    ["baseURI", "b"]
+  ];
+  const bases = [
+    { expression: "__rspack_context", mode: "rspack" },
+    { expression: "__webpack_require__", mode: "webpack-compatible" }
+  ];
+  const escapeRegExp = (value: string) =>
+    value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const literal = (input: string): string | number | boolean | null | undefined => {
+    const normalized = input.trimStart();
+    const wrapped = /^\(\s*("(?:\\.|[^"\\])*")\s*\)/u.exec(normalized);
+    const quoted = wrapped?.[1]
+      ?? /^("(?:\\.|[^"\\])*")/u.exec(normalized)?.[1];
+    if (quoted !== undefined) {
+      try {
+        return JSON.parse(quoted) as string;
+      } catch {
+        return undefined;
+      }
+    }
+    const primitive = /^(null|true|false|-?(?:0|[1-9]\d*)(?:\.\d+)?)/u.exec(normalized)?.[1];
+    if (primitive === "null") return null;
+    if (primitive === "true") return true;
+    if (primitive === "false") return false;
+    if (primitive !== undefined) return Number(primitive);
+    return undefined;
+  };
+  const detailAt = (
+    base: string,
+    property: string,
+    allowStaticReturn: boolean
+  ): RstackRuntimeGlobalDetail | undefined => {
+    const expression = `${base}.${property}`;
+    const assignment = new RegExp(`${escapeRegExp(expression)}\\s*=\\s*`, "u").exec(source);
+    if (assignment?.index === undefined) return undefined;
+    const tail = source.slice(assignment.index + assignment[0].length, assignment.index + assignment[0].length + 800);
+    const directValue = literal(tail);
+    if (directValue !== undefined || /^\s*null\b/u.test(tail)) {
+      return { expression, kind: "value", value: directValue ?? null };
+    }
+    const isFunction = /^\s*(?:function\b|(?:\([^)]*\)|[$\w]+)\s*=>)/u.test(tail);
+    if (isFunction) {
+      if (allowStaticReturn) {
+        const returned = /(?:=>\s*\(\s*|\breturn\s+)("(?:\\.|[^"\\])*")/u.exec(tail.slice(0, 400))?.[1];
+        if (returned !== undefined) {
+          try {
+            return {
+              expression,
+              kind: "function",
+              value: JSON.parse(returned) as string
+            };
+          } catch {}
+        }
+      }
+      return { expression, kind: "function" };
+    }
+    return { expression, kind: "dynamic" };
+  };
+
+  for (const base of bases) {
+    const globals: Record<string, RstackRuntimeGlobalDetail> = {};
+    for (const [name, property] of definitions) {
+      if (name === undefined || property === undefined) continue;
+      const detail = detailAt(base.expression, property, name === "rspackVersion");
+      if (detail !== undefined) globals[name] = detail;
+    }
+    if (Object.keys(globals).length > 0) {
+      return {
+        mode: base.mode as Exclude<RstackRuntimeMode, "unknown">,
+        requireExpression: base.expression,
+        globals
+      };
+    }
+  }
+  return { mode: "unknown", globals: {} };
+}
+
 export function createRstackFetchDetectionScript(): string {
   return `(async () => {
     try {
       const classifyFilename = ${classifyRstackEntryFilename.toString()};
+      const extractRuntimeDetails = ${extractRspackRuntimeDetails.toString()};
       const selected = new Map();
       const addCandidate = (rawUrl) => {
         if (typeof rawUrl !== "string" || rawUrl.length === 0) return;
@@ -72,7 +197,8 @@ export function createRstackFetchDetectionScript(): string {
               status: "found",
               checked,
               failureCount,
-              matched: candidate.name
+              matched: candidate.name,
+              runtime: extractRuntimeDetails(source)
             };
           }
         } catch {
@@ -103,12 +229,7 @@ export function createRstackFetchDetectionScript(): string {
 export async function detectRstackStack(
   divebell: DivebellExtensionApi,
   command: string
-): Promise<{
-  id: string;
-  name: string;
-  evidence: string[];
-  command: string;
-} | undefined> {
+): Promise<DivebellStackDetection | undefined> {
   let result: RstackFetchDetectionResult;
   try {
     result = await divebell.browser.eval<RstackFetchDetectionResult>(
@@ -129,6 +250,16 @@ export async function detectRstackStack(
     evidence: [
       `data-rspack found in fetched ${matched}`
     ],
+    ...(result.runtime === undefined
+      ? {}
+      : {
+          details: {
+            bundlerRuntime: {
+              script: matched,
+              ...result.runtime
+            }
+          }
+        }),
     command
   };
 }

@@ -21,7 +21,7 @@ const extension = {
       },
       {
         category: "External Extensions",
-        usage: "divebell rstack hmr start [--expect applied] [--expect-refresh] [--expect-no-reload] [--state-check <file>]",
+        usage: "divebell rstack hmr start [--expect applied] [--expect-refresh] [--expect-no-reload] [--state-check <file>] [--verbose]",
         description: "Prepare non-pausing compiled-JavaScript logpoints before changing source code."
       },
       {

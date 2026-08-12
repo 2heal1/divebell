@@ -1,6 +1,6 @@
 ---
 name: observe-rstack-hmr
-description: Observe whether Rspack HMR and React Refresh apply successfully in the compiled JavaScript actually loaded by Chromium, including Module Federation shared React ownership evidence.
+description: Detect Rspack/Rsbuild, inspect compact Rspack bundler-runtime configuration, and verify Rspack HMR separately from React Refresh in the compiled JavaScript loaded by Chromium, including Module Federation shared React ownership evidence.
 ---
 
 # Observe Rstack HMR
@@ -20,7 +20,8 @@ read source maps or accept TypeScript source locations.
    it reports `id: "rspack"`. Detection sequentially checks every distinct
    fetched `index*`, `*main*`, and `runtime*` entry until one contains the
    `data-rspack` string. A production page may be detected without an HMR
-   runtime.
+   runtime. Read `details.bundlerRuntime` for the compact runtime configuration
+   found in that same compiled script.
 3. Run `divebell rstack hmr inspect` if compatibility is not known.
 4. Run `divebell rstack hmr start ...` and wait until it returns `status:
    "ready"` and `nextAction: "change-source"`.
@@ -34,6 +35,32 @@ Debugger. Candidate URL discovery reads `document.scripts` plus Script
 Resource Timing so a removed script URL may still be considered. Fetch, CORS,
 CSP, timeout, or response failures are not positive evidence. HMR runtime
 presence is separate capability evidence and is checked by `inspect`.
+
+## Read stack runtime details
+
+`stack` reads assignments from the fetched compiled source; it never executes
+the fetched bundle. Interpret `details.bundlerRuntime` as follows:
+
+- `script` names the fetched `index*`, `*main*`, or `runtime*` file containing
+  `data-rspack`.
+- `mode` is `webpack-compatible` for `__webpack_require__.*`, `rspack` for
+  `__rspack_context.*`, or `unknown` when no supported assignment was found.
+- `requireExpression` is the runtime-global base expression.
+- `globals` uses Rspack `RuntimeGlobals` names and may contain `publicPath`,
+  `runtimeId`, `rspackVersion`, `rspackUniqueId`,
+  `getChunkScriptFilename`, `getChunkCssFilename`,
+  `getChunkUpdateScriptFilename`, `getChunkUpdateCssFilename`,
+  `getUpdateManifestFilename`, and `baseURI`.
+- `kind: "value"` is a statically decoded primitive assignment;
+  `kind: "function"` means the runtime global is generated as a function; and
+  `kind: "dynamic"` means its value depends on another runtime expression.
+- A `rspackVersion` function may include a statically decoded return `value`.
+  No other function is called to derive an example filename.
+
+Treat a missing global only as "not emitted in the matched runtime source".
+Do not infer that the related feature or output option is disabled. Rerun
+`stack --refresh` after the page or deployed assets change because stack results
+are cached by page URL and detector set.
 
 `wait` may start before or after the file write because the debugger keeps a
 persistent event ring. `start` must finish before the file write.
@@ -85,23 +112,26 @@ whether the module HMR cycle applied.
   the two runtime lists through `runtimeKind` and `runtimeId`.
 - `warnings` records partial source-search or profile-recognition failures.
 
-`start` returns `hmrRuntimeCount`, `reactRefreshRuntimeCount`, and
-`installedProbeCount`. These count only runtime components selected for the
-current CDP page session and probes successfully installed for the observation.
-Do not edit source until `status: "ready"` is returned.
+`start` returns separate `rspackHmr` and `reactRefresh` readiness summaries.
+Use `start --verbose` for the preflight and installed probe count. Do not edit
+source until `status: "ready"` is returned.
 
 `status` and `wait` return the current or final HMR result:
 
-- `outcome` and `cycles` describe Rspack HMR; each `cycles[].runtimeId`
-  references `hmrRuntimes`.
-- `refresh` describes the React Refresh boundary path and is interpreted with
-  `reactRefreshRuntimes` and `reactRefreshPreflight`.
-- `pageReload` is independent evidence of a reload request and main-document
-  commit.
-- `shared` reports optional MF runtime and shared `react`/`react-dom` provider
-  evidence. Do not infer shared ownership from a script URL alone.
-- `capabilities`, `gaps`, `warnings`, and `recommendedActions` state which
-  conclusions were supported and what to do next.
+- `rspackHmr` reports the Rspack apply outcome, latest status path, and whether
+  the result stayed in the same document.
+- `reactRefresh` independently reports the renderer precondition, boundary,
+  and completed Refresh call. Never treat `rspackHmr.outcome: "applied"` as a
+  React UI success when `reactRefresh.outcome` is `"not-completed"`.
+- `ui.status` reports only an explicit `--state-check` result; otherwise it is
+  `not-verified`.
+- `expectations.verdict` grades only the expectations selected at `start`.
+- With `--verbose`, `details.cycles`, `details.refresh`, and
+  `details.pageReload` expose the full Rspack, Refresh, and reload evidence.
+- `details.shared` reports optional MF runtime and shared `react`/`react-dom`
+  provider evidence. Do not infer shared ownership from a script URL alone.
+- `details.capabilities`, `details.gaps`, `warnings`, and `recommendedActions`
+  state which conclusions were supported and what to do next.
 
 With `--verbose`, `evidence.installedProbes` lists the logpoints actually owned
 by the observation and `evidence.events` lists their normalized events. These

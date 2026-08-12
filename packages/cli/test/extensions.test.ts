@@ -59,6 +59,11 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
             id: "modernjs",
             name: "Modern.js",
             evidence: ["window._MODERNJS_ROUTE_MANIFEST"],
+            details: {
+              routeManifest: {
+                present: true
+              }
+            },
             command: "modern"
           } : undefined;
         },
@@ -112,6 +117,9 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     assert.equal(stackResult.data.detections[0].id, "modernjs");
     assert.equal(stackResult.data.detections[0].extension, "modern-detector");
     assert.equal(stackResult.data.detections[0].command, "modern");
+    assert.deepEqual(stackResult.data.detections[0].details, {
+      routeManifest: { present: true }
+    });
     assert.equal(stackResult.data.cached, false);
     assert.deepEqual(calls, ["open", "detectStack"]);
 
@@ -125,6 +133,9 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
     const cachedResult = JSON.parse(cachedOutput.text());
     assert.equal(cachedResult.data.cached, true);
     assert.equal(cachedResult.data.detections[0].command, "modern");
+    assert.deepEqual(cachedResult.data.detections[0].details, {
+      routeManifest: { present: true }
+    });
     assert.deepEqual(calls, ["open", "detectStack"]);
 
     const closeOutput = createOutput();
@@ -272,6 +283,29 @@ test("rejects the removed recommendedExtensions stack field", async () => {
   assert.match(
     result.failures[0]?.message ?? "",
     /recommendedExtensions is no longer supported; return command instead/
+  );
+});
+
+test("rejects non-JSON detectStack details", async () => {
+  const result = await runDetectStackHooks([{
+    schemaVersion: 1,
+    name: "invalid-details-detector",
+    hooks: {
+      async detectStack() {
+        return {
+          id: "invalid-details",
+          name: "Invalid details",
+          details: { inspect: () => true }
+        } as never;
+      }
+    }
+  }], {} as never);
+
+  assert.deepEqual(result.detections, []);
+  assert.equal(result.failures.length, 1);
+  assert.match(
+    result.failures[0]?.message ?? "",
+    /details must be a JSON object/u
   );
 });
 

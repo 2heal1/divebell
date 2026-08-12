@@ -54,9 +54,22 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
     });
     assert.equal(started.status, "ready");
     assert.equal(started.nextAction, "change-source");
-    assert.equal(started.hmrRuntimeCount, 1);
-    assert.equal(started.reactRefreshRuntimeCount, 0);
-    assert.equal(started.installedProbeCount, 2);
+    assert.deepEqual(started.expectations, {
+      rspackHmr: "applied",
+      reactRefresh: "not-required",
+      noReload: true
+    });
+    assert.deepEqual(started.rspackHmr, {
+      status: "ready",
+      runtimeCount: 1
+    });
+    assert.deepEqual(started.reactRefresh, {
+      status: "not-ready",
+      renderer: "hook-missing",
+      runtimeCount: 0
+    });
+    assert.equal("reactRefreshPreflight" in started, false);
+    assert.equal("installedProbeCount" in started, false);
     assert.equal("runtimeCount" in started, false);
     assert.equal("probeCount" in started, false);
     assert.match(started.observationId, /^rstack-hmr-/u);
@@ -70,25 +83,52 @@ test("runs start, ready, wait, status, and stop in the required order", async ()
       })
     });
     assert.equal(waited.status, "completed");
-    assert.equal(waited.outcome, "applied");
-    assert.equal(waited.verdict, "passed");
-    assert.equal(waited.hmrRuntimes.length, 1);
-    assert.equal(waited.reactRefreshRuntimes.length, 0);
+    assert.deepEqual(waited.expectations, {
+      verdict: "passed",
+      rspackHmr: "applied",
+      reactRefresh: "not-required",
+      noReload: true
+    });
+    assert.deepEqual(waited.rspackHmr, {
+      outcome: "applied",
+      statusPath: ["check", "prepare", "dispose", "apply", "idle"],
+      sameDocument: true
+    });
+    assert.deepEqual(waited.reactRefresh, {
+      outcome: "not-completed",
+      renderer: "hook-missing",
+      boundary: "not-observed",
+      completed: false
+    });
+    assert.deepEqual(waited.ui, { status: "not-verified" });
+    assert.equal("outcome" in waited, false);
+    assert.equal("verdict" in waited, false);
+    assert.equal("hmrRuntimes" in waited, false);
+    assert.equal("reactRefreshRuntimes" in waited, false);
     assert.equal("runtimes" in waited, false);
-    assert.deepEqual(waited.cycles[0].statusPath, [
-      "check",
-      "prepare",
-      "dispose",
-      "apply",
-      "idle"
-    ]);
 
     const status = await runRstackCommand({
       ...base,
       args: cliArgs(["rstack", "hmr", "status", started.observationId])
     });
     assert.equal(status.observationId, started.observationId);
-    assert.equal(status.outcome, "applied");
+    assert.equal(status.rspackHmr.outcome, "applied");
+
+    const verbose = await runRstackCommand({
+      ...base,
+      args: cliArgs(["rstack", "hmr", "status", started.observationId], {
+        verbose: "true"
+      })
+    });
+    assert.equal(verbose.details.hmrRuntimes.length, 1);
+    assert.equal(verbose.details.reactRefreshRuntimes.length, 0);
+    assert.deepEqual(verbose.details.cycles[0].statusPath, [
+      "check",
+      "prepare",
+      "dispose",
+      "apply",
+      "idle"
+    ]);
 
     const stopped = await runRstackCommand({
       ...base,

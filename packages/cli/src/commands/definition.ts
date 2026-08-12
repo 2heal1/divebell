@@ -19,6 +19,10 @@ export type {
   DivebellExtensionHooks,
   DivebellOpenHook,
   DivebellOrderedHook,
+  DivebellStackDetailArray,
+  DivebellStackDetailObject,
+  DivebellStackDetailValue,
+  DivebellStackDetection,
   ValidateExtensionOptions
 } from "../types/commands.js";
 

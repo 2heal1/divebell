@@ -5,7 +5,8 @@ import vm from "node:vm";
 import {
   classifyRstackEntryFilename,
   createRstackFetchDetectionScript,
-  detectRstackStack
+  detectRstackStack,
+  extractRspackRuntimeDetails
 } from "../dist/index.js";
 
 test("classifies only index, main, and runtime entry filenames", () => {
@@ -22,12 +23,37 @@ test("detectStack recommends rstack only when fetched source has data-rspack", a
     status: "found",
     checked: ["index.js", "main.123.js"],
     failureCount: 0,
-    matched: "main.123.js"
+    matched: "main.123.js",
+    runtime: {
+      mode: "webpack-compatible",
+      requireExpression: "__webpack_require__",
+      globals: {
+        publicPath: {
+          expression: "__webpack_require__.p",
+          kind: "value",
+          value: "/assets/"
+        }
+      }
+    }
   });
   const result = await detectRstackStack({ browser }, "rstack");
   assert.equal(result?.id, "rspack");
   assert.equal(result?.command, "rstack");
   assert.match(result?.evidence[0] ?? "", /data-rspack.*main\.123\.js/u);
+  assert.deepEqual(result?.details, {
+    bundlerRuntime: {
+      script: "main.123.js",
+      mode: "webpack-compatible",
+      requireExpression: "__webpack_require__",
+      globals: {
+        publicPath: {
+          expression: "__webpack_require__.p",
+          kind: "value",
+          value: "/assets/"
+        }
+      }
+    }
+  });
   assert.match(browser.script, /performance\.getEntriesByType/u);
   assert.doesNotMatch(browser.script, /MutationObserver|Debugger/u);
 });
@@ -66,7 +92,13 @@ test("fetch detection checks every matching entry until data-rspack is found", a
         ok: true,
         async text() {
           return url.includes("index~2")
-            ? `script.setAttribute("data-rspack", key)`
+            ? `
+                script.setAttribute("data-rspack", key);
+                __webpack_require__.p = "/assets/";
+                __webpack_require__.j = "campaign";
+                __webpack_require__.rv = () => ("1.5.0");
+                __webpack_require__.u = (chunkId) => chunkId + ".js";
+              `
             : "ordinary source";
         }
       };
@@ -95,6 +127,12 @@ test("fetch detection checks every matching entry until data-rspack is found", a
 
   assert.equal(result.status, "found");
   assert.equal(result.matched, "index~2.123.js");
+  assert.equal(result.runtime.mode, "webpack-compatible");
+  assert.equal(result.runtime.globals.publicPath.value, "/assets/");
+  assert.equal(result.runtime.globals.runtimeId.value, "campaign");
+  assert.equal(result.runtime.globals.rspackVersion.value, "1.5.0");
+  assert.equal(result.runtime.globals.rspackVersion.kind, "function");
+  assert.equal(result.runtime.globals.getChunkScriptFilename.kind, "function");
   assert.deepEqual(Array.from(result.checked), [
     "index~0.123.js",
     "index~2.123.js"
@@ -104,6 +142,27 @@ test("fetch detection checks every matching entry until data-rspack is found", a
     options.cache === "force-cache"
     && options.credentials === "same-origin"
   ), true);
+});
+
+test("extracts rspack runtime-mode globals without evaluating source", () => {
+  const result = extractRspackRuntimeDetails(`
+    __rspack_context.p = scriptUrl;
+    __rspack_context.j = null;
+    __rspack_context.ruid = "bundler=rspack@1.5.0";
+    __rspack_context.hu = (chunkId) => chunkId + ".hot-update.js";
+    throw new Error("must not execute");
+  `);
+
+  assert.equal(result.mode, "rspack");
+  assert.equal(result.requireExpression, "__rspack_context");
+  assert.equal(result.globals.publicPath.kind, "dynamic");
+  assert.deepEqual(result.globals.runtimeId, {
+    expression: "__rspack_context.j",
+    kind: "value",
+    value: null
+  });
+  assert.equal(result.globals.rspackUniqueId.value, "bundler=rspack@1.5.0");
+  assert.equal(result.globals.getChunkUpdateScriptFilename.kind, "function");
 });
 
 test("fetch detection absorbs request errors", async () => {

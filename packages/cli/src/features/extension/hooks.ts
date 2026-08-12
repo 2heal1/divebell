@@ -262,6 +262,11 @@ function validateDetection(
   if (value.evidence !== undefined && !isStringArray(value.evidence)) {
     throw new Error("detectStack result evidence must be an array of strings.");
   }
+  if (value.details !== undefined && !isStackDetails(value.details)) {
+    throw new Error(
+      "detectStack result details must be a JSON object no larger than 20 KB."
+    );
+  }
   const legacyValue = value as DivebellStackDetection & {
     recommendedExtensions?: unknown;
   };
@@ -281,6 +286,35 @@ function validateDetection(
     }
   }
   return value;
+}
+
+function isStackDetails(value: unknown): boolean {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  if (!isJsonValue(value, new Set(), 0)) return false;
+  try {
+    return Buffer.byteLength(JSON.stringify(value), "utf8") <= 20_000;
+  } catch {
+    return false;
+  }
+}
+
+function isJsonValue(
+  value: unknown,
+  ancestors: Set<object>,
+  depth: number
+): boolean {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object" || depth > 8 || ancestors.has(value)) return false;
+  ancestors.add(value);
+  const valid = Array.isArray(value)
+    ? value.every((item) => isJsonValue(item, ancestors, depth + 1))
+    : Object.getPrototypeOf(value) === Object.prototype
+      && Object.values(value).every((item) => isJsonValue(item, ancestors, depth + 1));
+  ancestors.delete(value);
+  return valid;
 }
 
 async function withTimeout<T>(

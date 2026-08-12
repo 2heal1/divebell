@@ -315,11 +315,32 @@ interface DivebellStackDetection {
   name: string;
   version?: string;
   evidence?: readonly string[];
+  details?: DivebellStackDetailObject;
   command?: string;
+}
+
+type DivebellStackDetailValue =
+  | string
+  | number
+  | boolean
+  | null
+  | DivebellStackDetailArray
+  | DivebellStackDetailObject;
+
+interface DivebellStackDetailArray
+  extends ReadonlyArray<DivebellStackDetailValue> {}
+
+interface DivebellStackDetailObject {
+  readonly [key: string]: DivebellStackDetailValue;
 }
 ```
 
-`detectStack` runs only for `divebell stack` and may return one detection, multiple detections, or no result. `command` must name a top-level command registered by the current Extension; omit it when there is no follow-up command. Do not include full page configuration or sensitive values in `evidence`.
+`detectStack` runs only for `divebell stack` and may return one detection,
+multiple detections, or no result. `command` must name a top-level command
+registered by the current Extension; omit it when there is no follow-up
+command. `details` may contain a compact JSON object up to 20 KB for structured
+detector-specific facts. Do not include full page configuration, source text,
+credentials, signed URLs, or other sensitive values in `evidence` or `details`.
 
 `close` runs only for Extensions that successfully participated in the matching `open`. It runs when that page is stopped or replaced by another `open` in the same working directory. Cleanup failures are reported but do not prevent the page lifecycle from continuing.
 

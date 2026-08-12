@@ -11,6 +11,13 @@ export type HmrOutcome =
 
 export type ResultVerdict = "observed" | "passed" | "failed";
 
+export type ReactRefreshOutcome =
+  | "completed"
+  | "queued"
+  | "invalidated"
+  | "non-boundary"
+  | "not-completed";
+
 export interface SourceLocation {
   line: number;
   column: number;
@@ -264,6 +271,35 @@ export interface HmrResult {
     kind: "buffer" | "transport";
     sequence?: number;
   }>;
+  warnings: string[];
+  recommendedActions: string[];
+}
+
+export interface HmrCommandResult {
+  schemaVersion: 1;
+  observationId: string;
+  status: ObservationStatus;
+  errorCode?: string;
+  expectations: {
+    verdict: ResultVerdict;
+    rspackHmr: "applied" | "not-required";
+    reactRefresh: "completed" | "not-required";
+    noReload: boolean;
+  };
+  rspackHmr: {
+    outcome: HmrOutcome;
+    statusPath: string[];
+    sameDocument?: boolean;
+  };
+  reactRefresh: {
+    outcome: ReactRefreshOutcome;
+    renderer: ReactRefreshRendererEvidence["status"];
+    boundary: HmrResult["refresh"]["boundary"];
+    completed: boolean;
+  };
+  ui: {
+    status: HmrResult["statePreservation"]["status"];
+  };
   warnings: string[];
   recommendedActions: string[];
 }

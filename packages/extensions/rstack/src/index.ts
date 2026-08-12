@@ -26,7 +26,8 @@ export { discoverProfilesInSource, locationAt } from "./profiles.js";
 export {
   classifyRstackEntryFilename,
   createRstackFetchDetectionScript,
-  detectRstackStack
+  detectRstackStack,
+  extractRspackRuntimeDetails
 } from "./detect-stack.js";
 export { reactDomBuildsInSource } from "./react-refresh-preflight.js";
 export { appendDebugEvents, currentOutcome, reduceCycles, refreshSummary } from "./reducer.js";

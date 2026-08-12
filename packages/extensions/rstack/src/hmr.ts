@@ -18,6 +18,7 @@ import { appendDebugEvents } from "./reducer.js";
 import { createHmrResult, resultShouldFinish } from "./report.js";
 import { captureState, loadStateCheck } from "./state-check.js";
 import type {
+  HmrCommandResult,
   HmrExpectations,
   HmrResult,
   InstalledProbe,
@@ -243,20 +244,35 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
       consoleBaseline: readyConsole
     };
     await store.write(observation);
-    return {
+    const summary = {
       schemaVersion: 1,
       command: "rstack hmr start",
       observationId,
       status: "ready",
-      readyAtSequence: observation.readyAtSequence,
       nextAction: "change-source",
-      hmrRuntimeCount: observation.hmrRuntimes.length,
-      reactRefreshRuntimeCount: observation.reactRefreshRuntimes.length,
-      installedProbeCount: observation.installedProbes.length,
-      expectations,
-      reactRefreshPreflight,
+      expectations: expectationSummary(expectations),
+      rspackHmr: {
+        status: "ready",
+        runtimeCount: observation.hmrRuntimes.length
+      },
+      reactRefresh: {
+        status: reactRefreshPreflight.refreshRenderer.status === "ready"
+          ? "ready"
+          : "not-ready",
+        renderer: reactRefreshPreflight.refreshRenderer.status,
+        runtimeCount: observation.reactRefreshRuntimes.length
+      },
       nextCommand: `divebell rstack hmr wait ${observationId} --timeout ${DEFAULT_WAIT_TIMEOUT}`,
       warnings: discovery.warnings
+    };
+    if (!booleanOption(options.args, "verbose")) return summary;
+    return {
+      ...summary,
+      details: {
+        readyAtSequence: observation.readyAtSequence,
+        installedProbeCount: observation.installedProbes.length,
+        reactRefreshPreflight
+      }
     };
   } catch (error) {
     await removeProbes(debug, installed);
@@ -274,7 +290,7 @@ async function statusHmr(
   const store = createObservationStore(options);
   let observation = await store.read(observationId);
   if (observation.status === "completed" && observation.result !== undefined) {
-    return verboseResult(observation.result, observation, options.args);
+    return formatResult(observation.result, observation, options.args);
   }
   observation = await readAvailableEvents(options, observation);
   let result = await buildCurrentResult(options, observation, false);
@@ -286,7 +302,7 @@ async function statusHmr(
     observation = completeObservation(observation, result);
   }
   await store.write(observation);
-  return verboseResult(result, observation, options.args);
+  return formatResult(result, observation, options.args);
 }
 
 async function waitHmr(
@@ -296,7 +312,7 @@ async function waitHmr(
   const store = createObservationStore(options);
   let observation = await store.read(observationId);
   if (observation.status === "completed" && observation.result !== undefined) {
-    return verboseResult(observation.result, observation, options.args);
+    return formatResult(observation.result, observation, options.args);
   }
   const timeout = positiveTimeout(options.args);
   const deadline = Date.now() + timeout;
@@ -317,7 +333,7 @@ async function waitHmr(
       const result = await buildCurrentResult(options, observation, false, stateAfter);
       observation = completeObservation(observation, result);
       await store.write(observation);
-      return verboseResult(result, observation, options.args);
+      return formatResult(result, observation, options.args);
     }
     await store.write(observation);
   }
@@ -328,7 +344,7 @@ async function waitHmr(
   const result = await buildCurrentResult(options, observation, true, stateAfter);
   observation = completeObservation(observation, result);
   await store.write(observation);
-  return verboseResult(result, observation, options.args);
+  return formatResult(result, observation, options.args);
 }
 
 async function stopHmr(
@@ -614,14 +630,27 @@ function staleObservation(message: string): Error {
   });
 }
 
-function verboseResult(
+function formatResult(
   result: HmrResult,
   observation: ObservationManifest,
   args: ParsedCliArgs
 ): unknown {
-  if (!booleanOption(args, "verbose")) return result;
+  const summary = commandResult(result, observation);
+  if (!booleanOption(args, "verbose")) return summary;
   return {
-    ...result,
+    ...summary,
+    details: {
+      capabilities: result.capabilities,
+      hmrRuntimes: result.hmrRuntimes,
+      reactRefreshRuntimes: result.reactRefreshRuntimes,
+      cycles: result.cycles,
+      pageReload: result.pageReload,
+      reactRefreshPreflight: result.reactRefreshPreflight,
+      refresh: result.refresh,
+      statePreservation: result.statePreservation,
+      shared: result.shared,
+      gaps: result.gaps
+    },
     evidence: {
       readyAtSequence: observation.readyAtSequence,
       latestSequence: observation.latestSequence,
@@ -629,6 +658,68 @@ function verboseResult(
       events: observation.events
     }
   };
+}
+
+function commandResult(
+  result: HmrResult,
+  observation: ObservationManifest
+): HmrCommandResult {
+  const latestCycle = [...result.cycles].reverse().find((cycle) =>
+    cycle.outcome === result.outcome
+  ) ?? result.cycles[result.cycles.length - 1];
+  const sameDocument = result.pageReload.status === "same-document"
+    ? true
+    : result.pageReload.status === "reloaded"
+      ? false
+      : undefined;
+  return {
+    schemaVersion: 1,
+    observationId: result.observationId,
+    status: result.status,
+    ...(result.errorCode === undefined ? {} : { errorCode: result.errorCode }),
+    expectations: {
+      verdict: result.verdict,
+      ...expectationSummary(observation.expectations)
+    },
+    rspackHmr: {
+      outcome: result.outcome,
+      statusPath: latestCycle?.statusPath ?? [],
+      ...(sameDocument === undefined ? {} : { sameDocument })
+    },
+    reactRefresh: {
+      outcome: reactRefreshOutcome(result),
+      renderer: result.capabilities.refreshRenderer,
+      boundary: result.refresh.boundary,
+      completed: result.refresh.completed
+    },
+    ui: {
+      status: result.statePreservation.status
+    },
+    warnings: result.warnings,
+    recommendedActions: result.recommendedActions
+  };
+}
+
+function expectationSummary(expectations: ObservationManifest["expectations"]): {
+  rspackHmr: "applied" | "not-required";
+  reactRefresh: "completed" | "not-required";
+  noReload: boolean;
+} {
+  return {
+    rspackHmr: expectations.outcome === "applied" ? "applied" : "not-required",
+    reactRefresh: expectations.refresh ? "completed" : "not-required",
+    noReload: expectations.noReload
+  };
+}
+
+function reactRefreshOutcome(result: HmrResult): HmrCommandResult["reactRefresh"]["outcome"] {
+  if (result.refresh.completed && result.refresh.boundary === "refreshed") {
+    return "completed";
+  }
+  if (result.refresh.boundary === "queued") return "queued";
+  if (result.refresh.boundary === "invalidated") return "invalidated";
+  if (result.refresh.boundary === "non-boundary") return "non-boundary";
+  return "not-completed";
 }
 
 function emptyMfEvidence(): MfEvidence {

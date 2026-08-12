@@ -23,6 +23,16 @@ filenames, and fetches every distinct match sequentially with
 1.2 second timeout; fetch, CORS, CSP, and response failures produce no page
 exception and no positive detection.
 
+When a match is found, `stack` also returns `details.bundlerRuntime` from that
+same compiled source. It recognizes `__webpack_require__.*` and
+`__rspack_context.*` assignments for public path (`p`), runtime ID (`j`),
+Rspack version/unique ID (`rv`/`ruid`), `getChunkScriptFilename` /
+`getChunkCssFilename` (`u`/`k`), update filename globals (`hu`/`hk`/`hmrF`),
+and base URI (`b`). The field names follow Rspack's `RuntimeGlobals` names.
+Static primitives are reported as `value`; functions and dynamic expressions
+are identified without executing the fetched bundle. Missing fields mean only
+that the matched runtime source did not emit a supported assignment.
+
 Production Rspack can be detected without HMR. HMR and React Refresh are
 inspected separately by `rstack hmr inspect`. Use `stack --refresh` after
 upgrading this Extension or when the same page URL already has a cached stack
@@ -68,8 +78,9 @@ The first list contains Rspack HMR state machines; the second contains React
 Refresh adapters, even when both components are compiled into the same file.
 `probePlans` are candidate non-pausing logpoint locations and are not installed
 until `start`. Each plan includes `runtimeKind` and `runtimeId` so it can be
-associated with the corresponding runtime list. `start` reports
-`hmrRuntimeCount`, `reactRefreshRuntimeCount`, and `installedProbeCount`.
+associated with the corresponding runtime list. By default, `start` groups
+readiness under `rspackHmr` and `reactRefresh`. Use `start --verbose` to read
+the Refresh preflight and installed probe count.
 
 Run `divebell rstack --skill` for the full field semantics and decision rules
 for `inspect`, `start`, `status`, and `wait`.
@@ -80,9 +91,17 @@ observation.
 
 Page reload and module HMR are separate outcomes. After an apply-to-idle path,
 `wait` keeps observing for a short settle window. A main-document commit during
-that window produces `outcome: "reloaded"`; it cannot pass as applied HMR.
-`pageReload` separately reports a reload request and the observed document
-commit.
+that window produces `rspackHmr.outcome: "reloaded"`; it cannot pass as applied
+HMR. `rspackHmr.sameDocument` reports whether the observed update stayed in the
+same document.
+
+`status` and `wait` return compact results with independent `rspackHmr`,
+`reactRefresh`, and `ui` sections. `expectations.verdict` grades only the
+expectations selected by `start`; it is not an overall UI success claim. An
+applied Rspack cycle can coexist with
+`reactRefresh.outcome: "not-completed"`. Use `--verbose` for full runtimes,
+cycles, preflight, page reload, MF shared, probe, and event evidence under
+`details` and `evidence`.
 
 Use `wait` with `--expect applied` for a pass/fail answer. On failure, rerun
 `status <observation-id> --verbose` to inspect the runtime-scoped status path,

@@ -1,11 +1,105 @@
 import type { DivebellExtensionApi } from "@divebell/cli";
 
-import { DebugClient } from "./debug-client.js";
-import {
-  readRstackStackEvidenceExpression,
-  type RstackStackEvidence
-} from "./open.js";
-import { discoverRstackProfiles } from "./profiles.js";
+const FETCH_TIMEOUT_MS = 1_200;
+
+export type RstackEntryKind = "index" | "main" | "runtime";
+
+export interface RstackFetchDetectionResult {
+  schemaVersion: 1;
+  status: "found" | "not-found" | "unavailable";
+  checked: string[];
+  failureCount: number;
+  matched?: string;
+}
+
+export function classifyRstackEntryFilename(
+  fileName: string
+): RstackEntryKind | undefined {
+  const normalized = fileName.toLowerCase();
+  if (normalized.startsWith("index")) return "index";
+  if (normalized.includes("main")) return "main";
+  if (normalized.startsWith("runtime")) return "runtime";
+  return undefined;
+}
+
+export function createRstackFetchDetectionScript(): string {
+  return `(async () => {
+    try {
+      const classifyFilename = ${classifyRstackEntryFilename.toString()};
+      const selected = new Map();
+      const addCandidate = (rawUrl) => {
+        if (typeof rawUrl !== "string" || rawUrl.length === 0) return;
+        try {
+          const url = new URL(rawUrl, globalThis.location.href);
+          if (url.protocol !== "http:" && url.protocol !== "https:") return;
+          const name = (url.pathname.split("/").pop() || "").slice(0, 200);
+          const kind = classifyFilename(name);
+          if (kind === undefined || selected.has(kind)) return;
+          selected.set(kind, { kind, name, url: url.href });
+        } catch {}
+      };
+
+      for (const script of Array.from(document.scripts || [])) {
+        addCandidate(script.src);
+      }
+      try {
+        for (const entry of performance.getEntriesByType("resource")) {
+          if (entry.initiatorType === "script") addCandidate(entry.name);
+        }
+      } catch {}
+
+      const checked = [];
+      let failureCount = 0;
+      const candidates = ["index", "main", "runtime"]
+        .flatMap((kind) => selected.has(kind) ? [selected.get(kind)] : []);
+      for (const candidate of candidates) {
+        checked.push(candidate.name);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), ${FETCH_TIMEOUT_MS});
+        try {
+          const response = await fetch(candidate.url, {
+            cache: "force-cache",
+            credentials: "same-origin",
+            signal: controller.signal
+          });
+          if (!response.ok) {
+            failureCount += 1;
+            continue;
+          }
+          const source = await response.text();
+          if (source.includes("data-rspack")) {
+            return {
+              schemaVersion: 1,
+              status: "found",
+              checked,
+              failureCount,
+              matched: candidate.name
+            };
+          }
+        } catch {
+          failureCount += 1;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      return {
+        schemaVersion: 1,
+        status: candidates.length > 0 && failureCount === candidates.length
+          ? "unavailable"
+          : "not-found",
+        checked,
+        failureCount
+      };
+    } catch {
+      return {
+        schemaVersion: 1,
+        status: "unavailable",
+        checked: [],
+        failureCount: 0
+      };
+    }
+  })()`;
+}
 
 export async function detectRstackStack(
   divebell: DivebellExtensionApi,
@@ -16,91 +110,26 @@ export async function detectRstackStack(
   evidence: string[];
   command: string;
 } | undefined> {
-  const debug = new DebugClient(divebell.browser);
-  const before = await debug.status();
-  const enabled = await debug.enable();
-  const newlyEnabled = enabled.sessions
-    .map((session) => session.sessionId)
-    .filter((sessionId) => !before.sessions.some((session) =>
-      session.sessionId === sessionId && session.enabled
-    ));
-
+  let result: RstackFetchDetectionResult;
   try {
-    const [discovery, preloadedEvidence, sourceMarkerCount] = await Promise.all([
-      discoverRstackProfiles(debug),
-      readPreloadedEvidence(divebell),
-      countRspackSourceMarkers(debug)
-    ]);
-    const hmr = discovery.runtimes.filter((runtime) =>
-      runtime.kind === "rspack-hmr"
+    result = await divebell.browser.eval<RstackFetchDetectionResult>(
+      createRstackFetchDetectionScript()
     );
-    const observedDataRspack = (preloadedEvidence?.dataRspackScriptCount ?? 0) > 0;
-    if (!observedDataRspack && sourceMarkerCount === 0) return undefined;
-    const refresh = discovery.runtimes.some((runtime) =>
-      runtime.kind === "react-refresh"
-    );
-    return {
-      id: "rspack",
-      name: "Rspack",
-      evidence: [
-        observedDataRspack
-          ? "script[data-rspack] observed during document loading"
-          : `${sourceMarkerCount} compiled Rspack load-script marker${sourceMarkerCount === 1 ? "" : "s"}`,
-        hmr.length > 0
-          ? `${hmr.length} loaded compatible HMR runtime${hmr.length === 1 ? "" : "s"}`
-          : "compatible HMR runtime not detected",
-        refresh
-          ? "compiled React Refresh runtime detected"
-          : "compiled React Refresh runtime not detected"
-      ],
-      command
-    };
-  } finally {
-    for (const sessionId of newlyEnabled) {
-      await debug.disable(sessionId).catch(() => undefined);
-    }
-  }
-}
-
-async function readPreloadedEvidence(
-  divebell: DivebellExtensionApi
-): Promise<RstackStackEvidence | undefined> {
-  try {
-    const value = await divebell.browser.eval<RstackStackEvidence | null>(
-      readRstackStackEvidenceExpression()
-    );
-    return value?.schemaVersion === 1 ? value : undefined;
   } catch {
     return undefined;
   }
-}
-
-async function countRspackSourceMarkers(debug: DebugClient): Promise<number> {
-  try {
-    const searched = await debug.sourceSearch("data-rspack");
-    const unique = new Map<string, { scriptId: string; sessionId: string }>();
-    for (const match of searched.matches) {
-      unique.set(`${match.sessionId}\u0000${match.scriptId}`, {
-        scriptId: match.scriptId,
-        sessionId: match.sessionId
-      });
-    }
-    let count = 0;
-    for (const script of unique.values()) {
-      try {
-        const loaded = await debug.source(script.scriptId, script.sessionId);
-        if (
-          /\.setAttribute\(\s*["']data-rspack["']/u
-            .test(loaded.scriptSource)
-        ) {
-          count += 1;
-        }
-      } catch {
-        // A lazy script may disappear while stack detection is running.
-      }
-    }
-    return count;
-  } catch {
-    return 0;
+  if (result?.schemaVersion !== 1 || result.status !== "found") {
+    return undefined;
   }
+  const matched = typeof result.matched === "string"
+    ? result.matched.replace(/[\u0000-\u001f\u007f]/gu, "?").slice(0, 200)
+    : "entry script";
+  return {
+    id: "rspack",
+    name: "Rspack",
+    evidence: [
+      `data-rspack found in fetched ${matched}`
+    ],
+    command
+  };
 }

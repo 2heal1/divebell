@@ -43,8 +43,6 @@ const extension = {
     run: async (options) => await (await import("./index.js")).runRstackCommand(options)
   }],
   hooks: {
-    open: async () =>
-      await (await import("./open.js")).openRstackStackDetection(),
     detectStack: async ({ divebell }) =>
       await (await import("./detect-stack.js")).detectRstackStack(
         divebell,

@@ -15,19 +15,18 @@ divebell stack --refresh
 divebell rstack hmr inspect
 ```
 
-The Rstack `open` Hook installs a document-start observer before application
-scripts run. It watches only direct children added to `<head>`, records the
-first transient `script[data-rspack]`, and disconnects on the first match or
-the document `load` event. Rspack removes these loader scripts after they
-settle, so querying the DOM later is not reliable. If no live insertion was
-observed, `stack` falls back to the loaded compiled runtime's
-`setAttribute("data-rspack", ...)` marker.
+Stack detection does not install a DOM observer or enable the Debugger. After
+the page loads, it collects JavaScript URLs from `document.scripts` and Script
+Resource Timing entries, selects at most one `index*`, `*main*`, and
+`runtime*` filename, and fetches them sequentially with `cache: "force-cache"`.
+The first source containing `data-rspack` identifies Rspack. Each request has
+a 1.2 second timeout; fetch, CORS, CSP, and response failures produce no page
+exception and no positive detection.
 
-Rspack is reported from either of those Rspack-specific signals even when a
-production page has no HMR runtime. HMR and React Refresh are reported as
-separate capability evidence. A generic Webpack-compatible HMR state machine
-by itself is not identified as Rstack. Use `stack --refresh` after upgrading
-this Extension or when the same page URL already has a cached stack result.
+Production Rspack can be detected without HMR. HMR and React Refresh are
+inspected separately by `rstack hmr inspect`. Use `stack --refresh` after
+upgrading this Extension or when the same page URL already has a cached stack
+result.
 
 Add `@divebell/extension-mf` and open with `--mf` only when Module Federation
 ownership or shared React evidence is needed.

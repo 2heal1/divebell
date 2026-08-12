@@ -25,7 +25,7 @@ test("publishes a self-contained Extension runtime and its command skill", async
   }
   const definition = (await import("../dist/extension.js")).default;
   assert.equal(definition.requires, undefined);
-  assert.equal(typeof definition.hooks?.open, "function");
+  assert.equal(definition.hooks?.open, undefined);
   assert.equal(typeof definition.hooks?.detectStack, "function");
 });
 

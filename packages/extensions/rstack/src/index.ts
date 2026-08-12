@@ -23,11 +23,11 @@ export async function runRstackCommand(
 }
 
 export { discoverProfilesInSource, locationAt } from "./profiles.js";
-export { detectRstackStack } from "./detect-stack.js";
 export {
-  createRstackStackDetectionInitScript,
-  openRstackStackDetection
-} from "./open.js";
+  classifyRstackEntryFilename,
+  createRstackFetchDetectionScript,
+  detectRstackStack
+} from "./detect-stack.js";
 export { reactDomBuildsInSource } from "./react-refresh-preflight.js";
 export { appendDebugEvents, currentOutcome, reduceCycles, refreshSummary } from "./reducer.js";
 export { createHmrResult, resultShouldFinish } from "./report.js";

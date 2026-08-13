@@ -54,6 +54,16 @@ After the coding agent changes source code, reuse the same login state and sessi
 
 Automatic Restore State is a portable snapshot of cookies, localStorage, and sessionStorage, not a complete Chrome Profile. Divebell saves it once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
 
+For a URL-scoped state, always try and verify a normal
+`divebell open <url> --state <path>` first. If that attempt redirects to login,
+returns 401/403, shows an authentication or permission failure, or returns 404
+with authentication evidence, `divebell state diagnose <url> --state <path>`
+can replay the first navigation in an isolated metadata-only capture and
+suggest sanitized `--include-url` candidates. It is not a routine preflight,
+does not infer missing state from a plain 404, and never modifies the state
+file. Source Profile comparison is performed only with an explicit
+`--source-profile <name|path>`.
+
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 
 ```sh

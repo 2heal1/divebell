@@ -2,7 +2,8 @@ import type { ParsedCliArgs } from "../utils/args.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { saveUrlScopedBrowserState } from "../features/browser/state.js";
-import { getOptionValues } from "../utils/args.js";
+import { diagnoseMissingStateSources } from "../features/browser/state-diagnosis.js";
+import { getOptionValue, getOptionValues } from "../utils/args.js";
 import { createError } from "../utils/output.js";
 
 const AGENT_BROWSER_BOOLEAN_OPTIONS = new Set([
@@ -30,6 +31,24 @@ export async function runAgentBrowserStateCommand(
   stderr: { write(chunk: string): void },
   browserRunner: BrowserRunner
 ): Promise<number> {
+  if (args.command[1] === "diagnose") {
+    const url = args.command[2];
+    const statePath = getOptionValue(args, "state");
+    const timeoutInput = getOptionValue(args, "timeout");
+    const sourceProfile = getOptionValue(args, "source-profile");
+    const expectUrl = getOptionValue(args, "expect-url");
+    const expectText = getOptionValue(args, "expect-text");
+    const result = await diagnoseMissingStateSources(browserRunner, {
+      url: url ?? "",
+      statePath: statePath ?? "",
+      ...(sourceProfile === undefined ? {} : { sourceProfile }),
+      ...(expectUrl === undefined ? {} : { expectUrl }),
+      ...(expectText === undefined ? {} : { expectText }),
+      ...(timeoutInput === undefined ? {} : { timeoutMs: Number(timeoutInput) })
+    });
+    stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return 0;
+  }
   const urls = getOptionValues(args, "url");
   const includeUrls = getOptionValues(args, "include-url");
   if (args.command[1] === "save" && includeUrls.length > 0 && urls.length === 0) {

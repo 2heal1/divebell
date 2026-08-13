@@ -63,141 +63,87 @@ divebell setup
 `setup` checks the local environment and repairs browser startup only when
 needed.
 
-### 2. Open the target page
+### 2. Open the target and establish authorized access
 
 Run:
 
 ```bash
-divebell open <url> [--timeout <ms>]
+divebell open <url> [--state <path> | --profile <name-or-path>] [--ui] [--timeout <ms>]
 ```
 
-After opening the page, continue all browser operations through Divebell.
-Use `--timeout` to override the default 60-second navigation lifecycle wait for
-one `open` command.
-Reuse the current Divebell page when it already has the correct URL, account,
-and environment.
+Divebell opens headlessly by default. Add `--ui` on the first attempt when the
+user or task requires a visible browser. Use `--timeout` to override the
+default 60-second navigation lifecycle wait for one `open` command. Reuse the
+current page when it already has the correct URL, account, and environment.
 
-### 3. Use the required Divebell capability
+After every open, verify the final URL, navigation or HTTP result, and the
+user's success condition. Then follow this order:
 
-Use `divebell --help` to find the smallest built-in or installed Extension
-command that matches the user's task:
+1. If access succeeds, continue. Do not diagnose state or reopen with `--ui`.
+2. If authentication or permission is required and the user has not supplied
+   authorized state or a Profile, ask the user to provide or explicitly
+   authorize one. Never choose a Profile on the user's behalf.
+3. Retry the exact target with the supplied state or Profile and verify it
+   again.
+4. If an authorized **state-backed** retry still fails, read
+   `references/authentication.md`, inspect `divebell state diagnose --help`,
+   and run diagnosis. Report any sanitized candidates and evidence; do not
+   modify or expand the state automatically. Never run `state diagnose` for a
+   Profile-backed open.
+5. If state diagnosis finds no missing-state evidence, or an explicitly
+   authorized Profile-backed retry still fails, retry once with `--ui`. Skip
+   this fallback when any earlier attempt already used `--ui`.
+
+A plain 404 without authentication evidence is not an authorization failure
+and must not trigger state diagnosis.
+
+### 3. Discover and use the required capability
+
+If the user explicitly names an installed Extension command, skip stack
+detection and inspect that command directly:
 
 ```bash
-divebell --help
 divebell <command> --help
 ```
 
-A matching Extension is not required for ordinary page interaction or browser
-diagnostics. Use built-in Divebell commands for those operations.
-
-Do not run stack detection merely because a page was opened.
-
-## Optional: discover installed Extension capabilities
-
-Run stack detection only when the task needs a framework-specific or other
-Extension-provided capability, or when identifying an installed Extension that
-matches the current page would help select the next command.
+Otherwise, first inspect the detections from installed Extensions:
 
 ```bash
 divebell stack
 ```
 
-`stack` runs `detectStack` hooks from **installed Extensions only**. Divebell
-does not detect frameworks by itself and `stack` does not discover or recommend
-Extensions that are not installed.
-
-If no installed Extension contributes a matching detector, the result can
-contain:
-
-```json
-{
-  "data": {
-    "detections": [],
-    "failures": [],
-    "cached": false
-  }
-}
-```
-
-This is a valid result. It does not mean the page is broken, and it does not
-prove that the page uses no recognizable framework. It only means that the
-currently installed detectors returned no match.
-
-A matched result may look like:
-
-```json
-{
-  "data": {
-    "detections": [
-      {
-        "id": "modernjs",
-        "name": "Modern.js",
-        "extension": "modern-detector",
-        "command": "mf"
-      }
-    ],
-    "failures": [],
-    "cached": false
-  }
-}
-```
-
-Use `data.detections` as the source of truth:
-
-- `id` identifies the detection.
-- `name` describes the detected technology or capability.
-- `extension` identifies the installed Extension that produced the detection.
-- `command` is the top-level Divebell command provided by that Extension.
-- `failures` contains detector failures and must be checked.
-- `cached` indicates whether Divebell reused a compatible previous result.
-
-Do not guess a framework command. Do not use or expect the removed
-`recommendedExtensions` field.
-
-## Optional: use a detected Extension command
-
-Continue to this step only when `data.detections` contains a detection relevant
-to the user's task and that detection provides `command`.
-
-Inspect the command first:
+`stack` runs `detectStack` hooks from installed Extensions only. Check both
+`data.detections` and `failures`. When a relevant detection provides `command`,
+inspect that command before use:
 
 ```bash
 divebell <command> --help
 ```
 
-If the command reports an attached Skill, print its path:
+If the command reports an attached Skill, print its path with
+`divebell <command> --skill` and read that `SKILL.md` in full before invoking
+the command. The attached Skill governs only that Extension subtask.
 
-```bash
-divebell <command> --skill
-```
+If no installed detector matches, inspect `divebell --help` and use the
+smallest built-in command that satisfies the task. An empty detection result is
+valid; it does not mean the page is broken or prove that no framework is
+present.
 
-Read the returned `SKILL.md` in full before invoking that command. The
-command-provided Skill governs only that Extension subtask; return to the
-user's original workflow after it completes.
-
-Then run the required command or subcommand exactly as documented by the
-installed help and command Skill.
-
-When multiple detections are returned, choose the one whose detection and
-command description match the current goal. Do not run every detected command.
-
-When no matching detection exists:
-
-- Continue with built-in Divebell commands if they can complete the task.
-- Read `references/extensions.md` only when the task genuinely requires an
-  Extension-specific capability.
-- Install only a trusted Extension identified by the user, the project, or
-  trusted Divebell documentation.
-- After installing an Extension, rerun:
-
-```bash
-divebell stack --refresh
-```
+Do not guess a framework command, run every detected command, or use the
+removed `recommendedExtensions` field. Read `references/extensions.md` only
+when the task genuinely requires installing or managing an Extension. After
+installing a user-, project-, or documentation-identified trusted Extension,
+rerun `divebell stack --refresh`.
 
 ## Reference
 
 Read `references/extensions.md` only when the task needs to install, manage,
 discover, or use an Extension.
+
+Read `references/authentication.md` only when a protected-page state must be
+created or when an authorized state-backed retry has failed authentication or
+permission verification. Do not diagnose a Profile or use state diagnosis as a
+routine preflight.
 
 Extension development and Runtime SDK integration are outside this Skill and
 should be handled by their own dedicated Skills.

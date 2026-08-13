@@ -40,6 +40,18 @@ test("uses agent-browser automatic restore while preserving native profile and s
     disableRestore: true
   });
   assert.equal(explicitSourceEnv.AGENT_BROWSER_RESTORE, undefined);
+
+  const diagnosisEnv = createAgentBrowserEnvironment({
+    AGENT_BROWSER_PROFILE: "Configured Profile",
+    AGENT_BROWSER_STATE: "/tmp/configured-state.json"
+  }, undefined, "state-diagnosis", {
+    ignoreConfiguredProfile: true,
+    ignoreConfiguredState: true,
+    defaultTimeoutMs: 12345
+  });
+  assert.equal(diagnosisEnv.AGENT_BROWSER_PROFILE, undefined);
+  assert.equal(diagnosisEnv.AGENT_BROWSER_STATE, undefined);
+  assert.equal(diagnosisEnv.AGENT_BROWSER_DEFAULT_TIMEOUT, "12345");
 });
 
 test("isolates the bundled agent-browser daemon from other installed clients", () => {
@@ -468,6 +480,40 @@ test("requires a path and a valid URL for URL-scoped state saves", async () => {
     browserRunner
   }), 1);
   assert.equal(JSON.parse(repeatedPrimaryUrlOutput.text()).error.code, "STATE_URL_REPEATED");
+  assert.equal(browserTouched, false);
+});
+
+test("requires a failed state and target URL for state diagnosis", async () => {
+  let browserTouched = false;
+  const browserRunner = createBrowserRunner(async () => {
+    browserTouched = true;
+    return { exitCode: 0, stdout: "", stderr: "" };
+  });
+
+  const missingStateOutput = createOutput();
+  assert.equal(await runCli([
+    "state",
+    "diagnose",
+    "https://app.example.com/account"
+  ], {
+    stdout: missingStateOutput.stdout,
+    stderr: missingStateOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(JSON.parse(missingStateOutput.text()).error.code, "STATE_DIAGNOSE_STATE_REQUIRED");
+
+  const missingUrlOutput = createOutput();
+  assert.equal(await runCli([
+    "state",
+    "diagnose",
+    "--state",
+    "/tmp/failed-state.json"
+  ], {
+    stdout: missingUrlOutput.stdout,
+    stderr: missingUrlOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(JSON.parse(missingUrlOutput.text()).error.code, "STATE_DIAGNOSE_URL_REQUIRED");
   assert.equal(browserTouched, false);
 });
 

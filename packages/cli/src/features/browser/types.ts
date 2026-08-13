@@ -12,6 +12,9 @@ export interface BrowserRunOptions {
   autoConnect?: boolean;
   idleTimeoutMs?: number;
   disableRestore?: boolean;
+  ignoreConfiguredProfile?: boolean;
+  ignoreConfiguredState?: boolean;
+  defaultTimeoutMs?: number;
   unencryptedStateOutput?: boolean;
   reuseInitialBlankPage?: boolean;
 }

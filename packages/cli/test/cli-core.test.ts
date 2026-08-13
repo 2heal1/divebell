@@ -218,6 +218,16 @@ test("prints progressively scoped command help", async () => {
   }), 0);
   assert.match(stateOutput.text(), /divebell state <list\|show\|rename\|clear\|clean>/);
   assert.doesNotMatch(stateOutput.text(), /divebell state (save|load)/);
+
+  const stateDiagnoseOutput = createOutput();
+  assert.equal(await runCli(["state", "diagnose", "--help"], {
+    stdout: stateDiagnoseOutput.stdout,
+    stderr: stateDiagnoseOutput.stderr
+  }), 0);
+  assert.match(stateDiagnoseOutput.text(), /divebell state diagnose <url> --state <path>/);
+  assert.match(stateDiagnoseOutput.text(), /--source-profile <name\|path>/);
+  assert.match(stateDiagnoseOutput.text(), /after a normal state-backed open fails/i);
+  assert.match(stateDiagnoseOutput.text(), /never use this as an open preflight/i);
 });
 
 test("rejects the removed close command", async () => {
@@ -293,6 +303,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /divebell open <url> \[--timeout <ms>\] \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
   assert.match(markdown, /divebell state save <path> \[--url <url>\] \[--include-url <url>\.\.\.\]/);
+  assert.match(markdown, /divebell state diagnose <url> --state <path>/);
   assert.match(markdown, /divebell state load <path>/);
   assert.match(markdown, /divebell auth save <name>/);
   assert.match(markdown, /divebell auth login <name>/);

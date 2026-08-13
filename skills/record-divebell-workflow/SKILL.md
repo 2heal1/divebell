@@ -52,7 +52,7 @@ The recording bundle is stored under the current project's `recordings/` directo
 - By default, open without an authentication option; Divebell uses a read-only copy of Chrome's most recently used Profile.
 - When the user requests a different or stable Profile, run `divebell profiles`, let the user select one, then open with `--profile <name|path>`.
 - When the user requests browser state, run `divebell state list`, let the user select one, then open with `--state <path>`.
-- When the workflow must not use the user's recent Profile, use an explicit dedicated Profile or scoped state approved for that workflow.
+- When the workflow must not use the user's recent Profile, pass `--no-default-profile` to use project Restore State, or use an approved dedicated Profile or scoped state.
 
 Tell the user that the browser will first show a microphone permission prompt. When the user did not provide a URL, open a visible blank page, adding the confirmed authentication option when needed:
 

@@ -29,7 +29,7 @@ Run the global commands directly:
 divebell record start
 divebell profiles
 divebell state list
-divebell open about:blank [--profile <name|path> | --state <path>] --ui
+divebell open about:blank [--profile <name|path> | --state <path> | --no-default-profile] --ui
 divebell record stop --out <start-output-path>
 divebell record review --input <start-output-path>
 divebell record confirm --input <start-output-path> --all
@@ -38,7 +38,8 @@ divebell stop
 
 `divebell open` uses a read-only copy of Chrome's most recently used Profile
 when neither `--profile` nor `--state` supplies another browser context. Use an
-explicit Profile or state when the replay account must remain stable.
+explicit Profile or state when the replay account must remain stable, or pass
+`--no-default-profile` to use project Restore State.
 
 `record start` records operated elements and events and automatically attempts microphone capture. A successful capture also saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. When supported by the browser, the recording page writes speech-recognition results as they arrive, and `record stop` combines them into `transcript.json`. Silence, missing audio, and denied microphone access are ignored and do not affect browser recording, script generation, or replay.
 

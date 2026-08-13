@@ -275,6 +275,7 @@ export async function runBrowserCliCommand(
 
 function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
   if ([
+    "no-default-profile",
     "profile",
     "state",
     "restore",

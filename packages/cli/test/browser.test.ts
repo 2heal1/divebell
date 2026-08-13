@@ -222,6 +222,35 @@ test("forwards supported agent-browser launch options through Divebell open", as
   assert.equal(browserOptions[0]?.disableRestore, true);
 });
 
+test("disables the default Chrome profile with an open flag", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--no-default-profile",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args, options) => {
+      browserCalls.push(args);
+      browserOptions.push(options);
+      return { exitCode: 0, stdout: "opened\n", stderr: "" };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "open",
+    `http://app.test/?divebellSessionId=${createOperationSessionId()}`
+  ]]);
+  assert.equal(browserOptions[0]?.disableDefaultProfile, true);
+  assert.equal(browserOptions[0]?.disableRestore, undefined);
+});
+
 test("preserves command-level restore save policy for a reused daemon and stop", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const browserCalls: string[][] = [];

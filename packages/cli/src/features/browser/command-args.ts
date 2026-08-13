@@ -10,6 +10,7 @@ const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "file",
   "full-page",
   "no-bridge",
+  "no-default-profile",
   "port",
   "profile",
   "runtime",

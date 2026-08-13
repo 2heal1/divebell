@@ -45,6 +45,9 @@ divebell open https://example.com/orders --state /path/to/test-account.json --ui
 
 If no usable Chrome Profile exists, later `divebell open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
 
+Pass `--no-default-profile` when one `open` should skip the latest Chrome
+Profile and use project Restore State.
+
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
 See [Browser Authentication and State](browser-auth.md) for details.

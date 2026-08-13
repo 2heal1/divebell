@@ -4,6 +4,9 @@ Profiles and state files are sensitive, reusable authorization material. Use
 only accounts and environments the user has already authorized, keep exports
 on trusted storage, and never print a state file's contents.
 
+An ordinary `open` uses the most recently used Chrome Profile. Pass
+`--no-default-profile` to skip it and use project Restore State.
+
 ## Required order for a URL-scoped state
 
 1. First open the exact target normally. Divebell automatically uses a read-only

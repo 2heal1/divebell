@@ -47,7 +47,11 @@ export function isModulePerformanceBrowserSnapshot(
   return Array.isArray(value.resources) && value.resources.length <= 1_000 &&
     value.resources.every(isResource) &&
     Array.isArray(value.exposes) && value.exposes.length <= 500 &&
-    value.exposes.every(isExpose);
+    value.exposes.every(isExpose) &&
+    (value.shared === undefined || (
+      Array.isArray(value.shared) && value.shared.length <= 500 &&
+      value.shared.every(isShared)
+    ));
 }
 
 function isResource(value: unknown): boolean {
@@ -83,6 +87,18 @@ function isExpose(value: unknown): boolean {
     stringArray(value.js.sync) && stringArray(value.js.async);
 }
 
+function isShared(value: unknown): boolean {
+  return isRecord(value) && optionalString(value.key, 300) &&
+    value.key !== undefined && optionalString(value.name, 240) &&
+    optionalString(value.version, 120) && optionalString(value.publicPath, 4_096) &&
+    optionalString(value.packageName, 240) && value.packageName !== undefined &&
+    optionalString(value.packageVersion, 120) &&
+    (value.requiredVersion === false || optionalString(value.requiredVersion, 160)) &&
+    (value.singleton === undefined || typeof value.singleton === "boolean") &&
+    isRecord(value.js) &&
+    stringArray(value.js.sync) && stringArray(value.js.async);
+}
+
 function stringArray(value: unknown): boolean {
   return Array.isArray(value) && value.length <= 200 &&
     value.every((item) => optionalString(item, 4_096) && item !== undefined);
@@ -111,6 +127,7 @@ function installModulePerformance(options: {
 }): void {
   const root = globalThis as Record<string, any>;
   if (root[options.key]?.schemaVersion === 1 &&
+      root[options.key]?.capabilities?.sharedAssets === true &&
       typeof root[options.key]?.snapshot === "function") return;
 
   const performance = root.performance;
@@ -360,8 +377,65 @@ function installModulePerformance(options: {
     return exposes.slice(0, 500);
   };
 
+  const readShared = () => {
+    const moduleInfo = root.__FEDERATION__?.moduleInfo;
+    if (moduleInfo === null || typeof moduleInfo !== "object" ||
+        Array.isArray(moduleInfo)) return [];
+    const declarations: any[] = [];
+    for (const [rawKey, value] of Object.entries(moduleInfo).slice(0, 200)) {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        continue;
+      }
+      const info = value as Record<string, any>;
+      if (!Array.isArray(info.shared)) continue;
+      const key = safeText(rawKey, 300);
+      if (key === undefined) continue;
+      const name = safeText(info.name, 240) ??
+        safeText(rawKey.split(":")[0], 240);
+      const version = safeText(info.version, 120) ??
+        safeText(rawKey.includes(":") ? rawKey.split(":").slice(1).join(":") : undefined, 120);
+      const publicPath = safeUrl(info.publicPath);
+      for (const rawShared of info.shared.slice(0, 500)) {
+        if (rawShared === null || typeof rawShared !== "object" ||
+            Array.isArray(rawShared)) continue;
+        const shared = rawShared as Record<string, any>;
+        const packageName = safeText(
+          shared.name ?? shared.sharedName ?? shared.packageName,
+          240
+        );
+        if (packageName === undefined) continue;
+        const assets = shared.assets;
+        const js = assets && typeof assets === "object" && !Array.isArray(assets)
+          ? assets.js
+          : shared.js;
+        const sync = uniqueAssets(js?.sync);
+        const async = uniqueAssets(js?.async);
+        if (sync.length === 0 && async.length === 0) continue;
+        const packageVersion = safeText(shared.version, 120);
+        const requiredVersion = shared.requiredVersion === false
+          ? false
+          : safeText(shared.requiredVersion, 160);
+        declarations.push({
+          key,
+          ...(name === undefined ? {} : { name }),
+          ...(version === undefined ? {} : { version }),
+          ...(publicPath === undefined ? {} : { publicPath }),
+          packageName,
+          ...(packageVersion === undefined ? {} : { packageVersion }),
+          ...(requiredVersion === undefined ? {} : { requiredVersion }),
+          ...(typeof shared.singleton === "boolean"
+            ? { singleton: shared.singleton }
+            : {}),
+          js: { sync, async }
+        });
+      }
+    }
+    return declarations.slice(0, 500);
+  };
+
   root[options.key] = {
     schemaVersion: 1,
+    capabilities: { sharedAssets: true },
     installedAt: Date.now(),
     snapshot() {
       const documentHidden = root.document?.visibilityState === "hidden";
@@ -385,7 +459,8 @@ function installModulePerformance(options: {
               : "provisional"
         },
         resources: readResources(),
-        exposes: readExposes()
+        exposes: readExposes(),
+        shared: readShared()
       };
     }
   };

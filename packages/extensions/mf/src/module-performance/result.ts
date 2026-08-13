@@ -12,7 +12,8 @@ import type {
 import type {
   BrowserObservabilitySnapshot,
   RuntimeInstance,
-  RuntimeRemote
+  RuntimeRemote,
+  RuntimeShared
 } from "../types.js";
 import type {
   ModulePerformanceAssetTiming,
@@ -31,6 +32,8 @@ import type {
   ModulePerformanceResourceSnapshot,
   ModulePerformanceResult,
   ModulePerformanceSelectors,
+  ModulePerformanceSharedAssetsSnapshot,
+  ModulePerformanceSharedDependency,
   ModulePerformanceTiming,
   ModulePerformanceUnobservedRemote
 } from "./types.js";
@@ -52,7 +55,13 @@ export function createModulePerformanceResult(
   selectors: ModulePerformanceSelectors = {}
 ): ModulePerformanceResult {
   const groups = collectGroups(snapshot, selectors);
-  const modules = groups.map((group) => createModule(group, performance))
+  const timeOrigin = performance?.page.timeOrigin ?? firstObservedModuleLoad(
+    groups,
+    snapshot.state.observedAt
+  );
+  const modules = groups.map((group) =>
+    createModule(group, performance, snapshot, timeOrigin)
+  )
     .sort(compareModules);
   const unobservedRemotes = collectUnobservedRemotes(snapshot, groups, selectors);
   const operations = modules.flatMap((module) => module.operations);
@@ -85,7 +94,12 @@ export function createModulePerformanceResult(
 function createPageResult(
   performance: ModulePerformanceBrowserSnapshot | null
 ): ModulePerformanceResult["page"] {
-  if (performance === null) return { lcpStatus: "not-observed" };
+  if (performance === null) {
+    return {
+      clock: { origin: "firstObservedModuleLoad", unit: "ms" },
+      lcpStatus: "not-observed"
+    };
+  }
   const scripts = performance.resources.filter((resource) =>
     resource.declarations?.includes("script")
   ).map(roundResource);
@@ -201,10 +215,12 @@ function preloadMatchesGroup(
 
 function createModule(
   group: ModuleGroup,
-  performance: ModulePerformanceBrowserSnapshot | null
+  performance: ModulePerformanceBrowserSnapshot | null,
+  snapshot: BrowserObservabilitySnapshot,
+  timeOrigin: number
 ): ModulePerformanceModule {
   const operations = group.traces.map((trace) =>
-    createOperation(group, trace, performance)
+    createOperation(group, trace, performance, snapshot, timeOrigin)
   );
   return {
     consumer: group.consumer,
@@ -218,15 +234,24 @@ function createModule(
 function createOperation(
   group: ModuleGroup,
   trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot | null
+  performance: ModulePerformanceBrowserSnapshot | null,
+  snapshot: BrowserObservabilitySnapshot,
+  timeOrigin: number
 ): ModulePerformanceOperation {
-  let timing = createTiming(trace, performance);
+  let timing = createTiming(trace, timeOrigin);
   const manifest = createManifest(group, timing, performance);
+  const sharedDependencies = createSharedDependencies(
+    group,
+    timing,
+    performance,
+    snapshot
+  );
   const preloadJs = createPreloadJs(
     group.preloadTraces,
     trace,
     manifest,
-    performance
+    performance,
+    timeOrigin
   );
   timing = addRemoteEntryResourceTiming(timing, manifest);
   timing = addRemoteEntryBlockingTiming(timing);
@@ -238,6 +263,7 @@ function createOperation(
     outcome: trace.outcome,
     timing,
     manifest,
+    sharedDependencies,
     preloadJs,
     pageImpact,
     bottleneck,
@@ -247,7 +273,8 @@ function createOperation(
       manifest,
       pageImpact,
       bottleneck,
-      codeUsage
+      codeUsage,
+      sharedDependencies
     ),
     codeUsage
   };
@@ -255,9 +282,8 @@ function createOperation(
 
 function createTiming(
   trace: RemoteTraceSummary,
-  performance: ModulePerformanceBrowserSnapshot | null
+  timeOrigin: number
 ): ModulePerformanceTiming {
-  const timeOrigin = performance?.page.timeOrigin ?? trace.startedAt;
   const loadRemote = intervalFromEpoch(
     trace.startedAt,
     trace.endedAt,
@@ -381,14 +407,207 @@ function createManifest(
   };
 }
 
+function createSharedDependencies(
+  group: ModuleGroup,
+  timing: ModulePerformanceTiming,
+  performance: ModulePerformanceBrowserSnapshot | null,
+  snapshot: BrowserObservabilitySnapshot
+): ModulePerformanceSharedDependency[] {
+  if (performance === null) return [];
+  return unique(
+    (performance.shared ?? []).filter((entry) =>
+      manifestIdentityMatches(entry, group)
+    ),
+    sharedDeclarationKey
+  ).map((entry) => {
+    const resolution = resolveSharedDependency(entry, group, snapshot);
+    return {
+      packageName: entry.packageName,
+      ...(entry.packageVersion === undefined
+        ? {}
+        : { packageVersion: entry.packageVersion }),
+      ...(entry.requiredVersion === undefined
+        ? {}
+        : { requiredVersion: entry.requiredVersion }),
+      ...(entry.singleton === undefined ? {} : { singleton: entry.singleton }),
+      ...resolution,
+      assets: [
+        ...entry.js.sync.map((asset) => matchAsset(
+          asset,
+          "sync",
+          entry,
+          timing,
+          performance.resources
+        )),
+        ...entry.js.async.map((asset) => matchAsset(
+          asset,
+          "async",
+          entry,
+          timing,
+          performance.resources
+        ))
+      ]
+    };
+  }).sort((left, right) =>
+    left.packageName.localeCompare(right.packageName) ||
+    (left.packageVersion ?? "").localeCompare(right.packageVersion ?? "")
+  );
+}
+
+function resolveSharedDependency(
+  declaration: ModulePerformanceSharedAssetsSnapshot,
+  group: ModuleGroup,
+  snapshot: BrowserObservabilitySnapshot
+): Pick<
+  ModulePerformanceSharedDependency,
+  "resolution" | "provider" | "selectedVersion" | "evidence"
+> {
+  const traced = snapshot.reports.flatMap((report) => {
+    if (report.status !== "success" ||
+        report.instanceRef !== group.consumer.instanceRef) return [];
+    const values = [
+      report.shared,
+      ...report.events.map((event) => event.shared)
+    ].filter((value): value is RuntimeShared => value !== undefined);
+    return unique(values, sharedRuntimeKey).flatMap((shared) => {
+      if (shared.name !== declaration.packageName ||
+          !sharedContextMatches(shared, group) ||
+          shared.provider === undefined) return [];
+      return [{
+        provider: shared.provider,
+        selectedVersion: shared.selectedVersion,
+        observedAt: report.updatedAt,
+        evidence: [
+          `Shared trace ${report.traceId} selected ${shared.provider}${
+            shared.selectedVersion === undefined ? "" : `@${shared.selectedVersion}`
+          } for ${declaration.packageName}.`
+        ]
+      }];
+    });
+  }).sort((left, right) => right.observedAt - left.observedAt)[0];
+  const selected = traced ?? sharedRegistryResolution(
+    declaration.packageName,
+    group,
+    snapshot
+  );
+  if (selected === undefined) {
+    return {
+      resolution: "unknown",
+      evidence: [
+        `No selected provider was correlated with ${declaration.packageName} for this producer.`
+      ]
+    };
+  }
+  const selfProvided = providerMatchesProducer(selected.provider, group);
+  return {
+    resolution: selfProvided ? "self-provided" : "reused",
+    provider: selected.provider,
+    ...(selected.selectedVersion === undefined
+      ? {}
+      : { selectedVersion: selected.selectedVersion }),
+    evidence: [
+      ...selected.evidence,
+      selfProvided
+        ? `${group.producer.name} provided its own Shared value.`
+        : `${group.producer.name} reused a Shared value from ${selected.provider}.`
+    ]
+  };
+}
+
+function sharedRegistryResolution(
+  packageName: string,
+  group: ModuleGroup,
+  snapshot: BrowserObservabilitySnapshot
+): {
+  provider: string;
+  selectedVersion?: string;
+  evidence: string[];
+} | undefined {
+  for (const [scope, packages] of Object.entries(snapshot.globalShared)) {
+    const versions = packages[packageName];
+    if (versions === undefined) continue;
+    for (const [version, shared] of Object.entries(versions)) {
+      if (!shared.loaded || shared.from === undefined ||
+          !shared.useIn.some((consumer) => sharedConsumerMatches(
+            consumer,
+            group
+          ))) continue;
+      return {
+        provider: shared.from,
+        selectedVersion: version,
+        evidence: [
+          `Shared registry ${scope}/${packageName}@${version} is loaded from ${shared.from} and used by ${group.producer.name}.`
+        ]
+      };
+    }
+  }
+  return undefined;
+}
+
+function sharedContextMatches(
+  shared: RuntimeShared,
+  group: ModuleGroup
+): boolean {
+  if (shared.remote === undefined) return false;
+  const remoteMatches = [
+    group.remote.name,
+    group.remote.alias,
+    group.producer.name
+  ].some((identity) => identity !== undefined &&
+    relatedIdentity(shared.remote as string, identity)
+  );
+  return remoteMatches && (shared.expose === undefined || group.expose === undefined ||
+    sameExpose(shared.expose, group.expose));
+}
+
+function sharedConsumerMatches(value: string, group: ModuleGroup): boolean {
+  return [
+    group.producer.instanceRef,
+    group.producer.name,
+    group.remote.name,
+    group.remote.alias
+  ].some((identity) => identity !== undefined && relatedIdentity(value, identity));
+}
+
+function providerMatchesProducer(provider: string, group: ModuleGroup): boolean {
+  return [
+    group.producer.instanceRef,
+    group.producer.name,
+    group.remote.name
+  ].some((identity) => identity !== undefined && relatedIdentity(provider, identity));
+}
+
+function relatedIdentity(left: string, right: string): boolean {
+  const normalizedLeft = normalizeIdentity(left);
+  const normalizedRight = normalizeIdentity(right);
+  return normalizedLeft === normalizedRight ||
+    normalizedLeft.endsWith(normalizedRight) ||
+    normalizedRight.endsWith(normalizedLeft);
+}
+
+function sharedRuntimeKey(shared: RuntimeShared): string {
+  return `${shared.name}\u0000${shared.provider ?? ""}\u0000${
+    shared.selectedVersion ?? ""
+  }\u0000${shared.remote ?? ""}\u0000${shared.expose ?? ""}`;
+}
+
+function sharedDeclarationKey(
+  shared: ModulePerformanceSharedAssetsSnapshot
+): string {
+  return `${shared.key}\u0000${shared.packageName}\u0000${
+    shared.packageVersion ?? ""
+  }\u0000${shared.js.sync.join("\u0001")}\u0000${
+    shared.js.async.join("\u0001")
+  }`;
+}
+
 function createPreloadJs(
   preloadTraces: RemoteTraceSummary[],
   loadTrace: RemoteTraceSummary,
   manifest: ModulePerformanceManifest,
-  performance: ModulePerformanceBrowserSnapshot | null
+  performance: ModulePerformanceBrowserSnapshot | null,
+  timeOrigin: number
 ): ModulePerformancePreloadTiming[] {
-  if (performance === null) return [];
-  const timeOrigin = performance.page.timeOrigin;
   const official = preloadTraces.filter((trace) =>
     trace.startedAt <= loadTrace.startedAt
   ).flatMap((preloadTrace) => {
@@ -418,7 +637,7 @@ function createPreloadJs(
       })
     );
   });
-  const declared = performance.resources.flatMap((resource) => {
+  const declared = (performance?.resources ?? []).flatMap((resource) => {
     const preloadDeclarations = resource.declarations?.filter((declaration) =>
       declaration === "preload" || declaration === "modulepreload"
     ) ?? [];
@@ -546,7 +765,10 @@ function addRemoteEntryBlockingTiming(
 function matchAsset(
   asset: string,
   kind: "sync" | "async",
-  manifest: ModulePerformanceExposeAssetsSnapshot,
+  manifest: Pick<
+    ModulePerformanceExposeAssetsSnapshot | ModulePerformanceSharedAssetsSnapshot,
+    "publicPath"
+  >,
   timing: ModulePerformanceTiming,
   resources: ModulePerformanceResourceSnapshot[]
 ): ModulePerformanceAssetTiming {
@@ -743,7 +965,8 @@ function createFindings(
   manifest: ModulePerformanceManifest,
   impact: ModulePerformancePageImpact,
   bottleneck: ModulePerformanceBottleneck,
-  codeUsage: ModulePerformanceCodeUsage
+  codeUsage: ModulePerformanceCodeUsage,
+  sharedDependencies: ModulePerformanceSharedDependency[]
 ): ModulePerformanceFinding[] {
   const findings: ModulePerformanceFinding[] = [];
   if (trace.outcome !== "success" && trace.outcome !== "recovered") {
@@ -837,6 +1060,29 @@ function createFindings(
       evidence: [`factory took ${round(timing.factory?.duration ?? 0)} ms.`]
     });
   }
+  for (const dependency of sharedDependencies) {
+    if (dependency.resolution !== "reused") continue;
+    const loadedSyncAssets = dependency.assets.filter((asset) =>
+      asset.kind === "sync" && asset.match === "matched"
+    );
+    if (loadedSyncAssets.length === 0) continue;
+    findings.push({
+      id: "inspect-reused-shared-asset",
+      severity: "warning",
+      title: "A producer Shared asset loaded after the Shared value was reused",
+      evidence: [
+        ...dependency.evidence,
+        ...loadedSyncAssets.map((asset) =>
+          `${asset.url ?? asset.asset} was requested${
+            asset.duration === undefined ? "" : ` in ${round(asset.duration)} ms`
+          } even though ${dependency.packageName} resolved from ${
+            dependency.provider ?? "another provider"
+          }.`
+        ),
+        "The request does not prove the Shared library executed twice; the JavaScript chunk can contain other libraries."
+      ]
+    });
+  }
   if (codeUsage.status === "recommended") {
     findings.push({
       id: "inspect-expose-code-usage",
@@ -927,7 +1173,7 @@ function intervalFromEpoch(
 }
 
 function relativeTime(epoch: number, timeOrigin: number): number {
-  return Math.max(0, epoch - timeOrigin);
+  return epoch - timeOrigin;
 }
 
 function durationCandidate(
@@ -972,7 +1218,10 @@ function remoteCapabilityFromTrace(trace: RemoteTraceSummary): boolean {
 }
 
 function manifestIdentityMatches(
-  entry: ModulePerformanceExposeAssetsSnapshot,
+  entry: Pick<
+    ModulePerformanceExposeAssetsSnapshot | ModulePerformanceSharedAssetsSnapshot,
+    "key" | "name"
+  >,
   group: ModuleGroup
 ): boolean {
   const names = [
@@ -983,6 +1232,16 @@ function manifestIdentityMatches(
   return entry.name === undefined || names.some((name) =>
     normalizeIdentity(name) === normalizeIdentity(entry.name as string)
   ) || names.some((name) => normalizeIdentity(entry.key).includes(normalizeIdentity(name)));
+}
+
+function firstObservedModuleLoad(
+  groups: ModuleGroup[],
+  fallback: number
+): number {
+  const starts = groups.flatMap((group) => group.traces.map((trace) =>
+    trace.startedAt
+  )).filter(Number.isFinite);
+  return starts.length === 0 ? fallback : Math.min(...starts);
 }
 
 function assetUrls(asset: string, publicPath: string | undefined): string[] {

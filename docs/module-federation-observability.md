@@ -27,20 +27,28 @@ claim that the consumer UI rendered or became ready.
 
 Without a target it covers every producer/expose load observed in the page. An
 MF Manifest is optional: get and factory timing remains available without one.
-With a Manifest, the command maps the expose's declared JavaScript assets to
-actual browser resource start/end timing, allowing evidence-based preload
-recommendations. Code Usage remains a separate follow-up for exact expose
-assets because enabling coverage would change the performance measurement.
+With a Manifest, the command maps the expose's and producer Shared
+dependencies' declared JavaScript assets to actual browser resource start/end
+timing, allowing evidence-based preload and chunk-inspection recommendations.
+When a producer reuses a Shared value from another provider but its own
+declared Shared synchronous chunk is still requested, the report recommends
+using Rsdoctor to inspect that chunk's module composition. The request alone
+does not prove duplicate Shared execution and does not justify unifying
+`requiredVersion` ranges. Code Usage remains a separate follow-up for exact
+expose assets because enabling coverage would change the performance measurement.
 For remoteEntry, the full observed request lifecycle remains visible while
 bottleneck calculations use only the part that actually blocked the module;
 cross-origin network phases that the browser does not expose are omitted.
 Page impact is expressed as signed start and end deltas between `loadRemote`
 and FP, FCP, and LCP; it does not infer a loading trigger or component render.
 
-`module-perf --report` additionally returns a navigation-relative swimlane
-timeline. It aligns the main HTML response, observed page scripts, FP/FCP/LCP,
-consumer `loadRemote`, and the provider Manifest, remoteEntry, container-init,
-get, factory, and result phases. An MF preload lane is included only for
+`module-perf --report` returns a swimlane timeline as its first and always
+present report field. It aligns the main HTML response, observed page scripts,
+FP/FCP/LCP, consumer `loadRemote`, provider Manifest, remoteEntry,
+container-init, get, factory, result phases, and matched MF JavaScript resource
+requests with available duration, size, and cache evidence. Without Navigation
+Timing, the timeline uses the first observed module load as its explicit
+fallback origin. An MF preload lane is included only for
 official `preloadRemote` JavaScript attributed to the same MF target or for a
 browser `preload`/`modulepreload` resource that matches that target's Manifest
 assets. Unrelated page preloads are not included.

@@ -51,12 +51,28 @@ export interface ModulePerformanceExposeAssetsSnapshot {
   };
 }
 
+export interface ModulePerformanceSharedAssetsSnapshot {
+  key: string;
+  name?: string;
+  version?: string;
+  publicPath?: string;
+  packageName: string;
+  packageVersion?: string;
+  requiredVersion?: string | false;
+  singleton?: boolean;
+  js: {
+    sync: string[];
+    async: string[];
+  };
+}
+
 export interface ModulePerformanceBrowserSnapshot {
   schemaVersion: 1;
   installedAt: number;
   page: ModulePerformancePageSnapshot;
   resources: ModulePerformanceResourceSnapshot[];
   exposes: ModulePerformanceExposeAssetsSnapshot[];
+  shared?: ModulePerformanceSharedAssetsSnapshot[];
 }
 
 export interface ModulePerformanceInterval {
@@ -125,6 +141,18 @@ export interface ModulePerformanceManifest {
   assets: ModulePerformanceAssetTiming[];
 }
 
+export interface ModulePerformanceSharedDependency {
+  packageName: string;
+  packageVersion?: string;
+  requiredVersion?: string | false;
+  singleton?: boolean;
+  resolution: "reused" | "self-provided" | "unknown";
+  provider?: string;
+  selectedVersion?: string;
+  evidence: string[];
+  assets: ModulePerformanceAssetTiming[];
+}
+
 export interface ModulePerformancePageDelta {
   startDelta: number;
   endDelta?: number;
@@ -171,6 +199,7 @@ export interface ModulePerformanceOperation {
   outcome: Exclude<RemoteTraceOutcome, "unavailable">;
   timing: ModulePerformanceTiming;
   manifest: ModulePerformanceManifest;
+  sharedDependencies: ModulePerformanceSharedDependency[];
   preloadJs: ModulePerformancePreloadTiming[];
   pageImpact: ModulePerformancePageImpact;
   bottleneck: ModulePerformanceBottleneck;
@@ -208,7 +237,7 @@ export interface ModulePerformanceResult {
   observedAt: number;
   page: Omit<ModulePerformancePageSnapshot, "timeOrigin" | "url"> & {
     clock?: {
-      origin: "navigationStart";
+      origin: "navigationStart" | "firstObservedModuleLoad";
       unit: "ms";
     };
     scripts?: ModulePerformanceResourceSnapshot[];
@@ -234,6 +263,7 @@ export interface ModulePerformanceReportOperation {
   pageImpact: ModulePerformancePageImpact;
   remoteEntry?: ModulePerformanceManifest["remoteEntryResource"];
   exposeAssets: ModulePerformanceAssetTiming[];
+  sharedDependencies: ModulePerformanceSharedDependency[];
   preloadJs: ModulePerformancePreloadTiming[];
   bottleneck: ModulePerformanceBottleneck;
   findings: ModulePerformanceFinding[];
@@ -268,6 +298,22 @@ export interface ModulePerformanceTimelineSpan {
   duration?: number;
   source: "browser" | "module-federation";
   status?: ModulePerformanceTimelineStatus;
+  resource?: {
+    roles: Array<
+      | "page-script"
+      | "remote-entry"
+      | "expose-sync"
+      | "expose-async"
+      | "shared-sync"
+      | "shared-async"
+    >;
+    url: string;
+    packageNames?: string[];
+    transferSize?: number;
+    encodedBodySize?: number;
+    decodedBodySize?: number;
+    cache?: Exclude<ModulePerformanceResourceSnapshot["cache"], "unknown">;
+  };
 }
 
 export type ModulePerformanceTimelineItem =
@@ -276,7 +322,13 @@ export type ModulePerformanceTimelineItem =
 
 export interface ModulePerformanceTimelineLane {
   id: string;
-  kind: "page" | "page-script" | "mf-consumer" | "mf-provider" | "mf-preload";
+  kind:
+    | "page"
+    | "page-script"
+    | "mf-consumer"
+    | "mf-provider"
+    | "mf-resource"
+    | "mf-preload";
   label: string;
   items: ModulePerformanceTimelineItem[];
 }
@@ -284,7 +336,7 @@ export interface ModulePerformanceTimelineLane {
 export interface ModulePerformanceTimeline {
   schemaVersion: 1;
   clock: {
-    origin: "navigationStart";
+    origin: "navigationStart" | "firstObservedModuleLoad";
     unit: "ms";
   };
   markers: ModulePerformanceTimelineMarker[];
@@ -297,6 +349,7 @@ export interface ModulePerformanceReportRecommendation {
     | "inspect-remote-entry-delivery"
     | "preload-expose-assets"
     | "inspect-get-runtime"
+    | "inspect-reused-shared-asset"
     | "profile-factory"
     | "code-usage";
   severity: ModulePerformanceFinding["severity"];
@@ -325,13 +378,13 @@ export interface ModulePerformanceReport {
   schemaVersion: 1;
   command: "mf module-perf --report";
   report: {
+    timeline: ModulePerformanceTimeline;
+    summary: ModulePerformanceResult["summary"];
+    modules: ModulePerformanceReportModule[];
+    recommendations: ModulePerformanceReportRecommendation[];
     page: ModulePerformanceResult["page"];
     selection: ModulePerformanceResult["selection"];
-    summary: ModulePerformanceResult["summary"];
-    timeline?: ModulePerformanceTimeline;
-    modules: ModulePerformanceReportModule[];
     unobservedRemotes: ModulePerformanceUnobservedRemote[];
-    recommendations: ModulePerformanceReportRecommendation[];
   };
 }
 

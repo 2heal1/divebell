@@ -167,7 +167,9 @@ complete lifecycle without exposing redirect, server-wait, and transfer
 breakdown; unavailable details are omitted rather than reported as zero.
 
 `manifest.assets` lists `js.sync` and optional `js.async` assets declared for
-the expose. Each asset has:
+the expose. `sharedDependencies[].assets` uses the same resource fields for
+JavaScript declared by the producer's `moduleInfo.shared[].assets.js`. Each
+asset has:
 
 - `kind`: `sync` is required by the expose get path; `async` is related to the
   expose but is not automatically treated as blocking get.
@@ -256,17 +258,15 @@ consolidated performance report. It is a presentation contract over the normal
 `module-perf` result, not another measurement: it does not load a Remote,
 render a module, or create a second sample.
 
-The stable return is:
+The stable return is timeline-first:
 
 ```text
 report
-  page
-  selection
-  summary
   timeline
     clock
     markers[]
     lanes[]
+  summary
   modules[]
     consumer
     remote
@@ -278,16 +278,23 @@ report
       pageImpact
       remoteEntry
       exposeAssets[]
+      sharedDependencies[]
       preloadJs[]
       bottleneck
       findings[]
-  unobservedRemotes[]
   recommendations[]
+  page
+  selection
+  unobservedRemotes[]
 ```
 
-`timeline` is an additive field in the existing report schema and is present
-when the page performance collector supplied a navigation-relative clock. Its
-lane kinds are:
+`timeline` is always the first report field. Present it before the prose
+diagnosis, then explain findings and recommendations by referring back to its
+lanes and boundaries. When browser Navigation Timing is available its origin
+is `navigationStart`; otherwise its origin is `firstObservedModuleLoad` and
+the earliest observed `loadRemote` starts at zero. Never treat that fallback as
+a page-navigation measurement; an earlier observed preload can have a negative
+start relative to that origin. Its lane kinds are:
 
 - `page`: navigation start and the main HTML response interval;
 - `page-script`: observed external script resources, excluding JavaScript
@@ -297,7 +304,9 @@ lane kinds are:
   boundary;
 - `mf-provider`: Manifest, remoteEntry, provider container initialization,
   expose get/synchronous chunks, factory execution, and the final MF result;
-  and
+- `mf-resource`: matched remoteEntry, expose, and Shared JavaScript resources,
+  including request duration, transfer/body sizes, and cache evidence when the
+  browser exposes them; and
 - `mf-preload`: attributed MF preload JavaScript only. The lane is omitted when
   there is no such evidence.
 
@@ -329,6 +338,8 @@ MF provider                                      [ Manifest 192–205 ms ]
                                                                   [ container init 267–272 ms ]
                                                                    [ get/chunks 272–329 ms     ]
                                                                                  [ factory 329–337 ms ] ● module loaded 338 ms
+MF resources                                       [ remoteEntry.js 205–267 ms ]
+                                                                   [ Button.js 272–329 ms       ]
 ```
 
 Read every boundary from `timeline`; never estimate a missing value. Paint
@@ -366,6 +377,11 @@ contain:
 - `inspect-get-runtime`: `get` remained slow after resource loading did not
   explain it. Inspect Shared resolution and runtime work; more preload will
   not fix this path.
+- `inspect-reused-shared-asset`: the selected Shared provider came from another
+  MF instance, but a synchronous JavaScript asset declared for that Shared by
+  the producer was still requested. This proves the request, not duplicate
+  Shared execution: use Rsdoctor to check whether the chunk contains other
+  libraries. Do not recommend version unification from this evidence.
 - `profile-factory`: factory execution is expensive. Profile and reduce
   top-level module initialization.
 - `code-usage`: exact matched expose assets are eligible for a separate
@@ -376,5 +392,7 @@ contain:
   universal size threshold.
 
 The report never auto-enables coverage because it would alter the measurement.
-`recommendations` does not merge Shared registry information into loading
-claims; investigate a version concern with `shared trace` first.
+Different `requiredVersion` ranges, multiple registrations, or singleton
+declarations do not create a recommendation by themselves. A reused-Shared
+asset finding requires both selected-provider evidence and a matched browser
+request. Investigate any version concern with `shared trace` first.

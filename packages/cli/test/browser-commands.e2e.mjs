@@ -54,7 +54,7 @@ try {
     DIVEBELL_OPERATION_LOG_DIR: operationLogDirectory
   };
 
-  await runCli(["open", `${origin}/first`, "--no-bridge"], env);
+  await runCli(["open", `${origin}/first`, "--timeout", "10000", "--no-bridge"], env);
   await runCli(["check-element", "#agree"], env);
   assert.equal((await runCli(["is", "checked", "#agree"], env)).trim(), "true");
 

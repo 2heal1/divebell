@@ -290,7 +290,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /divebell --version.*divebell -v.*installed CLI version/);
   assert.doesNotMatch(markdown, /### Bridge and Browser/);
   assert.match(markdown, /divebell open <url>/);
-  assert.match(markdown, /divebell open <url> \[--headers <json>\]/);
+  assert.match(markdown, /divebell open <url> \[--timeout <ms>\] \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
   assert.match(markdown, /divebell state save <path> \[--url <url>\] \[--include-url <url>\.\.\.\]/);
   assert.match(markdown, /divebell state load <path>/);

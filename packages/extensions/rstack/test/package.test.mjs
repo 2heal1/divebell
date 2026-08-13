@@ -8,9 +8,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url)));
 
 test("publishes a self-contained Extension runtime and its command skill", async () => {
-  const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url)));
   assert.deepEqual(packageJson.divebell.extensions, ["./dist/extension.js"]);
   assert.equal(packageJson.dependencies, undefined);
   await access(new URL("../skills/observe-rstack-hmr/SKILL.md", import.meta.url));
@@ -43,7 +43,7 @@ test("packed archive supports real package-name imports", () => {
       encoding: "utf8"
     });
     assert.equal(packed.status, 0, packed.stderr);
-    const archive = join(packDirectory, "divebell-extension-rstack-0.0.17.tgz");
+    const archive = join(packDirectory, `divebell-extension-rstack-${packageJson.version}.tgz`);
     const installed = spawnSync("npm", [
       "install",
       "--ignore-scripts",

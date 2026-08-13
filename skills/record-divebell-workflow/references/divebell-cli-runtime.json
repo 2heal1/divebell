@@ -13,8 +13,8 @@
     {
       "name": "@divebell/agent-browser",
       "source": "registry",
-      "specifier": "@divebell/agent-browser@0.33.2-divebell.6",
-      "file": "divebell-agent-browser-0.33.2-divebell.6.tgz"
+      "specifier": "@divebell/agent-browser@0.33.2-divebell.7",
+      "file": "divebell-agent-browser-0.33.2-divebell.7.tgz"
     },
     {
       "name": "@divebell/core",

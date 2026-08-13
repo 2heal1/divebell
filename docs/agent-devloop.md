@@ -26,7 +26,16 @@ Keep only reusable debugging capabilities
 
 ## 1. Prepare Access
 
-Protected pages should not require a person to sign in again for every task. A team can reuse a test account's Chrome Profile directly or load a prepared agent-browser state:
+Protected pages should not require a person to sign in again for every task. By
+default, Divebell opens with a read-only copy of the current user's most
+recently used Chrome Profile:
+
+```sh
+divebell open https://example.com/orders --ui
+```
+
+Use an explicit test Profile or prepared agent-browser state when the account
+must be stable or different from the user's latest Profile:
 
 ```sh
 divebell open https://example.com/orders --profile "Test Account" --ui
@@ -34,7 +43,7 @@ divebell open https://example.com/orders --profile "Test Account" --ui
 divebell open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
-Later `divebell open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
+If no usable Chrome Profile exists, later `divebell open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
 
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
@@ -67,7 +76,7 @@ The effective timeout is forwarded to agent-browser's command transport with a
 response margin. If a page never emits `load`, increasing the budget does not
 fix the underlying wait condition.
 
-Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
+Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and selected browser context by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
 When an explicitly supplied URL-scoped state fails authentication or
 permission verification, diagnose it only after the normal `open` attempt.

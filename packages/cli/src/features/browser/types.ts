@@ -2,6 +2,7 @@ export interface BrowserRunResult {
   exitCode: number;
   stdout: string;
   stderr: string;
+  defaultProfile?: string;
 }
 
 export interface BrowserRunOptions {
@@ -12,6 +13,8 @@ export interface BrowserRunOptions {
   autoConnect?: boolean;
   idleTimeoutMs?: number;
   disableRestore?: boolean;
+  disableDefaultProfile?: boolean;
+  defaultProfile?: string;
   ignoreConfiguredProfile?: boolean;
   ignoreConfiguredState?: boolean;
   defaultTimeoutMs?: number;
@@ -37,6 +40,7 @@ export interface AgentBrowserRunnerOptions {
   session?: string;
   env?: NodeJS.ProcessEnv;
   cwd?: string;
+  latestChromeProfileResolver?: () => Promise<string | undefined>;
 }
 
 export interface DefaultBrowserRunnerOptions {

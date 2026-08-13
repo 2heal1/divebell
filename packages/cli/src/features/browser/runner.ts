@@ -3,6 +3,11 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { resolveDivebellHomeDirectory } from "../../utils/home.js";
+import {
+  browserConfigurationSelectsContext,
+  defaultChromeProfileIsEnabled,
+  resolveLatestChromeProfile
+} from "./profile.js";
 const require = createRequire(import.meta.url);
 
 import type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserJsonResponse, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
@@ -76,36 +81,89 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
 
   return {
     run: async (args, runOptions = {}) => {
+      let defaultProfile: string | undefined;
       try {
+        const environment = createAgentBrowserEnvironment(
+          baseEnv,
+          profileDirectory,
+          runOptions.session ?? restoreName,
+          runOptions,
+          options.cwd
+        );
+        if (runOptions.defaultProfile !== undefined) {
+          defaultProfile = runOptions.defaultProfile;
+          environment[AGENT_BROWSER_PROFILE_ENV] = defaultProfile;
+          delete environment[AGENT_BROWSER_RESTORE_ENV];
+        } else if (await shouldUseLatestChromeProfile({
+          args,
+          runOptions,
+          baseEnv,
+          environment,
+          cwd: options.cwd ?? process.cwd()
+        })) {
+          defaultProfile = await (options.latestChromeProfileResolver?.()
+            ?? resolveLatestChromeProfile({ env: baseEnv }));
+          if (defaultProfile !== undefined) {
+            environment[AGENT_BROWSER_PROFILE_ENV] = defaultProfile;
+            delete environment[AGENT_BROWSER_RESTORE_ENV];
+          }
+        }
         const result = await executeAgentBrowser(executablePath, [...prefixArgs, ...args], {
           ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-          env: createAgentBrowserEnvironment(
-            baseEnv,
-            profileDirectory,
-            runOptions.session ?? restoreName,
-            runOptions,
-            options.cwd
-          ),
+          env: environment,
           maxBuffer: 1024 * 1024 * 10,
           ...(runOptions.input === undefined ? {} : { input: runOptions.input })
         });
-        return normalizeAgentBrowserRunResult({
+        return withDefaultProfile(normalizeAgentBrowserRunResult({
           exitCode: 0,
           stdout: result.stdout,
           stderr: result.stderr
-        }, args);
+        }, args), defaultProfile);
       } catch (error) {
         if (isExecError(error)) {
-          return normalizeAgentBrowserRunResult({
+          return withDefaultProfile(normalizeAgentBrowserRunResult({
             exitCode: typeof error.code === "number" ? error.code : 1,
             stdout: typeof error.stdout === "string" ? error.stdout : "",
             stderr: typeof error.stderr === "string" ? error.stderr : error.message
-          }, args);
+          }, args), defaultProfile);
         }
         throw error;
       }
     }
   };
+}
+
+function withDefaultProfile(
+  result: BrowserRunResult,
+  defaultProfile: string | undefined
+): BrowserRunResult {
+  return defaultProfile === undefined ? result : { ...result, defaultProfile };
+}
+
+async function shouldUseLatestChromeProfile(options: {
+  args: readonly string[];
+  runOptions: BrowserRunOptions;
+  baseEnv: NodeJS.ProcessEnv;
+  environment: NodeJS.ProcessEnv;
+  cwd: string;
+}): Promise<boolean> {
+  if (
+    options.runOptions.disableDefaultProfile === true
+    || options.runOptions.disableRestore === true
+    || options.runOptions.ignoreConfiguredProfile === true
+    || options.runOptions.autoConnect === true
+    || !defaultChromeProfileIsEnabled(options.baseEnv)
+  ) {
+    return false;
+  }
+  const agentBrowserHome = options.environment[AGENT_BROWSER_HOME_ENV];
+  if (agentBrowserHome === undefined) return false;
+  return !(await browserConfigurationSelectsContext({
+    args: options.args,
+    env: options.baseEnv,
+    agentBrowserHome,
+    cwd: options.cwd
+  }));
 }
 
 export function resolveBundledAgentBrowserEntryPath(): string | undefined {

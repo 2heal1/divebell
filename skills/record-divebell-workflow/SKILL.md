@@ -1,6 +1,6 @@
 ---
 name: record-divebell-workflow
-description: Record a user's manual browser actions and operated elements, review and amend the structured workflow with the user, then generate a confirmed executable JavaScript replay. Select an optional Chrome profile or browser state before recording. Treat voice as supplementary intent and ignore missing audio or denied microphone access.
+description: Record a user's manual browser actions and operated elements, review and amend the structured workflow with the user, then generate a confirmed executable JavaScript replay. Use the latest Chrome Profile by default or select an explicit Profile or browser state for a stable account. Treat voice as supplementary intent and ignore missing audio or denied microphone access.
 ---
 
 # Record a Divebell workflow
@@ -14,7 +14,7 @@ The result is a confirmed JavaScript script, not a new skill. Scripts are easier
 - Use the globally installed `divebell` command to operate the page. Do not add `@divebell/cli` to the application project.
 - Run `divebell record --help` before starting. If the command is unavailable, ask the user to run `npm install --global @divebell/cli`. If `record` is missing, run `divebell extensions add @divebell/extension-imitate`.
 - If the CLI or recording command is unavailable, read `references/divebell-cli.md`. Do not fall back to a project-local dependency or a temporarily downloaded CLI.
-- Before opening the recording page, explicitly ask whether the workflow needs no authentication, a Chrome Profile, or a browser state. For a Profile, run `divebell profiles`; for state, run `divebell state list`. Show only selectable metadata and let the user confirm one choice. Never combine `--profile` and `--state`.
+- Open with Divebell's most recently used Chrome Profile by default. Ask about authentication context only when the user requests a specific account, state, or isolated environment. For a different Profile, run `divebell profiles`; for state, run `divebell state list`. Show only selectable metadata and let the user confirm one choice. Never combine `--profile` and `--state`.
 - By default, run `record start` to prepare recording, then open a visible page with the confirmed authentication argument. Use `divebell open about:blank --ui` only when no URL was supplied. Do not ask whether to enable audio and do not add audio flags. Ignore silence, missing audio, and denied permission.
 - Save to the current project's `recordings/` directory by default. Do not ask where to save unless the user specified another location.
 - Call stop only after the user says “stop,” “finished,” or “done.”
@@ -25,7 +25,7 @@ The result is a confirmed JavaScript script, not a new skill. Scripts are easier
 - The browser requests microphone access on a separate recording page and returns to the operation page after the user allows or denies access. Successful capture saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. Treat unavailable audio or denied access as a normal condition and do not ask the user to retry.
 - Preserve intermediate clicks and input in `interactions.jsonl` after navigation, search, or opening a new page. Do not judge the recording only from its final URL.
 - Browser interactions are the source of truth for what happened. Treat speech only as intent or expected-result context when `transcript.json` contains non-empty text. Never invent a click, input, or element locator from speech alone.
-- After confirmation generates the script, read the script, `workflow.json`, `manifest.json`, `interactions.jsonl`, and `dom-snapshots.jsonl`, then run the script with the required Profile or state to verify it.
+- After confirmation generates the script, read the script, `workflow.json`, `manifest.json`, `interactions.jsonl`, and `dom-snapshots.jsonl`, then run it with the same default or explicit Profile/state mode to verify it.
 
 ## Confirm the CLI
 
@@ -47,11 +47,12 @@ divebell record start
 
 The recording bundle is stored under the current project's `recordings/` directory by default. Read the command's JSON response, confirm that `status` is `prepared`, and save the `output` field. The stop command must use that path. Audio capture is attempted automatically and needs no extra flag.
 
-2. Ask the user which authentication environment the recording needs.
+2. Resolve the recording's authentication environment.
 
-- For a Chrome Profile, run `divebell profiles`, let the user select one, then open with `--profile <name|path>`.
-- For browser state, run `divebell state list`, let the user select one, then open with `--state <path>`.
-- If authentication is unnecessary, open without either option.
+- By default, open without an authentication option; Divebell uses a read-only copy of Chrome's most recently used Profile.
+- When the user requests a different or stable Profile, run `divebell profiles`, let the user select one, then open with `--profile <name|path>`.
+- When the user requests browser state, run `divebell state list`, let the user select one, then open with `--state <path>`.
+- When the workflow must not use the user's recent Profile, use an explicit dedicated Profile or scoped state approved for that workflow.
 
 Tell the user that the browser will first show a microphone permission prompt. When the user did not provide a URL, open a visible blank page, adding the confirmed authentication option when needed:
 
@@ -167,12 +168,16 @@ After the user has reviewed the complete sequence, confirm all remaining setup a
 divebell record confirm --input <path> --all
 ```
 
-This creates `generated-script.mjs`. A recorded Profile or state is a required runtime input, not embedded credentials:
+This creates `generated-script.mjs`. An explicitly recorded Profile or state is a required runtime input, not embedded credentials:
 
 ```bash
 node <path>/generated-script.mjs --profile "Work"
 node <path>/generated-script.mjs --state /path/to/test-account.json
 ```
+
+When recording used the default Profile, omit both options; replay resolves the
+most recently used Chrome Profile again. Require an explicit Profile or state
+instead when the account must remain stable between recording and replay.
 
 Close any existing page before the final replay, run the script with the same account, environment, and user path, and verify the recorded final state.
 

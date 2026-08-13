@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test } from "@rstest/core";
@@ -13,6 +13,12 @@ import {
   createDefaultBrowserRunner,
   resolveBundledAgentBrowserEntryPath
 } from "../dist/features/browser/runner.js";
+import {
+  browserConfigurationSelectsContext,
+  defaultChromeProfileIsEnabled,
+  resolveChromeUserDataDirectory,
+  resolveLatestChromeProfile
+} from "../dist/features/browser/profile.js";
 import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
 test("uses agent-browser automatic restore while preserving native profile and state settings", () => {
@@ -52,6 +58,177 @@ test("uses agent-browser automatic restore while preserving native profile and s
   assert.equal(diagnosisEnv.AGENT_BROWSER_PROFILE, undefined);
   assert.equal(diagnosisEnv.AGENT_BROWSER_STATE, undefined);
   assert.equal(diagnosisEnv.AGENT_BROWSER_DEFAULT_TIMEOUT, "12345");
+});
+
+test("resolves the most recently used Chrome profile from Local State", async () => {
+  const userDataDirectory = mkdtempSync(join(tmpdir(), "divebell-chrome-profile-"));
+  try {
+    mkdirSync(join(userDataDirectory, "Default"));
+    mkdirSync(join(userDataDirectory, "Profile 2"));
+    writeFileSync(join(userDataDirectory, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Profile 2",
+        last_active_profiles: ["Default"],
+        info_cache: {
+          Default: { active_time: 200 },
+          "Profile 2": { active_time: 100 }
+        }
+      }
+    }));
+
+    assert.equal(
+      await resolveLatestChromeProfile({ userDataDirectory }),
+      "Profile 2"
+    );
+  } finally {
+    rmSync(userDataDirectory, { recursive: true, force: true });
+  }
+});
+
+test("falls back to the newest existing profile metadata entry", async () => {
+  const userDataDirectory = mkdtempSync(join(tmpdir(), "divebell-chrome-profile-"));
+  try {
+    mkdirSync(join(userDataDirectory, "Default"));
+    mkdirSync(join(userDataDirectory, "Profile 1"));
+    writeFileSync(join(userDataDirectory, "Local State"), JSON.stringify({
+      profile: {
+        last_used: "Missing Profile",
+        info_cache: {
+          Default: { active_time: 100 },
+          "Profile 1": { active_time: 200 },
+          "../unsafe": { active_time: 300 }
+        }
+      }
+    }));
+
+    assert.equal(
+      await resolveLatestChromeProfile({ userDataDirectory }),
+      "Profile 1"
+    );
+  } finally {
+    rmSync(userDataDirectory, { recursive: true, force: true });
+  }
+});
+
+test("resolves platform Chrome data directories and supports disabling the default", () => {
+  assert.equal(resolveChromeUserDataDirectory({
+    env: { HOME: "/users/tester" },
+    platform: "darwin"
+  }), "/users/tester/Library/Application Support/Google/Chrome");
+  assert.equal(resolveChromeUserDataDirectory({
+    env: { XDG_CONFIG_HOME: "/config" },
+    platform: "linux"
+  }), "/config/google-chrome");
+  assert.equal(defaultChromeProfileIsEnabled({}), true);
+  assert.equal(defaultChromeProfileIsEnabled({
+    DIVEBELL_DEFAULT_CHROME_PROFILE: "off"
+  }), false);
+});
+
+test("treats an agent-browser profile config as an explicit browser context", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "divebell-browser-config-"));
+  const agentBrowserHome = join(directory, "agent-browser-home");
+  mkdirSync(agentBrowserHome);
+  try {
+    writeFileSync(join(directory, "agent-browser.json"), JSON.stringify({
+      profile: "Configured Profile"
+    }));
+    assert.equal(await browserConfigurationSelectsContext({
+      args: ["open", "about:blank"],
+      env: {},
+      agentBrowserHome,
+      cwd: directory
+    }), true);
+
+    writeFileSync(join(directory, "agent-browser.json"), JSON.stringify({
+      headed: true
+    }));
+    assert.equal(await browserConfigurationSelectsContext({
+      args: ["open", "about:blank"],
+      env: {},
+      agentBrowserHome,
+      cwd: directory
+    }), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("uses the latest Chrome profile by default and suppresses automatic restore", async () => {
+  const divebellHome = mkdtempSync(join(tmpdir(), "divebell-latest-profile-"));
+  try {
+    const runner = createAgentBrowserRunner({
+      env: { DIVEBELL_HOME: divebellHome },
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ profile: process.env.AGENT_BROWSER_PROFILE ?? null, restore: process.env.AGENT_BROWSER_RESTORE ?? null }))",
+        "--"
+      ],
+      session: "latest-profile-test",
+      cwd: divebellHome,
+      latestChromeProfileResolver: async () => "Profile 2"
+    });
+
+    const result = await runner.run(["open", "about:blank"]);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.defaultProfile, "Profile 2");
+    assert.deepEqual(JSON.parse(result.stdout), {
+      profile: "Profile 2",
+      restore: null
+    });
+
+    const pinned = await runner.run(["get", "url"], {
+      defaultProfile: result.defaultProfile
+    });
+    assert.equal(pinned.defaultProfile, "Profile 2");
+    assert.deepEqual(JSON.parse(pinned.stdout), {
+      profile: "Profile 2",
+      restore: null
+    });
+
+    const explicitState = await runner.run(
+      ["--state", "state.json", "open", "about:blank"],
+      { disableRestore: true, disableDefaultProfile: true }
+    );
+    assert.deepEqual(JSON.parse(explicitState.stdout), {
+      profile: null,
+      restore: null
+    });
+  } finally {
+    rmSync(divebellHome, { recursive: true, force: true });
+  }
+});
+
+test("can disable the latest Chrome profile default", async () => {
+  const divebellHome = mkdtempSync(join(tmpdir(), "divebell-latest-profile-off-"));
+  try {
+    const runner = createAgentBrowserRunner({
+      env: {
+        DIVEBELL_HOME: divebellHome,
+        DIVEBELL_DEFAULT_CHROME_PROFILE: "off"
+      },
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ profile: process.env.AGENT_BROWSER_PROFILE ?? null, restore: process.env.AGENT_BROWSER_RESTORE ?? null }))",
+        "--"
+      ],
+      session: "latest-profile-off-test",
+      cwd: divebellHome,
+      latestChromeProfileResolver: async () => {
+        throw new Error("disabled resolver should not run");
+      }
+    });
+
+    const result = await runner.run(["open", "about:blank"]);
+    assert.deepEqual(JSON.parse(result.stdout), {
+      profile: null,
+      restore: "latest-profile-off-test"
+    });
+  } finally {
+    rmSync(divebellHome, { recursive: true, force: true });
+  }
 });
 
 test("isolates the bundled agent-browser daemon from other installed clients", () => {
@@ -327,6 +504,7 @@ test("forwards Chrome profile and state launch options when opening a page", asy
   assert.deepEqual(launchOptions, {
     ui: false,
     disableRestore: true,
+    disableDefaultProfile: true,
     reuseInitialBlankPage: true
   });
 });

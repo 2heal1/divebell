@@ -85,6 +85,13 @@ export async function runStackCommand(
     exitCode: openContext.exitCode,
     activeExtensions: openContext.activeExtensions,
     browserRestoreDisabled: openContext.browserRestoreDisabled,
+    browserDefaultProfileDisabled: openContext.browserDefaultProfileDisabled,
+    ...(openContext.browserDefaultProfile === undefined
+      ? {}
+      : { browserDefaultProfile: openContext.browserDefaultProfile }),
+    ...(openContext.browserRestoreOptions === undefined
+      ? {}
+      : { browserRestoreOptions: openContext.browserRestoreOptions }),
     ...(openContext.headers === undefined
       ? {}
       : { headers: openContext.headers }),

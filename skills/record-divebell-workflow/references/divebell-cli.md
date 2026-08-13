@@ -36,6 +36,10 @@ divebell record confirm --input <start-output-path> --all
 divebell stop
 ```
 
+`divebell open` uses a read-only copy of Chrome's most recently used Profile
+when neither `--profile` nor `--state` supplies another browser context. Use an
+explicit Profile or state when the replay account must remain stable.
+
 `record start` records operated elements and events and automatically attempts microphone capture. A successful capture also saves `audio.webm`, `audio-chunks.jsonl`, and `audio-events.jsonl`. When supported by the browser, the recording page writes speech-recognition results as they arrive, and `record stop` combines them into `transcript.json`. Silence, missing audio, and denied microphone access are ignored and do not affect browser recording, script generation, or replay.
 
 The default workflow page contains a URL form. The browser first requests microphone permission in a separately named audio-only tab. After the user allows or denies access, it returns to the workflow tab and keeps the audio tab open in the background until `record stop`. Paste the target URL and perform all actions in the workflow tab; never navigate the audio tab.
@@ -48,4 +52,4 @@ divebell record transcribe --input <start-output-path>
 
 The command reads `OPENAI_API_KEY` by default and also accepts `--api-key <key>`. Use it only when the user explicitly said they provided spoken context and audio exists but no live transcript was captured. Missing audio or transcription does not affect script generation or replay from recorded actions.
 
-`record stop` generates a draft `workflow.json`. Browser events are the source of truth; speech is supplementary intent. Review step 0 (authentication) and every concrete browser command before confirmation. Use `record amend` to replay a confirmed prefix and capture only missing actions. Keep business-result extraction out of the workflow schema: after confirmation, inspect the page and recording evidence, choose a supported retrieval method, check any added CLI command with `--help`, and verify the corrected script end to end. `record confirm --all` generates `generated-script.mjs`; a recorded Profile or state must be supplied again when the script runs and is never embedded as credentials.
+`record stop` generates a draft `workflow.json`. Browser events are the source of truth; speech is supplementary intent. Review step 0 (authentication) and every concrete browser command before confirmation. Use `record amend` to replay a confirmed prefix and capture only missing actions. Keep business-result extraction out of the workflow schema: after confirmation, inspect the page and recording evidence, choose a supported retrieval method, check any added CLI command with `--help`, and verify the corrected script end to end. `record confirm --all` generates `generated-script.mjs`; an explicitly recorded Profile or state must be supplied again when the script runs and is never embedded as credentials. A default-Profile replay resolves Chrome's most recently used Profile again.

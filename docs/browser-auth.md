@@ -12,6 +12,42 @@ Divebell composes agent-browser profiles, state, and auth to provide reusable br
 
 `profiles` only lists selectable local Chrome profiles; it does not export their data. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session, start from a Profile and then save state.
 
+## Default browser context
+
+When `open` has no explicit browser context, Divebell reads Chrome's `Local
+State` for the current OS user and selects `profile.last_used`. It passes that
+Profile's directory name to agent-browser, which launches a read-only copy. If
+the recorded Profile directory no longer exists, Divebell tries Chrome's last
+active Profiles and then the newest existing `info_cache` entry. If Chrome or
+a usable Profile is unavailable, Divebell falls back to its project-scoped
+automatic Restore State.
+
+On Windows, Chrome can lock Profile files while it is running. If the default
+copy fails for that reason, close Chrome before retrying or use an explicit
+state/restore context.
+
+Explicit browser context always wins. Divebell does not apply the automatic
+Profile when the command, environment, or agent-browser configuration selects
+a Profile, state, restore key, restricted-domain mode, CDP/auto-connected or
+provider browser, custom browser executable, non-Chrome engine, or raw Chrome
+profile argument.
+
+To keep the previous project Restore State behavior even when Chrome has a
+usable Profile, disable this default in the command environment:
+
+```bash
+DIVEBELL_DEFAULT_CHROME_PROFILE=off divebell open https://app.example.com
+```
+
+Values `0`, `false`, `off`, and `never` disable automatic Profile selection.
+An explicit `--profile`, `--state`, or `--restore` remains the preferred way to
+make a workflow's browser context reproducible.
+
+Divebell resolves the latest Profile once for each successful `open` and pins
+that directory to the resulting page context. Later page commands and `stop`
+keep using it even if the user's daily Chrome switches Profiles. A new `open`
+resolves the latest Profile again unless an explicit context overrides it.
+
 ## Reuse a local Chrome Profile
 
 List available profiles:
@@ -20,7 +56,8 @@ List available profiles:
 divebell profiles
 ```
 
-Close the existing Divebell browser, then open the target page with a selected profile:
+An ordinary open uses Chrome's most recently used Profile. Close the existing
+Divebell browser and pass `--profile` only to select a different Profile:
 
 ```bash
 divebell stop
@@ -125,8 +162,9 @@ divebell state diagnose https://app.example.net/account \
   --expect-text 'Account'
 ```
 
-Divebell never guesses or selects a Profile. The source comparison reports
-only cookie and storage-origin counts and booleans. It creates mode-`0600`
+Divebell's ordinary `open` default does not choose a diagnosis source. State
+diagnosis uses a source Profile only when `--source-profile` explicitly names
+one. The source comparison reports only cookie and storage-origin counts and booleans. It creates mode-`0600`
 temporary scoped states, tries a bounded set of smallest candidate
 combinations, and deletes every temporary state and HAR when finished. It does
 not update the failed state file.
@@ -242,13 +280,14 @@ divebell state clear [session-name]
 divebell state clean --older-than 7
 ```
 
-Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Divebell keeps that restore mode for the current open context, so later page commands and `stop` continue controlling the same browser instead of relaunching it with automatic restore enabled. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
+Divebell uses the most recently used local Chrome Profile for an ordinary open. If no usable Profile exists, or `DIVEBELL_DEFAULT_CHROME_PROFILE=off` is set, it automatically restores the browser session for the same project. An explicit `--profile`, `--state`, or `--restore` takes precedence and is not combined with the automatic Profile default. Divebell keeps that browser mode for the current open context, so later page commands and `stop` continue controlling the same browser. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
 
 ## Restore State save policy
 
 Restore State is the cookies, localStorage, and sessionStorage snapshot described above. It is not a Chrome Profile and does not contain IndexedDB, service workers, cache, extensions, browser preferences, or other Chrome-owned data.
 
-For automatic Restore State, `divebell open <url> --ui` uses three independent save stages:
+When automatic Profile selection is unavailable or disabled, project Restore
+State for `divebell open <url> --ui` uses three independent save stages:
 
 1. After the newly opened page has been quiet for about two seconds, save once.
 2. Do not continue saving periodically while the page remains open.
@@ -285,7 +324,7 @@ These options also have camelCase keys in `agent-browser.json`:
 
 The corresponding environment variables are `AGENT_BROWSER_RESTORE_INITIAL_SAVE`, `AGENT_BROWSER_RESTORE_PERIODIC_SAVE`, `AGENT_BROWSER_RESTORE_CLOSE_SAVE`, and `AGENT_BROWSER_AUTOSAVE_INTERVAL_MS`. Precedence is CLI option, environment variable, project or explicit config file, user config file, then the Divebell defaults above. An explicit config file replaces the normally discovered project and user files. Divebell includes the effective command-level policy on later page commands and `stop`, so changing the policy does not require manually stopping an already-running daemon.
 
-`--restore-save never` has different semantics: it disables initial, periodic, and close-time saving together. Use it only when no State should be written. Turning off `--restore-initial-save` or leaving periodic saving disabled does not turn off close-time saving. Explicit `--profile`, `--state`, and `--allowed-domains` behavior is unchanged.
+`--restore-save never` has different semantics: it disables initial, periodic, and close-time saving together. Use it only when no State should be written. Turning off `--restore-initial-save` or leaving periodic saving disabled does not turn off close-time saving. Explicit `--profile`, `--state`, `--restore`, and `--allowed-domains` behavior is unchanged and prevents automatic Profile selection.
 
 ## Use the auth vault
 
@@ -320,5 +359,11 @@ Lists and details never reveal passwords.
 ## Security boundary
 
 Profiles, state, and auth only reuse accounts that are already authorized. They do not bypass sign-in or permission checks.
+
+The automatic Profile is a full read-only snapshot of the most recently used
+Chrome Profile, so it can contain authorization for unrelated sites. Use an
+explicit scoped state, a dedicated Profile, restricted-domain mode, or
+`DIVEBELL_DEFAULT_CHROME_PROFILE=off` when the task should not receive that
+broader browser context.
 
 State files usually contain usable session tokens in plaintext. Keep them on trusted storage, add them to `.gitignore`, and never commit or share them with someone who lacks access to the target site. URL scoping narrows the export but does not make the file non-sensitive.

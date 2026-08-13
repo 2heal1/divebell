@@ -6,10 +6,13 @@ on trusted storage, and never print a state file's contents.
 
 ## Required order for a URL-scoped state
 
-1. First open the exact target normally and verify the final URL, navigation or
-   HTTP outcome, and the user's success condition. If authentication or
-   permission is required and no authorized state or Profile was supplied, ask
-   the user to provide or explicitly authorize one. Never choose a Profile.
+1. First open the exact target normally. Divebell automatically uses a read-only
+   copy of the current user's most recently used Chrome Profile when one is
+   available. Verify the final URL, navigation or HTTP outcome, account, and
+   the user's success condition. If that context has the wrong account, lacks
+   authentication, or lacks permission, ask the user for a specific authorized
+   state or Profile. Do not enumerate Profiles and choose a different one; the
+   built-in most-recently-used default is the only implicit choice.
 
 2. Retry the exact target with the state the user supplied:
 
@@ -22,7 +25,7 @@ on trusted storage, and never print a state file's contents.
    the `open` result alone does not prove access.
 
 4. If access is normal, continue the user's task. Do not call
-   `state diagnose`, do not select a Profile, and do not enlarge the state.
+   `state diagnose`, switch Profiles, or enlarge the state.
 
 5. Run diagnosis only when this authorized state-backed retry still has one of
    these failure classes:
@@ -98,10 +101,10 @@ on trusted storage, and never print a state file's contents.
    ```
 
    `state diagnose` diagnoses a state file only. Never run it for a
-   Profile-backed open. If an explicitly authorized Profile-backed retry fails,
-   use the same one-time `--ui` fallback without diagnosis. If headed access
-   also fails, report the verified failure instead of repeating diagnosis or UI
-   retries.
+   Profile-backed open. If a default or explicitly authorized Profile-backed
+   retry fails, use the same one-time `--ui` fallback without diagnosis. If
+   headed access also fails, report the verified failure instead of repeating
+   diagnosis or UI retries.
 
 ## Output and safety interpretation
 

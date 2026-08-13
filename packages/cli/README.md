@@ -39,9 +39,13 @@ the command reports that it provides a Skill.
 
 ## Real Development Debugging Flow
 
-Reuse a prepared Chrome Profile or agent-browser state in a named debugging session:
+An ordinary open uses a read-only copy of the current OS user's most recently
+used Chrome Profile. Pass an explicit prepared Profile or agent-browser state
+when the account must be stable or different:
 
 ```sh
+divebell open http://localhost:19080/orders --session orders-debug
+# Or select a stable context:
 divebell open http://localhost:19080/orders --profile "Test Account" --session orders-debug
 # Or: divebell open http://localhost:19080/orders --state /path/to/test-account.json --session orders-debug
 divebell stack
@@ -52,7 +56,7 @@ divebell page-snapshot
 
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
 
-Automatic Restore State is a portable snapshot of cookies, localStorage, and sessionStorage, not a complete Chrome Profile. Divebell saves it once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
+When no usable Chrome Profile exists, Divebell falls back to Automatic Restore State, a portable snapshot of cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` to request this fallback explicitly. Divebell saves Restore State once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
 
 For a URL-scoped state, always try and verify a normal
 `divebell open <url> --state <path>` first. If that attempt redirects to login,

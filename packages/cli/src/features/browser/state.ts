@@ -24,6 +24,7 @@ export async function saveUrlScopedBrowserState(
     url: string;
     includeUrls?: string[];
     outputPath?: string;
+    collectPrimaryOrigin?: boolean;
   }
 ): Promise<UrlScopedStateSaveResult> {
   const url = normalizeStateUrl(options.url);
@@ -43,9 +44,12 @@ export async function saveUrlScopedBrowserState(
   try {
     const saveArgs = ["state", "save", temporaryPath];
     const includedOrigins = new Set(
-      includeUrls
+      [
+        ...(options.collectPrimaryOrigin === true ? [url] : []),
+        ...includeUrls
+      ]
         .map((includeUrl) => includeUrl.origin)
-        .filter((origin) => origin !== url.origin)
+        .filter((origin) => options.collectPrimaryOrigin === true || origin !== url.origin)
     );
     for (const origin of includedOrigins) {
       saveArgs.push("--include-origin", origin);
@@ -64,6 +68,7 @@ export async function saveUrlScopedBrowserState(
       });
     }
 
+    await chmod(temporaryPath, 0o600);
     const state = parseBrowserStorageState(await readFile(temporaryPath, "utf8"));
     const scopedState = filterBrowserStateForUrls(state, [url, ...includeUrls]);
     await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });

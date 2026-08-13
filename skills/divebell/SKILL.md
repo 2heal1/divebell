@@ -77,6 +77,15 @@ one `open` command.
 Reuse the current Divebell page when it already has the correct URL, account,
 and environment.
 
+When the user supplies a state file, first open the target normally with that
+state and verify the final URL plus the task's expected page or HTTP result. If
+access succeeds, continue the task and do not run state diagnosis. Only after a
+login redirect, 401/403, a clear signed-out or permission page, a 404 with
+authentication evidence, or a suspicious first-navigation failure, read
+`references/authentication.md` and follow its post-failure state diagnosis
+workflow. A plain 404 without authentication evidence is not proof that state
+is missing.
+
 ### 3. Use the required Divebell capability
 
 Use `divebell --help` to find the smallest built-in or installed Extension
@@ -198,6 +207,10 @@ divebell stack --refresh
 
 Read `references/extensions.md` only when the task needs to install, manage,
 discover, or use an Extension.
+
+Read `references/authentication.md` only when a protected-page state must be
+created or when a normal state-backed open has already failed authentication
+or permission verification. Do not use state diagnosis as a routine preflight.
 
 Extension development and Runtime SDK integration are outside this Skill and
 should be handled by their own dedicated Skills.

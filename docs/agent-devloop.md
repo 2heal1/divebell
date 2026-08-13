@@ -69,6 +69,26 @@ fix the underlying wait condition.
 
 Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and login state by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
+When an explicitly supplied URL-scoped state fails authentication or
+permission verification, diagnose it only after the normal `open` attempt.
+First verify the final URL, HTTP/navigation result, and task expectation. If
+the page is usable, do not run diagnosis. If it redirects to sign-in, returns
+401/403, shows a clear authentication/permission failure, returns 404 with
+authentication evidence, or loses its initial navigation context, run:
+
+```sh
+divebell state diagnose https://example.com/orders \
+  --state /path/to/test-account.json \
+  --expect-url 'https://example.com/orders*'
+```
+
+Treat a plain 404 without authentication evidence as `not_auth_related`, not
+as proof that state is missing. Add `--source-profile <name|path>` only when the
+user explicitly identifies the signed-in Profile to compare. Review the
+sanitized candidates, re-export with explicit `--include-url` values, and then
+repeat the same `open` and verification. See [Browser Authentication and
+State](browser-auth.md#diagnose-a-missing-state-source-after-access-fails).
+
 Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 
 ## 3. Discover Available Capabilities

@@ -25,6 +25,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell kill-all [--force]` - Stop all running divebell daemon processes tracked by this user.
 - `divebell profiles` - List Chrome profiles available to agent-browser.
 - `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
+- `divebell state diagnose <url> --state <path> [--source-profile <name|path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>] [--json]` - Only after a normal state-backed open fails authentication or permission verification, replay its first navigation in isolation and suggest sanitized --include-url candidates; never use this as an open preflight.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.
 - `divebell state <list|show|rename|clear|clean> [args]` - Inspect and manage agent-browser saved states.
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.

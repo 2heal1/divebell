@@ -71,6 +71,152 @@ Without `--url`, this is the native agent-browser full-state save. It includes a
 divebell state save ./full-state.json
 ```
 
+## Diagnose a missing state source after access fails
+
+`state diagnose` is a failure diagnostic, not a preflight. Always try the
+scoped state normally first and verify the final URL, navigation/HTTP result,
+and the success condition for the task:
+
+```bash
+divebell open https://app.example.net/account --state ./app-state.json
+```
+
+If that access succeeds, continue the task and do not run state diagnosis.
+Run diagnosis only after the attempt redirects to sign-in, returns 401 or
+403, shows a clear signed-out or permission page, returns 404 with other
+authentication evidence, or fails its first navigation in a way that may be
+an authentication redirect:
+
+```bash
+divebell state diagnose https://app.example.net/account \
+  --state ./app-state.json \
+  --expect-url 'https://app.example.net/account*' \
+  --expect-text 'Account'
+```
+
+The command creates an isolated session, loads the failed state before the
+first real navigation, starts metadata-only network capture, and then replays
+the URL. It reports sanitized candidate URLs with confidence and evidence from
+top-level redirects, the final main-frame URL, authentication iframes, login
+form actions, meta refreshes, client-side sign-in navigation, and relevant
+document/XHR/fetch 401, 403, or authentication-related 404 responses. An
+initial navigation error does not discard the capture.
+
+Candidate URLs keep scheme, host, port, and a useful cookie path, but remove
+userinfo, query, fragment, and URL parameters such as session identifiers.
+Output never includes cookie names or values, authorization/cookie headers,
+POST bodies, response bodies, or unrelated Profile sites. Static, analytics,
+advertising, telemetry, and monitoring requests are excluded from candidates.
+
+A plain 404 without authentication evidence returns `not_auth_related` and no
+suggested `--include-url`. A 404 with only weak authentication evidence is
+reported at low or medium confidence; it is not promoted to a high-confidence
+missing-state conclusion.
+
+Without a source Profile, candidates are observations only and are not marked
+verified. To compare them with an already signed-in Profile, name that Profile
+explicitly:
+
+```bash
+divebell state diagnose https://app.example.net/account \
+  --state ./app-state.json \
+  --source-profile "Work" \
+  --expect-url 'https://app.example.net/account*' \
+  --expect-text 'Account'
+```
+
+Divebell never guesses or selects a Profile. The source comparison reports
+only cookie and storage-origin counts and booleans. It creates mode-`0600`
+temporary scoped states, tries a bounded set of smallest candidate
+combinations, and deletes every temporary state and HAR when finished. It does
+not update the failed state file.
+
+After reviewing the result, explicitly export a replacement from the named
+signed-in Profile and retry the original access:
+
+```bash
+divebell stop
+divebell open https://app.example.net/account --profile "Work" --ui
+divebell state save ./app-state-v2.json \
+  --url https://app.example.net/account \
+  --include-url https://sso.example.com/login
+divebell open https://app.example.net/account --state ./app-state-v2.json
+```
+
+Verify the final URL, HTTP/page result, and the same task-specific success
+condition again. The first version of `state diagnose` never applies a
+candidate, enlarges an export, modifies the original state, or runs during a
+successful ordinary `open`.
+
+### Example: open fails first, then diagnosis finds SSO state
+
+```bash
+divebell open https://app.example.net/account --state ./app-state.json
+divebell get url
+# https://sso.example.com/login?code=...  (access verification failed)
+
+divebell state diagnose https://app.example.net/account \
+  --state ./app-state.json \
+  --source-profile "Work" \
+  --expect-url 'https://app.example.net/account*' \
+  --expect-text 'Account'
+```
+
+The diagnostic output is safe to log. An abridged result is:
+
+```json
+{
+  "status": "candidates_found",
+  "classification": "auth_redirect",
+  "initialFailure": {
+    "kind": "redirect",
+    "httpStatus": 302,
+    "finalOrigin": "https://sso.example.com"
+  },
+  "candidates": [
+    {
+      "url": "https://sso.example.com/login",
+      "confidence": "high",
+      "evidence": ["top-level redirect", "final page matched login signals"],
+      "sourceStateAvailable": true,
+      "sourceState": { "cookies": 2, "origins": 1 },
+      "verified": true
+    }
+  ],
+  "suggestedIncludeUrls": ["https://sso.example.com/login"]
+}
+```
+
+The OAuth query is absent, and the counts do not reveal cookie or storage
+names. Re-export to a new file with the suggested URL and retry the same
+verification; do not overwrite `app-state.json` automatically.
+
+### Example: an ordinary 404 is not blamed on state
+
+```bash
+divebell open https://app.example.net/does-not-exist --state ./app-state.json
+# Verify the final URL and the plain Not Found response, with no auth evidence.
+divebell state diagnose https://app.example.net/does-not-exist \
+  --state ./app-state.json
+```
+
+```json
+{
+  "status": "no_candidates",
+  "classification": "not_auth_related",
+  "initialFailure": {
+    "kind": "http_status",
+    "httpStatus": 404,
+    "finalOrigin": "https://app.example.net"
+  },
+  "candidates": [],
+  "suggestedIncludeUrls": []
+}
+```
+
+Continue with routing or application diagnosis instead of adding an
+`--include-url`.
+
 ## Load and manage state
 
 Load a state file while opening:

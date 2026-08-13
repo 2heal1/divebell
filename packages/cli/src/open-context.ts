@@ -25,9 +25,15 @@ export function applyOpenContextBrowserMode(
   browserRunner: BrowserRunner,
   openContext: CliOperationLogEntry | undefined
 ): BrowserRunner {
-  return openContext?.browserRestoreDisabled === true
-    ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
-    : browserRunner;
+  return bindBrowserRunOptions(browserRunner, {
+    ...(openContext?.browserRestoreDisabled === true ? { disableRestore: true } : {}),
+    ...(openContext?.browserDefaultProfileDisabled === true
+      ? { disableDefaultProfile: true }
+      : {}),
+    ...(openContext?.browserDefaultProfile === undefined
+      ? {}
+      : { defaultProfile: openContext.browserDefaultProfile })
+  });
 }
 
 export function applyOpenContextDefaults(

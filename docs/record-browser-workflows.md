@@ -29,7 +29,7 @@ a URL or output path first.
 
 Then:
 
-1. Choose whether the page needs no authentication, a Chrome Profile, or a browser state.
+1. Use the most recently used Chrome Profile by default, or choose an explicit Profile or browser state when the workflow requires a stable account.
 2. Navigate, click, type, and move through the target workflow normally.
 3. Speak or add a short chat message only when the demonstrated actions do not fully express the intended result.
 4. Say “done” when the walkthrough is complete.
@@ -70,7 +70,7 @@ Each session creates an `.orrec` directory under `recordings/`, including:
 - `transcript.json`: speech text with timing information
 - `generated-script.mjs`: executable JavaScript replay, created only after workflow confirmation
 
-The generated script waits for each recorded element, replays input, dropdown selection, keyboard, and click actions, then verifies the recorded final page state. Voice is considered only when non-empty speech text is available and never invents an operation or locator. Silence, unavailable audio, and denied microphone permission do not block review or replay. Passwords and file-input values are not stored. A recorded Profile or state is represented as step 0 and must be supplied again when the script runs; state contents and paths are not embedded in the workflow.
+The generated script waits for each recorded element, replays input, dropdown selection, keyboard, and click actions, then verifies the recorded final page state. Voice is considered only when non-empty speech text is available and never invents an operation or locator. Silence, unavailable audio, and denied microphone permission do not block review or replay. Passwords and file-input values are not stored. An explicitly recorded Profile or state is represented as step 0 and must be supplied again when the script runs; state contents and paths are not embedded in the workflow. A recording that uses the default Profile resolves the most recently used Profile again at replay time, so use an explicit Profile or state when account identity must remain stable.
 
 Business-result extraction is an Agent script-correction task rather than part of the workflow schema. The Agent inspects Runtime SDK facts, DOM state, Network responses, Console output, page code, and available Extensions before choosing a retrieval method. Visible labels such as “copy” are not sufficient evidence for assuming a particular Clipboard API, and every corrected script must be replayed until its returned result is verified.
 

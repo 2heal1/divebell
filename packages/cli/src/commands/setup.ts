@@ -147,6 +147,7 @@ export async function runSetupCommand(options: {
   const browserOptions: BrowserRunOptions = {
     session: `ds-${randomUUID().replaceAll("-", "")}`,
     disableRestore: true,
+    disableDefaultProfile: true,
     headless: true,
     idleTimeoutMs: CHECK_BROWSER_IDLE_TIMEOUT_MS
   };

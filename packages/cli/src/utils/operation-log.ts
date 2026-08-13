@@ -88,6 +88,10 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
     (schemaVersion !== 4 || typeof entry.browserRestoreDisabled === "boolean") &&
+    (entry.browserDefaultProfileDisabled === undefined
+      || typeof entry.browserDefaultProfileDisabled === "boolean") &&
+    (entry.browserDefaultProfile === undefined
+      || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
     isBrowserRestoreOptions(entry.browserRestoreOptions) &&
     isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
@@ -101,8 +105,18 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     bridgePort,
     browserRestoreDisabled: schemaVersion === 4
       ? entry.browserRestoreDisabled
-      : false
+      : false,
+    browserDefaultProfileDisabled: entry.browserDefaultProfileDisabled === true
   } as CliOperationLogEntry;
+}
+
+function isSafeDefaultProfile(value: unknown): value is string {
+  return typeof value === "string"
+    && value.length > 0
+    && value !== "."
+    && value !== ".."
+    && !value.includes("/")
+    && !value.includes("\\");
 }
 
 function isBrowserRestoreOptions(value: unknown): boolean {

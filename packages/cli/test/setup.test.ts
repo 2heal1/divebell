@@ -117,6 +117,10 @@ test("checks an isolated Bridge, browser open, and page control path", async () 
     [true, true, true]
   );
   assert.deepEqual(
+    browserCalls.map((call) => call.options?.disableDefaultProfile),
+    [true, true, true]
+  );
+  assert.deepEqual(
     browserCalls.map((call) => call.options?.headless),
     [true, true, true]
   );

@@ -89,9 +89,9 @@ These capabilities include the current page and user journey, page operations su
 
 [CLI Reference](./docs/cli-reference.md)
 
-For protected pages, Divebell can reuse an existing Chrome profile, browser state, or encrypted credentials explicitly supplied by the user, and work within the account's existing permissions.
+For protected pages, Divebell uses a read-only copy of the current OS user's most recently used Chrome Profile by default. An explicitly supplied Profile, browser state, restore context, restricted-domain mode, or external browser takes precedence. Divebell always works within the selected account's existing permissions.
 
-Automatic Restore State contains cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Divebell saves it once after a newly opened page is quiet for about two seconds and again before close, while periodic saving is disabled by default. Pass `--restore-initial-save false` to keep only close-time saving or `--restore-periodic-save` to opt into the roughly 30-second periodic saves.
+When no local Chrome Profile is available, Divebell falls back to project-scoped automatic Restore State. Restore State contains cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Divebell saves it once after a newly opened page is quiet for about two seconds and again before close, while periodic saving is disabled by default. Pass `--no-default-profile` for one `open`, or set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` persistently, to use Restore State instead of automatic Profile selection.
 
 [Browser Authentication and State](./docs/browser-auth.md)
 

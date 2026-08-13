@@ -74,6 +74,7 @@ export async function runBrowserCliCommand(
     const browserRestoreDisabled = hasOption(args, "profile")
       || hasOption(args, "state")
       || hasOption(args, "allowed-domains");
+    const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     const previousOpenContext = await operationLogStore.read();
@@ -107,9 +108,10 @@ export async function runBrowserCliCommand(
     const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
     let result: BrowserRunResult & { injectedScriptPath?: string };
     try {
-      const openBrowserRunner = browserRestoreDisabled
-        ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
-        : browserRunner;
+      const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
+        ...(browserRestoreDisabled ? { disableRestore: true } : {}),
+        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
+      });
       result = await openBrowserPage(
         openBrowserRunner,
         args,
@@ -119,7 +121,8 @@ export async function runBrowserCliCommand(
         {
           ui: hasOption(args, "ui"),
           ...(hookResult.openedUrl === undefined ? { reuseInitialBlankPage: true } : {}),
-          ...(browserRestoreDisabled ? { disableRestore: true } : {})
+          ...(browserRestoreDisabled ? { disableRestore: true } : {}),
+          ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
         }
       );
     } catch (error) {
@@ -143,9 +146,10 @@ export async function runBrowserCliCommand(
       });
     }
     const companionFailures = await openCompanionPages(
-      browserRestoreDisabled
-        ? bindBrowserRunOptions(browserRunner, { disableRestore: true })
-        : browserRunner,
+      bindBrowserRunOptions(browserRunner, {
+        ...(browserRestoreDisabled ? { disableRestore: true } : {}),
+        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
+      }),
       hookResult.companionPages
     );
     writeHookFailures(stderr, companionFailures);
@@ -164,6 +168,10 @@ export async function runBrowserCliCommand(
       exitCode: result.exitCode,
       activeExtensions: hookResult.activeExtensions,
       browserRestoreDisabled,
+      browserDefaultProfileDisabled,
+      ...(result.defaultProfile === undefined
+        ? {}
+        : { browserDefaultProfile: result.defaultProfile }),
       browserRestoreOptions: collectBrowserRestoreContextOptions(args),
       ...(headers === undefined ? {} : { headers })
     });
@@ -263,6 +271,25 @@ export async function runBrowserCliCommand(
     stdout,
     stderr
   );
+}
+
+function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
+  if ([
+    "no-default-profile",
+    "profile",
+    "state",
+    "restore",
+    "allowed-domains",
+    "cdp",
+    "auto-connect",
+    "provider",
+    "executable-path",
+    "args"
+  ].some((name) => hasOption(args, name))) {
+    return true;
+  }
+  const engine = getOptionValue(args, "engine")?.trim().toLowerCase();
+  return engine !== undefined && engine !== "" && engine !== "chrome";
 }
 
 async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {

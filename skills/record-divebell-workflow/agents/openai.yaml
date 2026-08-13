@@ -1,4 +1,4 @@
 interface:
   display_name: "Record a Divebell workflow"
-  short_description: "Record, review, amend, and verify an authenticated browser workflow"
-  default_prompt: "Use $record-divebell-workflow to choose an optional Profile or state, record browser actions as facts, use voice only as supplementary intent, review and amend missing actions with me, then generate and verify the confirmed JavaScript replay."
+  short_description: "Record and verify a browser workflow"
+  default_prompt: "Use $record-divebell-workflow to record, review, amend, and verify my browser workflow with the latest Chrome Profile unless I specify another context."

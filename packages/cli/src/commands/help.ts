@@ -61,7 +61,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "Bridge and Browser",
     usage: "divebell profiles",
-    description: "List Chrome profiles available to agent-browser."
+    description: "List Chrome profiles available to agent-browser. Ordinary opens use Chrome's most recently used Profile by default."
   },
   {
     category: "Bridge and Browser",
@@ -100,8 +100,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path>] [--state <path>] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
-    description: "Open a directory-scoped page. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds. Restore State saves once after about two quiet seconds and again on close by default; later periodic saves are opt-in."
+    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path>] [--state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile disables this behavior. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
   },
   ...browserCommandReferences,
   {

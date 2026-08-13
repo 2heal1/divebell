@@ -12,6 +12,14 @@ Divebell composes agent-browser profiles, state, and auth to provide reusable br
 
 `profiles` only lists selectable local Chrome profiles; it does not export their data. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session, start from a Profile and then save state.
 
+## Default browser context
+
+By default, `divebell open` uses a read-only copy of the current OS user's most
+recently used Chrome Profile. Explicit browser contexts take precedence. Pass
+`--no-default-profile` to skip automatic Profile selection and use project
+Restore State; the same fallback is used when no local Chrome Profile is
+available.
+
 ## Reuse a local Chrome Profile
 
 List available profiles:
@@ -125,7 +133,7 @@ divebell state diagnose https://app.example.net/account \
   --expect-text 'Account'
 ```
 
-Divebell never guesses or selects a Profile. The source comparison reports
+State diagnosis never guesses or selects a source Profile. The source comparison reports
 only cookie and storage-origin counts and booleans. It creates mode-`0600`
 temporary scoped states, tries a bounded set of smallest candidate
 combinations, and deletes every temporary state and HAR when finished. It does
@@ -242,7 +250,7 @@ divebell state clear [session-name]
 divebell state clean --older-than 7
 ```
 
-Divebell automatically restores the browser session for the same project. An explicit `--profile` or `--state` takes precedence and is not combined with earlier auto-restored content. Divebell keeps that restore mode for the current open context, so later page commands and `stop` continue controlling the same browser instead of relaunching it with automatic restore enabled. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
+Divebell automatically restores the browser session for the same project when no usable local Chrome Profile exists or `--no-default-profile` is set. An explicit `--profile`, `--state`, or `--restore` takes precedence and is not combined with restored content. Divebell keeps that browser mode for the current open context, so later page commands and `stop` continue controlling the same browser. Explicit state files are useful when the state must be reviewed, moved, or narrowed.
 
 ## Restore State save policy
 

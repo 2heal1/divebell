@@ -23,7 +23,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell ps` - List running divebell daemon processes with PID, port, uptime, and associated working directories.
 - `divebell kill <index|pid|port> [--force]` - Stop a divebell daemon by ps index, PID, or port number; --force sends SIGKILL instead of SIGTERM.
 - `divebell kill-all [--force]` - Stop all running divebell daemon processes tracked by this user.
-- `divebell profiles` - List Chrome profiles available to agent-browser.
+- `divebell profiles` - List Chrome profiles available to agent-browser. Ordinary opens use Chrome's most recently used Profile by default.
 - `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
 - `divebell state diagnose <url> --state <path> [--source-profile <name|path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>] [--json]` - Only after a normal state-backed open fails authentication or permission verification, replay its first navigation in isolation and suggest sanitized --include-url candidates; never use this as an open preflight.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.
@@ -31,7 +31,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `divebell auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `divebell auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path>] [--state <path>] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds. Restore State saves once after about two quiet seconds and again on close by default; later periodic saves are opt-in.
+- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path>] [--state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile disables this behavior. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds.
 - `divebell goto <url>` - Navigate the current Divebell page to another URL without replacing its browser session.
 - `divebell navigate <url>` - Alias for `divebell goto`.
 - `divebell back` - Go back in the current page history.

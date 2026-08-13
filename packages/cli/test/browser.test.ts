@@ -222,6 +222,35 @@ test("forwards supported agent-browser launch options through Divebell open", as
   assert.equal(browserOptions[0]?.disableRestore, true);
 });
 
+test("disables the default Chrome profile with an open flag", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--no-default-profile",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args, options) => {
+      browserCalls.push(args);
+      browserOptions.push(options);
+      return { exitCode: 0, stdout: "opened\n", stderr: "" };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "open",
+    `http://app.test/?divebellSessionId=${createOperationSessionId()}`
+  ]]);
+  assert.equal(browserOptions[0]?.disableDefaultProfile, true);
+  assert.equal(browserOptions[0]?.disableRestore, undefined);
+});
+
 test("preserves command-level restore save policy for a reused daemon and stop", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const browserCalls: string[][] = [];
@@ -321,6 +350,7 @@ test("preserves state-backed browser restore mode across page commands and stop"
     ));
     assert.equal(context.schemaVersion, 4);
     assert.equal(context.browserRestoreDisabled, true);
+    assert.equal(context.browserDefaultProfileDisabled, true);
 
     assert.equal(await run(["wait", "5000"]), 0);
     assert.equal(await run(["get", "url"]), 0);
@@ -338,6 +368,94 @@ test("preserves state-backed browser restore mode across page commands and stop"
       browserOptions.map((options) => options?.disableRestore),
       [true, true, true, true]
     );
+    assert.deepEqual(
+      browserOptions.map((options) => options?.disableDefaultProfile),
+      [true, true, true, true]
+    );
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("keeps the default Chrome profile disabled for an explicit restore context", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    browserCalls.push(args);
+    browserOptions.push(options);
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  });
+  const run = async (args: string[]): Promise<number> => await runCli(args, {
+    stdout: createOutput().stdout,
+    stderr: createOutput().stderr,
+    operationLogDirectory,
+    browserRunner
+  });
+
+  try {
+    assert.equal(await run([
+      "open",
+      "http://app.test/",
+      "--restore",
+      "shared-login",
+      "--no-bridge"
+    ]), 0);
+    assert.equal(await run(["wait", "10"]), 0);
+    assert.equal(await run(["stop"]), 0);
+
+    assert.deepEqual(browserCalls, [
+      ["--restore", "shared-login", "open", `http://app.test/?divebellSessionId=${createOperationSessionId()}`],
+      ["wait", "10", "--restore", "shared-login"],
+      ["close", "--restore", "shared-login"]
+    ]);
+    assert.deepEqual(
+      browserOptions.map((options) => options?.disableDefaultProfile),
+      [true, true, true]
+    );
+    assert.deepEqual(
+      browserOptions.map((options) => options?.disableRestore),
+      [undefined, undefined, undefined]
+    );
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("pins an automatically selected Chrome profile to the open context", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    browserOptions.push(options);
+    return {
+      exitCode: 0,
+      stdout: "ok\n",
+      stderr: "",
+      ...(args.includes("open") ? { defaultProfile: "Profile 2" } : {})
+    };
+  });
+  const run = async (args: string[]): Promise<number> => await runCli(args, {
+    stdout: createOutput().stdout,
+    stderr: createOutput().stderr,
+    operationLogDirectory,
+    browserRunner
+  });
+
+  try {
+    assert.equal(await run(["open", "http://app.test/", "--no-bridge"]), 0);
+    const [contextFile] = readdirSync(operationLogDirectory);
+    assert.notEqual(contextFile, undefined);
+    const context = JSON.parse(readFileSync(
+      join(operationLogDirectory, contextFile as string),
+      "utf8"
+    ));
+    assert.equal(context.browserDefaultProfile, "Profile 2");
+
+    assert.equal(await run(["wait", "10"]), 0);
+    assert.equal(await run(["stop"]), 0);
+    assert.equal(browserOptions[0]?.defaultProfile, undefined);
+    assert.equal(browserOptions[1]?.defaultProfile, "Profile 2");
+    assert.equal(browserOptions[2]?.defaultProfile, "Profile 2");
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

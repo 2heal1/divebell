@@ -479,6 +479,39 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
   assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
 });
 
+test("forwards a page navigation timeout when opening", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--timeout",
+    "42000",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async (args) => {
+      browserCalls.push(args);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  const sessionId = createOperationSessionId();
+  assert.deepEqual(browserCalls, [[
+    "open",
+    `http://app.test/?divebellSessionId=${sessionId}`,
+    "--timeout",
+    "42000"
+  ]]);
+});
+
 test("points browser startup failures to the readiness check", async () => {
   const output = createOutput();
   const exitCode = await runCli([

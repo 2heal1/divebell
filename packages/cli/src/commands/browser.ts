@@ -563,6 +563,7 @@ function createBrowserNavigationArgs(
 ): string[] {
   const navigationArgs = [command, url, ...additionalArgs];
   appendBrowserOption(navigationArgs, args, "headers");
+  appendBrowserOption(navigationArgs, args, "timeout");
   return navigationArgs;
 }
 

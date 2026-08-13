@@ -68,10 +68,12 @@ needed.
 Run:
 
 ```bash
-divebell open <url>
+divebell open <url> [--timeout <ms>]
 ```
 
 After opening the page, continue all browser operations through Divebell.
+Use `--timeout` to override the default 60-second navigation lifecycle wait for
+one `open` command.
 Reuse the current Divebell page when it already has the correct URL, account,
 and environment.
 

@@ -3,6 +3,8 @@ import type {
   ModulePerformanceReportModule,
   ModulePerformanceReportRecommendation,
   ModulePerformanceResult,
+  ModulePerformanceAssetTiming,
+  ModulePerformanceManifest,
   ModulePerformanceTimeline,
   ModulePerformanceTimelineItem,
   ModulePerformanceTimelineLane,
@@ -17,15 +19,13 @@ export function createModulePerformanceReport(
     schemaVersion: 1,
     command: "mf module-perf --report",
     report: {
+      timeline,
+      summary: result.summary,
+      modules: result.modules.map(createReportModule),
+      recommendations: createRecommendations(result),
       page: result.page,
       selection: result.selection,
-      summary: result.summary,
-      ...(timeline === undefined
-        ? {}
-        : { timeline }),
-      modules: result.modules.map(createReportModule),
-      unobservedRemotes: result.unobservedRemotes,
-      recommendations: createRecommendations(result)
+      unobservedRemotes: result.unobservedRemotes
     }
   };
 }
@@ -46,6 +46,7 @@ function createReportModule(
         ? {}
         : { remoteEntry: operation.manifest.remoteEntryResource }),
       exposeAssets: operation.manifest.assets,
+      sharedDependencies: operation.sharedDependencies,
       preloadJs: operation.preloadJs,
       bottleneck: operation.bottleneck,
       findings: operation.findings.filter((finding) =>
@@ -57,8 +58,7 @@ function createReportModule(
 
 function createTimeline(
   result: ModulePerformanceResult
-): ModulePerformanceTimeline | undefined {
-  if (result.page.clock === undefined) return undefined;
+): ModulePerformanceTimeline {
   const lanes: ModulePerformanceTimelineLane[] = [createPageLane(result)];
   const pageScripts = createPageScriptLane(result);
   if (pageScripts !== undefined) lanes.push(pageScripts);
@@ -82,13 +82,18 @@ function createTimeline(
       });
       const provider = createProviderLane(prefix, module, operation);
       if (provider !== undefined) lanes.push(provider);
+      const resources = createMfResourceLane(prefix, module, operation);
+      if (resources !== undefined) lanes.push(resources);
       const preload = createPreloadLane(prefix, module, operation);
       if (preload !== undefined) lanes.push(preload);
     }
   }
   return {
     schemaVersion: 1,
-    clock: result.page.clock,
+    clock: result.page.clock ?? {
+      origin: "firstObservedModuleLoad",
+      unit: "ms"
+    },
     markers: createMarkers(result),
     lanes
   };
@@ -100,9 +105,13 @@ function createPageLane(
   const items: ModulePerformanceTimelineItem[] = [{
     id: "navigation-start",
     type: "point",
-    label: "Visit URL",
+    label: result.page.clock?.origin === "navigationStart"
+      ? "Visit URL"
+      : "First observed module load",
     at: 0,
-    source: "browser"
+    source: result.page.clock?.origin === "navigationStart"
+      ? "browser"
+      : "module-federation"
   }];
   if (result.page.document !== undefined) {
     items.push({
@@ -129,7 +138,10 @@ function createPageScriptLane(
   const mfAssets = result.modules.flatMap((module) =>
     module.operations.flatMap((operation) => [
       operation.manifest.remoteEntryResource?.url ?? operation.manifest.remoteEntry,
-      ...operation.manifest.assets.map((asset) => asset.url ?? asset.asset)
+      ...operation.manifest.assets.map((asset) => asset.url ?? asset.asset),
+      ...operation.sharedDependencies.flatMap((dependency) =>
+        dependency.assets.map((asset) => asset.url ?? asset.asset)
+      )
     ])
   ).filter((value): value is string => value !== undefined);
   const scripts = (result.page.scripts ?? []).filter((script) =>
@@ -147,9 +159,135 @@ function createPageScriptLane(
       start: script.start,
       end: script.end,
       duration: script.duration,
-      source: "browser"
+      source: "browser",
+      resource: {
+        roles: ["page-script"],
+        url: script.url,
+        ...(script.transferSize === undefined
+          ? {}
+          : { transferSize: script.transferSize }),
+        ...(script.encodedBodySize === undefined
+          ? {}
+          : { encodedBodySize: script.encodedBodySize }),
+        ...(script.decodedBodySize === undefined
+          ? {}
+          : { decodedBodySize: script.decodedBodySize }),
+        ...(script.cache === undefined || script.cache === "unknown"
+          ? {}
+          : { cache: script.cache })
+      }
     }))
   };
+}
+
+function createMfResourceLane(
+  prefix: string,
+  module: ModulePerformanceResult["modules"][number],
+  operation: ModulePerformanceResult["modules"][number]["operations"][number]
+): ModulePerformanceTimelineLane | undefined {
+  type ResourceRole = NonNullable<
+    Extract<ModulePerformanceTimelineItem, { type: "span" }>["resource"]
+  >["roles"][number];
+  type ResourceEntry = {
+    asset: ModulePerformanceAssetTiming | NonNullable<
+      ModulePerformanceManifest["remoteEntryResource"]
+    >;
+    role: ResourceRole;
+    packageName?: string;
+  };
+  const entries: ResourceEntry[] = [
+    ...(operation.manifest.remoteEntryResource === undefined
+      ? []
+      : [{
+          asset: operation.manifest.remoteEntryResource,
+          role: "remote-entry" as const
+        }]),
+    ...operation.manifest.assets.map((asset) => ({
+      asset,
+      role: asset.kind === "sync"
+        ? "expose-sync" as const
+        : "expose-async" as const
+    })),
+    ...operation.sharedDependencies.flatMap((dependency) =>
+      dependency.assets.map((asset) => ({
+        asset,
+        role: asset.kind === "sync"
+          ? "shared-sync" as const
+          : "shared-async" as const,
+        packageName: dependency.packageName
+      }))
+    )
+  ].filter((entry) => entry.asset.match === "matched" &&
+    entry.asset.url !== undefined && entry.asset.start !== undefined
+  );
+  const grouped = new Map<string, ResourceEntry[]>();
+  for (const entry of entries) {
+    const key = `${entry.asset.url}\u0000${entry.asset.start}\u0000${
+      entry.asset.end ?? ""
+    }`;
+    grouped.set(key, [...(grouped.get(key) ?? []), entry]);
+  }
+  const items: Array<Extract<
+    ModulePerformanceTimelineItem,
+    { type: "span" }
+  >> = Array.from(grouped.values()).map((matches, index) => {
+    const first = matches[0] as ResourceEntry;
+    const roles = unique<ResourceRole>(matches.map((entry) => entry.role));
+    const packageNames = unique(matches.map((entry) => entry.packageName)
+      .filter((value): value is string => value !== undefined));
+    const roleLabel = roles.map(displayResourceRole).join(", ");
+    return {
+      id: `${prefix}-resource-${index + 1}`,
+      type: "span" as const,
+      label: `${resourceLabel(first.asset.url as string)} · ${roleLabel}`,
+      start: first.asset.start as number,
+      ...(first.asset.end === undefined ? {} : { end: first.asset.end }),
+      ...(first.asset.duration === undefined
+        ? {}
+        : { duration: first.asset.duration }),
+      source: "browser" as const,
+      resource: {
+        roles,
+        url: first.asset.url as string,
+        ...(packageNames.length === 0 ? {} : { packageNames }),
+        ...(first.asset.transferSize === undefined
+          ? {}
+          : { transferSize: first.asset.transferSize }),
+        ...(first.asset.encodedBodySize === undefined
+          ? {}
+          : { encodedBodySize: first.asset.encodedBodySize }),
+        ...(first.asset.decodedBodySize === undefined
+          ? {}
+          : { decodedBodySize: first.asset.decodedBodySize }),
+        ...(first.asset.cache === undefined ? {} : { cache: first.asset.cache })
+      }
+    };
+  }).sort((left, right) => left.start - right.start ||
+    left.label.localeCompare(right.label)
+  );
+  if (items.length === 0) return undefined;
+  return {
+    id: `${prefix}-resources`,
+    kind: "mf-resource",
+    label: `${module.producer.name} · JavaScript resources`,
+    items
+  };
+}
+
+function displayResourceRole(
+  role: NonNullable<
+    Extract<ModulePerformanceTimelineItem, { type: "span" }>["resource"]
+  >["roles"][number]
+): string {
+  const labels = {
+    "page-script": "page script",
+    "remote-entry": "remoteEntry",
+    "expose-sync": "expose sync",
+    "expose-async": "expose async",
+    "shared-sync": "Shared sync",
+    "shared-async": "Shared async"
+  } satisfies Record<typeof role, string>;
+  return labels[role];
 }
 
 function createProviderLane(
@@ -308,6 +446,7 @@ function recommendationForFinding(
     "inspect-remote-entry-delivery": "The remoteEntry request began promptly, so investigate delivery, cache, CDN, and server timing before adding preload.",
     "preload-expose-assets": "If this expose is needed for the initial view or a predictable journey, preload the exact delayed synchronous assets.",
     "inspect-get-runtime": "Inspect Shared resolution and runtime work; more preload does not explain the measured get delay.",
+    "inspect-reused-shared-asset": "Use Rsdoctor to inspect the loaded chunk composition. The request may be needed for other libraries in the same chunk, so do not unify Shared versions or claim duplicate execution from this evidence alone.",
     "profile-factory": "Profile and reduce top-level module initialization work."
   };
   if (!(finding.id in reasons)) return [];
@@ -323,7 +462,9 @@ function recommendationForFinding(
     reason,
     ...((id === "preload-expose-assets")
       ? { assets: exposeAssetsFromEvidence(module, finding.evidence) }
-      : {})
+      : id === "inspect-reused-shared-asset"
+        ? { assets: sharedAssetsFromEvidence(module, finding.evidence) }
+        : {})
   }];
 }
 
@@ -370,6 +511,22 @@ function exposeAssetsFromEvidence(
   return unique(urls);
 }
 
-function unique(values: string[]): string[] {
+function sharedAssetsFromEvidence(
+  module: ModulePerformanceResult["modules"][number],
+  evidence: string[]
+): string[] {
+  const urls = module.operations.flatMap((operation) =>
+    operation.sharedDependencies.flatMap((dependency) =>
+      dependency.assets.filter((asset) =>
+        dependency.resolution === "reused" && asset.kind === "sync" &&
+        asset.match === "matched" && asset.url !== undefined &&
+        evidence.some((item) => item.includes(asset.url as string))
+      ).map((asset) => asset.url as string)
+    )
+  );
+  return unique(urls);
+}
+
+function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }

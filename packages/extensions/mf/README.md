@@ -21,10 +21,14 @@ Bridge traces, are omitted from successful command output. When evidence is
 incomplete or unavailable, state and trace commands keep the useful reason in
 `warnings` and the next step in `recommendedActions`. `module-perf` instead
 uses its existing outcome, status, match, unobserved, and evidence fields.
-`module-perf --report` also returns a navigation-relative timeline with page
-paint markers and MF consumer/provider lanes. Its optional MF preload lane is
-limited to JavaScript attributed to the selected Remote/expose; unrelated page
-preloads are omitted.
+`module-perf --report` returns an always-present timeline as the first report
+field, followed by explanations grounded in that timeline. It includes page
+paint markers, MF consumer/provider lanes, and a JavaScript resource lane with
+available request duration, size, and cache evidence for remoteEntry, expose,
+and producer Shared assets. When Navigation Timing is unavailable, the clock
+explicitly falls back to the first observed module load. Its optional MF
+preload lane is limited to JavaScript attributed to the selected Remote/expose;
+unrelated page preloads are omitted.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path

@@ -103,13 +103,13 @@ test("module performance report keeps a fixed producer and operation template", 
   assert.equal(report.schemaVersion, 1);
   assert.equal(report.command, "mf module-perf --report");
   assert.deepEqual(Object.keys(report.report), [
+    "timeline",
+    "summary",
+    "modules",
+    "recommendations",
     "page",
     "selection",
-    "summary",
-    "timeline",
-    "modules",
-    "unobservedRemotes",
-    "recommendations"
+    "unobservedRemotes"
   ]);
   assert.deepEqual(Object.keys(report.report.modules[0]), [
     "consumer",
@@ -124,6 +124,7 @@ test("module performance report keeps a fixed producer and operation template", 
     "pageImpact",
     "remoteEntry",
     "exposeAssets",
+    "sharedDependencies",
     "preloadJs",
     "bottleneck",
     "findings"
@@ -144,7 +145,7 @@ test("module performance report keeps a fixed producer and operation template", 
   }]);
   assert.deepEqual(
     report.report.timeline.lanes.map((lane) => lane.kind),
-    ["page", "mf-consumer", "mf-provider"]
+    ["page", "mf-consumer", "mf-provider", "mf-resource"]
   );
   assert.deepEqual(report.report.recommendations, [{
     id: "code-usage",
@@ -161,6 +162,199 @@ test("module performance report keeps a fixed producer and operation template", 
     reason: "Use Code Usage executed and unused-code evidence before changing code splitting; this is not proof that asset size caused the current bottleneck.",
     documentation: "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
   }]);
+});
+
+test("the report always starts with a timeline when browser performance is unavailable", () => {
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer(),
+    [preloadTrace({ base: 900 }), loadTrace()]
+  ));
+  assert.equal(parsed.ok, true);
+
+  const report = createModulePerformanceReport(
+    createModulePerformanceResult(parsed.snapshot, null)
+  );
+  assert.equal(Object.keys(report.report)[0], "timeline");
+  assert.deepEqual(report.report.timeline.clock, {
+    origin: "firstObservedModuleLoad",
+    unit: "ms"
+  });
+  assert.equal(report.report.timeline.lanes[0].items[0].label,
+    "First observed module load");
+  assert.equal(report.report.timeline.lanes.find((lane) =>
+    lane.kind === "mf-consumer"
+  ).items[0].start, 0);
+  assert.equal(report.report.timeline.lanes.find((lane) =>
+    lane.kind === "mf-preload"
+  ).items[0].start, -99);
+});
+
+test("reused Shared values report producer Shared assets that still loaded", () => {
+  const producer = instance({
+    instanceRef: "mf-producer",
+    name: "@scope/catalog",
+    version: "1.0.0",
+    role: "producer"
+  });
+  const state = stateWithConsumer({
+    instances: [stateWithConsumer().instances[0], producer]
+  });
+  const parsed = parseBrowserReadResult(browserRead(
+    state,
+    [longExposeTrace()],
+    {
+      globalShared: {
+        default: {
+          react: {
+            "18.2.0": {
+              from: "host",
+              useIn: ["@scope/catalog"],
+              loaded: true,
+              shareConfig: {
+                requiredVersion: "^18.2.0",
+                singleton: true
+              }
+            }
+          }
+        }
+      }
+    }
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceSnapshot();
+  performance.shared = [{
+    key: "@scope/catalog:1.0.0",
+    name: "@scope/catalog",
+    version: "1.0.0",
+    publicPath: "https://cdn.test/catalog/",
+    packageName: "react",
+    packageVersion: "18.3.1",
+    requiredVersion: "^18.3.1",
+    singleton: true,
+    js: {
+      sync: ["react-vendor.js"],
+      async: []
+    }
+  }];
+  performance.resources.push({
+    url: "https://cdn.test/catalog/react-vendor.js",
+    initiatorType: "script",
+    start: 1005,
+    end: 1025,
+    duration: 20,
+    transferSize: 2400,
+    encodedBodySize: 2200,
+    decodedBodySize: 7200,
+    cache: "network"
+  });
+
+  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  const operation = result.modules[0].operations[0];
+  assert.deepEqual(operation.sharedDependencies[0], {
+    packageName: "react",
+    packageVersion: "18.3.1",
+    requiredVersion: "^18.3.1",
+    singleton: true,
+    resolution: "reused",
+    provider: "host",
+    selectedVersion: "18.2.0",
+    evidence: [
+      "Shared registry default/react@18.2.0 is loaded from host and used by @scope/catalog.",
+      "@scope/catalog reused a Shared value from host."
+    ],
+    assets: [{
+      asset: "react-vendor.js",
+      kind: "sync",
+      match: "matched",
+      url: "https://cdn.test/catalog/react-vendor.js",
+      start: 1005,
+      end: 1025,
+      duration: 20,
+      loadedBeforeGet: true,
+      transferSize: 2400,
+      encodedBodySize: 2200,
+      decodedBodySize: 7200,
+      cache: "network"
+    }]
+  });
+  assert.ok(operation.findings.some((finding) =>
+    finding.id === "inspect-reused-shared-asset"
+  ));
+
+  const report = createModulePerformanceReport(result);
+  const recommendation = report.report.recommendations.find((item) =>
+    item.id === "inspect-reused-shared-asset"
+  );
+  assert.deepEqual(recommendation.assets, [
+    "https://cdn.test/catalog/react-vendor.js"
+  ]);
+  assert.match(recommendation.reason, /Rsdoctor/);
+  assert.match(recommendation.reason, /do not unify Shared versions/i);
+  const resourceLane = report.report.timeline.lanes.find((lane) =>
+    lane.kind === "mf-resource"
+  );
+  const sharedResource = resourceLane.items.find((item) =>
+    item.type === "span" && item.resource?.roles.includes("shared-sync")
+  );
+  assert.deepEqual(sharedResource.resource, {
+    roles: ["shared-sync"],
+    url: "https://cdn.test/catalog/react-vendor.js",
+    packageNames: ["react"],
+    transferSize: 2400,
+    encodedBodySize: 2200,
+    decodedBodySize: 7200,
+    cache: "network"
+  });
+});
+
+test("reused Shared declarations do not warn when their JavaScript was not requested", () => {
+  const producer = instance({
+    instanceRef: "mf-producer",
+    name: "@scope/catalog",
+    role: "producer"
+  });
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer({
+      instances: [stateWithConsumer().instances[0], producer]
+    }),
+    [longExposeTrace()],
+    {
+      globalShared: {
+        default: {
+          react: {
+            "18.2.0": {
+              from: "host",
+              useIn: ["@scope/catalog"],
+              loaded: true
+            }
+          }
+        }
+      }
+    }
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceSnapshot();
+  performance.shared = [{
+    key: "@scope/catalog:1.0.0",
+    name: "@scope/catalog",
+    packageName: "react",
+    packageVersion: "18.3.1",
+    requiredVersion: "^18.3.1",
+    singleton: true,
+    publicPath: "https://cdn.test/catalog/",
+    js: { sync: ["react-vendor.js"], async: [] }
+  }];
+
+  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  const operation = result.modules[0].operations[0];
+  assert.equal(operation.sharedDependencies[0].resolution, "reused");
+  assert.equal(operation.sharedDependencies[0].assets[0].match, "not-loaded");
+  assert.ok(operation.findings.every((finding) =>
+    finding.id !== "inspect-reused-shared-asset"
+  ));
+  assert.ok(createModulePerformanceReport(result).report.recommendations.every(
+    (recommendation) => recommendation.id !== "inspect-reused-shared-asset"
+  ));
 });
 
 test("the report timeline aligns navigation, page scripts, paints, and MF phases", () => {
@@ -540,7 +734,7 @@ test("operation outcome and completion boundary follow loadRemote itself", () =>
   assert.equal(pending.findings[0].id, "complete-load-observation");
 });
 
-test("the injected collector reads page, resources, and Manifest expose assets safely", () => {
+test("the injected collector reads page, resources, expose assets, and Shared assets safely", () => {
   const resourceEntries = [{
     name: "https://cdn.test/catalog/Button.js?token=secret",
     initiatorType: "script",
@@ -559,6 +753,15 @@ test("the injected collector reads page, resources, and Manifest expose assets s
     transferSize: 0,
     encodedBodySize: 0,
     decodedBodySize: 0
+  }, {
+    name: "https://cdn.test/catalog/react-vendor.js?token=secret",
+    initiatorType: "script",
+    startTime: 31,
+    responseEnd: 51,
+    duration: 20,
+    transferSize: 900,
+    encodedBodySize: 800,
+    decodedBodySize: 2400
   }, {
     name: "https://app.test/main.js?token=secret",
     initiatorType: "script",
@@ -615,6 +818,15 @@ test("the injected collector reads page, resources, and Manifest expose assets s
         modules: [{
           moduleName: "./Button",
           assets: { js: { sync: ["Button.js?asset-token=secret"], async: [] } }
+        }],
+        shared: [{
+          name: "react",
+          version: "18.3.1",
+          requiredVersion: "^18.3.1",
+          singleton: true,
+          assets: {
+            js: { sync: ["react-vendor.js?asset-token=secret"], async: [] }
+          }
         }]
       }
     }
@@ -647,10 +859,24 @@ test("the injected collector reads page, resources, and Manifest expose assets s
     ["modulepreload"]
   );
   assert.deepEqual(
-    JSON.parse(JSON.stringify(snapshot.resources[2].declarations)),
+    JSON.parse(JSON.stringify(snapshot.resources[3].declarations)),
     ["script"]
   );
   assert.equal(snapshot.exposes[0].expose, "./Button");
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.shared[0])), {
+    key: "@scope/catalog:1.0.0",
+    name: "@scope/catalog",
+    version: "1.0.0",
+    publicPath: "https://cdn.test/catalog/",
+    packageName: "react",
+    packageVersion: "18.3.1",
+    requiredVersion: "^18.3.1",
+    singleton: true,
+    js: {
+      sync: ["react-vendor.js"],
+      async: []
+    }
+  });
   assert.doesNotMatch(JSON.stringify(snapshot), /secret/);
 });
 

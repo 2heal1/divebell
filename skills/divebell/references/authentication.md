@@ -6,20 +6,26 @@ on trusted storage, and never print a state file's contents.
 
 ## Required order for a URL-scoped state
 
-1. Open the exact target URL normally with the state the user supplied:
+1. First open the exact target normally and verify the final URL, navigation or
+   HTTP outcome, and the user's success condition. If authentication or
+   permission is required and no authorized state or Profile was supplied, ask
+   the user to provide or explicitly authorize one. Never choose a Profile.
+
+2. Retry the exact target with the state the user supplied:
 
    ```bash
    divebell open <target-url> --state <state-path>
    ```
 
-2. Verify the actual access result. Check the final URL, navigation or HTTP
+3. Verify the actual access result again. Check the final URL, navigation or HTTP
    outcome, and the user's success condition. Use page or network evidence when
    the `open` result alone does not prove access.
 
-3. If access is normal, continue the user's task. Do not call
+4. If access is normal, continue the user's task. Do not call
    `state diagnose`, do not select a Profile, and do not enlarge the state.
 
-4. Run diagnosis only after confirming one of these failure classes:
+5. Run diagnosis only when this authorized state-backed retry still has one of
+   these failure classes:
 
    - top-level navigation reaches a login or authentication page;
    - a relevant document, XHR, or fetch returns 401 or 403;
@@ -44,14 +50,14 @@ on trusted storage, and never print a state file's contents.
    started. It is a post-failure diagnostic, never a recommended pre-open
    check.
 
-5. Review the candidates and their confidence/evidence. URLs are sanitized for
-   direct use as repeatable `--include-url` values. Without
+6. Review and report the candidates and their confidence/evidence. URLs are
+   sanitized for direct use as repeatable `--include-url` values. Without
    `--source-profile`, the candidates are observations only; do not claim they
    were validated. Never infer missing state from an ordinary 404 that has no
    authentication evidence. `not_auth_related` means investigate routing or
    the application instead.
 
-6. If the user explicitly names an already signed-in Profile, rerun diagnosis
+7. If the user explicitly names an already signed-in Profile, rerun diagnosis
    with that exact Profile:
 
    ```bash
@@ -62,11 +68,13 @@ on trusted storage, and never print a state file's contents.
      --expect-text '<successful-page-text>'
    ```
 
-   Never list Profiles and choose one on the user's behalf. Source comparison
-   reports only cookie/storage counts and booleans. It does not expose names or
-   values and does not modify the failed state.
+   Never list Profiles and choose one on the user's behalf. The Profile is only
+   a comparison and replay source for the failed state; it is not itself the
+   diagnosis target. Source comparison reports only cookie/storage counts and
+   booleans. It does not expose names or values and does not modify the failed
+   state.
 
-7. After the user accepts the candidate scope, open the same target with the
+8. After the user accepts the candidate scope, open the same target with the
    explicitly named Profile, export a new file, and retry:
 
    ```bash
@@ -81,6 +89,19 @@ on trusted storage, and never print a state file's contents.
    Repeat `--include-url` only for the reviewed minimal set. Verify the final
    URL, HTTP/page result, and the same user success condition. Do not overwrite
    the original state in the first version of this workflow.
+
+9. If diagnosis finds no missing-state evidence, retry the target once with the
+   same state and `--ui`, unless an earlier attempt already used `--ui`:
+
+   ```bash
+   divebell open <target-url> --state <state-path> --ui
+   ```
+
+   `state diagnose` diagnoses a state file only. Never run it for a
+   Profile-backed open. If an explicitly authorized Profile-backed retry fails,
+   use the same one-time `--ui` fallback without diagnosis. If headed access
+   also fails, report the verified failure instead of repeating diagnosis or UI
+   retries.
 
 ## Output and safety interpretation
 

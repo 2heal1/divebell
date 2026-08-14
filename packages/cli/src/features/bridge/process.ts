@@ -568,7 +568,7 @@ function isCliOperationLogEntry(value: unknown): value is CliOperationLogEntry {
   if (value === null || typeof value !== "object") return false;
   const entry = value as Record<string, unknown>;
   return (
-    (entry.schemaVersion === 2 || entry.schemaVersion === 3) &&
+    (entry.schemaVersion === 2 || entry.schemaVersion === 3 || entry.schemaVersion === 4 || entry.schemaVersion === 5) &&
     entry.command === "open" &&
     typeof entry.cwd === "string" &&
     typeof entry.url === "string"

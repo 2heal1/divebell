@@ -145,6 +145,11 @@ test("runs open, detectStack, and close hooks only at their matching lifecycle p
 test("opens companion pages, waits for readiness, and returns to the requested page", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-companion-"));
   const browserCalls: string[][] = [];
+  const browserModes: Array<{
+    ui: boolean | undefined;
+    reuseInitialBlankPage: boolean | undefined;
+    defaultProfile: string | undefined;
+  }> = [];
   let receivedBridgeUrl: string | null | undefined;
   const cli = createDivebellCli({
     extensions: [{
@@ -167,9 +172,16 @@ test("opens companion pages, waits for readiness, and returns to the requested p
       }
     }]
   });
-  const browserRunner = createBrowserRunner(async (args) => {
+  const browserRunner = createBrowserRunner(async (args, options) => {
     browserCalls.push(args);
-    if (args[0] === "open") return { exitCode: 0, stdout: "", stderr: "" };
+    browserModes.push({
+      ui: options?.ui,
+      reuseInitialBlankPage: options?.reuseInitialBlankPage,
+      defaultProfile: options?.defaultProfile
+    });
+    if (args[0] === "open") {
+      return { exitCode: 0, stdout: "", stderr: "", defaultProfile: "Profile 2" };
+    }
     if (args[0] === "tab" && args[1] === "--json") {
       return {
         exitCode: 0,
@@ -201,6 +213,7 @@ test("opens companion pages, waits for readiness, and returns to the requested p
       "open",
       "http://app.test/",
       "--no-bridge",
+      "--ui",
       "--session",
       "companion-test"
     ], {
@@ -217,6 +230,13 @@ test("opens companion pages, waits for readiness, and returns to the requested p
       ["tab", "new", "--label", "companion", "http://localhost:17321/companion"],
       ["eval", "Boolean((globalThis.companionReady === true))"],
       ["tab", "t1"]
+    ]);
+    assert.deepEqual(browserModes, [
+      { ui: true, reuseInitialBlankPage: true, defaultProfile: undefined },
+      { ui: true, reuseInitialBlankPage: true, defaultProfile: "Profile 2" },
+      { ui: true, reuseInitialBlankPage: true, defaultProfile: "Profile 2" },
+      { ui: true, reuseInitialBlankPage: true, defaultProfile: "Profile 2" },
+      { ui: true, reuseInitialBlankPage: true, defaultProfile: "Profile 2" }
     ]);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
@@ -845,7 +865,10 @@ test("registers a command and merges its help entries", async () => {
     bridgeUrl: "http://bridge.test",
     sessionId: "session-1",
     url: "http://app.test/",
-    browserRestoreDisabled: true
+    browserRestoreDisabled: true,
+    browserUi: true,
+    browserReuseInitialBlankPage: true,
+    browserDefaultProfile: "Profile 2"
   });
   try {
     const output = createOutput();
@@ -894,6 +917,9 @@ test("registers a command and merges its help entries", async () => {
       browserRunner: createBrowserRunner(async (args, browserOptions) => {
         assert.deepEqual(args, ["eval", "window.answer"]);
         assert.equal(browserOptions?.disableRestore, true);
+        assert.equal(browserOptions?.ui, true);
+        assert.equal(browserOptions?.reuseInitialBlankPage, true);
+        assert.equal(browserOptions?.defaultProfile, "Profile 2");
         return {
           exitCode: 0,
           stdout: "42\n",

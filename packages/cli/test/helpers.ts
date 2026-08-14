@@ -119,6 +119,8 @@ export function createOpenContextFixture(overrides: Partial<{
   bridgePort: number | null;
   sessionId: string | null;
   activeExtensions: string[];
+  browserUi: boolean;
+  browserReuseInitialBlankPage: boolean;
   browserRestoreDisabled: boolean;
   browserDefaultProfileDisabled: boolean;
   browserDefaultProfile: string;
@@ -127,7 +129,7 @@ export function createOpenContextFixture(overrides: Partial<{
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
   const entry = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     command: "open",
     key,
     cwd: process.cwd(),
@@ -139,6 +141,8 @@ export function createOpenContextFixture(overrides: Partial<{
     openedAt: 1,
     exitCode: 0,
     activeExtensions: overrides.activeExtensions ?? [],
+    browserUi: overrides.browserUi ?? false,
+    browserReuseInitialBlankPage: overrides.browserReuseInitialBlankPage ?? false,
     browserRestoreDisabled: overrides.browserRestoreDisabled ?? false,
     browserDefaultProfileDisabled: overrides.browserDefaultProfileDisabled ?? false,
     ...(overrides.browserDefaultProfile === undefined

@@ -75,6 +75,7 @@ export async function runBrowserCliCommand(
       || hasOption(args, "state")
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
+    const browserUi = hasOption(args, "ui");
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     const previousOpenContext = await operationLogStore.read();
@@ -106,6 +107,7 @@ export async function runBrowserCliCommand(
     }, openHookPlan);
     writeHookFailures(stderr, hookResult.failures);
     const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
+    const browserReuseInitialBlankPage = hookResult.openedUrl === undefined;
     let result: BrowserRunResult & { injectedScriptPath?: string };
     try {
       const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
@@ -119,8 +121,8 @@ export async function runBrowserCliCommand(
         bridgeUrl,
         hookResult.scripts,
         {
-          ui: hasOption(args, "ui"),
-          ...(hookResult.openedUrl === undefined ? { reuseInitialBlankPage: true } : {}),
+          ui: browserUi,
+          ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
         }
@@ -147,8 +149,13 @@ export async function runBrowserCliCommand(
     }
     const companionFailures = await openCompanionPages(
       bindBrowserRunOptions(browserRunner, {
+        ui: browserUi,
+        ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
-        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
+        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+        ...(result.defaultProfile === undefined
+          ? {}
+          : { defaultProfile: result.defaultProfile })
       }),
       hookResult.companionPages
     );
@@ -167,6 +174,8 @@ export async function runBrowserCliCommand(
       openedAt,
       exitCode: result.exitCode,
       activeExtensions: hookResult.activeExtensions,
+      browserUi,
+      browserReuseInitialBlankPage,
       browserRestoreDisabled,
       browserDefaultProfileDisabled,
       ...(result.defaultProfile === undefined

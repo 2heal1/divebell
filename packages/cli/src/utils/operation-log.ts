@@ -27,7 +27,7 @@ export function createFileOperationLogStore(
     write: async (entry) => {
       await mkdir(stateDirectory, { recursive: true });
       await writeFile(stateFile, `${JSON.stringify({
-        schemaVersion: 4,
+        schemaVersion: 5,
         key,
         cwd: normalizedCwd,
         ...entry
@@ -73,7 +73,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     ? getOperationBridgePort(bridgeUrl)
     : entry.bridgePort;
   if (!(
-    (schemaVersion === 2 || schemaVersion === 3 || schemaVersion === 4) &&
+    (schemaVersion === 2 || schemaVersion === 3 || schemaVersion === 4 || schemaVersion === 5) &&
     entry.command === "open" &&
     typeof entry.key === "string" &&
     typeof entry.cwd === "string" &&
@@ -87,7 +87,11 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.exitCode === "number" &&
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
-    (schemaVersion !== 4 || typeof entry.browserRestoreDisabled === "boolean") &&
+    (schemaVersion < 4 || typeof entry.browserRestoreDisabled === "boolean") &&
+    (schemaVersion !== 5 || (
+      typeof entry.browserUi === "boolean" &&
+      typeof entry.browserReuseInitialBlankPage === "boolean"
+    )) &&
     (entry.browserDefaultProfileDisabled === undefined
       || typeof entry.browserDefaultProfileDisabled === "boolean") &&
     (entry.browserDefaultProfile === undefined
@@ -100,10 +104,14 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
   }
   return {
     ...entry,
-    schemaVersion: 4,
+    schemaVersion: 5,
     bridgeUrl,
     bridgePort,
-    browserRestoreDisabled: schemaVersion === 4
+    browserUi: schemaVersion === 5 ? entry.browserUi : false,
+    browserReuseInitialBlankPage: schemaVersion === 5
+      ? entry.browserReuseInitialBlankPage
+      : false,
+    browserRestoreDisabled: schemaVersion >= 4
       ? entry.browserRestoreDisabled
       : false,
     browserDefaultProfileDisabled: entry.browserDefaultProfileDisabled === true

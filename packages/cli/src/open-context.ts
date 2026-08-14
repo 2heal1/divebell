@@ -26,6 +26,10 @@ export function applyOpenContextBrowserMode(
   openContext: CliOperationLogEntry | undefined
 ): BrowserRunner {
   return bindBrowserRunOptions(browserRunner, {
+    ...(openContext === undefined ? {} : {
+      ui: openContext.browserUi,
+      reuseInitialBlankPage: openContext.browserReuseInitialBlankPage
+    }),
     ...(openContext?.browserRestoreDisabled === true ? { disableRestore: true } : {}),
     ...(openContext?.browserDefaultProfileDisabled === true
       ? { disableDefaultProfile: true }

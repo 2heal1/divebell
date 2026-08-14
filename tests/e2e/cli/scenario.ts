@@ -16,12 +16,12 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
         extensionsDirectory: environment.extensionsDirectory
       })
     );
-    const installedNames = listed.json.packages.map((item) => item.name).sort();
+    const installedNames = listed.json.data.packages.map((item) => item.name).sort();
     const expectedNames = environment.officialExtensions.map((item) => item.name).sort();
 
     assert.deepEqual(installedNames, expectedNames);
-    assert.ok(listed.json.packages.every((item) => item.extensions.length > 0));
-    assert.ok(listed.json.packages.every((item) =>
+    assert.ok(listed.json.data.packages.every((item) => item.extensions.length > 0));
+    assert.ok(listed.json.data.packages.every((item) =>
       item.extensions.every((extension) =>
         extension.commands.length > 0 || extension.hooks.length > 0
       )
@@ -37,9 +37,9 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
           bridge: fixture.bridgeUrl
         })
       );
-      assert.equal(runtimes.json.bridgeUrl, fixture.bridgeUrl);
+      assert.equal(runtimes.json.data.bridgeUrl, fixture.bridgeUrl);
       assert.deepEqual(
-        runtimes.json.runtimes
+        runtimes.json.data.runtimes
           .map((runtime) => ({
             runtimeId: runtime.runtimeId,
             name: runtime.name,
@@ -73,7 +73,7 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
         })
       );
       assert.deepEqual(
-        targets.json.result.map((target) => target.id).sort(),
+        targets.json.data.result.map((target) => target.id).sort(),
         [
           "app:runtime-sdk-demo",
           "business:orders",
@@ -88,7 +88,7 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
           id: "business:orders"
         })
       );
-      const ordersTarget = snapshot.json.result.targets["business:orders"];
+      const ordersTarget = snapshot.json.data.result.targets["business:orders"];
       assert.equal(ordersTarget?.status, "ready");
       assert.ok(isRecord(ordersTarget?.data));
       assert.equal(ordersTarget.data.orders, 3);
@@ -101,7 +101,7 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
         })
       );
       const checkoutTarget =
-        childSnapshot.json.result.targets["microfrontend:checkout"];
+        childSnapshot.json.data.result.targets["microfrontend:checkout"];
       assert.ok(checkoutTarget);
       assert.equal(checkoutTarget.status, "mounted");
 
@@ -111,7 +111,7 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
           runtime: fixture.runtimeId
         })
       );
-      const refreshAction = actions.json.result.find(
+      const refreshAction = actions.json.data.result.find(
         (action) => action.name === "demo.refresh-orders"
       );
       assert.equal(refreshAction?.enabled, true);
@@ -127,10 +127,10 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
           }
         })
       );
-      assert.equal(actionResult.json.result.success, true);
-      assert.ok(isRefreshOrdersResult(actionResult.json.result.result));
-      assert.equal(actionResult.json.result.result.orders, 5);
-      assert.equal(actionResult.json.result.result.source, "cli");
+      assert.equal(actionResult.json.data.result.success, true);
+      assert.ok(isRefreshOrdersResult(actionResult.json.data.result.result));
+      assert.equal(actionResult.json.data.result.result.orders, 5);
+      assert.equal(actionResult.json.data.result.result.source, "cli");
 
       const waitResult = await environment.runCli(
         divebellTestCommands.waitFor("business:orders", "ready", {
@@ -143,8 +143,8 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
           timeout: 500
         })
       );
-      assert.equal(waitResult.json.result.success, true);
-      const waitedTarget = waitResult.json.result.target;
+      assert.equal(waitResult.json.data.result.success, true);
+      const waitedTarget = waitResult.json.data.result.target;
       assert.ok(waitedTarget);
       assert.equal(waitedTarget.status, "ready");
       assert.ok(isRecord(waitedTarget.data));
@@ -159,7 +159,7 @@ export function registerCliE2e({ getEnvironment }: DivebellE2eContext): void {
         })
       );
       assert.deepEqual(
-        events.json.result.events
+        events.json.data.result.events
           .filter((event) => event.actionName === "demo.refresh-orders")
           .map((event) => event.type),
         [

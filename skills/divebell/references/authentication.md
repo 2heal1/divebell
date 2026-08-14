@@ -1,124 +1,165 @@
-# Authentication state and missing-source diagnosis
+# Authentication state
 
 Profiles and state files are sensitive, reusable authorization material. Use
-only accounts and environments the user has already authorized, keep exports
-on trusted storage, and never print a state file's contents.
+only accounts and environments the user has authorized, keep state files on
+trusted storage, and never print their contents.
 
 An ordinary `open` uses the most recently used Chrome Profile. Pass
 `--no-default-profile` to skip it and use project Restore State.
 
-## Required order for a URL-scoped state
+## Choose the workflow
 
-1. First open the exact target normally. Divebell automatically uses a read-only
-   copy of the current user's most recently used Chrome Profile when one is
-   available. Verify the final URL, navigation or HTTP outcome, account, and
-   the user's success condition. If that context has the wrong account, lacks
-   authentication, or lacks permission, ask the user for a specific authorized
-   state or Profile. Do not enumerate Profiles and choose a different one; the
-   built-in most-recently-used default is the only implicit choice.
+When `open` cannot access the target, for example because it redirects to a
+login page, identify which browser context it used:
 
-2. Retry the exact target with the state the user supplied:
+- If it used an explicit state file, that state is deficient for the target.
+  Follow **Infer missing state sources**. Inference runs on the state provider's
+  machine, where both that state file and an explicitly named working Profile
+  are available.
+- If it used an explicit Profile or the default latest Profile, do not infer.
+  Ask the user or provider to identify a Profile or state authorized for the
+  target. Never enumerate Profiles and choose an account for the user.
+- If the provider can open the target with an authorized Profile and another
+  machine needs a portable state, follow **Save a portable state**.
 
-   ```bash
-   divebell open <target-url> --state <state-path>
-   ```
+Do not use either workflow for an ordinary non-login page or a plain 404.
 
-3. Verify the actual access result again. Check the final URL, navigation or HTTP
-   outcome, and the user's success condition. Use page or network evidence when
-   the `open` result alone does not prove access.
+## Save a portable state
 
-4. If access is normal, continue the user's task. Do not call
-   `state diagnose`, switch Profiles, or enlarge the state.
+Use `state save` when a provider can already open the exact protected target
+with an authorized Profile and another machine needs a reusable state file.
+Run the workflow on the provider's machine:
 
-5. Run diagnosis only when this authorized state-backed retry still has one of
-   these failure classes:
-
-   - top-level navigation reaches a login or authentication page;
-   - a relevant document, XHR, or fetch returns 401 or 403;
-   - the page clearly reports signed-out, expired-session, or insufficient
-     permission state;
-   - a 404 also has authentication evidence; or
-   - the first navigation fails and may have lost an authentication redirect.
-
-   Inspect the installed help, then diagnose the same URL and state:
+1. Ask the provider to identify the authorized Profile explicitly. Never
+   enumerate Profiles and choose an account for the user.
+2. Open the exact target with that Profile and verify the final URL, navigation
+   or HTTP result, current account, and page success condition:
 
    ```bash
-   divebell state diagnose --help
-   divebell state diagnose <target-url> \
-     --state <state-path> \
-     --expect-url '<successful-url-glob>' \
-     --expect-text '<successful-page-text>'
+   divebell open <target-url> --profile <working-profile-name-or-path>
    ```
 
-   `--expect-url` and `--expect-text` are optional but should be supplied when
-   they express the user's actual success condition. Diagnosis uses a separate
-   browser session and replays the first navigation after metadata capture has
-   started. It is a post-failure diagnostic, never a recommended pre-open
-   check.
-
-6. Review and report the candidates and their confidence/evidence. URLs are
-   sanitized for direct use as repeatable `--include-url` values. Without
-   `--source-profile`, the candidates are observations only; do not claim they
-   were validated. Never infer missing state from an ordinary 404 that has no
-   authentication evidence. `not_auth_related` means investigate routing or
-   the application instead.
-
-7. If the user explicitly names an already signed-in Profile, rerun diagnosis
-   with that exact Profile:
+3. Save a new URL-scoped state from that verified browser session:
 
    ```bash
-   divebell state diagnose <target-url> \
-     --state <state-path> \
-     --source-profile <name-or-path> \
-     --expect-url '<successful-url-glob>' \
-     --expect-text '<successful-page-text>'
+   divebell state save <new-state-path> --url <target-url>
    ```
 
-   Never list Profiles and choose one on the user's behalf. The Profile is only
-   a comparison and replay source for the failed state; it is not itself the
-   diagnosis target. Source comparison reports only cookie/storage counts and
-   booleans. It does not expose names or values and does not modify the failed
-   state.
-
-8. After the user accepts the candidate scope, open the same target with the
-   explicitly named Profile, export a new file, and retry:
+   Use the exact protected application URL for `--url`. Repeat `--include-url`
+   only for related sign-in URLs already known to be required; do not guess or
+   add unrelated origins. Never overwrite or commit an existing state file.
+4. Read the absolute saved path from `data.path`. Transfer the file only through
+   an authorized secure channel, then verify it on the consumer:
 
    ```bash
-   divebell stop
-   divebell open <target-url> --profile <name-or-path> --ui
-   divebell state save <new-state-path> \
-     --url <target-url> \
-     --include-url <candidate-url>
-   divebell open <target-url> --state <new-state-path>
+   divebell open <target-url> --state <consumer-state-path>
    ```
 
-   Repeat `--include-url` only for the reviewed minimal set. Verify the final
-   URL, HTTP/page result, and the same user success condition. Do not overwrite
-   the original state in the first version of this workflow.
+If that state-backed open still has authentication or permission failure
+evidence, continue with the inference workflow below. Do not broaden the state
+manually.
 
-9. If diagnosis finds no missing-state evidence, retry the target once with the
-   same state and `--ui`, unless an earlier attempt already used `--ui`:
+## Infer missing state sources
 
-   ```bash
-   divebell open <target-url> --state <state-path> --ui
-   ```
+### Decide where to run inference
 
-   `state diagnose` diagnoses a state file only. Never run it for a
-   Profile-backed open. If a default or explicitly authorized Profile-backed
-   retry fails, use the same one-time `--ui` fallback without diagnosis. If
-   headed access also fails, report the verified failure instead of repeating
-   diagnosis or UI retries.
+Use `state infer` only on the state provider's machine. That machine must have:
 
-## Output and safety interpretation
+- the state JSON that failed for its consumer;
+- an explicitly named Chrome Profile that can access the target; and
+- network access to the same application environment.
 
-- High confidence requires a direct login/authentication redirect, a login
-  final page, a login form action, or an authentication iframe.
-- Cross-origin authentication XHR/fetch failures are normally medium
-  confidence.
-- A 404 with weak authentication evidence stays low or medium confidence.
-- Static resources, analytics, advertising, telemetry, and monitoring origins
-  are not state-source candidates.
-- Candidate output never includes URL query/fragment, credentials, cookies,
-  authorization headers, POST bodies, or response bodies.
-- `sourceStateAvailable` reports only whether the explicit source Profile has
-  applicable state; its companion counts contain no names or values.
+Do not run inference on the consumer merely because `open --state` failed
+there. If the consumer does not have the source Profile, collect the exact
+target URL and success condition, then give the command to the provider.
+
+Never enumerate Profiles and choose one. Ask the user or provider to identify
+the authorized source Profile explicitly.
+
+### Fill every argument
+
+Inspect installed help before running the command:
+
+```bash
+divebell state infer --help
+```
+
+Fill the arguments as follows:
+
+- `<url>`: use the exact application URL the inferred state must open.
+- `--state <path>`: use the exact deficient state JSON supplied to the
+  consumer. Inference reads it as failure evidence and never modifies it.
+- `--source-profile <name-or-path>`: use an explicitly selected, already
+  signed-in Profile on the provider machine. This argument is required.
+- `--output <path>`: optionally choose a new state JSON path. Never use the
+  input path. If omitted, Divebell allocates a sibling such as
+  `state.inferred.json`, then `state.inferred-2.json` when necessary.
+- `--expect-url <glob>`: optionally describe the successful final URL. Use `*`
+  for variable suffixes such as query parameters.
+- `--expect-text <text>`: optionally provide stable, case-sensitive page text
+  that proves the intended account or protected page is available.
+- `--timeout <ms>`: optionally set each navigation budget. The default is
+  25000; valid values are integers from 1 through 120000.
+- Successful output uses the standard command envelope. Read the absolute new
+  state path from `data.path`.
+
+Supply `--expect-url`, `--expect-text`, or both whenever a 2xx response alone
+does not prove successful access.
+
+### Infer and verify a replacement
+
+Run this on the provider machine:
+
+```bash
+divebell state infer <target-url> \
+  --state <deficient-state-path> \
+  --source-profile <working-profile-name-or-path> \
+  --output <new-state-path> \
+  --expect-url '<successful-url-glob>' \
+  --expect-text '<successful-page-text>'
+```
+
+Inference performs these steps in isolated browser sessions:
+
+1. Replay the deficient state and collect metadata-only navigation evidence.
+2. Verify that the selected source Profile satisfies the same success checks.
+3. Infer sanitized authentication URLs from redirects, login pages and forms,
+   authentication iframes, and relevant 401, 403, or authentication-related
+   404 responses.
+4. Export bounded combinations from the Profile, starting with the primary URL
+   alone, and replay each state against the same checks.
+5. Preserve the smallest successful combination as a standard state JSON.
+
+The output file is the exact state that passed replay. It contains ordinary
+agent-browser `cookies` and `origins` fields, uses mode `0600`, and can be used
+directly:
+
+```bash
+divebell open <target-url> --state <returned-path>
+```
+
+Transfer that file to the consumer only through an authorized secure channel,
+then verify the same final URL, navigation or HTTP result, account, and page
+success condition there.
+
+### Interpret failures safely
+
+- `STATE_INFER_INPUT_STATE_VALID`: keep using the original state; it already
+  passes the supplied checks on the provider machine.
+- `STATE_INFER_STATE_LOAD_FAILED`: copy the exact readable state JSON to the
+  provider machine and correct `--state`.
+- `STATE_INFER_NO_AUTH_SOURCES`: the failure did not expose a credible missing
+  authentication source. Investigate routing, environment, or application
+  behavior instead of broadening state scope.
+- `STATE_INFER_SOURCE_PROFILE_OPEN_FAILED`: correct the explicitly selected
+  local Profile name or path.
+- `STATE_INFER_SOURCE_PROFILE_ACCESS_FAILED`: refresh or correct that Profile,
+  target URL, or success checks.
+- `STATE_INFER_VERIFICATION_FAILED`: no bounded candidate combination produced
+  a state that passed replay. Do not add unrelated origins manually.
+
+A plain 404 without authentication evidence must not produce a replacement
+state. Static, analytics, advertising, telemetry, and monitoring URLs are not
+state sources. Command output and errors never include URL queries or
+fragments, credentials, cookie names or values, authorization headers, POST
+bodies, or response bodies; the state file itself remains sensitive.

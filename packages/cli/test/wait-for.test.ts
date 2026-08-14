@@ -3,7 +3,7 @@ import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 
-import { createBrowserRunner, createOutput, jsonResponse } from "./helpers.js";
+import { commandData, createBrowserRunner, createOutput, jsonResponse } from "./helpers.js";
 
 test("wait-for keeps an explicitly selected runtime", async () => {
   const calls: Array<{ url: string; method?: string; body?: unknown }> = [];
@@ -83,7 +83,7 @@ test("wait-for keeps an explicitly selected runtime", async () => {
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-before-refresh/wait-for"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-before-refresh");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-before-refresh");
 });
 
 test("wait-for waits for a runtime to connect when none is currently connected", async () => {
@@ -147,7 +147,7 @@ test("wait-for waits for a runtime to connect when none is currently connected",
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-new/wait-for"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-new");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-new");
 });
 
 test("wait-for keeps following when the current runtime has not registered the target", async () => {
@@ -243,7 +243,7 @@ test("wait-for keeps following when the current runtime has not registered the t
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-new/wait-for"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-new");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-new");
 });
 
 test("wait-for next ignores runtimes that were connected before the command started", async () => {
@@ -324,7 +324,7 @@ test("wait-for next ignores runtimes that were connected before the command star
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-next/wait-for"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-next");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-next");
 });
 
 test("wait-for next reports when no new runtime connects before timeout", async () => {
@@ -360,7 +360,10 @@ test("wait-for next reports when no new runtime connects before timeout", async 
   });
 
   assert.equal(exitCode, 1);
-  assert.deepEqual(JSON.parse(output.text()), {
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.status, "error");
+  assert.equal(parsed.error.code, "COMMAND_FAILED");
+  assert.deepEqual(parsed.data, {
     result: {
       success: false,
       condition: {
@@ -370,7 +373,7 @@ test("wait-for next reports when no new runtime connects before timeout", async 
       reason: "No new connected runtime was found before timeout."
     }
   });
-  assert.equal(output.errorText(), "No new connected runtime was found before timeout.\n");
+  assert.equal(output.errorText(), "");
 });
 
 test("wait-for rejects next with strict mode", async () => {
@@ -391,7 +394,10 @@ test("wait-for rejects next with strict mode", async () => {
   });
 
   assert.equal(exitCode, 1);
-  assert.deepEqual(JSON.parse(output.text()), {
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.status, "error");
+  assert.equal(parsed.error.code, "COMMAND_FAILED");
+  assert.deepEqual(parsed.data, {
     result: {
       success: false,
       condition: {
@@ -401,7 +407,7 @@ test("wait-for rejects next with strict mode", async () => {
       reason: "--next cannot be used with --strict."
     }
   });
-  assert.equal(output.errorText(), "--next cannot be used with --strict.\n");
+  assert.equal(output.errorText(), "");
 });
 
 test("wait-for returns a failing exit code with structured output when the condition is not met", async () => {
@@ -453,7 +459,10 @@ test("wait-for returns a failing exit code with structured output when the condi
 
   assert.equal(exitCode, 1);
   assert.equal(output.errorText(), "");
-  assert.deepEqual(JSON.parse(output.text()), {
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.status, "error");
+  assert.equal(parsed.error.code, "COMMAND_FAILED");
+  assert.deepEqual(parsed.data, {
     runtime: {
       runtimeId: "runtime-1",
       url: "http://app.test/orders",
@@ -499,7 +508,10 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
   });
 
   assert.equal(exitCode, 1);
-  assert.deepEqual(JSON.parse(output.text()), {
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.status, "error");
+  assert.equal(parsed.error.code, "COMMAND_FAILED");
+  assert.deepEqual(parsed.data, {
     result: {
       success: false,
       condition: {
@@ -509,10 +521,7 @@ test("suggests open when wait-for cannot find a matching runtime", async () => {
       reason: "No connected runtime matched URL \"http://app.test/route-a\".\nRun `divebell open <url>` before waiting."
     }
   });
-  assert.equal(
-    output.errorText(),
-    "No connected runtime matched URL \"http://app.test/route-a\".\nRun `divebell open <url>` before waiting.\n"
-  );
+  assert.equal(output.errorText(), "");
 });
 
 test("opens a page before wait-for when open is set", async () => {
@@ -636,7 +645,7 @@ test("opens a page before wait-for when open is set", async () => {
       }
     ]
   });
-  assert.equal(JSON.parse(output.text()).result.success, true);
+  assert.equal(commandData<{ result: { success: boolean } }>(output.text()).result.success, true);
 });
 
 test("opens and follows a session before wait-for when open is set", async () => {
@@ -709,5 +718,5 @@ test("opens and follows a session before wait-for when open is set", async () =>
     "open",
     "http://app.test/route-a?divebellSessionId=session-route-a"
   ]]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-session");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-session");
 });

@@ -20,7 +20,7 @@ import {
   runOpenHooks
 } from "../dist/features/extension/hooks.js";
 
-import { commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
+import { commandData, commandOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
 function createCommandExtension(
   command: DivebellExtensionCommand,
@@ -617,7 +617,7 @@ export async function run() { return { installed: true }; }
       }
     });
     assert.equal(addExitCode, 0);
-    assert.equal(JSON.parse(addOutput.text()).package.name, "@demo/command-hello");
+    assert.equal(commandData<{ package: { name: string } }>(addOutput.text()).package.name, "@demo/command-hello");
 
     const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
@@ -649,7 +649,7 @@ export async function run() { return { installed: true }; }
         download: async () => sameVersionArchivePath
       }
     }), 0);
-    assert.equal(JSON.parse(sameVersionOutput.text()).status, "updated");
+    assert.equal(commandData<{ status: string }>(sameVersionOutput.text()).status, "updated");
     assert.match(
       readFileSync(join(
         extensionsDirectory,
@@ -667,7 +667,7 @@ export async function run() { return { installed: true }; }
       stderr: listOutput.stderr,
       extensionsDirectory
     }), 0);
-    assert.deepEqual(JSON.parse(listOutput.text()).packages[0].extensions, [{
+    assert.deepEqual(commandData<{ packages: Array<{ extensions: unknown }> }>(listOutput.text()).packages[0]?.extensions, [{
       name: "hello-installed",
       commands: ["hello-installed"],
       hooks: []
@@ -691,7 +691,7 @@ export async function run() { return { installed: true }; }
       stderr: afterFailedUpdateOutput.stderr,
       extensionsDirectory
     }), 0);
-    assert.equal(JSON.parse(afterFailedUpdateOutput.text()).packages[0].version, "1.0.0");
+    assert.equal(commandData<{ packages: Array<{ version: string }> }>(afterFailedUpdateOutput.text()).packages[0]?.version, "1.0.0");
 
     const updateOutput = createOutput();
     assert.equal(await cli.run(["extensions", "update", "@demo/command-hello"], {
@@ -705,7 +705,7 @@ export async function run() { return { installed: true }; }
         }
       }
     }), 0);
-    assert.equal(JSON.parse(updateOutput.text()).package.version, "1.1.0");
+    assert.equal(commandData<{ package: { version: string } }>(updateOutput.text()).package.version, "1.1.0");
 
     const updated = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,
@@ -728,7 +728,7 @@ export async function run() { return { installed: true }; }
       stderr: removeOutput.stderr,
       extensionsDirectory
     }), 0);
-    assert.equal(JSON.parse(removeOutput.text()).status, "removed");
+    assert.equal(commandData<{ status: string }>(removeOutput.text()).status, "removed");
   } finally {
     delete (globalThis as { __DIVEBELL_LAZY_EXTENSION_TEST__?: number }).__DIVEBELL_LAZY_EXTENSION_TEST__;
     rmSync(tempDir, { recursive: true, force: true });
@@ -787,7 +787,7 @@ test("rejects npm extension packages that declare runtime dependencies", async (
       stderr: listOutput.stderr,
       extensionsDirectory
     }), 0);
-    assert.deepEqual(JSON.parse(listOutput.text()).packages, []);
+    assert.deepEqual(commandData<{ packages: unknown[] }>(listOutput.text()).packages, []);
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

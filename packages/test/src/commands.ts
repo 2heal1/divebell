@@ -53,7 +53,7 @@ export interface OpenTestCommandOptions {
 }
 
 export type DivebellTestCommand<T> = CliCommandInvocation<
-  T,
+  CliCommandOkResult<T>,
   CliCommandErrorResult
 >;
 
@@ -85,7 +85,7 @@ export const divebellTestCommands = {
   open(
     url: string,
     options: OpenTestCommandOptions = {}
-  ): DivebellTestCommand<CliCommandOkResult<OpenPageResult>> {
+  ): DivebellTestCommand<OpenPageResult> {
     return command([
       "open",
       url,

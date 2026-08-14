@@ -299,7 +299,9 @@ async function runCliJson<T>(argv: string[]): Promise<T> {
   });
 
   assert.equal(exitCode, 0, output.errorText());
-  return JSON.parse(output.text()) as T;
+  const parsed = JSON.parse(output.text()) as { status: string; data: T };
+  assert.equal(parsed.status, "ok");
+  return parsed.data;
 }
 
 function createOutput(): {

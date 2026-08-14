@@ -144,8 +144,8 @@ export class DivebellTestEnvironment {
           extensionsDirectory: this.extensionsDirectory
         })
       );
-      if (installed.json.package?.name !== extension.name) {
-        throw new Error(`Installed ${installed.json.package?.name ?? "unknown package"} instead of ${extension.name}.`);
+      if (installed.json.data.package?.name !== extension.name) {
+        throw new Error(`Installed ${installed.json.data.package?.name ?? "unknown package"} instead of ${extension.name}.`);
       }
     }
   }

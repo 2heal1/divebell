@@ -2,9 +2,9 @@ import type { ParsedCliArgs } from "../utils/args.js";
 import type { BrowserRunner } from "../features/browser/runner.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
 import { saveUrlScopedBrowserState } from "../features/browser/state.js";
-import { diagnoseMissingStateSources } from "../features/browser/state-diagnosis.js";
+import { inferBrowserState } from "../features/browser/state-inference.js";
 import { getOptionValue, getOptionValues } from "../utils/args.js";
-import { createError } from "../utils/output.js";
+import { createCommandOutput, createError } from "../utils/output.js";
 
 const AGENT_BROWSER_BOOLEAN_OPTIONS = new Set([
   "all",
@@ -31,22 +31,24 @@ export async function runAgentBrowserStateCommand(
   stderr: { write(chunk: string): void },
   browserRunner: BrowserRunner
 ): Promise<number> {
-  if (args.command[1] === "diagnose") {
+  if (args.command[1] === "infer") {
     const url = args.command[2];
     const statePath = getOptionValue(args, "state");
     const timeoutInput = getOptionValue(args, "timeout");
     const sourceProfile = getOptionValue(args, "source-profile");
+    const outputPath = getOptionValue(args, "output");
     const expectUrl = getOptionValue(args, "expect-url");
     const expectText = getOptionValue(args, "expect-text");
-    const result = await diagnoseMissingStateSources(browserRunner, {
+    const result = await inferBrowserState(browserRunner, {
       url: url ?? "",
       statePath: statePath ?? "",
-      ...(sourceProfile === undefined ? {} : { sourceProfile }),
+      sourceProfile: sourceProfile ?? "",
+      ...(outputPath === undefined ? {} : { outputPath }),
       ...(expectUrl === undefined ? {} : { expectUrl }),
       ...(expectText === undefined ? {} : { expectText }),
       ...(timeoutInput === undefined ? {} : { timeoutMs: Number(timeoutInput) })
     });
-    stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    createCommandOutput(stdout, args.command.join(" ")).ok({ path: result.path });
     return 0;
   }
   const urls = getOptionValues(args, "url");

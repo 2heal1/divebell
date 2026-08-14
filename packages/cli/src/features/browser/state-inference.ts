@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { chmod, mkdtemp, readFile, rm } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { access, chmod, copyFile, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, parse, resolve } from "node:path";
 import { createError } from "../../utils/output.js";
 import { bindBrowserRunOptions, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "./runner.js";
-import { saveUrlScopedBrowserState } from "./state.js";
+import {
+  saveUrlScopedBrowserState,
+  type UrlScopedStateSaveResult
+} from "./state.js";
 
-export type StateDiagnosisConfidence = "high" | "medium" | "low";
+export type StateInferenceConfidence = "high" | "medium" | "low";
 
-export type StateDiagnosisClassification =
+export type StateInferenceClassification =
   | "access_ok"
   | "auth_redirect"
   | "login_page"
@@ -19,9 +23,9 @@ export type StateDiagnosisClassification =
   | "navigation_failed"
   | "inconclusive";
 
-export interface StateDiagnosisCandidate {
+export interface StateInferenceCandidate {
   url: string;
-  confidence: StateDiagnosisConfidence;
+  confidence: StateInferenceConfidence;
   evidence: string[];
   sourceStateAvailable?: boolean;
   sourceState?: {
@@ -31,9 +35,8 @@ export interface StateDiagnosisCandidate {
   verified?: boolean;
 }
 
-export interface StateDiagnosisResult {
-  status: "candidates_found" | "no_candidates";
-  classification: StateDiagnosisClassification;
+interface StateInferenceEvidence {
+  classification: StateInferenceClassification;
   initialFailure: {
     kind: "none" | "redirect" | "http_status" | "page" | "navigation" | "expectation" | "unknown";
     httpStatus?: number;
@@ -54,28 +57,31 @@ export interface StateDiagnosisResult {
     expectUrlMatched?: boolean;
     expectTextMatched?: boolean;
   };
-  candidates: StateDiagnosisCandidate[];
-  suggestedIncludeUrls: string[];
-  verification?: {
+  candidates: StateInferenceCandidate[];
+  verification: {
     attempted: number;
-    succeeded: boolean;
     minimalIncludeUrls: string[];
   };
 }
 
-export interface StateDiagnosisClassifier {
+export interface StateInferenceResult extends UrlScopedStateSaveResult {
+  inference: StateInferenceEvidence;
+}
+
+export interface StateInferenceClassifier {
   isAuthUrl(url: URL): boolean;
   isIrrelevantUrl(url: URL): boolean;
 }
 
-export interface DiagnoseMissingStateSourcesOptions {
+export interface InferBrowserStateOptions {
   url: string;
   statePath: string;
-  sourceProfile?: string;
+  sourceProfile: string;
+  outputPath?: string;
   expectUrl?: string;
   expectText?: string;
   timeoutMs?: number;
-  classifier?: StateDiagnosisClassifier;
+  classifier?: StateInferenceClassifier;
   maxCandidates?: number;
   maxVerificationAttempts?: number;
 }
@@ -127,27 +133,27 @@ type NavigationFailureKind =
 
 interface CandidateAccumulator {
   url: string;
-  confidence: StateDiagnosisConfidence;
+  confidence: StateInferenceConfidence;
   evidence: Set<string>;
 }
 
 interface AnalysisResult {
   accessSuccessful: boolean;
-  classification: StateDiagnosisClassification;
-  candidates: StateDiagnosisCandidate[];
-  validation: StateDiagnosisResult["validation"];
+  classification: StateInferenceClassification;
+  candidates: StateInferenceCandidate[];
+  validation: StateInferenceEvidence["validation"];
 }
 
 const DEFAULT_TIMEOUT_MS = 25_000;
 const DEFAULT_MAX_CANDIDATES = 6;
 const DEFAULT_MAX_VERIFICATION_ATTEMPTS = 8;
-const CONFIDENCE_SCORE: Record<StateDiagnosisConfidence, number> = {
+const CONFIDENCE_SCORE: Record<StateInferenceConfidence, number> = {
   high: 3,
   medium: 2,
   low: 1
 };
 
-const DEFAULT_CLASSIFIER: StateDiagnosisClassifier = {
+const DEFAULT_CLASSIFIER: StateInferenceClassifier = {
   isAuthUrl: (url) => {
     const host = url.hostname.toLowerCase();
     const path = url.pathname.toLowerCase();
@@ -161,101 +167,121 @@ const DEFAULT_CLASSIFIER: StateDiagnosisClassifier = {
 };
 
 /**
- * Diagnoses a state-backed access failure in isolated browser sessions.
- * This function never updates the supplied state file or the caller's current
- * Divebell page context.
+ * Uses an explicitly selected, working source Profile to infer the smallest
+ * URL-scoped state that can replace a failing state file. The supplied state
+ * is never modified, and all browser work happens in isolated sessions.
  */
-export async function diagnoseMissingStateSources(
+export async function inferBrowserState(
   browserRunner: BrowserRunner,
-  options: DiagnoseMissingStateSourcesOptions
-): Promise<StateDiagnosisResult> {
-  const targetUrl = normalizeDiagnosisInputUrl(options.url);
-  const statePath = requireValue(options.statePath, "--state", "STATE_DIAGNOSE_STATE_REQUIRED");
-  const sourceProfile = optionalValue(options.sourceProfile, "--source-profile");
+  options: InferBrowserStateOptions
+): Promise<StateInferenceResult> {
+  const targetUrl = normalizeInferenceInputUrl(options.url);
+  const statePath = resolve(requireValue(
+    options.statePath,
+    "--state",
+    "STATE_INFER_STATE_REQUIRED"
+  ));
+  const sourceProfile = requireValue(
+    options.sourceProfile,
+    "--source-profile",
+    "STATE_INFER_SOURCE_PROFILE_REQUIRED"
+  );
+  const outputPath = await resolveInferenceOutputPath(statePath, options.outputPath);
   const expectUrl = optionalValue(options.expectUrl, "--expect-url");
   const expectText = optionalValue(options.expectText, "--expect-text");
   const timeoutMs = normalizeTimeout(options.timeoutMs);
   const classifier = options.classifier ?? DEFAULT_CLASSIFIER;
-  const artifactDirectory = await mkdtemp(join(tmpdir(), "divebell-state-diagnose-"));
+  const artifactDirectory = await mkdtemp(join(tmpdir(), "divebell-state-infer-"));
   await chmod(artifactDirectory, 0o700);
 
   try {
     const initialEvidence = await captureNavigationEvidence(browserRunner, {
       artifactDirectory,
       label: "initial",
-      statePath: resolve(statePath),
+      statePath,
       targetUrl,
       timeoutMs,
       ...(expectText === undefined ? {} : { expectText })
     });
+    if (initialEvidence.navigationFailure === "state_load") {
+      throw createError({
+        code: "STATE_INFER_STATE_LOAD_FAILED",
+        kind: "browser",
+        message: "Could not load the supplied state file.",
+        hint: "Copy the exact deficient state JSON to the provider machine and pass its readable path with --state.",
+        details: { path: statePath }
+      });
+    }
     const analysis = analyzeNavigationEvidence(initialEvidence, targetUrl, {
       classifier,
       ...(expectUrl === undefined ? {} : { expectUrl }),
       ...(expectText === undefined ? {} : { expectText }),
       maxCandidates: options.maxCandidates ?? DEFAULT_MAX_CANDIDATES
     });
-    const navigation = createNavigationSummary(initialEvidence);
     if (analysis.accessSuccessful) {
-      return {
-        status: "no_candidates",
-        classification: "access_ok",
-        initialFailure: {
-          kind: "none",
-          ...(navigation.finalOrigin === undefined ? {} : { finalOrigin: navigation.finalOrigin })
-        },
-        navigation: navigation.summary,
-        validation: analysis.validation,
-        candidates: [],
-        suggestedIncludeUrls: []
-      };
-    }
-
-    let candidates = analysis.candidates;
-    let verification: StateDiagnosisResult["verification"];
-    if (sourceProfile !== undefined && candidates.length > 0) {
-      const compared = await compareAndVerifySourceProfile(browserRunner, {
-        artifactDirectory,
-        candidates,
-        sourceProfile,
-        targetUrl,
-        timeoutMs,
-        ...(expectUrl === undefined ? {} : { expectUrl }),
-        ...(expectText === undefined ? {} : { expectText }),
-        classifier,
-        maxVerificationAttempts: options.maxVerificationAttempts
-          ?? DEFAULT_MAX_VERIFICATION_ATTEMPTS
+      throw createError({
+        code: "STATE_INFER_INPUT_STATE_VALID",
+        kind: "validation",
+        message: "The supplied state already satisfies the requested access check.",
+        hint: "Keep using the existing state file; no inferred replacement was created.",
+        details: { path: statePath }
       });
-      candidates = compared.candidates;
-      verification = compared.verification;
     }
 
-    const suggestedIncludeUrls = verification?.succeeded === true
-      ? verification.minimalIncludeUrls
-      : verification === undefined
-        ? candidates.map((candidate) => candidate.url)
-        : candidates
-          .filter((candidate) => candidate.sourceStateAvailable === true)
-          .map((candidate) => candidate.url);
+    if (analysis.candidates.length === 0) {
+      throw createError({
+        code: "STATE_INFER_NO_AUTH_SOURCES",
+        kind: "browser",
+        message: "Could not infer an authentication state source from the failed navigation.",
+        hint: "Confirm that the failure is authentication-related and provide --expect-url or --expect-text when success is otherwise ambiguous.",
+        details: {
+          classification: analysis.classification,
+          initialFailure: createInitialFailure(
+            initialEvidence,
+            analysis.classification,
+            expectUrl !== undefined || expectText !== undefined
+          )
+        }
+      });
+    }
+
+    const inferred = await inferFromSourceProfile(browserRunner, {
+      artifactDirectory,
+      candidates: analysis.candidates,
+      sourceProfile,
+      targetUrl,
+      outputPath,
+      timeoutMs,
+      ...(expectUrl === undefined ? {} : { expectUrl }),
+      ...(expectText === undefined ? {} : { expectText }),
+      classifier,
+      maxVerificationAttempts: options.maxVerificationAttempts
+        ?? DEFAULT_MAX_VERIFICATION_ATTEMPTS
+    });
     return {
-      status: candidates.length === 0 ? "no_candidates" : "candidates_found",
-      classification: analysis.classification,
-      initialFailure: createInitialFailure(
-        initialEvidence,
-        analysis.classification,
-        expectUrl !== undefined || expectText !== undefined
-      ),
-      navigation: navigation.summary,
-      validation: analysis.validation,
-      candidates,
-      suggestedIncludeUrls,
-      ...(verification === undefined ? {} : { verification })
+      ...inferred.state,
+      inference: {
+        classification: analysis.classification,
+        initialFailure: createInitialFailure(
+          initialEvidence,
+          analysis.classification,
+          expectUrl !== undefined || expectText !== undefined
+        ),
+        navigation: createNavigationSummary(initialEvidence).summary,
+        validation: analysis.validation,
+        candidates: inferred.candidates,
+        verification: {
+          attempted: inferred.attempted,
+          minimalIncludeUrls: inferred.minimalIncludeUrls
+        }
+      }
     };
   } finally {
     await rm(artifactDirectory, { recursive: true, force: true });
   }
 }
 
-export function sanitizeStateDiagnosisUrl(input: string, base?: string): string | undefined {
+export function sanitizeStateInferenceUrl(input: string, base?: string): string | undefined {
   let url: URL;
   try {
     url = base === undefined ? new URL(input) : new URL(input, base);
@@ -285,8 +311,7 @@ async function captureNavigationEvidence(
     expectText?: string;
   }
 ): Promise<NavigationEvidence> {
-  const session = `divebell-state-diagnose-${randomUUID()}`;
-  const harPath = join(options.artifactDirectory, `${options.label}.har`);
+  const session = `divebell-state-infer-${randomUUID()}`;
   const runOptions: BrowserRunOptions = {
     session,
     disableRestore: true,
@@ -294,45 +319,54 @@ async function captureNavigationEvidence(
     defaultTimeoutMs: options.timeoutMs,
     headless: true
   };
-  let navigationResult: BrowserRunResult = {
-    exitCode: 1,
-    stdout: "",
-    stderr: "browser session did not start"
-  };
-  let navigationFailure: NavigationFailureKind | undefined;
-  let harStarted = false;
-  let page = emptyPageFacts();
-
   try {
     const launch = await browserRunner.run(
       ["--state", options.statePath, "open", "--json"],
       runOptions
     );
     if (launch.exitCode !== 0) {
-      navigationResult = launch;
-      navigationFailure = "state_load";
       return {
-        navigationResult,
-        navigationFailure,
+        navigationResult: launch,
+        navigationFailure: "state_load",
         harEntries: [],
-        page,
+        page: emptyPageFacts(),
         redirects: []
       };
     }
+    return await captureOpenSessionNavigationEvidence(browserRunner, runOptions, options);
+  } finally {
+    await runBrowserSafely(browserRunner, ["close", "--json"], runOptions);
+  }
+}
 
-    const start = await browserRunner.run(
-      ["network", "har", "start", "--content", "none", "--json"],
-      runOptions
-    );
-    if (start.exitCode !== 0) {
-      throw createError({
-        code: "STATE_DIAGNOSE_CAPTURE_FAILED",
-        kind: "browser",
-        message: "Could not start metadata-only navigation capture.",
-        retryable: true
-      });
-    }
-    harStarted = true;
+async function captureOpenSessionNavigationEvidence(
+  browserRunner: BrowserRunner,
+  runOptions: BrowserRunOptions,
+  options: {
+    artifactDirectory: string;
+    label: string;
+    targetUrl: URL;
+    expectText?: string;
+  }
+): Promise<NavigationEvidence> {
+  const harPath = join(options.artifactDirectory, `${options.label}.har`);
+  const start = await browserRunner.run(
+    ["network", "har", "start", "--content", "none", "--json"],
+    runOptions
+  );
+  if (start.exitCode !== 0) {
+    throw createError({
+      code: "STATE_INFER_CAPTURE_FAILED",
+      kind: "browser",
+      message: "Could not start metadata-only navigation capture.",
+      retryable: true
+    });
+  }
+
+  let navigationResult: BrowserRunResult;
+  let navigationFailure: NavigationFailureKind | undefined;
+  let page = emptyPageFacts();
+  try {
     navigationResult = await runBrowserSafely(
       browserRunner,
       ["goto", options.targetUrl.href, "--json"],
@@ -343,14 +377,11 @@ async function captureNavigationEvidence(
     }
     page = await readPageFacts(browserRunner, runOptions, options.expectText);
   } finally {
-    if (harStarted) {
-      await runBrowserSafely(
-        browserRunner,
-        ["network", "har", "stop", harPath, "--json"],
-        runOptions
-      );
-    }
-    await runBrowserSafely(browserRunner, ["close", "--json"], runOptions);
+    await runBrowserSafely(
+      browserRunner,
+      ["network", "har", "stop", harPath, "--json"],
+      runOptions
+    );
   }
 
   const harEntries = await readHarEntries(harPath);
@@ -360,7 +391,7 @@ async function captureNavigationEvidence(
     ?? inferLastTopLevelStatus(redirects, harEntries);
   const finalUrl = finalUrlRaw === undefined
     ? undefined
-    : sanitizeStateDiagnosisUrl(finalUrlRaw);
+    : sanitizeStateInferenceUrl(finalUrlRaw);
   return {
     navigationResult,
     ...(navigationFailure === undefined ? {} : { navigationFailure }),
@@ -373,22 +404,25 @@ async function captureNavigationEvidence(
   };
 }
 
-async function compareAndVerifySourceProfile(
+async function inferFromSourceProfile(
   browserRunner: BrowserRunner,
   options: {
     artifactDirectory: string;
-    candidates: StateDiagnosisCandidate[];
+    candidates: StateInferenceCandidate[];
     sourceProfile: string;
     targetUrl: URL;
+    outputPath: string;
     timeoutMs: number;
     expectUrl?: string;
     expectText?: string;
-    classifier: StateDiagnosisClassifier;
+    classifier: StateInferenceClassifier;
     maxVerificationAttempts: number;
   }
 ): Promise<{
-  candidates: StateDiagnosisCandidate[];
-  verification: NonNullable<StateDiagnosisResult["verification"]>;
+  state: UrlScopedStateSaveResult;
+  candidates: StateInferenceCandidate[];
+  attempted: number;
+  minimalIncludeUrls: string[];
 }> {
   const session = `divebell-state-source-${randomUUID()}`;
   const sourceRunOptions: BrowserRunOptions = {
@@ -406,7 +440,7 @@ async function compareAndVerifySourceProfile(
   if (launch.exitCode !== 0) {
     await runBrowserSafely(browserRunner, ["close", "--json"], sourceRunOptions);
     throw createError({
-      code: "STATE_DIAGNOSE_SOURCE_PROFILE_FAILED",
+      code: "STATE_INFER_SOURCE_PROFILE_OPEN_FAILED",
       kind: "browser",
       message: "Could not open the explicitly selected source Profile.",
       retryable: true
@@ -414,7 +448,37 @@ async function compareAndVerifySourceProfile(
   }
 
   try {
-    const candidates: StateDiagnosisCandidate[] = [];
+    const sourceEvidence = await captureOpenSessionNavigationEvidence(
+      browserRunner,
+      sourceRunOptions,
+      {
+        artifactDirectory: options.artifactDirectory,
+        label: "source-profile",
+        targetUrl: options.targetUrl,
+        ...(options.expectText === undefined ? {} : { expectText: options.expectText })
+      }
+    );
+    const sourceAnalysis = analyzeNavigationEvidence(sourceEvidence, options.targetUrl, {
+      classifier: options.classifier,
+      ...(options.expectUrl === undefined ? {} : { expectUrl: options.expectUrl }),
+      ...(options.expectText === undefined ? {} : { expectText: options.expectText }),
+      maxCandidates: DEFAULT_MAX_CANDIDATES
+    });
+    if (!sourceAnalysis.accessSuccessful) {
+      throw createError({
+        code: "STATE_INFER_SOURCE_PROFILE_ACCESS_FAILED",
+        kind: "browser",
+        message: "The selected source Profile does not satisfy the requested access check.",
+        hint: "Open the URL with the intended signed-in Profile and confirm --expect-url and --expect-text before inferring a replacement state.",
+        details: {
+          profile: options.sourceProfile,
+          classification: sourceAnalysis.classification,
+          validation: sourceAnalysis.validation
+        }
+      });
+    }
+
+    const candidates: StateInferenceCandidate[] = [];
     for (const [index, candidate] of options.candidates.entries()) {
       const statePath = join(options.artifactDirectory, `source-candidate-${index}.json`);
       const saved = await saveUrlScopedBrowserState(sourceRunner, {
@@ -443,10 +507,12 @@ async function compareAndVerifySourceProfile(
       normalizeAttemptLimit(options.maxVerificationAttempts)
     );
     let attempted = 0;
-    let minimalIncludeUrls: string[] = [];
+    let successfulState: UrlScopedStateSaveResult | undefined;
+    let successfulStatePath: string | undefined;
+    let minimalIncludeUrls: string[] | undefined;
     for (const includeUrls of combinations) {
       const statePath = join(options.artifactDirectory, `verification-${attempted}.json`);
-      await saveUrlScopedBrowserState(sourceRunner, {
+      const saved = await saveUrlScopedBrowserState(sourceRunner, {
         url: options.targetUrl.href,
         includeUrls,
         outputPath: statePath,
@@ -469,21 +535,56 @@ async function compareAndVerifySourceProfile(
       });
       if (analysis.accessSuccessful) {
         minimalIncludeUrls = includeUrls;
+        successfulState = saved;
+        successfulStatePath = statePath;
         break;
       }
     }
 
+    if (
+      successfulState === undefined
+      || successfulStatePath === undefined
+      || minimalIncludeUrls === undefined
+    ) {
+      throw createError({
+        code: "STATE_INFER_VERIFICATION_FAILED",
+        kind: "browser",
+        message: "No inferred state combination satisfied the requested access check.",
+        hint: "Confirm that the source Profile can access the target and that the success expectations identify the intended page.",
+        details: {
+          attempted,
+          candidates: candidates.map((candidate) => ({
+            url: candidate.url,
+            confidence: candidate.confidence,
+            sourceStateAvailable: candidate.sourceStateAvailable
+          }))
+        }
+      });
+    }
+
+    await mkdir(dirname(options.outputPath), { recursive: true, mode: 0o700 });
+    try {
+      await copyFile(successfulStatePath, options.outputPath, fsConstants.COPYFILE_EXCL);
+    } catch (error) {
+      if (isNodeError(error) && error.code === "EEXIST") {
+        throw outputExistsError(options.outputPath);
+      }
+      throw error;
+    }
+    await chmod(options.outputPath, 0o600);
+
     const verified = new Set(minimalIncludeUrls);
     return {
+      state: {
+        ...successfulState,
+        path: options.outputPath
+      },
       candidates: candidates.map((candidate) => ({
         ...candidate,
         verified: verified.has(candidate.url)
       })),
-      verification: {
-        attempted,
-        succeeded: minimalIncludeUrls.length > 0,
-        minimalIncludeUrls
-      }
+      attempted,
+      minimalIncludeUrls
     };
   } finally {
     await runBrowserSafely(browserRunner, ["close", "--json"], sourceRunOptions);
@@ -494,13 +595,13 @@ function analyzeNavigationEvidence(
   evidence: NavigationEvidence,
   targetUrl: URL,
   options: {
-    classifier: StateDiagnosisClassifier;
+    classifier: StateInferenceClassifier;
     expectUrl?: string;
     expectText?: string;
     maxCandidates: number;
   }
 ): AnalysisResult {
-  const validation: StateDiagnosisResult["validation"] = {
+  const validation: StateInferenceEvidence["validation"] = {
     ...(options.expectUrl === undefined
       ? {}
       : { expectUrlMatched: matchesUrlGlob(evidence.finalUrlRaw, options.expectUrl) }),
@@ -528,11 +629,11 @@ function analyzeNavigationEvidence(
   const candidates = new Map<string, CandidateAccumulator>();
   const addCandidate = (
     rawUrl: string,
-    confidence: StateDiagnosisConfidence,
+    confidence: StateInferenceConfidence,
     evidenceLabel: string,
     base?: string
   ): void => {
-    const safeUrl = sanitizeStateDiagnosisUrl(rawUrl, base);
+    const safeUrl = sanitizeStateInferenceUrl(rawUrl, base);
     if (safeUrl === undefined) return;
     let parsed: URL;
     try {
@@ -542,7 +643,7 @@ function analyzeNavigationEvidence(
     }
     if (options.classifier.isIrrelevantUrl(parsed)) return;
     if (isStaticResource(parsed)) return;
-    const safeTarget = sanitizeStateDiagnosisUrl(targetUrl.href);
+    const safeTarget = sanitizeStateInferenceUrl(targetUrl.href);
     if (safeUrl === safeTarget) return;
     const current = candidates.get(safeUrl);
     if (current === undefined) {
@@ -642,7 +743,7 @@ function analyzeNavigationEvidence(
     }
     if (entry.status === 401 || entry.status === 403) {
       if (resourceType === "xhr" || resourceType === "fetch") {
-        const requestOrigin = safeOrigin(sanitizeStateDiagnosisUrl(entry.requestUrl));
+        const requestOrigin = safeOrigin(sanitizeStateInferenceUrl(entry.requestUrl));
         if (requestOrigin !== undefined && requestOrigin !== targetUrl.origin) {
           addCandidate(
             entry.requestUrl,
@@ -697,7 +798,7 @@ function analyzeNavigationEvidence(
     && acceptableStatus
     && sortedCandidates.length === 0
     && !pageAuth;
-  const classification = classifyDiagnosis(evidence, sortedCandidates, pageAuth, basicSuccess);
+  const classification = classifyInference(evidence, sortedCandidates, pageAuth, basicSuccess);
   return {
     accessSuccessful: basicSuccess,
     classification,
@@ -706,12 +807,12 @@ function analyzeNavigationEvidence(
   };
 }
 
-function classifyDiagnosis(
+function classifyInference(
   evidence: NavigationEvidence,
-  candidates: StateDiagnosisCandidate[],
+  candidates: StateInferenceCandidate[],
   pageAuth: boolean,
   accessSuccessful: boolean
-): StateDiagnosisClassification {
+): StateInferenceClassification {
   if (accessSuccessful) return "access_ok";
   if (candidates.some((candidate) => candidate.evidence.includes("top-level redirect"))) {
     return "auth_redirect";
@@ -740,9 +841,9 @@ function classifyDiagnosis(
 
 function createInitialFailure(
   evidence: NavigationEvidence,
-  classification: StateDiagnosisClassification,
+  classification: StateInferenceClassification,
   hasExpectation: boolean
-): StateDiagnosisResult["initialFailure"] {
+): StateInferenceEvidence["initialFailure"] {
   const finalOrigin = safeOrigin(evidence.finalUrl);
   if (classification === "auth_redirect") {
     return {
@@ -792,7 +893,7 @@ function createInitialFailure(
 
 function createNavigationSummary(evidence: NavigationEvidence): {
   finalOrigin?: string;
-  summary: StateDiagnosisResult["navigation"];
+  summary: StateInferenceEvidence["navigation"];
 } {
   const finalOrigin = safeOrigin(evidence.finalUrl);
   return {
@@ -938,8 +1039,8 @@ function traceTopLevelRedirects(startUrl: string, entries: HarEntry[]): TopLevel
     } catch {
       break;
     }
-    const from = sanitizeStateDiagnosisUrl(entry.requestUrl);
-    const to = sanitizeStateDiagnosisUrl(next);
+    const from = sanitizeStateInferenceUrl(entry.requestUrl);
+    const to = sanitizeStateInferenceUrl(next);
     if (from === undefined || to === undefined) break;
     redirects.push({
       status: entry.status,
@@ -1048,7 +1149,7 @@ function classifyNavigationFailure(result: BrowserRunResult): NavigationFailureK
 }
 
 function createBoundedCombinations(urls: string[], maxAttempts: number): string[][] {
-  const result: string[][] = [];
+  const result: string[][] = [[]];
   const visit = (start: number, size: number, current: string[]): void => {
     if (result.length >= maxAttempts) return;
     if (current.length === size) {
@@ -1107,8 +1208,8 @@ function parseBrowserUrl(input: string): string | undefined {
   }
 }
 
-function normalizeDiagnosisInputUrl(input: string): URL {
-  const value = requireValue(input, "URL", "STATE_DIAGNOSE_URL_REQUIRED");
+function normalizeInferenceInputUrl(input: string): URL {
+  const value = requireValue(input, "URL", "STATE_INFER_URL_REQUIRED");
   const candidate = /^[a-zA-Z][a-zA-Z\d+.-]*:\/\//.test(value)
     ? value
     : `https://${value}`;
@@ -1116,19 +1217,19 @@ function normalizeDiagnosisInputUrl(input: string): URL {
   try {
     url = new URL(candidate);
   } catch {
-    throw invalidDiagnosisUrl();
+    throw invalidInferenceUrl();
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw invalidDiagnosisUrl();
+    throw invalidInferenceUrl();
   }
   return url;
 }
 
-function invalidDiagnosisUrl(): Error {
+function invalidInferenceUrl(): Error {
   return createError({
-    code: "STATE_DIAGNOSE_URL_INVALID",
+    code: "STATE_INFER_URL_INVALID",
     kind: "validation",
-    message: "Invalid state diagnosis URL.",
+    message: "Invalid state inference URL.",
     hint: "Pass the same http or https URL that failed with `divebell open`."
   });
 }
@@ -1139,8 +1240,8 @@ function requireValue(input: string | undefined, option: string, code: string): 
   throw createError({
     code,
     kind: "validation",
-    message: `state diagnose requires ${option}.`,
-    hint: "First run `divebell open <url> --state <path>`; diagnose only after authentication or permission verification fails."
+    message: `state infer requires ${option}.`,
+    hint: "First run `divebell open <url> --state <path>`; infer only after authentication or permission verification fails."
   });
 }
 
@@ -1149,7 +1250,7 @@ function optionalValue(input: string | undefined, option: string): string | unde
   if (value === undefined || value.length === 0 || value === "true") {
     if (input === undefined) return undefined;
     throw createError({
-      code: "STATE_DIAGNOSE_OPTION_VALUE_REQUIRED",
+      code: "STATE_INFER_OPTION_VALUE_REQUIRED",
       kind: "validation",
       message: `${option} requires a value.`
     });
@@ -1161,12 +1262,65 @@ function normalizeTimeout(timeoutMs: number | undefined): number {
   if (timeoutMs === undefined) return DEFAULT_TIMEOUT_MS;
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 120_000) {
     throw createError({
-      code: "STATE_DIAGNOSE_TIMEOUT_INVALID",
+      code: "STATE_INFER_TIMEOUT_INVALID",
       kind: "validation",
       message: "--timeout must be an integer between 1 and 120000 milliseconds."
     });
   }
   return timeoutMs;
+}
+
+async function resolveInferenceOutputPath(
+  statePath: string,
+  requestedOutputPath: string | undefined
+): Promise<string> {
+  const requested = optionalValue(requestedOutputPath, "--output");
+  if (requested !== undefined) {
+    const outputPath = resolve(requested);
+    if (outputPath === statePath) {
+      throw createError({
+        code: "STATE_INFER_OUTPUT_IS_INPUT",
+        kind: "validation",
+        message: "The inferred state output must be different from the supplied state path.",
+        hint: "Omit --output to create a new sibling file automatically, or choose another path."
+      });
+    }
+    if (await pathExists(outputPath)) throw outputExistsError(outputPath);
+    return outputPath;
+  }
+
+  const parsed = parse(statePath);
+  const stem = parsed.ext.toLowerCase() === ".json" ? parsed.name : parsed.base;
+  for (let index = 1; index <= 10_000; index += 1) {
+    const suffix = index === 1 ? ".inferred.json" : `.inferred-${index}.json`;
+    const outputPath = join(parsed.dir, `${stem}${suffix}`);
+    if (!await pathExists(outputPath)) return outputPath;
+  }
+  throw createError({
+    code: "STATE_INFER_OUTPUT_UNAVAILABLE",
+    kind: "internal",
+    message: "Could not allocate a new inferred state path next to the supplied state."
+  });
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path, fsConstants.F_OK);
+    return true;
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function outputExistsError(path: string): Error {
+  return createError({
+    code: "STATE_INFER_OUTPUT_EXISTS",
+    kind: "validation",
+    message: "The inferred state output path already exists.",
+    hint: "Choose a new --output path or omit --output to allocate one automatically.",
+    details: { path }
+  });
 }
 
 function normalizeCandidateLimit(limit: number): number {
@@ -1179,7 +1333,7 @@ function normalizeAttemptLimit(limit: number): number {
     : DEFAULT_MAX_VERIFICATION_ATTEMPTS;
 }
 
-function isAuthUrl(input: string, classifier: StateDiagnosisClassifier): boolean {
+function isAuthUrl(input: string, classifier: StateInferenceClassifier): boolean {
   try {
     return classifier.isAuthUrl(new URL(input));
   } catch {
@@ -1198,7 +1352,7 @@ function isRedirectStatus(status: number): boolean {
 
 function sameSanitizedUrl(left: string, right: string | undefined): boolean {
   return right !== undefined
-    && sanitizeStateDiagnosisUrl(left) === sanitizeStateDiagnosisUrl(right);
+    && sanitizeStateInferenceUrl(left) === sanitizeStateInferenceUrl(right);
 }
 
 function sameRawNavigationUrl(left: string, right: string): boolean {
@@ -1230,4 +1384,8 @@ function firstString(...values: unknown[]): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNodeError(value: unknown): value is NodeJS.ErrnoException {
+  return value instanceof Error;
 }

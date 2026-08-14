@@ -50,8 +50,7 @@ or switch tools because a command is unfamiliar.
 
 ## Command output
 
-Divebell orchestration commands such as `setup`, `open`, `stack`, and Extension
-management return a JSON envelope:
+Divebell commands return a JSON envelope:
 
 ```json
 {
@@ -61,12 +60,12 @@ management return a JSON envelope:
 }
 ```
 
-- Use `status` to distinguish success, error, and input requests.
-- Read command results from `data` and stable failures from `error.code`; do not
-  match `message` or `hint` text.
-- Direct browser commands may return their own JSON payload or concise text.
-  Follow their help and exit code instead of assuming a `status` envelope.
-- Do not parse `--help`, `--version`, or `--skill` as JSON.
+- Use `status` to distinguish success, error, and input requests. Read command
+  results from `data`.
+- On failure, expect `status: "error"` and a nonzero exit code. Use the stable
+  `error.code`; do not match `message` or `hint` text.
+- Do not parse `--help`, `--version`, `divebell skill`, or Extension `--skill`
+  output as JSON.
 
 ## Workflow
 
@@ -86,20 +85,16 @@ needed.
 Run:
 
 ```bash
-divebell open <url> [--profile <name-or-path> | --state <path>] [--no-default-profile] [--ui] [--timeout <ms>]
+divebell open <url>
 ```
 
 Divebell opens headlessly by default. Add `--ui` only when the user explicitly
 requests a visible window or visible UI is required for the task.
 
-By default, `open` uses the current OS user's most recently used Chrome Profile.
-Pass `--no-default-profile` to disable this behavior and use project Restore
-State. Use `--profile` or `--state` when the task requires a specific context.
-
-Only when an authorized state-backed retry still fails authentication or
-permission verification, read `references/authentication.md` and inspect
-`divebell state diagnose --help`. Never diagnose a Profile-backed open or a
-plain 404 without authentication evidence.
+After `open`, check whether the target is accessible. If access is denied, for
+example because the page redirected to a login page, read
+`references/authentication.md` and follow its decision flow. Otherwise,
+continue the task.
 
 Continue every browser operation through Divebell.
 
@@ -156,8 +151,6 @@ relevant Extensions.
 
 ## References
 
-- Read `references/authentication.md` for explicit Profile/state workflows,
-  the auth vault, or missing-URL state diagnosis after verified access failure.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

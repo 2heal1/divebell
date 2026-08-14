@@ -19,7 +19,7 @@ import {
   resolveChromeUserDataDirectory,
   resolveLatestChromeProfile
 } from "../dist/features/browser/profile.js";
-import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
+import { commandData, createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
 test("uses agent-browser automatic restore while preserving native profile and state settings", () => {
   const env = createAgentBrowserEnvironment({
@@ -47,17 +47,17 @@ test("uses agent-browser automatic restore while preserving native profile and s
   });
   assert.equal(explicitSourceEnv.AGENT_BROWSER_RESTORE, undefined);
 
-  const diagnosisEnv = createAgentBrowserEnvironment({
+  const inferenceEnv = createAgentBrowserEnvironment({
     AGENT_BROWSER_PROFILE: "Configured Profile",
     AGENT_BROWSER_STATE: "/tmp/configured-state.json"
-  }, undefined, "state-diagnosis", {
+  }, undefined, "state-inference", {
     ignoreConfiguredProfile: true,
     ignoreConfiguredState: true,
     defaultTimeoutMs: 12345
   });
-  assert.equal(diagnosisEnv.AGENT_BROWSER_PROFILE, undefined);
-  assert.equal(diagnosisEnv.AGENT_BROWSER_STATE, undefined);
-  assert.equal(diagnosisEnv.AGENT_BROWSER_DEFAULT_TIMEOUT, "12345");
+  assert.equal(inferenceEnv.AGENT_BROWSER_PROFILE, undefined);
+  assert.equal(inferenceEnv.AGENT_BROWSER_STATE, undefined);
+  assert.equal(inferenceEnv.AGENT_BROWSER_DEFAULT_TIMEOUT, "12345");
 });
 
 test("resolves the most recently used Chrome profile from Local State", async () => {
@@ -559,7 +559,7 @@ test("saves state for the primary URL and repeatable included sign-in URLs", asy
 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       path: resolve(outputPath),
       url: "https://app.example.com/account/settings",
       includeUrls: ["https://sso.example.net/login", "https://id.example.org/"],
@@ -661,7 +661,7 @@ test("requires a path and a valid URL for URL-scoped state saves", async () => {
   assert.equal(browserTouched, false);
 });
 
-test("requires a failed state and target URL for state diagnosis", async () => {
+test("requires an input state and target URL for state inference", async () => {
   let browserTouched = false;
   const browserRunner = createBrowserRunner(async () => {
     browserTouched = true;
@@ -671,27 +671,31 @@ test("requires a failed state and target URL for state diagnosis", async () => {
   const missingStateOutput = createOutput();
   assert.equal(await runCli([
     "state",
-    "diagnose",
-    "https://app.example.com/account"
+    "infer",
+    "https://app.example.com/account",
+    "--source-profile",
+    "Work"
   ], {
     stdout: missingStateOutput.stdout,
     stderr: missingStateOutput.stderr,
     browserRunner
   }), 1);
-  assert.equal(JSON.parse(missingStateOutput.text()).error.code, "STATE_DIAGNOSE_STATE_REQUIRED");
+  assert.equal(JSON.parse(missingStateOutput.text()).error.code, "STATE_INFER_STATE_REQUIRED");
 
   const missingUrlOutput = createOutput();
   assert.equal(await runCli([
     "state",
-    "diagnose",
+    "infer",
     "--state",
-    "/tmp/failed-state.json"
+    "/tmp/failed-state.json",
+    "--source-profile",
+    "Work"
   ], {
     stdout: missingUrlOutput.stdout,
     stderr: missingUrlOutput.stderr,
     browserRunner
   }), 1);
-  assert.equal(JSON.parse(missingUrlOutput.text()).error.code, "STATE_DIAGNOSE_URL_REQUIRED");
+  assert.equal(JSON.parse(missingUrlOutput.text()).error.code, "STATE_INFER_URL_REQUIRED");
   assert.equal(browserTouched, false);
 });
 

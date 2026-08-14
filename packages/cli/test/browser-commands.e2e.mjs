@@ -54,21 +54,21 @@ try {
     DIVEBELL_OPERATION_LOG_DIR: operationLogDirectory
   };
 
-  await runCli(["open", `${origin}/first`, "--timeout", "10000", "--no-bridge"], env);
+  await runCli(["open", `${origin}/first`, "--timeout", "10000", "--no-bridge", "--no-default-profile"], env);
   await runCli(["check-element", "#agree"], env);
-  assert.equal((await runCli(["is", "checked", "#agree"], env)).trim(), "true");
+  assert.equal(await runCli(["is", "checked", "#agree"], env), "true");
 
   await runCli(["hover", "#hover"], env);
   await runCli(["wait", "--text", "Hovered"], env);
-  assert.equal((await runCli(["get", "text", "#result"], env)).trim(), "Hovered");
+  assert.equal(await runCli(["get", "text", "#result"], env), "Hovered");
 
   await runCli(["goto", `${origin}/second`], env);
   await runCli(["wait", "--url", "**/second?*"], env);
-  assert.equal((await runCli(["get", "text", "#page"], env)).trim(), "Second");
+  assert.equal(await runCli(["get", "text", "#page"], env), "Second");
 
   await runCli(["back"], env);
   await runCli(["wait", "--url", "**/first?*"], env);
-  assert.equal((await runCli(["get", "title"], env)).trim(), "First Page");
+  assert.equal(await runCli(["get", "title"], env), "First Page");
   await runCli(["reload"], env);
   await runCli(["wait", "--load", "domcontentloaded"], env);
 
@@ -93,5 +93,7 @@ async function runCli(args, env) {
     env,
     maxBuffer: 10 * 1024 * 1024
   });
-  return result.stdout;
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.status, "ok");
+  return parsed.data;
 }

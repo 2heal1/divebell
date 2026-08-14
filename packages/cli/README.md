@@ -61,12 +61,16 @@ When no usable Chrome Profile exists, Divebell falls back to Automatic Restore S
 For a URL-scoped state, always try and verify a normal
 `divebell open <url> --state <path>` first. If that attempt redirects to login,
 returns 401/403, shows an authentication or permission failure, or returns 404
-with authentication evidence, `divebell state diagnose <url> --state <path>`
-can replay the first navigation in an isolated metadata-only capture and
-suggest sanitized `--include-url` candidates. It is not a routine preflight,
-does not infer missing state from a plain 404, and never modifies the state
-file. Source Profile comparison is performed only with an explicit
-`--source-profile <name|path>`.
+with authentication evidence, run the following on the state provider's
+machine:
+
+```sh
+divebell state infer <url> --state <path> --source-profile <name|path>
+```
+
+It verifies the working Profile, tries the smallest sanitized URL scopes, and
+saves a new standard state JSON. It does not infer missing state from a plain
+404, modify the input state, guess a Profile, or overwrite an existing output.
 
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 

@@ -502,7 +502,9 @@ test("packed archive installs and loads through the external extension mechanism
       }
     });
     assert.equal(exitCode, 0, stderr);
-    assert.equal(JSON.parse(stdout).package.name, "@divebell/extension-mf");
+    const addOutput = JSON.parse(stdout);
+    assert.equal(addOutput.status, "ok");
+    assert.equal(addOutput.data.package.name, "@divebell/extension-mf");
 
     const loaded = await createDivebellCliWithExternalExtensions({}, {
       ...process.env,

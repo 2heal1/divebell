@@ -97,8 +97,12 @@ Pass `--no-default-profile` to disable this behavior and use project Restore
 State. Use `--profile` or `--state` when the task requires a specific context.
 
 Only when an authorized state-backed retry still fails authentication or
-permission verification, read `references/authentication.md` and inspect
-`divebell state diagnose --help`. Never diagnose a Profile-backed open or a
+permission verification, read `references/authentication.md`. State inference
+must run on the state provider's machine with an explicitly named Profile that
+can access the same target. If this machine does not own that Profile, give the
+provider the documented `divebell state infer` command instead of running it
+locally. Use the returned state JSON path with `divebell open --state` and
+verify the same success condition. Never infer a Profile-backed failure or a
 plain 404 without authentication evidence.
 
 Continue every browser operation through Divebell.
@@ -157,7 +161,8 @@ relevant Extensions.
 ## References
 
 - Read `references/authentication.md` for explicit Profile/state workflows,
-  the auth vault, or missing-URL state diagnosis after verified access failure.
+  the auth vault, or provider-side state inference after verified access
+  failure.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

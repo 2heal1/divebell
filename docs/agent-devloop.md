@@ -82,24 +82,25 @@ fix the underlying wait condition.
 Later page commands and Extensions reuse the **current working directory's** most recently opened page, session, and selected browser context by default. Do not run `stop` in the middle of a workflow unless the task owns the entire browser lifecycle; the current page may still contain valuable development context.
 
 When an explicitly supplied URL-scoped state fails authentication or
-permission verification, diagnose it only after the normal `open` attempt.
-First verify the final URL, HTTP/navigation result, and task expectation. If
-the page is usable, do not run diagnosis. If it redirects to sign-in, returns
-401/403, shows a clear authentication/permission failure, returns 404 with
-authentication evidence, or loses its initial navigation context, run:
+permission verification, first verify the final URL, HTTP/navigation result,
+and task expectation. Send that state and success condition back to the state
+provider. On the provider machine, use an explicitly named Profile that can
+access the target to infer a verified replacement:
 
 ```sh
-divebell state diagnose https://example.com/orders \
+divebell state infer https://example.com/orders \
   --state /path/to/test-account.json \
+  --source-profile "Test Account" \
+  --output /path/to/test-account-inferred.json \
   --expect-url 'https://example.com/orders*'
 ```
 
-Treat a plain 404 without authentication evidence as `not_auth_related`, not
-as proof that state is missing. Add `--source-profile <name|path>` only when the
-user explicitly identifies the signed-in Profile to compare. Review the
-sanitized candidates, re-export with explicit `--include-url` values, and then
-repeat the same `open` and verification. See [Browser Authentication and
-State](browser-auth.md#diagnose-a-missing-state-source-after-access-fails).
+The command verifies the Profile, tries the smallest sanitized URL scopes, and
+returns a new standard state JSON path without modifying the deficient state.
+Transfer the result securely and repeat the same `open` and verification on
+the consumer. Treat a plain 404 without authentication evidence as an
+application or routing problem. See [Browser Authentication and
+State](browser-auth.md#infer-a-replacement-state-on-the-provider-machine).
 
 Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 

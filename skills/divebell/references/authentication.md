@@ -7,6 +7,22 @@ trusted storage, and never print their contents.
 An ordinary `open` uses the most recently used Chrome Profile. Pass
 `--no-default-profile` to skip it and use project Restore State.
 
+## Choose the workflow
+
+After `open` redirects to a login page, identify which browser context it used:
+
+- If it used an explicit state file, that state is deficient for the target.
+  Follow **Infer missing state sources**. Inference runs on the state provider's
+  machine, where both that state file and an explicitly named working Profile
+  are available.
+- If it used an explicit Profile or the default latest Profile, do not infer.
+  Ask the user or provider to identify a Profile or state authorized for the
+  target. Never enumerate Profiles and choose an account for the user.
+- If the provider can open the target with an authorized Profile and another
+  machine needs a portable state, follow **Save a portable state**.
+
+Do not use either workflow for an ordinary non-login page or a plain 404.
+
 ## Save a portable state
 
 Use `state save` when a provider can already open the exact protected target

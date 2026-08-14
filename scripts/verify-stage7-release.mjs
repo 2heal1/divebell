@@ -102,7 +102,7 @@ async function main() {
 
     await waitForConnectedRuntime(address.url);
 
-    const targets = await runCliJson([
+    const targets = await runCliData([
       "targets",
       "--bridge",
       address.url,
@@ -114,7 +114,7 @@ async function main() {
     assert.equal(targets.result.length, 1);
     assert.equal(targets.result[0].type, "release.app");
 
-    const snapshot = await runCliJson([
+    const snapshot = await runCliData([
       "snapshot",
       "--bridge",
       address.url,
@@ -126,7 +126,7 @@ async function main() {
     assert.equal(snapshot.result.targets["app:stage7-release"].status, "ready");
     assert.equal(snapshot.result.targets["app:stage7-release"].data.bridgeManagedBy, "cli");
 
-    const wait = await runCliJson([
+    const wait = await runCliData([
       "wait-for",
       "--bridge",
       address.url,
@@ -200,7 +200,7 @@ function restoreOptionalGlobal(name, value) {
   else globalThis[name] = value;
 }
 
-async function runCliJson(argv) {
+async function runCliData(argv) {
   const output = createOutput();
   const exitCode = await runCli(argv, {
     stdout: output.stdout,
@@ -208,7 +208,10 @@ async function runCliJson(argv) {
   });
 
   assert.equal(exitCode, 0, output.errorText());
-  return JSON.parse(output.text());
+  const result = JSON.parse(output.text());
+  assert.equal(result.status, "ok");
+  assert.equal(result.meta?.version, 1);
+  return result.data;
 }
 
 function createOutput() {

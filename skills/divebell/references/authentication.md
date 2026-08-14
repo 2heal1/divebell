@@ -9,7 +9,8 @@ An ordinary `open` uses the most recently used Chrome Profile. Pass
 
 ## Choose the workflow
 
-After `open` redirects to a login page, identify which browser context it used:
+When `open` cannot access the target, for example because it redirects to a
+login page, identify which browser context it used:
 
 - If it used an explicit state file, that state is deficient for the target.
   Follow **Infer missing state sources**. Inference runs on the state provider's

@@ -91,8 +91,9 @@ divebell open <url>
 Divebell opens headlessly by default. Add `--ui` only when the user explicitly
 requests a visible window or visible UI is required for the task.
 
-After `open`, check whether the target redirected to a login page. If it did,
-read `references/authentication.md` and follow its decision flow. Otherwise,
+After `open`, check whether the target is accessible. If access is denied, for
+example because the page redirected to a login page, read
+`references/authentication.md` and follow its decision flow. Otherwise,
 continue the task.
 
 Continue every browser operation through Divebell.
@@ -150,7 +151,6 @@ relevant Extensions.
 
 ## References
 
-- Read `references/authentication.md` when `open` redirects to a login page.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

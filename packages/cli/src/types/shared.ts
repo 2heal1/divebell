@@ -80,7 +80,7 @@ export interface CommandOutput {
 
 
 export interface CliOperationLogEntry {
-  schemaVersion: 4;
+  schemaVersion: 1;
   command: "open";
   key: string;
   cwd: string;
@@ -93,6 +93,8 @@ export interface CliOperationLogEntry {
   openedAt: number;
   exitCode: number;
   activeExtensions: string[];
+  browserUi: boolean;
+  browserReuseInitialBlankPage: boolean;
   browserRestoreDisabled: boolean;
   browserDefaultProfileDisabled: boolean;
   browserDefaultProfile?: string;

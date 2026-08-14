@@ -40,7 +40,7 @@
     "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
   },
   "dependencies": {
-    "@divebell/agent-browser": "0.33.2-divebell.7",
+    "@divebell/agent-browser": "0.33.2-divebell.8",
     "@divebell/bridge": "workspace:^",
     "@divebell/core": "workspace:^"
   },

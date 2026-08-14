@@ -84,6 +84,8 @@ export async function runStackCommand(
     openedAt: openContext.openedAt,
     exitCode: openContext.exitCode,
     activeExtensions: openContext.activeExtensions,
+    browserUi: openContext.browserUi,
+    browserReuseInitialBlankPage: openContext.browserReuseInitialBlankPage,
     browserRestoreDisabled: openContext.browserRestoreDisabled,
     browserDefaultProfileDisabled: openContext.browserDefaultProfileDisabled,
     ...(openContext.browserDefaultProfile === undefined

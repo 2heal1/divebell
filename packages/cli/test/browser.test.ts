@@ -348,29 +348,41 @@ test("preserves state-backed browser restore mode across page commands and stop"
       join(operationLogDirectory, contextFile as string),
       "utf8"
     ));
-    assert.equal(context.schemaVersion, 4);
+    assert.equal(context.schemaVersion, 1);
+    assert.equal(context.browserUi, true);
+    assert.equal(context.browserReuseInitialBlankPage, true);
     assert.equal(context.browserRestoreDisabled, true);
     assert.equal(context.browserDefaultProfileDisabled, true);
 
     assert.equal(await run(["wait", "5000"]), 0);
     assert.equal(await run(["get", "url"]), 0);
+    assert.equal(await run(["screenshot"]), 0);
     assert.equal(await run(["stop"]), 0);
 
     assert.deepEqual(browserCalls, [
       ["--state", "riff-state.json", "open", `http://app.test/?divebellSessionId=${createOperationSessionId()}`],
       ["wait", "5000"],
       ["get", "url"],
+      ["screenshot"],
       ["close"]
     ]);
     assert.equal(browserOptions[0]?.ui, true);
     assert.equal(browserOptions[0]?.reuseInitialBlankPage, true);
     assert.deepEqual(
       browserOptions.map((options) => options?.disableRestore),
-      [true, true, true, true]
+      [true, true, true, true, true]
     );
     assert.deepEqual(
       browserOptions.map((options) => options?.disableDefaultProfile),
-      [true, true, true, true]
+      [true, true, true, true, true]
+    );
+    assert.deepEqual(
+      browserOptions.map((options) => options?.ui),
+      [true, true, true, true, true]
+    );
+    assert.deepEqual(
+      browserOptions.map((options) => options?.reuseInitialBlankPage),
+      [true, true, true, true, true]
     );
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
@@ -450,12 +462,19 @@ test("pins an automatically selected Chrome profile to the open context", async 
       "utf8"
     ));
     assert.equal(context.browserDefaultProfile, "Profile 2");
+    assert.equal(context.browserUi, false);
+    assert.equal(context.browserReuseInitialBlankPage, true);
 
     assert.equal(await run(["wait", "10"]), 0);
     assert.equal(await run(["stop"]), 0);
     assert.equal(browserOptions[0]?.defaultProfile, undefined);
     assert.equal(browserOptions[1]?.defaultProfile, "Profile 2");
     assert.equal(browserOptions[2]?.defaultProfile, "Profile 2");
+    assert.deepEqual(browserOptions.map((options) => options?.ui), [false, false, false]);
+    assert.deepEqual(
+      browserOptions.map((options) => options?.reuseInitialBlankPage),
+      [true, true, true]
+    );
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
@@ -965,35 +984,6 @@ test("uses the latest open context as the default runtime selector", async () =>
   }
 });
 
-test("keeps directory context written by the previous operation schema", async () => {
-  const context = createOpenContextFixture({
-    bridgeUrl: "http://bridge.test:18422"
-  });
-  const [contextFile] = readdirSync(context.operationLogDirectory);
-  assert.notEqual(contextFile, undefined);
-  const contextPath = join(context.operationLogDirectory, contextFile as string);
-  const legacyContext = JSON.parse(readFileSync(contextPath, "utf8"));
-  legacyContext.schemaVersion = 2;
-  delete legacyContext.bridgePort;
-  writeFileSync(contextPath, `${JSON.stringify(legacyContext, null, 2)}\n`, "utf8");
-
-  try {
-    const output = createOutput();
-    assert.equal(await runCli(["runtimes"], {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      operationLogDirectory: context.operationLogDirectory,
-      fetcher: async (url) => {
-        assert.equal(String(url), "http://bridge.test:18422/runtimes");
-        return jsonResponse({ runtimes: [] });
-      }
-    }), 0);
-    assert.equal(commandData<{ bridgeUrl: string }>(output.text()).bridgeUrl, "http://bridge.test:18422");
-  } finally {
-    context.cleanup();
-  }
-});
-
 test("requires an open context before browser page commands", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const output = createOutput();
@@ -1246,7 +1236,11 @@ test("forwards eval scripts from standard input", async () => {
     assert.equal(commandData(output.text()), "Recording Replay");
     assert.deepEqual(browserCalls, [{
       args: ["eval", "--stdin"],
-      options: { input: "document.title\n" }
+      options: {
+        input: "document.title\n",
+        ui: false,
+        reuseInitialBlankPage: false
+      }
     }]);
   } finally {
     context.cleanup();

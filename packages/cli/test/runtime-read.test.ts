@@ -6,7 +6,7 @@ import { test } from "@rstest/core";
 
 import { runCli } from "../dist/index.js";
 
-import { createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
+import { commandData, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
 test("passes keyword query to events", async () => {
   const calls: string[] = [];
@@ -68,7 +68,7 @@ test("prints runtimes from the configured bridge", async () => {
   });
 
   assert.equal(exitCode, 0);
-  assert.deepEqual(JSON.parse(output.text()), {
+  assert.deepEqual(commandData(output.text()), {
     bridgeUrl: "http://bridge.test",
     runtimes: [
       {
@@ -103,7 +103,7 @@ test("uses the current directory open context when listing runtimes", async () =
 
     assert.equal(exitCode, 0);
     assert.deepEqual(calls, ["http://bridge.context/runtimes"]);
-    assert.equal(JSON.parse(output.text()).bridgeUrl, "http://bridge.context");
+    assert.equal(commandData<{ bridgeUrl: string }>(output.text()).bridgeUrl, "http://bridge.context");
   } finally {
     context.cleanup();
   }
@@ -155,7 +155,7 @@ test("auto-starts a local bridge before listing runtimes", async () => {
       "http://localhost:18083/runtimes",
       "http://localhost:18083/runtimes"
     ]);
-    assert.equal(JSON.parse(output.text()).runtimes[0].runtimeId, "runtime-1");
+    assert.equal(commandData<{ runtimes: Array<{ runtimeId: string }> }>(output.text()).runtimes[0]?.runtimeId, "runtime-1");
   } finally {
     rmSync(stateDirectory, {
       recursive: true,
@@ -219,7 +219,7 @@ test("auto-starts a local bridge before reading runtime resources", async () => 
       "http://localhost:18084/runtimes",
       "http://localhost:18084/runtimes/runtime-1/snapshot"
     ]);
-    assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-1");
+    assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-1");
   } finally {
     rmSync(stateDirectory, {
       recursive: true,
@@ -271,7 +271,7 @@ test("selects the first matching runtime for read commands", async () => {
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-old/snapshot"
   ]);
-  assert.deepEqual(JSON.parse(output.text()), {
+  assert.deepEqual(commandData(output.text()), {
     runtime: {
       runtimeId: "runtime-old",
       url: "http://app.test/",
@@ -332,7 +332,7 @@ test("uses the first runtime for actions when multiple instances match", async (
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-main/actions/route.pick/run"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-main");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-main");
 });
 
 test("matches runtime url when root path trailing slash differs", async () => {
@@ -365,7 +365,7 @@ test("matches runtime url when root path trailing slash differs", async () => {
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-root");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-root");
 });
 
 test("matches localhost and IPv4 loopback runtime URLs for read commands", async () => {
@@ -398,7 +398,7 @@ test("matches localhost and IPv4 loopback runtime URLs for read commands", async
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-loopback");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-loopback");
 });
 
 test("matches runtime url when the runtime only adds the Divebell session query", async () => {
@@ -431,7 +431,7 @@ test("matches runtime url when the runtime only adds the Divebell session query"
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-session-url");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-session-url");
 });
 
 test("selects the latest matching runtime by session", async () => {
@@ -488,7 +488,7 @@ test("selects the latest matching runtime by session", async () => {
     "http://bridge.test/runtimes",
     "http://bridge.test/runtimes/runtime-after-refresh/snapshot"
   ]);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-after-refresh");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-after-refresh");
 });
 
 test("selects runtime by session from the runtime url when sessionId is not exposed", async () => {
@@ -528,7 +528,7 @@ test("selects runtime by session from the runtime url when sessionId is not expo
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(JSON.parse(output.text()).runtime.runtimeId, "runtime-orders");
+  assert.equal(commandData<{ runtime: { runtimeId: string } }>(output.text()).runtime.runtimeId, "runtime-orders");
 });
 
 test("runs execution commands against the selected runtime", async () => {

@@ -10,7 +10,7 @@ import { type BrowserRunOptions } from "../dist/features/browser/runner.js";
 import { createDetachedBridgeStarter } from "../dist/features/bridge/process.js";
 import { createOperationSessionId } from "../dist/utils/operation-log.js";
 
-import { assertOpenOutput, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
+import { assertOpenOutput, commandData, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
 test("opens a browser page and auto-starts the bridge when needed", async () => {
   const output = createOutput();
@@ -513,7 +513,7 @@ test("assigns a dedicated bridge port and reuses it for directory commands", asy
       operationLogDirectory,
       browserRunner
     }), 0);
-    assert.equal(JSON.parse(runtimeOutput.text()).bridgeUrl, reopened.bridgeUrl);
+    assert.equal(commandData<{ bridgeUrl: string }>(runtimeOutput.text()).bridgeUrl, reopened.bridgeUrl);
 
     assert.equal(await runCli(["stop"], {
       stdout: createOutput().stdout,
@@ -945,7 +945,7 @@ test("uses the latest open context as the default runtime selector", async () =>
       "http://bridge.test/runtimes",
       "http://bridge.test/runtimes/runtime-open/snapshot?id=modern%3Aroute"
     ]);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       runtime: {
         runtimeId: "runtime-open",
         url: "http://app.test/orders?divebellSessionId=session-open",
@@ -988,7 +988,7 @@ test("keeps directory context written by the previous operation schema", async (
         return jsonResponse({ runtimes: [] });
       }
     }), 0);
-    assert.equal(JSON.parse(output.text()).bridgeUrl, "http://bridge.test:18422");
+    assert.equal(commandData<{ bridgeUrl: string }>(output.text()).bridgeUrl, "http://bridge.test:18422");
   } finally {
     context.cleanup();
   }
@@ -1048,7 +1048,7 @@ test("clicks interactive text with an exact page-side lookup", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.equal(output.text(), "clicked\n");
+    assert.equal(commandData(output.text()), "clicked");
     assert.equal(output.errorText(), "");
     assert.equal(browserCalls.length, 1);
     assert.equal(browserCalls[0]?.[0], "eval");
@@ -1082,7 +1082,8 @@ test("delegates refs and explicit selectors to agent-browser", async () => {
       assert.equal(exitCode, 0);
     }
 
-    assert.equal(output.text(), "clicked\nclicked\nclicked\n");
+    assert.equal((output.text().match(/"data": "clicked"/gu) ?? []).length, 3);
+    assert.equal((output.text().match(/"status": "ok"/gu) ?? []).length, 3);
     assert.deepEqual(browserCalls, [
       ["click", "@e7"],
       ["click", "[data-testid=refresh-order]"],
@@ -1210,7 +1211,7 @@ test("navigates the current page and keeps its Divebell session", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.equal(output.text(), "navigated\n");
+    assert.equal(commandData(output.text()), "navigated");
     assert.deepEqual(browserCalls, [[
       "goto",
       "http://app.test/orders?region=cn&divebellSessionId=session-recording#details"
@@ -1242,7 +1243,7 @@ test("forwards eval scripts from standard input", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.equal(output.text(), "Recording Replay\n");
+    assert.equal(commandData(output.text()), "Recording Replay");
     assert.deepEqual(browserCalls, [{
       args: ["eval", "--stdin"],
       options: { input: "document.title\n" }
@@ -1293,8 +1294,11 @@ test("reports interactive text click errors without broad text fallback", async 
     });
 
     assert.equal(exitCode, 1);
-    assert.equal(output.text(), "");
-    assert.match(output.errorText(), /Multiple interactive elements matched text "Refresh order"/);
+    const parsed = JSON.parse(output.text());
+    assert.equal(parsed.status, "error");
+    assert.equal(parsed.error.code, "COMMAND_FAILED");
+    assert.match(parsed.message, /Multiple interactive elements matched text "Refresh order"/);
+    assert.equal(output.errorText(), "");
     assert.equal(browserCalls.length, 1);
     assert.equal(browserCalls[0]?.[0], "eval");
   } finally {
@@ -1337,7 +1341,7 @@ test("starts the bridge in the background and returns after it is reachable", as
     });
 
     assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       bridgeUrl: "http://localhost:18081",
       pid: 12345,
       status: "started"
@@ -1412,7 +1416,7 @@ test("stops by closing the browser session before stopping the bridge", async ()
     assert.equal(exitCode, 0);
     assert.deepEqual(order, ["close", "bridge stop"]);
     assert.equal(readdirSync(operationLogDirectory).length, 0);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       browser: {
         command: "stop",
         exitCode: 0
@@ -1464,7 +1468,7 @@ test("reads a window value through browser eval", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       path: "gf_data_v1",
       found: true,
       value: {
@@ -1500,7 +1504,7 @@ test("waits for a browser eval condition", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       success: true,
       condition: {
         script: "window.gf_data_v1 != null"
@@ -1538,10 +1542,9 @@ test("filters browser network requests by url", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.equal(output.text(), [
+    assert.equal(commandData(output.text()), [
       "[123.1] GET http://app.test/api/orders (fetch) 200",
-      "[123.3] GET http://app.test/api/orders/failed (xhr)",
-      ""
+      "[123.3] GET http://app.test/api/orders/failed (xhr)"
     ].join("\n"));
     assert.deepEqual(browserCalls, [["network", "requests"]]);
   } finally {
@@ -1575,7 +1578,7 @@ test("filters browser console entries by level query and limit", async () => {
     });
 
     assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       entries: [
         {
           level: "error",
@@ -1622,7 +1625,7 @@ test("forwards supported coverage commands as JSON requests", async () => {
       });
       assert.equal(exitCode, 0);
       assert.equal(output.errorText(), "");
-      assert.deepEqual(JSON.parse(output.text()), { command });
+      assert.deepEqual(commandData(output.text()), { command });
     }
     assert.deepEqual(calls, commands.map((command) => [...command, "--json"]));
   } finally {

@@ -53,6 +53,9 @@ divebell open https://app.example.com/account --profile "Work" --ui
 divebell state save ./app-state.json --url https://app.example.com/account
 ```
 
+The save command returns the absolute file path in `data.path` of the standard
+Divebell command envelope.
+
 When the application relies on a different SSO origin, add it explicitly. `--url` identifies the one primary application URL; `--include-url` is repeatable:
 
 ```bash
@@ -103,8 +106,7 @@ divebell state infer https://app.example.net/account \
   --source-profile "Work" \
   --output ./app-state-inferred.json \
   --expect-url 'https://app.example.net/account*' \
-  --expect-text 'Account' \
-  --json
+  --expect-text 'Account'
 ```
 
 `--state` is the deficient consumer state. `--source-profile` is required and
@@ -128,12 +130,19 @@ mode-`0600` state JSON with `cookies` and `origins`, ready for direct use with
 analytics, advertising, telemetry, and monitoring requests are excluded from
 candidate scopes.
 
-Without `--json`, stdout is the absolute new state path. With `--json`, the
-result contains only that path:
+The command returns the absolute new state path in `data.path` of the standard
+command envelope:
 
 ```json
 {
-  "path": "/absolute/path/app-state-inferred.json"
+  "status": "ok",
+  "data": {
+    "path": "/absolute/path/app-state-inferred.json"
+  },
+  "meta": {
+    "version": 1,
+    "command": "state infer https://app.example.net/account"
+  }
 }
 ```
 

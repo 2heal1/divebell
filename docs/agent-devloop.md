@@ -96,10 +96,10 @@ divebell state infer https://example.com/orders \
 ```
 
 The command verifies the Profile, tries the smallest sanitized URL scopes, and
-returns a new standard state JSON path without modifying the deficient state.
-Transfer the result securely and repeat the same `open` and verification on
-the consumer. Treat a plain 404 without authentication evidence as an
-application or routing problem. See [Browser Authentication and
+returns a new standard state JSON path in `data.path` without modifying the
+deficient state. Transfer the result securely and repeat the same `open` and
+verification on the consumer. Treat a plain 404 without authentication
+evidence as an application or routing problem. See [Browser Authentication and
 State](browser-auth.md#infer-a-replacement-state-on-the-provider-machine).
 
 Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.

@@ -19,7 +19,7 @@ import {
   resolveChromeUserDataDirectory,
   resolveLatestChromeProfile
 } from "../dist/features/browser/profile.js";
-import { createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
+import { commandData, createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
 test("uses agent-browser automatic restore while preserving native profile and state settings", () => {
   const env = createAgentBrowserEnvironment({
@@ -559,7 +559,7 @@ test("saves state for the primary URL and repeatable included sign-in URLs", asy
 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
-    assert.deepEqual(JSON.parse(output.text()), {
+    assert.deepEqual(commandData(output.text()), {
       path: resolve(outputPath),
       url: "https://app.example.com/account/settings",
       includeUrls: ["https://sso.example.net/login", "https://id.example.org/"],

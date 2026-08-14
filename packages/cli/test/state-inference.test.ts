@@ -43,7 +43,7 @@ afterAll(() => {
   rmSync(TEST_DIRECTORY, { recursive: true, force: true });
 });
 
-test("state infer saves a verified standard state JSON and emits its path", async () => {
+test("state infer saves a verified standard state JSON and returns its path in the command envelope", async () => {
   const loginUrl = "https://sso.example.net/login?code=secret";
   const fixture = createInferenceRunner({
     initial: authRedirectScenario(loginUrl),
@@ -66,8 +66,7 @@ test("state infer saves a verified standard state JSON and emits its path", asyn
     "--expect-url",
     "https://app.example.com/account*",
     "--expect-text",
-    "Account",
-    "--json"
+    "Account"
   ], {
     stdout: { write: (chunk) => { stdout += chunk; } },
     stderr: { write: (chunk) => { stderr += chunk; } },
@@ -76,7 +75,14 @@ test("state infer saves a verified standard state JSON and emits its path", asyn
 
   assert.equal(exitCode, 0);
   assert.equal(stderr, "");
-  assert.deepEqual(JSON.parse(stdout), { path: paths.output });
+  assert.deepEqual(JSON.parse(stdout), {
+    status: "ok",
+    data: { path: paths.output },
+    meta: {
+      version: 1,
+      command: `state infer ${TARGET_URL}`
+    }
+  });
   assert.deepEqual(Object.keys(JSON.parse(readFileSync(paths.output, "utf8"))).sort(), [
     "cookies",
     "origins"
@@ -84,7 +90,7 @@ test("state infer saves a verified standard state JSON and emits its path", asyn
   assert.equal(statSync(paths.output).mode & 0o777, 0o600);
 });
 
-test("state infer allocates a sibling output path and prints the path by default", async () => {
+test("state infer allocates a sibling output path in the command envelope", async () => {
   const loginUrl = "https://sso.example.net/login";
   const fixture = createInferenceRunner({
     initial: authRedirectScenario(loginUrl),
@@ -109,7 +115,7 @@ test("state infer allocates a sibling output path and prints the path by default
   });
 
   assert.equal(exitCode, 0);
-  assert.equal(stdout, `${expectedPath}\n`);
+  assert.equal(JSON.parse(stdout).data.path, expectedPath);
   assert.equal(existsSync(expectedPath), true);
 });
 

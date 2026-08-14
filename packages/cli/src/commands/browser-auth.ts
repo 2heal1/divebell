@@ -4,7 +4,7 @@ import { runBrowserAndPipe } from "../features/browser/io.js";
 import { saveUrlScopedBrowserState } from "../features/browser/state.js";
 import { inferBrowserState } from "../features/browser/state-inference.js";
 import { getOptionValue, getOptionValues } from "../utils/args.js";
-import { createError } from "../utils/output.js";
+import { createCommandOutput, createError } from "../utils/output.js";
 
 const AGENT_BROWSER_BOOLEAN_OPTIONS = new Set([
   "all",
@@ -48,9 +48,7 @@ export async function runAgentBrowserStateCommand(
       ...(expectText === undefined ? {} : { expectText }),
       ...(timeoutInput === undefined ? {} : { timeoutMs: Number(timeoutInput) })
     });
-    stdout.write(args.options.has("json")
-      ? `${JSON.stringify({ path: result.path }, null, 2)}\n`
-      : `${result.path}\n`);
+    createCommandOutput(stdout, args.command.join(" ")).ok({ path: result.path });
     return 0;
   }
   const urls = getOptionValues(args, "url");

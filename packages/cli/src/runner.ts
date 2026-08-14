@@ -3,7 +3,7 @@ import { createDefaultBrowserRunner } from "./features/browser/runner.js";
 import { createDetachedBridgeStarter } from "./features/bridge/process.js";
 import { createCommandHelpText, createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
-import { createError, writeErrorOutput } from "./utils/output.js";
+import { createError, writeErrorOutput, writeOkOutput } from "./utils/output.js";
 import { runAgentBrowserAuthCommand, runAgentBrowserProfilesCommand, runAgentBrowserStateCommand } from "./commands/browser-auth.js";
 import {
   runBridgeServerCommand,
@@ -40,6 +40,8 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
   );
   const operationLogStore = createFileOperationLogStore(process.cwd(), options.operationLogDirectory);
   const args = parseCliArgs(argv);
+  const bufferedStdout = createBufferedWriter();
+  const bufferedStderr = createBufferedWriter();
 
   try {
     if (isCliVersionRequest(args)) {
@@ -73,9 +75,10 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
     }
 
     const loading = createLoadingController(stderr);
-    const commandStdout = createLoadingAwareWriter(stdout, loading);
-    const commandStderr = createLoadingAwareWriter(stderr, loading);
-    return await loading.withLoading(async () => {
+    const rawOutput = shouldUseRawOutput(args);
+    const commandStdout = createLoadingAwareWriter(rawOutput ? stdout : bufferedStdout, loading);
+    const commandStderr = createLoadingAwareWriter(rawOutput ? stderr : bufferedStderr, loading);
+    const exitCode = await loading.withLoading(async () => {
       if (args.command[0] === "__bridge-server") {
         return await runBridgeServerCommand(args, commandStdout, options.waitUntilClosed);
       }
@@ -277,10 +280,123 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
         hint: "Run `divebell --help` to see available commands."
       });
     });
+    if (!rawOutput) {
+      writeCommandOutput(stdout, args.command.join(" "), exitCode, bufferedStdout.value(), bufferedStderr.value());
+      if (exitCode === 0 && bufferedStderr.value().length > 0) {
+        stderr.write(bufferedStderr.value());
+      }
+    }
+    return exitCode;
   } catch (error) {
     writeErrorOutput(stdout, args.command.join(" ") || "divebell", error);
     return 1;
   }
+}
+
+function shouldUseRawOutput(args: ReturnType<typeof parseCliArgs>): boolean {
+  return args.command[0] === "__bridge-server"
+    || args.command[0] === "skill"
+    || hasOption(args, "skill");
+}
+
+function writeCommandOutput(
+  stdout: { write(chunk: string): void },
+  command: string,
+  exitCode: number,
+  rawStdout: string,
+  rawStderr: string
+): void {
+  const existingEnvelope = parseOutputEnvelope(rawStdout);
+  if (existingEnvelope !== undefined) {
+    stdout.write(rawStdout);
+    return;
+  }
+
+  const data = parseCommandData(rawStdout);
+  if (exitCode === 0) {
+    writeOkOutput(stdout, command, data);
+    return;
+  }
+
+  const forwardedError = readForwardedError(data);
+  writeErrorOutput(stdout, command, createError({
+    code: forwardedError.code ?? "COMMAND_FAILED",
+    kind: "browser",
+    message: forwardedError.message
+      ?? stripTrailingNewline(rawStderr)
+      ?? `Command exited with code ${exitCode}.`,
+    retryable: true,
+    details: { exitCode },
+    ...(data === null ? {} : { data })
+  }));
+}
+
+function parseOutputEnvelope(value: string): Record<string, unknown> | undefined {
+  const parsed = parseJsonObject(value);
+  const meta = parsed?.meta;
+  if (
+    parsed === undefined
+    || !["ok", "needs_input", "error"].includes(String(parsed.status))
+    || meta === null
+    || typeof meta !== "object"
+    || (meta as Record<string, unknown>).version !== 1
+    || typeof (meta as Record<string, unknown>).command !== "string"
+  ) {
+    return undefined;
+  }
+  return parsed;
+}
+
+function parseCommandData(value: string): unknown {
+  const text = stripTrailingNewline(value);
+  if (text === undefined || text.length === 0) return null;
+  if (text.startsWith("{") || text.startsWith("[")) {
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      // Preserve non-JSON browser text verbatim.
+    }
+  }
+  return text;
+}
+
+function parseJsonObject(value: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function readForwardedError(data: unknown): { code?: string; message?: string } {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) return {};
+  const item = data as Record<string, unknown>;
+  return {
+    ...(typeof item.errorCode === "string" ? { code: item.errorCode } : {}),
+    ...(typeof item.error === "string" ? { message: item.error } : {})
+  };
+}
+
+function stripTrailingNewline(value: string): string | undefined {
+  if (value.length === 0) return undefined;
+  if (value.endsWith("\r\n")) return value.slice(0, -2);
+  if (value.endsWith("\n")) return value.slice(0, -1);
+  return value;
+}
+
+function createBufferedWriter(): { write(chunk: string): void; value(): string } {
+  let output = "";
+  return {
+    write(chunk) {
+      output += chunk;
+    },
+    value() {
+      return output;
+    }
+  };
 }
 
 function createLoadingAwareWriter(

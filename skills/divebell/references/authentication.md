@@ -1,4 +1,4 @@
-# Authentication state inference
+# Authentication state
 
 Profiles and state files are sensitive, reusable authorization material. Use
 only accounts and environments the user has authorized, keep state files on
@@ -7,7 +7,44 @@ trusted storage, and never print their contents.
 An ordinary `open` uses the most recently used Chrome Profile. Pass
 `--no-default-profile` to skip it and use project Restore State.
 
-## Decide where to run inference
+## Save a portable state
+
+Use `state save` when a provider can already open the exact protected target
+with an authorized Profile and another machine needs a reusable state file.
+Run the workflow on the provider's machine:
+
+1. Ask the provider to identify the authorized Profile explicitly. Never
+   enumerate Profiles and choose an account for the user.
+2. Open the exact target with that Profile and verify the final URL, navigation
+   or HTTP result, current account, and page success condition:
+
+   ```bash
+   divebell open <target-url> --profile <working-profile-name-or-path>
+   ```
+
+3. Save a new URL-scoped state from that verified browser session:
+
+   ```bash
+   divebell state save <new-state-path> --url <target-url>
+   ```
+
+   Use the exact protected application URL for `--url`. Repeat `--include-url`
+   only for related sign-in URLs already known to be required; do not guess or
+   add unrelated origins. Never overwrite or commit an existing state file.
+4. Read the absolute saved path from `data.path`. Transfer the file only through
+   an authorized secure channel, then verify it on the consumer:
+
+   ```bash
+   divebell open <target-url> --state <consumer-state-path>
+   ```
+
+If that state-backed open still has authentication or permission failure
+evidence, continue with the inference workflow below. Do not broaden the state
+manually.
+
+## Infer missing state sources
+
+### Decide where to run inference
 
 Use `state infer` only on the state provider's machine. That machine must have:
 
@@ -22,7 +59,7 @@ target URL and success condition, then give the command to the provider.
 Never enumerate Profiles and choose one. Ask the user or provider to identify
 the authorized source Profile explicitly.
 
-## Fill every argument
+### Fill every argument
 
 Inspect installed help before running the command:
 
@@ -46,13 +83,13 @@ Fill the arguments as follows:
   that proves the intended account or protected page is available.
 - `--timeout <ms>`: optionally set each navigation budget. The default is
   25000; valid values are integers from 1 through 120000.
-- `--json`: return `{ "path": "<absolute-path>" }`. Without it, stdout is the
-  absolute state path alone.
+- Successful output uses the standard command envelope. Read the absolute new
+  state path from `data.path`.
 
 Supply `--expect-url`, `--expect-text`, or both whenever a 2xx response alone
 does not prove successful access.
 
-## Infer and verify a replacement
+### Infer and verify a replacement
 
 Run this on the provider machine:
 
@@ -62,8 +99,7 @@ divebell state infer <target-url> \
   --source-profile <working-profile-name-or-path> \
   --output <new-state-path> \
   --expect-url '<successful-url-glob>' \
-  --expect-text '<successful-page-text>' \
-  --json
+  --expect-text '<successful-page-text>'
 ```
 
 Inference performs these steps in isolated browser sessions:
@@ -89,7 +125,7 @@ Transfer that file to the consumer only through an authorized secure channel,
 then verify the same final URL, navigation or HTTP result, account, and page
 success condition there.
 
-## Interpret failures safely
+### Interpret failures safely
 
 - `STATE_INFER_INPUT_STATE_VALID`: keep using the original state; it already
   passes the supplied checks on the provider machine.

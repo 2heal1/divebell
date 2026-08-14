@@ -70,7 +70,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell state infer <url> --state <path> --source-profile <name|path> [--output <path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>] [--json]",
+    usage: "divebell state infer <url> --state <path> --source-profile <name|path> [--output <path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>]",
     description: "On the state provider's machine, infer the smallest URL scope from a working Profile, verify it, and save a new standard state JSON without modifying the supplied state."
   },
   {

@@ -44,6 +44,18 @@ export function commandOutput(command: string, data: unknown, message: string | 
   };
 }
 
+export function commandData<T = unknown>(text: string): T {
+  const parsed = JSON.parse(text) as {
+    status?: unknown;
+    data?: T;
+    meta?: { version?: unknown; command?: unknown };
+  };
+  assert.equal(parsed.status, "ok");
+  assert.equal(parsed.meta?.version, 1);
+  assert.equal(typeof parsed.meta?.command, "string");
+  return parsed.data as T;
+}
+
 export function assertOpenOutput(
   text: string,
   expected: {

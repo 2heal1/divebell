@@ -27,7 +27,7 @@ export function createFileOperationLogStore(
     write: async (entry) => {
       await mkdir(stateDirectory, { recursive: true });
       await writeFile(stateFile, `${JSON.stringify({
-        schemaVersion: 5,
+        schemaVersion: 1,
         key,
         cwd: normalizedCwd,
         ...entry
@@ -67,13 +67,10 @@ export function normalizeDivebellUrlForMatch(input: string): string {
 function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | undefined {
   if (value === null || typeof value !== "object") return undefined;
   const entry = value as Record<string, unknown>;
-  const schemaVersion = entry.schemaVersion;
   const bridgeUrl = entry.bridgeUrl;
-  const bridgePort = schemaVersion === 2
-    ? getOperationBridgePort(bridgeUrl)
-    : entry.bridgePort;
+  const bridgePort = entry.bridgePort;
   if (!(
-    (schemaVersion === 2 || schemaVersion === 3 || schemaVersion === 4 || schemaVersion === 5) &&
+    entry.schemaVersion === 1 &&
     entry.command === "open" &&
     typeof entry.key === "string" &&
     typeof entry.cwd === "string" &&
@@ -87,13 +84,10 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.exitCode === "number" &&
     Array.isArray(entry.activeExtensions) &&
     entry.activeExtensions.every((value) => typeof value === "string") &&
-    (schemaVersion < 4 || typeof entry.browserRestoreDisabled === "boolean") &&
-    (schemaVersion !== 5 || (
-      typeof entry.browserUi === "boolean" &&
-      typeof entry.browserReuseInitialBlankPage === "boolean"
-    )) &&
-    (entry.browserDefaultProfileDisabled === undefined
-      || typeof entry.browserDefaultProfileDisabled === "boolean") &&
+    typeof entry.browserUi === "boolean" &&
+    typeof entry.browserReuseInitialBlankPage === "boolean" &&
+    typeof entry.browserRestoreDisabled === "boolean" &&
+    typeof entry.browserDefaultProfileDisabled === "boolean" &&
     (entry.browserDefaultProfile === undefined
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
     isBrowserRestoreOptions(entry.browserRestoreOptions) &&
@@ -104,17 +98,9 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
   }
   return {
     ...entry,
-    schemaVersion: 5,
+    schemaVersion: 1,
     bridgeUrl,
-    bridgePort,
-    browserUi: schemaVersion === 5 ? entry.browserUi : false,
-    browserReuseInitialBlankPage: schemaVersion === 5
-      ? entry.browserReuseInitialBlankPage
-      : false,
-    browserRestoreDisabled: schemaVersion >= 4
-      ? entry.browserRestoreDisabled
-      : false,
-    browserDefaultProfileDisabled: entry.browserDefaultProfileDisabled === true
+    bridgePort
   } as CliOperationLogEntry;
 }
 
@@ -144,19 +130,6 @@ function isHeaders(value: unknown): boolean {
     && typeof value === "object"
     && !Array.isArray(value)
     && Object.values(value).every((header) => typeof header === "string");
-}
-
-function getOperationBridgePort(bridgeUrl: unknown): number | null {
-  if (typeof bridgeUrl !== "string") return null;
-  try {
-    const url = new URL(bridgeUrl);
-    if (url.port.length > 0) return Number(url.port);
-    if (url.protocol === "http:") return 80;
-    if (url.protocol === "https:") return 443;
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 function isStackDetectionCache(value: unknown): boolean {

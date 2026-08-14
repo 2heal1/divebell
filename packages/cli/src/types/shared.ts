@@ -80,7 +80,7 @@ export interface CommandOutput {
 
 
 export interface CliOperationLogEntry {
-  schemaVersion: 5;
+  schemaVersion: 1;
   command: "open";
   key: string;
   cwd: string;

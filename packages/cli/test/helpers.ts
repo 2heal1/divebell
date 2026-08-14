@@ -129,7 +129,7 @@ export function createOpenContextFixture(overrides: Partial<{
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const key = createOperationLogKey(process.cwd());
   const entry = {
-    schemaVersion: 5,
+    schemaVersion: 1,
     command: "open",
     key,
     cwd: process.cwd(),

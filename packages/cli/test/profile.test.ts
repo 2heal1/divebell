@@ -406,7 +406,7 @@ test("uses the packaged Divebell agent-browser by default", async () => {
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.33\.2-divebell\.8/);
+  assert.match(result.stdout, /agent-browser 0\.34\.0-divebell\.1/);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {

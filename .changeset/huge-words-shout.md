@@ -1,0 +1,5 @@
+---
+"@divebell/cli": patch
+---
+
+bump

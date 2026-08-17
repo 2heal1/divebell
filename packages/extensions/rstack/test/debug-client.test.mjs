@@ -34,4 +34,32 @@ class RecordingBrowser {
     }
     return JSON.stringify({ matches: [] });
   }
+
+  async raw(command) {
+    const request = parseRawDebugCommand(command);
+    return {
+      exitCode: 0,
+      stdout: await this.run("debug", request),
+      stderr: ""
+    };
+  }
+}
+
+function parseRawDebugCommand(command) {
+  assert.equal(command[0], "debug");
+  const args = [];
+  const options = {};
+  for (let index = 1; index < command.length; index += 1) {
+    const value = command[index];
+    if (!value.startsWith("--")) {
+      args.push(value);
+      continue;
+    }
+    const name = value.slice(2);
+    const next = command[index + 1];
+    options[name] = next === undefined || next.startsWith("--")
+      ? true
+      : command[++index];
+  }
+  return { args, options };
 }

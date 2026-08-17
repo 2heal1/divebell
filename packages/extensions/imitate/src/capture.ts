@@ -118,7 +118,7 @@ async function collectConsoleInteractions(
     }
 
     try {
-      const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+      const result = await browser.console.list({ query: RECORD_EVENT_CONSOLE_MARKER });
       collected.push({
         tabId: tab.tabId,
         active: tab.active,
@@ -158,7 +158,7 @@ async function collectCurrentTabInteractions(
   errors: string[];
 }> {
   try {
-    const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+    const result = await browser.console.list({ query: RECORD_EVENT_CONSOLE_MARKER });
     return {
       interactions: parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args)),
       inspectedTabCount: 1,

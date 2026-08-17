@@ -311,67 +311,7 @@ Use `options.divebell` as the main API.
 
 These capabilities do not require Runtime SDK.
 
-#### Run any browser page command
-
-```ts
-import type { DivebellBrowserCommandName } from "@divebell/cli";
-
-interface DivebellBrowserCommandRequest {
-  args?: readonly string[];
-  options?: Readonly<Record<
-    string,
-    string | number | boolean |
-    readonly (string | number | boolean)[]
-  >>;
-  input?: string;
-}
-
-interface DivebellBrowserApi {
-  run(
-    command: DivebellBrowserCommandName,
-    request?: DivebellBrowserCommandRequest
-  ): Promise<string>;
-}
-```
-
-`browser.run` accepts every built-in browser page command shown by
-`divebell --help`. Put positional arguments in `request.args`. Put long options
-in `request.options` without the leading `--`; an array repeats an option and
-`true` supplies a flag. Use `request.input` for commands such as
-`eval --stdin`.
-
-```ts
-await options.divebell.browser.run("hover", {
-  args: ["e8"]
-});
-
-await options.divebell.browser.run("tab", {
-  args: ["new", "https://docs.example.com/"],
-  options: {
-    label: "docs",
-    json: true
-  }
-});
-
-await options.divebell.browser.run("goto", {
-  args: ["https://app.example.com/orders"]
-});
-```
-
-`browser.run` uses Divebell command names and the current opened-page context.
-It applies Divebell aliases, normalizes element references such as `e8`,
-forwards supported options, normalizes browser failures, and preserves the
-current Divebell session during `goto` or `navigate`.
-
-It cannot run `open` or `stop`. An Extension may navigate the current page or
-work with tabs when its declared workflow requires that behavior, but the outer
-workflow owns browser creation, replacement, and shutdown. Use the structured
-`browser.memory` API for memory capture.
-
-The return value is trimmed browser output. Use a typed helper when structured
-data is needed.
-
-#### Typed browser helpers
+#### Typed browser APIs
 
 ```text
 browser.profileDirectory
@@ -384,23 +324,77 @@ browser.select
 browser.eval
 browser.evalFile
 browser.waitEval
+browser.wait
 browser.getWindow
+browser.highlight
 browser.screenshot
-browser.network
-browser.console
+browser.network.list
+browser.network.get
+browser.network.clear
+browser.network.route
+browser.network.unroute
+browser.network.har
+browser.console.list
+browser.console.clear
 browser.memory
 browser.coverage
 ```
 
 `browser.select` accepts either one value or an array of values. The typed
-helpers preserve their existing structured return types and focused options.
+APIs own their result types and normalize browser failures. `network.list`
+returns `DivebellBrowserNetworkRequestSummary[]`; `network.get` returns
+`DivebellBrowserNetworkRequestDetail`, whose request and response headers are
+available under `request.headers` and `response.headers`.
 
-#### Low-level escape hatch
+```ts
+const requests = await options.divebell.browser.network.list({
+  url: "/api/orders",
+  resourceTypes: ["xhr", "fetch"],
+  status: "2xx"
+});
+const detail = await options.divebell.browser.network.get(requests[0].id);
+const contentType = detail.response?.headers["content-type"];
+```
+
+#### Raw browser entry point
+
+```ts
+interface DivebellBrowserRawOptions {
+  ui?: boolean;
+  input?: string;
+}
+
+interface DivebellBrowserRawResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+interface DivebellBrowserApi {
+  raw(
+    args: readonly string[],
+    options?: DivebellBrowserRawOptions
+  ): Promise<DivebellBrowserRawResult>;
+}
+```
 
 `browser.raw` accepts agent-browser arguments directly. It does not apply
 Divebell command translation, page-context checks, session-preserving
-navigation, or normalized errors. Use it only when implementing a capability
-that cannot be expressed through `browser.run` or the typed helpers.
+navigation, or turn output into a JavaScript value. Use a typed API when one
+exists; otherwise read [`browser-raw.md`](browser-raw.md), pass the documented
+agent-browser arguments without the executable name, check `exitCode`, and
+parse `stdout` when requesting JSON. The shared browser runner unwraps the
+agent-browser `{ success, data, error }` JSON transport before `raw` returns.
+
+```ts
+const result = await options.divebell.browser.raw([
+  "debug", "status", "--json"
+]);
+if (result.exitCode !== 0) {
+  throw new Error(result.stderr.trim() || result.stdout.trim());
+}
+const status = JSON.parse(result.stdout) as unknown;
+```
 
 ### Existing Runtime capabilities
 

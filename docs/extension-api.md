@@ -340,47 +340,69 @@ Commands and page hooks use `options.divebell` as the primary entry point to Div
 | --- | --- |
 | Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
 | Execute and await page-declared capabilities | `runAction`, `waitFor` |
-| Run any Divebell browser page command | `browser.run` |
-| Common typed page operations | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.getWindow` |
+| Common typed page operations | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.wait`, `browser.getWindow`, `browser.highlight` |
 | Collect browser evidence | `browser.screenshot`, `browser.network`, `browser.console` |
 | Run focused low-level capture | `browser.memory`, `browser.coverage` |
+| Access an unwrapped agent-browser command | `browser.raw` |
 
 Page operations and diagnostics under `browser` remain available when the page does not use Runtime SDK. Require a connected Runtime only when a Command truly needs application-internal state.
 
-`browser.run(command, request)` exposes every browser page command listed by
-`divebell --help`. Positional arguments go in `request.args`; long options go
-in `request.options` without the leading `--`. A scalar supplies one option
-value, an array repeats the option, and `true` supplies a flag. Use
-`request.input` with commands such as `eval --stdin`.
+Typed APIs own their result contracts, normalize browser failures, and perform
+any required parsing or target normalization. Prefer them whenever the needed
+capability exists. Network access is structured rather than terminal text:
 
 ```ts
-await divebell.browser.run("hover", {
-  args: ["e8"]
+const requests = await divebell.browser.network.list({
+  url: "/api/orders",
+  resourceTypes: ["xhr", "fetch"],
+  status: "2xx"
 });
-
-await divebell.browser.run("tab", {
-  args: ["new", "https://docs.example.com/"],
-  options: {
-    label: "docs",
-    json: true
-  }
-});
-
-await divebell.browser.run("goto", {
-  args: ["https://app.example.com/orders"]
-});
+const detail = await divebell.browser.network.get(requests[0].id);
+const contentType = detail.response?.headers["content-type"];
 ```
 
-This entry point uses Divebell command names and the current opened-page
-context. It applies the same aliases, element-reference normalization, option
-translation, error handling, and session-preserving navigation as the CLI.
-It cannot run `open` or `stop`; those remain owned by the outer workflow.
-`browser.memory` remains the typed entry point for memory capture.
+`browser.network` also provides `clear`, `route`, `unroute`, and `har`.
+`browser.console` provides `list` and `clear`. Memory and Coverage expose
+concrete result types rather than caller-selected generic types.
+
+When no typed API exposes the required capability, `browser.raw` accepts
+agent-browser arguments directly:
+
+```ts
+interface DivebellBrowserRawOptions {
+  ui?: boolean;
+  input?: string;
+}
+
+interface DivebellBrowserRawResult {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}
+
+const result = await divebell.browser.raw(
+  ["debug", "status", "--json"]
+);
+if (result.exitCode !== 0) {
+  throw new Error(result.stderr.trim() || result.stdout.trim());
+}
+const status = JSON.parse(result.stdout) as unknown;
+```
+
+`raw` does not add page-context checks, command translation, session handling,
+or a parsed JavaScript return value. The shared browser runner does unwrap
+agent-browser's `{ success, data, error }` transport for `--json`; successful
+`stdout` contains the serialized `data`. The caller still checks `exitCode` and
+validates the command-specific payload. Read the
+[version-matched raw command reference](../skills/divebell-extension/references/browser-raw.md)
+for every available command and its installed help. The outer workflow still
+owns browser creation and shutdown; Extension Commands must not use `raw` to
+run `open` or `close`.
 
 ### Debugger identity and selection
 
 Extensions that use the compiled-JavaScript debugger must obtain debugger IDs
-from `browser.run("debug", ...)`; `options.page` does not contain them. Enabling
+from the debugger command output; `options.page` does not contain them. Enabling
 without a selector targets the active tab and returns its debugger identity.
 Retain the mapping returned in `sessions`:
 
@@ -393,10 +415,13 @@ interface DebuggerEnableResult {
   }>;
 }
 
-const enabled = JSON.parse(await divebell.browser.run("debug", {
-  args: ["enable"],
-  options: { json: true }
-})) as DebuggerEnableResult;
+const enabledResult = await divebell.browser.raw([
+  "debug", "enable", "--json"
+]);
+if (enabledResult.exitCode !== 0) {
+  throw new Error(enabledResult.stderr.trim() || enabledResult.stdout.trim());
+}
+const enabled = JSON.parse(enabledResult.stdout) as DebuggerEnableResult;
 ```
 
 `debug status` can be used before enabling to record whether the selected
@@ -411,7 +436,7 @@ The IDs have separate namespaces and must not be substituted for each other:
 | --- | --- | --- |
 | `options.page.sessionId` | Divebell page/Runtime correlation session from `divebell open` | Select Runtime SDK connections; never use it as a debugger selector |
 | debugger `sessions[].sessionId` | Chrome CDP target-session identity | Correlate scripts and events with the renderer that produced them |
-| debugger `sessions[].tabId` | Stable agent-browser tab selector, such as `t1` | Preferred selector for follow-up `debug` commands through `browser.run` |
+| debugger `sessions[].tabId` | Stable agent-browser tab selector, such as `t1` | Preferred selector for follow-up `debug` commands through `browser.raw` |
 | debugger `scriptId` | Chrome's script ID within one document and CDP session | Use only with the matching debugger session and document generation |
 | debugger `scriptInstanceKey` | Script identity including connection generation, CDP session, document generation, and script ID | Retain when a probe must distinguish navigation or reconnect generations |
 
@@ -423,10 +448,12 @@ if (selected?.tabId === undefined) {
   throw new Error("No debugger tab is available for the current page.");
 }
 
-await divebell.browser.run("debug", {
-  args: ["scripts"],
-  options: { tab: selected.tabId, json: true }
-});
+const scripts = await divebell.browser.raw([
+  "debug", "scripts", "--tab", selected.tabId, "--json"
+]);
+if (scripts.exitCode !== 0) {
+  throw new Error(scripts.stderr.trim() || scripts.stdout.trim());
+}
 ```
 
 Do not forward a debugger CDP `sessionId` as a generic `session` option. That
@@ -434,9 +461,8 @@ name is also used by agent-browser process routing and can select the wrong
 daemon. A bare `scriptId` is likewise not stable across navigation or browser
 reconnection; use the returned script identity fields together.
 
-`browser.raw` is only a low-level agent-browser escape hatch. It accepts
-agent-browser arguments directly and does not add Divebell page-context checks,
-command translation, or normalized errors. Prefer `browser.run` or the typed
-helpers for Extension features.
+Use the typed browser APIs for capabilities they expose. Debugger operations
+currently use `browser.raw`, so an Extension must check `exitCode`, parse JSON,
+and retain the correct debugger identifiers itself.
 
 The Coding Agent remains responsible for reading and changing project source code. The Extension API does not provide a standardized code workspace or development-server interface. Do not present an Extension's own file access as a general Divebell code capability.

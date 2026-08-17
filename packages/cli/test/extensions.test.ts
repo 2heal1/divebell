@@ -9,12 +9,9 @@ import {
   createDivebellCliWithExternalExtensions,
   createDivebellCli,
   runCli,
-  type DivebellBrowserCommandName,
-  type DivebellBrowserCommandRequest,
   type DivebellExtensionCommand,
   type DivebellExtensionDefinition
 } from "../dist/index.js";
-import { BROWSER_COMMAND_NAMES } from "../dist/commands/names.js";
 import {
   runDetectStackHooks,
   runOpenHooks
@@ -969,47 +966,21 @@ test("registers a command and merges its help entries", async () => {
   }
 });
 
-test("exposes every browser page command through the Extension API", async () => {
-  const pageCommands = BROWSER_COMMAND_NAMES.filter(
-    (command): command is DivebellBrowserCommandName => command !== "open"
-  );
-  const requests: Partial<Record<DivebellBrowserCommandName, DivebellBrowserCommandRequest>> = {
-    goto: { args: ["http://app.test/orders?region=cn#details"] },
-    navigate: { args: ["http://app.test/customers"] },
-    click: { args: ["e1"] },
-    fill: { args: ["e2", "hello"] },
-    focus: { args: ["e3"] },
-    press: { args: ["Control+a"] },
-    select: { args: ["e4", "cn", "sg"] },
-    eval: { args: ["document.title"] },
-    "wait-eval": { args: ["document.readyState === 'complete'"], options: { timeout: 100 } },
-    "get-window": { args: ["location.href"] },
-    screenshot: { args: ["page.png"], options: { "full-page": true } },
-    coverage: { args: ["status"] },
-    debug: {
-      args: ["status"],
-      options: { "cdp-session": "cdp-page-1", json: true }
-    },
-    hover: { args: ["e8"] },
-    "check-element": { args: ["e9"] },
-    drag: { args: ["e10", "e11"] },
-    tab: {
-      args: ["new", "http://docs.test/"],
-      options: { label: "docs", json: true }
-    },
-    video: { args: ["start", "flow.webm"] }
-  };
+test("exposes typed browser helpers and the raw browser entry point", async () => {
   const extension = createCommandExtension({
     name: "browser-api-demo",
     run: async ({ divebell }) => {
-      const outputs: string[] = [];
-      for (const command of pageCommands) {
-        outputs.push(await divebell.browser.run(command, requests[command]));
-      }
-      await divebell.browser.select("e20", ["cn", "sg"]);
       return {
-        commands: pageCommands,
-        outputCount: outputs.length
+        snapshot: await divebell.browser.pageSnapshot(),
+        clicked: await divebell.browser.click("e1"),
+        filled: await divebell.browser.fill("e2", "hello"),
+        focused: await divebell.browser.focus("e3"),
+        pressed: await divebell.browser.press("Control+a"),
+        selected: await divebell.browser.select("e4", ["cn", "sg"]),
+        waited: await divebell.browser.wait(25),
+        highlighted: await divebell.browser.highlight("e5"),
+        screenshot: await divebell.browser.screenshot("page.png", { fullPage: true }),
+        raw: await divebell.browser.raw(["hover", "@e6"])
       };
     }
   });
@@ -1027,9 +998,7 @@ test("exposes every browser page command through the Extension API", async () =>
         calls.push(args);
         return {
           exitCode: 0,
-          stdout: args[0] === "eval" && args[1]?.includes("document.readyState")
-            ? "true\n"
-            : "ok\n",
+          stdout: `${args.join(" ")}\n`,
           stderr: ""
         };
       })
@@ -1037,78 +1006,160 @@ test("exposes every browser page command through the Extension API", async () =>
 
     assert.equal(exitCode, 0);
     assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["snapshot"],
+      ["click", "@e1"],
+      ["fill", "@e2", "hello"],
+      ["focus", "@e3"],
+      ["press", "Control+a"],
+      ["select", "@e4", "cn", "sg"],
+      ["wait", "25"],
+      ["highlight", "@e5"],
+      ["screenshot", "page.png", "--full"],
+      ["hover", "@e6"]
+    ]);
     assert.deepEqual(JSON.parse(output.text()), commandOutput("browser-api-demo", {
-      commands: pageCommands,
-      outputCount: pageCommands.length
+      snapshot: "snapshot",
+      clicked: "click @e1",
+      filled: "fill @e2 hello",
+      focused: "focus @e3",
+      pressed: "press Control+a",
+      selected: "select @e4 cn sg",
+      screenshot: "screenshot page.png --full",
+      raw: {
+        exitCode: 0,
+        stdout: "hover @e6\n",
+        stderr: ""
+      }
     }));
-    assert.equal(calls.length, pageCommands.length + 1);
-    assert.deepEqual(calls[pageCommands.indexOf("goto")], [
-      "goto",
-      "http://app.test/orders?region=cn&divebellSessionId=session-extension#details"
-    ]);
-    assert.deepEqual(calls[pageCommands.indexOf("navigate")], [
-      "goto",
-      "http://app.test/customers?divebellSessionId=session-extension"
-    ]);
-    assert.deepEqual(calls[pageCommands.indexOf("page-snapshot")], ["snapshot"]);
-    assert.deepEqual(calls[pageCommands.indexOf("hover")], ["hover", "@e8"]);
-    assert.deepEqual(calls[pageCommands.indexOf("check-element")], ["check", "@e9"]);
-    assert.deepEqual(calls[pageCommands.indexOf("drag")], ["drag", "@e10", "@e11"]);
-    assert.deepEqual(calls[pageCommands.indexOf("select")], ["select", "@e4", "cn", "sg"]);
-    assert.deepEqual(calls[pageCommands.indexOf("screenshot")], ["screenshot", "--full", "page.png"]);
-    assert.deepEqual(calls[pageCommands.indexOf("tab")], [
-      "tab",
-      "new",
-      "http://docs.test/",
-      "--label",
-      "docs",
-      "--json"
-    ]);
-    assert.deepEqual(calls[pageCommands.indexOf("video")], ["record", "start", "flow.webm"]);
-    assert.deepEqual(calls[pageCommands.indexOf("coverage")], ["coverage", "status", "--json"]);
-    assert.deepEqual(calls[pageCommands.indexOf("debug")], [
-      "debug",
-      "status",
-      "--session",
-      "cdp-page-1",
-      "--json"
-    ]);
-    assert.deepEqual(calls.at(-1), ["select", "@e20", "cn", "sg"]);
   } finally {
     context.cleanup();
   }
 });
 
-test("keeps browser lifecycle commands outside the Extension page API", async () => {
+test("exposes structured Network and Console APIs to Extensions", async () => {
   const extension = createCommandExtension({
-    name: "browser-lifecycle-demo",
-    run: async ({ divebell }) =>
-      await divebell.browser.run(
-        "open" as DivebellBrowserCommandName,
-        { args: ["http://app.test/"] }
-      )
-  });
-  const output = createOutput();
-
-  const exitCode = await createDivebellCli({ extensions: [extension] }).run([
-    "browser-lifecycle-demo"
-  ], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async () => {
-      throw new Error("The browser runner must not receive lifecycle commands.");
+    name: "browser-diagnostics-demo",
+    run: async ({ divebell }) => ({
+      requests: await divebell.browser.network.list({
+        url: "/api/orders",
+        resourceTypes: ["xhr", "fetch"],
+        method: "GET",
+        status: "2xx"
+      }),
+      request: await divebell.browser.network.get("123.1"),
+      cleared: await divebell.browser.network.clear(),
+      routed: await divebell.browser.network.route("**/api/orders", { body: { ok: true } }),
+      unrouted: await divebell.browser.network.unroute("**/api/orders"),
+      harStarted: await divebell.browser.network.har.start({ content: "none" }),
+      har: await divebell.browser.network.har.stop("/tmp/orders.har"),
+      console: await divebell.browser.console.list({ levels: ["error"], query: "orders" }),
+      consoleCleared: await divebell.browser.console.clear()
     })
   });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+  const output = createOutput();
+  try {
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "browser-diagnostics-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        if (args[0] === "network" && args[1] === "requests" && args.includes("--json")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ requests: [{
+              requestId: "123.1",
+              url: "http://app.test/api/orders",
+              method: "GET",
+              resourceType: "fetch",
+              status: 200
+            }] }),
+            stderr: ""
+          };
+        }
+        if (args[0] === "network" && args[1] === "request") {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              requestId: "123.1",
+              url: "http://app.test/api/orders",
+              method: "GET",
+              resourceType: "fetch",
+              headers: { accept: "application/json" },
+              status: 200,
+              responseHeaders: { "content-type": "application/json" },
+              mimeType: "application/json",
+              body: "{\"ok\":true}"
+            }),
+            stderr: ""
+          };
+        }
+        if (args[0] === "network" && args[1] === "har" && args[2] === "stop") {
+          return { exitCode: 0, stdout: JSON.stringify({ path: "/tmp/orders.har" }), stderr: "" };
+        }
+        if (args[0] === "console" && args.includes("--json")) {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ messages: [
+              { type: "error", text: "orders failed", timestamp: 1 },
+              { type: "log", text: "orders ready", timestamp: 2 }
+            ] }),
+            stderr: ""
+          };
+        }
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    });
 
-  assert.equal(exitCode, 1);
-  assert.equal(output.errorText(), "");
-  assert.deepEqual(JSON.parse(output.text()), errorOutput("browser-lifecycle-demo", {
-    code: "INVALID_BROWSER_COMMAND",
-    kind: "validation",
-    message: "Browser command \"open\" is not available through the Extension page API.",
-    retryable: false,
-    hint: "Use a browser page command listed by `divebell --help`; open and stop remain owned by the outer workflow."
-  }));
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["network", "requests", "--filter", "/api/orders", "--type", "xhr,fetch", "--method", "GET", "--status", "2xx", "--json"],
+      ["network", "request", "123.1", "--json"],
+      ["network", "requests", "--clear"],
+      ["network", "route", "**/api/orders", "--body", "{\"ok\":true}"],
+      ["network", "unroute", "**/api/orders"],
+      ["network", "har", "start", "--content", "none"],
+      ["network", "har", "stop", "/tmp/orders.har", "--json"],
+      ["console", "--json"],
+      ["console", "--clear"]
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("browser-diagnostics-demo", {
+      requests: [{
+        id: "123.1",
+        url: "http://app.test/api/orders",
+        method: "GET",
+        resourceType: "fetch",
+        status: 200
+      }],
+      request: {
+        id: "123.1",
+        url: "http://app.test/api/orders",
+        method: "GET",
+        resourceType: "fetch",
+        status: 200,
+        request: { headers: { accept: "application/json" } },
+        response: {
+          status: 200,
+          headers: { "content-type": "application/json" },
+          mimeType: "application/json",
+          body: "{\"ok\":true}"
+        }
+      },
+      har: { path: "/tmp/orders.har" },
+      console: {
+        entries: [{ level: "error", args: "orders failed", timestamp: 1 }],
+        summary: { total: 1, log: 0, info: 0, warn: 0, error: 1 }
+      }
+    }));
+  } finally {
+    context.cleanup();
+  }
 });
 
 test("formats errors thrown by extension commands", async () => {

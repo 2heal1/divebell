@@ -1,7 +1,4 @@
-import type {
-  DivebellBrowserApi,
-  DivebellBrowserCommandOptionValue
-} from "@divebell/cli";
+import type { DivebellBrowserApi } from "@divebell/cli";
 
 import { rstackError } from "./errors.js";
 
@@ -79,7 +76,8 @@ export interface DebugProbeResult {
   }>;
 }
 
-type DebugOptionValue = DivebellBrowserCommandOptionValue;
+type DebugOptionScalar = string | number | boolean;
+type DebugOptionValue = DebugOptionScalar | readonly DebugOptionScalar[];
 
 export class DebugClient {
   readonly browser: DivebellBrowserApi;
@@ -181,16 +179,27 @@ export class DebugClient {
     const tabId = debugSessionId === undefined
       ? undefined
       : this.tabBySession.get(debugSessionId);
-    const output = await this.browser.run("debug", {
-      args,
-      options: {
-        ...options,
-        ...(tabId === undefined ? {} : { tab: tabId }),
-        json: true
-      }
+    const command = ["debug", ...args];
+    appendDebugOptions(command, {
+      ...options,
+      ...(tabId === undefined ? {} : { tab: tabId }),
+      json: true
     });
+    const result = await this.browser.raw(command);
+    if (result.exitCode !== 0) {
+      throw rstackError({
+        code: "RSTACK_DEBUG_COMMAND_FAILED",
+        kind: "browser",
+        message: result.stderr.trim() || result.stdout.trim() || "agent-browser debugger command failed.",
+        details: {
+          command,
+          ...(result.stdout.trim().length === 0 ? {} : { stdout: result.stdout.trim() }),
+          ...(result.stderr.trim().length === 0 ? {} : { stderr: result.stderr.trim() })
+        }
+      });
+    }
     try {
-      return JSON.parse(output) as T;
+      return JSON.parse(result.stdout) as T;
     } catch (error) {
       throw rstackError({
         code: "RSTACK_DEBUG_OUTPUT_INVALID",
@@ -198,7 +207,7 @@ export class DebugClient {
         message: `agent-browser returned invalid debugger JSON: ${
           error instanceof Error ? error.message : String(error)
         }`,
-        details: { output }
+        details: { output: result.stdout }
       });
     }
   }
@@ -210,6 +219,19 @@ export class DebugClient {
       if (session.tabId !== undefined) {
         this.tabBySession.set(session.sessionId, session.tabId);
       }
+    }
+  }
+}
+
+function appendDebugOptions(
+  args: string[],
+  options: Readonly<Record<string, DebugOptionValue>>
+): void {
+  for (const [name, rawValue] of Object.entries(options)) {
+    const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+    for (const value of values) {
+      args.push(`--${name}`);
+      if (value !== true) args.push(String(value));
     }
   }
 }

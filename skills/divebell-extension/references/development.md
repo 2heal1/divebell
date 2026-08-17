@@ -291,33 +291,39 @@ Network, Console, memory, or code-execution evidence. Use `targets`, `snapshot`,
 `events`, `actions`, `runAction`, and `waitFor` only when the page already
 exposes a connected Runtime.
 
-Prefer a typed browser helper when one matches the operation. For any other
-built-in browser page command, use `options.divebell.browser.run` with the same
-command name shown by `divebell --help`:
+Use a typed browser API whenever it exposes the required capability:
 
 ```ts
-await options.divebell.browser.run("hover", {
-  args: ["e8"]
-});
-
-await options.divebell.browser.run("wait", {
-  options: {
-    url: "**/orders",
-    load: "networkidle"
-  }
-});
+await options.divebell.browser.click("e8");
+const requests = await options.divebell.browser.network.list({ url: "/api/orders" });
+const detail = await options.divebell.browser.network.get(requests[0].id);
 ```
 
-Pass positional arguments through `args`, long options without `--` through
-`options`, and standard input through `input`. Divebell reuses the current
-opened page, translates its command names and element references, and preserves
-the Divebell session during navigation.
+Typed APIs own their result types, normalize browser failures, and perform any
+required parsing or target normalization. Do not rebuild a typed capability
+with `raw`.
+
+When no typed API exposes the required capability, use `browser.raw` with
+agent-browser arguments. It returns `{ exitCode, stdout, stderr }` without
+throwing on a non-zero exit code or returning a parsed JavaScript value. Read
+[`browser-raw.md`](browser-raw.md) for the version-matched command catalog,
+installed help, and JSON transport behavior:
+
+```ts
+const result = await options.divebell.browser.raw([
+  "debug", "status", "--json"
+]);
+if (result.exitCode !== 0) {
+  throw new Error(result.stderr.trim() || result.stdout.trim());
+}
+const status = JSON.parse(result.stdout) as unknown;
+```
 
 An Extension Command may navigate the current page or work with tabs when that
 behavior is part of the documented Command workflow. It must not run `open` or
-`stop`; the outer workflow owns browser creation and shutdown. Prefer
-`browser.run` over `browser.raw`, because `raw` bypasses Divebell page-context
-checks, command translation, session handling, and normalized errors.
+`stop`; the outer workflow owns browser creation and shutdown. `raw` bypasses
+Divebell page-context checks, command translation, session handling, output
+parsing, and normalized errors, so the Extension owns those concerns.
 
 Browser capabilities do not require Runtime SDK. After an Action, verify the
 page result or wait for explicit Runtime state; `options.page` existing or an

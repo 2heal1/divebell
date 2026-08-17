@@ -118,7 +118,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
 
   try {
     const baseline = await debug.events(0);
-    const initialConsole = (await options.divebell.browser.console()).entries;
+    const initialConsole = (await options.divebell.browser.console.list()).entries;
     const reactRefreshPreflight = await collectReactRefreshPreflight(
       debug,
       options.divebell.browser,
@@ -219,7 +219,7 @@ async function startHmr(options: CliExtensionRunOptions): Promise<unknown> {
     };
     const preparationBatch = await debug.events(baseline.latestSequence);
     const preparationCheck = appendDebugEvents(provisional, preparationBatch);
-    const readyConsole = (await options.divebell.browser.console()).entries;
+    const readyConsole = (await options.divebell.browser.console.list()).entries;
     const preparationCompileErrors = newCompileErrors(initialConsole, readyConsole);
     if (
       preparationCheck.events.length > 0
@@ -424,7 +424,7 @@ async function buildCurrentResult(
     providedMf === undefined
       ? collectMfEvidence(options.runExtension)
       : Promise.resolve(providedMf),
-    options.divebell.browser.console()
+    options.divebell.browser.console.list()
   ]);
   return createHmrResult(observation, {
     mf,

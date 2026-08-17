@@ -214,6 +214,16 @@ class FakeBrowser {
     this.armCompileError = options.armCompileError === true;
     this.reactDomBuild = options.reactDomBuild;
     this.consoleCalls = 0;
+    this.console = { list: async () => await this.readConsole() };
+  }
+
+  async raw(command) {
+    const request = parseRawDebugCommand(command);
+    return {
+      exitCode: 0,
+      stdout: await this.run("debug", request),
+      stderr: ""
+    };
   }
 
   async run(command, request = {}) {
@@ -372,7 +382,7 @@ class FakeBrowser {
     }
   }
 
-  async console() {
+  async readConsole() {
     this.consoleCalls += 1;
     const entries = this.armCompileError && this.consoleCalls >= 2
       ? [{ level: "error", args: "Failed to compile: broken fixture" }]
@@ -463,4 +473,30 @@ function cliArgs(command, options = {}) {
 
 function json(value) {
   return JSON.stringify(value);
+}
+
+function parseRawDebugCommand(command) {
+  assert.equal(command[0], "debug");
+  const args = [];
+  const options = {};
+  for (let index = 1; index < command.length; index += 1) {
+    const value = command[index];
+    if (!value.startsWith("--")) {
+      args.push(value);
+      continue;
+    }
+    const name = value.slice(2);
+    const next = command[index + 1];
+    const optionValue = next === undefined || next.startsWith("--")
+      ? true
+      : command[++index];
+    const current = options[name];
+    const repeatable = name === "expression" || name === "tag";
+    options[name] = current === undefined
+      ? repeatable ? [optionValue] : optionValue
+      : Array.isArray(current)
+        ? [...current, optionValue]
+        : [current, optionValue];
+  }
+  return { args, options };
 }

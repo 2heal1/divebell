@@ -336,14 +336,56 @@ Each hook may run for up to five seconds. A timeout is recorded as a hook failur
 
 Commands and page hooks use `options.divebell` as the primary entry point to Divebell capabilities.
 
-| Capability | API |
-| --- | --- |
-| Read application-internal information | `targets`, `snapshot`, `events`, `actions` |
-| Execute and await page-declared capabilities | `runAction`, `waitFor` |
-| Common typed page operations | `browser.pageSnapshot`, `browser.click`, `browser.fill`, `browser.eval`, `browser.evalFile`, `browser.waitEval`, `browser.wait`, `browser.getWindow`, `browser.highlight` |
-| Collect browser evidence | `browser.screenshot`, `browser.network`, `browser.console` |
-| Run focused low-level capture | `browser.memory`, `browser.coverage` |
-| Access an unwrapped agent-browser command | `browser.raw` |
+### Extension Browser API
+
+`options.divebell.browser` is injected by the Divebell CLI into an Extension
+Command or Hook. There is no separate browser SDK to construct: the Extension
+already runs inside the CLI host that owns the browser context. This host API is
+also independent of the optional, page-side Runtime SDK.
+
+The exact signatures are exported from `@divebell/cli`. Import the types from
+the package root or inspect the installed
+`node_modules/@divebell/cli/dist/features/extension/types.d.ts`; begin with
+`DivebellBrowserApi` and follow the option and result types named below.
+
+| API | Purpose | Primary types |
+| --- | --- | --- |
+| `browser.profileDirectory` | Resolve the browser Profile directory without running a page command. | `DivebellBrowserApi` |
+| `browser.pageSnapshot` | Read the page's agent-oriented accessibility snapshot. | `DivebellBrowserApi` |
+| `browser.click` | Click a selector or element reference. | `DivebellBrowserApi` |
+| `browser.fill` | Clear and fill an input. | `DivebellBrowserApi` |
+| `browser.focus` | Focus an element. | `DivebellBrowserApi` |
+| `browser.press` | Send a key or key combination. | `DivebellBrowserApi` |
+| `browser.select` | Select one or several form values. | `DivebellBrowserApi` |
+| `browser.eval` | Evaluate page JavaScript and return its parsed JSON value. | `DivebellBrowserApi` |
+| `browser.evalFile` | Evaluate JavaScript read from a local file. | `DivebellBrowserApi` |
+| `browser.waitEval` | Poll a page condition until success or timeout. | `DivebellBrowserApi`, `DivebellBrowserWaitEvalResult` |
+| `browser.wait` | Wait for a fixed non-negative duration. | `DivebellBrowserApi` |
+| `browser.getWindow` | Read a dot-separated value from `window`. | `DivebellBrowserApi` |
+| `browser.highlight` | Visually highlight a selector or element reference. | `DivebellBrowserApi` |
+| `browser.screenshot` | Capture the page and return the artifact path. | `DivebellBrowserApi`, `DivebellBrowserScreenshotOptions` |
+| `browser.network.list` | List optionally filtered request summaries. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkOptions`, `DivebellBrowserNetworkRequestSummary` |
+| `browser.network.get` | Read one request's headers, bodies, status, and MIME type. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRequestDetail` |
+| `browser.network.clear` | Clear retained request history. | `DivebellBrowserNetworkApi` |
+| `browser.network.route` | Abort matching requests or replace their body. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRouteOptions` |
+| `browser.network.unroute` | Remove one matching route or all routes. | `DivebellBrowserNetworkApi` |
+| `browser.network.har.start` | Start HAR capture. | `DivebellBrowserNetworkApi`, `DivebellBrowserHarStartOptions` |
+| `browser.network.har.stop` | Stop HAR capture and return its artifact path. | `DivebellBrowserNetworkApi`, `DivebellBrowserArtifactResult` |
+| `browser.console.list` | Read filtered Console entries and a level summary. | `DivebellBrowserConsoleApi`, `DivebellBrowserConsoleOptions`, `DivebellBrowserConsoleResult` |
+| `browser.console.clear` | Clear retained Console entries. | `DivebellBrowserConsoleApi` |
+| `browser.memory.metrics` | Read current heap and DOM-related metrics. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryMetricsOptions`, `DivebellBrowserMemoryMetricsResult` |
+| `browser.memory.status` | Inspect the active memory capture. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryStatusResult` |
+| `browser.memory.sampling.start` | Start allocation sampling. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySamplingStartOptions`, `DivebellBrowserMemoryCaptureResult` |
+| `browser.memory.sampling.stop` | Stop allocation sampling and return its artifact. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySamplingStopOptions`, `DivebellBrowserMemorySamplingStopResult` |
+| `browser.memory.snapshot` | Capture a heap snapshot. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySnapshotOptions`, `DivebellBrowserMemorySnapshotResult` |
+| `browser.memory.collectGarbage` | Ask the browser to collect garbage. | `DivebellBrowserMemoryApi` |
+| `browser.memory.cancel` | Cancel the active memory capture. | `DivebellBrowserMemoryApi` |
+| `browser.coverage.status` | Inspect the active JavaScript coverage capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageStatusResult` |
+| `browser.coverage.start` | Start JavaScript coverage capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageStartOptions` |
+| `browser.coverage.take` | Save an intermediate coverage checkpoint. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
+| `browser.coverage.stop` | Save the final checkpoint and stop coverage. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
+| `browser.coverage.cancel` | Cancel the active coverage capture. | `DivebellBrowserCoverageApi` |
+| `browser.raw` | Run an installed agent-browser command without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
 
 Page operations and diagnostics under `browser` remain available when the page does not use Runtime SDK. Require a connected Runtime only when a Command truly needs application-internal state.
 

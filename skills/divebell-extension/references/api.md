@@ -307,44 +307,94 @@ that Extension and does not block unrelated Extensions or the page lifecycle.
 
 Use `options.divebell` as the main API.
 
-### Browser capabilities
+### Extension Browser API
 
-These capabilities do not require Runtime SDK.
+`options.divebell.browser` is an Extension host API injected by the Divebell
+CLI. It is not a separate browser SDK that an Extension constructs or connects:
+the Command or Hook already runs inside the CLI process that owns the current
+browser context. The Runtime SDK is a different, optional page-side integration
+for application-internal facts and actions; none of the browser APIs below
+require it.
 
-#### Typed browser APIs
+The authoritative signatures are the TypeScript declarations exported by
+`@divebell/cli`. Import types from the package root, or inspect the exact
+installed declarations at
+`node_modules/@divebell/cli/dist/features/extension/types.d.ts`. Start with
+`DivebellBrowserApi`, then follow the named option and result types. Do not infer
+parameters from this summary or copy its prose into local type declarations.
 
-```text
-browser.profileDirectory
-browser.pageSnapshot
-browser.click
-browser.fill
-browser.focus
-browser.press
-browser.select
-browser.eval
-browser.evalFile
-browser.waitEval
-browser.wait
-browser.getWindow
-browser.highlight
-browser.screenshot
-browser.network.list
-browser.network.get
-browser.network.clear
-browser.network.route
-browser.network.unroute
-browser.network.har
-browser.console.list
-browser.console.clear
-browser.memory
-browser.coverage
+```ts
+import type {
+  DivebellBrowserApi,
+  DivebellBrowserNetworkApi,
+  DivebellBrowserNetworkOptions,
+  DivebellBrowserNetworkRequestDetail
+} from "@divebell/cli";
 ```
 
-`browser.select` accepts either one value or an array of values. The typed
-APIs own their result types and normalize browser failures. `network.list`
-returns `DivebellBrowserNetworkRequestSummary[]`; `network.get` returns
-`DivebellBrowserNetworkRequestDetail`, whose request and response headers are
-available under `request.headers` and `response.headers`.
+#### Page and interaction APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.profileDirectory` | Resolve the browser Profile directory without running a page command. | `DivebellBrowserApi` |
+| `browser.pageSnapshot` | Read the current page's agent-oriented accessibility snapshot. | `DivebellBrowserApi` |
+| `browser.click` | Click a selector or agent-browser element reference. | `DivebellBrowserApi` |
+| `browser.fill` | Clear an input and fill it with a value. | `DivebellBrowserApi` |
+| `browser.focus` | Focus an element without changing its value. | `DivebellBrowserApi` |
+| `browser.press` | Send a keyboard key or key combination to the page. | `DivebellBrowserApi` |
+| `browser.select` | Select one or several values in a form control. | `DivebellBrowserApi` |
+| `browser.eval` | Evaluate JavaScript in the current page and return the parsed JSON value. | `DivebellBrowserApi` |
+| `browser.evalFile` | Read a local JavaScript file and evaluate it in the current page. | `DivebellBrowserApi` |
+| `browser.waitEval` | Poll a JavaScript condition until it succeeds or times out. | `DivebellBrowserApi`, `DivebellBrowserWaitEvalResult` |
+| `browser.wait` | Wait for a fixed non-negative duration. | `DivebellBrowserApi` |
+| `browser.getWindow` | Read a dot-separated value from `window` and return its parsed value. | `DivebellBrowserApi` |
+| `browser.highlight` | Visually highlight a selector or element reference. | `DivebellBrowserApi` |
+| `browser.screenshot` | Capture the current page and return the saved artifact path. | `DivebellBrowserApi`, `DivebellBrowserScreenshotOptions` |
+
+#### Network APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.network.list` | List request summaries, optionally filtered by URL, resource type, method, or status. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkOptions`, `DivebellBrowserNetworkRequestSummary` |
+| `browser.network.get` | Read one request's request/response headers, bodies, status, and MIME type. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRequestDetail` |
+| `browser.network.clear` | Clear the request history retained by agent-browser. | `DivebellBrowserNetworkApi` |
+| `browser.network.route` | Intercept matching requests and abort them or provide a replacement body. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRouteOptions` |
+| `browser.network.unroute` | Remove one matching route or all registered routes. | `DivebellBrowserNetworkApi` |
+| `browser.network.har.start` | Start a HAR capture with the selected content policy. | `DivebellBrowserNetworkApi`, `DivebellBrowserHarStartOptions` |
+| `browser.network.har.stop` | Stop HAR capture and return the saved artifact path. | `DivebellBrowserNetworkApi`, `DivebellBrowserArtifactResult` |
+
+#### Console APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.console.list` | Read Console entries with optional level, text, and count filters plus a level summary. | `DivebellBrowserConsoleApi`, `DivebellBrowserConsoleOptions`, `DivebellBrowserConsoleResult` |
+| `browser.console.clear` | Clear the Console entries retained by agent-browser. | `DivebellBrowserConsoleApi` |
+
+#### Memory APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.memory.metrics` | Read current heap, document, DOM-node, and event-listener metrics. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryMetricsOptions`, `DivebellBrowserMemoryMetricsResult` |
+| `browser.memory.status` | Inspect whether a memory capture is active and obtain its identity. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryStatusResult` |
+| `browser.memory.sampling.start` | Start allocation sampling. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySamplingStartOptions`, `DivebellBrowserMemoryCaptureResult` |
+| `browser.memory.sampling.stop` | Stop allocation sampling and return its artifact and top functions. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySamplingStopOptions`, `DivebellBrowserMemorySamplingStopResult` |
+| `browser.memory.snapshot` | Capture a heap snapshot and return artifact metadata. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySnapshotOptions`, `DivebellBrowserMemorySnapshotResult` |
+| `browser.memory.collectGarbage` | Ask the browser to collect garbage before another measurement. | `DivebellBrowserMemoryApi` |
+| `browser.memory.cancel` | Cancel the active memory capture. | `DivebellBrowserMemoryApi` |
+
+#### Coverage APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.coverage.status` | Inspect whether JavaScript coverage capture is active. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageStatusResult` |
+| `browser.coverage.start` | Start JavaScript coverage capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageStartOptions`, `DivebellBrowserCoverageStatusResult` |
+| `browser.coverage.take` | Save an intermediate coverage checkpoint without ending capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
+| `browser.coverage.stop` | Save the final coverage checkpoint and end capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
+| `browser.coverage.cancel` | Cancel the active coverage capture. | `DivebellBrowserCoverageApi` |
+
+Typed APIs normalize browser failures and own their result contracts. For
+example, `network.list` returns request summaries while `network.get` returns a
+detail whose headers are under `request.headers` and `response.headers`:
 
 ```ts
 const requests = await options.divebell.browser.network.list({
@@ -356,27 +406,11 @@ const detail = await options.divebell.browser.network.get(requests[0].id);
 const contentType = detail.response?.headers["content-type"];
 ```
 
-#### Raw browser entry point
+#### Raw fallback
 
-```ts
-interface DivebellBrowserRawOptions {
-  ui?: boolean;
-  input?: string;
-}
-
-interface DivebellBrowserRawResult {
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
-
-interface DivebellBrowserApi {
-  raw(
-    args: readonly string[],
-    options?: DivebellBrowserRawOptions
-  ): Promise<DivebellBrowserRawResult>;
-}
-```
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.raw` | Run a version-matched agent-browser command that has no typed Extension API and return its process result without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
 
 `browser.raw` accepts agent-browser arguments directly. It does not apply
 Divebell command translation, page-context checks, session-preserving

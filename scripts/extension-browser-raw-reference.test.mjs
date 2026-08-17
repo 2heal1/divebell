@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import ts from "typescript";
 
 import {
   createAgentBrowserRawReferenceModel,
@@ -21,6 +22,11 @@ const rawReferencePath = join(
 );
 const extensionSkillPath = join(repoRoot, "skills/divebell-extension/SKILL.md");
 const cliPackagePath = join(repoRoot, "packages/cli/package.json");
+const browserTypesPath = join(
+  repoRoot,
+  "packages/cli/src/features/extension/types.ts"
+);
+const extensionApiDocumentationPath = join(repoRoot, "docs/extension-api.md");
 const rawCommandReferenceDirectory = join(
   repoRoot,
   "skills/divebell-extension/references/browser-raw"
@@ -151,6 +157,114 @@ test("documents the raw transport and routes Extension agents to it", () => {
   assert.match(reference, /raw<T>\(\)/);
   assert.match(reference, /Extension Commands must not invoke agent-browser `open`, `close`/);
 });
+
+test("documents every typed Extension browser API and its type source", () => {
+  const browserTypes = readFileSync(browserTypesPath, "utf8");
+  const expectedApis = collectBrowserApiPaths(browserTypes);
+  const exportedBrowserTypes = collectExportedBrowserTypeNames(browserTypes);
+
+  for (const documentationPath of [
+    rawReferencePath.replace(/browser-raw\.md$/, "api.md"),
+    extensionApiDocumentationPath
+  ]) {
+    const documentation = readFileSync(documentationPath, "utf8");
+    const documentedApis = [...documentation.matchAll(
+      /^\| `(browser\.[^`]+)` \|/gm
+    )].map((match) => match[1]).toSorted();
+
+    assert.deepEqual(documentedApis, expectedApis);
+    assert.match(
+      documentation,
+      /node_modules\/@divebell\/cli\/dist\/features\/extension\/types\.d\.ts/
+    );
+    assert.doesNotMatch(documentation, /^### Browser capabilities$/m);
+
+    for (const match of documentation.matchAll(/`(DivebellBrowser[A-Za-z0-9]+)`/g)) {
+      assert.ok(
+        exportedBrowserTypes.has(match[1]),
+        `${match[1]} is not exported by the Extension browser type source.`
+      );
+    }
+  }
+});
+
+function collectBrowserApiPaths(source) {
+  const sourceFile = ts.createSourceFile(
+    browserTypesPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const interfaces = new Map();
+  for (const statement of sourceFile.statements) {
+    if (ts.isInterfaceDeclaration(statement)) {
+      interfaces.set(statement.name.text, statement);
+    }
+  }
+
+  const root = interfaces.get("DivebellBrowserApi");
+  assert.ok(root, "DivebellBrowserApi must exist.");
+  const paths = [];
+
+  const visitMembers = (members, prefix) => {
+    for (const member of members) {
+      const name = readTypeMemberName(member.name);
+      if (name === undefined) continue;
+      const path = `${prefix}.${name}`;
+      if (ts.isMethodSignature(member)) {
+        paths.push(path);
+        continue;
+      }
+      if (!ts.isPropertySignature(member) || member.type === undefined) continue;
+      if (ts.isTypeLiteralNode(member.type)) {
+        visitMembers(member.type.members, path);
+        continue;
+      }
+      if (ts.isTypeReferenceNode(member.type) && ts.isIdentifier(member.type.typeName)) {
+        const nested = interfaces.get(member.type.typeName.text);
+        if (nested !== undefined && member.type.typeName.text.endsWith("Api")) {
+          visitMembers(nested.members, path);
+          continue;
+        }
+      }
+      paths.push(path);
+    }
+  };
+
+  visitMembers(root.members, "browser");
+  return paths.toSorted();
+}
+
+function collectExportedBrowserTypeNames(source) {
+  const sourceFile = ts.createSourceFile(
+    browserTypesPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  return new Set(
+    sourceFile.statements.flatMap((statement) => {
+      if (
+        (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement))
+        && statement.name.text.startsWith("DivebellBrowser")
+        && statement.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+        )
+      ) {
+        return [statement.name.text];
+      }
+      return [];
+    })
+  );
+}
+
+function readTypeMemberName(name) {
+  if (name === undefined) return undefined;
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name)) return name.text;
+  return undefined;
+}
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

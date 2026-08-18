@@ -12,6 +12,13 @@ Divebell uses the executable included with the CLI unless `DIVEBELL_AGENT_BROWSE
 
 Divebell follows the same rule for its own session and Extension files. Set `DIVEBELL_HOME` to choose a durable writable directory. When it is not set and `~/.divebell` is unavailable, Divebell uses a private per-user directory under the operating system's temporary directory, including for the isolated browser daemon home.
 
+## Developing and publishing the fork
+
+When changing agent-browser itself, follow the
+[Divebell fork development and release flow](https://github.com/2heal1/agent-browser/blob/codex/openruntime-agent-browser-release/docs/divebell-fork-development.md)
+in full, including its branch, upstream synchronization, verification, and
+publishing rules.
+
 ## Updating the pinned build
 
 After publishing a new fork build, update Divebell from the repository root
@@ -24,7 +31,9 @@ pnpm run update:agent-browser -- 0.35.0-divebell.1
 This updates the `@divebell/cli` dependency and lockfile, regenerates the
 version-matched `browser.raw` Extension Skill reference from the installed
 package, and runs the synchronization, contract, CLI, and lint checks. Review
-and commit all generated reference changes with the dependency update.
+and commit all generated reference changes with the dependency update. Do not
+edit the generated section of
+`skills/divebell-extension/references/browser-raw.md` manually.
 
 ## Why it is temporary
 
@@ -43,8 +52,7 @@ Return to the official package after all of the following are true:
 
 1. Replace `@divebell/agent-browser` in `packages/cli/package.json` with the verified official `agent-browser` version.
 2. Update `pnpm-lock.yaml`.
-3. Update the installation notes in `packages/cli/README.md`.
-4. Update the bundled executable lookup in `packages/cli/src/features/browser/runner.ts`.
-5. Update package-path and version expectations in tests.
-6. Run the CLI build and tests, followed by real-page memory and code-usage checks.
-7. Remove both temporary-package documents.
+3. Update the bundled executable lookup in `packages/cli/src/features/browser/runner.ts`.
+4. Update package-path and version expectations in tests.
+5. Run the CLI build and tests, followed by real-page memory and code-usage checks.
+6. Remove this document and the fork-specific maintenance instructions from `AGENTS.md`.

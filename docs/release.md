@@ -113,7 +113,3 @@ pnpm run verify:recording-runtime -- --output-dir /tmp/divebell-recording-runtim
 ```
 
 Do not publish packages manually as part of the normal flow. The release workflow is the source of truth for package order, version consistency, and GitHub Release assets.
-
-## Temporary browser package
-
-Divebell CLI currently includes a temporary Divebell build of `agent-browser` for memory and code-coverage capture. Its purpose, replacement conditions, and migration checklist are documented in [Temporary Divebell agent-browser Build](temporary-agent-browser-fork.md).

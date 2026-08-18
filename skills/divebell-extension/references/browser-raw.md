@@ -67,12 +67,37 @@ contains the error message. When agent-browser supplies a stable `errorCode`,
 `stdout` contains `{ "errorCode": string, "error": string }`; otherwise it is
 empty. Do not parse `--help`, `--version`, or Skill output as JSON.
 
-## Command-specific results
+## Discover commands and exact syntax
 
-The command catalog below is the exact syntax reference shipped by the pinned
-agent-browser dependency. Its examples use shell notation because that is the
-most compact grammar. Convert a command by removing `agent-browser` and putting
-the remaining tokens in the `args` array.
+The generated catalog below lists the commands in the pinned agent-browser
+dependency and gives each one a short purpose. After choosing a command, ask
+the installed Divebell CLI for that version's complete help:
+
+```bash
+divebell browser-help network
+```
+
+For browser commands that Divebell also exposes directly, such as `network`,
+`divebell network --help` includes the same installed agent-browser help after
+the Divebell-specific usage. `browser-help` is the universal form: use it for
+raw-only commands and names such as `snapshot` that mean something different
+to the public Divebell CLI.
+
+Convert an agent-browser example to `raw` by removing the `agent-browser`
+executable and placing the remaining tokens in the `args` array. For example,
+`agent-browser network request <requestId> --json` becomes:
+
+```ts
+await options.divebell.browser.raw([
+  "network", "request", requestId, "--json"
+]);
+```
+
+The catalog embeds syntax only when the pinned parser has no dedicated
+`<command> --help`, or when bundled Markdown mentions a command the parser does
+not actually expose. Do not guess flags from the one-line catalog summary.
+
+## Command-specific results
 
 For a command that supports `--json`, the command-specific result is the
 documented agent-browser `data` object, not the outer agent-browser response.
@@ -131,7 +156,7 @@ pnpm run update:agent-browser -- 0.35.0-divebell.1
 
 The script pins `packages/cli` to that exact version, updates the lockfile,
 discovers commands from the newly installed package, regenerates this index and
-every `browser-raw/*.md` command file, removes stale generated files, and runs
+the compact `browser-raw/catalog.md`, removes stale generated files, and runs
 the reference, script, CLI, and lint checks. Commit the dependency, lockfile,
 and generated Skill changes together.
 
@@ -145,87 +170,10 @@ again without that flag before merging.
 
 Installed source: `@divebell/agent-browser@0.34.0-divebell.2`.
 
-The command files are generated from the exact agent-browser dependency
-used by `@divebell/cli`. Do not edit them by hand.
+The compact catalog is generated from the exact agent-browser dependency
+used by `@divebell/cli`. Get exact syntax at runtime with
+`divebell browser-help <command>`.
 
-- [Top-level catalog and extended upstream reference](browser-raw/catalog.md)
-- [`skills`](browser-raw/skills.md)
-- [`open`](browser-raw/open.md)
-- [`read`](browser-raw/read.md)
-- [`click`](browser-raw/click.md)
-- [`dblclick`](browser-raw/dblclick.md)
-- [`type`](browser-raw/type.md)
-- [`fill`](browser-raw/fill.md)
-- [`press`](browser-raw/press.md)
-- [`keyboard`](browser-raw/keyboard.md)
-- [`hover`](browser-raw/hover.md)
-- [`focus`](browser-raw/focus.md)
-- [`check`](browser-raw/check.md)
-- [`uncheck`](browser-raw/uncheck.md)
-- [`select`](browser-raw/select.md)
-- [`drag`](browser-raw/drag.md)
-- [`upload`](browser-raw/upload.md)
-- [`download`](browser-raw/download.md)
-- [`scroll`](browser-raw/scroll.md)
-- [`scrollintoview`](browser-raw/scrollintoview.md)
-- [`wait`](browser-raw/wait.md)
-- [`screenshot`](browser-raw/screenshot.md)
-- [`pdf`](browser-raw/pdf.md)
-- [`snapshot`](browser-raw/snapshot.md)
-- [`eval`](browser-raw/eval.md)
-- [`connect`](browser-raw/connect.md)
-- [`close`](browser-raw/close.md)
-- [`back`](browser-raw/back.md)
-- [`forward`](browser-raw/forward.md)
-- [`reload`](browser-raw/reload.md)
-- [`get`](browser-raw/get.md)
-- [`is`](browser-raw/is.md)
-- [`find`](browser-raw/find.md)
-- [`mouse`](browser-raw/mouse.md)
-- [`set`](browser-raw/set.md)
-- [`network`](browser-raw/network.md)
-- [`cookies`](browser-raw/cookies.md)
-- [`storage`](browser-raw/storage.md)
-- [`tab`](browser-raw/tab.md)
-- [`diff`](browser-raw/diff.md)
-- [`trace`](browser-raw/trace.md)
-- [`profiler`](browser-raw/profiler.md)
-- [`memory`](browser-raw/memory.md)
-- [`coverage`](browser-raw/coverage.md)
-- [`debug`](browser-raw/debug.md)
-- [`record`](browser-raw/record.md)
-- [`console`](browser-raw/console.md)
-- [`errors`](browser-raw/errors.md)
-- [`highlight`](browser-raw/highlight.md)
-- [`inspect`](browser-raw/inspect.md)
-- [`clipboard`](browser-raw/clipboard.md)
-- [`stream`](browser-raw/stream.md)
-- [`react`](browser-raw/react.md)
-- [`vitals`](browser-raw/vitals.md)
-- [`a11y`](browser-raw/a11y.md)
-- [`pushstate`](browser-raw/pushstate.md)
-- [`removeinitscript`](browser-raw/removeinitscript.md)
-- [`batch`](browser-raw/batch.md)
-- [`auth`](browser-raw/auth.md)
-- [`plugin`](browser-raw/plugin.md)
-- [`confirm`](browser-raw/confirm.md)
-- [`deny`](browser-raw/deny.md)
-- [`session`](browser-raw/session.md)
-- [`mcp`](browser-raw/mcp.md)
-- [`chat`](browser-raw/chat.md)
-- [`dashboard`](browser-raw/dashboard.md)
-- [`install`](browser-raw/install.md)
-- [`upgrade`](browser-raw/upgrade.md)
-- [`doctor`](browser-raw/doctor.md)
-- [`profiles`](browser-raw/profiles.md)
-- [`keydown`](browser-raw/keydown.md)
-- [`keyup`](browser-raw/keyup.md)
-- [`window`](browser-raw/window.md)
-- [`frame`](browser-raw/frame.md)
-- [`dialog`](browser-raw/dialog.md)
-- [`state`](browser-raw/state.md)
-- [`device`](browser-raw/device.md)
-- [`tap`](browser-raw/tap.md)
-- [`swipe`](browser-raw/swipe.md)
+- [Compact command catalog and special cases](browser-raw/catalog.md)
 
 <!-- END GENERATED AGENT-BROWSER REFERENCE -->

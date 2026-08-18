@@ -62,39 +62,34 @@ test("keeps the Extension raw reference synchronized with agent-browser", () => 
     );
   }
   const catalog = commandReferences.get("catalog.md") ?? "";
-  assert.match(catalog, /agent-browser network request <requestId>/);
-  assert.match(catalog, /agent-browser debug status/);
-  assert.match(catalog, /agent-browser memory metrics/);
+  assert.deepEqual([...commandReferences.keys()], ["catalog.md"]);
   assert.match(
-    commandReferences.get("coverage.md") ?? "",
-    /Usage: agent-browser coverage <operation>/
+    catalog,
+    /\| `network` \| Network interception and monitoring \| `divebell browser-help network` \|/
   );
-  if (model.commands.includes("addinitscript")) {
-    assert.equal(commandReferences.has("addinitscript.md"), true);
-    assert.doesNotMatch(
-      catalog,
-      /`addinitscript` is not accepted by this pinned parser/
-    );
-  } else {
-    assert.equal(commandReferences.has("addinitscript.md"), false);
-    if (model.unavailableDocumentedCommands.has("addinitscript")) {
-      assert.match(
-        catalog,
-        /`addinitscript` is not accepted by this pinned parser/
-      );
-    }
+  assert.match(
+    catalog,
+    /\| `debug` \| Debug compiled JavaScript in Chrome \| `divebell browser-help debug` \|/
+  );
+  assert.match(
+    catalog,
+    /\| `memory` \| Capture page memory evidence \| `divebell browser-help memory` \|/
+  );
+  assert.match(catalog, /## Commands without dedicated help/);
+  assert.match(catalog, /react tree\s+Full React component tree/);
+  assert.match(catalog, /pushstate <url>\s+SPA client-side nav/);
+  assert.match(
+    catalog,
+    /\| `confirm` \| Approve or deny pending actions \| `divebell browser-help confirm` \|/
+  );
+  assert.doesNotMatch(catalog, /## Top-level installed help/);
+  assert.doesNotMatch(catalog, /Usage: agent-browser network/);
+  if (model.unavailableDocumentedCommands.has("addinitscript")) {
+    assert.match(catalog, /`addinitscript` appears in bundled Markdown/);
   }
   for (const command of model.commands) {
-    assert.match(current, new RegExp(`browser-raw/${escapeRegExp(command)}\\.md`));
-    const content = commandReferences.get(`${command}.md`) ?? "";
-    if (!model.globalHelpCommands.has(command)) {
-      assert.match(
-        content,
-        new RegExp(
-          `(Usage: agent-browser ${escapeRegExp(command)}|agent-browser ${escapeRegExp(command)} -)`
-        )
-      );
-    }
+    assert.match(catalog, new RegExp("\\| `" + escapeRegExp(command) + "` \\|"));
+    assert.doesNotMatch(current, new RegExp(`browser-raw/${escapeRegExp(command)}\\.md`));
   }
 });
 
@@ -156,6 +151,8 @@ test("documents the raw transport and routes Extension agents to it", () => {
   assert.match(reference, /removes agent-browser's outer `\{ success, data, error \}`/);
   assert.match(reference, /raw<T>\(\)/);
   assert.match(reference, /Extension Commands must not invoke agent-browser `open`, `close`/);
+  assert.match(reference, /divebell browser-help network/);
+  assert.match(reference, /divebell network --help/);
 });
 
 test("documents every typed Extension browser API and its type source", () => {

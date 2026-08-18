@@ -33,15 +33,10 @@ export function resolveAgentBrowserReferenceSource() {
   const packageDirectory = dirname(packagePath);
   const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
   const entryPath = cliRequire.resolve("@divebell/agent-browser/bin/agent-browser.js");
-  const commandsPath = join(
-    packageDirectory,
-    "skill-data/core/references/commands.md"
-  );
 
   return {
     version: packageJson.version,
     entryPath,
-    commandsPath,
     markdownPaths: [
       join(packageDirectory, "README.md"),
       ...collectMarkdownPaths(join(packageDirectory, "skill-data"))
@@ -139,8 +134,7 @@ export function createAgentBrowserRawReferenceModel() {
       continue;
     }
     const { output } = probe;
-    const hasDedicatedHelp = output.includes(`Usage: agent-browser ${command}`)
-      || output.startsWith(`agent-browser ${command} -`);
+    const hasDedicatedHelp = hasDedicatedCommandHelp(command, output);
     if (!hasDedicatedHelp && !discovery.declaredCommands.has(command)) {
       unavailableDocumentedCommands.add(command);
       continue;
@@ -160,80 +154,131 @@ export function createAgentBrowserRawReferenceModel() {
   };
 }
 
+function hasDedicatedCommandHelp(command, output) {
+  const title = output.split("\n").find((line) => line.trim().length > 0) ?? "";
+  const titleMatch = title.match(/^agent-browser\s+(.+?)\s+-\s+/);
+  return titleMatch?.[1].split("/").includes(command) === true;
+}
+
 export function createGeneratedRawReference(
   model = createAgentBrowserRawReferenceModel()
 ) {
-  const links = model.commands.map(
-    (command) => `- [\`${command}\`](browser-raw/${command}.md)`
-  );
-
   return [
     `Installed source: \`@divebell/agent-browser@${model.source.version}\`.`,
     "",
-    "The command files are generated from the exact agent-browser dependency",
-    "used by `@divebell/cli`. Do not edit them by hand.",
+    "The compact catalog is generated from the exact agent-browser dependency",
+    "used by `@divebell/cli`. Get exact syntax at runtime with",
+    "`divebell browser-help <command>`.",
     "",
-    "- [Top-level catalog and extended upstream reference](browser-raw/catalog.md)",
-    ...links
+    "- [Compact command catalog and special cases](browser-raw/catalog.md)"
   ].join("\n");
 }
 
 export function createGeneratedRawCommandReferences(
   model = createAgentBrowserRawReferenceModel()
 ) {
-  const commandReference = readFileSync(model.source.commandsPath, "utf8")
-    .trim()
-    .replace(/^# Command Reference$/m, "## Detailed command reference")
-    .replace(
-      /^agent-browser addinitscript <js>.*$/m,
-      model.unavailableDocumentedCommands.has("addinitscript")
-        ? "# `addinitscript` is not accepted by this pinned parser; do not use it through `raw`."
-        : "$&"
-    )
-    .replace(/\[([^\]]+)\]\((?!https?:|#)[^)]+\.md\)/g, "$1");
   const references = new Map();
+  const commandRows = model.commands.map((command) => [
+    `| \`${command}\``,
+    escapeMarkdownTableCell(readCommandPurpose(model, command)),
+    model.globalHelpCommands.has(command)
+      ? "Special syntax below"
+      : `\`divebell browser-help ${command}\``
+  ].join(" | ") + " |");
+  const globalHelpSections = [...model.globalHelpCommands].flatMap((command) => {
+    const syntax = extractTopLevelCommandLines(model.topLevelHelp, command);
+    return [
+      `### \`${command}\``,
+      "",
+      "This pinned version has no dedicated subcommand help. Use one of the",
+      "top-level forms captured from the installed parser:",
+      "",
+      "```text",
+      ...syntax,
+      "```",
+      "",
+      `Pass the chosen form without \`agent-browser\`, for example \`browser.raw(["${command}", ...args])\`.`,
+      ""
+    ];
+  });
+  const unavailableRows = [...model.unavailableDocumentedCommands].map(
+    (command) =>
+      `- \`${command}\` appears in bundled Markdown, but the pinned parser does not declare it or provide command help. Do not use it through \`browser.raw\`.`
+  );
 
   references.set("catalog.md", [
     "# agent-browser raw command catalog",
     "",
     `Generated from \`@divebell/agent-browser@${model.source.version}\`. Do not edit by hand.`,
     "",
-    "Use the command-specific files next to this catalog for the exact installed",
-    "help of one command. Pass command tokens to `browser.raw` without the",
-    "`agent-browser` executable name.",
+    "This file is an index, not a copy of the full CLI manual. Select a command",
+    "here, then run `divebell browser-help <command>` to read exact syntax from",
+    "the agent-browser version bundled with the installed Divebell CLI. Pass the",
+    "resulting command tokens to `browser.raw` without the executable name.",
     "",
-    "## Top-level installed help",
+    "## Commands",
     "",
-    "```text",
-    model.topLevelHelp,
-    "```",
+    "| Command | Purpose | Exact syntax |",
+    "| --- | --- | --- |",
+    ...commandRows,
     "",
-    commandReference,
+    ...(globalHelpSections.length === 0 ? [] : [
+      "## Commands without dedicated help",
+      "",
+      ...globalHelpSections
+    ]),
+    ...(unavailableRows.length === 0 ? [] : [
+      "## Documented but unavailable",
+      "",
+      ...unavailableRows
+    ]),
     ""
   ].join("\n"));
 
-  for (const command of model.commands) {
-    const output = model.commandHelp.get(command);
-    if (output === undefined) {
-      throw new Error(`Missing generated help for agent-browser "${command}".`);
-    }
-    references.set(`${command}.md`, [
-      `# \`browser.raw\`: \`${command}\``,
-      "",
-      `Generated from \`@divebell/agent-browser@${model.source.version}\`. Do not edit by hand.`,
-      "",
-      `Call this command with \`browser.raw(["${command}", ...args])\`. The return`,
-      "type is `DivebellBrowserRawResult`; see `../browser-raw.md` for JSON",
-      "unwrapping, failure handling, and command-specific payload validation.",
-      "",
-      "```text",
-      output,
-      "```",
-      ""
-    ].join("\n"));
+  return references;
+}
+
+function readCommandPurpose(model, command) {
+  const output = model.commandHelp.get(command) ?? "";
+  const title = output.split("\n").find((line) => line.trim().length > 0) ?? "";
+  const titleMatch = title.match(/^agent-browser\s+(.+?)\s+-\s+(.+)$/);
+  if (
+    titleMatch
+    && titleMatch[1].split("/").includes(command)
+  ) {
+    return titleMatch[2];
   }
 
-  return references;
+  const topLevelLine = extractTopLevelCommandLines(model.topLevelHelp, command)[0];
+  if (topLevelLine !== undefined) {
+    const columns = topLevelLine.trim().split(/\s{2,}/);
+    if (columns.length > 1) return columns.slice(1).join(" ");
+  }
+  return "See the installed agent-browser help.";
+}
+
+function extractTopLevelCommandLines(help, command) {
+  const lines = help.split("\n");
+  const commandPattern = new RegExp(`^ {2}${escapeRegExp(command)}(?:\\s|$)`);
+  const selected = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!commandPattern.test(lines[index])) continue;
+    selected.push(lines[index].trim());
+    for (let continuation = index + 1; continuation < lines.length; continuation += 1) {
+      const line = lines[continuation];
+      if (!/^ {3,}\S/.test(line)) break;
+      selected.push(line.trim());
+    }
+  }
+  return [...new Set(selected)];
+}
+
+function escapeMarkdownTableCell(value) {
+  return value.replaceAll("|", "\\|").replaceAll("\n", " ");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function collectMarkdownPaths(directory) {
@@ -285,7 +330,7 @@ function parseGlobalOptionMetadata(help) {
 }
 
 function parseDocumentedAgentBrowserInvocation(line, optionMetadata) {
-  const invocation = line.match(/(?:^|\s)agent-browser\s+(.+)$/);
+  const invocation = line.match(/^\s*(?:[$>]\s*)?agent-browser\s+(.+)$/);
   if (!invocation) return undefined;
   const tokens = invocation[1].match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
   for (let index = 0; index < tokens.length; index += 1) {
@@ -295,6 +340,7 @@ function parseDocumentedAgentBrowserInvocation(line, optionMetadata) {
       if (!token.includes("=") && optionMetadata.get(option)) index += 1;
       continue;
     }
+    if (["false", "null", "true"].includes(token)) return undefined;
     return /^[a-z][a-z0-9-]*$/.test(token) ? token : undefined;
   }
   return undefined;

@@ -88,6 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
+  assert.match(output.text(), /divebell browser-help - Print top-level or command-specific help/);
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
   assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
@@ -279,6 +280,75 @@ test("prints help for command help without executing the command", async () => {
     assert.doesNotMatch(output.text(), /divebell extensions/);
     assert.equal(touchedSideEffect, false);
   }
+});
+
+test("reads exact raw command help from the bundled agent-browser", async () => {
+  const invocations: Array<{ args: string[]; options: unknown }> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    invocations.push({ args, options });
+    return {
+      exitCode: 0,
+      stdout: [
+        "agent-browser network - Network interception and monitoring",
+        "",
+        "Usage: agent-browser network <subcommand> [args]",
+        ""
+      ].join("\n"),
+      stderr: ""
+    };
+  });
+
+  const directOutput = createOutput();
+  assert.equal(await runCli(["network", "--help"], {
+    stdout: directOutput.stdout,
+    stderr: directOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.match(directOutput.text(), /divebell network <route\|unroute\|requests\|request\|har>/);
+  assert.match(directOutput.text(), /Installed agent-browser help for `network`/);
+  assert.match(directOutput.text(), /Usage: agent-browser network <subcommand>/);
+
+  const rawOutput = createOutput();
+  assert.equal(await runCli(["browser-help", "network"], {
+    stdout: rawOutput.stdout,
+    stderr: rawOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(
+    rawOutput.text(),
+    "agent-browser network - Network interception and monitoring\n\nUsage: agent-browser network <subcommand> [args]\n"
+  );
+  assert.equal(rawOutput.errorText(), "");
+  const invalidOutput = createOutput();
+  assert.equal(await runCli(["browser-help", "network", "extra"], {
+    stdout: invalidOutput.stdout,
+    stderr: invalidOutput.stderr,
+    browserRunner
+  }), 1);
+  assert.equal(
+    JSON.parse(invalidOutput.text()).error.code,
+    "CLI_BROWSER_HELP_USAGE_INVALID"
+  );
+  assert.deepEqual(invocations, [
+    {
+      args: ["network", "--help"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    },
+    {
+      args: ["network", "--help"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    }
+  ]);
 });
 
 test("rejects unknown scoped help", async () => {

@@ -253,11 +253,6 @@ export const browserCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell addinitscript <script>",
-    description: "Register a page initialization script in the current browser session."
-  },
-  {
-    category: "Bridge and Browser",
     usage: "divebell removeinitscript <id>",
     description: "Remove a registered page initialization script."
   },

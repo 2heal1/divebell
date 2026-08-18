@@ -12,6 +12,10 @@ import {
 } from "./commands/bridge.js";
 import { createBridgeStateStore } from "./features/bridge/config.js";
 import { runBrowserCliCommand, runExtensionCloseHooks } from "./commands/browser.js";
+import {
+  createInstalledBrowserHelpText,
+  runBrowserHelpCommand
+} from "./commands/browser-help-command.js";
 import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
 import { runKillAllCommand, runKillCommand, runPsCommand } from "./commands/daemon.js";
@@ -58,10 +62,18 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
     }
 
     if (hasOption(args, "help")) {
-      const helpText = createCommandHelpText(args.command, {
+      const divebellHelpText = createCommandHelpText(args.command, {
         commandReferences: config.commandReferences,
         commandSkillReferences: config.commandSkillReferences
       });
+      const installedBrowserHelpText = isBrowserCommand(args.command[0])
+        ? await createInstalledBrowserHelpText(args.command[0], browserRunner)
+        : undefined;
+      const helpText = installedBrowserHelpText === undefined
+        ? divebellHelpText
+        : [divebellHelpText, installedBrowserHelpText]
+          .filter((value): value is string => value !== undefined)
+          .join("\n\n");
       if (helpText === undefined) {
         throw createError({
           code: "CLI_UNKNOWN_COMMAND",
@@ -170,6 +182,16 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
 
       if (args.command[0] === "profiles") {
         return await runAgentBrowserProfilesCommand(args, commandStdout, commandStderr, browserRunner);
+      }
+
+      if (args.command[0] === "browser-help") {
+        return await runBrowserHelpCommand(
+          args.command.slice(1),
+          args.options.size,
+          commandStdout,
+          commandStderr,
+          browserRunner
+        );
       }
 
       if (args.command[0] === "state") {
@@ -296,6 +318,7 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
 function shouldUseRawOutput(args: ReturnType<typeof parseCliArgs>): boolean {
   return args.command[0] === "__bridge-server"
     || args.command[0] === "skill"
+    || args.command[0] === "browser-help"
     || hasOption(args, "skill");
 }
 

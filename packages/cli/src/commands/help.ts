@@ -65,8 +65,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell browser-help [agent-browser-command]",
-    description: "Print top-level or command-specific help from the exact agent-browser version bundled with Divebell."
+    usage: "divebell raw <agent-browser-args...>",
+    description: "Run the bundled agent-browser directly; use `divebell raw <command> --help` to inspect raw subcommands."
   },
   {
     category: "Bridge and Browser",

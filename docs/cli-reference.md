@@ -24,7 +24,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell kill <index|pid|port> [--force]` - Stop a divebell daemon by ps index, PID, or port number; --force sends SIGKILL instead of SIGTERM.
 - `divebell kill-all [--force]` - Stop all running divebell daemon processes tracked by this user.
 - `divebell profiles` - List Chrome profiles available to agent-browser. Ordinary opens use Chrome's most recently used Profile by default.
-- `divebell browser-help [agent-browser-command]` - Print top-level or command-specific help from the exact agent-browser version bundled with Divebell.
+- `divebell raw <agent-browser-args...>` - Run the bundled agent-browser directly; use `divebell raw <command> --help` to inspect raw subcommands.
 - `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
 - `divebell state infer <url> --state <path> --source-profile <name|path> [--output <path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>]` - On the state provider's machine, infer the smallest URL scope from a working Profile, verify it, and save a new standard state JSON without modifying the supplied state.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.

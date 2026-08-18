@@ -306,9 +306,8 @@ with `raw`.
 When no typed API exposes the required capability, use `browser.raw` with
 agent-browser arguments. It returns `{ exitCode, stdout, stderr }` without
 throwing on a non-zero exit code or returning a parsed JavaScript value. Read
-[`browser-raw.md`](browser-raw.md) for the version-matched command catalog,
-the `divebell browser-help <command>` discovery flow, and JSON transport
-behavior:
+[`browser-raw.md`](browser-raw.md) for the available raw subcommands, the
+`divebell raw <command> --help` discovery flow, and JSON transport behavior:
 
 ```ts
 const result = await options.divebell.browser.raw([

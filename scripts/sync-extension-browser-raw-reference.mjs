@@ -1,9 +1,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
-  mkdirSync,
   readFileSync,
   readdirSync,
+  rmdirSync,
   unlinkSync,
   writeFileSync
 } from "node:fs";
@@ -163,79 +163,51 @@ function hasDedicatedCommandHelp(command, output) {
 export function createGeneratedRawReference(
   model = createAgentBrowserRawReferenceModel()
 ) {
-  return [
-    `Installed source: \`@divebell/agent-browser@${model.source.version}\`.`,
-    "",
-    "The compact catalog is generated from the exact agent-browser dependency",
-    "used by `@divebell/cli`. Get exact syntax at runtime with",
-    "`divebell browser-help <command>`.",
-    "",
-    "- [Compact command catalog and special cases](browser-raw/catalog.md)"
-  ].join("\n");
-}
-
-export function createGeneratedRawCommandReferences(
-  model = createAgentBrowserRawReferenceModel()
-) {
-  const references = new Map();
   const commandRows = model.commands.map((command) => [
     `| \`${command}\``,
     escapeMarkdownTableCell(readCommandPurpose(model, command)),
     model.globalHelpCommands.has(command)
       ? "Special syntax below"
-      : `\`divebell browser-help ${command}\``
+      : `\`divebell raw ${command} --help\``
   ].join(" | ") + " |");
   const globalHelpSections = [...model.globalHelpCommands].flatMap((command) => {
     const syntax = extractTopLevelCommandLines(model.topLevelHelp, command);
     return [
-      `### \`${command}\``,
+      `#### \`${command}\``,
       "",
-      "This pinned version has no dedicated subcommand help. Use one of the",
+      "The bundled agent-browser has no dedicated subcommand help. Use one of the",
       "top-level forms captured from the installed parser:",
       "",
       "```text",
       ...syntax,
       "```",
       "",
-      `Pass the chosen form without \`agent-browser\`, for example \`browser.raw(["${command}", ...args])\`.`,
+      `Pass the chosen form without \`agent-browser\`, for example \`options.divebell.browser.raw(["${command}", ...args])\`.`,
       ""
     ];
   });
   const unavailableRows = [...model.unavailableDocumentedCommands].map(
     (command) =>
-      `- \`${command}\` appears in bundled Markdown, but the pinned parser does not declare it or provide command help. Do not use it through \`browser.raw\`.`
+      `- \`${command}\` appears in the bundled agent-browser documentation, but its parser does not declare it or provide command help. Do not use it through \`browser.raw\`.`
   );
 
-  references.set("catalog.md", [
-    "# agent-browser raw command catalog",
-    "",
-    `Generated from \`@divebell/agent-browser@${model.source.version}\`. Do not edit by hand.`,
-    "",
-    "This file is an index, not a copy of the full CLI manual. Select a command",
-    "here, then run `divebell browser-help <command>` to read exact syntax from",
-    "the agent-browser version bundled with the installed Divebell CLI. Pass the",
-    "resulting command tokens to `browser.raw` without the executable name.",
-    "",
-    "## Commands",
-    "",
-    "| Command | Purpose | Exact syntax |",
+  return [
+    "| Raw subcommand | Purpose | Exact help |",
     "| --- | --- | --- |",
     ...commandRows,
     "",
     ...(globalHelpSections.length === 0 ? [] : [
-      "## Commands without dedicated help",
+      "### Subcommands without dedicated help",
       "",
       ...globalHelpSections
     ]),
     ...(unavailableRows.length === 0 ? [] : [
-      "## Documented but unavailable",
+      "### Documented upstream but unavailable",
       "",
       ...unavailableRows
     ]),
     ""
-  ].join("\n"));
-
-  return references;
+  ].join("\n");
 }
 
 function readCommandPurpose(model, command) {
@@ -252,7 +224,9 @@ function readCommandPurpose(model, command) {
   const topLevelLine = extractTopLevelCommandLines(model.topLevelHelp, command)[0];
   if (topLevelLine !== undefined) {
     const columns = topLevelLine.trim().split(/\s{2,}/);
-    if (columns.length > 1) return columns.slice(1).join(" ");
+    if (columns.length > 1) {
+      return columns.slice(1).join(" ").replace(/\s+\+$/, "");
+    }
   }
   return "See the installed agent-browser help.";
 }
@@ -371,29 +345,14 @@ export function syncExtensionBrowserRawReference({ check = false } = {}) {
     createGeneratedRawReference(model)
   );
 
-  const commandReferences = createGeneratedRawCommandReferences(model);
-  const currentCommandNames = new Set(
+  const legacyReferenceNames =
     (existsSync(commandReferenceDirectory)
       ? readdirSync(commandReferenceDirectory, { withFileTypes: true })
       : [])
       .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
-      .map((entry) => entry.name)
-  );
-  const staleCommandNames = [...currentCommandNames].filter(
-    (name) => !commandReferences.has(name)
-  );
-  const changedCommandNames = [...commandReferences].flatMap(([name, content]) => {
-    try {
-      return readFileSync(join(commandReferenceDirectory, name), "utf8") === content
-        ? []
-        : [name];
-    } catch {
-      return [name];
-    }
-  });
+      .map((entry) => entry.name);
   const synchronized = current === expected
-    && staleCommandNames.length === 0
-    && changedCommandNames.length === 0;
+    && legacyReferenceNames.length === 0;
 
   if (synchronized) return true;
   if (check) {
@@ -402,12 +361,14 @@ export function syncExtensionBrowserRawReference({ check = false } = {}) {
     );
   }
   writeFileSync(referencePath, expected);
-  mkdirSync(commandReferenceDirectory, { recursive: true });
-  for (const [name, content] of commandReferences) {
-    writeFileSync(join(commandReferenceDirectory, name), content);
-  }
-  for (const name of staleCommandNames) {
+  for (const name of legacyReferenceNames) {
     unlinkSync(join(commandReferenceDirectory, name));
+  }
+  if (
+    existsSync(commandReferenceDirectory)
+    && readdirSync(commandReferenceDirectory).length === 0
+  ) {
+    rmdirSync(commandReferenceDirectory);
   }
   return false;
 }

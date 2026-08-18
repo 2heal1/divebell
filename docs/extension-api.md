@@ -436,10 +436,10 @@ or a parsed JavaScript return value. The shared browser runner does unwrap
 agent-browser's `{ success, data, error }` transport for `--json`; successful
 `stdout` contains the serialized `data`. The caller still checks `exitCode` and
 validates the command-specific payload. Read the
-[version-matched raw command reference](../skills/divebell-extension/references/browser-raw.md)
-for the command catalog, special cases, and installed CLI help flow. The outer
-workflow still owns browser creation and shutdown; Extension Commands must not
-use `raw` to run `open` or `close`.
+[raw command reference](../skills/divebell-extension/references/browser-raw.md)
+for the available subcommands, special cases, and installed CLI help flow. The
+outer workflow still owns browser creation and shutdown; Extension Commands
+must not use `raw` to run `open` or `close`.
 
 ### Debugger identity and selection
 

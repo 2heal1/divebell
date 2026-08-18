@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -7,7 +7,6 @@ import ts from "typescript";
 
 import {
   createAgentBrowserRawReferenceModel,
-  createGeneratedRawCommandReferences,
   createGeneratedRawReference,
   discoverAgentBrowserCommandCandidates,
   GENERATED_RAW_REFERENCE_END,
@@ -46,49 +45,36 @@ test("keeps the Extension raw reference synchronized with agent-browser", () => 
     cliPackage.dependencies["@divebell/agent-browser"],
     model.source.version
   );
+  assert.equal(existsSync(rawCommandReferenceDirectory), false);
+  assert.doesNotMatch(current, /@divebell\/agent-browser@/);
   assert.match(
     current,
-    new RegExp(`@divebell/agent-browser@${escapeRegExp(model.source.version)}`)
-  );
-  const commandReferences = createGeneratedRawCommandReferences(model);
-  assert.deepEqual(
-    readdirSync(rawCommandReferenceDirectory).toSorted(),
-    [...commandReferences.keys()].toSorted()
-  );
-  for (const [name, content] of commandReferences) {
-    assert.equal(
-      readFileSync(join(rawCommandReferenceDirectory, name), "utf8"),
-      content
-    );
-  }
-  const catalog = commandReferences.get("catalog.md") ?? "";
-  assert.deepEqual([...commandReferences.keys()], ["catalog.md"]);
-  assert.match(
-    catalog,
-    /\| `network` \| Network interception and monitoring \| `divebell browser-help network` \|/
+    /\| `network` \| Network interception and monitoring \| `divebell raw network --help` \|/
   );
   assert.match(
-    catalog,
-    /\| `debug` \| Debug compiled JavaScript in Chrome \| `divebell browser-help debug` \|/
+    current,
+    /\| `debug` \| Debug compiled JavaScript in Chrome \| `divebell raw debug --help` \|/
   );
   assert.match(
-    catalog,
-    /\| `memory` \| Capture page memory evidence \| `divebell browser-help memory` \|/
+    current,
+    /\| `memory` \| Capture page memory evidence \| `divebell raw memory --help` \|/
   );
-  assert.match(catalog, /## Commands without dedicated help/);
-  assert.match(catalog, /react tree\s+Full React component tree/);
-  assert.match(catalog, /pushstate <url>\s+SPA client-side nav/);
+  assert.match(current, /### Subcommands without dedicated help/);
+  assert.match(current, /react tree\s+Full React component tree/);
+  assert.match(current, /pushstate <url>\s+SPA client-side nav/);
   assert.match(
-    catalog,
-    /\| `confirm` \| Approve or deny pending actions \| `divebell browser-help confirm` \|/
+    current,
+    /\| `confirm` \| Approve or deny pending actions \| `divebell raw confirm --help` \|/
   );
-  assert.doesNotMatch(catalog, /## Top-level installed help/);
-  assert.doesNotMatch(catalog, /Usage: agent-browser network/);
+  assert.doesNotMatch(current, /## Top-level installed help/);
+  assert.doesNotMatch(current, /Usage: agent-browser network/);
+  assert.doesNotMatch(current, /Version-matched command catalog/);
+  assert.doesNotMatch(current, /Updating the pinned agent-browser version/);
   if (model.unavailableDocumentedCommands.has("addinitscript")) {
-    assert.match(catalog, /`addinitscript` appears in bundled Markdown/);
+    assert.match(current, /`addinitscript` appears in the bundled agent-browser documentation/);
   }
   for (const command of model.commands) {
-    assert.match(catalog, new RegExp("\\| `" + escapeRegExp(command) + "` \\|"));
+    assert.match(current, new RegExp("\\| `" + escapeRegExp(command) + "` \\|"));
     assert.doesNotMatch(current, new RegExp(`browser-raw/${escapeRegExp(command)}\\.md`));
   }
 });
@@ -151,8 +137,7 @@ test("documents the raw transport and routes Extension agents to it", () => {
   assert.match(reference, /removes agent-browser's outer `\{ success, data, error \}`/);
   assert.match(reference, /raw<T>\(\)/);
   assert.match(reference, /Extension Commands must not invoke agent-browser `open`, `close`/);
-  assert.match(reference, /divebell browser-help network/);
-  assert.match(reference, /divebell network --help/);
+  assert.match(reference, /divebell raw network --help/);
 });
 
 test("documents every typed Extension browser API and its type source", () => {

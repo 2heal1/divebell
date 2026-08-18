@@ -325,8 +325,8 @@ When no typed API exists, use `divebell.browser.raw(args)`. `raw` returns
 `{ exitCode, stdout, stderr }`; it does not throw on command failure or return
 a parsed JavaScript value. For `--json`, the shared browser runner unwraps the
 agent-browser transport and leaves the serialized command `data` in `stdout`.
-Read the [version-matched raw command reference](../skills/divebell-extension/references/browser-raw.md)
-to select a command, then run `divebell browser-help <command>` for the exact
+Read the [raw command reference](../skills/divebell-extension/references/browser-raw.md)
+to select a subcommand, then run `divebell raw <command> --help` for the exact
 syntax installed with Divebell. The outer workflow still owns `open` and `stop`.
 
 Debugger IDs are not taken from `options.page.sessionId`. That field is the

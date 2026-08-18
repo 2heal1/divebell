@@ -410,7 +410,7 @@ const contentType = detail.response?.headers["content-type"];
 
 | API | Purpose | Read these types |
 | --- | --- | --- |
-| `browser.raw` | Run a version-matched agent-browser command that has no typed Extension API and return its process result without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
+| `browser.raw` | Run a bundled agent-browser command that has no typed Extension API and return its process result without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
 
 `browser.raw` accepts agent-browser arguments directly. It does not apply
 Divebell command translation, page-context checks, session-preserving

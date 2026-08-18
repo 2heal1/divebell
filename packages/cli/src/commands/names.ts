@@ -85,7 +85,7 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "stop",
     "auth",
     "profiles",
-    "browser-help",
+    "raw",
     "state",
     "extensions",
     "stack",

@@ -88,7 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
-  assert.match(output.text(), /divebell browser-help - Print top-level or command-specific help/);
+  assert.match(output.text(), /divebell raw - Run the bundled agent-browser directly/);
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
   assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
@@ -247,7 +247,7 @@ test("rejects the removed close command", async () => {
 });
 
 test("prints help for command help without executing the command", async () => {
-  for (const command of ["start", "open", "events"]) {
+  for (const command of ["start", "open", "events", "network"]) {
     let touchedSideEffect = false;
     const output = createOutput();
     const exitCode = await runCli([command, "--help"], {
@@ -288,28 +288,20 @@ test("reads exact raw command help from the bundled agent-browser", async () => 
     invocations.push({ args, options });
     return {
       exitCode: 0,
-      stdout: [
-        "agent-browser network - Network interception and monitoring",
-        "",
-        "Usage: agent-browser network <subcommand> [args]",
-        ""
-      ].join("\n"),
+      stdout: args.includes("--help")
+        ? [
+          "agent-browser network - Network interception and monitoring",
+          "",
+          "Usage: agent-browser network <subcommand> [args]",
+          ""
+        ].join("\n")
+        : "raw-result\n",
       stderr: ""
     };
   });
 
-  const directOutput = createOutput();
-  assert.equal(await runCli(["network", "--help"], {
-    stdout: directOutput.stdout,
-    stderr: directOutput.stderr,
-    browserRunner
-  }), 0);
-  assert.match(directOutput.text(), /divebell network <route\|unroute\|requests\|request\|har>/);
-  assert.match(directOutput.text(), /Installed agent-browser help for `network`/);
-  assert.match(directOutput.text(), /Usage: agent-browser network <subcommand>/);
-
   const rawOutput = createOutput();
-  assert.equal(await runCli(["browser-help", "network"], {
+  assert.equal(await runCli(["raw", "network", "--help"], {
     stdout: rawOutput.stdout,
     stderr: rawOutput.stderr,
     browserRunner
@@ -319,16 +311,26 @@ test("reads exact raw command help from the bundled agent-browser", async () => 
     "agent-browser network - Network interception and monitoring\n\nUsage: agent-browser network <subcommand> [args]\n"
   );
   assert.equal(rawOutput.errorText(), "");
-  const invalidOutput = createOutput();
-  assert.equal(await runCli(["browser-help", "network", "extra"], {
-    stdout: invalidOutput.stdout,
-    stderr: invalidOutput.stderr,
+
+  const commandOutput = createOutput();
+  assert.equal(await runCli([
+    "raw", "network", "requests", "--filter", "api", "--json"
+  ], {
+    stdout: commandOutput.stdout,
+    stderr: commandOutput.stderr,
     browserRunner
-  }), 1);
-  assert.equal(
-    JSON.parse(invalidOutput.text()).error.code,
-    "CLI_BROWSER_HELP_USAGE_INVALID"
-  );
+  }), 0);
+  assert.equal(commandOutput.text(), "raw-result\n");
+  assert.equal(commandOutput.errorText(), "");
+
+  const versionOutput = createOutput();
+  assert.equal(await runCli(["raw", "--version"], {
+    stdout: versionOutput.stdout,
+    stderr: versionOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(versionOutput.text(), "raw-result\n");
+
   assert.deepEqual(invocations, [
     {
       args: ["network", "--help"],
@@ -340,7 +342,11 @@ test("reads exact raw command help from the bundled agent-browser", async () => 
       }
     },
     {
-      args: ["network", "--help"],
+      args: ["network", "requests", "--filter", "api", "--json"],
+      options: {}
+    },
+    {
+      args: ["--version"],
       options: {
         disableDefaultProfile: true,
         disableRestore: true,

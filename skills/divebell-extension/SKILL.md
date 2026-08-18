@@ -16,8 +16,8 @@ Read the relevant section of `references/api.md` when exact types, fields,
 arguments, or return values are needed.
 
 Before using `options.divebell.browser.raw`, read
-`references/browser-raw.md` in full. It contains the version-matched
-agent-browser command catalog and the raw transport/result contract.
+`references/browser-raw.md` in full. It contains the available raw subcommands,
+their installed help flow, and the raw transport/result contract.
 
 ## Workflow
 

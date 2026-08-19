@@ -364,6 +364,8 @@ the package root or inspect the installed
 | `browser.getWindow` | Read a dot-separated value from `window`. | `DivebellBrowserApi` |
 | `browser.highlight` | Visually highlight a selector or element reference. | `DivebellBrowserApi` |
 | `browser.screenshot` | Capture the page and return the artifact path. | `DivebellBrowserApi`, `DivebellBrowserScreenshotOptions` |
+| `browser.tabs.list` | List open tabs and identify the active tab. | `DivebellBrowserTabsApi`, `DivebellBrowserTab` |
+| `browser.tabs.activate` | Make a tab the active page using its stable tab ID. | `DivebellBrowserTabsApi` |
 | `browser.network.list` | List optionally filtered request summaries. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkOptions`, `DivebellBrowserNetworkRequestSummary` |
 | `browser.network.get` | Read one request's headers, bodies, status, and MIME type. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRequestDetail` |
 | `browser.network.clear` | Clear retained request history. | `DivebellBrowserNetworkApi` |
@@ -373,6 +375,17 @@ the package root or inspect the installed
 | `browser.network.har.stop` | Stop HAR capture and return its artifact path. | `DivebellBrowserNetworkApi`, `DivebellBrowserArtifactResult` |
 | `browser.console.list` | Read filtered Console entries and a level summary. | `DivebellBrowserConsoleApi`, `DivebellBrowserConsoleOptions`, `DivebellBrowserConsoleResult` |
 | `browser.console.clear` | Clear retained Console entries. | `DivebellBrowserConsoleApi` |
+| `browser.debug.status` | Inspect debugger state for one tab or all tabs. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugStatusOptions`, `DivebellBrowserDebugStatusResult` |
+| `browser.debug.enable` | Enable compiled-JavaScript debugging and return debugger session identities. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugStatusOptions`, `DivebellBrowserDebugEnableResult` |
+| `browser.debug.disable` | Disable debugging for the selected tab and optionally resume it first. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugDisableOptions`, `DivebellBrowserDebugDisableResult` |
+| `browser.debug.scripts` | List scripts observed by the selected debugger session. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugScriptsOptions`, `DivebellBrowserDebugScript` |
+| `browser.debug.source` | Read one script and its compiled source. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugTargetOptions`, `DivebellBrowserDebugSourceResult` |
+| `browser.debug.sourceSearch` | Search compiled script sources and return matching locations. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugSourceSearchOptions`, `DivebellBrowserDebugSourceSearchResult` |
+| `browser.debug.events` | Read buffered debugger events, optionally waiting for new events. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugEventsOptions`, `DivebellBrowserDebugEventsResult` |
+| `browser.debug.logpoints.set` | Install a logpoint with expressions, relocation controls, and tags. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugLogpointSetOptions`, `DivebellBrowserDebugProbeResult` |
+| `browser.debug.logpoints.list` | List installed logpoints. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeListResult` |
+| `browser.debug.logpoints.remove` | Remove an installed logpoint by probe ID. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeRemoveResult` |
+| `browser.debug.breakpoints.list` | List installed breakpoints. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeListResult` |
 | `browser.memory.metrics` | Read current heap and DOM-related metrics. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryMetricsOptions`, `DivebellBrowserMemoryMetricsResult` |
 | `browser.memory.status` | Inspect the active memory capture. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemoryStatusResult` |
 | `browser.memory.sampling.start` | Start allocation sampling. | `DivebellBrowserMemoryApi`, `DivebellBrowserMemorySamplingStartOptions`, `DivebellBrowserMemoryCaptureResult` |
@@ -423,12 +436,12 @@ interface DivebellBrowserRawResult {
 }
 
 const result = await divebell.browser.raw(
-  ["debug", "status", "--json"]
+  ["get", "cdp-url", "--json"]
 );
 if (result.exitCode !== 0) {
   throw new Error(result.stderr.trim() || result.stdout.trim());
 }
-const status = JSON.parse(result.stdout) as unknown;
+const cdpTarget = JSON.parse(result.stdout) as unknown;
 ```
 
 `raw` requires the current browser context created by `divebell open` and
@@ -451,21 +464,10 @@ without a selector targets the active tab and returns its debugger identity.
 Retain the mapping returned in `sessions`:
 
 ```ts
-interface DebuggerEnableResult {
-  connectionGeneration: number;
-  sessions: Array<{
-    sessionId: string;
-    tabId?: string;
-  }>;
-}
+import type { DivebellBrowserDebugEnableResult } from "@divebell/cli";
 
-const enabledResult = await divebell.browser.raw([
-  "debug", "enable", "--json"
-]);
-if (enabledResult.exitCode !== 0) {
-  throw new Error(enabledResult.stderr.trim() || enabledResult.stdout.trim());
-}
-const enabled = JSON.parse(enabledResult.stdout) as DebuggerEnableResult;
+const enabled: DivebellBrowserDebugEnableResult =
+  await divebell.browser.debug.enable();
 ```
 
 `debug status` can be used before enabling to record whether the selected
@@ -480,7 +482,7 @@ The IDs have separate namespaces and must not be substituted for each other:
 | --- | --- | --- |
 | `options.page.sessionId` | Divebell page/Runtime correlation session from `divebell open` | Select Runtime SDK connections; never use it as a debugger selector |
 | debugger `sessions[].sessionId` | Chrome CDP target-session identity | Correlate scripts and events with the renderer that produced them |
-| debugger `sessions[].tabId` | Stable agent-browser tab selector, such as `t1` | Preferred selector for follow-up `debug` commands through `browser.raw` |
+| debugger `sessions[].tabId` | Stable agent-browser tab selector, such as `t1` | Preferred selector for follow-up `browser.debug` calls |
 | debugger `scriptId` | Chrome's script ID within one document and CDP session | Use only with the matching debugger session and document generation |
 | debugger `scriptInstanceKey` | Script identity including connection generation, CDP session, document generation, and script ID | Retain when a probe must distinguish navigation or reconnect generations |
 
@@ -492,12 +494,7 @@ if (selected?.tabId === undefined) {
   throw new Error("No debugger tab is available for the current page.");
 }
 
-const scripts = await divebell.browser.raw([
-  "debug", "scripts", "--tab", selected.tabId, "--json"
-]);
-if (scripts.exitCode !== 0) {
-  throw new Error(scripts.stderr.trim() || scripts.stdout.trim());
-}
+const scripts = await divebell.browser.debug.scripts({ tab: selected.tabId });
 ```
 
 Do not forward a debugger CDP `sessionId` as a generic `session` option. That
@@ -505,8 +502,8 @@ name is also used by agent-browser process routing and can select the wrong
 daemon. A bare `scriptId` is likewise not stable across navigation or browser
 reconnection; use the returned script identity fields together.
 
-Use the typed browser APIs for capabilities they expose. Debugger operations
-currently use `browser.raw`, so an Extension must check `exitCode`, parse JSON,
-and retain the correct debugger identifiers itself.
+Debugger operations use Typed APIs, so browser failures and JSON parsing are
+normalized by Divebell. The Extension must still retain the correct debugger
+identifiers and avoid mixing IDs from different namespaces or navigations.
 
 The Coding Agent remains responsible for reading and changing project source code. The Extension API does not provide a standardized code workspace or development-server interface. Do not present an Extension's own file access as a general Divebell code capability.

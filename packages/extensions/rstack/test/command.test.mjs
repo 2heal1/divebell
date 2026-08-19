@@ -215,14 +215,35 @@ class FakeBrowser {
     this.reactDomBuild = options.reactDomBuild;
     this.consoleCalls = 0;
     this.console = { list: async () => await this.readConsole() };
-  }
-
-  async raw(command) {
-    const request = parseRawDebugCommand(command);
-    return {
-      exitCode: 0,
-      stdout: await this.run("debug", request),
-      stderr: ""
+    const invoke = async (args, requestOptions = {}) =>
+      JSON.parse(await this.run("debug", { args, options: requestOptions }));
+    this.debug = {
+      status: async (debugOptions = {}) => await invoke(["status"], debugOptions),
+      enable: async (debugOptions = {}) => await invoke(["enable"], debugOptions),
+      disable: async (debugOptions = {}) => await invoke(["disable"], debugOptions),
+      scripts: async (debugOptions = {}) =>
+        (await invoke(["scripts"], debugOptions)).scripts,
+      sourceSearch: async (query, debugOptions = {}) =>
+        await invoke(["source", "search", query], debugOptions),
+      source: async (scriptId, debugOptions = {}) =>
+        await invoke(["source", scriptId], debugOptions),
+      events: async (debugOptions = {}) => await invoke(["events"], debugOptions),
+      logpoints: {
+        set: async (debugOptions) => await invoke(
+          ["logpoint", "set", debugOptions.scriptId, String(debugOptions.line)],
+          {
+            ...debugOptions,
+            tag: Object.entries(debugOptions.tags ?? {}).map(
+              ([name, value]) => `${name}=${value}`
+            )
+          }
+        ),
+        list: async () => await invoke(["logpoint", "list"]),
+        remove: async (probeId) => await invoke(["logpoint", "remove", probeId])
+      },
+      breakpoints: {
+        list: async () => await invoke(["breakpoint", "list"])
+      }
     };
   }
 
@@ -473,30 +494,4 @@ function cliArgs(command, options = {}) {
 
 function json(value) {
   return JSON.stringify(value);
-}
-
-function parseRawDebugCommand(command) {
-  assert.equal(command[0], "debug");
-  const args = [];
-  const options = {};
-  for (let index = 1; index < command.length; index += 1) {
-    const value = command[index];
-    if (!value.startsWith("--")) {
-      args.push(value);
-      continue;
-    }
-    const name = value.slice(2);
-    const next = command[index + 1];
-    const optionValue = next === undefined || next.startsWith("--")
-      ? true
-      : command[++index];
-    const current = options[name];
-    const repeatable = name === "expression" || name === "tag";
-    options[name] = current === undefined
-      ? repeatable ? [optionValue] : optionValue
-      : Array.isArray(current)
-        ? [...current, optionValue]
-        : [current, optionValue];
-  }
-  return { args, options };
 }

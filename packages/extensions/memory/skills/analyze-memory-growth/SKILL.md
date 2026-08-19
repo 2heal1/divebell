@@ -70,11 +70,12 @@ export default {
 
 ## 4. Run the full check
 
-Use three warm-up iterations and twelve measured iterations by default:
+Open the target page with the required account and environment first. Then use
+three warm-up iterations and twelve measured iterations by default:
 
 ```bash
+divebell open <target-page-url>
 divebell memory check \
-  --url <target-page-url> \
   --scenario <scenario-file-path> \
   --warmup 3 \
   --iterations 12 \

@@ -36,7 +36,7 @@ Pass the agent-browser command tokens without the executable name:
 
 ```ts
 const result = await options.divebell.browser.raw([
-  "debug", "status", "--json"
+  "get", "cdp-url", "--json"
 ]);
 ```
 
@@ -265,32 +265,23 @@ Keep the parsed value as `unknown` until it is checked. If an Extension must
 depend on fields, declare and validate the smallest local shape it consumes:
 
 ```ts
-interface TabListResult {
-  tabs: Array<{
-    tabId: string;
-    url?: string;
-    label?: string;
-    active?: boolean;
-  }>;
+interface CdpUrlResult {
+  cdpUrl: string;
 }
 
-function isTabListResult(value: unknown): value is TabListResult {
-  if (typeof value !== "object" || value === null) return false;
-  const tabs = (value as { tabs?: unknown }).tabs;
-  return Array.isArray(tabs) && tabs.every((tab) =>
-    typeof tab === "object" &&
-    tab !== null &&
-    typeof (tab as { tabId?: unknown }).tabId === "string"
-  );
+function isCdpUrlResult(value: unknown): value is CdpUrlResult {
+  return typeof value === "object" &&
+    value !== null &&
+    typeof (value as { cdpUrl?: unknown }).cdpUrl === "string";
 }
 
-const listed = await options.divebell.browser.raw(["tab", "--json"]);
-if (listed.exitCode !== 0) {
-  throw new Error(listed.stderr.trim() || listed.stdout.trim());
+const result = await options.divebell.browser.raw(["get", "cdp-url", "--json"]);
+if (result.exitCode !== 0) {
+  throw new Error(result.stderr.trim() || result.stdout.trim());
 }
-const parsed: unknown = JSON.parse(listed.stdout);
-if (!isTabListResult(parsed)) {
-  throw new Error("agent-browser returned an invalid tab list.");
+const parsed: unknown = JSON.parse(result.stdout);
+if (!isCdpUrlResult(parsed)) {
+  throw new Error("agent-browser returned an invalid CDP URL result.");
 }
 ```
 

@@ -1264,6 +1264,101 @@ test("exposes structured Network and Console APIs to Extensions", async () => {
   }
 });
 
+test("exposes structured Tabs and Debugger APIs to Extensions", async () => {
+  const extension = createCommandExtension({
+    name: "browser-debug-demo",
+    run: async ({ divebell }) => ({
+      tabs: await divebell.browser.tabs.list(),
+      activated: await divebell.browser.tabs.activate("t2"),
+      status: await divebell.browser.debug.status({ allTabs: true }),
+      enabled: await divebell.browser.debug.enable({ tab: "t1" }),
+      disabled: await divebell.browser.debug.disable({ tab: "t1", resume: true }),
+      scripts: await divebell.browser.debug.scripts({ tab: "t1", filter: "app" }),
+      source: await divebell.browser.debug.source("42", { tab: "t1" }),
+      matches: await divebell.browser.debug.sourceSearch("needle", {
+        tab: "t1",
+        filter: "vendor",
+        maxResults: 1000
+      }),
+      events: await divebell.browser.debug.events({ since: 4, wait: 100, clear: true }),
+      logpoint: await divebell.browser.debug.logpoints.set({
+        tab: "t1",
+        scriptId: "42",
+        line: 108,
+        column: 3,
+        expressions: ["x", "y"],
+        when: "x > 0",
+        mode: "after",
+        maxLines: 1,
+        maxUtf16Distance: 512,
+        persist: true,
+        tags: { observation: "o1" }
+      }),
+      logpoints: await divebell.browser.debug.logpoints.list(),
+      removed: await divebell.browser.debug.logpoints.remove("probe-1"),
+      breakpoints: await divebell.browser.debug.breakpoints.list()
+    })
+  });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "browser-debug-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        if (args[0] === "tab" && args[1] === "--json") {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ tabs: [
+              { tabId: "t1", title: "App", url: "http://app.test/", active: true }
+            ] }),
+            stderr: ""
+          };
+        }
+        if (args[0] === "debug" && args[1] === "scripts") {
+          return { exitCode: 0, stdout: JSON.stringify({ scripts: [{ scriptId: "42" }] }), stderr: "" };
+        }
+        return {
+          exitCode: 0,
+          stdout: args.includes("--json") ? JSON.stringify({ command: args.slice(0, -1) }) : "",
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["tab", "--json"],
+      ["tab", "t2"],
+      ["debug", "status", "--all-tabs", "--json"],
+      ["debug", "enable", "--tab", "t1", "--json"],
+      ["debug", "disable", "--tab", "t1", "--resume", "--json"],
+      ["debug", "scripts", "--tab", "t1", "--filter", "app", "--json"],
+      ["debug", "source", "42", "--tab", "t1", "--json"],
+      ["debug", "source", "search", "needle", "--tab", "t1", "--filter", "vendor", "--max-results", "1000", "--json"],
+      ["debug", "events", "--since", "4", "--wait", "100", "--clear", "--json"],
+      ["debug", "logpoint", "set", "42", "108", "--tab", "t1", "--column", "3", "--expression", "x", "--expression", "y", "--when", "x > 0", "--after", "--max-lines", "1", "--max-utf16-distance", "512", "--persist", "--tag", "observation=o1", "--json"],
+      ["debug", "logpoint", "list", "--json"],
+      ["debug", "logpoint", "remove", "probe-1", "--json"],
+      ["debug", "breakpoint", "list", "--json"]
+    ]);
+    const result = commandData<Record<string, unknown>>(output.text());
+    assert.deepEqual(result.tabs, [
+      { tabId: "t1", title: "App", url: "http://app.test/", active: true }
+    ]);
+    assert.deepEqual(result.scripts, [{ scriptId: "42" }]);
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("formats errors thrown by extension commands", async () => {
   const extension = createCommandExtension({
     name: "failing-demo",

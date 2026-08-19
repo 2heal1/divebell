@@ -25,8 +25,9 @@ function createBrowserRunner(run) {
   return { run };
 }
 
-test("memory check runs a readable scenario and owns the full browser workflow", async () => {
+test("memory check runs a readable scenario against the current page", async () => {
   const directory = mkdtempSync(join(tmpdir(), "divebell-memory-check-"));
+  const operationLogDirectory = join(directory, "operations");
   const scenarioPath = join(directory, "scenario.mjs");
   const artifactDirectory = join(directory, "artifacts");
   writeFileSync(scenarioPath, `
@@ -48,13 +49,29 @@ test("memory check runs a readable scenario and owns the full browser workflow",
     { jsHeapUsedSize: 1_030_000, jsHeapTotalSize: 2_000_000, documents: 1, nodes: 10, jsEventListeners: 3 },
     { jsHeapUsedSize: 1_040_000, jsHeapTotalSize: 2_000_000, documents: 1, nodes: 10, jsEventListeners: 3 }
   ];
+  const browserRunner = createBrowserRunner(async (args) => {
+    calls.push(args);
+    if (args[0] === "eval") return { exitCode: 0, stdout: "true\n", stderr: "" };
+    if (args[0] === "memory" && args[1] === "metrics") {
+      const value = metrics[metricIndex++];
+      return { exitCode: 0, stdout: `${JSON.stringify(value)}\n`, stderr: "" };
+    }
+    if (args[0] === "memory" && args[1] === "sampling" && args[2] === "stop") {
+      return {
+        exitCode: 0,
+        stdout: `${JSON.stringify({ topFunctions: [{ functionName: "allocate", selfSize: 1024 }] })}\n`,
+        stderr: ""
+      };
+    }
+    return { exitCode: 0, stdout: "{}\n", stderr: "" };
+  });
 
   try {
+    await openMemoryPage(operationLogDirectory, browserRunner);
+    calls.length = 0;
     const exitCode = await runCli([
       "memory",
       "check",
-      "--url",
-      "https://example.test/",
       "--scenario",
       scenarioPath,
       "--artifact-dir",
@@ -66,22 +83,8 @@ test("memory check runs a readable scenario and owns the full browser workflow",
     ], {
       stdout: output.stdout,
       stderr: output.stderr,
-      browserRunner: createBrowserRunner(async (args) => {
-        calls.push(args);
-        if (args[0] === "eval") return { exitCode: 0, stdout: "true\n", stderr: "" };
-        if (args[0] === "memory" && args[1] === "metrics") {
-          const value = metrics[metricIndex++];
-          return { exitCode: 0, stdout: `${JSON.stringify(value)}\n`, stderr: "" };
-        }
-        if (args[0] === "memory" && args[1] === "sampling" && args[2] === "stop") {
-          return {
-            exitCode: 0,
-            stdout: `${JSON.stringify({ topFunctions: [{ functionName: "allocate", selfSize: 1024 }] })}\n`,
-            stderr: ""
-          };
-        }
-        return { exitCode: 0, stdout: "{}\n", stderr: "" };
-      })
+      operationLogDirectory,
+      browserRunner
     });
 
     assert.equal(exitCode, 0);
@@ -92,8 +95,7 @@ test("memory check runs a readable scenario and owns the full browser workflow",
     const report = JSON.parse(readFileSync(join(artifactDirectory, "report.json"), "utf8"));
     assert.equal(report.baseline.jsHeapUsedSize, 1_000_000);
     assert.equal(report.final.jsHeapUsedSize, 1_040_000);
-    assert.deepEqual(calls[0], ["open", "https://example.test/"]);
-    assert.deepEqual(calls.at(-1), ["close"]);
+    assert.equal(calls.some((args) => args[0] === "open" || args[0] === "close"), false);
     assert.equal(calls.filter((args) => args[0] === "memory" && args[1] === "metrics").length, 4);
     assert.equal(calls.filter((args) => args[0] === "eval" && args[1] === "true").length, 3);
   } finally {
@@ -112,55 +114,104 @@ test("forwards supported memory commands as JSON requests", async () => {
     ["memory", "cancel"]
   ];
   const calls = [];
-  for (const argv of commands) {
-    const output = createOutput();
-    const exitCode = await runCli(argv, {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      browserRunner: createBrowserRunner(async (args) => {
-        calls.push(args);
-        return { exitCode: 0, stdout: JSON.stringify({ command: args.slice(0, -1) }), stderr: "" };
-      })
-    });
-    assert.equal(exitCode, 0);
-    assert.deepEqual(JSON.parse(output.text()).data, { command: argv });
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-memory-commands-"));
+  const browserRunner = createBrowserRunner(async (args) => {
+    calls.push(args);
+    return { exitCode: 0, stdout: JSON.stringify({ command: args.slice(0, -1) }), stderr: "" };
+  });
+  try {
+    await openMemoryPage(operationLogDirectory, browserRunner);
+    calls.length = 0;
+    for (const argv of commands) {
+      const output = createOutput();
+      const exitCode = await runCli(argv, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory,
+        browserRunner
+      });
+      assert.equal(exitCode, 0);
+      assert.deepEqual(JSON.parse(output.text()).data, { command: argv });
+    }
+    assert.deepEqual(calls, commands.flatMap((argv) => argv[1] === "metrics"
+      ? [["memory", "collect-garbage", "--json"], ["memory", "metrics", "--json"]]
+      : [[...argv, "--json"]]));
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
   }
-  assert.deepEqual(calls, commands.flatMap((argv) => argv[1] === "metrics"
-    ? [["memory", "collect-garbage", "--json"], ["memory", "metrics", "--json"]]
-    : [[...argv, "--json"]]));
 });
 
 test("throws browser command failures into the shared error formatter", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-memory-error-"));
   const output = createOutput();
-  const exitCode = await runCli(["memory", "status"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async () => ({
-      exitCode: 1,
-      stdout: "",
-      stderr: "memory unavailable"
-    }))
-  });
+  let fail = false;
+  const browserRunner = createBrowserRunner(async () => ({
+    exitCode: fail ? 1 : 0,
+    stdout: "",
+    stderr: fail ? "memory unavailable" : ""
+  }));
+  try {
+    await openMemoryPage(operationLogDirectory, browserRunner);
+    fail = true;
+    const exitCode = await runCli(["memory", "status"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner
+    });
 
-  assert.equal(exitCode, 1);
-  const result = JSON.parse(output.text());
-  assert.equal(result.status, "error");
-  assert.equal(result.error.code, "MEMORY_BROWSER_COMMAND_FAILED");
-  assert.equal(result.message, "memory unavailable");
+    assert.equal(exitCode, 1);
+    const result = JSON.parse(output.text());
+    assert.equal(result.status, "error");
+    assert.equal(result.error.code, "PAGE_OPERATION_FAILED");
+    assert.equal(result.message, "memory unavailable");
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("requires a page opened by Divebell", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-memory-no-page-"));
+  const output = createOutput();
+  try {
+    const exitCode = await runCli(["memory", "status"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        throw new Error("The browser runner must not be called without an open page.");
+      })
+    });
+    assert.equal(exitCode, 1);
+    const result = JSON.parse(output.text());
+    assert.equal(result.error.code, "OPEN_CONTEXT_REQUIRED");
+    assert.match(result.error.hint, /divebell open <url>/u);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("allows memory metrics without garbage collection", async () => {
   const calls = [];
   const output = createOutput();
-  assert.equal(await runCli(["memory", "metrics", "--no-gc"], {
-    stdout: output.stdout,
-    stderr: output.stderr,
-    browserRunner: createBrowserRunner(async (args) => {
-      calls.push(args);
-      return { exitCode: 0, stdout: "{}", stderr: "" };
-    })
-  }), 0);
-  assert.deepEqual(calls, [["memory", "metrics", "--json"]]);
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-memory-no-gc-"));
+  const browserRunner = createBrowserRunner(async (args) => {
+    calls.push(args);
+    return { exitCode: 0, stdout: "{}", stderr: "" };
+  });
+  try {
+    await openMemoryPage(operationLogDirectory, browserRunner);
+    calls.length = 0;
+    assert.equal(await runCli(["memory", "metrics", "--no-gc"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner
+    }), 0);
+    assert.deepEqual(calls, [["memory", "metrics", "--json"]]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("forwards memory capture paths and limits", async () => {
@@ -179,16 +230,35 @@ test("forwards memory capture paths and limits", async () => {
       browser: ["memory", "snapshot", "/tmp/result.heapsnapshot", "--no-gc", "--timeout", "5000", "--max-size", "8192", "--json"]
     }
   ];
-  for (const item of commands) {
-    const output = createOutput();
-    assert.equal(await runCli(item.cli, {
-      stdout: output.stdout,
-      stderr: output.stderr,
-      browserRunner: createBrowserRunner(async (args) => {
-        calls.push(args);
-        return { exitCode: 0, stdout: "{}", stderr: "" };
-      })
-    }), 0);
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-memory-options-"));
+  const browserRunner = createBrowserRunner(async (args) => {
+    calls.push(args);
+    return { exitCode: 0, stdout: "{}", stderr: "" };
+  });
+  try {
+    await openMemoryPage(operationLogDirectory, browserRunner);
+    calls.length = 0;
+    for (const item of commands) {
+      const output = createOutput();
+      assert.equal(await runCli(item.cli, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory,
+        browserRunner
+      }), 0);
+    }
+    assert.deepEqual(calls, commands.map((item) => item.browser));
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
   }
-  assert.deepEqual(calls, commands.map((item) => item.browser));
 });
+
+async function openMemoryPage(operationLogDirectory, browserRunner) {
+  const output = createOutput();
+  assert.equal(await runCli(["open", "https://example.test/", "--no-bridge"], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    operationLogDirectory,
+    browserRunner
+  }), 0);
+}

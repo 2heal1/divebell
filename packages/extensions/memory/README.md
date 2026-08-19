@@ -15,15 +15,15 @@ divebell extensions add @divebell/extension-memory
 Create a scenario module with a `run` function that performs one iteration of the target page journey, then run:
 
 ```bash
+divebell open http://localhost:3000/
 divebell memory check \
-  --url http://localhost:3000/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
   --iterations 12 \
   --artifact-dir ./.memory-artifacts
 ```
 
-The command owns the browser lifecycle, warmup, repeated operations, metrics, allocation capture, before-and-after heap snapshots, reporting, and cleanup.
+The command uses the current page opened by Divebell. It owns warmup, repeated operations, metrics, allocation capture, before-and-after heap snapshots, reporting, and capture cleanup, but it does not open or close the browser.
 
 It writes:
 

@@ -498,12 +498,12 @@ async function installProbe(
     line: plan.location.line,
     column: plan.location.column,
     expressions: plan.expressions,
-    tags: [
-      `observation=${observationId}`,
-      `runtime=${plan.runtimeId}`,
-      `event=${plan.event}`,
-      `profile=${plan.profile}`
-    ]
+    tags: {
+      observation: observationId,
+      runtime: plan.runtimeId,
+      event: plan.event,
+      profile: plan.profile
+    }
   });
   const actual = result.bindings?.[0]?.actualLocation;
   return {

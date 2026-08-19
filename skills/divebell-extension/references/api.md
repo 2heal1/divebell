@@ -351,6 +351,13 @@ import type {
 | `browser.highlight` | Visually highlight a selector or element reference. | `DivebellBrowserApi` |
 | `browser.screenshot` | Capture the current page and return the saved artifact path. | `DivebellBrowserApi`, `DivebellBrowserScreenshotOptions` |
 
+#### Tab APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.tabs.list` | List open tabs and identify the active tab. | `DivebellBrowserTabsApi`, `DivebellBrowserTab` |
+| `browser.tabs.activate` | Make a tab the active page using its stable tab ID. | `DivebellBrowserTabsApi` |
+
 #### Network APIs
 
 | API | Purpose | Read these types |
@@ -369,6 +376,22 @@ import type {
 | --- | --- | --- |
 | `browser.console.list` | Read Console entries with optional level, text, and count filters plus a level summary. | `DivebellBrowserConsoleApi`, `DivebellBrowserConsoleOptions`, `DivebellBrowserConsoleResult` |
 | `browser.console.clear` | Clear the Console entries retained by agent-browser. | `DivebellBrowserConsoleApi` |
+
+#### Debugger APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.debug.status` | Inspect debugger state for one tab or all tabs. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugStatusOptions`, `DivebellBrowserDebugStatusResult` |
+| `browser.debug.enable` | Enable compiled-JavaScript debugging and return debugger session identities. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugStatusOptions`, `DivebellBrowserDebugEnableResult` |
+| `browser.debug.disable` | Disable debugging for the selected tab and optionally resume it first. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugDisableOptions`, `DivebellBrowserDebugDisableResult` |
+| `browser.debug.scripts` | List scripts observed by the selected debugger session. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugScriptsOptions`, `DivebellBrowserDebugScript` |
+| `browser.debug.source` | Read one script and its compiled source. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugTargetOptions`, `DivebellBrowserDebugSourceResult` |
+| `browser.debug.sourceSearch` | Search compiled script sources and return matching locations. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugSourceSearchOptions`, `DivebellBrowserDebugSourceSearchResult` |
+| `browser.debug.events` | Read buffered debugger events, optionally waiting for new events. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugEventsOptions`, `DivebellBrowserDebugEventsResult` |
+| `browser.debug.logpoints.set` | Install a logpoint with expressions, relocation controls, and tags. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugLogpointSetOptions`, `DivebellBrowserDebugProbeResult` |
+| `browser.debug.logpoints.list` | List installed logpoints. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeListResult` |
+| `browser.debug.logpoints.remove` | Remove an installed logpoint by probe ID. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeRemoveResult` |
+| `browser.debug.breakpoints.list` | List installed breakpoints. | `DivebellBrowserDebugApi`, `DivebellBrowserDebugProbeListResult` |
 
 #### Memory APIs
 
@@ -424,12 +447,12 @@ requesting JSON. The shared browser runner unwraps the agent-browser
 
 ```ts
 const result = await options.divebell.browser.raw([
-  "debug", "status", "--json"
+  "get", "cdp-url", "--json"
 ]);
 if (result.exitCode !== 0) {
   throw new Error(result.stderr.trim() || result.stdout.trim());
 }
-const status = JSON.parse(result.stdout) as unknown;
+const cdpTarget = JSON.parse(result.stdout) as unknown;
 ```
 
 ### Existing Runtime capabilities

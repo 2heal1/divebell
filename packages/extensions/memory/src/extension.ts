@@ -21,8 +21,8 @@ const extension = {
       },
       {
         category: "Extensions",
-        usage: "divebell memory check --url <url> --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>] [--ui]",
-        description: "Run a memory scenario with warmup, repeated operations, metrics, allocation capture, and before-and-after snapshots."
+        usage: "divebell memory check --scenario <path> [--warmup <n>] [--iterations <n>] [--artifact-dir <dir>]",
+        description: "Run a memory scenario against the current page with warmup, repeated operations, metrics, allocation capture, and before-and-after snapshots."
       }
     ],
     run: async (options) => await (await import("./index.js")).runMemoryCliCommand(options)

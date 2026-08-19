@@ -115,6 +115,225 @@ export interface DivebellBrowserConsoleApi {
   clear(): Promise<void>;
 }
 
+export interface DivebellBrowserTab {
+  tabId: string;
+  targetId?: string;
+  label?: string | null;
+  title?: string;
+  url: string;
+  type?: string;
+  active: boolean;
+}
+
+export interface DivebellBrowserTabsApi {
+  list(): Promise<DivebellBrowserTab[]>;
+  activate(tab: string): Promise<void>;
+}
+
+export interface DivebellBrowserDebugTargetOptions {
+  tab?: string;
+}
+
+export interface DivebellBrowserDebugStatusOptions extends DivebellBrowserDebugTargetOptions {
+  allTabs?: boolean;
+}
+
+export interface DivebellBrowserDebugDisableOptions extends DivebellBrowserDebugStatusOptions {
+  resume?: boolean;
+}
+
+export interface DivebellBrowserDebugSession {
+  sessionId: string;
+  documentGeneration: number;
+  enabled: boolean;
+  tabId?: string;
+  targetId?: string;
+  paused?: boolean;
+}
+
+export interface DivebellBrowserDebugStatusResult {
+  connectionGeneration: number;
+  enabledSessions: number;
+  sessions: DivebellBrowserDebugSession[];
+  engine?: string;
+  paused?: boolean;
+  pauses?: unknown[];
+}
+
+export interface DivebellBrowserDebugEnableResult {
+  enabled: boolean;
+  connectionGeneration: number;
+  sessions: Array<{
+    sessionId: string;
+    tabId?: string;
+    targetId?: string;
+    debuggerId?: string | null;
+  }>;
+}
+
+export interface DivebellBrowserDebugDisableResult {
+  disabled: boolean;
+  sessions: string[];
+  resumed: string[];
+}
+
+export interface DivebellBrowserDebugScript {
+  connectionGeneration: number;
+  sessionId: string;
+  documentGeneration: number;
+  scriptId: string;
+  executionContextId?: number;
+  url?: string;
+  scriptInstanceKey?: unknown;
+  runtimeOwner?: unknown;
+}
+
+export interface DivebellBrowserDebugScriptsOptions extends DivebellBrowserDebugTargetOptions {
+  filter?: string;
+}
+
+export interface DivebellBrowserDebugSourceResult {
+  script: DivebellBrowserDebugScript;
+  scriptSource: string;
+  bytecode?: string | null;
+}
+
+export interface DivebellBrowserDebugSourceSearchOptions extends DivebellBrowserDebugTargetOptions {
+  filter?: string;
+  maxResults?: number;
+}
+
+export interface DivebellBrowserDebugSourceSearchResult {
+  query: string;
+  searchedScripts: number;
+  matches: Array<{
+    matchIndex?: number;
+    scriptId: string;
+    sessionId: string;
+    url?: string;
+    line: number;
+    column: number;
+    endLine?: number;
+    endColumn?: number;
+    byteOffset?: number;
+    context?: string;
+  }>;
+  truncated: boolean;
+}
+
+export interface DivebellBrowserDebugEvent {
+  sequence: number;
+  timestamp: number;
+  type: string;
+  connectionGeneration: number;
+  sessionId?: string;
+  documentGeneration?: number;
+  data?: unknown;
+}
+
+export interface DivebellBrowserDebugEventsOptions {
+  since?: number;
+  wait?: number;
+  clear?: boolean;
+}
+
+export interface DivebellBrowserDebugEventsResult {
+  events: DivebellBrowserDebugEvent[];
+  oldestSequence?: number;
+  latestSequence: number;
+  gap: boolean;
+  bufferGap: boolean;
+  transportGap: boolean;
+  droppedThroughSequence?: number;
+  lastTransportGapSequence?: number;
+}
+
+export type DivebellBrowserDebugLocationMode =
+  | "strict"
+  | "before"
+  | "after"
+  | "nearest"
+  | "nearest-forward";
+
+export interface DivebellBrowserDebugLogpointSetOptions extends DivebellBrowserDebugTargetOptions {
+  scriptId: string;
+  line: number;
+  column?: number;
+  expressions: readonly string[];
+  when?: string;
+  mode?: DivebellBrowserDebugLocationMode;
+  maxLines?: number;
+  maxUtf16Distance?: number;
+  persist?: boolean;
+  tags?: Readonly<Record<string, string>>;
+}
+
+export interface DivebellBrowserDebugProbeResult {
+  probeId: string;
+  kind?: "breakpoint" | "logpoint";
+  enabled?: boolean;
+  persistent?: boolean;
+  status: string;
+  condition?: string | null;
+  when?: string | null;
+  expressions?: string[];
+  tags?: Record<string, string>;
+  target?: unknown;
+  bindings?: Array<{
+    physicalId?: string;
+    cdpBreakpointId?: string;
+    probeId?: string;
+    connectionGeneration?: number;
+    sessionId?: string;
+    documentGeneration?: number;
+    scriptId?: string;
+    executionContextId?: number | null;
+    requestedLocation?: {
+      line?: number;
+      column?: number;
+    };
+    actualLocation?: {
+      line?: number;
+      column?: number;
+    };
+  }>;
+}
+
+export interface DivebellBrowserDebugProbeListResult {
+  kind?: "breakpoint" | "logpoint";
+  probes: DivebellBrowserDebugProbeResult[];
+}
+
+export interface DivebellBrowserDebugProbeRemoveResult {
+  removed: boolean;
+  probeId: string;
+  cleanupErrors: string[];
+}
+
+export interface DivebellBrowserDebugApi {
+  status(options?: DivebellBrowserDebugStatusOptions): Promise<DivebellBrowserDebugStatusResult>;
+  enable(options?: DivebellBrowserDebugStatusOptions): Promise<DivebellBrowserDebugEnableResult>;
+  disable(options?: DivebellBrowserDebugDisableOptions): Promise<DivebellBrowserDebugDisableResult>;
+  scripts(options?: DivebellBrowserDebugScriptsOptions): Promise<DivebellBrowserDebugScript[]>;
+  source(
+    scriptId: string,
+    options?: DivebellBrowserDebugTargetOptions
+  ): Promise<DivebellBrowserDebugSourceResult>;
+  sourceSearch(
+    query: string,
+    options?: DivebellBrowserDebugSourceSearchOptions
+  ): Promise<DivebellBrowserDebugSourceSearchResult>;
+  events(options?: DivebellBrowserDebugEventsOptions): Promise<DivebellBrowserDebugEventsResult>;
+  logpoints: {
+    set(options: DivebellBrowserDebugLogpointSetOptions): Promise<DivebellBrowserDebugProbeResult>;
+    list(): Promise<DivebellBrowserDebugProbeListResult>;
+    remove(probeId: string): Promise<DivebellBrowserDebugProbeRemoveResult>;
+  };
+  breakpoints: {
+    list(): Promise<DivebellBrowserDebugProbeListResult>;
+  };
+}
+
 export interface DivebellBrowserWaitEvalResult {
   success: boolean;
   condition: { script: string };
@@ -313,10 +532,12 @@ export interface DivebellBrowserApi {
   getWindow<T = unknown>(path: string): Promise<T>;
   highlight(target: string): Promise<void>;
   screenshot(name?: string, options?: DivebellBrowserScreenshotOptions): Promise<string>;
+  tabs: DivebellBrowserTabsApi;
   network: DivebellBrowserNetworkApi;
   console: DivebellBrowserConsoleApi;
   memory: DivebellBrowserMemoryApi;
   coverage: DivebellBrowserCoverageApi;
+  debug: DivebellBrowserDebugApi;
 }
 
 export interface DivebellExtensionApi {

@@ -39,8 +39,13 @@ import type {
   DivebellBrowserConsoleOptions,
   DivebellBrowserConsoleResult,
   DivebellBrowserCoverageCheckpointOptions,
+  DivebellBrowserDebugLogpointSetOptions,
+  DivebellBrowserDebugScript,
+  DivebellBrowserDebugStatusOptions,
+  DivebellBrowserDebugTargetOptions,
   DivebellBrowserNetworkRequestDetail,
   DivebellBrowserNetworkRequestSummary,
+  DivebellBrowserTab,
   DivebellBrowserWaitEvalResult,
   DivebellExtensionApi,
   DivebellResourceQuery,
@@ -241,6 +246,12 @@ function createDivebellBrowserApi(options: {
       }
       return await runText(args);
     },
+    tabs: {
+      list: async () => parseBrowserTabs(await runJson(["tab", "--json"])),
+      activate: async (tab) => {
+        await runText(["tab", tab]);
+      }
+    },
     network: {
       list: async (networkOptions = {}) => {
         const args = ["network", "requests"];
@@ -364,6 +375,80 @@ function createDivebellBrowserApi(options: {
       stop: async (coverageOptions = {}) =>
         await runJson(createCoverageCheckpointArgs("stop", coverageOptions)),
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
+    },
+    debug: {
+      status: async (debugOptions = {}) => {
+        const args = ["debug", "status"];
+        appendDebugStatusOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      enable: async (debugOptions = {}) => {
+        const args = ["debug", "enable"];
+        appendDebugStatusOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      disable: async (debugOptions = {}) => {
+        const args = ["debug", "disable"];
+        appendDebugStatusOptions(args, debugOptions);
+        if (debugOptions.resume === true) args.push("--resume");
+        args.push("--json");
+        return await runJson(args);
+      },
+      scripts: async (debugOptions = {}) => {
+        const args = ["debug", "scripts"];
+        appendDebugTargetOptions(args, debugOptions);
+        appendStringOption(args, "filter", debugOptions.filter);
+        args.push("--json");
+        const value = await runJson<{ scripts?: DivebellBrowserDebugScript[] }>(args);
+        if (!Array.isArray(value.scripts)) {
+          throw createInvalidBrowserOutputError("debug scripts", value);
+        }
+        return value.scripts;
+      },
+      source: async (scriptId, debugOptions = {}) => {
+        const args = ["debug", "source", scriptId];
+        appendDebugTargetOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      sourceSearch: async (query, debugOptions = {}) => {
+        const args = ["debug", "source", "search", query];
+        appendDebugTargetOptions(args, debugOptions);
+        appendStringOption(args, "filter", debugOptions.filter);
+        appendNumberOption(args, "max-results", debugOptions.maxResults);
+        args.push("--json");
+        return await runJson(args);
+      },
+      events: async (debugOptions = {}) => {
+        const args = ["debug", "events"];
+        appendNumberOption(args, "since", debugOptions.since);
+        appendNumberOption(args, "wait", debugOptions.wait);
+        if (debugOptions.clear === true) args.push("--clear");
+        args.push("--json");
+        return await runJson(args);
+      },
+      logpoints: {
+        set: async (debugOptions) => {
+          const args = [
+            "debug",
+            "logpoint",
+            "set",
+            debugOptions.scriptId,
+            String(debugOptions.line)
+          ];
+          appendDebugLogpointOptions(args, debugOptions);
+          args.push("--json");
+          return await runJson(args);
+        },
+        list: async () => await runJson(["debug", "logpoint", "list", "--json"]),
+        remove: async (probeId) =>
+          await runJson(["debug", "logpoint", "remove", probeId, "--json"])
+      },
+      breakpoints: {
+        list: async () => await runJson(["debug", "breakpoint", "list", "--json"])
+      }
     }
   };
 }
@@ -383,6 +468,46 @@ function createCoverageCheckpointArgs(
 function appendNumberOption(args: string[], name: string, value: number | undefined): void {
   if (value !== undefined) {
     args.push(`--${name}`, String(value));
+  }
+}
+
+function appendStringOption(args: string[], name: string, value: string | undefined): void {
+  if (value !== undefined) {
+    args.push(`--${name}`, value);
+  }
+}
+
+function appendDebugTargetOptions(
+  args: string[],
+  options: DivebellBrowserDebugTargetOptions
+): void {
+  appendStringOption(args, "tab", options.tab);
+}
+
+function appendDebugStatusOptions(
+  args: string[],
+  options: DivebellBrowserDebugStatusOptions
+): void {
+  appendDebugTargetOptions(args, options);
+  if (options.allTabs === true) args.push("--all-tabs");
+}
+
+function appendDebugLogpointOptions(
+  args: string[],
+  options: DivebellBrowserDebugLogpointSetOptions
+): void {
+  appendDebugTargetOptions(args, options);
+  appendNumberOption(args, "column", options.column);
+  for (const expression of options.expressions) {
+    args.push("--expression", expression);
+  }
+  appendStringOption(args, "when", options.when);
+  if (options.mode !== undefined) args.push(`--${options.mode}`);
+  appendNumberOption(args, "max-lines", options.maxLines);
+  appendNumberOption(args, "max-utf16-distance", options.maxUtf16Distance);
+  if (options.persist === true) args.push("--persist");
+  for (const [name, value] of Object.entries(options.tags ?? {})) {
+    args.push("--tag", `${name}=${value}`);
   }
 }
 
@@ -596,6 +721,29 @@ function summarizeConsoleEntries(entries: DivebellBrowserConsoleEntry[]): Divebe
     summary[entry.level] += 1;
   }
   return summary;
+}
+
+function parseBrowserTabs(value: unknown): DivebellBrowserTab[] {
+  const tabs = isRecord(value) && Array.isArray(value.tabs)
+    ? value.tabs
+    : undefined;
+  if (tabs === undefined) {
+    throw createInvalidBrowserOutputError("tab list", value);
+  }
+  return tabs.map((tab) => {
+    if (!isRecord(tab) || typeof tab.active !== "boolean") {
+      throw createInvalidBrowserOutputError("tab", tab);
+    }
+    return {
+      tabId: readRequiredString(tab, ["tabId"]),
+      url: readRequiredString(tab, ["url"]),
+      active: tab.active,
+      ...(typeof tab.targetId === "string" ? { targetId: tab.targetId } : {}),
+      ...(typeof tab.label === "string" || tab.label === null ? { label: tab.label } : {}),
+      ...(typeof tab.title === "string" ? { title: tab.title } : {}),
+      ...(typeof tab.type === "string" ? { type: tab.type } : {})
+    };
+  });
 }
 
 function parseNetworkRequestSummaries(value: unknown): DivebellBrowserNetworkRequestSummary[] {

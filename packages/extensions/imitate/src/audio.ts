@@ -180,18 +180,7 @@ async function persistBrowserAudioCapture(
   recorderUrl: string,
   recordingStartedAt: string
 ): Promise<void> {
-  const listed = await browser.raw(["tab", "--json"]);
-  if (listed.exitCode !== 0) {
-    throw new Error(listed.stderr.trim() || listed.stdout.trim() || "Could not inspect browser tabs for microphone audio.");
-  }
-  const parsed = JSON.parse(listed.stdout) as {
-    tabs?: Array<{
-      tabId?: unknown;
-      url?: unknown;
-      active?: unknown;
-    }>;
-  };
-  const tabs = Array.isArray(parsed.tabs) ? parsed.tabs : [];
+  const tabs = await browser.tabs.list();
   const recorderTab = tabs.find((tab) =>
     typeof tab.url === "string" && recordingCompanionMatches(tab.url, recorderUrl)
   );
@@ -200,10 +189,7 @@ async function persistBrowserAudioCapture(
     throw new Error("The microphone recording page was not found.");
   }
   const activeTabId = tabs.find((tab) => tab.active === true && typeof tab.tabId === "string")?.tabId;
-  const switched = await browser.raw(["tab", recorderTabId]);
-  if (switched.exitCode !== 0) {
-    throw new Error(switched.stderr.trim() || switched.stdout.trim() || "Could not read the microphone recording page.");
-  }
+  await browser.tabs.activate(recorderTabId);
 
   try {
     const capture = await browser.eval<BrowserAudioCaptureResult>(createStopBrowserAudioScript());
@@ -255,7 +241,7 @@ async function persistBrowserAudioCapture(
     await writeJsonLines(join(outputDirectory, files.audioEvents), capture.events);
   } finally {
     if (typeof activeTabId === "string" && activeTabId !== recorderTabId) {
-      await browser.raw(["tab", activeTabId]);
+      await browser.tabs.activate(activeTabId);
     }
   }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import ts from "typescript";
@@ -187,6 +187,26 @@ test("documents every typed Extension browser API and its type source", () => {
   }
 });
 
+test("keeps bundled Extensions on typed browser APIs except the MF CDP handoff", () => {
+  const sourceRoot = join(repoRoot, "packages/extensions");
+  const rawCalls = collectFiles(sourceRoot, (path) => path.endsWith(".ts"))
+    .flatMap((path) => {
+      const source = readFileSync(path, "utf8");
+      return [...source.matchAll(/\.raw\s*\(/g)].map(() => ({
+        path: relative(repoRoot, path),
+        source
+      }));
+    });
+
+  assert.deepEqual(rawCalls.map((call) => call.path), [
+    "packages/extensions/mf/src/function-location.ts"
+  ]);
+  assert.match(
+    rawCalls[0]?.source ?? "",
+    /browser\.raw\(\["get", "cdp-url", "--json"\]\)/
+  );
+});
+
 function collectBrowserApiPaths(source) {
   const sourceFile = ts.createSourceFile(
     browserTypesPath,
@@ -300,4 +320,12 @@ function readTypeMemberName(name) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectFiles(directory, include) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return collectFiles(path, include);
+    return entry.isFile() && include(path) ? [path] : [];
+  });
 }

@@ -311,12 +311,12 @@ throwing on a non-zero exit code or returning a parsed JavaScript value. Read
 
 ```ts
 const result = await options.divebell.browser.raw([
-  "debug", "status", "--json"
+  "get", "cdp-url", "--json"
 ]);
 if (result.exitCode !== 0) {
   throw new Error(result.stderr.trim() || result.stdout.trim());
 }
-const status = JSON.parse(result.stdout) as unknown;
+const cdpTarget = JSON.parse(result.stdout) as unknown;
 ```
 
 Extension `browser.raw` requires the current context created by `divebell open`

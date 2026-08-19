@@ -36,7 +36,14 @@ export function applyOpenContextBrowserMode(
       : {}),
     ...(openContext?.browserDefaultProfile === undefined
       ? {}
-      : { defaultProfile: openContext.browserDefaultProfile })
+      : { defaultProfile: openContext.browserDefaultProfile }),
+    ...(openContext?.browserTempProfile === undefined
+      ? {}
+      : {
+          session: openContext.browserTempProfile.session,
+          ignoreConfiguredProfile: true,
+          ignoreConfiguredState: true
+        })
   });
 }
 

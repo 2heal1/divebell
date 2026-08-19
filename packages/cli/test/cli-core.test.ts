@@ -88,6 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
+  assert.match(output.text(), /divebell profile - Export the current temporary browser Profile/);
   assert.match(output.text(), /divebell raw - Run the bundled agent-browser directly/);
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
@@ -108,7 +109,6 @@ test("prints compact top-level help", async () => {
   assert.doesNotMatch(output.text(), /divebell auth import/);
   assert.doesNotMatch(output.text(), /divebell export-profile /);
   assert.doesNotMatch(output.text(), /divebell import-profile /);
-  assert.doesNotMatch(output.text(), /divebell profile /);
   assert.match(output.text(), /divebell stack/);
   assert.match(output.text(), /divebell goto /);
   assert.match(output.text(), /divebell wait /);
@@ -420,6 +420,7 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--timeout <ms>\] \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
+  assert.match(markdown, /divebell profile export \[path\]/);
   assert.match(markdown, /divebell state save <path> \[--url <url>\] \[--include-url <url>\.\.\.\]/);
   assert.match(markdown, /divebell state infer <url> --state <path>/);
   assert.doesNotMatch(markdown, /divebell state diagnose/);
@@ -430,7 +431,6 @@ test("generates CLI reference markdown from the help table", () => {
   assert.doesNotMatch(markdown, /divebell auth import/);
   assert.doesNotMatch(markdown, /divebell export-profile /);
   assert.doesNotMatch(markdown, /divebell import-profile /);
-  assert.doesNotMatch(markdown, /divebell profile /);
   assert.match(markdown, /divebell get-window <path>/);
   assert.match(markdown, /divebell network \[--url <query>\]/);
   assert.doesNotMatch(markdown, /divebell memory /);

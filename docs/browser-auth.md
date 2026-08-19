@@ -10,7 +10,7 @@ Divebell composes agent-browser profiles, state, and auth to provide reusable br
 | state | Cookies plus localStorage and sessionStorage for origins visited by the current session | Create a small, explicit login-state file that can be saved and loaded |
 | auth | Encrypted username, password, and login-page metadata | Let agent-browser open, fill, and submit a login form |
 
-`profiles` only lists selectable local Chrome profiles; it does not export their data. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session, start from a Profile and then save state.
+`profiles` lists selectable local Chrome profiles. `profile export` exports only a Profile created by `open --temp-profile`; it does not copy an arbitrary installed Chrome Profile. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session into a portable file, start from a Profile and then save state.
 
 ## Default browser context
 
@@ -42,6 +42,50 @@ divebell open https://app.example.com --profile ~/.divebell-profiles/app
 ```
 
 A Profile is a directory, not a single export file. Save state when a portable file is needed.
+
+## Create a clean Profile by signing in once
+
+When scoped state is present but still redirects to sign-in, create an empty,
+isolated local Profile and complete the authorized login in its browser window:
+
+```bash
+divebell open https://app.example.com/dashboard --ui --temp-profile
+```
+
+`--temp-profile` creates a new private Profile directory and a dedicated
+browser session. It does not select the latest Chrome Profile, load configured
+state, or use project Restore State. It cannot be combined with another
+browser context such as `--profile`, `--state`, `--restore`, `--cdp`, or
+`--allowed-domains`.
+
+After login and target-page verification, export the complete Profile before
+running `stop`:
+
+```bash
+divebell profile export
+# Or choose a new directory that does not already exist:
+divebell profile export ./app-profile
+```
+
+The export command first closes the browser cleanly so Chrome flushes cookies,
+IndexedDB, service workers, preferences, and other Profile-owned data. It then
+moves the temporary Profile into the requested directory. When no directory is
+given, Divebell creates one under `~/.divebell/profiles/`. The absolute export
+path is returned in `data.path` of the standard command envelope.
+
+Reuse that directory on the same local environment:
+
+```bash
+divebell open https://app.example.com/dashboard \
+  --profile /absolute/path/from/data.path \
+  --ui
+```
+
+Running `divebell stop` instead discards an unexported temporary Profile. A new
+`open` is rejected while one is active, so export or stop it first. Exported
+Profiles are sensitive local browser directories and can contain more data
+than state JSON. Keep them on trusted storage and do not assume they are
+portable across operating systems or Chrome installations.
 
 ## Export scoped application and sign-in state
 

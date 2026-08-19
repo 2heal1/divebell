@@ -48,6 +48,21 @@ If no usable Chrome Profile exists, later `divebell open` calls automatically re
 Pass `--no-default-profile` when one `open` should skip the latest Chrome
 Profile and use project Restore State.
 
+If an existing state file is present but cannot represent everything a
+protected application needs, the user can establish a new full local Profile
+without inheriting another browser context:
+
+```sh
+divebell open https://example.com/orders --ui --temp-profile
+# Complete the authorized login and verify the target, then:
+divebell profile export
+```
+
+The export closes the temporary browser cleanly and returns a reusable Profile
+directory in `data.path`. Run it before `stop`; stopping without an export
+discards the temporary Profile. See the authentication guide for the security
+and portability boundary.
+
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
 See [Browser Authentication and State](browser-auth.md) for details.

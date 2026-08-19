@@ -98,6 +98,10 @@ export interface CliOperationLogEntry {
   browserRestoreDisabled: boolean;
   browserDefaultProfileDisabled: boolean;
   browserDefaultProfile?: string;
+  browserTempProfile?: {
+    path: string;
+    session: string;
+  };
   browserRestoreOptions?: Record<string, string[]>;
   headers?: Record<string, string>;
   stackDetection?: {

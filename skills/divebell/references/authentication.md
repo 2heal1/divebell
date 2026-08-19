@@ -21,8 +21,44 @@ login page, identify which browser context it used:
   target. Never enumerate Profiles and choose an account for the user.
 - If the provider can open the target with an authorized Profile and another
   machine needs a portable state, follow **Save a portable state**.
+- If state remains deficient and the user can perform an authorized local
+  login, follow **Create a clean local Profile**. This preserves complete
+  browser-owned storage but is intended for the same local environment.
 
 Do not use either workflow for an ordinary non-login page or a plain 404.
+
+## Create a clean local Profile
+
+Use a temporary Profile only after the user authorizes an interactive login:
+
+1. Open the exact protected target without inheriting any existing Profile,
+   state file, or Restore State:
+
+   ```bash
+   divebell open <target-url> --ui --temp-profile
+   ```
+
+2. Let the user complete sign-in, then verify the final URL, account, and page
+   success condition.
+3. Export before stopping:
+
+   ```bash
+   divebell profile export [new-profile-directory]
+   ```
+
+   Omit the directory to let Divebell allocate one. Read the absolute result
+   from `data.path`. The command closes the browser first so Profile-owned data
+   is flushed.
+4. Reopen the same target with the returned directory and repeat the same
+   verification:
+
+   ```bash
+   divebell open <target-url> --profile <returned-path> --ui
+   ```
+
+`stop` discards an unexported temporary Profile. Exported Profiles contain
+cookies, web storage, IndexedDB, service workers, cache, and preferences. Keep
+them local and trusted; use scoped state instead when portability is required.
 
 ## Save a portable state
 

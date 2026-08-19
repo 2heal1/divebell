@@ -5,6 +5,7 @@ import { createCommandHelpText, createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
 import { createError, writeErrorOutput, writeOkOutput } from "./utils/output.js";
 import { runAgentBrowserAuthCommand, runAgentBrowserProfilesCommand, runAgentBrowserStateCommand } from "./commands/browser-auth.js";
+import { runProfileCommand } from "./commands/profile.js";
 import {
   runBridgeServerCommand,
   runStartCommand,
@@ -25,6 +26,7 @@ import { runSetupCommand } from "./commands/setup.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import { createLoadingController, type LoadingController } from "./features/loading.js";
+import { removeBrowserTempProfile } from "./features/browser/temp-profile.js";
 import type {
   CliRunOptions,
   DivebellCliConfig
@@ -124,17 +126,34 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           options.bridgeStateDirectory,
           operationLogStore,
           options.bridgeProcessController,
-          async () => await runExtensionCloseHooks({
-            args,
-            stderr: commandStderr,
-            fetcher,
-            browserRunner,
-            bridgeStarter,
-            bridgeStateDirectory: options.bridgeStateDirectory,
-            operationLogStore,
-            extensions: config.extensions,
-            openHookPlan: config.hookPlans.open
-          })
+          {
+            beforeBrowserClose: async () => await runExtensionCloseHooks({
+              args,
+              stderr: commandStderr,
+              fetcher,
+              browserRunner,
+              bridgeStarter,
+              bridgeStateDirectory: options.bridgeStateDirectory,
+              operationLogStore,
+              extensions: config.extensions,
+              openHookPlan: config.hookPlans.open
+            }),
+            afterBrowserClose: async ({ openContext, browserResult }) => {
+              const path = openContext?.browserTempProfile?.path;
+              if (path === undefined) return;
+              if (browserResult.exitCode !== 0) {
+                throw createError({
+                  code: "TEMP_PROFILE_BROWSER_CLOSE_FAILED",
+                  kind: "browser",
+                  message: "Could not close the browser cleanly, so the temporary Profile was retained.",
+                  retryable: true,
+                  hint: "Retry `divebell stop` or export the Profile before stopping.",
+                  details: { exitCode: browserResult.exitCode }
+                });
+              }
+              await removeBrowserTempProfile(path, env);
+            }
+          }
         );
       }
 
@@ -180,6 +199,46 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
 
       if (args.command[0] === "profiles") {
         return await runAgentBrowserProfilesCommand(args, commandStdout, commandStderr, browserRunner);
+      }
+
+      if (args.command[0] === "profile") {
+        return await runProfileCommand({
+          args,
+          stdout: commandStdout,
+          operationLogStore,
+          env,
+          cwd: process.cwd(),
+          closeCurrentPage: async (afterBrowserClose) => {
+            const stopArgs = {
+              command: ["stop"],
+              options: new Map<string, string[]>()
+            };
+            await runStopCommand(
+              stopArgs,
+              { write: () => undefined },
+              browserRunner,
+              options.bridgeStateDirectory,
+              operationLogStore,
+              options.bridgeProcessController,
+              {
+                beforeBrowserClose: async () => await runExtensionCloseHooks({
+                  args: stopArgs,
+                  stderr: commandStderr,
+                  fetcher,
+                  browserRunner,
+                  bridgeStarter,
+                  bridgeStateDirectory: options.bridgeStateDirectory,
+                  operationLogStore,
+                  extensions: config.extensions,
+                  openHookPlan: config.hookPlans.open
+                }),
+                afterBrowserClose: async ({ browserResult }) => await afterBrowserClose({
+                  browserExitCode: browserResult.exitCode
+                })
+              }
+            );
+          }
+        });
       }
 
       if (args.command[0] === "state") {
@@ -239,7 +298,8 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           operationLogStore,
           config.extensions,
           config.hookPlans.open,
-          options.stdin ?? process.stdin
+          options.stdin ?? process.stdin,
+          env
         );
       }
 

@@ -317,7 +317,7 @@ async function stopAmendment(options: RecordCommandOptions): Promise<unknown> {
   for (const step of proposedSteps) {
     try {
       const located = await locateStep(options, step, 2_000);
-      await options.divebell.browser.run("highlight", { args: [located.selector] });
+      await options.divebell.browser.highlight(located.selector);
       elementConfirmations.push({
         stepId: step.id,
         highlighted: true,

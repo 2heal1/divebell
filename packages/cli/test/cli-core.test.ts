@@ -88,6 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
+  assert.match(output.text(), /divebell raw - Run the bundled agent-browser directly/);
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
   assert.match(output.text(), /divebell extensions - Install, list, update, or remove/);
@@ -246,7 +247,7 @@ test("rejects the removed close command", async () => {
 });
 
 test("prints help for command help without executing the command", async () => {
-  for (const command of ["start", "open", "events"]) {
+  for (const command of ["start", "open", "events", "network"]) {
     let touchedSideEffect = false;
     const output = createOutput();
     const exitCode = await runCli([command, "--help"], {
@@ -279,6 +280,122 @@ test("prints help for command help without executing the command", async () => {
     assert.doesNotMatch(output.text(), /divebell extensions/);
     assert.equal(touchedSideEffect, false);
   }
+});
+
+test("reads exact raw command help from the bundled agent-browser", async () => {
+  const invocations: Array<{ args: string[]; options: unknown }> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    invocations.push({ args, options });
+    return {
+      exitCode: 0,
+      stdout: args.includes("--help")
+        ? [
+          "agent-browser network - Network interception and monitoring",
+          "",
+          "Usage: agent-browser network <subcommand> [args]",
+          ""
+        ].join("\n")
+        : "raw-result\n",
+      stderr: ""
+    };
+  });
+
+  const rawOutput = createOutput();
+  assert.equal(await runCli(["raw", "network", "--help"], {
+    stdout: rawOutput.stdout,
+    stderr: rawOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(
+    rawOutput.text(),
+    "agent-browser network - Network interception and monitoring\n\nUsage: agent-browser network <subcommand> [args]\n"
+  );
+  assert.equal(rawOutput.errorText(), "");
+
+  const commandOutput = createOutput();
+  assert.equal(await runCli([
+    "raw", "network", "requests", "--filter", "api", "--json"
+  ], {
+    stdout: commandOutput.stdout,
+    stderr: commandOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(commandOutput.text(), "raw-result\n");
+  assert.equal(commandOutput.errorText(), "");
+
+  const versionOutput = createOutput();
+  assert.equal(await runCli(["raw", "--version"], {
+    stdout: versionOutput.stdout,
+    stderr: versionOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(versionOutput.text(), "raw-result\n");
+
+  const shortVersionOutput = createOutput();
+  assert.equal(await runCli(["raw", "-V"], {
+    stdout: shortVersionOutput.stdout,
+    stderr: shortVersionOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(shortVersionOutput.text(), "raw-result\n");
+
+  const verboseChatOutput = createOutput();
+  assert.equal(await runCli(["raw", "chat", "hello", "-v"], {
+    stdout: verboseChatOutput.stdout,
+    stderr: verboseChatOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(verboseChatOutput.text(), "raw-result\n");
+
+  const openOutput = createOutput();
+  assert.equal(await runCli(["raw", "open", "https://example.test"], {
+    stdout: openOutput.stdout,
+    stderr: openOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(openOutput.text(), "raw-result\n");
+
+  assert.deepEqual(invocations, [
+    {
+      args: ["network", "--help"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    },
+    {
+      args: ["network", "requests", "--filter", "api", "--json"],
+      options: {}
+    },
+    {
+      args: ["--version"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    },
+    {
+      args: ["-V"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    },
+    {
+      args: ["chat", "hello", "-v"],
+      options: {}
+    },
+    {
+      args: ["open", "https://example.test"],
+      options: {}
+    }
+  ]);
 });
 
 test("rejects unknown scoped help", async () => {

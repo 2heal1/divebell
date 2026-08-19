@@ -61,6 +61,12 @@ If the local repository does not provide enough context, consult the official do
 - Ask the user to intervene only if the Git push fails and the GitHub connector or plugin also cannot access the repository or complete the operation.
 - These rules override any general publishing requirement to log in to `gh` first.
 
+## agent-browser maintenance
+
+`@divebell/agent-browser` is maintained as a Divebell fork. Before changing
+the fork or updating the version consumed by Divebell, read and follow
+`docs/temporary-agent-browser-fork.md` in full.
+
 ## Working rules
 
 - Do not use the old `Agent Runtime` name as the current product name. The product is Divebell.

@@ -9,7 +9,7 @@ import {
   type BrowserRunOptions,
   type BrowserRunner
 } from "../browser/runner.js";
-import { createBrowserCommandArgs } from "../browser/command-args.js";
+import { normalizeAgentBrowserTarget } from "../browser/command-args.js";
 import {
   canAutoStartBridge,
   createFileBridgeStateStore,
@@ -29,25 +29,45 @@ import {
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../../utils/args.js";
 import { createError } from "../../utils/output.js";
 import type { CliOperationLogEntry } from "../../utils/operation-log.js";
-import { isBrowserPageCommand } from "../../commands/names.js";
 import { applyOpenContextBrowserMode } from "../../open-context.js";
 
 import type {
   CreateDivebellExtensionApiOptions,
   DivebellBrowserApi,
-  DivebellBrowserCommandName,
-  DivebellBrowserCommandRequest,
   DivebellBrowserConsoleEntry,
   DivebellBrowserConsoleLevel,
   DivebellBrowserConsoleOptions,
   DivebellBrowserConsoleResult,
   DivebellBrowserCoverageCheckpointOptions,
+  DivebellBrowserDebugLogpointSetOptions,
+  DivebellBrowserDebugScript,
+  DivebellBrowserDebugStatusOptions,
+  DivebellBrowserDebugTargetOptions,
+  DivebellBrowserNetworkRequestDetail,
+  DivebellBrowserNetworkRequestSummary,
+  DivebellBrowserTab,
   DivebellBrowserWaitEvalResult,
   DivebellExtensionApi,
   DivebellResourceQuery,
   DivebellWaitOptions
 } from "./types.js";
 export type * from "./types.js";
+
+export const EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS = [
+  "open",
+  "close",
+  "connect",
+  "install",
+  "upgrade",
+  "doctor",
+  "mcp",
+  "chat",
+  "dashboard"
+] as const;
+
+const extensionBrowserRawForbiddenCommands = new Set<string>(
+  EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS
+);
 
 export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOptions): DivebellExtensionApi {
   const bridgeUrl = createBridgeUrl(options.args);
@@ -151,6 +171,11 @@ function createDivebellBrowserApi(options: {
       throw createOpenContextRequiredError();
     }
   };
+  const requireRawOpenContext = (): void => {
+    if (options.openContext === undefined) {
+      throw createOpenContextRequiredError();
+    }
+  };
   const runText = async (
     args: string[],
     runOptions: BrowserRunOptions = {}
@@ -175,55 +200,14 @@ function createDivebellBrowserApi(options: {
     const output = await runText(args);
     return parseBrowserJsonOutput(output) as T;
   };
-  const runCommand = async (
-    command: DivebellBrowserCommandName,
-    request: DivebellBrowserCommandRequest = {}
-  ): Promise<string> => {
-    if (!isBrowserPageCommand(command)) {
-      throw createUnsupportedBrowserCommandError(command);
-    }
-
-    const commandArgs = createBrowserExtensionCommandArgs(command, request);
-    if (command === "wait-eval") {
-      requireOpenContext();
-      const script = requireBrowserExtensionCommandArgument(commandArgs, 1, "eval script");
-      return JSON.stringify(
-        await waitForBrowserEval(
-          options.browserRunner,
-          script,
-          getNumberOption(commandArgs, "timeout")
-        )
-      );
-    }
-    if (command === "get-window") {
-      const path = requireBrowserExtensionCommandArgument(commandArgs, 1, "window path");
-      return await runText(["eval", createGetWindowScript(path)]);
-    }
-    if (command === "eval") {
-      const file = getOptionValue(commandArgs, "file");
-      if (file !== undefined) {
-        return await runText(["eval", await readFile(file, "utf8")]);
-      }
-      if (hasBrowserExtensionOption(commandArgs, "stdin")) {
-        return await runText(["eval", "--stdin"], { input: request.input ?? "" });
-      }
-    }
-
-    return await runText(
-      createBrowserCommandArgs(commandArgs, {
-        ...(options.openContext?.sessionId === null || options.openContext?.sessionId === undefined
-          ? {}
-          : { sessionId: options.openContext.sessionId })
-      }),
-      request.input === undefined ? {} : { input: request.input }
-    );
-  };
-
   return {
-    run: runCommand,
-    raw: async (args, runOptions = {}) => await options.browserRunner.run(args, runOptions),
+    raw: async (args, runOptions = {}) => {
+      requireAllowedExtensionRawCommand(args);
+      requireRawOpenContext();
+      return await options.browserRunner.run([...args], runOptions);
+    },
     profileDirectory: () => resolveBrowserProfileDirectory(),
-    pageSnapshot: async <T = unknown>() => await runText(["snapshot"]) as T,
+    pageSnapshot: async () => await runText(["snapshot"]),
     click: async (target) => await runText(["click", normalizeAgentBrowserTarget(target)]),
     fill: async (target, value) => await runText(["fill", normalizeAgentBrowserTarget(target), value]),
     focus: async (target) => await runText(["focus", normalizeAgentBrowserTarget(target)]),
@@ -237,7 +221,21 @@ function createDivebellBrowserApi(options: {
     evalFile: async (path) => await runJson(["eval", await readFile(path, "utf8")]),
     waitEval: async (script, waitOptions = {}) =>
       await waitForBrowserEval(options.browserRunner, script, waitOptions.timeout),
+    wait: async (milliseconds) => {
+      if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+        throw createError({
+          code: "INVALID_BROWSER_WAIT",
+          kind: "validation",
+          message: "Browser wait duration must be a non-negative finite number.",
+          retryable: false
+        });
+      }
+      await runText(["wait", String(milliseconds)]);
+    },
     getWindow: async (path) => await runJson(["eval", createGetWindowScript(path)]),
+    highlight: async (target) => {
+      await runText(["highlight", normalizeAgentBrowserTarget(target)]);
+    },
     screenshot: async (name, screenshotOptions = {}) => {
       const args = ["screenshot"];
       if (name !== undefined && name.length > 0) {
@@ -248,26 +246,85 @@ function createDivebellBrowserApi(options: {
       }
       return await runText(args);
     },
-    network: async (networkOptions = {}) => {
-      const output = await runText(["network", "requests"]);
-      return networkOptions.url === undefined
-        ? normalizeNetworkOutput(output)
-        : filterNetworkOutputByUrl(output, networkOptions.url);
+    tabs: {
+      list: async () => parseBrowserTabs(await runJson(["tab", "--json"])),
+      activate: async (tab) => {
+        await runText(["tab", tab]);
+      }
     },
-    console: async (consoleOptions = {}) => {
-      const levels = normalizeConsoleLevels(consoleOptions.levels);
-      const entries = filterConsoleEntries(
-        parseConsoleEntries(await runJson(["console", "--json"])),
-        {
-          ...(levels === undefined ? {} : { levels }),
-          ...(consoleOptions.query === undefined ? {} : { query: consoleOptions.query }),
-          ...(consoleOptions.limit === undefined ? {} : { limit: consoleOptions.limit })
+    network: {
+      list: async (networkOptions = {}) => {
+        const args = ["network", "requests"];
+        if (networkOptions.url !== undefined) args.push("--filter", networkOptions.url);
+        if (networkOptions.resourceTypes !== undefined && networkOptions.resourceTypes.length > 0) {
+          args.push("--type", networkOptions.resourceTypes.join(","));
         }
-      );
-      return {
-        entries,
-        summary: summarizeConsoleEntries(entries)
-      };
+        if (networkOptions.method !== undefined) args.push("--method", networkOptions.method);
+        if (networkOptions.status !== undefined) args.push("--status", String(networkOptions.status));
+        args.push("--json");
+        return parseNetworkRequestSummaries(await runJson(args));
+      },
+      get: async (requestId) =>
+        parseNetworkRequestDetail(await runJson(["network", "request", requestId, "--json"])),
+      clear: async () => {
+        await runText(["network", "requests", "--clear"]);
+      },
+      route: async (pattern, routeOptions = {}) => {
+        const args = ["network", "route", pattern];
+        if (routeOptions.abort === true) args.push("--abort");
+        if (routeOptions.body !== undefined) {
+          args.push(
+            "--body",
+            typeof routeOptions.body === "string"
+              ? routeOptions.body
+              : JSON.stringify(routeOptions.body)
+          );
+        }
+        if (routeOptions.resourceType !== undefined) {
+          args.push("--resource-type", routeOptions.resourceType);
+        }
+        await runText(args);
+      },
+      unroute: async (pattern) => {
+        await runText(["network", "unroute", ...(pattern === undefined ? [] : [pattern])]);
+      },
+      har: {
+        start: async (harOptions = {}) => {
+          const args = ["network", "har", "start"];
+          if (harOptions.content !== undefined) args.push("--content", harOptions.content);
+          await runText(args);
+        },
+        stop: async (path) => {
+          const value = await runJson<unknown>([
+            "network",
+            "har",
+            "stop",
+            ...(path === undefined ? [] : [path]),
+            "--json"
+          ]);
+          return { path: readArtifactPath(value, path) };
+        }
+      }
+    },
+    console: {
+      list: async (consoleOptions = {}) => {
+        const levels = normalizeConsoleLevels(consoleOptions.levels);
+        const entries = filterConsoleEntries(
+          parseConsoleEntries(await runJson(["console", "--json"])),
+          {
+            ...(levels === undefined ? {} : { levels }),
+            ...(consoleOptions.query === undefined ? {} : { query: consoleOptions.query }),
+            ...(consoleOptions.limit === undefined ? {} : { limit: consoleOptions.limit })
+          }
+        );
+        return {
+          entries,
+          summary: summarizeConsoleEntries(entries)
+        };
+      },
+      clear: async () => {
+        await runText(["console", "--clear"]);
+      }
     },
     memory: {
       metrics: async (memoryOptions = {}) => {
@@ -318,52 +375,82 @@ function createDivebellBrowserApi(options: {
       stop: async (coverageOptions = {}) =>
         await runJson(createCoverageCheckpointArgs("stop", coverageOptions)),
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
+    },
+    debug: {
+      status: async (debugOptions = {}) => {
+        const args = ["debug", "status"];
+        appendDebugStatusOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      enable: async (debugOptions = {}) => {
+        const args = ["debug", "enable"];
+        appendDebugStatusOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      disable: async (debugOptions = {}) => {
+        const args = ["debug", "disable"];
+        appendDebugStatusOptions(args, debugOptions);
+        if (debugOptions.resume === true) args.push("--resume");
+        args.push("--json");
+        return await runJson(args);
+      },
+      scripts: async (debugOptions = {}) => {
+        const args = ["debug", "scripts"];
+        appendDebugTargetOptions(args, debugOptions);
+        appendStringOption(args, "filter", debugOptions.filter);
+        args.push("--json");
+        const value = await runJson<{ scripts?: DivebellBrowserDebugScript[] }>(args);
+        if (!Array.isArray(value.scripts)) {
+          throw createInvalidBrowserOutputError("debug scripts", value);
+        }
+        return value.scripts;
+      },
+      source: async (scriptId, debugOptions = {}) => {
+        const args = ["debug", "source", scriptId];
+        appendDebugTargetOptions(args, debugOptions);
+        args.push("--json");
+        return await runJson(args);
+      },
+      sourceSearch: async (query, debugOptions = {}) => {
+        const args = ["debug", "source", "search", query];
+        appendDebugTargetOptions(args, debugOptions);
+        appendStringOption(args, "filter", debugOptions.filter);
+        appendNumberOption(args, "max-results", debugOptions.maxResults);
+        args.push("--json");
+        return await runJson(args);
+      },
+      events: async (debugOptions = {}) => {
+        const args = ["debug", "events"];
+        appendNumberOption(args, "since", debugOptions.since);
+        appendNumberOption(args, "wait", debugOptions.wait);
+        if (debugOptions.clear === true) args.push("--clear");
+        args.push("--json");
+        return await runJson(args);
+      },
+      logpoints: {
+        set: async (debugOptions) => {
+          const args = [
+            "debug",
+            "logpoint",
+            "set",
+            debugOptions.scriptId,
+            String(debugOptions.line)
+          ];
+          appendDebugLogpointOptions(args, debugOptions);
+          args.push("--json");
+          return await runJson(args);
+        },
+        list: async () => await runJson(["debug", "logpoint", "list", "--json"]),
+        remove: async (probeId) =>
+          await runJson(["debug", "logpoint", "remove", probeId, "--json"])
+      },
+      breakpoints: {
+        list: async () => await runJson(["debug", "breakpoint", "list", "--json"])
+      }
     }
   };
-}
-
-function createBrowserExtensionCommandArgs(
-  command: DivebellBrowserCommandName,
-  request: DivebellBrowserCommandRequest
-): ParsedCliArgs {
-  const parsedOptions = new Map<string, string[]>();
-  for (const [name, value] of Object.entries(request.options ?? {})) {
-    const values = Array.isArray(value) ? value : [value];
-    parsedOptions.set(name, values.map((item) => String(item)));
-  }
-  return {
-    command: [command, ...(request.args ?? [])],
-    options: parsedOptions
-  };
-}
-
-function hasBrowserExtensionOption(args: ParsedCliArgs, name: string): boolean {
-  return args.options.has(name);
-}
-
-function requireBrowserExtensionCommandArgument(
-  args: ParsedCliArgs,
-  index: number,
-  name: string
-): string {
-  const value = args.command[index];
-  if (value !== undefined && value.length > 0) return value;
-  throw createError({
-    code: "INVALID_BROWSER_COMMAND",
-    kind: "validation",
-    message: `Browser command "${args.command[0] ?? "unknown"}" requires ${name}.`,
-    retryable: false
-  });
-}
-
-function createUnsupportedBrowserCommandError(command: string): Error {
-  return createError({
-    code: "INVALID_BROWSER_COMMAND",
-    kind: "validation",
-    message: `Browser command "${command}" is not available through the Extension page API.`,
-    retryable: false,
-    hint: "Use a browser page command listed by `divebell --help`; open and stop remain owned by the outer workflow."
-  });
 }
 
 function createCoverageCheckpointArgs(
@@ -381,6 +468,68 @@ function createCoverageCheckpointArgs(
 function appendNumberOption(args: string[], name: string, value: number | undefined): void {
   if (value !== undefined) {
     args.push(`--${name}`, String(value));
+  }
+}
+
+function appendStringOption(args: string[], name: string, value: string | undefined): void {
+  if (value !== undefined) {
+    args.push(`--${name}`, value);
+  }
+}
+
+function appendDebugTargetOptions(
+  args: string[],
+  options: DivebellBrowserDebugTargetOptions
+): void {
+  appendStringOption(args, "tab", options.tab);
+}
+
+function appendDebugStatusOptions(
+  args: string[],
+  options: DivebellBrowserDebugStatusOptions
+): void {
+  appendDebugTargetOptions(args, options);
+  if (options.allTabs === true) args.push("--all-tabs");
+}
+
+function appendDebugLogpointOptions(
+  args: string[],
+  options: DivebellBrowserDebugLogpointSetOptions
+): void {
+  appendDebugTargetOptions(args, options);
+  appendNumberOption(args, "column", options.column);
+  for (const expression of options.expressions) {
+    args.push("--expression", expression);
+  }
+  appendStringOption(args, "when", options.when);
+  if (options.mode !== undefined) args.push(`--${options.mode}`);
+  appendNumberOption(args, "max-lines", options.maxLines);
+  appendNumberOption(args, "max-utf16-distance", options.maxUtf16Distance);
+  if (options.persist === true) args.push("--persist");
+  for (const [name, value] of Object.entries(options.tags ?? {})) {
+    args.push("--tag", `${name}=${value}`);
+  }
+}
+
+function requireAllowedExtensionRawCommand(args: readonly string[]): void {
+  const command = args[0];
+  if (command === undefined || command.trim().length === 0 || command.startsWith("-")) {
+    throw createError({
+      code: "INVALID_EXTENSION_BROWSER_RAW_COMMAND",
+      kind: "validation",
+      message: "Extension browser.raw requires an agent-browser subcommand as its first argument.",
+      retryable: false,
+      hint: "Use `divebell raw <command> --help` outside the Extension to inspect exact command syntax."
+    });
+  }
+  if (extensionBrowserRawForbiddenCommands.has(command)) {
+    throw createError({
+      code: "EXTENSION_BROWSER_RAW_COMMAND_FORBIDDEN",
+      kind: "validation",
+      message: `Extension browser.raw cannot run the agent-browser "${command}" command.`,
+      retryable: false,
+      hint: "The outer Divebell workflow owns browser lifecycle, setup, and interactive commands."
+    });
   }
 }
 
@@ -574,33 +723,129 @@ function summarizeConsoleEntries(entries: DivebellBrowserConsoleEntry[]): Divebe
   return summary;
 }
 
-function filterNetworkOutputByUrl(output: string, query: string): string {
-  const normalized = normalizeNetworkOutput(output);
-  if (normalized.trim() === "(no requests)") return normalized;
-
-  const lines = normalized.split(/\r?\n/);
-  const filtered = lines.filter((line) => {
-    if (line.length === 0 || line.startsWith("#")) return true;
-    return getNetworkLineUrl(line)?.includes(query) ?? false;
-  });
-  return filtered.join("\n");
-}
-
-function normalizeNetworkOutput(output: string): string {
-  return output.split(/\r?\n/).filter((line) => !line.includes("network <idx>")).join("\n");
-}
-
-function getNetworkLineUrl(line: string): string | undefined {
-  const parts = line.trim().split(/\s+/);
-  if (/^\[[^\]]+\]$/.test(parts[0] ?? "") && parts.length >= 3) {
-    return parts[2];
+function parseBrowserTabs(value: unknown): DivebellBrowserTab[] {
+  const tabs = isRecord(value) && Array.isArray(value.tabs)
+    ? value.tabs
+    : undefined;
+  if (tabs === undefined) {
+    throw createInvalidBrowserOutputError("tab list", value);
   }
-  return parts.length >= 6 ? parts[5] : undefined;
+  return tabs.map((tab) => {
+    if (!isRecord(tab) || typeof tab.active !== "boolean") {
+      throw createInvalidBrowserOutputError("tab", tab);
+    }
+    return {
+      tabId: readRequiredString(tab, ["tabId"]),
+      url: readRequiredString(tab, ["url"]),
+      active: tab.active,
+      ...(typeof tab.targetId === "string" ? { targetId: tab.targetId } : {}),
+      ...(typeof tab.label === "string" || tab.label === null ? { label: tab.label } : {}),
+      ...(typeof tab.title === "string" ? { title: tab.title } : {}),
+      ...(typeof tab.type === "string" ? { type: tab.type } : {})
+    };
+  });
 }
 
-function normalizeAgentBrowserTarget(target: string): string {
-  const trimmed = target.trim();
-  return /^e\d+$/.test(trimmed) ? `@${trimmed}` : target;
+function parseNetworkRequestSummaries(value: unknown): DivebellBrowserNetworkRequestSummary[] {
+  const requests = Array.isArray(value)
+    ? value
+    : isRecord(value) && Array.isArray(value.requests)
+      ? value.requests
+      : undefined;
+  if (requests === undefined) {
+    throw createInvalidBrowserOutputError("network requests", value);
+  }
+  return requests.map((request) => parseNetworkRequestSummary(request));
+}
+
+function parseNetworkRequestSummary(value: unknown): DivebellBrowserNetworkRequestSummary {
+  if (!isRecord(value)) {
+    throw createInvalidBrowserOutputError("network request summary", value);
+  }
+  const id = readRequiredString(value, ["requestId", "id"]);
+  const url = readRequiredString(value, ["url"]);
+  const method = readRequiredString(value, ["method"]);
+  return {
+    id,
+    url,
+    method,
+    ...(typeof value.resourceType === "string" ? { resourceType: value.resourceType } : {}),
+    ...(typeof value.status === "number" ? { status: value.status } : {})
+  };
+}
+
+function parseNetworkRequestDetail(value: unknown): DivebellBrowserNetworkRequestDetail {
+  const summary = parseNetworkRequestSummary(value);
+  if (!isRecord(value)) {
+    throw createInvalidBrowserOutputError("network request detail", value);
+  }
+  const requestHeaders = readHeaders(value.headers);
+  const requestBody = typeof value.postData === "string" ? value.postData : undefined;
+  const responseHeaders = readHeaders(value.responseHeaders);
+  const responseBody = typeof value.responseBody === "string" ? value.responseBody : undefined;
+  const mimeType = typeof value.mimeType === "string" ? value.mimeType : undefined;
+  const hasResponse = value.status !== undefined
+    || Object.keys(responseHeaders).length > 0
+    || responseBody !== undefined
+    || mimeType !== undefined;
+  return {
+    ...summary,
+    request: {
+      headers: requestHeaders,
+      ...(requestBody === undefined ? {} : { body: requestBody })
+    },
+    ...(hasResponse
+      ? {
+          response: {
+            ...(typeof value.status === "number" ? { status: value.status } : {}),
+            headers: responseHeaders,
+            ...(mimeType === undefined ? {} : { mimeType }),
+            ...(responseBody === undefined ? {} : { body: responseBody })
+          }
+        }
+      : {})
+  };
+}
+
+function readHeaders(value: unknown): Readonly<Record<string, string>> {
+  if (!isRecord(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([name, headerValue]) =>
+      typeof headerValue === "string" ? [[name, headerValue]] : []
+    )
+  );
+}
+
+function readRequiredString(
+  value: Record<string, unknown>,
+  names: readonly string[]
+): string {
+  for (const name of names) {
+    const candidate = value[name];
+    if (typeof candidate === "string" && candidate.length > 0) return candidate;
+  }
+  throw createInvalidBrowserOutputError(`field ${names.join(" or ")}`, value);
+}
+
+function readArtifactPath(value: unknown, requestedPath: string | undefined): string {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (isRecord(value)) {
+    for (const name of ["path", "outputPath"] as const) {
+      const candidate = value[name];
+      if (typeof candidate === "string" && candidate.length > 0) return candidate;
+    }
+  }
+  if (requestedPath !== undefined && requestedPath.length > 0) return requestedPath;
+  throw createInvalidBrowserOutputError("HAR output path", value);
+}
+
+function createInvalidBrowserOutputError(context: string, value: unknown): Error {
+  return createError({
+    code: "BROWSER_OUTPUT_INVALID",
+    kind: "browser",
+    message: `Browser returned invalid ${context} output.`,
+    details: { value }
+  });
 }
 
 function createOptionalNumberProperty<Name extends string>(

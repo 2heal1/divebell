@@ -354,6 +354,38 @@ test("runs agent-browser through a replaceable executable and forwards stdin", a
   });
 });
 
+test("normalizes the JSON transport exposed through browser.raw", async () => {
+  const runner = createAgentBrowserRunner({
+    executablePath: process.execPath,
+    env: { DIVEBELL_DEFAULT_CHROME_PROFILE: "false" },
+    prefixArgs: [
+      "-e",
+      [
+        "const failed = process.argv.includes('fail');",
+        "const response = failed",
+        "  ? { success: false, errorCode: 'debug_failed', error: 'debug failed' }",
+        "  : { success: true, data: { sessions: [{ tabId: 't1' }] } };",
+        "process.stdout.write(JSON.stringify(response));"
+      ].join("\n")
+    ],
+    session: "divebell-raw-transport-test"
+  });
+
+  const success = await runner.run(["debug", "status", "--json"]);
+  assert.deepEqual(success, {
+    exitCode: 0,
+    stdout: '{"sessions":[{"tabId":"t1"}]}\n',
+    stderr: ""
+  });
+
+  const failure = await runner.run(["debug", "fail", "--json"]);
+  assert.deepEqual(failure, {
+    exitCode: 1,
+    stdout: '{"errorCode":"debug_failed","error":"debug failed"}\n',
+    stderr: "debug failed"
+  });
+});
+
 test("uses agent-browser as the default browser runner", async () => {
   const runner = createDefaultBrowserRunner({
     env: {},

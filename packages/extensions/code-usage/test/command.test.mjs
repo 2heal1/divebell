@@ -206,10 +206,8 @@ test("captures readiness and loading memory without code coverage", async () => 
         decodedBodySize: 200
       }]
     }),
-    run: async (command, request) => {
-      assert.equal(command, "wait");
-      assert.deepEqual(request.args, ["250"]);
-      return "";
+    wait: async milliseconds => {
+      assert.equal(milliseconds, 250);
     },
     memory: {
       metrics: async () => {

@@ -1,45 +1,47 @@
 import type {
+  CliExtensionPageContext,
   CliExtensionRunOptions,
   CommandErrorKind,
+  DivebellBrowserApi,
   ParsedCliArgs
 } from "@divebell/cli";
 
 import { runMemoryCheck } from "./memory-check.js";
 
 export async function runMemoryCliCommand(options: CliExtensionRunOptions): Promise<unknown> {
+  const page = requireCurrentPage(options.page);
   if (options.args.command[1] === "check") {
-    return await runMemoryCheckCommand(options.args, options.divebell.browser);
+    return await runMemoryCheckCommand(options.args, options.divebell.browser, page);
   }
-  return await runRawMemoryCommand(options.args, options.divebell.browser.raw);
+  return await runTypedMemoryCommand(options.args, options.divebell.browser);
 }
 export { runMemoryCheck } from "./memory-check.js";
 export type * from "./types.js";
 
 async function runMemoryCheckCommand(
   args: ParsedCliArgs,
-  browser: Parameters<typeof runMemoryCheck>[0]["browser"]
+  browser: DivebellBrowserApi,
+  page: CliExtensionPageContext
 ): Promise<unknown> {
   if (args.command.length !== 2) {
     throw commandError({
       code: "MEMORY_CHECK_USAGE_INVALID",
       kind: "validation",
       message: "Memory check accepts options instead of positional paths.",
-      hint: "Run `divebell memory check --url <url> --scenario <path>`."
+      hint: "Run `divebell open <url>`, then `divebell memory check --scenario <path>`."
     });
   }
-  const url = requireOption(args, "url");
   const scenarioPath = requireOption(args, "scenario");
   const warmup = positiveIntegerOption(args, "warmup", 3);
   const iterations = positiveIntegerOption(args, "iterations", 12);
   try {
     const result = await runMemoryCheck({
-      url,
+      url: page.url,
       scenarioPath,
       artifactDirectory: getOptionValue(args, "artifact-dir") ?? ".memory-artifacts",
       warmup,
       iterations,
-      browser,
-      ui: args.options.has("ui")
+      browser
     });
     return {
       reportPath: result.reportPath,
@@ -61,76 +63,64 @@ async function runMemoryCheckCommand(
   }
 }
 
-async function runRawMemoryCommand(
+async function runTypedMemoryCommand(
   args: ParsedCliArgs,
-  run: (args: string[]) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+  browser: DivebellBrowserApi
 ): Promise<unknown> {
-  if (args.command[1] === "metrics" && !args.options.has("no-gc")) {
-    const garbageCollection = await run(["memory", "collect-garbage", "--json"]);
-    if (garbageCollection.exitCode !== 0) {
-      throw browserCommandError(garbageCollection);
-    }
-  }
-  const result = await run(createMemoryBrowserArgs(args));
-  if (result.exitCode !== 0) throw browserCommandError(result);
-  return parseBrowserResult(result.stdout);
-}
-
-function createMemoryBrowserArgs(args: ParsedCliArgs): string[] {
   const command = args.command.slice(1);
   const key = command.slice(0, 2).join(" ");
-  const browserArgs = ["memory"];
-  if (["metrics", "status", "collect-garbage", "cancel"].includes(command[0] ?? "") && command.length === 1) {
-    browserArgs.push(command[0] as string);
-  } else if (key === "sampling start" && command.length === 2) {
-    browserArgs.push("sampling", "start");
-    appendOption(browserArgs, args, "sampling-interval");
-  } else if (key === "sampling stop" && command.length <= 3) {
-    browserArgs.push("sampling", "stop", ...command.slice(2));
-    appendOption(browserArgs, args, "top");
-    appendOption(browserArgs, args, "max-size");
-  } else if (command[0] === "snapshot" && command.length <= 2) {
-    browserArgs.push("snapshot", ...command.slice(1));
-    if (args.options.has("no-gc")) browserArgs.push("--no-gc");
-    appendOption(browserArgs, args, "timeout");
-    appendOption(browserArgs, args, "max-size");
-  } else {
-    throw commandError({
-      code: "MEMORY_COMMAND_INVALID",
-      kind: "validation",
-      message: "Invalid memory command.",
-      hint: "Run `divebell --help` to see the supported forms."
+  if (command.length === 1 && command[0] === "metrics") {
+    return await browser.memory.metrics({ collectGarbage: !args.options.has("no-gc") });
+  }
+  if (command.length === 1 && command[0] === "status") {
+    return await browser.memory.status();
+  }
+  if (command.length === 2 && key === "sampling start") {
+    return await browser.memory.sampling.start({
+      ...optionalPositiveIntegerProperty(args, "sampling-interval", "samplingInterval")
     });
   }
-  browserArgs.push("--json");
-  return browserArgs;
-}
-
-function appendOption(browserArgs: string[], args: ParsedCliArgs, name: string): void {
-  const value = getOptionValue(args, name);
-  if (value !== undefined) browserArgs.push(`--${name}`, value);
-}
-
-function browserCommandError(result: { stdout: string; stderr: string }): Error {
-  return commandError({
-    code: "MEMORY_BROWSER_COMMAND_FAILED",
-    kind: "browser",
-    message: result.stderr.trim() || result.stdout.trim() || "Memory browser command failed."
+  if (command.length <= 3 && key === "sampling stop") {
+    return await browser.memory.sampling.stop({
+      ...(command[2] === undefined ? {} : { path: command[2] }),
+      ...optionalPositiveIntegerProperty(args, "top", "top"),
+      ...optionalPositiveIntegerProperty(args, "max-size", "maxSize")
+    });
+  }
+  if (command.length <= 2 && command[0] === "snapshot") {
+    return await browser.memory.snapshot({
+      ...(command[1] === undefined ? {} : { path: command[1] }),
+      collectGarbage: !args.options.has("no-gc"),
+      ...optionalPositiveIntegerProperty(args, "timeout", "timeout"),
+      ...optionalPositiveIntegerProperty(args, "max-size", "maxSize")
+    });
+  }
+  if (command.length === 1 && command[0] === "collect-garbage") {
+    return await browser.memory.collectGarbage();
+  }
+  if (command.length === 1 && command[0] === "cancel") {
+    return await browser.memory.cancel();
+  }
+  throw commandError({
+    code: "MEMORY_COMMAND_INVALID",
+    kind: "validation",
+    message: "Invalid memory command.",
+    hint: "Run `divebell --help` to see the supported forms."
   });
 }
 
-function parseBrowserResult(stdout: string): unknown {
-  const value = stdout.trim();
-  if (value.length === 0) return null;
-  try {
-    return JSON.parse(value);
-  } catch (error) {
+function requireCurrentPage(
+  page: CliExtensionPageContext | undefined
+): CliExtensionPageContext {
+  if (page === undefined) {
     throw commandError({
-      code: "MEMORY_BROWSER_OUTPUT_INVALID",
-      kind: "browser",
-      message: error instanceof Error ? error.message : String(error)
+      code: "OPEN_CONTEXT_REQUIRED",
+      kind: "validation",
+      message: "This command requires a current page opened by Divebell.",
+      hint: "Run `divebell open <url>` first."
     });
   }
+  return page;
 }
 
 function getOptionValue(args: ParsedCliArgs, name: string): string | undefined {
@@ -161,6 +151,18 @@ function positiveIntegerOption(args: ParsedCliArgs, name: string, fallback: numb
     });
   }
   return parsed;
+}
+
+function optionalPositiveIntegerProperty<Name extends string>(
+  args: ParsedCliArgs,
+  optionName: string,
+  propertyName: Name
+): Record<Name, number> | Record<string, never> {
+  const value = getOptionValue(args, optionName);
+  if (value === undefined) return {};
+  return {
+    [propertyName]: positiveIntegerOption(args, optionName, 1)
+  } as Record<Name, number>;
 }
 
 function commandError(options: {

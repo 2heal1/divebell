@@ -13,7 +13,9 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
-The package provides the `divebell` binary. It currently includes `@divebell/agent-browser@0.34.0-divebell.2`, a temporary Divebell build that preserves the active page across follow-up CLI and Extension commands and adds configurable navigation lifecycle timeouts, compiled-JavaScript debugging, non-pausing logpoints, a persistent debugger event ring, memory and code-coverage capture, reliable portable state across explicitly included SSO origins without contacting those origins while loading state, and writable-state fallback for agent sandboxes. Set `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built binary. See the [temporary package note](../../docs/temporary-agent-browser-fork.md) for its replacement conditions.
+The package provides the `divebell` binary. Set
+`DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built browser
+executable.
 
 Divebell keeps its bundled agent-browser daemon under `DIVEBELL_HOME/agent-browser` so another installed browser client cannot make it reuse an older background binary. When `~/.divebell` is not writable, the CLI automatically keeps its browser, session, and Extension files in a private per-user temporary directory. Set `DIVEBELL_HOME` when that data must live in a specific durable writable directory, or set `AGENT_BROWSER_HOME` to explicitly override only the browser daemon location.
 

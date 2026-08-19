@@ -260,7 +260,6 @@ export type BrowserCommandName =
   | "react"
   | "vitals"
   | "a11y"
-  | "addinitscript"
   | "removeinitscript"
   | "confirm"
   | "deny"

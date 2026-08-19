@@ -23,7 +23,6 @@ export interface RunMemoryCheckOptions {
   warmup: number;
   iterations: number;
   browser: DivebellBrowserApi;
-  ui?: boolean;
 }
 
 export interface MemoryMetricPoint {

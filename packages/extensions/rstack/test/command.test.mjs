@@ -214,6 +214,37 @@ class FakeBrowser {
     this.armCompileError = options.armCompileError === true;
     this.reactDomBuild = options.reactDomBuild;
     this.consoleCalls = 0;
+    this.console = { list: async () => await this.readConsole() };
+    const invoke = async (args, requestOptions = {}) =>
+      JSON.parse(await this.run("debug", { args, options: requestOptions }));
+    this.debug = {
+      status: async (debugOptions = {}) => await invoke(["status"], debugOptions),
+      enable: async (debugOptions = {}) => await invoke(["enable"], debugOptions),
+      disable: async (debugOptions = {}) => await invoke(["disable"], debugOptions),
+      scripts: async (debugOptions = {}) =>
+        (await invoke(["scripts"], debugOptions)).scripts,
+      sourceSearch: async (query, debugOptions = {}) =>
+        await invoke(["source", "search", query], debugOptions),
+      source: async (scriptId, debugOptions = {}) =>
+        await invoke(["source", scriptId], debugOptions),
+      events: async (debugOptions = {}) => await invoke(["events"], debugOptions),
+      logpoints: {
+        set: async (debugOptions) => await invoke(
+          ["logpoint", "set", debugOptions.scriptId, String(debugOptions.line)],
+          {
+            ...debugOptions,
+            tag: Object.entries(debugOptions.tags ?? {}).map(
+              ([name, value]) => `${name}=${value}`
+            )
+          }
+        ),
+        list: async () => await invoke(["logpoint", "list"]),
+        remove: async (probeId) => await invoke(["logpoint", "remove", probeId])
+      },
+      breakpoints: {
+        list: async () => await invoke(["breakpoint", "list"])
+      }
+    };
   }
 
   async run(command, request = {}) {
@@ -372,7 +403,7 @@ class FakeBrowser {
     }
   }
 
-  async console() {
+  async readConsole() {
     this.consoleCalls += 1;
     const entries = this.armCompileError && this.consoleCalls >= 2
       ? [{ level: "error", args: "Failed to compile: broken fixture" }]

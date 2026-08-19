@@ -12,6 +12,7 @@ import {
 } from "./commands/bridge.js";
 import { createBridgeStateStore } from "./features/bridge/config.js";
 import { runBrowserCliCommand, runExtensionCloseHooks } from "./commands/browser.js";
+import { runBrowserRawCommand } from "./commands/browser-raw-command.js";
 import { isBrowserCommand } from "./commands/names.js";
 import { runExtensionCliCommand } from "./commands/extension.js";
 import { runKillAllCommand, runKillCommand, runPsCommand } from "./commands/daemon.js";
@@ -44,6 +45,15 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
   const bufferedStderr = createBufferedWriter();
 
   try {
+    if (argv[0] === "raw") {
+      return await runBrowserRawCommand(
+        argv.slice(1),
+        stdout,
+        stderr,
+        browserRunner
+      );
+    }
+
     if (isCliVersionRequest(args)) {
       stdout.write(`${CLI_VERSION}\n`);
       return 0;

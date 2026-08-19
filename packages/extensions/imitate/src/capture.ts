@@ -63,35 +63,21 @@ async function collectConsoleInteractions(
   selectedTabId?: string;
   errors: string[];
 }> {
-  const listed = await browser.raw(["tab", "--json"]);
-  if (listed.exitCode !== 0) {
-    return await collectCurrentTabInteractions(browser, [browserResultError(listed, "Could not inspect browser tabs.")]);
-  }
-
-  let parsed: {
-    tabs?: Array<{
-      tabId?: unknown;
-      url?: unknown;
-      label?: unknown;
-      active?: unknown;
-    }>;
-  };
+  let listed;
   try {
-    parsed = JSON.parse(listed.stdout) as typeof parsed;
-  } catch {
-    return await collectCurrentTabInteractions(browser, ["Could not parse the browser tab list."]);
+    listed = await browser.tabs.list();
+  } catch (error) {
+    return await collectCurrentTabInteractions(browser, [
+      error instanceof Error ? error.message : String(error)
+    ]);
   }
 
-  const tabs = (Array.isArray(parsed.tabs) ? parsed.tabs : []).flatMap((tab) =>
-    typeof tab.tabId !== "string"
-      ? []
-      : [{
-          tabId: tab.tabId,
-          url: typeof tab.url === "string" ? tab.url : undefined,
-          label: typeof tab.label === "string" ? tab.label : undefined,
-          active: tab.active === true
-        }]
-  );
+  const tabs = listed.map((tab) => ({
+    tabId: tab.tabId,
+    url: tab.url,
+    label: tab.label ?? undefined,
+    active: tab.active
+  }));
   const operationTabs = tabs.filter((tab) =>
     tab.label !== RECORDING_COMPANION_LABEL &&
     !recordingCompanionMatches(tab.url, companionUrl)
@@ -109,16 +95,17 @@ async function collectConsoleInteractions(
   let currentTabId = tabs.find((tab) => tab.active)?.tabId;
   for (const tab of operationTabs) {
     if (currentTabId !== tab.tabId) {
-      const switched = await browser.raw(["tab", tab.tabId]);
-      if (switched.exitCode !== 0) {
-        errors.push(browserResultError(switched, `Could not inspect browser tab ${tab.tabId}.`));
+      try {
+        await browser.tabs.activate(tab.tabId);
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
         continue;
       }
       currentTabId = tab.tabId;
     }
 
     try {
-      const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+      const result = await browser.console.list({ query: RECORD_EVENT_CONSOLE_MARKER });
       collected.push({
         tabId: tab.tabId,
         active: tab.active,
@@ -133,11 +120,11 @@ async function collectConsoleInteractions(
     ?? operationTabs.find((tab) => tab.active)
     ?? operationTabs[0];
   if (selected !== undefined && currentTabId !== selected.tabId) {
-    const restored = await browser.raw(["tab", selected.tabId]);
-    if (restored.exitCode === 0) {
+    try {
+      await browser.tabs.activate(selected.tabId);
       currentTabId = selected.tabId;
-    } else {
-      errors.push(browserResultError(restored, "Could not return to the recorded browser tab."));
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -158,7 +145,7 @@ async function collectCurrentTabInteractions(
   errors: string[];
 }> {
   try {
-    const result = await browser.console({ query: RECORD_EVENT_CONSOLE_MARKER });
+    const result = await browser.console.list({ query: RECORD_EVENT_CONSOLE_MARKER });
     return {
       interactions: parseInteractionEventsFromConsole(result.entries.map((entry) => entry.args)),
       inspectedTabCount: 1,
@@ -209,13 +196,6 @@ function recordingCompanionMatches(actual: string | undefined, expected: string 
   }
 }
 
-function browserResultError(
-  result: { stdout: string; stderr: string },
-  fallback: string
-): string {
-  return result.stderr.trim() || result.stdout.trim() || fallback;
-}
-
 export async function sampleRuntime(
   divebell: DivebellExtensionApi,
   selector: { runtimeId?: string; sessionId?: string; url?: string },
@@ -254,31 +234,31 @@ export async function samplePageSnapshot(
   browser: DivebellBrowserApi,
   sampledAt: Date
 ): Promise<PageSnapshotSample> {
-  const result = await browser.raw(["snapshot"]);
-  if (result.exitCode !== 0) {
+  try {
+    const output = await browser.pageSnapshot();
+    try {
+      return {
+        sampledAt: sampledAt.toISOString(),
+        ok: true,
+        exitCode: 0,
+        result: parseBrowserJsonOutput(output)
+      };
+    } catch {
+      return {
+        sampledAt: sampledAt.toISOString(),
+        ok: true,
+        exitCode: 0,
+        stdout: output.trim(),
+        stderr: ""
+      };
+    }
+  } catch (error) {
     return {
       sampledAt: sampledAt.toISOString(),
       ok: false,
-      exitCode: result.exitCode,
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
-    };
-  }
-
-  try {
-    return {
-      sampledAt: sampledAt.toISOString(),
-      ok: true,
-      exitCode: result.exitCode,
-      result: parseBrowserJsonOutput(result.stdout)
-    };
-  } catch {
-    return {
-      sampledAt: sampledAt.toISOString(),
-      ok: true,
-      exitCode: result.exitCode,
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error)
     };
   }
 }
@@ -287,31 +267,20 @@ export async function sampleDomSnapshot(
   browser: DivebellBrowserApi,
   sampledAt: Date
 ): Promise<DomSnapshotSample> {
-  const result = await browser.raw(["eval", createDomSnapshotScript()]);
-  if (result.exitCode !== 0) {
-    return {
-      sampledAt: sampledAt.toISOString(),
-      ok: false,
-      exitCode: result.exitCode,
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
-    };
-  }
-
   try {
     return {
       sampledAt: sampledAt.toISOString(),
       ok: true,
-      exitCode: result.exitCode,
-      result: parseBrowserJsonOutput(result.stdout)
+      exitCode: 0,
+      result: await browser.eval(createDomSnapshotScript())
     };
-  } catch {
+  } catch (error) {
     return {
       sampledAt: sampledAt.toISOString(),
-      ok: true,
-      exitCode: result.exitCode,
-      stdout: result.stdout.trim(),
-      stderr: result.stderr.trim()
+      ok: false,
+      exitCode: 1,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error)
     };
   }
 }

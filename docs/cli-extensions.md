@@ -319,11 +319,20 @@ A Command accesses Divebell capabilities through `options.divebell`:
 
 Browser capabilities remain available when the page does not use Runtime SDK. Require a connected Runtime only when the Command truly needs application-internal facts.
 
-Use `divebell.browser.run(command, request)` when a Command needs a browser
-page command without a dedicated typed helper. It accepts the same page command
-names shown by `divebell --help`, reuses the current opened page, and preserves
-the Divebell session during navigation. The outer workflow still owns
-`open` and `stop`.
+Use a typed API under `divebell.browser` whenever it exposes the required
+capability. Typed APIs own their result types and normalize browser failures.
+When no typed API exists, use `divebell.browser.raw(args)`. `raw` returns
+`{ exitCode, stdout, stderr }`; it does not throw on command failure or return
+a parsed JavaScript value. For `--json`, the shared browser runner unwraps the
+agent-browser transport and leaves the serialized command `data` in `stdout`.
+Read the [raw command reference](../skills/divebell-extension/references/browser-raw.md)
+to select a subcommand, then run `divebell raw <command> --help` for the exact
+syntax installed with Divebell. Extension `browser.raw` requires the current
+context created by `divebell open`, requires a subcommand as its first token,
+and rejects `open`, `close`, `connect`, `install`, `upgrade`, `doctor`, `mcp`,
+`chat`, and `dashboard`. The standalone `divebell raw` CLI retains the complete
+bundled agent-browser command surface and is the place to inspect help or run
+workflow-owned commands.
 
 Debugger IDs are not taken from `options.page.sessionId`. That field is the
 Divebell session created by `divebell open --session` and used to correlate the
@@ -333,10 +342,13 @@ first run `debug enable` or `debug status`, then read the debugger session's
 `tabId` as the selector for later debugger commands:
 
 ```ts
-const enabled = JSON.parse(await options.divebell.browser.run("debug", {
-  args: ["enable"],
-  options: { json: true }
-})) as {
+const enabledResult = await options.divebell.browser.raw([
+  "debug", "enable", "--json"
+]);
+if (enabledResult.exitCode !== 0) {
+  throw new Error(enabledResult.stderr.trim() || enabledResult.stdout.trim());
+}
+const enabled = JSON.parse(enabledResult.stdout) as {
   sessions: Array<{ sessionId: string; tabId?: string }>;
 };
 
@@ -345,14 +357,15 @@ if (current?.tabId === undefined) {
   throw new Error("No debugger tab is available for the current page.");
 }
 
-const matches = await options.divebell.browser.run("debug", {
-  args: ["source", "search", "rendererPackageName"],
-  options: {
-    tab: current.tabId,
-    "max-results": 1000,
-    json: true
-  }
-});
+const matches = await options.divebell.browser.raw([
+  "debug", "source", "search", "rendererPackageName",
+  "--tab", current.tabId,
+  "--max-results", "1000",
+  "--json"
+]);
+if (matches.exitCode !== 0) {
+  throw new Error(matches.stderr.trim() || matches.stdout.trim());
+}
 ```
 
 The debugger `sessionId` is a Chrome CDP target-session identity, while `tabId`

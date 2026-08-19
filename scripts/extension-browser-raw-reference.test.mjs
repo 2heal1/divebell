@@ -1,0 +1,331 @@
+import assert from "node:assert/strict";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import ts from "typescript";
+
+import {
+  createAgentBrowserRawReferenceModel,
+  createGeneratedRawReference,
+  discoverAgentBrowserCommandCandidates,
+  GENERATED_RAW_REFERENCE_END,
+  GENERATED_RAW_REFERENCE_START,
+  replaceGeneratedRawReference
+} from "./sync-extension-browser-raw-reference.mjs";
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const rawReferencePath = join(
+  repoRoot,
+  "skills/divebell-extension/references/browser-raw.md"
+);
+const extensionSkillPath = join(repoRoot, "skills/divebell-extension/SKILL.md");
+const cliPackagePath = join(repoRoot, "packages/cli/package.json");
+const browserTypesPath = join(
+  repoRoot,
+  "packages/cli/src/features/extension/types.ts"
+);
+const extensionApiSourcePath = join(
+  repoRoot,
+  "packages/cli/src/features/extension/api.ts"
+);
+const extensionApiDocumentationPath = join(repoRoot, "docs/extension-api.md");
+const rawCommandReferenceDirectory = join(
+  repoRoot,
+  "skills/divebell-extension/references/browser-raw"
+);
+
+test("keeps the Extension raw reference synchronized with agent-browser", () => {
+  const current = readFileSync(rawReferencePath, "utf8");
+  const model = createAgentBrowserRawReferenceModel();
+  const cliPackage = JSON.parse(readFileSync(cliPackagePath, "utf8"));
+  const expected = replaceGeneratedRawReference(
+    current,
+    createGeneratedRawReference(model)
+  );
+
+  assert.equal(current, expected);
+  assert.equal(
+    cliPackage.dependencies["@divebell/agent-browser"],
+    model.source.version
+  );
+  assert.equal(existsSync(rawCommandReferenceDirectory), false);
+  assert.doesNotMatch(current, /@divebell\/agent-browser@/);
+  assert.match(
+    current,
+    /\| `network` \| Network interception and monitoring \| `divebell raw network --help` \|/
+  );
+  assert.match(
+    current,
+    /\| `debug` \| Debug compiled JavaScript in Chrome \| `divebell raw debug --help` \|/
+  );
+  assert.match(
+    current,
+    /\| `memory` \| Capture page memory evidence \| `divebell raw memory --help` \|/
+  );
+  assert.match(current, /### Subcommands without dedicated help/);
+  assert.match(current, /react tree\s+Full React component tree/);
+  assert.match(current, /pushstate <url>\s+SPA client-side nav/);
+  assert.match(
+    current,
+    /\| `confirm` \| Approve or deny pending actions \| `divebell raw confirm --help` \|/
+  );
+  assert.doesNotMatch(current, /## Top-level installed help/);
+  assert.doesNotMatch(current, /Usage: agent-browser network/);
+  assert.doesNotMatch(current, /Version-matched command catalog/);
+  assert.doesNotMatch(current, /Updating the pinned agent-browser version/);
+  if (model.unavailableDocumentedCommands.has("addinitscript")) {
+    assert.match(current, /`addinitscript` appears in the bundled agent-browser documentation/);
+  }
+  for (const command of model.commands) {
+    assert.match(current, new RegExp("\\| `" + escapeRegExp(command) + "` \\|"));
+    assert.doesNotMatch(current, new RegExp(`browser-raw/${escapeRegExp(command)}\\.md`));
+  }
+});
+
+test("discovers new top-level and documented commands without a hardcoded list", () => {
+  const discovery = discoverAgentBrowserCommandCandidates({
+    topLevelHelp: [
+      "Usage: agent-browser <command>",
+      "",
+      "Core Commands:",
+      "  open <url>  Navigate",
+      "  sparkle now Add sparkle",
+      "",
+      "Network: agent-browser network <action>",
+      "  requests   List requests",
+      "",
+      "Snapshot Options:",
+      "  --compact  Compact output",
+      "",
+      "Options:",
+      "  -p, --provider <name>  Browser provider"
+    ].join("\n"),
+    markdownSources: [
+      [
+        "```bash",
+        "agent-browser hidden --json",
+        "agent-browser --provider ios tap @e1",
+        "```"
+      ].join("\n")
+    ]
+  });
+
+  assert.deepEqual(discovery.candidates, [
+    "open",
+    "sparkle",
+    "network",
+    "hidden",
+    "tap"
+  ]);
+  assert.deepEqual(
+    [...discovery.declaredCommands],
+    ["open", "sparkle", "network"]
+  );
+});
+
+test("documents the raw transport and routes Extension agents to it", () => {
+  const reference = readFileSync(rawReferencePath, "utf8");
+  const skill = readFileSync(extensionSkillPath, "utf8");
+  const extensionApiSource = readFileSync(extensionApiSourcePath, "utf8");
+  const generatedStart = reference.indexOf(GENERATED_RAW_REFERENCE_START);
+  const generatedEnd = reference.indexOf(GENERATED_RAW_REFERENCE_END);
+
+  assert.ok(generatedStart >= 0);
+  assert.ok(generatedEnd > generatedStart);
+  assert.match(skill, /references\/browser-raw\.md/);
+  assert.match(reference, /interface DivebellBrowserRawOptions/);
+  assert.match(reference, /interface DivebellBrowserRawResult/);
+  assert.match(reference, /exitCode: number/);
+  assert.match(reference, /stdout: string/);
+  assert.match(reference, /stderr: string/);
+  assert.match(reference, /removes agent-browser's outer `\{ success, data, error \}`/);
+  assert.match(reference, /raw<T>\(\)/);
+  const authoredReference = reference.slice(0, generatedStart);
+  const forbiddenCommands = collectStringArrayConstant(
+    extensionApiSource,
+    extensionApiSourcePath,
+    "EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS"
+  );
+  assert.ok(forbiddenCommands.length > 0);
+  assert.match(authoredReference, /operates only on the browser most recently opened by/);
+  assert.match(authoredReference, /first argument must be a subcommand/);
+  assert.match(authoredReference, /standalone `divebell raw` CLI is not subject to this Extension boundary/);
+  for (const command of forbiddenCommands) {
+    assert.match(authoredReference, new RegExp("`" + escapeRegExp(command) + "`"));
+  }
+  assert.match(reference, /divebell raw network --help/);
+});
+
+test("documents every typed Extension browser API and its type source", () => {
+  const browserTypes = readFileSync(browserTypesPath, "utf8");
+  const expectedApis = collectBrowserApiPaths(browserTypes);
+  const exportedBrowserTypes = collectExportedBrowserTypeNames(browserTypes);
+
+  for (const documentationPath of [
+    rawReferencePath.replace(/browser-raw\.md$/, "api.md"),
+    extensionApiDocumentationPath
+  ]) {
+    const documentation = readFileSync(documentationPath, "utf8");
+    const documentedApis = [...documentation.matchAll(
+      /^\| `(browser\.[^`]+)` \|/gm
+    )].map((match) => match[1]).toSorted();
+
+    assert.deepEqual(documentedApis, expectedApis);
+    assert.match(
+      documentation,
+      /node_modules\/@divebell\/cli\/dist\/features\/extension\/types\.d\.ts/
+    );
+    assert.doesNotMatch(documentation, /^### Browser capabilities$/m);
+
+    for (const match of documentation.matchAll(/`(DivebellBrowser[A-Za-z0-9]+)`/g)) {
+      assert.ok(
+        exportedBrowserTypes.has(match[1]),
+        `${match[1]} is not exported by the Extension browser type source.`
+      );
+    }
+  }
+});
+
+test("keeps bundled Extensions on typed browser APIs except the MF CDP handoff", () => {
+  const sourceRoot = join(repoRoot, "packages/extensions");
+  const rawCalls = collectFiles(sourceRoot, (path) => path.endsWith(".ts"))
+    .flatMap((path) => {
+      const source = readFileSync(path, "utf8");
+      return [...source.matchAll(/\.raw\s*\(/g)].map(() => ({
+        path: relative(repoRoot, path),
+        source
+      }));
+    });
+
+  assert.deepEqual(rawCalls.map((call) => call.path), [
+    "packages/extensions/mf/src/function-location.ts"
+  ]);
+  assert.match(
+    rawCalls[0]?.source ?? "",
+    /browser\.raw\(\["get", "cdp-url", "--json"\]\)/
+  );
+});
+
+function collectBrowserApiPaths(source) {
+  const sourceFile = ts.createSourceFile(
+    browserTypesPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const interfaces = new Map();
+  for (const statement of sourceFile.statements) {
+    if (ts.isInterfaceDeclaration(statement)) {
+      interfaces.set(statement.name.text, statement);
+    }
+  }
+
+  const root = interfaces.get("DivebellBrowserApi");
+  assert.ok(root, "DivebellBrowserApi must exist.");
+  const paths = [];
+
+  const visitMembers = (members, prefix) => {
+    for (const member of members) {
+      const name = readTypeMemberName(member.name);
+      if (name === undefined) continue;
+      const path = `${prefix}.${name}`;
+      if (ts.isMethodSignature(member)) {
+        paths.push(path);
+        continue;
+      }
+      if (!ts.isPropertySignature(member) || member.type === undefined) continue;
+      if (ts.isTypeLiteralNode(member.type)) {
+        visitMembers(member.type.members, path);
+        continue;
+      }
+      if (ts.isTypeReferenceNode(member.type) && ts.isIdentifier(member.type.typeName)) {
+        const nested = interfaces.get(member.type.typeName.text);
+        if (nested !== undefined && member.type.typeName.text.endsWith("Api")) {
+          visitMembers(nested.members, path);
+          continue;
+        }
+      }
+      paths.push(path);
+    }
+  };
+
+  visitMembers(root.members, "browser");
+  return paths.toSorted();
+}
+
+function collectExportedBrowserTypeNames(source) {
+  const sourceFile = ts.createSourceFile(
+    browserTypesPath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  return new Set(
+    sourceFile.statements.flatMap((statement) => {
+      if (
+        (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement))
+        && statement.name.text.startsWith("DivebellBrowser")
+        && statement.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+        )
+      ) {
+        return [statement.name.text];
+      }
+      return [];
+    })
+  );
+}
+
+function collectStringArrayConstant(source, sourcePath, constantName) {
+  const sourceFile = ts.createSourceFile(
+    sourcePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== constantName) {
+        continue;
+      }
+      let initializer = declaration.initializer;
+      while (
+        initializer !== undefined
+        && (ts.isAsExpression(initializer)
+          || ts.isSatisfiesExpression(initializer)
+          || ts.isParenthesizedExpression(initializer))
+      ) {
+        initializer = initializer.expression;
+      }
+      assert.ok(initializer !== undefined && ts.isArrayLiteralExpression(initializer));
+      return initializer.elements.map((element) => {
+        assert.ok(ts.isStringLiteral(element));
+        return element.text;
+      });
+    }
+  }
+  assert.fail(`${constantName} was not found in ${sourcePath}.`);
+}
+
+function readTypeMemberName(name) {
+  if (name === undefined) return undefined;
+  if (ts.isIdentifier(name) || ts.isStringLiteral(name)) return name.text;
+  return undefined;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectFiles(directory, include) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return collectFiles(path, include);
+    return entry.isFile() && include(path) ? [path] : [];
+  });
+}

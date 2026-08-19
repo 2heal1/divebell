@@ -35,15 +35,15 @@ export default {
 Save it as `scripts/memory-scenario.mjs`, then run:
 
 ```bash
+divebell open http://localhost:19081/
 divebell memory check \
-  --url http://localhost:19081/ \
   --scenario ./scripts/memory-scenario.mjs \
   --warmup 3 \
   --iterations 12 \
   --artifact-dir ./.memory-artifacts
 ```
 
-The Extension opens the page, warms it up, records baseline metrics, repeats the scenario, captures allocation data and before-and-after heap snapshots, reports the result, and closes the page.
+The Extension uses the current page opened by Divebell, warms it up, records baseline metrics, repeats the scenario, captures allocation data and before-and-after heap snapshots, and reports the result. It leaves the page open for follow-up investigation.
 
 The output directory contains:
 

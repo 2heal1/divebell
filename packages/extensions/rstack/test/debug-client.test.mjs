@@ -20,18 +20,19 @@ test("uses stable tab IDs without forwarding CDP IDs as daemon sessions", async 
 class RecordingBrowser {
   constructor() {
     this.requests = [];
-  }
-
-  async run(command, request) {
-    assert.equal(command, "debug");
-    this.requests.push(request);
-    if (request.args[0] === "enable") {
-      return JSON.stringify({
-        enabled: true,
-        connectionGeneration: 1,
-        sessions: [{ sessionId: "cdp-page", tabId: "t1" }]
-      });
-    }
-    return JSON.stringify({ matches: [] });
+    this.debug = {
+      enable: async (options = {}) => {
+        this.requests.push({ method: "enable", options });
+        return {
+          enabled: true,
+          connectionGeneration: 1,
+          sessions: [{ sessionId: "cdp-page", tabId: "t1" }]
+        };
+      },
+      sourceSearch: async (query, options = {}) => {
+        this.requests.push({ method: "sourceSearch", query, options });
+        return { matches: [] };
+      }
+    };
   }
 }

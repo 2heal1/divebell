@@ -22,11 +22,6 @@ export async function runMemoryCheck(
 
   await mkdir(artifactDirectory, { recursive: true });
   try {
-    await runBrowserOrThrow(
-      options.browser,
-      ["open", options.url],
-      { ui: options.ui === true }
-    );
     await scenario.setup?.({ page, iteration: 0, phase: "setup" });
 
     for (let index = 1; index <= options.warmup; index += 1) {
@@ -34,20 +29,11 @@ export async function runMemoryCheck(
     }
 
     const baseline = await readComparableMetrics(options.browser, 0);
-    await runJson(options.browser, [
-      "memory",
-      "snapshot",
-      baselineSnapshotPath,
-      "--timeout",
-      "120000"
-    ]);
-    await runJson(options.browser, [
-      "memory",
-      "sampling",
-      "start",
-      "--sampling-interval",
-      "32768"
-    ]);
+    await options.browser.memory.snapshot({
+      path: baselineSnapshotPath,
+      timeout: 120_000
+    });
+    await options.browser.memory.sampling.start({ samplingInterval: 32_768 });
     samplingStarted = true;
 
     for (let index = 1; index <= options.iterations; index += 1) {
@@ -55,26 +41,19 @@ export async function runMemoryCheck(
       series.push(await readComparableMetrics(options.browser, index));
     }
 
-    const allocation = await runJson(options.browser, [
-      "memory",
-      "sampling",
-      "stop",
-      allocationProfilePath,
-      "--top",
-      "20"
-    ]);
+    const allocation = await options.browser.memory.sampling.stop({
+      path: allocationProfilePath,
+      top: 20
+    });
     samplingStarted = false;
     const final = await readComparableMetrics(
       options.browser,
       options.iterations + 1
     );
-    await runJson(options.browser, [
-      "memory",
-      "snapshot",
-      finalSnapshotPath,
-      "--timeout",
-      "120000"
-    ]);
+    await options.browser.memory.snapshot({
+      path: finalSnapshotPath,
+      timeout: 120_000
+    });
 
     const report = createMemoryCheckReport({
       url: options.url,
@@ -95,9 +74,8 @@ export async function runMemoryCheck(
     };
   } finally {
     if (samplingStarted) {
-      await options.browser.raw(["memory", "cancel", "--json"]);
+      await options.browser.memory.cancel();
     }
-    await options.browser.raw(["close"]);
   }
 }
 
@@ -115,24 +93,12 @@ async function loadMemoryCheckScenario(path: string): Promise<MemoryCheckScenari
 
 function createMemoryCheckPage(browser: DivebellBrowserApi): MemoryCheckPage {
   return {
-    eval: async (script) => await runJson(browser, ["eval", script], false),
+    eval: async (script) => await browser.eval(script),
     waitEval: async (script, options = {}) => {
-      const deadline = Date.now() + (options.timeout ?? 10_000);
-      let lastError = "Condition did not become true.";
-      while (Date.now() <= deadline) {
-        const result = await browser.raw(["eval", createWaitEvalScript(script)]);
-        if (result.exitCode === 0) {
-          try {
-            if (parseBrowserJsonOutput(result.stdout) === true) return;
-          } catch (error) {
-            lastError = errorMessage(error);
-          }
-        } else {
-          lastError = result.stderr.trim() || result.stdout.trim() || lastError;
-        }
-        await delay(100);
+      const result = await browser.waitEval(script, options);
+      if (!result.success) {
+        throw new Error(`Page condition timed out: ${result.reason ?? "Condition did not become true."}`);
       }
-      throw new Error(`Page condition timed out: ${lastError}`);
     }
   };
 }
@@ -141,8 +107,7 @@ async function readComparableMetrics(
   browser: DivebellBrowserApi,
   iteration: number
 ): Promise<MemoryMetricPoint> {
-  await runJson(browser, ["memory", "collect-garbage"]);
-  const metrics = await runJson(browser, ["memory", "metrics"]);
+  const metrics = await browser.memory.metrics();
   return {
     iteration,
     jsHeapUsedSize: numberOrNull(metrics.jsHeapUsedSize),
@@ -153,40 +118,6 @@ async function readComparableMetrics(
   };
 }
 
-async function runJson(
-  browser: DivebellBrowserApi,
-  args: string[],
-  appendJson = true
-): Promise<Record<string, unknown>> {
-  const browserArgs = appendJson ? [...args, "--json"] : args;
-  const result = await browser.raw(browserArgs);
-  if (result.exitCode !== 0) {
-    throw new Error(
-      result.stderr.trim()
-      || result.stdout.trim()
-      || `Browser command ${args.join(" ")} failed.`
-    );
-  }
-  if (result.stdout.trim().length === 0) return {};
-  const value = parseBrowserJsonOutput(result.stdout);
-  return isRecord(value) ? value : { value };
-}
-
-async function runBrowserOrThrow(
-  browser: DivebellBrowserApi,
-  args: string[],
-  options: { ui?: boolean }
-): Promise<void> {
-  const result = await browser.raw(args, options);
-  if (result.exitCode !== 0) {
-    throw new Error(
-      result.stderr.trim()
-      || result.stdout.trim()
-      || `Browser command ${args.join(" ")} failed.`
-    );
-  }
-}
-
 function createMemoryCheckReport(input: {
   url: string;
   warmup: number;
@@ -194,7 +125,7 @@ function createMemoryCheckReport(input: {
   baseline: MemoryMetricPoint;
   final: MemoryMetricPoint;
   series: MemoryMetricPoint[];
-  allocation: Record<string, unknown>;
+  allocation: { topFunctions?: unknown[] };
 }): MemoryCheckReport {
   const fields = ["jsHeapUsedSize", "documents", "nodes", "jsEventListeners"] as const;
   const deltas = Object.fromEntries(fields.map((field) => [
@@ -268,21 +199,4 @@ function slope(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
-}
-
-function createWaitEvalScript(script: string): string {
-  return `Boolean((${script}))`;
-}
-
-function parseBrowserJsonOutput(stdout: string): unknown {
-  const trimmed = stdout.trim();
-  return trimmed.length === 0 ? undefined : JSON.parse(trimmed);
 }

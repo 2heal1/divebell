@@ -1,85 +1,21 @@
 import type {
   DivebellBrowserApi,
-  DivebellBrowserCommandOptionValue
+  DivebellBrowserDebugEnableResult,
+  DivebellBrowserDebugEvent,
+  DivebellBrowserDebugEventsResult,
+  DivebellBrowserDebugProbeResult,
+  DivebellBrowserDebugScript,
+  DivebellBrowserDebugSourceSearchResult,
+  DivebellBrowserDebugStatusResult
 } from "@divebell/cli";
 
-import { rstackError } from "./errors.js";
-
-export interface DebugStatus {
-  connectionGeneration: number;
-  enabledSessions: number;
-  sessions: Array<{
-    sessionId: string;
-    documentGeneration: number;
-    enabled: boolean;
-    tabId?: string;
-    targetId?: string;
-  }>;
-}
-
-export interface DebugEnableResult {
-  enabled: boolean;
-  connectionGeneration: number;
-  sessions: Array<{
-    sessionId: string;
-    tabId?: string;
-  }>;
-}
-
-export interface DebugScript {
-  connectionGeneration: number;
-  sessionId: string;
-  documentGeneration: number;
-  scriptId: string;
-  executionContextId?: number;
-  url?: string;
-  scriptInstanceKey?: unknown;
-  runtimeOwner?: unknown;
-}
-
-export interface DebugSourceSearchResult {
-  matches: Array<{
-    scriptId: string;
-    sessionId: string;
-    url?: string;
-    line: number;
-    column: number;
-  }>;
-}
-
-export interface DebugEventsResult {
-  events: DebugEvent[];
-  oldestSequence?: number;
-  latestSequence: number;
-  gap: boolean;
-  bufferGap: boolean;
-  transportGap: boolean;
-  droppedThroughSequence?: number;
-  lastTransportGapSequence?: number;
-}
-
-export interface DebugEvent {
-  sequence: number;
-  timestamp: number;
-  type: string;
-  connectionGeneration: number;
-  sessionId?: string;
-  documentGeneration?: number;
-  data?: unknown;
-}
-
-export interface DebugProbeResult {
-  probeId: string;
-  status: string;
-  bindings?: Array<{
-    actualLocation?: {
-      line?: number;
-      column?: number;
-    };
-  }>;
-}
-
-type DebugOptionValue = DivebellBrowserCommandOptionValue;
+export type DebugStatus = DivebellBrowserDebugStatusResult;
+export type DebugEnableResult = DivebellBrowserDebugEnableResult;
+export type DebugScript = DivebellBrowserDebugScript;
+export type DebugSourceSearchResult = DivebellBrowserDebugSourceSearchResult;
+export type DebugEventsResult = DivebellBrowserDebugEventsResult;
+export type DebugEvent = DivebellBrowserDebugEvent;
+export type DebugProbeResult = DivebellBrowserDebugProbeResult;
 
 export class DebugClient {
   readonly browser: DivebellBrowserApi;
@@ -93,47 +29,41 @@ export class DebugClient {
   }
 
   async status(): Promise<DebugStatus> {
-    const result = await this.run<DebugStatus>(["status"]);
+    const result = await this.browser.debug.status();
     this.rememberTabs(result.sessions);
     return result;
   }
 
   async enable(): Promise<DebugEnableResult> {
-    const result = await this.run<DebugEnableResult>(["enable"]);
+    const result = await this.browser.debug.enable();
     this.rememberTabs(result.sessions);
     return result;
   }
 
   async disable(sessionId: string): Promise<unknown> {
-    return await this.run(["disable"], {}, sessionId);
+    return await this.browser.debug.disable(this.targetOptions(sessionId));
   }
 
   async scripts(sessionId?: string): Promise<DebugScript[]> {
-    const result = await this.run<{ scripts: DebugScript[] }>(
-      ["scripts"],
-      {},
-      sessionId
-    );
-    return result.scripts;
+    return await this.browser.debug.scripts(this.targetOptions(sessionId));
   }
 
   async sourceSearch(query: string, sessionId?: string): Promise<DebugSourceSearchResult> {
-    return await this.run<DebugSourceSearchResult>(
-      ["source", "search", query],
-      { "max-results": 1000 },
-      sessionId
-    );
+    return await this.browser.debug.sourceSearch(query, {
+      ...this.targetOptions(sessionId),
+      maxResults: 1000
+    });
   }
 
   async source(scriptId: string, sessionId: string): Promise<{
     script: DebugScript;
     scriptSource: string;
   }> {
-    return await this.run(["source", scriptId], {}, sessionId);
+    return await this.browser.debug.source(scriptId, this.targetOptions(sessionId));
   }
 
   async events(since: number, wait = 0): Promise<DebugEventsResult> {
-    return await this.run<DebugEventsResult>(["events"], {
+    return await this.browser.debug.events({
       since,
       ...(wait <= 0 ? {} : { wait })
     });
@@ -145,62 +75,36 @@ export class DebugClient {
     line: number;
     column: number;
     expressions: readonly string[];
-    tags: readonly string[];
+    tags: Readonly<Record<string, string>>;
   }): Promise<DebugProbeResult> {
-    return await this.run<DebugProbeResult>(
-      ["logpoint", "set", input.scriptId, String(input.line)],
-      {
-        column: input.column,
-        expression: input.expressions,
-        tag: input.tags,
-        after: true,
-        "max-lines": 1,
-        "max-utf16-distance": 512
-      },
-      input.sessionId
-    );
+    return await this.browser.debug.logpoints.set({
+      ...this.targetOptions(input.sessionId),
+      scriptId: input.scriptId,
+      line: input.line,
+      column: input.column,
+      expressions: input.expressions,
+      tags: input.tags,
+      mode: "after",
+      maxLines: 1,
+      maxUtf16Distance: 512
+    });
   }
 
   async listLogpoints(): Promise<{ probes: DebugProbeResult[] }> {
-    return await this.run(["logpoint", "list"]);
+    return await this.browser.debug.logpoints.list();
   }
 
   async listBreakpoints(): Promise<{ probes: DebugProbeResult[] }> {
-    return await this.run(["breakpoint", "list"]);
+    return await this.browser.debug.breakpoints.list();
   }
 
   async removeLogpoint(probeId: string): Promise<unknown> {
-    return await this.run(["logpoint", "remove", probeId]);
+    return await this.browser.debug.logpoints.remove(probeId);
   }
 
-  private async run<T>(
-    args: readonly string[],
-    options: Readonly<Record<string, DebugOptionValue>> = {},
-    debugSessionId?: string
-  ): Promise<T> {
-    const tabId = debugSessionId === undefined
-      ? undefined
-      : this.tabBySession.get(debugSessionId);
-    const output = await this.browser.run("debug", {
-      args,
-      options: {
-        ...options,
-        ...(tabId === undefined ? {} : { tab: tabId }),
-        json: true
-      }
-    });
-    try {
-      return JSON.parse(output) as T;
-    } catch (error) {
-      throw rstackError({
-        code: "RSTACK_DEBUG_OUTPUT_INVALID",
-        kind: "browser",
-        message: `agent-browser returned invalid debugger JSON: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-        details: { output }
-      });
-    }
+  private targetOptions(sessionId: string | undefined): { tab?: string } {
+    const tab = sessionId === undefined ? undefined : this.tabBySession.get(sessionId);
+    return tab === undefined ? {} : { tab };
   }
 
   private rememberTabs(

@@ -1,7 +1,6 @@
 import type {
   DivebellBrowserApi,
   DivebellBrowserMemoryMetricsResult,
-  DivebellBrowserCoverageStatusResult,
   ParsedCliArgs
 } from "@divebell/cli";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -96,7 +95,7 @@ export async function captureCodeUsageExperience(
   browser: DivebellBrowserApi,
   options: CodeUsageExperienceCaptureOptions
 ): Promise<CodeUsageExperienceCaptureResult> {
-  const coverage = await browser.coverage.status<DivebellBrowserCoverageStatusResult>();
+  const coverage = await browser.coverage.status();
   if (coverage.active) {
     throw new Error(
       "Stop or cancel code coverage before measuring page loading and memory."
@@ -114,7 +113,7 @@ export async function captureCodeUsageExperience(
   );
   const readyMetrics = await readMemoryMetrics(browser);
   if (options.settleMs > 0) {
-    await browser.run("wait", { args: [String(options.settleMs)] });
+    await browser.wait(options.settleMs);
   }
   const stableMetrics = options.settleMs > 0
     ? await readMemoryMetrics(browser)
@@ -135,7 +134,7 @@ async function readMemoryMetrics(
   browser: DivebellBrowserApi
 ): Promise<DivebellBrowserMemoryMetricsResult | null> {
   try {
-    return await browser.memory.metrics<DivebellBrowserMemoryMetricsResult>();
+    return await browser.memory.metrics();
   } catch {
     return null;
   }

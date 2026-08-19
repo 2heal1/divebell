@@ -1,6 +1,6 @@
 ---
 name: divebell
-description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; import, export, or reuse browser state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser state, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
+description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; create, export, or reuse browser Profiles and state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser context, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
 ---
 
 # Divebell
@@ -85,16 +85,18 @@ needed.
 Run:
 
 ```bash
-divebell open <url>
+divebell open <url> [--profile <name-or-path> | --state <path> | --temp-profile] [--ui]
 ```
 
 Divebell opens headlessly by default. Add `--ui` only when the user explicitly
 requests a visible window or visible UI is required for the task.
 
-After `open`, check whether the target is accessible. If access is denied, for
-example because the page redirected to a login page, read
-`references/authentication.md` and follow its decision flow. Otherwise,
-continue the task.
+After `open`, check whether the target is accessible. If a state-backed open
+redirects to login, returns 401 or 403, or shows a signed-out or permission
+page, do not infer missing sources or broaden the state. Read
+`references/authentication.md` and use the authorized clean local Profile
+workflow: `--temp-profile`, user sign-in, `profile export`, then reopen with the
+returned Profile path. Otherwise, continue the task.
 
 Continue every browser operation through Divebell.
 
@@ -151,6 +153,9 @@ relevant Extensions.
 
 ## References
 
+- Read `references/authentication.md` for Profile and state selection, the
+  clean local Profile login/export workflow, and authentication-failure
+  interpretation.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

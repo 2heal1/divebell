@@ -27,7 +27,6 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell profile export [path]` - Close the current temporary browser cleanly, export its complete Profile to a new local directory, and return the absolute path.
 - `divebell raw <agent-browser-args...>` - Run the bundled agent-browser directly; use `divebell raw <command> --help` to inspect raw subcommands.
 - `divebell state save <path> [--url <url>] [--include-url <url>...]` - Save agent-browser state; with --url, keep state for that URL plus any repeatable related sign-in URLs.
-- `divebell state infer <url> --state <path> --source-profile <name|path> [--output <path>] [--expect-url <glob>] [--expect-text <text>] [--timeout <ms>]` - On the state provider's machine, infer the smallest URL scope from a working Profile, verify it, and save a new standard state JSON without modifying the supplied state.
 - `divebell state load <path>` - Load an agent-browser state file into the current browser session.
 - `divebell state <list|show|rename|clear|clean> [args]` - Inspect and manage agent-browser saved states.
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.

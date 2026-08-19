@@ -38,7 +38,17 @@ interface DivebellExtensionCommand {
   requiresOpenHook?: boolean;
   skill?: { path: string };
   commandReferences?: readonly CliCommandReference[];
+  presentation?: CliExtensionTextPresentation;
   run(options: CliExtensionRunOptions): Promise<unknown>;
+}
+
+interface CliExtensionTextPresentation {
+  kind: "text";
+  when(args: ParsedCliArgs): boolean;
+  render(
+    result: unknown,
+    options: { args: ParsedCliArgs; columns?: number }
+  ): string | PromiseLike<string>;
 }
 
 interface CliCommandReference {
@@ -56,6 +66,10 @@ interface CliCommandReference {
 - `requiresOpenHook` makes the Command available only when its own Extension completed `open` successfully for the current page.
 - `commandReferences` controls the detailed usage and description shown by `divebell <command> --help`. The top-level `divebell --help` lists only the command name and a short summary.
 - `skill.path` must be an absolute path to an existing `SKILL.md`.
+- `presentation` optionally replaces the standard JSON envelope with explicit
+  human-readable text when its pure `when(args)` selector returns `true`.
+  `render` receives the normal Command result and available terminal width.
+  Nested Extension Command calls still receive the unrendered result.
 - `run` returns the result directly on success and throws an error on failure.
 
 ### `CliExtensionRunOptions`
@@ -208,7 +222,11 @@ interface CliExtensionPageContext {
 
 ### Command results and errors
 
-Return the result directly when a Command succeeds. The CLI places it in the `data` field of the standard successful output. If the Command has no explicit return value, `data` is `null`.
+Return the result directly when a Command succeeds. The CLI places it in the
+`data` field of the standard successful output. If the Command has no explicit
+return value, `data` is `null`. When an explicitly selected text
+`presentation` is active, the top-level CLI invocation renders this same
+result as text instead; nested Commands still receive the result object.
 
 ```ts
 return { count: 3 };

@@ -1,4 +1,7 @@
-import type { DivebellExtensionDefinition } from "@divebell/cli";
+import type {
+  DivebellExtensionDefinition,
+  ParsedCliArgs
+} from "@divebell/cli";
 import { fileURLToPath } from "node:url";
 
 import { createMfCommandMetadata } from "./commands/metadata.js";
@@ -34,6 +37,17 @@ export function createMfExtension(
         usage: command.usage,
         description: command.description
       })),
+      presentation: {
+        kind: "text",
+        when: usesModulePerformanceTimelineView,
+        render: async (result, presentationOptions) =>
+          (await import("./module-performance/format.js"))
+            .formatModulePerformanceReportTimeline(result, {
+              ...(presentationOptions.columns === undefined
+                ? {}
+                : { columns: presentationOptions.columns })
+            })
+      },
       run: async (runOptions) =>
         await (await import("./index.js")).runMfCommand(runOptions)
     }],
@@ -47,6 +61,14 @@ export function createMfExtension(
         )
     }
   };
+}
+
+function usesModulePerformanceTimelineView(args: ParsedCliArgs): boolean {
+  const segments = args.command.slice(1);
+  const modulePerformance = segments[0] === "module-perf" || (
+    segments[0] === "module" && segments[1] === "perf"
+  );
+  return modulePerformance && args.options.get("view")?.at(-1) === "timeline";
 }
 
 const extension = createMfExtension();

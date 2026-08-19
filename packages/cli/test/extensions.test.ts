@@ -33,6 +33,65 @@ function createCommandExtension(
   };
 }
 
+test("renders an explicitly selected Extension text presentation without changing default JSON", async () => {
+  const extension = createCommandExtension({
+    name: "timeline-demo",
+    presentation: {
+      kind: "text",
+      when: (args) => args.options.get("view")?.at(-1) === "timeline",
+      render: (result, options) => {
+        assert.deepEqual(result, { observed: true });
+        assert.equal(options.columns, 72);
+        return "Page       ├────────┤ HTML 0–84 ms";
+      }
+    },
+    run: async () => ({ observed: true })
+  });
+  const cli = createDivebellCli({ extensions: [extension] });
+
+  const structured = createOutput();
+  assert.equal(await cli.run(["timeline-demo"], {
+    stdout: structured.stdout,
+    stderr: structured.stderr
+  }), 0);
+  assert.deepEqual(commandData(structured.text()), { observed: true });
+
+  let text = "";
+  assert.equal(await cli.run(["timeline-demo", "--view", "timeline"], {
+    stdout: {
+      columns: 72,
+      write(chunk) { text += chunk; }
+    },
+    stderr: { write() {} }
+  }), 0);
+  assert.equal(text, "Page       ├────────┤ HTML 0–84 ms\n");
+
+  const caller: DivebellExtensionDefinition = {
+    schemaVersion: 1,
+    name: "timeline-caller",
+    requires: ["timeline-demo"],
+    commands: [{
+      name: "timeline-caller",
+      run: async ({ runExtension }) => ({
+        nested: await runExtension("timeline-demo", {
+          command: "timeline-demo",
+          options: { view: "timeline" }
+        })
+      })
+    }]
+  };
+  const nestedOutput = createOutput();
+  assert.equal(await createDivebellCli({
+    extensions: [extension, caller]
+  }).run(["timeline-caller"], {
+    stdout: nestedOutput.stdout,
+    stderr: nestedOutput.stderr
+  }), 0);
+  assert.deepEqual(commandData(nestedOutput.text()), {
+    nested: { observed: true }
+  });
+});
+
 test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-hooks-"));
   const calls: string[] = [];

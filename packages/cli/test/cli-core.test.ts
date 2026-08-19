@@ -70,6 +70,18 @@ test("defines and validates extension exports", () => {
     }),
     /skill does not exist/
   );
+  assert.throws(
+    () => validateExtension({
+      schemaVersion: 1,
+      name: "broken-presentation",
+      commands: [{
+        name: "broken-presentation",
+        presentation: { kind: "html", when() { return true; }, render() { return ""; } },
+        async run() { return 0; }
+      }]
+    }),
+    /presentation kind must be "text"/
+  );
 });
 
 test("prints compact top-level help", async () => {

@@ -111,6 +111,15 @@ export async function runExtensionCliCommand(
       command: registered.command.name
     }]
   );
+  const presentation = registered.command.presentation;
+  if (presentation?.when(args) === true) {
+    const rendered = await presentation.render(result, {
+      args: extensionArgs,
+      ...(stdout.columns === undefined ? {} : { columns: stdout.columns })
+    });
+    stdout.write(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
+    return 0;
+  }
   writeOkOutput(stdout, extensionArgs.command.join(" "), result);
   return 0;
 }

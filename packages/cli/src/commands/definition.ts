@@ -3,6 +3,7 @@ import type {
   DivebellExtensionCommand,
   DivebellExtensionDefinition,
   DivebellExtensionHooks,
+  CliExtensionTextPresentation,
   ValidateExtensionOptions
 } from "../types/commands.js";
 
@@ -12,6 +13,8 @@ export type {
   CliExtensionRunOptionValue,
   CliExtensionRunOptions,
   CliExtensionRunRequest,
+  CliExtensionPresentationOptions,
+  CliExtensionTextPresentation,
   DivebellExtensionCommand,
   DivebellCloseHook,
   DivebellDetectStackHook,
@@ -96,6 +99,7 @@ function validateCommands(value: unknown, extensionName: string): DivebellExtens
     const skill = candidate.skill === undefined
       ? undefined
       : validateCommandSkill(candidate.skill, name);
+    const presentation = validateCommandPresentation(candidate.presentation, name);
     if (candidate.requiresOpenHook !== undefined && typeof candidate.requiresOpenHook !== "boolean") {
       throw new Error(`Command "${name}" requiresOpenHook must be a boolean.`);
     }
@@ -103,12 +107,37 @@ function validateCommands(value: unknown, extensionName: string): DivebellExtens
       name,
       ...(candidate.requiresOpenHook === true ? { requiresOpenHook: true } : {}),
       ...(skill === undefined ? {} : { skill }),
+      ...(presentation === undefined ? {} : { presentation }),
       ...(commandReferences === undefined ? {} : {
         commandReferences: commandReferences as NonNullable<DivebellExtensionCommand["commandReferences"]>
       }),
       run: async (runOptions) => await run(runOptions)
     };
   });
+}
+
+function validateCommandPresentation(
+  value: unknown,
+  commandName: string
+): CliExtensionTextPresentation | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    throw new Error(`Command "${commandName}" presentation must be an object.`);
+  }
+  if (value.kind !== "text") {
+    throw new Error(`Command "${commandName}" presentation kind must be "text".`);
+  }
+  if (typeof value.when !== "function") {
+    throw new Error(`Command "${commandName}" presentation must provide a when(args) function.`);
+  }
+  if (typeof value.render !== "function") {
+    throw new Error(`Command "${commandName}" presentation must provide a render(result, options) function.`);
+  }
+  return {
+    kind: "text",
+    when: value.when as CliExtensionTextPresentation["when"],
+    render: value.render as CliExtensionTextPresentation["render"]
+  };
 }
 
 function validateHooks(value: unknown, extensionName: string): DivebellExtensionHooks | undefined {

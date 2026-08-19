@@ -258,6 +258,12 @@ consolidated performance report. It is a presentation contract over the normal
 `module-perf` result, not another measurement: it does not load a Remote,
 render a module, or create a second sample.
 
+Use `module-perf --report --view timeline` when the user explicitly wants the
+same report rendered directly in a terminal. The terminal view replaces the
+structured JSON envelope for that invocation only. Omit `--view timeline` for
+Agent or pipeline consumption. The view does not change the measurement,
+timeline boundaries, or report diagnosis.
+
 The stable return is timeline-first:
 
 ```text

@@ -238,6 +238,35 @@ test("module-perf rejects more than one positional target before reading the pag
   );
 });
 
+test("module-perf validates the explicit terminal timeline view before reading the page", async () => {
+  const missingReport = createOptions(
+    ["mf", "module-perf"],
+    new Map([["view", ["timeline"]]]),
+    undefined
+  );
+  await assert.rejects(
+    () => runMfCommand(missingReport.options),
+    (error) => error.code === "MF_COMMAND_OPTION_INVALID" &&
+      /requires --report/.test(error.message) &&
+      /--report --view timeline/.test(error.hint)
+  );
+
+  const invalidView = createOptions(
+    ["mf", "module-perf"],
+    new Map([
+      ["report", ["true"]],
+      ["view", ["html"]]
+    ]),
+    undefined
+  );
+  await assert.rejects(
+    () => runMfCommand(invalidView.options),
+    (error) => error.code === "MF_COMMAND_OPTION_INVALID" &&
+      /Invalid --view value/.test(error.message) &&
+      /--view timeline/.test(error.hint)
+  );
+});
+
 test("candidate commands use the invoked mf or vmok command name", async () => {
   const duplicateState = runtimeState({
     instances: [

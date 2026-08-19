@@ -331,6 +331,30 @@ test("reads exact raw command help from the bundled agent-browser", async () => 
   }), 0);
   assert.equal(versionOutput.text(), "raw-result\n");
 
+  const shortVersionOutput = createOutput();
+  assert.equal(await runCli(["raw", "-V"], {
+    stdout: shortVersionOutput.stdout,
+    stderr: shortVersionOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(shortVersionOutput.text(), "raw-result\n");
+
+  const verboseChatOutput = createOutput();
+  assert.equal(await runCli(["raw", "chat", "hello", "-v"], {
+    stdout: verboseChatOutput.stdout,
+    stderr: verboseChatOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(verboseChatOutput.text(), "raw-result\n");
+
+  const openOutput = createOutput();
+  assert.equal(await runCli(["raw", "open", "https://example.test"], {
+    stdout: openOutput.stdout,
+    stderr: openOutput.stderr,
+    browserRunner
+  }), 0);
+  assert.equal(openOutput.text(), "raw-result\n");
+
   assert.deepEqual(invocations, [
     {
       args: ["network", "--help"],
@@ -353,6 +377,23 @@ test("reads exact raw command help from the bundled agent-browser", async () => 
         ignoreConfiguredProfile: true,
         ignoreConfiguredState: true
       }
+    },
+    {
+      args: ["-V"],
+      options: {
+        disableDefaultProfile: true,
+        disableRestore: true,
+        ignoreConfiguredProfile: true,
+        ignoreConfiguredState: true
+      }
+    },
+    {
+      args: ["chat", "hello", "-v"],
+      options: {}
+    },
+    {
+      args: ["open", "https://example.test"],
+      options: {}
     }
   ]);
 });

@@ -327,7 +327,12 @@ a parsed JavaScript value. For `--json`, the shared browser runner unwraps the
 agent-browser transport and leaves the serialized command `data` in `stdout`.
 Read the [raw command reference](../skills/divebell-extension/references/browser-raw.md)
 to select a subcommand, then run `divebell raw <command> --help` for the exact
-syntax installed with Divebell. The outer workflow still owns `open` and `stop`.
+syntax installed with Divebell. Extension `browser.raw` requires the current
+context created by `divebell open`, requires a subcommand as its first token,
+and rejects `open`, `close`, `connect`, `install`, `upgrade`, `doctor`, `mcp`,
+`chat`, and `dashboard`. The standalone `divebell raw` CLI retains the complete
+bundled agent-browser command surface and is the place to inspect help or run
+workflow-owned commands.
 
 Debugger IDs are not taken from `options.page.sessionId`. That field is the
 Divebell session created by `divebell open --session` and used to correlate the

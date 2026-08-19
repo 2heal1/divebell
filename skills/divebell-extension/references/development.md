@@ -319,11 +319,18 @@ if (result.exitCode !== 0) {
 const status = JSON.parse(result.stdout) as unknown;
 ```
 
+Extension `browser.raw` requires the current context created by `divebell open`
+and rejects browser lifecycle, setup, and interactive commands owned by the
+outer Divebell workflow. Use the standalone `divebell raw <command> --help`
+CLI to inspect exact syntax; the CLI itself retains the complete bundled
+agent-browser command surface.
+
 An Extension Command may navigate the current page or work with tabs when that
-behavior is part of the documented Command workflow. It must not run `open` or
-`stop`; the outer workflow owns browser creation and shutdown. `raw` bypasses
-Divebell page-context checks, command translation, session handling, output
-parsing, and normalized errors, so the Extension owns those concerns.
+behavior is part of the documented Command workflow. It must not run the
+workflow-owned commands rejected by `browser.raw`; the outer workflow owns
+browser lifecycle and setup. `raw` enforces that context and command boundary,
+but it does not add command translation, output parsing, or normalized command
+failures, so the Extension owns those concerns.
 
 Browser capabilities do not require Runtime SDK. After an Action, verify the
 page result or wait for explicit Runtime state; `options.page` existing or an

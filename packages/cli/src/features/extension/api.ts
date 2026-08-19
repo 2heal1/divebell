@@ -48,6 +48,22 @@ import type {
 } from "./types.js";
 export type * from "./types.js";
 
+export const EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS = [
+  "open",
+  "close",
+  "connect",
+  "install",
+  "upgrade",
+  "doctor",
+  "mcp",
+  "chat",
+  "dashboard"
+] as const;
+
+const extensionBrowserRawForbiddenCommands = new Set<string>(
+  EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS
+);
+
 export function createDivebellExtensionApi(options: CreateDivebellExtensionApiOptions): DivebellExtensionApi {
   const bridgeUrl = createBridgeUrl(options.args);
   const runtimeSelector = createRuntimeSelector(options.args);
@@ -150,6 +166,11 @@ function createDivebellBrowserApi(options: {
       throw createOpenContextRequiredError();
     }
   };
+  const requireRawOpenContext = (): void => {
+    if (options.openContext === undefined) {
+      throw createOpenContextRequiredError();
+    }
+  };
   const runText = async (
     args: string[],
     runOptions: BrowserRunOptions = {}
@@ -175,7 +196,11 @@ function createDivebellBrowserApi(options: {
     return parseBrowserJsonOutput(output) as T;
   };
   return {
-    raw: async (args, runOptions = {}) => await options.browserRunner.run([...args], runOptions),
+    raw: async (args, runOptions = {}) => {
+      requireAllowedExtensionRawCommand(args);
+      requireRawOpenContext();
+      return await options.browserRunner.run([...args], runOptions);
+    },
     profileDirectory: () => resolveBrowserProfileDirectory(),
     pageSnapshot: async () => await runText(["snapshot"]),
     click: async (target) => await runText(["click", normalizeAgentBrowserTarget(target)]),
@@ -358,6 +383,28 @@ function createCoverageCheckpointArgs(
 function appendNumberOption(args: string[], name: string, value: number | undefined): void {
   if (value !== undefined) {
     args.push(`--${name}`, String(value));
+  }
+}
+
+function requireAllowedExtensionRawCommand(args: readonly string[]): void {
+  const command = args[0];
+  if (command === undefined || command.trim().length === 0 || command.startsWith("-")) {
+    throw createError({
+      code: "INVALID_EXTENSION_BROWSER_RAW_COMMAND",
+      kind: "validation",
+      message: "Extension browser.raw requires an agent-browser subcommand as its first argument.",
+      retryable: false,
+      hint: "Use `divebell raw <command> --help` outside the Extension to inspect exact command syntax."
+    });
+  }
+  if (extensionBrowserRawForbiddenCommands.has(command)) {
+    throw createError({
+      code: "EXTENSION_BROWSER_RAW_COMMAND_FORBIDDEN",
+      kind: "validation",
+      message: `Extension browser.raw cannot run the agent-browser "${command}" command.`,
+      retryable: false,
+      hint: "The outer Divebell workflow owns browser lifecycle, setup, and interactive commands."
+    });
   }
 }
 
@@ -587,7 +634,7 @@ function parseNetworkRequestDetail(value: unknown): DivebellBrowserNetworkReques
   const requestHeaders = readHeaders(value.headers);
   const requestBody = typeof value.postData === "string" ? value.postData : undefined;
   const responseHeaders = readHeaders(value.responseHeaders);
-  const responseBody = typeof value.body === "string" ? value.body : undefined;
+  const responseBody = typeof value.responseBody === "string" ? value.responseBody : undefined;
   const mimeType = typeof value.mimeType === "string" ? value.mimeType : undefined;
   const hasResponse = value.status !== undefined
     || Object.keys(responseHeaders).length > 0

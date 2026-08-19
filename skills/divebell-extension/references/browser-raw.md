@@ -97,14 +97,19 @@ The generated list embeds syntax only when the bundled parser has no dedicated
 `<command> --help`, or when the bundled documentation mentions a command the
 parser does not actually expose. Do not guess flags from the one-line purpose.
 
-The outer Divebell workflow owns browser creation, replacement, and shutdown.
-Extension Commands must not invoke agent-browser `open`, `close`, `install`,
-`upgrade`, `doctor`, `mcp`, `chat`, or `dashboard` through `browser.raw`.
-Authentication, saved state, providers, and plugins are also workflow
-configuration rather than Extension-owned page operations unless an Extension
-explicitly owns that integration and its authorization boundary. The list
-still includes these agent-browser subcommands so `divebell raw` can report
-the bundled executable's complete help surface.
+Extension `browser.raw` operates only on the browser most recently opened by
+`divebell open`. Its first argument must be a subcommand, not a top-level flag.
+The outer Divebell workflow owns browser lifecycle, setup, and interactive
+commands, so Extension Commands cannot invoke agent-browser `open`, `close`,
+`connect`, `install`, `upgrade`, `doctor`, `mcp`, `chat`, or `dashboard`
+through `browser.raw`. Authentication, saved state, providers, and plugins are
+also workflow configuration rather than Extension-owned page operations unless
+an Extension explicitly owns that integration and its authorization boundary.
+
+The standalone `divebell raw` CLI is not subject to this Extension boundary.
+Use it to inspect `divebell raw <command> --help` and to access the bundled
+executable's complete command surface outside an Extension. The list below
+therefore still includes commands that Extension `browser.raw` rejects.
 
 <!-- BEGIN GENERATED AGENT-BROWSER REFERENCE -->
 

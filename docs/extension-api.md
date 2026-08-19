@@ -431,15 +431,17 @@ if (result.exitCode !== 0) {
 const status = JSON.parse(result.stdout) as unknown;
 ```
 
-`raw` does not add page-context checks, command translation, session handling,
-or a parsed JavaScript return value. The shared browser runner does unwrap
-agent-browser's `{ success, data, error }` transport for `--json`; successful
-`stdout` contains the serialized `data`. The caller still checks `exitCode` and
-validates the command-specific payload. Read the
+`raw` requires the current browser context created by `divebell open` and
+rejects browser lifecycle, setup, and interactive commands owned by the outer
+Divebell workflow. It does not add command translation or a parsed JavaScript
+return value. The shared browser runner does unwrap agent-browser's
+`{ success, data, error }` transport for `--json`; successful `stdout` contains
+the serialized `data`. The caller still checks `exitCode` and validates the
+command-specific payload. Read the
 [raw command reference](../skills/divebell-extension/references/browser-raw.md)
 for the available subcommands, special cases, and installed CLI help flow. The
-outer workflow still owns browser creation and shutdown; Extension Commands
-must not use `raw` to run `open` or `close`.
+standalone `divebell raw` CLI retains the bundled executable's complete command
+surface and is not subject to the Extension boundary.
 
 ### Debugger identity and selection
 

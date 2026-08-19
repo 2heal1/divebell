@@ -13,6 +13,9 @@ import {
   type DivebellExtensionDefinition
 } from "../dist/index.js";
 import {
+  EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS
+} from "../dist/features/extension/api.js";
+import {
   runDetectStackHooks,
   runOpenHooks
 } from "../dist/features/extension/hooks.js";
@@ -985,8 +988,15 @@ test("exposes typed browser helpers and the raw browser entry point", async () =
     }
   });
   const cli = createDivebellCli({ extensions: [extension] });
-  const context = createOpenContextFixture({ sessionId: "session-extension" });
+  const context = createOpenContextFixture({
+    sessionId: "session-extension",
+    browserRestoreDisabled: true,
+    browserUi: true,
+    browserReuseInitialBlankPage: true,
+    browserDefaultProfile: "Profile 2"
+  });
   const calls: string[][] = [];
+  let rawRunOptions: unknown;
 
   try {
     const output = createOutput();
@@ -994,8 +1004,9 @@ test("exposes typed browser helpers and the raw browser entry point", async () =
       stdout: output.stdout,
       stderr: output.stderr,
       operationLogDirectory: context.operationLogDirectory,
-      browserRunner: createBrowserRunner(async (args) => {
+      browserRunner: createBrowserRunner(async (args, runOptions) => {
         calls.push(args);
+        if (args[0] === "hover") rawRunOptions = runOptions;
         return {
           exitCode: 0,
           stdout: `${args.join(" ")}\n`,
@@ -1018,6 +1029,12 @@ test("exposes typed browser helpers and the raw browser entry point", async () =
       ["screenshot", "page.png", "--full"],
       ["hover", "@e6"]
     ]);
+    assert.deepEqual(rawRunOptions, {
+      disableRestore: true,
+      defaultProfile: "Profile 2",
+      reuseInitialBlankPage: true,
+      ui: true
+    });
     assert.deepEqual(JSON.parse(output.text()), commandOutput("browser-api-demo", {
       snapshot: "snapshot",
       clicked: "click @e1",
@@ -1032,6 +1049,91 @@ test("exposes typed browser helpers and the raw browser entry point", async () =
         stderr: ""
       }
     }));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("requires an opened page context for Extension browser.raw even with a Runtime selector", async () => {
+  let browserRunnerCalled = false;
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-browser-raw-context-"));
+  const extension = createCommandExtension({
+    name: "browser-raw-context-demo",
+    run: async ({ divebell }) => await divebell.browser.raw(["hover", "@e1"])
+  });
+  const output = createOutput();
+
+  try {
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "browser-raw-context-demo",
+      "--url",
+      "http://app.test/"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        browserRunnerCalled = true;
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    });
+
+    assert.equal(exitCode, 1);
+    assert.equal(output.errorText(), "");
+    assert.equal(JSON.parse(output.text()).error.code, "OPEN_CONTEXT_REQUIRED");
+    assert.equal(browserRunnerCalled, false);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("rejects invalid and workflow-owned commands from Extension browser.raw", async () => {
+  let browserRunnerCalled = false;
+  const extension = createCommandExtension({
+    name: "browser-raw-boundary-demo",
+    run: async ({ divebell }) => {
+      const attempts = [
+        ...EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS.map((command) => [command]),
+        [],
+        ["--version"]
+      ];
+      const codes: string[] = [];
+      for (const args of attempts) {
+        try {
+          await divebell.browser.raw(args);
+        } catch (error) {
+          codes.push((error as { code?: string }).code ?? "UNKNOWN");
+        }
+      }
+      return codes;
+    }
+  });
+  const context = createOpenContextFixture();
+  const output = createOutput();
+
+  try {
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "browser-raw-boundary-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        browserRunnerCalled = true;
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(commandData<string[]>(output.text()), [
+      ...EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS.map(() =>
+        "EXTENSION_BROWSER_RAW_COMMAND_FORBIDDEN"
+      ),
+      "INVALID_EXTENSION_BROWSER_RAW_COMMAND",
+      "INVALID_EXTENSION_BROWSER_RAW_COMMAND"
+    ]);
+    assert.equal(browserRunnerCalled, false);
   } finally {
     context.cleanup();
   }
@@ -1094,7 +1196,7 @@ test("exposes structured Network and Console APIs to Extensions", async () => {
               status: 200,
               responseHeaders: { "content-type": "application/json" },
               mimeType: "application/json",
-              body: "{\"ok\":true}"
+              responseBody: "{\"ok\":true}"
             }),
             stderr: ""
           };

@@ -13,7 +13,7 @@ export async function runBrowserRawCommand(
 }
 
 function createRawRunOptions(args: readonly string[]): BrowserRunOptions {
-  if (!args.some((arg) => ["--help", "-h", "--version", "-v"].includes(arg))) {
+  if (!args.some((arg) => ["--help", "-h", "--version", "-V"].includes(arg))) {
     return {};
   }
   return {

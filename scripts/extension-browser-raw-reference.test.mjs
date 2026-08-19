@@ -25,6 +25,10 @@ const browserTypesPath = join(
   repoRoot,
   "packages/cli/src/features/extension/types.ts"
 );
+const extensionApiSourcePath = join(
+  repoRoot,
+  "packages/cli/src/features/extension/api.ts"
+);
 const extensionApiDocumentationPath = join(repoRoot, "docs/extension-api.md");
 const rawCommandReferenceDirectory = join(
   repoRoot,
@@ -123,6 +127,7 @@ test("discovers new top-level and documented commands without a hardcoded list",
 test("documents the raw transport and routes Extension agents to it", () => {
   const reference = readFileSync(rawReferencePath, "utf8");
   const skill = readFileSync(extensionSkillPath, "utf8");
+  const extensionApiSource = readFileSync(extensionApiSourcePath, "utf8");
   const generatedStart = reference.indexOf(GENERATED_RAW_REFERENCE_START);
   const generatedEnd = reference.indexOf(GENERATED_RAW_REFERENCE_END);
 
@@ -136,7 +141,19 @@ test("documents the raw transport and routes Extension agents to it", () => {
   assert.match(reference, /stderr: string/);
   assert.match(reference, /removes agent-browser's outer `\{ success, data, error \}`/);
   assert.match(reference, /raw<T>\(\)/);
-  assert.match(reference, /Extension Commands must not invoke agent-browser `open`, `close`/);
+  const authoredReference = reference.slice(0, generatedStart);
+  const forbiddenCommands = collectStringArrayConstant(
+    extensionApiSource,
+    extensionApiSourcePath,
+    "EXTENSION_BROWSER_RAW_FORBIDDEN_COMMANDS"
+  );
+  assert.ok(forbiddenCommands.length > 0);
+  assert.match(authoredReference, /operates only on the browser most recently opened by/);
+  assert.match(authoredReference, /first argument must be a subcommand/);
+  assert.match(authoredReference, /standalone `divebell raw` CLI is not subject to this Extension boundary/);
+  for (const command of forbiddenCommands) {
+    assert.match(authoredReference, new RegExp("`" + escapeRegExp(command) + "`"));
+  }
   assert.match(reference, /divebell raw network --help/);
 });
 
@@ -240,6 +257,39 @@ function collectExportedBrowserTypeNames(source) {
       return [];
     })
   );
+}
+
+function collectStringArrayConstant(source, sourcePath, constantName) {
+  const sourceFile = ts.createSourceFile(
+    sourcePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== constantName) {
+        continue;
+      }
+      let initializer = declaration.initializer;
+      while (
+        initializer !== undefined
+        && (ts.isAsExpression(initializer)
+          || ts.isSatisfiesExpression(initializer)
+          || ts.isParenthesizedExpression(initializer))
+      ) {
+        initializer = initializer.expression;
+      }
+      assert.ok(initializer !== undefined && ts.isArrayLiteralExpression(initializer));
+      return initializer.elements.map((element) => {
+        assert.ok(ts.isStringLiteral(element));
+        return element.text;
+      });
+    }
+  }
+  assert.fail(`${constantName} was not found in ${sourcePath}.`);
 }
 
 function readTypeMemberName(name) {

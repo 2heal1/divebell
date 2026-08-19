@@ -412,13 +412,15 @@ const contentType = detail.response?.headers["content-type"];
 | --- | --- | --- |
 | `browser.raw` | Run a bundled agent-browser command that has no typed Extension API and return its process result without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
 
-`browser.raw` accepts agent-browser arguments directly. It does not apply
-Divebell command translation, page-context checks, session-preserving
-navigation, or turn output into a JavaScript value. Use a typed API when one
-exists; otherwise read [`browser-raw.md`](browser-raw.md), pass the documented
-agent-browser arguments without the executable name, check `exitCode`, and
-parse `stdout` when requesting JSON. The shared browser runner unwraps the
-agent-browser `{ success, data, error }` JSON transport before `raw` returns.
+`browser.raw` accepts agent-browser arguments directly and requires the current
+browser context created by `divebell open`. It rejects browser lifecycle,
+setup, and interactive commands owned by the outer Divebell workflow. It does
+not apply Divebell command translation or turn output into a JavaScript value.
+Use a typed API when one exists; otherwise read
+[`browser-raw.md`](browser-raw.md), pass the documented agent-browser arguments
+without the executable name, check `exitCode`, and parse `stdout` when
+requesting JSON. The shared browser runner unwraps the agent-browser
+`{ success, data, error }` JSON transport before `raw` returns.
 
 ```ts
 const result = await options.divebell.browser.raw([

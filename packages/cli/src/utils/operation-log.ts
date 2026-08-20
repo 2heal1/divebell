@@ -88,6 +88,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.browserReuseInitialBlankPage === "boolean" &&
     typeof entry.browserRestoreDisabled === "boolean" &&
     typeof entry.browserDefaultProfileDisabled === "boolean" &&
+    isStringArray(entry.browserInitScripts) &&
     (entry.browserDefaultProfile === undefined
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
     isBrowserTempProfile(entry.browserTempProfile) &&
@@ -103,6 +104,12 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     bridgeUrl,
     bridgePort
   } as CliOperationLogEntry;
+}
+
+function isStringArray(value: unknown): boolean {
+  return value === undefined || (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
 function isBrowserTempProfile(value: unknown): boolean {

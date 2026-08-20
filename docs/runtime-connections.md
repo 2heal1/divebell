@@ -66,13 +66,15 @@ divebell runtimes
 
 ## Basic flow
 
-The page only creates and registers Runtimes. It does not connect to the Bridge itself. Each time the CLI opens a page, it starts a dedicated local Bridge on an automatically assigned port and installs a connection manager before page code runs:
+The page only creates and registers Runtimes. It does not connect to the Bridge itself. The first time the CLI opens a page in a working directory, it starts a dedicated local Bridge on an automatically assigned port and installs a connection manager before page code runs:
 
 ```bash
 divebell open http://localhost:3000 --ui
 ```
 
-The successful `open` result includes `bridgeUrl` and `bridgePort`. The current working directory remembers that page and Bridge, so later browser and Runtime commands return to the matching browser session and use the same Bridge automatically. Different working directories do not share their default page, browser session, or Bridge.
+The successful `open` result includes `bridgeUrl` and `bridgePort`. The current working directory remembers that page and Bridge, so later `open`, browser, and Runtime commands return to the matching browser session and use the same Bridge automatically. A later `open` navigates the current page while keeping the Bridge endpoint and initialization script stable. Different working directories do not share their default page, browser session, or Bridge.
+
+User-provided `--init-script` options are repeatable and remain part of that directory-scoped browser session when a later `open` omits them. Passing new `--init-script` options replaces the remembered user script list for subsequent opens; Divebell's internal Bridge script remains separate and does not replace user scripts.
 
 The connection manager connects every registered Runtime, watches for later registrations such as mounted micro-frontends, disconnects only unregistered instances, and remains active across navigation and refreshes in the current browser session.
 
@@ -213,7 +215,7 @@ divebell open http://localhost:3000 --port 18000 --ui
 divebell runtimes --port 18000
 ```
 
-The current directory records the explicit Bridge address or port, so subsequent commands can omit it. A port passed to `open` must be free; Divebell does not reuse an existing service for a dedicated page Bridge.
+The current directory records the explicit Bridge address or port, so subsequent commands can omit it. The first `open --port` requires a free port. Later `open` commands in the same directory reuse that tracked Bridge when the port is omitted or unchanged; selecting a different port starts a different Bridge.
 
 ## Recommended validation flow
 

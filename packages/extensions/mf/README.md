@@ -208,8 +208,9 @@ their npm provenance points to one Module Federation source revision, and
 installs those exact published versions before generating the assets. The
 default tag is `latest`. Generation fails when the selected Observability
 Plugin does not expose the reader interface required by this extension.
-The currently checked-in assets use `next` because the current `latest`
-Observability Plugin does not yet expose that interface.
+The exact package versions and shared source revision used by the checked-in
+assets are recorded in `assets/observability-build.json` and
+`assets/runtime-debug-build.json`.
 
 For unreleased local changes, build the three packages and pass their package
 roots instead:

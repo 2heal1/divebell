@@ -1,3 +1,4 @@
+"use strict";
 var ModuleFederationChromeObservabilityPlugin = (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -42,9 +43,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
   var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
   var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
-  // ../../semver/internal/constants.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/constants.js
   var require_constants = __commonJS({
-    "../../semver/internal/constants.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/constants.js"(exports, module) {
       "use strict";
       var SEMVER_SPEC_VERSION = "2.0.0";
       var MAX_LENGTH = 256;
@@ -74,9 +75,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/internal/debug.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/debug.js
   var require_debug = __commonJS({
-    "../../semver/internal/debug.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/debug.js"(exports, module) {
       "use strict";
       var debug = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {
       };
@@ -84,9 +85,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/internal/re.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/re.js
   var require_re = __commonJS({
-    "../../semver/internal/re.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/re.js"(exports, module) {
       "use strict";
       var {
         MAX_SAFE_COMPONENT_LENGTH,
@@ -172,9 +173,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/internal/parse-options.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/parse-options.js
   var require_parse_options = __commonJS({
-    "../../semver/internal/parse-options.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/parse-options.js"(exports, module) {
       "use strict";
       var looseOption = Object.freeze({ loose: true });
       var emptyOpts = Object.freeze({});
@@ -191,9 +192,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/internal/identifiers.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/identifiers.js
   var require_identifiers = __commonJS({
-    "../../semver/internal/identifiers.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/identifiers.js"(exports, module) {
       "use strict";
       var numeric = /^[0-9]+$/;
       var compareIdentifiers = (a, b) => {
@@ -216,27 +217,15 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/classes/semver.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/semver.js
   var require_semver = __commonJS({
-    "../../semver/classes/semver.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/semver.js"(exports, module) {
       "use strict";
       var debug = require_debug();
       var { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
       var { safeRe: re, t } = require_re();
       var parseOptions = require_parse_options();
       var { compareIdentifiers } = require_identifiers();
-      var isPrereleaseIdentifier = (prerelease, identifier) => {
-        const identifiers = identifier.split(".");
-        if (identifiers.length > prerelease.length) {
-          return false;
-        }
-        for (let i = 0; i < identifiers.length; i++) {
-          if (compareIdentifiers(prerelease[i], identifiers[i]) !== 0) {
-            return false;
-          }
-        }
-        return true;
-      };
       var SemVer = class _SemVer {
         constructor(version, options) {
           options = parseOptions(options);
@@ -483,9 +472,8 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
                 if (identifierBase === false) {
                   prerelease = [identifier];
                 }
-                if (isPrereleaseIdentifier(this.prerelease, identifier)) {
-                  const prereleaseBase = this.prerelease[identifier.split(".").length];
-                  if (isNaN(prereleaseBase)) {
+                if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
+                  if (isNaN(this.prerelease[1])) {
                     this.prerelease = prerelease;
                   }
                 } else {
@@ -508,9 +496,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/parse.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/parse.js
   var require_parse = __commonJS({
-    "../../semver/functions/parse.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/parse.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var parse = (version, options, throwErrors = false) => {
@@ -530,9 +518,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/valid.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/valid.js
   var require_valid = __commonJS({
-    "../../semver/functions/valid.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/valid.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var valid = (version, options) => {
@@ -543,9 +531,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/clean.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/clean.js
   var require_clean = __commonJS({
-    "../../semver/functions/clean.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/clean.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var clean = (version, options) => {
@@ -556,9 +544,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/inc.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/inc.js
   var require_inc = __commonJS({
-    "../../semver/functions/inc.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/inc.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var inc = (version, release, options, identifier, identifierBase) => {
@@ -580,9 +568,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/diff.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/diff.js
   var require_diff = __commonJS({
-    "../../semver/functions/diff.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/diff.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var diff = (version1, version2) => {
@@ -624,9 +612,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/major.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/major.js
   var require_major = __commonJS({
-    "../../semver/functions/major.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/major.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var major = (a, loose) => new SemVer(a, loose).major;
@@ -634,9 +622,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/minor.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/minor.js
   var require_minor = __commonJS({
-    "../../semver/functions/minor.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/minor.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var minor = (a, loose) => new SemVer(a, loose).minor;
@@ -644,9 +632,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/patch.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/patch.js
   var require_patch = __commonJS({
-    "../../semver/functions/patch.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/patch.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var patch = (a, loose) => new SemVer(a, loose).patch;
@@ -654,9 +642,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/prerelease.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/prerelease.js
   var require_prerelease = __commonJS({
-    "../../semver/functions/prerelease.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/prerelease.js"(exports, module) {
       "use strict";
       var parse = require_parse();
       var prerelease = (version, options) => {
@@ -667,9 +655,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/compare.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare.js
   var require_compare = __commonJS({
-    "../../semver/functions/compare.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
@@ -677,9 +665,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/rcompare.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rcompare.js
   var require_rcompare = __commonJS({
-    "../../semver/functions/rcompare.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rcompare.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var rcompare = (a, b, loose) => compare(b, a, loose);
@@ -687,9 +675,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/compare-loose.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-loose.js
   var require_compare_loose = __commonJS({
-    "../../semver/functions/compare-loose.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-loose.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var compareLoose = (a, b) => compare(a, b, true);
@@ -697,9 +685,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/compare-build.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-build.js
   var require_compare_build = __commonJS({
-    "../../semver/functions/compare-build.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/compare-build.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var compareBuild = (a, b, loose) => {
@@ -711,9 +699,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/sort.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/sort.js
   var require_sort = __commonJS({
-    "../../semver/functions/sort.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/sort.js"(exports, module) {
       "use strict";
       var compareBuild = require_compare_build();
       var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
@@ -721,9 +709,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/rsort.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rsort.js
   var require_rsort = __commonJS({
-    "../../semver/functions/rsort.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/rsort.js"(exports, module) {
       "use strict";
       var compareBuild = require_compare_build();
       var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
@@ -731,9 +719,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/gt.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gt.js
   var require_gt = __commonJS({
-    "../../semver/functions/gt.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gt.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var gt = (a, b, loose) => compare(a, b, loose) > 0;
@@ -741,9 +729,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/lt.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lt.js
   var require_lt = __commonJS({
-    "../../semver/functions/lt.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lt.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var lt = (a, b, loose) => compare(a, b, loose) < 0;
@@ -751,9 +739,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/eq.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/eq.js
   var require_eq = __commonJS({
-    "../../semver/functions/eq.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/eq.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var eq = (a, b, loose) => compare(a, b, loose) === 0;
@@ -761,9 +749,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/neq.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/neq.js
   var require_neq = __commonJS({
-    "../../semver/functions/neq.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/neq.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var neq = (a, b, loose) => compare(a, b, loose) !== 0;
@@ -771,9 +759,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/gte.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gte.js
   var require_gte = __commonJS({
-    "../../semver/functions/gte.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/gte.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var gte = (a, b, loose) => compare(a, b, loose) >= 0;
@@ -781,9 +769,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/lte.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lte.js
   var require_lte = __commonJS({
-    "../../semver/functions/lte.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/lte.js"(exports, module) {
       "use strict";
       var compare = require_compare();
       var lte = (a, b, loose) => compare(a, b, loose) <= 0;
@@ -791,9 +779,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/cmp.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/cmp.js
   var require_cmp = __commonJS({
-    "../../semver/functions/cmp.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/cmp.js"(exports, module) {
       "use strict";
       var eq = require_eq();
       var neq = require_neq();
@@ -841,9 +829,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/coerce.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/coerce.js
   var require_coerce = __commonJS({
-    "../../semver/functions/coerce.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/coerce.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var parse = require_parse();
@@ -887,50 +875,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/truncate.js
-  var require_truncate = __commonJS({
-    "../../semver/functions/truncate.js"(exports, module) {
-      "use strict";
-      var parse = require_parse();
-      var constants = require_constants();
-      var SemVer = require_semver();
-      var truncate = (version, truncation, options) => {
-        if (!constants.RELEASE_TYPES.includes(truncation)) {
-          return null;
-        }
-        const clonedVersion = cloneInputVersion(version, options);
-        return clonedVersion && doTruncation(clonedVersion, truncation);
-      };
-      var cloneInputVersion = (version, options) => {
-        const versionStringToParse = version instanceof SemVer ? version.version : version;
-        return parse(versionStringToParse, options);
-      };
-      var doTruncation = (version, truncation) => {
-        if (isPrerelease(truncation)) {
-          return version.version;
-        }
-        version.prerelease = [];
-        switch (truncation) {
-          case "major":
-            version.minor = 0;
-            version.patch = 0;
-            break;
-          case "minor":
-            version.patch = 0;
-            break;
-        }
-        return version.format();
-      };
-      var isPrerelease = (type) => {
-        return type.startsWith("pre");
-      };
-      module.exports = truncate;
-    }
-  });
-
-  // ../../semver/internal/lrucache.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/lrucache.js
   var require_lrucache = __commonJS({
-    "../../semver/internal/lrucache.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/internal/lrucache.js"(exports, module) {
       "use strict";
       var LRUCache = class {
         constructor() {
@@ -966,9 +913,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/classes/range.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/range.js
   var require_range = __commonJS({
-    "../../semver/classes/range.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/range.js"(exports, module) {
       "use strict";
       var SPACE_CHARACTERS = /\s+/g;
       var Range = class _Range {
@@ -1036,7 +983,6 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
           return this.range;
         }
         parseRange(range) {
-          range = range.replace(BUILDSTRIPRE, "");
           const memoOpts = (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE);
           const memoKey = memoOpts + ":" + range;
           const cached = cache.get(memoKey);
@@ -1119,14 +1065,12 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
       var SemVer = require_semver();
       var {
         safeRe: re,
-        src,
         t,
         comparatorTrimReplace,
         tildeTrimReplace,
         caretTrimReplace
       } = require_re();
       var { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants();
-      var BUILDSTRIPRE = new RegExp(src[t.BUILD], "g");
       var isNullSet = (c) => c.value === "<0.0.0-0";
       var isAny = (c) => c.value === "";
       var isSatisfiable = (comparators, options) => {
@@ -1155,22 +1099,20 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         return comp;
       };
       var isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
-      var invalidXRangeOrder = (M, m, p) => isX(M) && !isX(m) || isX(m) && p && !isX(p);
       var replaceTildes = (comp, options) => {
         return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
       };
       var replaceTilde = (comp, options) => {
         const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
-        const z = options.includePrerelease ? "-0" : "";
         return comp.replace(r, (_, M, m, p, pr) => {
           debug("tilde", comp, _, M, m, p, pr);
           let ret;
           if (isX(M)) {
             ret = "";
           } else if (isX(m)) {
-            ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+            ret = `>=${M}.0.0 <${+M + 1}.0.0-0`;
           } else if (isX(p)) {
-            ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+            ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`;
           } else if (pr) {
             debug("replaceTilde pr", pr);
             ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
@@ -1216,9 +1158,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
             debug("no pr");
             if (M === "0") {
               if (m === "0") {
-                ret = `>=${M}.${m}.${p} <${M}.${m}.${+p + 1}-0`;
+                ret = `>=${M}.${m}.${p}${z} <${M}.${m}.${+p + 1}-0`;
               } else {
-                ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
+                ret = `>=${M}.${m}.${p}${z} <${M}.${+m + 1}.0-0`;
               }
             } else {
               ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
@@ -1237,9 +1179,6 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
         return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
           debug("xRange", comp, ret, gtlt, M, m, p, pr);
-          if (invalidXRangeOrder(M, m, p)) {
-            return comp;
-          }
           const xM = isX(M);
           const xm = xM || isX(m);
           const xp = xm || isX(p);
@@ -1351,9 +1290,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/classes/comparator.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/comparator.js
   var require_comparator = __commonJS({
-    "../../semver/classes/comparator.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/classes/comparator.js"(exports, module) {
       "use strict";
       var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
       var Comparator = class _Comparator {
@@ -1464,9 +1403,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/functions/satisfies.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/satisfies.js
   var require_satisfies = __commonJS({
-    "../../semver/functions/satisfies.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/functions/satisfies.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var satisfies2 = (version, range, options) => {
@@ -1481,9 +1420,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/to-comparators.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/to-comparators.js
   var require_to_comparators = __commonJS({
-    "../../semver/ranges/to-comparators.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/to-comparators.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
@@ -1491,9 +1430,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/max-satisfying.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/max-satisfying.js
   var require_max_satisfying = __commonJS({
-    "../../semver/ranges/max-satisfying.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/max-satisfying.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1520,9 +1459,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/min-satisfying.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-satisfying.js
   var require_min_satisfying = __commonJS({
-    "../../semver/ranges/min-satisfying.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-satisfying.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1549,9 +1488,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/min-version.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-version.js
   var require_min_version = __commonJS({
-    "../../semver/ranges/min-version.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/min-version.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Range = require_range();
@@ -1608,9 +1547,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/valid.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/valid.js
   var require_valid2 = __commonJS({
-    "../../semver/ranges/valid.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/valid.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var validRange = (range, options) => {
@@ -1624,9 +1563,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/outside.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/outside.js
   var require_outside = __commonJS({
-    "../../semver/ranges/outside.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/outside.js"(exports, module) {
       "use strict";
       var SemVer = require_semver();
       var Comparator = require_comparator();
@@ -1693,9 +1632,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/gtr.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/gtr.js
   var require_gtr = __commonJS({
-    "../../semver/ranges/gtr.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/gtr.js"(exports, module) {
       "use strict";
       var outside = require_outside();
       var gtr = (version, range, options) => outside(version, range, ">", options);
@@ -1703,9 +1642,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/ltr.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/ltr.js
   var require_ltr = __commonJS({
-    "../../semver/ranges/ltr.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/ltr.js"(exports, module) {
       "use strict";
       var outside = require_outside();
       var ltr = (version, range, options) => outside(version, range, "<", options);
@@ -1713,9 +1652,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/intersects.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/intersects.js
   var require_intersects = __commonJS({
-    "../../semver/ranges/intersects.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/intersects.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var intersects = (r1, r2, options) => {
@@ -1727,9 +1666,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/simplify.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/simplify.js
   var require_simplify = __commonJS({
-    "../../semver/ranges/simplify.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/simplify.js"(exports, module) {
       "use strict";
       var satisfies2 = require_satisfies();
       var compare = require_compare();
@@ -1777,9 +1716,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/ranges/subset.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/subset.js
   var require_subset = __commonJS({
-    "../../semver/ranges/subset.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/ranges/subset.js"(exports, module) {
       "use strict";
       var Range = require_range();
       var Comparator = require_comparator();
@@ -1887,7 +1826,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
               if (higher === c && higher !== gt) {
                 return false;
               }
-            } else if (gt.operator === ">=" && !c.test(gt.semver)) {
+            } else if (gt.operator === ">=" && !satisfies2(gt.semver, String(c), options)) {
               return false;
             }
           }
@@ -1902,7 +1841,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
               if (lower === c && lower !== lt) {
                 return false;
               }
-            } else if (lt.operator === "<=" && !c.test(lt.semver)) {
+            } else if (lt.operator === "<=" && !satisfies2(lt.semver, String(c), options)) {
               return false;
             }
           }
@@ -1939,9 +1878,9 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     }
   });
 
-  // ../../semver/index.js
+  // ../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/index.js
   var require_semver2 = __commonJS({
-    "../../semver/index.js"(exports, module) {
+    "../../node_modules/.pnpm/semver@7.7.4/node_modules/semver/index.js"(exports, module) {
       "use strict";
       var internalRe = require_re();
       var constants = require_constants();
@@ -1970,7 +1909,6 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
       var lte = require_lte();
       var cmp = require_cmp();
       var coerce = require_coerce();
-      var truncate = require_truncate();
       var Comparator = require_comparator();
       var Range = require_range();
       var satisfies2 = require_satisfies();
@@ -2009,7 +1947,6 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
         lte,
         cmp,
         coerce,
-        truncate,
         Comparator,
         Range,
         satisfies: satisfies2,
@@ -2043,7 +1980,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     default: () => ChromeObservabilityPlugin
   });
 
-  // ../../@divebell/core/dist/shared/query.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/shared/query.js
   function matchesValue(value, query) {
     if (query === void 0) {
       return true;
@@ -2069,7 +2006,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
   }
 
-  // ../../@divebell/core/dist/action/registry.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/action/registry.js
   var defaultActionSource = "business";
   var defaultActionRisk = "state-changing";
   var _clock, _actions;
@@ -2195,7 +2132,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return value;
   }
 
-  // ../../@divebell/core/dist/action/validation.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/action/validation.js
   function validateActionPayload(schema, payload) {
     if (schema === void 0) {
       return void 0;
@@ -2286,7 +2223,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     };
   }
 
-  // ../../@divebell/core/dist/event/log.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/event/log.js
   var DEFAULT_EVENT_LIMIT = 100;
   var _clock2, _events, _nextEventId;
   var EventLog = class {
@@ -2402,7 +2339,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return Math.floor(limit);
   }
 
-  // ../../@divebell/core/dist/snapshot/store.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/snapshot/store.js
   var _clock3, _targets;
   var SnapshotStore = class {
     constructor(clock) {
@@ -2478,7 +2415,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return clone;
   }
 
-  // ../../@divebell/core/dist/target/registry.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/target/registry.js
   var _clock4, _targets2;
   var TargetRegistry = class {
     constructor(clock) {
@@ -2569,7 +2506,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return matchesValue(target.id, query.id) && matchesValue(target.type, query.type) && matchesValue(target.source, query.source) && matchesAnyValue(target.statuses, query.status) && matchesText([target.id, target.label, target.description], query.query);
   }
 
-  // ../../@divebell/core/dist/wait/condition.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/wait/condition.js
   function matchesRuntimeCondition(target, condition) {
     return target?.status === condition.status && matchesDataConditions(target.data, condition.where);
   }
@@ -2617,7 +2554,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     return Object.is(value, expected);
   }
 
-  // ../../@divebell/core/dist/wait/manager.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/wait/manager.js
   var _waits, _nextWaitId, _WaitManager_instances, failWait_fn, clear_fn;
   var WaitManager = class {
     constructor() {
@@ -2697,7 +2634,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     };
   }
 
-  // ../../@divebell/core/dist/runtime/center.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/runtime/center.js
   var systemSource = "divebell";
   var _targets3, _snapshot, _events2, _actions2, _waits2, _RuntimeCenter_instances, recordRejectedUpdate_fn, recordActionFailure_fn, createActionContext_fn;
   var RuntimeCenter = class {
@@ -2913,7 +2850,7 @@ var ModuleFederationChromeObservabilityPlugin = (() => {
     };
   }
 
-  // ../../@divebell/core/dist/runtime/window.js
+  // ../../node_modules/.pnpm/@divebell+core@0.0.23/node_modules/@divebell/core/dist/runtime/window.js
   function installDivebellOnWindow(runtime = createDivebell(), host = getDefaultWindowHost(), options = {}) {
     if (host === void 0) {
       return runtime;

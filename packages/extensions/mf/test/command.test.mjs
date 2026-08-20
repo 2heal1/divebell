@@ -312,10 +312,11 @@ test("module-perf renders its terminal timeline through top-level stdout", async
 
   assert.equal(result.command, "mf module-perf --report");
   assert.equal(reads.length, 0);
-  assert.match(stdout, /navigationStart = 0 ms/);
   assert.match(stdout, /│ Event\s+│ Timeline/);
-  assert.match(stdout, /FP\s+FCP\s+LCP/);
-  assert.match(stdout, /0\.142s\s+0\.231s\s+0\.48s/);
+  assert.match(stdout, /● FP[\s\S]*● FCP[\s\S]*◇ LCP/);
+  for (const timestamp of ["0.142s", "0.231s", "0.48s"]) {
+    assert.match(stdout, new RegExp(timestamp.replace(".", "\\.")));
+  }
   assert.doesNotMatch(stdout, /^\s*\{/);
 });
 
@@ -371,10 +372,11 @@ test("module-perf timeline takes precedence over the legacy JSON output adapter"
   assert.equal(result, 0);
   assert.equal(outputValue, undefined);
   assert.equal(reads.length, 0);
-  assert.match(stdout, /navigationStart = 0 ms/);
   assert.match(stdout, /│ Event\s+│ Timeline/);
-  assert.match(stdout, /FP\s+FCP\s+LCP/);
-  assert.match(stdout, /0\.142s\s+0\.231s\s+0\.48s/);
+  assert.match(stdout, /● FP[\s\S]*● FCP[\s\S]*◇ LCP/);
+  for (const timestamp of ["0.142s", "0.231s", "0.48s"]) {
+    assert.match(stdout, new RegExp(timestamp.replace(".", "\\.")));
+  }
   assert.doesNotMatch(stdout, /^\s*\{/);
 });
 

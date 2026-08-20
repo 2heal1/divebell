@@ -135,8 +135,9 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /two-column `Event` \/[\s\S]*always the first report field[\s\S]*do not[\s\S]*extend it as a vertical line[\s\S]*seconds-based axis/
+    /two-column `Event` \/[\s\S]*marker and its label together[\s\S]*do not[\s\S]*extend it as a vertical line[\s\S]*seconds-based axis/i
   );
+  assert.match(performance, /always the first report field/);
   assert.match(
     performance,
     /firstObservedModuleLoad[\s\S]*mf-shared[\s\S]*loadShare[\s\S]*mf-resource[\s\S]*Shared JavaScript resources/
@@ -147,7 +148,7 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /Terminal timeline example[\s\S]*Event[\s\S]*Timeline[\s\S]*◇[\s\S]*FP · FCP[\s\S]*260ms · 45 KB[\s\S]*◆ reuse/
+    /Terminal timeline example[\s\S]*Event[\s\S]*Timeline[\s\S]*FP · FCP[\s\S]*◇ LCP[\s\S]*260ms · 45 KB[\s\S]*◆ reuse/
   );
   assert.match(
     performance,

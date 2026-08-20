@@ -134,6 +134,32 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
         kind: "mf-resource",
         label: "catalog · resources",
         items: [{
+          id: "remote-entry-resource",
+          type: "span",
+          label: "remoteEntry.js · remoteEntry",
+          start: 276,
+          end: 316,
+          duration: 40,
+          source: "browser",
+          resource: {
+            roles: ["remote-entry"],
+            url: "https://cdn.test/catalog/remoteEntry.js",
+            transferSize: 4096
+          }
+        }, {
+          id: "default-resource",
+          type: "span",
+          label: "__federation_expose_default_export.js · expose sync",
+          start: 274,
+          end: 324,
+          duration: 50,
+          source: "browser",
+          resource: {
+            roles: ["expose-sync"],
+            url: "https://cdn.test/catalog/__federation_expose_default_export.js",
+            transferSize: 8192
+          }
+        }, {
           id: "button-resource",
           type: "span",
           label: "Button.js",
@@ -153,24 +179,23 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
     ]
   }, { columns: 96 });
 
-  assert.match(output, /│ Event\s+│ Timeline · navigationStart = 0 ms/);
+  assert.match(output, /│ Event\s+│ Timeline\s+│/);
   assert.match(output, /│\s+│ 0s\s+0\.2s\s+0\.4s/);
   assert.match(output, /│ Page\s+│/);
-  assert.match(output, /│ {3}Paint\s+│[\s●]+◇/);
-  assert.match(output, /FP · FCP[\s\S]*LCP/);
+  assert.match(output, /│ {3}Paint\s+│[\s●]+FP · FCP[\s\S]*◇ LCP/);
   assert.match(output, /0\.142s[\s\S]*0\.48s/);
   assert.match(output, /Consumer · host/);
-  assert.match(output, /loadRemote/);
-  assert.match(output, /catalog\/Button\s+│\s+━+●/);
+  assert.match(output, /loadRemote\s+│\s+━+●/);
+  assert.match(output, /catalog\/Button\s+│\s+0\.19s\s+0\.338s/);
   assert.match(output, /0\.19s\s+0\.338s/);
   assert.match(output, /react@18\.3\.1\s+│\s+━+/);
   assert.match(output, /80ms/);
   assert.match(output, /Producer · catalog/);
-  assert.match(output, /Lifecycle/);
-  assert.match(output, /Container init\s+│\s+◆/);
-  assert.match(output, /Module loaded\s+│\s+●/);
+  assert.doesNotMatch(output, /Lifecycle|Container init|Module loaded/);
   assert.match(output, /Button\.js\s+│\s+━+/);
   assert.match(output, /57ms · 12 KB/);
+  assert.ok(output.indexOf("remoteEntry.js") < output.indexOf("expose-default.js"));
+  assert.ok(output.indexOf("expose-default.js") < output.indexOf("Button.js"));
   assert.match(output, /◆ reuse/);
   assert.match(output, /0\.268s/);
   assert.doesNotMatch(output, /Page scripts|irrelevant\.js|1000/);
@@ -219,11 +244,12 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
     }]
   }, { columns: 72 });
 
-  assert.match(output, /Timeline · firstObservedModuleLoad = 0 ms/);
+  assert.match(output, /│ Event\s+│ Timeline\s+│/);
   assert.match(output, /-0\.04s\s+-0\.02s\s+0s/);
   assert.match(output, /Paint\s+│ not observed/);
   assert.match(output, /Consumer · host/);
-  assert.match(output, /catalog\/Button\s+│\s+━…/);
+  assert.match(output, /loadRemote\s+│\s+━…/);
+  assert.match(output, /catalog\/Button\s+│\s+-0\.01s/);
   assert.doesNotMatch(output, /pending · pending/);
   assert.match(output, /Producer · catalog/);
   assert.match(output, /Button\.js\s+│\s+━…/);

@@ -26,9 +26,7 @@ interface TimelineLayout {
 type PresentationVisual =
   | "load-remote"
   | "cost"
-  | "lifecycle-span"
   | "lifecycle-point"
-  | "milestone"
   | "reuse";
 
 interface PresentationEvent {
@@ -70,15 +68,11 @@ export function formatModulePerformanceTimeline(
 ): string {
   const lanes = timeline.lanes.filter((lane) => lane.kind !== "page-script");
   const sections = createPresentationSections(lanes);
-  const layout = createLayout(sections, options.columns);
+  const layout = createLayout(options.columns);
   const scale = createTimelineScale(timeline, lanes, layout.chartWidth);
   const lines = [
     renderTopBorder(layout),
-    renderTableRow(
-      "Event",
-      `Timeline · ${timeline.clock.origin} = 0 ${timeline.clock.unit}`,
-      layout
-    ),
+    renderTableRow("Event", "Timeline", layout),
     renderTableRow("", renderAxis(scale, layout.chartWidth), layout),
     renderSeparator(layout),
     renderTableRow("Page", "", layout),
@@ -88,9 +82,32 @@ export function formatModulePerformanceTimeline(
   for (const section of sections) {
     lines.push(renderSeparator(layout));
     lines.push(renderTableRow(section.title, "", layout));
-    for (const group of section.groups) {
+    for (const [groupIndex, group] of section.groups.entries()) {
+      if (groupIndex > 0) lines.push(renderTableRow("", "", layout));
+      if (group.title === "loadRemote") {
+        for (const [eventIndex, event] of group.events.entries()) {
+          if (eventIndex > 0) lines.push(renderTableRow("", "", layout));
+          const [graph = "", ...details] = renderPresentationEvent(
+            event,
+            scale,
+            layout.chartWidth
+          );
+          lines.push(renderTableRow(
+            eventIndex === 0 ? `  ${group.title}` : "",
+            graph,
+            layout
+          ));
+          details.forEach((line, index) => lines.push(renderTableRow(
+            index === 0 ? `    ${event.label}` : "",
+            line,
+            layout
+          )));
+        }
+        continue;
+      }
       lines.push(renderTableRow(`  ${group.title}`, "", layout));
-      for (const event of group.events) {
+      for (const [eventIndex, event] of group.events.entries()) {
+        if (eventIndex > 0) lines.push(renderTableRow("", "", layout));
         const timelineLines = renderPresentationEvent(
           event,
           scale,
@@ -152,25 +169,13 @@ function createPresentationSections(
       })));
       continue;
     }
-    if (lane.kind === "mf-provider") {
-      const producer = producerByPrefix.get(lanePrefix(lane.id)) ??
-        providerName(lane.label);
-      const section = ensureSection(producers, producer);
-      addGroupEvents(section, "Lifecycle", lane.items.map((item) => ({
-        label: providerEventLabel(item.label),
-        item,
-        visual: providerEventVisual(item),
-        ...(item.type === "span" && item.label === "Provider container init"
-          ? { at: item.end ?? item.start }
-          : {})
-      })));
-      continue;
-    }
+    if (lane.kind === "mf-provider") continue;
     if (lane.kind === "mf-resource") {
       const producer = producerByPrefix.get(lanePrefix(lane.id)) ??
         laneContextName(lane.label);
       const section = ensureSection(producers, producer);
-      addGroupEvents(section, "Resources", lane.items.map((item) => ({
+      const items = [...lane.items].sort(compareResourcePresentationOrder);
+      addGroupEvents(section, "Resources", items.map((item) => ({
         label: resourceEventLabel(item),
         item,
         visual: "cost"
@@ -216,6 +221,23 @@ function createPresentationSections(
   ].filter((section) => section.groups.some((group) => group.events.length > 0));
 }
 
+function compareResourcePresentationOrder(
+  left: ModulePerformanceTimelineItem,
+  right: ModulePerformanceTimelineItem
+): number {
+  const priority = (item: ModulePerformanceTimelineItem): number => {
+    if (item.type !== "span" || item.resource === undefined) return 4;
+    if (item.resource.roles.includes("remote-entry")) return 0;
+    if (/default/i.test(resourceEventLabel(item))) return 1;
+    if (item.resource.roles.some((role) => role.startsWith("expose-"))) return 2;
+    return 3;
+  };
+  return priority(left) - priority(right) ||
+    (left.type === "span" ? left.start : left.at) -
+      (right.type === "span" ? right.start : right.at) ||
+    resourceEventLabel(left).localeCompare(resourceEventLabel(right));
+}
+
 function createSharedPresentationEvents(
   lane: ModulePerformanceTimelineLane
 ): PresentationEvent[] {
@@ -225,7 +247,7 @@ function createSharedPresentationEvents(
     grouped.set(key, [...(grouped.get(key) ?? []), item]);
   }
 
-  return Array.from(grouped.values()).flatMap((items): PresentationEvent[] => {
+  const events = Array.from(grouped.values()).flatMap((items): PresentationEvent[] => {
     const lifecycle = items.find((item) => !/-asset-\d+$/.test(item.id)) ??
       items[0] as ModulePerformanceTimelineItem;
     const dependency = sharedDependencyLabel(lifecycle.label);
@@ -257,6 +279,16 @@ function createSharedPresentationEvents(
       visual: "cost" as const
     }));
   });
+  const seen = new Set<string>();
+  return events.filter((event) => {
+    const boundary = event.item.type === "point"
+      ? String(event.item.at)
+      : `${event.item.start}:${event.item.end ?? ""}`;
+    const key = `${event.visual}\u0000${event.label}\u0000${boundary}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function ensureSection(
@@ -284,29 +316,9 @@ function addGroupEvents(
   current.events.push(...events);
 }
 
-function createLayout(
-  sections: PresentationSection[],
-  requestedColumns: number | undefined
-): TimelineLayout {
+function createLayout(requestedColumns: number | undefined): TimelineLayout {
   const columns = clamp(Math.floor(requestedColumns ?? 120), 72, 180);
-  const eventLabels = [
-    "Event",
-    "Page",
-    "  Paint",
-    ...sections.flatMap((section) => [
-      section.title,
-      ...section.groups.flatMap((group) => [
-        `  ${group.title}`,
-        ...group.events.map((event) => `    ${event.label}`)
-      ])
-    ])
-  ];
-  const longestEvent = Math.max(...eventLabels.map((label) => label.length));
-  const eventCellWidth = clamp(
-    longestEvent + 2,
-    24,
-    Math.min(38, columns - 45)
-  );
+  const eventCellWidth = clamp(30, 24, columns - 45);
   const timelineCellWidth = columns - eventCellWidth - 3;
   return {
     eventCellWidth,
@@ -336,12 +348,13 @@ function createTimelineScale(
   const desiredTickCount = clamp(Math.floor(width / 14), 3, 7);
   const step = niceStep(span / Math.max(1, desiredTickCount - 1));
   const min = rawMin >= 0 ? 0 : Math.floor(rawMin / step) * step;
-  let max = Math.ceil(rawMax / step) * step;
-  if (max <= min) max = min + step;
+  let tickMax = Math.ceil(rawMax / step) * step;
+  if (tickMax <= min) tickMax = min + step;
   const ticks: number[] = [];
-  for (let value = min; value <= max + (step / 2); value += step) {
+  for (let value = min; value <= tickMax + (step / 2); value += step) {
     ticks.push(normalizeZero(value));
   }
+  const max = tickMax + (step / 2);
   return { min, max, ticks };
 }
 
@@ -399,23 +412,55 @@ function renderPaintRows(
       ? "◇"
       : "●"
   }));
-  const graph = Array.from({ length: layout.chartWidth }, () => " ");
-  for (const group of groups) graph[group.position] = group.marker;
-  const labelLines = renderAnnotations(groups.map((group) => ({
-    position: group.position,
-    text: group.label,
-    align: "center" as const
-  })), layout.chartWidth);
+  const markerLines = renderInlineMarkers(groups, layout.chartWidth);
   const timingLines = renderAnnotations(groups.map((group) => ({
     position: group.position,
     text: formatTimestamp(group.at),
     align: "center" as const
   })), layout.chartWidth);
   return [
-    renderTableRow("  Paint", graph.join(""), layout),
-    ...labelLines.map((line) => renderTableRow("", line, layout)),
+    ...markerLines.map((line, index) => renderTableRow(
+      index === 0 ? "  Paint" : "",
+      line,
+      layout
+    )),
     ...timingLines.map((line) => renderTableRow("", line, layout))
   ];
+}
+
+function renderInlineMarkers(
+  groups: Array<{
+    position: number;
+    label: string;
+    marker: string;
+  }>,
+  width: number
+): string[] {
+  const lines: Array<{ graph: string[]; occupied: boolean[] }> = [];
+  for (const group of groups) {
+    const after = `${group.marker} ${group.label}`;
+    const before = `${group.label} ${group.marker}`;
+    const useAfter = group.position + after.length <= width;
+    const text = fitText(useAfter ? after : before, width);
+    const start = useAfter
+      ? group.position
+      : clamp(group.position - text.length + 1, 0, width - text.length);
+    let target = lines.find((line) =>
+      !line.occupied.slice(start, start + text.length).some(Boolean)
+    );
+    if (target === undefined) {
+      target = {
+        graph: Array.from({ length: width }, () => " "),
+        occupied: Array.from({ length: width }, () => false)
+      };
+      lines.push(target);
+    }
+    writeText(target.graph, start, text);
+    for (let index = start; index < start + text.length; index += 1) {
+      target.occupied[index] = true;
+    }
+  }
+  return lines.map((line) => line.graph.join(""));
 }
 
 function renderPresentationEvent(
@@ -428,14 +473,10 @@ function renderPresentationEvent(
       return renderLoadRemote(event.item, scale, width);
     case "cost":
       return renderCostSpan(event.item, scale, width);
-    case "lifecycle-span":
-      return renderLifecycleSpan(event.item, scale, width);
     case "reuse":
       return renderPoint(event, "◆", "reuse", scale, width);
     case "lifecycle-point":
       return renderPoint(event, "◆", "", scale, width);
-    case "milestone":
-      return renderPoint(event, "●", "", scale, width);
   }
 }
 
@@ -445,7 +486,7 @@ function renderLoadRemote(
   width: number
 ): string[] {
   if (item.type === "point") {
-    return renderPoint({ label: item.label, item, visual: "milestone" }, "●", "", scale, width);
+    return renderPoint({ label: item.label, item, visual: "lifecycle-point" }, "●", "", scale, width);
   }
   const start = toPosition(item.start, scale, width);
   const graph = renderSpanGraph(item, scale, width, "load-remote");
@@ -496,28 +537,6 @@ function renderCostSpan(
   ];
 }
 
-function renderLifecycleSpan(
-  item: ModulePerformanceTimelineItem,
-  scale: TimelineScale,
-  width: number
-): string[] {
-  if (item.type === "point") {
-    return renderPoint({ label: item.label, item, visual: "lifecycle-point" }, "◆", "", scale, width);
-  }
-  const start = toPosition(item.start, scale, width);
-  const duration = item.duration ?? (
-    item.end === undefined ? undefined : item.end - item.start
-  );
-  return [
-    renderSpanGraph(item, scale, width, "lifecycle-span"),
-    ...renderAnnotations([{
-      position: start,
-      text: `${formatDuration(duration)}${formatStatus(item.status)}`,
-      align: "start"
-    }], width)
-  ];
-}
-
 function renderPoint(
   event: PresentationEvent,
   marker: string,
@@ -546,7 +565,7 @@ function renderSpanGraph(
   item: ModulePerformanceTimelineSpan,
   scale: TimelineScale,
   width: number,
-  visual: "load-remote" | "cost" | "lifecycle-span"
+  visual: "load-remote" | "cost"
 ): string {
   const graph = Array.from({ length: width }, () => " ");
   const start = toPosition(item.start, scale, width);
@@ -683,24 +702,12 @@ function providerName(label: string): string {
   return separator === -1 ? label : label.slice(0, separator);
 }
 
-function providerEventLabel(label: string): string {
-  if (label === "Provider container init") return "Container init";
-  if (label === "Provider module loaded") return "Module loaded";
-  if (label === "remoteEntry") return "remoteEntry lifecycle";
-  return label;
-}
-
-function providerEventVisual(
-  item: ModulePerformanceTimelineItem
-): PresentationVisual {
-  if (item.type === "point") return "milestone";
-  if (item.label === "Provider container init") return "lifecycle-point";
-  return "lifecycle-span";
-}
-
 function resourceEventLabel(item: ModulePerformanceTimelineItem): string {
   if (item.type === "span" && item.resource !== undefined) {
-    return fileName(item.resource.url);
+    const name = fileName(item.resource.url);
+    return /^__federation_expose_default_export(?:\.[cm]?js)?$/i.test(name)
+      ? "expose-default.js"
+      : name;
   }
   const separator = item.label.indexOf(" · ");
   return separator === -1 ? item.label : item.label.slice(0, separator);

@@ -38,16 +38,18 @@ the normal structured JSON envelope:
 divebell mf module-perf --report --view timeline
 ```
 
-The left column contains only the Page, Consumer, Producer, lifecycle, module,
-Shared, and resource hierarchy. The right column owns the proportional clock
-and every displayed value. FP/FCP/LCP use point markers; `loadRemote` shows its
-start and completion boundaries; Shared and resource bars show duration plus
-transfer size; and Shared reuse uses an instant marker. A provisional LCP uses
-`◇`. The view omits generic page scripts and keeps provider/source details,
-decoded size, cache evidence, and exact underlying fields in structured JSON.
-It does not extend Paint guides through unrelated events. The default remains
-structured JSON for Agents and pipelines. `--view timeline` requires
-`--report`; it never creates another performance sample.
+The left column contains only the Page, Consumer, Producer, module, Shared, and
+resource hierarchy. The right column owns the proportional clock and every
+displayed value. FP/FCP/LCP labels stay beside their point markers;
+`loadRemote` places its bar on the parent row and its start/completion values on
+the module row; Shared and resource bars show duration plus transfer size when
+available; and Shared reuse uses an instant marker. A provisional LCP uses `◇`.
+The view omits generic page scripts and provider lifecycle details, while
+provider/source details, decoded size, cache evidence, and exact underlying
+fields remain in structured JSON. It does not extend Paint guides through
+unrelated events. The default remains structured JSON for Agents and pipelines.
+`--view timeline` requires `--report`; it never creates another performance
+sample.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path

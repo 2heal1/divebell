@@ -338,11 +338,11 @@ start relative to that origin. Its lane kinds are:
 `markers` places FP, FCP, and the latest observed LCP on the same clock. LCP
 keeps its provisional/final status. The terminal view merges FP and FCP when
 they have the same timestamp, uses `●` for completed milestones, and uses `◇`
-for provisional LCP. Render each marker as a point on the Paint row; do not
-extend it as a vertical line through unrelated MF events. Render spans in
-chronological proportion on one seconds-based axis. Do not draw a causal arrow
-between browser resources and MF events unless the report contains explicit
-evidence for that relation.
+for provisional LCP. Render each marker and its label together on the Paint
+row, with its timestamp directly below. Do not extend it as a vertical line
+through unrelated MF events. Render spans in chronological proportion on one
+seconds-based axis. Do not draw a causal arrow between browser resources and
+MF events unless the report contains explicit evidence for that relation.
 
 The terminal view follows these value rules:
 
@@ -353,8 +353,9 @@ The terminal view follows these value rules:
   segment when transfer size was not observed. Do not repeat absolute start/end
   timestamps for these costs;
 - `loadRemote` is the exception: its line ends in `●` on success and the next
-  Timeline line shows the exact start at the left boundary and exact completion
-  at the right boundary. Keep total duration in structured details;
+  line names the requested module and shows the exact start at the left
+  boundary and exact completion at the right boundary. Keep total duration in
+  structured details;
 - Shared reuse is rendered as `◆ reuse` at the observed loadShare completion
   and the following Timeline line shows its timestamp. Keep `provider`,
   selected version, and the fact that no additional JavaScript was matched in
@@ -372,33 +373,34 @@ Render a result in a compact form similar to this. The horizontal positions use
 one clock; values stay in the Timeline column directly below their graph.
 
 ```text
-┌──────────────────────────────┬────────────────────────────────────────────────────────────────┐
-│ Event                        │ Timeline · navigationStart = 0 ms                              │
-│                              │ 0s              1s              2s              3s         4s │
-├──────────────────────────────┼────────────────────────────────────────────────────────────────┤
-│ Page                         │                                                                │
-│   Paint                      │                  ●                                        ◇    │
-│                              │              FP · FCP                                    LCP   │
-│                              │                1.116s                                  4.008s  │
-├──────────────────────────────┼────────────────────────────────────────────────────────────────┤
-│ Consumer · host              │                                                                │
-│   loadRemote                 │                                                                │
-│     catalog/Button           │                                ━━━━━━━━━━━━━━━━━━━━━━━━━●      │
-│                              │                                2.05s                     3.96s │
-│   Shared                     │                                                                │
-│     react@19.1.1             │                      ━━━━━                                     │
-│                              │                      260ms · 45 KB                             │
-├──────────────────────────────┼────────────────────────────────────────────────────────────────┤
-│ Producer · catalog           │                                                                │
-│   Resources                  │                                                                │
-│     remoteEntry.js           │                                             ━━━━━━━━━━━        │
-│                              │                                             555ms · 18 KB      │
-│     Button.js                │                                             ━━━━━━━━━━━━━━━━━━ │
-│                              │                                             1.20s · 246 KB     │
-│   Shared                     │                                                                │
-│     react@19.1.1             │                                                       ◆ reuse │
-│                              │                                                       3.293s   │
-└──────────────────────────────┴────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────┬──────────────────────────────────────────────────────────────────────────┐
+│ Event                        │ Timeline                                                                 │
+│                              │ 0s              1s              2s              3s              4s      │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Page                         │                                                                          │
+│   Paint                      │                     ● FP · FCP                                 ◇ LCP    │
+│                              │                     1.116s                                      4.008s  │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Consumer · host              │                                                                          │
+│   loadRemote                 │                                         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●   │
+│     catalog/Button           │                                         2.05s                       3.96s │
+│                              │                                                                          │
+│   Shared                     │                                                                          │
+│     react@19.1.1             │                             ━━━━━                                        │
+│                              │                             260ms · 45 KB                                │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Producer · catalog           │                                                                          │
+│   Resources                  │                                                                          │
+│     remoteEntry.js           │                                                     ━━━━━━━━━━━          │
+│                              │                                                     555ms · 18 KB        │
+│                              │                                                                          │
+│     Button.js                │                                                     ━━━━━━━━━━━━━━━━━━━━ │
+│                              │                                                     1.20s · 246 KB       │
+│                              │                                                                          │
+│   Shared                     │                                                                          │
+│     react@19.1.1             │                                                                  ◆ reuse │
+│                              │                                                                  3.293s  │
+└──────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
 ```
 
 Read every boundary from `timeline`; never estimate a missing value. Paint

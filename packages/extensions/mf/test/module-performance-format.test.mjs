@@ -79,12 +79,17 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   }, { columns: 96 });
 
   assert.match(output, /^navigationStart = 0 ms/m);
-  assert.match(output, /Paint[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms \[provisional\]/);
+  assert.match(output, /Paint[\s\S]*FP 142 ms · FCP 231 ms[\s\S]*LCP 480 ms \[provisional\]/);
+  assert.match(output, /├[─┬]+┤/);
   assert.match(output, /Main HTML response 0–84 ms/);
+  assert.match(output, /MF consumer.*host · loadRemote/);
   assert.match(output, /catalog\/Button 190–338 ms/);
   assert.match(output, /Button\.js 272–329 ms/);
-  assert.match(output, /transfer 12 KiB · decoded 24 KiB/);
-  assert.match(output, /cache: network/);
+  assert.doesNotMatch(output, /transfer|decoded|cache:/);
+  const timelineLines = output.split("\n").slice(4);
+  assert.ok(timelineLines.every((line) =>
+    (line.match(/[│┼]/g) ?? []).length >= 3
+  ));
   assert.match(output, /[├─┤●]/);
   assert.ok(output.split("\n").every((line) => line.length <= 96));
 });

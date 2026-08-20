@@ -2,8 +2,8 @@ import type {
   ModulePerformanceReport,
   ModulePerformanceTimeline,
   ModulePerformanceTimelineItem,
-  ModulePerformanceTimelineMarker,
-  ModulePerformanceTimelineSpan
+  ModulePerformanceTimelineLane,
+  ModulePerformanceTimelineMarker
 } from "./types.js";
 
 export interface ModulePerformanceTimelineFormatOptions {
@@ -37,43 +37,61 @@ export function formatModulePerformanceTimeline(
 ): string {
   const layout = createLayout(timeline, options.columns);
   const domain = readTimelineDomain(timeline);
+  const markerGraph = renderMarkerGraph(
+    timeline.markers,
+    domain,
+    layout.chartWidth
+  );
   const lines = [
     `${timeline.clock.origin} = 0 ${timeline.clock.unit}`,
     "",
-    renderLine("time (ms)", renderAxis(domain, layout.chartWidth), "", layout)
+    renderLine("time (ms)", renderAxis(domain, layout.chartWidth), "", layout),
+    renderLine(
+      "",
+      renderAxisRuler(timeline.markers, domain, layout.chartWidth),
+      "",
+      layout
+    )
   ];
 
   lines.push(...renderMarkers(timeline.markers, domain, layout));
   for (const lane of timeline.lanes) {
+    const laneName = formatLaneKind(lane.kind);
+    const hasContext = lane.label !== laneName;
+    if (hasContext) {
+      lines.push(...renderWrappedLine(
+        laneName,
+        markerGraph,
+        lane.label,
+        layout
+      ));
+    }
     if (lane.items.length === 0) {
-      lines.push(renderLine(lane.label, " ".repeat(layout.chartWidth), "not observed", layout));
+      lines.push(renderLine(
+        hasContext ? "" : laneName,
+        markerGraph,
+        "not observed",
+        layout
+      ));
       continue;
     }
     lane.items.forEach((item, index) => {
-      const details = formatItemDetails(item);
-      const timingFits = details.timing.length + 2 <= layout.detailWidth;
-      const itemLabelWidth = timingFits
-        ? layout.detailWidth - details.timing.length - 1
-        : layout.detailWidth;
+      const timing = formatItemTiming(item);
+      const timingFits = timing.length + 2 <= layout.detailWidth;
       lines.push(renderLine(
-        index === 0 ? lane.label : "",
+        !hasContext && index === 0 ? laneName : "",
         renderItemGraph(item, timeline.markers, domain, layout.chartWidth),
         timingFits
-          ? fitItemDescription(item.label, details.timing, layout.detailWidth)
+          ? fitItemDescription(item.label, timing, layout.detailWidth)
           : fitText(item.label, layout.detailWidth),
         layout
       ));
-      if (index === 0 && lane.label.length > layout.laneWidth) {
-        lines.push(...renderContinuation(`lane: ${lane.label}`, layout));
-      }
-      if (item.label.length > itemLabelWidth) {
-        lines.push(...renderContinuation(`label: ${item.label}`, layout));
-      }
       if (!timingFits) {
-        lines.push(...renderContinuation(`time: ${details.timing}`, layout));
-      }
-      for (const detail of details.resource) {
-        lines.push(...renderContinuation(detail, layout));
+        lines.push(...renderContinuation(
+          `time: ${timing}`,
+          markerGraph,
+          layout
+        ));
       }
     });
   }
@@ -88,11 +106,11 @@ function createLayout(
   const longestLane = Math.max(
     "time (ms)".length,
     "Paint".length,
-    ...timeline.lanes.map((lane) => lane.label.length)
+    ...timeline.lanes.map((lane) => formatLaneKind(lane.kind).length)
   );
-  const laneWidth = clamp(longestLane, 10, 20);
+  const laneWidth = clamp(longestLane, 10, 14);
   const available = columns - laneWidth - 3;
-  const detailWidth = clamp(Math.floor(available * 0.6), 24, 44);
+  const detailWidth = clamp(Math.floor(available * 0.5), 24, 52);
   const chartWidth = available - detailWidth;
   return { laneWidth, chartWidth, detailWidth };
 }
@@ -135,6 +153,22 @@ function renderAxis(domain: TimelineDomain, width: number): string {
   return axis.join("");
 }
 
+function renderAxisRuler(
+  markers: ModulePerformanceTimelineMarker[],
+  domain: TimelineDomain,
+  width: number
+): string {
+  if (width <= 1) return "│";
+  const ruler = Array.from({ length: width }, () => "─");
+  ruler[0] = "├";
+  ruler[width - 1] = "┤";
+  for (const marker of markers) {
+    const position = toPosition(marker.at, domain, width);
+    if (position > 0 && position < width - 1) ruler[position] = "┬";
+  }
+  return ruler.join("");
+}
+
 function renderMarkers(
   markers: ModulePerformanceTimelineMarker[],
   domain: TimelineDomain,
@@ -144,10 +178,13 @@ function renderMarkers(
   if (markers.length === 0) {
     return [renderLine("Paint", graph, "not observed", layout)];
   }
-  return markers.map((marker, index) => renderLine(
+  return packSegments(
+    markers.map(formatMarker),
+    layout.detailWidth
+  ).map((line, index) => renderLine(
     index === 0 ? "Paint" : "",
-    index === 0 ? graph : " ".repeat(layout.chartWidth),
-    fitText(formatMarker(marker), layout.detailWidth),
+    graph,
+    line,
     layout
   ));
 }
@@ -203,52 +240,39 @@ function toPosition(value: number, domain: TimelineDomain, width: number): numbe
   return clamp(Math.round(ratio * (width - 1)), 0, width - 1);
 }
 
-function formatItemDetails(item: ModulePerformanceTimelineItem): {
-  timing: string;
-  resource: string[];
-} {
+function formatItemTiming(item: ModulePerformanceTimelineItem): string {
   const status = item.status === undefined || item.status === "success"
     ? ""
     : ` [${item.status}]`;
   if (item.type === "point") {
-    return {
-      timing: `@ ${formatObservedTime(item.at)} ms${status}`,
-      resource: []
-    };
+    return `@ ${formatObservedTime(item.at)} ms${status}`;
   }
   const end = item.end === undefined ? "…" : formatObservedTime(item.end);
-  return {
-    timing: `${formatObservedTime(item.start)}–${end} ms${status}`,
-    resource: formatResourceDetails(item)
-  };
+  return `${formatObservedTime(item.start)}–${end} ms${status}`;
 }
 
-function formatResourceDetails(item: ModulePerformanceTimelineSpan): string[] {
-  if (item.resource === undefined) return [];
-  const sizes = [
-    item.resource.transferSize === undefined
-      ? undefined
-      : `transfer ${formatBytes(item.resource.transferSize)}`,
-    item.resource.encodedBodySize === undefined
-      ? undefined
-      : `encoded ${formatBytes(item.resource.encodedBodySize)}`,
-    item.resource.decodedBodySize === undefined
-      ? undefined
-      : `decoded ${formatBytes(item.resource.decodedBodySize)}`
-  ].filter((value): value is string => value !== undefined);
-  return [
-    ...(sizes.length === 0 ? [] : [sizes.join(" · ")]),
-    ...(item.resource.cache === undefined ? [] : [`cache: ${item.resource.cache}`]),
-    ...(item.resource.packageNames === undefined
-      ? []
-      : [`packages: ${item.resource.packageNames.join(", ")}`])
-  ];
-}
-
-function renderContinuation(value: string, layout: TimelineLayout): string[] {
+function renderContinuation(
+  value: string,
+  markerGraph: string,
+  layout: TimelineLayout
+): string[] {
   return wrapText(`↳ ${value}`, layout.detailWidth).map((line) => renderLine(
     "",
-    " ".repeat(layout.chartWidth),
+    markerGraph,
+    line,
+    layout
+  ));
+}
+
+function renderWrappedLine(
+  lane: string,
+  graph: string,
+  detail: string,
+  layout: TimelineLayout
+): string[] {
+  return wrapText(detail, layout.detailWidth).map((line, index) => renderLine(
+    index === 0 ? lane : "",
+    graph,
     line,
     layout
   ));
@@ -274,6 +298,23 @@ function formatMarker(marker: ModulePerformanceTimelineMarker): string {
   return `${marker.label} ${formatObservedTime(marker.at)} ms${status}`;
 }
 
+function formatLaneKind(kind: ModulePerformanceTimelineLane["kind"]): string {
+  switch (kind) {
+    case "page":
+      return "Page";
+    case "page-script":
+      return "Page scripts";
+    case "mf-consumer":
+      return "MF consumer";
+    case "mf-provider":
+      return "MF provider";
+    case "mf-resource":
+      return "MF resources";
+    case "mf-preload":
+      return "MF preload";
+  }
+}
+
 function formatObservedTime(value: number): string {
   return String(value);
 }
@@ -281,16 +322,6 @@ function formatObservedTime(value: number): string {
 function formatAxisTime(value: number): string {
   const magnitude = Math.abs(value);
   if (magnitude >= 100) return String(Math.round(value));
-  return String(Math.round(value * 10) / 10);
-}
-
-function formatBytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  if (value < 1024 * 1024) return `${trimDecimal(value / 1024)} KiB`;
-  return `${trimDecimal(value / (1024 * 1024))} MiB`;
-}
-
-function trimDecimal(value: number): string {
   return String(Math.round(value * 10) / 10);
 }
 
@@ -310,6 +341,21 @@ function wrapText(value: string, width: number): string[] {
     remaining = remaining.slice(split).trimStart();
   }
   lines.push(remaining);
+  return lines;
+}
+
+function packSegments(values: string[], width: number): string[] {
+  const lines: string[] = [];
+  for (const value of values) {
+    const previous = lines.at(-1);
+    const candidate = previous === undefined ? value : `${previous} · ${value}`;
+    if (candidate.length <= width) {
+      if (previous === undefined) lines.push(value);
+      else lines[lines.length - 1] = candidate;
+      continue;
+    }
+    lines.push(...wrapText(value, width));
+  }
   return lines;
 }
 

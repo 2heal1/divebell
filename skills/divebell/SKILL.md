@@ -85,7 +85,7 @@ needed.
 Run:
 
 ```bash
-divebell open <url> [--profile <name-or-path> | --state <path> | --temp-profile] [--ui]
+divebell open <url>
 ```
 
 Divebell opens headlessly by default. Add `--ui` only when the user explicitly
@@ -151,9 +151,6 @@ relevant Extensions.
 
 ## References
 
-- Read `references/authentication.md` for Profile and state selection, the
-  clean local Profile login/export workflow, and authentication-failure
-  interpretation.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

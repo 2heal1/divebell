@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,13 +11,9 @@ const execFileAsync = promisify(execFile);
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliEntry = resolve(packageDirectory, "dist/bin.js");
 const temporaryDirectory = await mkdtemp(join(tmpdir(), "divebell-browser-commands-"));
-const socketDirectory = await mkdtemp("/tmp/divebell-browser-sockets-");
 const projectDirectory = join(temporaryDirectory, "project");
 const profileDirectory = join(temporaryDirectory, "browser-profile");
 const operationLogDirectory = join(temporaryDirectory, "operations");
-const divebellHomeDirectory = join(temporaryDirectory, "divebell-home");
-const firstUserInitScript = join(temporaryDirectory, "first-user-init.js");
-const secondUserInitScript = join(temporaryDirectory, "second-user-init.js");
 const server = createServer((request, response) => {
   response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   if (request.url?.startsWith("/second")) {
@@ -41,10 +37,7 @@ try {
   await Promise.all([
     mkdir(projectDirectory, { recursive: true }),
     mkdir(profileDirectory, { recursive: true }),
-    mkdir(operationLogDirectory, { recursive: true }),
-    mkdir(divebellHomeDirectory, { recursive: true }),
-    writeFile(firstUserInitScript, "globalThis.__DIVEBELL_E2E_USER_INIT_ONE__ = true;\n"),
-    writeFile(secondUserInitScript, "globalThis.__DIVEBELL_E2E_USER_INIT_TWO__ = true;\n")
+    mkdir(operationLogDirectory, { recursive: true })
   ]);
   await new Promise((resolvePromise, reject) => {
     server.once("error", reject);
@@ -56,28 +49,12 @@ try {
   const origin = `http://127.0.0.1:${address.port}`;
   const env = {
     ...process.env,
-    AGENT_BROWSER_SOCKET_DIR: socketDirectory,
     DIVEBELL_BROWSER_PROFILE_DIR: profileDirectory,
-    DIVEBELL_HOME: divebellHomeDirectory,
     DIVEBELL_DISABLE_EXTENSIONS: "1",
     DIVEBELL_OPERATION_LOG_DIR: operationLogDirectory
   };
 
-  const firstOpen = await runCli([
-    "open",
-    `${origin}/first`,
-    "--timeout",
-    "10000",
-    "--no-default-profile",
-    "--init-script",
-    firstUserInitScript,
-    "--init-script",
-    secondUserInitScript
-  ], env);
-  assert.equal(await runCli([
-    "eval",
-    "Boolean(globalThis.__DIVEBELL_E2E_USER_INIT_ONE__ && globalThis.__DIVEBELL_E2E_USER_INIT_TWO__)"
-  ], env), "true");
+  await runCli(["open", `${origin}/first`, "--timeout", "10000", "--no-bridge", "--no-default-profile"], env);
   await runCli(["check-element", "#agree"], env);
   assert.equal(await runCli(["is", "checked", "#agree"], env), "true");
 
@@ -85,42 +62,29 @@ try {
   await runCli(["wait", "--text", "Hovered"], env);
   assert.equal(await runCli(["get", "text", "#result"], env), "Hovered");
 
-  const secondOpen = await runCli(["open", `${origin}/second`, "--timeout", "10000", "--no-default-profile"], env);
-  assert.equal(secondOpen.bridgeUrl, firstOpen.bridgeUrl);
-  assert.equal(secondOpen.injectedScriptPath, firstOpen.injectedScriptPath);
+  await runCli(["goto", `${origin}/second`], env);
   await runCli(["wait", "--url", "**/second?*"], env);
   assert.equal(await runCli(["get", "text", "#page"], env), "Second");
-  assert.equal(await runCli([
-    "eval",
-    "Boolean(globalThis.__DIVEBELL_E2E_USER_INIT_ONE__ && globalThis.__DIVEBELL_E2E_USER_INIT_TWO__)"
-  ], env), "true");
 
   await runCli(["back"], env);
   await runCli(["wait", "--url", "**/first?*"], env);
   assert.equal(await runCli(["get", "title"], env), "First Page");
   await runCli(["reload"], env);
   await runCli(["wait", "--load", "domcontentloaded"], env);
-  await runCli(["goto", `${origin}/second`], env);
-  await runCli(["wait", "--url", "**/second?*"], env);
 
   process.stdout.write(`${JSON.stringify({
     status: "ok",
-    commands: ["open", "check-element", "is", "hover", "wait", "get", "goto", "back", "reload"]
+    commands: ["check-element", "is", "hover", "wait", "get", "goto", "back", "reload"]
   }, null, 2)}\n`);
 } finally {
   await runCli(["stop"], {
     ...process.env,
-    AGENT_BROWSER_SOCKET_DIR: socketDirectory,
     DIVEBELL_BROWSER_PROFILE_DIR: profileDirectory,
-    DIVEBELL_HOME: divebellHomeDirectory,
     DIVEBELL_DISABLE_EXTENSIONS: "1",
     DIVEBELL_OPERATION_LOG_DIR: operationLogDirectory
   }).catch(() => undefined);
   await new Promise((resolvePromise) => server.close(() => resolvePromise()));
-  await Promise.all([
-    rm(temporaryDirectory, { recursive: true, force: true }),
-    rm(socketDirectory, { recursive: true, force: true })
-  ]);
+  await rm(temporaryDirectory, { recursive: true, force: true });
 }
 
 async function runCli(args, env) {

@@ -15,13 +15,11 @@ import { assertOpenOutput, commandData, createBrowserRunner, createOpenContextFi
 test("opens a browser page and auto-starts the bridge when needed", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   let bridgeStarted = false;
 
   const exitCode = await runCli(["open", "http://app.test/", "--port", "18080"], {
     stdout: output.stdout,
     stderr: output.stderr,
-    operationLogDirectory,
     fetcher: async (url) => {
       assert.equal(String(url), "http://localhost:18080/runtimes");
       if (!bridgeStarted) {
@@ -64,18 +62,15 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
   );
   assert.equal(output.errorText(), "");
   assertBridgeOpenCalls(browserCalls, `http://app.test/?divebellSessionId=${sessionId}`, "http://localhost:18080");
-  rmSync(operationLogDirectory, { recursive: true, force: true });
 });
 
 test("opens a browser page with a stable Divebell session", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
 
   const exitCode = await runCli(["open", "http://app.test/orders?region=cn#details", "--session", "session-orders"], {
     stdout: output.stdout,
     stderr: output.stderr,
-    operationLogDirectory,
     fetcher: async () => jsonResponse({ runtimes: [] }),
     bridgeStarter: {
       start: async ({ port }) => {
@@ -112,7 +107,6 @@ test("opens a browser page with a stable Divebell session", async () => {
     "http://app.test/orders?region=cn&divebellSessionId=session-orders#details",
     "http://localhost:18123"
   );
-  rmSync(operationLogDirectory, { recursive: true, force: true });
 });
 
 test("forwards headers alongside the Bridge initialization script", async () => {
@@ -159,7 +153,6 @@ test("forwards supported agent-browser launch options through Divebell open", as
   const output = createOutput();
   const browserCalls: string[][] = [];
   const browserOptions: Array<BrowserRunOptions | undefined> = [];
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
 
   const exitCode = await runCli([
     "open",
@@ -189,7 +182,6 @@ test("forwards supported agent-browser launch options through Divebell open", as
   ], {
     stdout: output.stdout,
     stderr: output.stderr,
-    operationLogDirectory,
     browserRunner: createBrowserRunner(async (args, options) => {
       browserCalls.push(args);
       browserOptions.push(options);
@@ -228,60 +220,6 @@ test("forwards supported agent-browser launch options through Divebell open", as
     `http://app.test/?divebellSessionId=${createOperationSessionId()}`
   ]]);
   assert.equal(browserOptions[0]?.disableRestore, true);
-  rmSync(operationLogDirectory, { recursive: true, force: true });
-});
-
-test("inherits repeatable user init scripts across open commands", async () => {
-  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
-  const browserCalls: string[][] = [];
-  const browserRunner = createBrowserRunner(async (args) => {
-    browserCalls.push(args);
-    return { exitCode: 0, stdout: "opened\n", stderr: "" };
-  });
-  const run = async (args: string[]): Promise<number> => await runCli(args, {
-    stdout: createOutput().stdout,
-    stderr: createOutput().stderr,
-    operationLogDirectory,
-    fetcher: async () => jsonResponse({ runtimes: [] }),
-    browserRunner
-  });
-
-  try {
-    assert.equal(await run([
-      "open",
-      "http://app.test/first",
-      "--bridge",
-      "http://bridge.test",
-      "--init-script",
-      "first.js",
-      "--init-script",
-      "second.js"
-    ]), 0);
-    assert.equal(await run(["open", "http://app.test/second"]), 0);
-
-    assert.equal(browserCalls.length, 2);
-    for (const call of browserCalls) {
-      assert.deepEqual(call.slice(0, 4), [
-        "--init-script",
-        "first.js",
-        "--init-script",
-        "second.js"
-      ]);
-    }
-    assert.equal(browserCalls[0]?.at(-2), "--init-script");
-    assert.equal(browserCalls[1]?.at(-2), "--init-script");
-    assert.equal(browserCalls[1]?.at(-1), browserCalls[0]?.at(-1));
-
-    const [operationFile] = readdirSync(operationLogDirectory);
-    assert.notEqual(operationFile, undefined);
-    const openContext = JSON.parse(readFileSync(
-      join(operationLogDirectory, operationFile as string),
-      "utf8"
-    ));
-    assert.deepEqual(openContext.browserInitScripts, ["first.js", "second.js"]);
-  } finally {
-    rmSync(operationLogDirectory, { recursive: true, force: true });
-  }
 });
 
 test("disables the default Chrome profile with an open flag", async () => {
@@ -542,7 +480,7 @@ test("pins an automatically selected Chrome profile to the open context", async 
   }
 });
 
-test("assigns one Bridge port per directory and reuses it across open commands", async () => {
+test("assigns a dedicated bridge port and reuses it for directory commands", async () => {
   const stateDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-state-"));
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
   const browserRunner = createBrowserRunner(async () => ({
@@ -583,37 +521,8 @@ test("assigns one Bridge port per directory and reuses it across open commands",
       browserRunner
     }), 0);
     const reopened = JSON.parse(secondOpenOutput.text()).data;
-    assert.equal(reopened.bridgePort, opened.bridgePort);
-    assert.equal(reopened.bridgeUrl, opened.bridgeUrl);
-    assert.equal(reopened.injectedScriptPath, opened.injectedScriptPath);
-    assert.equal(await bridgeIsAvailable(opened.bridgeUrl), true);
-
-    const failedOpenOutput = createOutput();
-    assert.equal(await runCli(["open", "http://app.test/failed"], {
-      stdout: failedOpenOutput.stdout,
-      stderr: failedOpenOutput.stderr,
-      bridgeStateDirectory: stateDirectory,
-      operationLogDirectory,
-      bridgeStarter: createDetachedBridgeStarter(
-        pathToFileURL(join(process.cwd(), "dist", "bin.js")).href
-      ),
-      browserRunner: createBrowserRunner(async () => ({
-        exitCode: 1,
-        stdout: "",
-        stderr: "navigation failed"
-      }))
-    }), 1);
-    assert.equal(JSON.parse(failedOpenOutput.text()).error.code, "PAGE_OPEN_FAILED");
-    assert.equal(await bridgeIsAvailable(opened.bridgeUrl), true);
-
-    const [operationFile] = readdirSync(operationLogDirectory);
-    assert.notEqual(operationFile, undefined);
-    const openContext = JSON.parse(readFileSync(
-      join(operationLogDirectory, operationFile as string),
-      "utf8"
-    ));
-    assert.equal(openContext.url, "http://app.test/next");
-    assert.equal(openContext.bridgeUrl, opened.bridgeUrl);
+    assert.notEqual(reopened.bridgePort, opened.bridgePort);
+    assert.equal(await waitForBridgeToStop(opened.bridgeUrl), true);
 
     const runtimeOutput = createOutput();
     assert.equal(await runCli(["runtimes"], {
@@ -649,13 +558,16 @@ test("assigns one Bridge port per directory and reuses it across open commands",
   }
 });
 
-async function bridgeIsAvailable(bridgeUrl: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${bridgeUrl}/runtimes`);
-    return response.ok;
-  } catch {
-    return false;
+async function waitForBridgeToStop(bridgeUrl: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      await fetch(`${bridgeUrl}/runtimes`);
+    } catch {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
   }
+  return false;
 }
 
 test("opens a browser page without touching the bridge when no-bridge is set", async () => {

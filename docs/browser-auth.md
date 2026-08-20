@@ -10,7 +10,7 @@ Divebell composes agent-browser profiles, state, and auth to provide reusable br
 | state | Cookies plus localStorage and sessionStorage for origins visited by the current session | Create a small, explicit login-state file that can be saved and loaded |
 | auth | Encrypted username, password, and login-page metadata | Let agent-browser open, fill, and submit a login form |
 
-`profiles` only lists selectable local Chrome profiles; it does not export their data. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session, start from a Profile and then save state.
+`profiles` lists selectable local Chrome profiles. `profile export` exports only a Profile created by `open --temp-profile`; it does not copy an arbitrary installed Chrome Profile. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session into a portable file, start from a Profile and then save state.
 
 ## Default browser context
 
@@ -42,6 +42,50 @@ divebell open https://app.example.com --profile ~/.divebell-profiles/app
 ```
 
 A Profile is a directory, not a single export file. Save state when a portable file is needed.
+
+## Create a clean Profile by signing in once
+
+When scoped state is present but still redirects to sign-in, create an empty,
+isolated local Profile and complete the authorized login in its browser window:
+
+```bash
+divebell open https://app.example.com/dashboard --ui --temp-profile
+```
+
+`--temp-profile` creates a new private Profile directory and a dedicated
+browser session. It does not select the latest Chrome Profile, load configured
+state, or use project Restore State. It cannot be combined with another
+browser context such as `--profile`, `--state`, `--restore`, `--cdp`, or
+`--allowed-domains`.
+
+After login and target-page verification, export the complete Profile before
+running `stop`:
+
+```bash
+divebell profile export
+# Or choose a new directory that does not already exist:
+divebell profile export ./app-profile
+```
+
+The export command first closes the browser cleanly so Chrome flushes cookies,
+IndexedDB, service workers, preferences, and other Profile-owned data. It then
+moves the temporary Profile into the requested directory. When no directory is
+given, Divebell creates one under `~/.divebell/profiles/`. The absolute export
+path is returned in `data.path` of the standard command envelope.
+
+Reuse that directory on the same local environment:
+
+```bash
+divebell open https://app.example.com/dashboard \
+  --profile /absolute/path/from/data.path \
+  --ui
+```
+
+Running `divebell stop` instead discards an unexported temporary Profile. A new
+`open` is rejected while one is active, so export or stop it first. Exported
+Profiles are sensitive local browser directories and can contain more data
+than state JSON. Keep them on trusted storage and do not assume they are
+portable across operating systems or Chrome installations.
 
 ## Export scoped application and sign-in state
 
@@ -82,87 +126,45 @@ Without `--url`, this is the native agent-browser full-state save. It includes a
 divebell state save ./full-state.json
 ```
 
-## Infer a replacement state on the provider machine
+## When a state file cannot authenticate
 
-Always try a scoped state normally on its consumer first and verify the final
-URL, navigation or HTTP result, and the task's success condition:
+Always try a supplied state on its consumer first and verify the final URL,
+navigation or HTTP result, current account, and task-specific success
+condition:
 
 ```bash
 divebell open https://app.example.net/account --state ./app-state.json
 ```
 
 If access succeeds, keep using that state. If it redirects to sign-in, returns
-401 or 403, shows a signed-out or permission page, returns 404 with other
-authentication evidence, or loses an authentication redirect during initial
-navigation, send the exact state, target URL, and success condition back to
-the state provider.
-
-Run inference on the provider machine, where an explicitly named signed-in
-Profile can already access the same target:
+401 or 403, or shows a signed-out or permission page, the state is insufficient
+for that application. Do not guess related origins or broaden it. On a trusted
+local machine, use the [clean Profile workflow](#create-a-clean-profile-by-signing-in-once):
 
 ```bash
-divebell state infer https://app.example.net/account \
-  --state ./app-state.json \
-  --source-profile "Work" \
-  --output ./app-state-inferred.json \
-  --expect-url 'https://app.example.net/account*' \
-  --expect-text 'Account'
-```
-
-`--state` is the deficient consumer state. `--source-profile` is required and
-must name the working Profile explicitly; Divebell never guesses or selects a
-Profile. `--expect-url` and `--expect-text` are optional but should express the
-actual success condition when a successful HTTP response alone is ambiguous.
-`--output` is optional. When omitted, Divebell allocates a new sibling path
-such as `app-state.inferred.json` without overwriting an existing file.
-
-The command first replays the deficient state in an isolated session with
-metadata-only network capture. It then verifies the source Profile against the
-same target and expectations. From login redirects, forms, authentication
-iframes, client-side navigation, and relevant 401, 403, or
-authentication-related 404 responses, it derives sanitized candidate URLs.
-It exports and replays a bounded set of smallest scopes, beginning with the
-primary URL alone, and preserves the exact first state that passes.
-
-The original state is never changed. The successful output is a normal
-mode-`0600` state JSON with `cookies` and `origins`, ready for direct use with
-`divebell open --state`. Temporary states and HAR files are removed. Static,
-analytics, advertising, telemetry, and monitoring requests are excluded from
-candidate scopes.
-
-The command returns the absolute new state path in `data.path` of the standard
-command envelope:
-
-```json
-{
-  "status": "ok",
-  "data": {
-    "path": "/absolute/path/app-state-inferred.json"
-  },
-  "meta": {
-    "version": 1,
-    "command": "state infer https://app.example.net/account"
-  }
-}
-```
-
-Transfer the new state through an authorized secure channel and retry on the
-consumer:
-
-```bash
+divebell stop
+divebell open https://app.example.net/account --ui --temp-profile
+# Complete the authorized login and verify the target, then:
+divebell profile export
 divebell open https://app.example.net/account \
-  --state /path/from/provider/app-state-inferred.json
+  --profile /absolute/path/from/data.path \
+  --ui
 ```
 
-Verify the same final URL, HTTP or page result, account, and task-specific
-success condition. A plain 404 without authentication evidence produces no
-replacement; continue with routing or application debugging instead. If the
-input state already passes on the provider, compare the consumer environment
-instead of enlarging the state.
+The exported Profile is the reliable local result because it retains
+Profile-owned data that state JSON intentionally omits, including IndexedDB,
+service workers, cache, and browser preferences. Verify the same target,
+account, and success condition after reopening it.
 
-Command output and errors omit URL queries and fragments, credentials, cookie
-names and values, authorization or cookie headers, POST bodies, and response
-bodies. The generated state itself remains sensitive authorization material.
+If another machine specifically requires a portable file, a provider may use
+`state save` from that verified Profile with the exact application URL and only
+the known sign-in URLs reviewed for export. The resulting file remains a
+partial browser snapshot and can still be insufficient. If its consumer fails
+the same authentication check, return to the complete Profile workflow rather
+than broadening or guessing state scope.
+
+A plain 404 without authentication evidence is an application, environment, or
+routing problem rather than proof of missing browser state.
 
 ## Load and manage state
 

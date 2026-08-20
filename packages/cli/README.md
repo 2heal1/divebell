@@ -60,19 +60,24 @@ After the coding agent changes source code, reuse the same login state and sessi
 
 When no usable Chrome Profile exists, Divebell falls back to Automatic Restore State, a portable snapshot of cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Pass `--no-default-profile` for one `open`, or set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` persistently, to request this fallback explicitly. Divebell saves Restore State once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
 
-For a URL-scoped state, always try and verify a normal
-`divebell open <url> --state <path>` first. If that attempt redirects to login,
-returns 401/403, shows an authentication or permission failure, or returns 404
-with authentication evidence, run the following on the state provider's
-machine:
+For a state file, always try and verify a normal
+`divebell open <url> --state <path>` first. If it redirects to login, returns
+401/403, or shows an authentication or permission failure, do not guess related
+origins or broaden the state. On a trusted local machine, establish a complete
+Profile through an authorized interactive login:
 
 ```sh
-divebell state infer <url> --state <path> --source-profile <name|path>
+divebell stop
+divebell open <url> --ui --temp-profile
+# Complete login and verify the protected target, then:
+divebell profile export
+divebell open <url> --profile <returned-path> --ui
 ```
 
-It verifies the working Profile, tries the smallest sanitized URL scopes, and
-saves a new standard state JSON. It does not infer missing state from a plain
-404, modify the input state, guess a Profile, or overwrite an existing output.
+`profile export` closes the temporary browser, flushes its storage, and returns
+the reusable local Profile directory in `data.path`. Running `stop` before the
+export discards it. Treat a plain 404 without authentication evidence as an
+application or routing problem.
 
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 

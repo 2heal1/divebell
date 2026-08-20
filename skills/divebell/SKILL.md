@@ -1,6 +1,6 @@
 ---
 name: divebell
-description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; import, export, or reuse browser state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser state, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
+description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; create, export, or reuse browser Profiles and state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser context, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
 ---
 
 # Divebell

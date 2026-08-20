@@ -97,6 +97,7 @@ export interface CliOperationLogEntry {
   browserReuseInitialBlankPage: boolean;
   browserRestoreDisabled: boolean;
   browserDefaultProfileDisabled: boolean;
+  browserInitScripts?: string[];
   browserDefaultProfile?: string;
   browserTempProfile?: {
     path: string;

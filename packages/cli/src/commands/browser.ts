@@ -16,7 +16,7 @@ import {
 import { isBrowserPageCommand } from "./names.js";
 import type { Fetcher } from "../features/runtime/client.js";
 import { createCommandOutput, createError } from "../utils/output.js";
-import { normalizeDivebellUrlForMatch, type CliOperationLogStore } from "../utils/operation-log.js";
+import { normalizeDivebellUrlForMatch, type CliOperationLogEntry, type CliOperationLogStore } from "../utils/operation-log.js";
 import { bindBrowserRunOptions, createGetWindowScript, createInteractiveTextClickScript, parseBrowserJsonOutput, type BrowserRunOptions, type BrowserRunResult, type BrowserRunner } from "../features/browser/runner.js";
 import {
   createOptionalNumberProperty,
@@ -93,9 +93,10 @@ export async function runBrowserCliCommand(
     const tempProfile = hasOption(args, "temp-profile")
       ? await createBrowserTempProfile(env)
       : undefined;
-    const browserArgs = tempProfile === undefined
-      ? args
-      : withBrowserProfile(args, tempProfile.path);
+    const browserArgs = inheritOpenInitScripts(
+      tempProfile === undefined ? args : withBrowserProfile(args, tempProfile.path),
+      previousOpenContext
+    );
     const sessionId = getOpenCommandSessionId(args);
     const browserRestoreDisabled = tempProfile !== undefined
       || hasOption(args, "profile")
@@ -108,7 +109,13 @@ export async function runBrowserCliCommand(
     let bridgeUrl: string | null = null;
     let committed = false;
     try {
-      const bridge = await prepareOpenBridge(args, fetcher, bridgeStarter, bridgeStateDirectory);
+      const bridge = await prepareOpenBridge(
+        args,
+        fetcher,
+        bridgeStarter,
+        bridgeStateDirectory,
+        previousOpenContext?.bridgeUrl
+      );
       bridgeUrl = bridge?.bridgeUrl ?? null;
       const bridgePort = bridge?.port ?? null;
       if (previousOpenContext !== undefined) {
@@ -204,6 +211,9 @@ export async function runBrowserCliCommand(
         browserReuseInitialBlankPage,
         browserRestoreDisabled,
         browserDefaultProfileDisabled,
+        ...(browserArgs.options.has("init-script")
+          ? { browserInitScripts: [...(browserArgs.options.get("init-script") ?? [])] }
+          : {}),
         ...(result.defaultProfile === undefined || tempProfile !== undefined
           ? {}
           : { browserDefaultProfile: result.defaultProfile }),
@@ -240,7 +250,9 @@ export async function runBrowserCliCommand(
             .catch(() => undefined);
         }
         await removeBrowserTempProfile(tempProfile?.path, env);
-        await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
+        if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
+          await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
+        }
       }
       throw error;
     }
@@ -505,11 +517,24 @@ async function readActiveBrowserTabId(browserRunner: BrowserRunner): Promise<str
   }
 }
 
+function inheritOpenInitScripts(
+  args: ParsedCliArgs,
+  previousOpenContext: CliOperationLogEntry | undefined
+): ParsedCliArgs {
+  if (args.options.has("init-script") || previousOpenContext?.browserInitScripts === undefined) {
+    return args;
+  }
+  const options = new Map(args.options);
+  options.set("init-script", [...previousOpenContext.browserInitScripts]);
+  return { command: args.command, options };
+}
+
 async function prepareOpenBridge(
   args: ParsedCliArgs,
   fetcher: Fetcher,
   bridgeStarter: BridgeStarter,
-  bridgeStateDirectory: string | undefined
+  bridgeStateDirectory: string | undefined,
+  previousBridgeUrl: string | null | undefined
 ): Promise<{ bridgeUrl: string; port: number | null } | null> {
   if (hasOption(args, "no-bridge")) return null;
 
@@ -527,11 +552,30 @@ async function prepareOpenBridge(
     };
   }
 
+  const requestedPort = getNumberOption(args, "port");
+  const reusableBridgeUrl = previousBridgeUrl !== null && previousBridgeUrl !== undefined && (
+    requestedPort === undefined || getExplicitBridgePort(previousBridgeUrl) === requestedPort
+  )
+    ? previousBridgeUrl
+    : undefined;
+  if (reusableBridgeUrl !== undefined) {
+    await ensureBridge({
+      fetcher,
+      bridgeUrl: reusableBridgeUrl,
+      starter: bridgeStarter,
+      stateStore: createFileBridgeStateStore(reusableBridgeUrl, bridgeStateDirectory)
+    });
+    return {
+      bridgeUrl: reusableBridgeUrl,
+      port: getExplicitBridgePort(reusableBridgeUrl)
+    };
+  }
+
   const result = await startDedicatedBridge({
     fetcher,
     starter: bridgeStarter,
     ...(bridgeStateDirectory === undefined ? {} : { stateDirectory: bridgeStateDirectory }),
-    ...createOptionalNumberProperty("port", getNumberOption(args, "port"))
+    ...createOptionalNumberProperty("port", requestedPort)
   });
   return {
     bridgeUrl: result.bridgeUrl,

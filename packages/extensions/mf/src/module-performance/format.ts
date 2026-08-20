@@ -199,7 +199,7 @@ function renderMarkers(
     layout.detailWidth
   ).map((line, index) => renderLine(
     index === 0 ? "Paint" : "",
-    graph,
+    index === 0 ? graph : " ".repeat(layout.chartWidth),
     line,
     layout
   ));

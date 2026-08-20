@@ -317,6 +317,63 @@ test("module-perf renders its terminal timeline through top-level stdout", async
   assert.doesNotMatch(stdout, /^\s*\{/);
 });
 
+test("module-perf timeline takes precedence over the legacy JSON output adapter", async () => {
+  const state = runtimeState({
+    instances: [instance({
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer"
+    })]
+  });
+  const reads = [browserRead(state), {
+    schemaVersion: 1,
+    installedAt: 1,
+    page: {
+      timeOrigin: 0,
+      url: "https://app.test/",
+      fp: 142,
+      fcp: 231,
+      lcp: 480,
+      lcpStatus: "provisional"
+    },
+    resources: [],
+    exposes: []
+  }];
+  let stdout = "";
+  let outputValue;
+  const result = await runMfCommand({
+    args: {
+      command: ["mf", "module-perf"],
+      options: new Map([
+        ["report", ["true"]],
+        ["view", ["timeline"]]
+      ])
+    },
+    stdout: {
+      columns: 72,
+      write(chunk) { stdout += chunk; }
+    },
+    output: {
+      ok(value) { outputValue = value; },
+      needsInput() {},
+      error() {}
+    },
+    fetcher: async () => new Response(),
+    divebell: {
+      browser: {
+        async eval() { return reads.shift(); }
+      }
+    }
+  });
+
+  assert.equal(result, 0);
+  assert.equal(outputValue, undefined);
+  assert.equal(reads.length, 0);
+  assert.match(stdout, /navigationStart = 0 ms/);
+  assert.match(stdout, /FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/);
+  assert.doesNotMatch(stdout, /^\s*\{/);
+});
+
 test("candidate commands use the invoked mf or vmok command name", async () => {
   const duplicateState = runtimeState({
     instances: [

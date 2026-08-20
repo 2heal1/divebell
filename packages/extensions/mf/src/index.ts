@@ -22,10 +22,6 @@ export async function runMfCommand(
       mfCommandRegistry,
       commandName
     );
-    if (options.output !== undefined) {
-      options.output.ok(result);
-      return 0;
-    }
     if (
       options.stdout !== undefined
       && usesModulePerformanceTimelineView(options.args)
@@ -37,6 +33,11 @@ export async function runMfCommand(
             : { columns: options.stdout.columns })
         });
       options.stdout.write(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
+      return options.output === undefined ? result : 0;
+    }
+    if (options.output !== undefined) {
+      options.output.ok(result);
+      return 0;
     }
     return result;
   } catch (error) {

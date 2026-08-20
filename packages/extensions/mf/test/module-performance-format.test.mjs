@@ -139,6 +139,11 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   assert.doesNotMatch(output, /transfer|decoded|cache:/);
   const paintLine = output.split("\n").find((line) => line.startsWith("Paint"));
   assert.equal((paintLine.match(/●/g) ?? []).length, 3);
+  const paintSection = output.split("\n").slice(
+    output.split("\n").findIndex((line) => line.startsWith("Paint")),
+    output.split("\n").findIndex((line) => line.startsWith("Page "))
+  ).join("\n");
+  assert.equal((paintSection.match(/●/g) ?? []).length, 3);
   assert.doesNotMatch(output, /[│┼]/);
   assert.match(output, /[├─┤●]/);
   assert.ok(output.split("\n").every((line) => line.length <= 96));

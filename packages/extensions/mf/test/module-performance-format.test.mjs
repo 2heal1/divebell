@@ -55,6 +55,24 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
         }]
       },
       {
+        id: "page-scripts",
+        kind: "page-script",
+        label: "Page scripts",
+        items: [{
+          id: "irrelevant-page-script",
+          type: "span",
+          label: "irrelevant.js",
+          start: 500,
+          end: 1000,
+          duration: 500,
+          source: "browser",
+          resource: {
+            roles: ["page-script"],
+            url: "https://app.test/irrelevant.js"
+          }
+        }]
+      },
+      {
         id: "resource",
         kind: "mf-resource",
         label: "catalog · resources",
@@ -85,6 +103,7 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   assert.match(output, /MF consumer.*host · loadRemote/);
   assert.match(output, /catalog\/Button 190–338 ms/);
   assert.match(output, /Button\.js 272–329 ms/);
+  assert.doesNotMatch(output, /Page scripts|irrelevant\.js|1000/);
   assert.doesNotMatch(output, /transfer|decoded|cache:/);
   const timelineLines = output.split("\n").slice(4);
   assert.ok(timelineLines.every((line) =>

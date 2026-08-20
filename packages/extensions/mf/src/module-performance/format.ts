@@ -35,8 +35,9 @@ export function formatModulePerformanceTimeline(
   timeline: ModulePerformanceTimeline,
   options: ModulePerformanceTimelineFormatOptions = {}
 ): string {
-  const layout = createLayout(timeline, options.columns);
-  const domain = readTimelineDomain(timeline);
+  const lanes = timeline.lanes.filter((lane) => lane.kind !== "page-script");
+  const layout = createLayout(lanes, options.columns);
+  const domain = readTimelineDomain(timeline, lanes);
   const markerGraph = renderMarkerGraph(
     timeline.markers,
     domain,
@@ -55,7 +56,7 @@ export function formatModulePerformanceTimeline(
   ];
 
   lines.push(...renderMarkers(timeline.markers, domain, layout));
-  for (const lane of timeline.lanes) {
+  for (const lane of lanes) {
     const laneName = formatLaneKind(lane.kind);
     const hasContext = lane.label !== laneName;
     if (hasContext) {
@@ -99,14 +100,14 @@ export function formatModulePerformanceTimeline(
 }
 
 function createLayout(
-  timeline: ModulePerformanceTimeline,
+  lanes: ModulePerformanceTimelineLane[],
   requestedColumns: number | undefined
 ): TimelineLayout {
   const columns = clamp(Math.floor(requestedColumns ?? 120), 64, 180);
   const longestLane = Math.max(
     "time (ms)".length,
     "Paint".length,
-    ...timeline.lanes.map((lane) => formatLaneKind(lane.kind).length)
+    ...lanes.map((lane) => formatLaneKind(lane.kind).length)
   );
   const laneWidth = clamp(longestLane, 10, 14);
   const available = columns - laneWidth - 3;
@@ -115,11 +116,14 @@ function createLayout(
   return { laneWidth, chartWidth, detailWidth };
 }
 
-function readTimelineDomain(timeline: ModulePerformanceTimeline): TimelineDomain {
+function readTimelineDomain(
+  timeline: ModulePerformanceTimeline,
+  lanes: ModulePerformanceTimelineLane[]
+): TimelineDomain {
   const values = [
     0,
     ...timeline.markers.map((marker) => marker.at),
-    ...timeline.lanes.flatMap((lane) => lane.items.flatMap((item) =>
+    ...lanes.flatMap((lane) => lane.items.flatMap((item) =>
       item.type === "point"
         ? [item.at]
         : [item.start, ...(item.end === undefined ? [] : [item.end])]

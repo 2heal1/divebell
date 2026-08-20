@@ -263,8 +263,9 @@ same report rendered directly in a terminal. The terminal view replaces the
 structured JSON envelope for that invocation only. Omit `--view timeline` for
 Agent or pipeline consumption. The view does not change the measurement,
 timeline boundaries, or report diagnosis. It abbreviates long item labels and
-leaves resource size, body, cache, and other detailed evidence in the
-structured JSON report so the proportional lanes remain readable.
+omits the generic `page-script` lane. Resource size, body, cache, and other
+detailed evidence remain in the structured JSON report so the proportional
+terminal lanes stay focused on MF-owned resources.
 
 The stable return is timeline-first:
 
@@ -338,7 +339,6 @@ time (ms)       0          100          200          300          400          5
 Paint                                 │ FP 142 ms    │ FCP 231 ms               │ LCP 480 ms
 Page            ● Visit URL
                 [ Main HTML response 0–84 ms ]
-Page scripts               [ main.js 91–219 ms              ]
 MF preload                   [ Button.js 110–176 ms ]
 MF consumer                                      [ loadRemote 190–338 ms           ]
 MF provider                                      [ Manifest 192–205 ms ]
@@ -352,10 +352,11 @@ MF resources                                       [ remoteEntry.js 205–267 ms
 
 Read every boundary from `timeline`; never estimate a missing value. Paint
 markers show temporal relationships, not proof that MF caused a paint. Label
-the consumer interval `loadRemote`, not consumer initialization. Include the
-`MF preload` lane only when an `mf-preload` lane exists; otherwise omit the
-entire lane. Preserve observed overlap instead of converting it into a serial
-arrow chain.
+the consumer interval `loadRemote`, not consumer initialization. The terminal
+view omits `page-script` lanes; use the structured report when ordinary
+external page scripts are part of the investigation. Include the `MF preload`
+lane only when an `mf-preload` lane exists; otherwise omit the entire lane.
+Preserve observed overlap instead of converting it into a serial arrow chain.
 
 `report.page`, `report.selection`, and `report.summary` preserve the normal
 page anchors and selected scope. Every `report.modules` entry keeps one

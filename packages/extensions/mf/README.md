@@ -40,11 +40,12 @@ divebell mf module-perf --report --view timeline
 
 The view keeps exact observed boundaries in its labels, aligns overlapping
 lanes and FP/FCP/LCP markers on one proportional clock, and keeps their guide
-lines continuous through wrapped lane context. It intentionally leaves resource
-size, body, cache, and other detailed evidence in the structured JSON report so
-the terminal diagram stays compact. The default remains structured JSON for
-Agents and pipelines. `--view timeline` requires `--report`; it never creates
-another performance sample.
+lines continuous through wrapped lane context. It omits the generic page-script
+lane and intentionally leaves resource size, body, cache, and other detailed
+evidence in the structured JSON report so the terminal diagram stays focused
+on MF-owned resources. The default remains structured JSON for Agents and
+pipelines. `--view timeline` requires `--report`; it never creates another
+performance sample.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path

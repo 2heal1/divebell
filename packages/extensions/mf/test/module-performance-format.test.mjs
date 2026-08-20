@@ -164,7 +164,7 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   assert.match(output, /catalog\/Button\s+│\s+━+●/);
   assert.match(output, /0\.19s\s+0\.338s/);
   assert.match(output, /react@18\.3\.1\s+│\s+━+/);
-  assert.match(output, /80ms · — KB/);
+  assert.match(output, /80ms/);
   assert.match(output, /Producer · catalog/);
   assert.match(output, /Lifecycle/);
   assert.match(output, /Container init\s+│\s+◆/);
@@ -180,10 +180,9 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
     line.includes("react@18.3.1") && line.includes("━")
   );
   assert.doesNotMatch(sharedEventLine, /80ms|KB/);
-  const sharedMetricLine = output.split("\n").find((line) =>
-    line.includes("80ms · — KB")
-  );
+  const sharedMetricLine = output.split("\n").find((line) => line.includes("80ms"));
   assert.ok(sharedMetricLine.indexOf("80ms") > sharedMetricLine.indexOf("│", 1));
+  assert.doesNotMatch(sharedMetricLine, /KB/);
   assert.match(output, /[┌┬┐├┼┤└┴┘━◆●◇]/);
   assert.ok(output.split("\n").every((line) => line.length <= 96));
 });
@@ -228,7 +227,7 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
   assert.doesNotMatch(output, /pending · pending/);
   assert.match(output, /Producer · catalog/);
   assert.match(output, /Button\.js\s+│\s+━…/);
-  assert.match(output, /… · — KB · pending/);
+  assert.match(output, /… · pending/);
   assert.doesNotMatch(output, /-25–/);
   assert.ok(output.split("\n").every((line) => line.length <= 72));
 });

@@ -349,8 +349,9 @@ The terminal view follows these value rules:
 - the Event column contains only section, event, dependency, expose, and file
   names;
 - a normal Shared or JavaScript resource bar is followed in the Timeline
-  column by `{duration} · {transferSize}`. Use `— KB` when transfer size was not
-  observed. Do not repeat absolute start/end timestamps for these costs;
+  column by `{duration}` and, when observed, ` · {transferSize}`. Omit the size
+  segment when transfer size was not observed. Do not repeat absolute start/end
+  timestamps for these costs;
 - `loadRemote` is the exception: its line ends in `●` on success and the next
   Timeline line shows the exact start at the left boundary and exact completion
   at the right boundary. Keep total duration in structured details;

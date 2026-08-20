@@ -482,9 +482,10 @@ function renderCostSpan(
   const duration = item.duration ?? (
     item.end === undefined ? undefined : item.end - item.start
   );
-  const metric = `${formatDuration(duration)} · ${formatTransferSize(
-    item.resource?.transferSize
-  )}${formatStatus(item.status)}`;
+  const transferSize = item.resource?.transferSize;
+  const metric = `${formatDuration(duration)}${
+    transferSize === undefined ? "" : ` · ${formatTransferSize(transferSize)}`
+  }${formatStatus(item.status)}`;
   return [
     renderSpanGraph(item, scale, width, "cost"),
     ...renderAnnotations([{
@@ -732,8 +733,7 @@ function formatTimestamp(value: number): string {
   return `${formatted === "-0" ? "0" : formatted}s`;
 }
 
-function formatTransferSize(value: number | undefined): string {
-  if (value === undefined) return "— KB";
+function formatTransferSize(value: number): string {
   const kibibytes = value / 1024;
   return `${kibibytes < 10 ? formatDecimal(kibibytes) : Math.round(kibibytes)} KB`;
 }

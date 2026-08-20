@@ -63,7 +63,7 @@ Example output (the observed timings vary between navigations):
 │                                      │                                   4.446s                 8.216s               │
 │   Shared                             │                                                                               │
 │     react@19.1.1                     │                              ━━━━                                             │
-│                                      │                              334ms · — KB                                     │
+│                                      │                              334ms                                            │
 ├──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
 │ Producer · mf_playground             │                                                                               │
 │   Lifecycle                          │                                                                               │
@@ -73,9 +73,9 @@ Example output (the observed timings vary between navigations):
 │                                      │                                                            8.216s             │
 │   Resources                          │                                                                               │
 │     395.js                           │                                                 ━━━━━━━━━━━━━━━               │
-│                                      │                                                 1.80s · — KB                  │
+│                                      │                                                 1.80s                         │
 │     remoteEntry.js                   │                                                 ━━━━                          │
-│                                      │                                                 311.6ms · — KB                │
+│                                      │                                                 311.6ms                       │
 │   Shared                             │                                                                               │
 │     react@19.1.1                     │                                                    ◆ reuse                    │
 │                                      │                                                 6.699s                        │

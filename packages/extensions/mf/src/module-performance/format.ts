@@ -38,11 +38,7 @@ export function formatModulePerformanceTimeline(
   const lanes = timeline.lanes.filter((lane) => lane.kind !== "page-script");
   const layout = createLayout(lanes, options.columns);
   const domain = readTimelineDomain(timeline, lanes);
-  const markerGraph = renderMarkerGraph(
-    timeline.markers,
-    domain,
-    layout.chartWidth
-  );
+  const emptyGraph = " ".repeat(layout.chartWidth);
   const lines = [
     `${timeline.clock.origin} = 0 ${timeline.clock.unit}`,
     "",
@@ -62,7 +58,7 @@ export function formatModulePerformanceTimeline(
     if (hasContext) {
       lines.push(...renderWrappedLine(
         laneName,
-        markerGraph,
+        emptyGraph,
         lane.label,
         layout
       ));
@@ -70,7 +66,7 @@ export function formatModulePerformanceTimeline(
     if (lane.items.length === 0) {
       lines.push(renderLine(
         hasContext ? "" : laneName,
-        markerGraph,
+        emptyGraph,
         "not observed",
         layout
       ));
@@ -79,9 +75,25 @@ export function formatModulePerformanceTimeline(
     lane.items.forEach((item, index) => {
       const timing = formatItemTiming(item);
       const timingFits = timing.length + 2 <= layout.detailWidth;
+      const preserveSharedLabel = lane.kind === "mf-shared" &&
+        item.label.length + timing.length + 1 > layout.detailWidth;
+      if (preserveSharedLabel) {
+        const labelLines = wrapText(item.label, layout.detailWidth);
+        lines.push(renderLine(
+          !hasContext && index === 0 ? laneName : "",
+          renderItemGraph(item, domain, layout.chartWidth),
+          labelLines[0] as string,
+          layout
+        ));
+        for (const labelLine of labelLines.slice(1)) {
+          lines.push(...renderContinuation(labelLine, emptyGraph, layout));
+        }
+        lines.push(...renderContinuation(`time: ${timing}`, emptyGraph, layout));
+        return;
+      }
       lines.push(renderLine(
         !hasContext && index === 0 ? laneName : "",
-        renderItemGraph(item, timeline.markers, domain, layout.chartWidth),
+        renderItemGraph(item, domain, layout.chartWidth),
         timingFits
           ? fitItemDescription(item.label, timing, layout.detailWidth)
           : fitText(item.label, layout.detailWidth),
@@ -90,7 +102,7 @@ export function formatModulePerformanceTimeline(
       if (!timingFits) {
         lines.push(...renderContinuation(
           `time: ${timing}`,
-          markerGraph,
+          emptyGraph,
           layout
         ));
       }
@@ -178,7 +190,7 @@ function renderMarkers(
   domain: TimelineDomain,
   layout: TimelineLayout
 ): string[] {
-  const graph = renderMarkerGraph(markers, domain, layout.chartWidth);
+  const graph = renderMarkerPoints(markers, domain, layout.chartWidth);
   if (markers.length === 0) {
     return [renderLine("Paint", graph, "not observed", layout)];
   }
@@ -193,25 +205,24 @@ function renderMarkers(
   ));
 }
 
-function renderMarkerGraph(
+function renderMarkerPoints(
   markers: ModulePerformanceTimelineMarker[],
   domain: TimelineDomain,
   width: number
 ): string {
   const graph = Array.from({ length: width }, () => " ");
   for (const marker of markers) {
-    graph[toPosition(marker.at, domain, width)] = "│";
+    graph[toPosition(marker.at, domain, width)] = "●";
   }
   return graph.join("");
 }
 
 function renderItemGraph(
   item: ModulePerformanceTimelineItem,
-  markers: ModulePerformanceTimelineMarker[],
   domain: TimelineDomain,
   width: number
 ): string {
-  const graph = Array.from(renderMarkerGraph(markers, domain, width));
+  const graph = Array.from({ length: width }, () => " ");
   if (item.type === "point") {
     putGraphCharacter(graph, toPosition(item.at, domain, width), "●");
     return graph.join("");
@@ -236,7 +247,7 @@ function renderItemGraph(
 }
 
 function putGraphCharacter(graph: string[], position: number, value: string): void {
-  graph[position] = graph[position] === "│" ? "┼" : value;
+  graph[position] = value;
 }
 
 function toPosition(value: number, domain: TimelineDomain, width: number): number {
@@ -312,6 +323,8 @@ function formatLaneKind(kind: ModulePerformanceTimelineLane["kind"]): string {
       return "MF consumer";
     case "mf-provider":
       return "MF provider";
+    case "mf-shared":
+      return "MF shared";
     case "mf-resource":
       return "MF resources";
     case "mf-preload":

@@ -55,6 +55,7 @@ export function sharedReport(options = {}) {
     selectedVersion: options.selectedVersion ?? candidate.version,
     availableVersions: options.availableVersions ?? [candidate.version],
     provider: options.provider ?? candidate.provider,
+    ...(options.useIn === undefined ? {} : { useIn: options.useIn }),
     singleton: options.singleton ?? candidate.singleton,
     strictVersion: options.strictVersion ?? false,
     eager: options.eager ?? candidate.eager,

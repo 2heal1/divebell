@@ -16,6 +16,7 @@ import {
   preloadTrace,
   stateWithConsumer
 } from "./remote-fixtures.mjs";
+import { sharedReport } from "./shared-fixtures.mjs";
 
 test("module performance attributes loadRemote, expose resources, and page impact without rerunning the module", () => {
   const report = longExposeTrace();
@@ -106,6 +107,7 @@ test("module performance report keeps a fixed producer and operation template", 
     "timeline",
     "summary",
     "modules",
+    "sharedOperations",
     "recommendations",
     "page",
     "selection",
@@ -162,6 +164,133 @@ test("module performance report keeps a fixed producer and operation template", 
     reason: "Use Code Usage executed and unused-code evidence before changing code splitting; this is not proof that asset size caused the current bottleneck.",
     documentation: "https://github.com/2heal1/divebell/blob/main/docs/code-usage-analysis.md"
   }]);
+});
+
+test("the timeline shows host Shared JS loading and Remote Shared reuse", () => {
+  const hostShared = sharedReport({
+    traceId: "trace-host-react",
+    operationId: "loadShare-host-react",
+    instanceRef: "mf-1",
+    package: "react",
+    provider: "host",
+    selectedVersion: "18.3.1",
+    startedAt: 200,
+    updatedAt: 400
+  });
+  delete hostShared.shared.remote;
+  delete hostShared.shared.expose;
+  delete hostShared.events[0].shared.remote;
+  delete hostShared.events[0].shared.expose;
+  const remoteShared = sharedReport({
+    traceId: "trace-catalog-react",
+    operationId: "loadShare-catalog-react",
+    instanceRef: "mf-producer",
+    package: "react",
+    provider: "host",
+    selectedVersion: "18.3.1",
+    startedAt: 1028,
+    updatedAt: 1029
+  });
+  delete remoteShared.shared.remote;
+  delete remoteShared.shared.expose;
+  delete remoteShared.events[0].shared.remote;
+  delete remoteShared.events[0].shared.expose;
+  const producer = instance({
+    instanceRef: "mf-producer",
+    name: "@scope/catalog",
+    role: "producer"
+  });
+  const parsed = parseBrowserReadResult(browserRead(
+    stateWithConsumer({
+      instances: [stateWithConsumer().instances[0], producer]
+    }),
+    [hostShared, longExposeTrace(), remoteShared]
+  ));
+  assert.equal(parsed.ok, true);
+  const performance = performanceSnapshot();
+  performance.shared = [{
+    key: "host:1.0.0",
+    name: "host",
+    version: "1.0.0",
+    publicPath: "https://app.test/",
+    packageName: "react",
+    packageVersion: "18.3.1",
+    js: { sync: ["react-shared.js"], async: [] }
+  }];
+  performance.resources.push({
+    url: "https://app.test/react-shared.js",
+    initiatorType: "script",
+    declarations: ["script"],
+    start: 210,
+    end: 390,
+    duration: 180
+  });
+
+  const result = createModulePerformanceResult(parsed.snapshot, performance);
+  assert.deepEqual(result.sharedOperations.map((operation) => ({
+    requester: operation.requester,
+    packageName: operation.packageName,
+    action: operation.action,
+    provider: operation.provider,
+    selectedVersion: operation.selectedVersion,
+    timing: operation.timing,
+    assets: operation.assets.map((asset) => asset.url)
+  })), [{
+    requester: "host",
+    packageName: "react",
+    action: "load",
+    provider: "host",
+    selectedVersion: "18.3.1",
+    timing: { start: 200, end: 400, duration: 200 },
+    assets: ["https://app.test/react-shared.js"]
+  }, {
+    requester: "@scope/catalog",
+    packageName: "react",
+    action: "reuse",
+    provider: "host",
+    selectedVersion: "18.3.1",
+    timing: { start: 1028, end: 1029, duration: 1 },
+    assets: []
+  }]);
+
+  const report = createModulePerformanceReport(result);
+  const sharedLanes = report.report.timeline.lanes.filter((lane) =>
+    lane.kind === "mf-shared"
+  );
+  assert.deepEqual(sharedLanes.map((lane) => lane.label), [
+    "host · loadShare",
+    "@scope/catalog · loadShare"
+  ]);
+  assert.equal(sharedLanes[0].items[0].label, "load react@18.3.1 Shared");
+  assert.equal(
+    sharedLanes[0].items[1].label,
+    "react-shared.js · react Shared JS · loading"
+  );
+  assert.deepEqual({
+    start: sharedLanes[0].items[1].start,
+    end: sharedLanes[0].items[1].end,
+    source: sharedLanes[0].items[1].source,
+    resource: sharedLanes[0].items[1].resource
+  }, {
+    start: 210,
+    end: 390,
+    source: "browser",
+    resource: {
+      roles: ["shared-sync"],
+      url: "https://app.test/react-shared.js",
+      packageNames: ["react"]
+    }
+  });
+  assert.equal(
+    sharedLanes[1].items[0].label,
+    "reuse react@18.3.1 Shared (from host)"
+  );
+  const pageScripts = report.report.timeline.lanes.find((lane) =>
+    lane.kind === "page-script"
+  );
+  assert.ok(pageScripts === undefined || pageScripts.items.every((item) =>
+    item.label !== "react-shared.js"
+  ));
 });
 
 test("the report always starts with a timeline when browser performance is unavailable", () => {

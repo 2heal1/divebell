@@ -291,6 +291,14 @@ report
       preloadJs[]
       bottleneck
       findings[]
+  sharedOperations[]
+    requester
+    packageName
+    action
+    timing
+    provider
+    selectedVersion
+    assets[]
   recommendations[]
   page
   selection
@@ -313,6 +321,12 @@ start relative to that origin. Its lane kinds are:
   boundary;
 - `mf-provider`: Manifest, remoteEntry, provider container initialization,
   expose get/synchronous chunks, factory execution, and the final MF result;
+- `mf-shared`: observed `loadShare` operations. A provider's initial operation
+  is shown as a `load` lifecycle. When its declared Shared asset matches Browser
+  Resource Timing, a separate Shared JS loading span uses that request's actual
+  start and end. A later consumer operation is labeled `reuse` when the selected
+  provider differs from that Remote. Reuse timing is the observed `loadShare`
+  lifecycle, not a fabricated JavaScript request;
 - `mf-resource`: matched remoteEntry, expose, and Shared JavaScript resources,
   including request duration, transfer/body sizes, and cache evidence when the
   browser exposes them; and
@@ -320,8 +334,9 @@ start relative to that origin. Its lane kinds are:
   there is no such evidence.
 
 `markers` places FP, FCP, and the latest observed LCP on the same clock. LCP
-keeps its provisional/final status. Render these markers across the lanes and
-render spans in chronological proportion. Prefer a swimlane or timing diagram
+keeps its provisional/final status. Render each Paint marker as a point on the
+Paint row; do not extend it as a vertical line through unrelated MF lanes.
+Render spans in chronological proportion. Prefer a swimlane or timing diagram
 over a simple arrow chain because page scripts, MF resources, and preload
 resources can overlap. Do not draw a causal arrow between browser resources
 and MF events unless the report contains explicit evidence for that relation.
@@ -336,11 +351,14 @@ overlap.
 navigationStart = 0 ms
 
 time (ms)       0          100          200          300          400          500
-Paint                                 │ FP 142 ms    │ FCP 231 ms               │ LCP 480 ms
+Paint                              ● FP 142 ms    ● FCP 231 ms               ● LCP 480 ms
 Page            ● Visit URL
                 [ Main HTML response 0–84 ms ]
+MF shared                   [ load react Shared 100–176 ms ]
+                              [ 24.js · react Shared JS · loading 110–170 ms ]
 MF preload                   [ Button.js 110–176 ms ]
 MF consumer                                      [ loadRemote 190–338 ms           ]
+MF shared                                                ● reuse react Shared (from host)
 MF provider                                      [ Manifest 192–205 ms ]
                                                     [ remoteEntry 205–267 ms ]
                                                                   [ container init 267–272 ms ]

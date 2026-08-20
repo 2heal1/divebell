@@ -135,11 +135,11 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /always the first report field[\s\S]*swimlane or timing diagram/
+    /always the first report field[\s\S]*do not extend it as a vertical line[\s\S]*swimlane or timing diagram/
   );
   assert.match(
     performance,
-    /firstObservedModuleLoad[\s\S]*mf-resource[\s\S]*Shared JavaScript resources/
+    /firstObservedModuleLoad[\s\S]*mf-shared[\s\S]*loadShare[\s\S]*mf-resource[\s\S]*Shared JavaScript resources/
   );
   assert.match(
     performance,

@@ -180,6 +180,7 @@ function finalizeOperation(
     ...(draft.operationId === undefined ? {} : { operationId: draft.operationId }),
     traceIds: reports.map((report) => report.traceId),
     requestIds,
+    useIn: unique(samples.flatMap((sample) => sample.shared.useIn ?? [])),
     startedAt: Math.min(...reports.map((report) => report.startedAt)),
     updatedAt: Math.max(...reports.map((report) => report.updatedAt)),
     ...optionalValue("trigger", lastDefined(samples, (sample) => sample.shared.trigger)),

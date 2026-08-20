@@ -50,6 +50,7 @@ test("shared trace explains candidates, compatibility, selection, trigger, and f
     selectionReason: "singleton-existing",
     strictVersion: true,
     trigger: "build",
+    useIn: ["catalog"],
     remote: "catalog",
     expose: "./App",
     sharedRequestId: "catalog/App"
@@ -62,6 +63,7 @@ test("shared trace explains candidates, compatibility, selection, trigger, and f
   const operation = result.operations[0];
   assert.equal(operation.operationId, "loadShare-42");
   assert.equal(operation.trigger, "build");
+  assert.deepEqual(operation.useIn, ["catalog"]);
   assert.equal(operation.requiredVersion, "^18.0.0");
   assert.equal(operation.candidates[0].compatible, false);
   assert.equal(operation.candidates[0].rejectionReason, "version-mismatch");

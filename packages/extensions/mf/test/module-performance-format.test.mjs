@@ -55,6 +55,34 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
         }]
       },
       {
+        id: "host-shared",
+        kind: "mf-shared",
+        label: "host · loadShare",
+        items: [{
+          id: "host-react",
+          type: "span",
+          label: "react@18.3.1 Shared JS · loading",
+          start: 100,
+          end: 180,
+          duration: 80,
+          source: "module-federation"
+        }]
+      },
+      {
+        id: "remote-shared",
+        kind: "mf-shared",
+        label: "catalog · loadShare",
+        items: [{
+          id: "catalog-react",
+          type: "span",
+          label: "reuse react@18.3.1 Shared (from host)",
+          start: 267,
+          end: 268,
+          duration: 1,
+          source: "module-federation"
+        }]
+      },
+      {
         id: "page-scripts",
         kind: "page-script",
         label: "Page scripts",
@@ -102,13 +130,16 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   assert.match(output, /Main HTML response 0–84 ms/);
   assert.match(output, /MF consumer.*host · loadRemote/);
   assert.match(output, /catalog\/Button 190–338 ms/);
+  assert.match(output, /MF shared[\s\S]*host · loadShare/);
+  assert.match(output, /react@18\.3\.1 Shared JS · loading/);
+  assert.match(output, /catalog · loadShare[\s\S]*reuse react@18\.3\.1 Shared/);
+  assert.match(output, /from host/);
   assert.match(output, /Button\.js 272–329 ms/);
   assert.doesNotMatch(output, /Page scripts|irrelevant\.js|1000/);
   assert.doesNotMatch(output, /transfer|decoded|cache:/);
-  const timelineLines = output.split("\n").slice(4);
-  assert.ok(timelineLines.every((line) =>
-    (line.match(/[│┼]/g) ?? []).length >= 3
-  ));
+  const paintLine = output.split("\n").find((line) => line.startsWith("Paint"));
+  assert.equal((paintLine.match(/●/g) ?? []).length, 3);
+  assert.doesNotMatch(output, /[│┼]/);
   assert.match(output, /[├─┤●]/);
   assert.ok(output.split("\n").every((line) => line.length <= 96));
 });

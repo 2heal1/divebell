@@ -17,7 +17,11 @@ import type {
   DivebellExtensionCommand,
   DivebellExtensionDefinition
 } from "../types/commands.js";
-import type { CliOperationLogEntry, ParsedCliArgs } from "../types/shared.js";
+import type {
+  CliOperationLogEntry,
+  CommandOutputWriter,
+  ParsedCliArgs
+} from "../types/shared.js";
 import { createDivebellExtensionApi } from "../features/extension/api.js";
 
 const MAX_EXTENSION_CALL_DEPTH = 16;
@@ -93,6 +97,14 @@ export async function runExtensionCliCommand(
 
   const openContext = await operationLogStore.read();
   const extensionArgs = applyOpenContextDefaults(args, openContext);
+  let wroteOutput = false;
+  const extensionStdout: CommandOutputWriter = {
+    ...(stdout.columns === undefined ? {} : { columns: stdout.columns }),
+    write(chunk) {
+      wroteOutput = true;
+      stdout.write(chunk);
+    }
+  };
   const result = await executeExtensionCommand(
     {
       fetcher,
@@ -109,17 +121,10 @@ export async function runExtensionCliCommand(
     [{
       extension: registered.extension.name,
       command: registered.command.name
-    }]
+    }],
+    extensionStdout
   );
-  const presentation = registered.command.presentation;
-  if (presentation?.when(args) === true) {
-    const rendered = await presentation.render(result, {
-      args: extensionArgs,
-      ...(stdout.columns === undefined ? {} : { columns: stdout.columns })
-    });
-    stdout.write(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
-    return 0;
-  }
+  if (wroteOutput) return 0;
   writeOkOutput(stdout, extensionArgs.command.join(" "), result);
   return 0;
 }
@@ -128,7 +133,8 @@ async function executeExtensionCommand<T = unknown>(
   executor: ExtensionCommandExecutor,
   registered: RegisteredExtensionCommand,
   args: ParsedCliArgs,
-  calls: readonly ExtensionCall[]
+  calls: readonly ExtensionCall[],
+  stdout?: CommandOutputWriter
 ): Promise<T> {
   assertRequiredOpenHook(executor.openContext, registered);
   const runExtension = async <Result = unknown>(
@@ -181,6 +187,7 @@ async function executeExtensionCommand<T = unknown>(
     ...(executor.openContext?.headers === undefined
       ? {}
       : { headers: executor.openContext.headers }),
+    ...(stdout === undefined ? {} : { stdout }),
     divebell: createDivebellExtensionApi({
       args,
       fetcher: executor.fetcher,

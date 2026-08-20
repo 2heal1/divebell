@@ -308,13 +308,10 @@ function shouldUseRawOutput(
   config: DivebellCliConfig
 ): boolean {
   const commandName = args.command[0];
-  const presentation = commandName === undefined
-    ? undefined
-    : config.commandRegistry.get(commandName)?.command.presentation;
   return args.command[0] === "__bridge-server"
     || args.command[0] === "skill"
     || hasOption(args, "skill")
-    || presentation?.when(args) === true;
+    || (commandName !== undefined && config.commandRegistry.has(commandName));
 }
 
 function writeCommandOutput(

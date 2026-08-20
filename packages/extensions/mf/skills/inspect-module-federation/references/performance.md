@@ -254,7 +254,7 @@ corresponding status, match, outcome, or unobserved entry.
 ## `--report` return
 
 Use `module-perf --report` when the user explicitly asks for a fixed,
-consolidated performance report. It is a presentation contract over the normal
+consolidated performance report. It is a stable view over the normal
 `module-perf` result, not another measurement: it does not load a Remote,
 render a module, or create a second sample.
 
@@ -326,7 +326,7 @@ over a simple arrow chain because page scripts, MF resources, and preload
 resources can overlap. Do not draw a causal arrow between browser resources
 and MF events unless the report contains explicit evidence for that relation.
 
-### Timeline presentation example
+### Terminal timeline example
 
 Render a result in a compact form similar to this. The labels contain the
 authoritative times; horizontal spacing illustrates chronological order and

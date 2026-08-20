@@ -44,52 +44,14 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   );
   assert.equal(typeof validated.hooks.open, "function");
   assert.equal(typeof validated.hooks.detectStack, "function");
-  assert.equal(validated.commands[0].presentation.kind, "text");
-  assert.equal(validated.commands[0].presentation.when({
-    command: ["mf", "module-perf"],
-    options: new Map([
-      ["report", ["true"]],
-      ["view", ["timeline"]]
-    ])
-  }), true);
-  assert.equal(validated.commands[0].presentation.when({
-    command: ["mf", "status"],
-    options: new Map([["view", ["timeline"]]])
-  }), false);
-  const timelineText = await validated.commands[0].presentation.render({
-    report: {
-      timeline: {
-        schemaVersion: 1,
-        clock: { origin: "navigationStart", unit: "ms" },
-        markers: [],
-        lanes: [{
-          id: "page",
-          kind: "page",
-          label: "Page",
-          items: [{
-            id: "navigation-start",
-            type: "point",
-            label: "Visit URL",
-            at: 0,
-            source: "browser"
-          }]
-        }]
-      }
-    }
-  }, {
-    args: {
-      command: ["mf", "module-perf"],
-      options: new Map([["view", ["timeline"]]])
-    },
-    columns: 72
-  });
-  assert.match(timelineText, /navigationStart = 0 ms[\s\S]*Visit URL @ 0 ms/);
   const entrySource = readFileSync(resolve(packageRoot, "dist/extension.js"), "utf8");
   assert.match(entrySource, /import\("\.\/index\.js"\)/);
   assert.match(entrySource, /import\("\.\/open\.js"\)/);
   assert.match(entrySource, /import\("\.\/detect-stack\.js"\)/);
-  assert.match(entrySource, /import\("\.\/module-performance\/format\.js"\)/);
+  assert.doesNotMatch(entrySource, /module-performance\/format/);
   assert.doesNotMatch(entrySource, /getRuntimeState|readFile/);
+  const commandSource = readFileSync(resolve(packageRoot, "dist/index.js"), "utf8");
+  assert.match(commandSource, /import\("\.\/module-performance\/format\.js"\)/);
   const commandReferences = validated.commands[0].commandReferences;
   assert.deepEqual(
     commandReferences,
@@ -117,10 +79,6 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.equal(vmok.displayName, "Vmok");
   assert.deepEqual(vmok.commands.map((command) => command.name), ["vmok"]);
   assert.equal(vmok.commands[0].skill.path, validated.commands[0].skill.path);
-  assert.equal(vmok.commands[0].presentation.when({
-    command: ["vmok", "module", "perf"],
-    options: new Map([["view", ["timeline"]]])
-  }), true);
   assert.equal(typeof vmok.hooks.open, "function");
   assert.equal(typeof vmok.hooks.detectStack, "function");
   assert.ok(
@@ -189,7 +147,7 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /Timeline presentation example[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/
+    /Terminal timeline example[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/
   );
   assert.match(
     performance,

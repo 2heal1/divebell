@@ -183,13 +183,13 @@ export async function runFoo(
 
 Return the result directly on success. Divebell wraps and formats it as the standard successful output. Throw an error on failure; Divebell formats the error and returns a non-zero exit code. Divebell shows one terminal loading animation while any CLI or Extension Command runs, so an Extension does not need to start one itself. When the current page was opened with `open --headers`, the Command receives the same object as `options.headers`. See [`CliExtensionRunOptions`](extension-api.md#cliextensionrunoptions) for the complete types.
 
-Commands with an explicit human-facing mode may declare a text
-`presentation`. Its pure `when(args)` selector chooses that mode, and `render`
-formats the already computed Command result using the available terminal width.
-Default invocations keep the standard JSON envelope, and nested `runExtension`
-calls always receive the unrendered result. Use this only for an explicit
-option such as `--view timeline`; do not switch output based only on TTY
-detection.
+Commands with an explicit human-facing mode may write the complete successful
+view to `options.stdout`. This writer is available only to a directly invoked
+top-level Command; nested `runExtension` calls receive no writer and keep the
+structured return value. Write only after the Command work has succeeded, and
+select the view through an explicit option such as `--view timeline` rather
+than TTY detection. When the Command does not write, Divebell keeps the
+standard JSON envelope.
 
 An Extension can reuse another Extension's Commands by declaring it once in the Extension-level `requires` list and calling `runExtension`:
 

@@ -33,19 +33,19 @@ function createCommandExtension(
   };
 }
 
-test("renders an explicitly selected Extension text presentation without changing default JSON", async () => {
+test("lets a top-level Extension command own stdout without changing nested results", async () => {
   const extension = createCommandExtension({
     name: "timeline-demo",
-    presentation: {
-      kind: "text",
-      when: (args) => args.options.get("view")?.at(-1) === "timeline",
-      render: (result, options) => {
-        assert.deepEqual(result, { observed: true });
-        assert.equal(options.columns, 72);
-        return "Page       ├────────┤ HTML 0–84 ms";
+    run: async ({ args, stdout }) => {
+      if (
+        stdout !== undefined
+        && args.options.get("view")?.at(-1) === "timeline"
+      ) {
+        assert.equal(stdout.columns, 72);
+        stdout.write("Page       ├────────┤ HTML 0–84 ms\n");
       }
-    },
-    run: async () => ({ observed: true })
+      return { observed: true };
+    }
   });
   const cli = createDivebellCli({ extensions: [extension] });
 
@@ -993,7 +993,7 @@ test("registers a command and merges its help entries", async () => {
       command: ["demo", "ping"],
       hasWithLoadingOption: true,
       hasOutputOption: false,
-      hasStdoutOption: false,
+      hasStdoutOption: true,
       hasStderrOption: false,
       hasBridgeUrlOption: false,
       hasRuntimeSelectorOption: false,

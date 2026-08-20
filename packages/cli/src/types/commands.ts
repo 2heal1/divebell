@@ -37,25 +37,12 @@ export interface CliExtensionLoadingFunction {
   <T>(run: () => T | PromiseLike<T>): Promise<T>;
 }
 
-export interface CliExtensionPresentationOptions {
-  args: ParsedCliArgs;
-  columns?: number;
-}
-
-export interface CliExtensionTextPresentation {
-  kind: "text";
-  when(args: ParsedCliArgs): boolean;
-  render(
-    result: unknown,
-    options: CliExtensionPresentationOptions
-  ): string | PromiseLike<string>;
-}
-
 export interface CliExtensionRunOptions {
   args: ParsedCliArgs;
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
+  stdout?: CommandOutputWriter;
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
   withLoading: CliExtensionLoadingFunction;
@@ -66,7 +53,6 @@ export interface DivebellExtensionCommand {
   requiresOpenHook?: boolean;
   skill?: DivebellCommandSkill;
   commandReferences?: readonly CliCommandReference[];
-  presentation?: CliExtensionTextPresentation;
   run(options: CliExtensionRunOptions): Promise<unknown>;
 }
 

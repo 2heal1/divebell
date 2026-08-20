@@ -26,6 +26,18 @@ export async function runMfCommand(
       options.output.ok(result);
       return 0;
     }
+    if (
+      options.stdout !== undefined
+      && usesModulePerformanceTimelineView(options.args)
+    ) {
+      const rendered = (await import("./module-performance/format.js"))
+        .formatModulePerformanceReportTimeline(result, {
+          ...(options.stdout.columns === undefined
+            ? {}
+            : { columns: options.stdout.columns })
+        });
+      options.stdout.write(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
+    }
     return result;
   } catch (error) {
     if (error instanceof MfCoreError) {
@@ -36,4 +48,14 @@ export async function runMfCommand(
     }
     throw error;
   }
+}
+
+function usesModulePerformanceTimelineView(
+  args: CliExtensionRunOptions["args"]
+): boolean {
+  const segments = args.command.slice(1);
+  const modulePerformance = segments[0] === "module-perf" || (
+    segments[0] === "module" && segments[1] === "perf"
+  );
+  return modulePerformance && args.options.get("view")?.at(-1) === "timeline";
 }

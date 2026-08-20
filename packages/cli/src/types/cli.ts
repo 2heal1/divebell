@@ -7,11 +7,9 @@ import type { Fetcher } from "../features/runtime/client.js";
 import type {
   CliExtensionRunFunction,
   CliExtensionLoadingFunction,
-  CliExtensionPresentationOptions,
   CliExtensionRunOptionScalar,
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
-  CliExtensionTextPresentation,
   CliCommandReference,
   CliCommandSkillReference,
   ExtensionLoadRecord,
@@ -26,12 +24,10 @@ export type {
   CliExtensionPageContext,
   CliExtensionRunFunction,
   CliExtensionLoadingFunction,
-  CliExtensionPresentationOptions,
   CliExtensionRunOptionScalar,
   CliExtensionRunOptionValue,
   CliExtensionRunRequest,
   CliExtensionRunOptions,
-  CliExtensionTextPresentation,
   DivebellExtensionCommand,
   DivebellExtensionDefinition
 } from "./commands.js";

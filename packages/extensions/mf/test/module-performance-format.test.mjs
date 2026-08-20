@@ -140,7 +140,7 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
   assert.ok(output.split("\n").every((line) => line.length <= 72));
 });
 
-test("rejects non-report values before terminal presentation", () => {
+test("rejects non-report values before terminal rendering", () => {
   assert.throws(
     () => formatModulePerformanceReportTimeline({ command: "mf status" }),
     /requires an mf module-perf --report result/

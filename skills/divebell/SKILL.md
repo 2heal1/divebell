@@ -91,12 +91,10 @@ divebell open <url> [--profile <name-or-path> | --state <path> | --temp-profile]
 Divebell opens headlessly by default. Add `--ui` only when the user explicitly
 requests a visible window or visible UI is required for the task.
 
-After `open`, check whether the target is accessible. If a state-backed open
-redirects to login, returns 401 or 403, or shows a signed-out or permission
-page, do not infer missing sources or broaden the state. Read
-`references/authentication.md` and use the authorized clean local Profile
-workflow: `--temp-profile`, user sign-in, `profile export`, then reopen with the
-returned Profile path. Otherwise, continue the task.
+After `open`, check whether the target is accessible. If access is denied, for
+example because the page redirected to a login page, read
+`references/authentication.md` and follow its decision flow. Otherwise,
+continue the task.
 
 Continue every browser operation through Divebell.
 

@@ -33,7 +33,42 @@ Install the Divebell CLI globally once:
 ```bash
 npm install --global @divebell/cli
 divebell setup
-divebell --help
+```
+
+Install the Module Federation Extension, open the public playground with MF
+diagnostics enabled, and render its observed module loading directly in the
+terminal:
+
+```bash
+divebell extensions add @divebell/extension-mf
+divebell open https://module-federation.io/playground/index.html --mf
+divebell mf module-perf --report --view timeline
+```
+
+Example output (the observed timings vary between navigations):
+
+```text
+navigationStart = 0 ms
+
+time (ms)    0              1420              2840            4260
+             ├───────────────┬───────────────────────────────────┤
+Paint                        │                                   │ FP 1296 ms · FCP 1296 ms · LCP 4260 ms [provisional]
+Page         ●               │                                   │ Visit URL @ 0 ms
+             ├──────────┤    │                                   │ Main HTML response 0.6–935 ms
+MF consumer                  │                                   │ mf_doc · loadRemote
+                             │              ├───────────────────┤│ mf_playground/. 2568.8–4196.8 ms
+MF provider                  │                                   │ mf_playground@https://unpkg.com/@module-federation/p
+                             │                                   │ layground@latest/dist/mf/mf-manifest.json
+                             │              ├──────┤             │ Manifest 2570.8–3111.8 ms
+                             │                     ├──────┤      │ remoteEntry 3113.8–3662.8 ms
+                             │                            ◆      │ Provider container init 3662.8–3663.8 ms
+                             │                            ├─────┤│ Expose get / sync chunks 3663.8–4175.8 ms
+                             │                                  ◆│ Module factory 4175.8–4196.8 ms
+                             │                                  ●│ Provider module loaded @ 4196.8 ms
+MF resources                 │                                   │ mf_playground · JavaScript resources
+                             │                     ├────────────┤│ 395.js · expose sync 3116.2–4162.2 ms
+                             │                     ├────┤        │ __federation_expose_default_export… 3116.4–3516.1 ms
+                             │                     ├──────┤      │ remoteEntry.js · remoteEntry 3116.9–3651 ms
 ```
 
 `divebell setup` checks the environment and repairs browser startup only when
@@ -46,16 +81,6 @@ directories are read-only. Set `DIVEBELL_HOME` and `AGENT_BROWSER_HOME` only
 when those files need specific durable writable locations.
 
 Install the [Divebell Skill](./skills/divebell/SKILL.md) in your agent.
-
-Then ask:
-
-```text
-Use divebell to visit https://module-federation.io/playground/index.html,
-replace the manifest with
-https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json,
-and run the preview. If the Playground reports an error, use the divebell CLI
-to analyze and resolve it.
-```
 
 ## Why Divebell
 

@@ -5,6 +5,8 @@ import {
   reportInstanceRef
 } from "../remote/selection.js";
 import { remotesMatch, visibleInstanceName } from "../selection.js";
+import { groupSharedTraceOperations } from "../shared/trace.js";
+import type { SharedTraceOperation } from "../shared/types.js";
 import type {
   RemoteStageEvidence,
   RemoteTraceSummary
@@ -34,6 +36,7 @@ import type {
   ModulePerformanceSelectors,
   ModulePerformanceSharedAssetsSnapshot,
   ModulePerformanceSharedDependency,
+  ModulePerformanceSharedOperation,
   ModulePerformanceTiming,
   ModulePerformanceUnobservedRemote
 } from "./types.js";
@@ -65,6 +68,12 @@ export function createModulePerformanceResult(
     .sort(compareModules);
   const unobservedRemotes = collectUnobservedRemotes(snapshot, groups, selectors);
   const operations = modules.flatMap((module) => module.operations);
+  const sharedOperations = createSharedOperations(
+    groups,
+    snapshot,
+    performance,
+    timeOrigin
+  );
 
   return {
     schemaVersion: 1,
@@ -87,8 +96,173 @@ export function createModulePerformanceResult(
       unobservedRemoteCount: unobservedRemotes.length
     },
     modules,
+    sharedOperations,
     unobservedRemotes
   };
+}
+
+function createSharedOperations(
+  groups: ModuleGroup[],
+  snapshot: BrowserObservabilitySnapshot,
+  performance: ModulePerformanceBrowserSnapshot | null,
+  timeOrigin: number
+): ModulePerformanceSharedOperation[] {
+  return groupSharedTraceOperations(snapshot).flatMap((operation) => {
+    if (operation.operationId === undefined) return [];
+    const group = matchSharedOperationGroup(operation, groups);
+    if (group === undefined) return [];
+    const remoteOperation = sharedOperationTargetsProducer(operation, group);
+    const requester = remoteOperation
+      ? group.producer.name
+      : operation.mfName;
+    const requesterIdentities = remoteOperation
+      ? [group.remote.name, group.remote.alias, group.producer.name]
+      : [operation.instanceRef, operation.mfName, group.consumer.name];
+    const action = operation.provider !== undefined && !requesterIdentities
+      .some((identity) => identity !== undefined && relatedIdentity(
+        operation.provider as string,
+        identity
+      ))
+      ? "reuse" as const
+      : "load" as const;
+    const timing = intervalFromEpoch(
+      operation.startedAt,
+      operation.finalResult.status === "pending"
+        ? undefined
+        : operation.updatedAt,
+      operation.finalResult.status === "pending"
+        ? undefined
+        : operation.updatedAt - operation.startedAt,
+      timeOrigin
+    );
+    return [{
+      instanceRef: operation.instanceRef,
+      requester,
+      packageName: operation.package,
+      action,
+      timing,
+      status: operation.finalResult.status,
+      ...(operation.provider === undefined
+        ? {}
+        : { provider: operation.provider }),
+      ...(operation.selectedVersion === undefined
+        ? {}
+        : { selectedVersion: operation.selectedVersion }),
+      ...(operation.remote === undefined ? {} : { remote: operation.remote }),
+      ...(operation.expose === undefined ? {} : { expose: operation.expose }),
+      assets: action === "load"
+        ? matchSharedOperationAssets(
+            operation,
+            requesterIdentities,
+            timing,
+            performance
+          )
+        : []
+    }];
+  }).sort((left, right) =>
+    left.timing.start - right.timing.start ||
+    left.requester.localeCompare(right.requester) ||
+    left.packageName.localeCompare(right.packageName)
+  );
+}
+
+function matchSharedOperationGroup(
+  operation: SharedTraceOperation,
+  groups: ModuleGroup[]
+): ModuleGroup | undefined {
+  const producerGroup = groups.find((group) =>
+    sharedOperationTargetsProducer(operation, group) && (
+      operation.expose === undefined || group.expose === undefined ||
+      sameExpose(operation.expose, group.expose)
+    )
+  );
+  if (producerGroup !== undefined) return producerGroup;
+  return groups.find((group) =>
+    operation.instanceRef === group.consumer.instanceRef ||
+    relatedIdentity(operation.mfName, group.consumer.name)
+  );
+}
+
+function sharedOperationTargetsProducer(
+  operation: SharedTraceOperation,
+  group: ModuleGroup
+): boolean {
+  if (
+    operation.instanceRef === group.producer.instanceRef ||
+    relatedIdentity(operation.mfName, group.producer.name)
+  ) return true;
+  const producerIdentities = [
+    group.remote.name,
+    group.remote.alias,
+    group.producer.name
+  ];
+  return [operation.remote, ...operation.useIn].some((candidate) =>
+    candidate !== undefined && producerIdentities.some((identity) =>
+      identity !== undefined && relatedIdentity(candidate, identity)
+    )
+  );
+}
+
+function matchSharedOperationAssets(
+  operation: SharedTraceOperation,
+  requesterIdentities: Array<string | undefined>,
+  timing: ModulePerformanceInterval,
+  performance: ModulePerformanceBrowserSnapshot | null
+): ModulePerformanceAssetTiming[] {
+  if (performance === null) return [];
+  const declarations = unique(
+    (performance.shared ?? []).filter((entry) =>
+      entry.packageName === operation.package && requesterIdentities.some(
+        (identity) => identity !== undefined && sharedDeclarationMatches(
+          entry,
+          identity
+        )
+      )
+    ),
+    sharedDeclarationKey
+  );
+  const operationTiming: ModulePerformanceTiming = {
+    loadRemote: timing,
+    get: timing
+  };
+  const matches = declarations.flatMap((entry) => [
+    ...entry.js.sync.map((asset) => matchAsset(
+      asset,
+      "sync",
+      entry,
+      operationTiming,
+      performance.resources
+    )),
+    ...entry.js.async.map((asset) => matchAsset(
+      asset,
+      "async",
+      entry,
+      operationTiming,
+      performance.resources
+    ))
+  ]).filter((asset) => asset.match === "matched" &&
+    asset.start !== undefined &&
+    asset.start <= (timing.end ?? Number.POSITIVE_INFINITY) + 10 &&
+    (asset.end ?? asset.start) >= timing.start - 10
+  );
+  const keyed = new Map<string, ModulePerformanceAssetTiming>();
+  for (const asset of matches) {
+    keyed.set(`${asset.url ?? asset.asset}\u0000${asset.start}`, asset);
+  }
+  return Array.from(keyed.values()).sort((left, right) =>
+    (left.start ?? 0) - (right.start ?? 0) ||
+    left.asset.localeCompare(right.asset)
+  );
+}
+
+function sharedDeclarationMatches(
+  entry: ModulePerformanceSharedAssetsSnapshot,
+  identity: string
+): boolean {
+  const normalized = normalizeIdentity(identity);
+  return (
+    entry.name !== undefined && normalizeIdentity(entry.name) === normalized
+  ) || normalizeIdentity(entry.key).includes(normalized);
 }
 
 function createPageResult(

@@ -37,6 +37,7 @@ export const modulePerformanceCommand: MfCommandDefinition = {
     const name = option(options.args.options, "mf");
     const instanceRef = option(options.args.options, "instance");
     const report = booleanOption(options.args.options, "report");
+    validateView(options.args.options, report);
     const snapshot = await readCommandSnapshot(options);
     validateConsumer(snapshot, name, instanceRef, commandName);
     let performance;
@@ -114,4 +115,25 @@ function booleanOption(options: Map<string, string[]>, name: string): boolean {
     message: `Invalid --${name} value ${JSON.stringify(value)}.`,
     hint: "Use --report or --report=false."
   });
+}
+
+function validateView(options: Map<string, string[]>, report: boolean): void {
+  const value = option(options, "view");
+  if (value === undefined) return;
+  if (value !== "timeline") {
+    throw new MfCommandError({
+      code: "MF_COMMAND_OPTION_INVALID",
+      kind: "validation",
+      message: `Invalid --view value ${JSON.stringify(value)}.`,
+      hint: "Use --view timeline or omit --view."
+    });
+  }
+  if (!report) {
+    throw new MfCommandError({
+      code: "MF_COMMAND_OPTION_INVALID",
+      kind: "validation",
+      message: "--view timeline requires --report.",
+      hint: "Run `divebell mf module-perf --report --view timeline`."
+    });
+  }
 }

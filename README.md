@@ -33,8 +33,21 @@ Install the Divebell CLI globally once:
 ```bash
 npm install --global @divebell/cli
 divebell setup
-divebell --help
 ```
+
+Install the Module Federation Extension, open the public playground with MF
+diagnostics enabled, and render its observed module loading directly in the
+terminal:
+
+```bash
+divebell extensions add @divebell/extension-mf
+divebell open https://module-federation.io/playground/index.html --mf
+divebell mf module-perf --report --view timeline
+```
+
+Example output (the observed timings vary between navigations):
+
+![Module Federation performance timeline](./assets/mf-module-perf-timeline.png)
 
 `divebell setup` checks the environment and repairs browser startup only when
 needed. Its browser probe runs in a temporary session and cleans that session up
@@ -46,16 +59,6 @@ directories are read-only. Set `DIVEBELL_HOME` and `AGENT_BROWSER_HOME` only
 when those files need specific durable writable locations.
 
 Install the [Divebell Skill](./skills/divebell/SKILL.md) in your agent.
-
-Then ask:
-
-```text
-Use divebell to visit https://module-federation.io/playground/index.html,
-replace the manifest with
-https://unpkg.com/@divebell/mf-playground-remote@0.1.0/dist/mf/mf-manifest.json,
-and run the preview. If the Playground reports an error, use the divebell CLI
-to analyze and resolve it.
-```
 
 ## Why Divebell
 

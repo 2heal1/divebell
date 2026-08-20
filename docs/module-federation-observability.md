@@ -11,7 +11,7 @@ This package is a Module Federation runtime plugin for long-term collection, not
 The MF Extension also provides:
 
 ```bash
-divebell mf module-perf [remote/expose]
+divebell mf module-perf [remote/expose] [--report] [--view timeline]
 ```
 
 This command requires only `divebell open <url> --mf`; consumers and producers
@@ -52,6 +52,16 @@ fallback origin. An MF preload lane is included only for
 official `preloadRemote` JavaScript attributed to the same MF target or for a
 browser `preload`/`modulepreload` resource that matches that target's Manifest
 assets. Unrelated page preloads are not included.
+
+For a human-readable terminal rendering of the same report, run:
+
+```bash
+divebell mf module-perf [remote/expose] --report --view timeline
+```
+
+The explicit view replaces the normal JSON envelope with a terminal-width
+Unicode swimlane. It does not recollect evidence or reload a module. Omit
+`--view timeline` to keep the stable structured report for Agents and pipes.
 
 ## What the plugin provides
 

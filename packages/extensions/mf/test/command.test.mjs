@@ -238,6 +238,148 @@ test("module-perf rejects more than one positional target before reading the pag
   );
 });
 
+test("module-perf validates the explicit terminal timeline view before reading the page", async () => {
+  const missingReport = createOptions(
+    ["mf", "module-perf"],
+    new Map([["view", ["timeline"]]]),
+    undefined
+  );
+  await assert.rejects(
+    () => runMfCommand(missingReport.options),
+    (error) => error.code === "MF_COMMAND_OPTION_INVALID" &&
+      /requires --report/.test(error.message) &&
+      /--report --view timeline/.test(error.hint)
+  );
+
+  const invalidView = createOptions(
+    ["mf", "module-perf"],
+    new Map([
+      ["report", ["true"]],
+      ["view", ["html"]]
+    ]),
+    undefined
+  );
+  await assert.rejects(
+    () => runMfCommand(invalidView.options),
+    (error) => error.code === "MF_COMMAND_OPTION_INVALID" &&
+      /Invalid --view value/.test(error.message) &&
+      /--view timeline/.test(error.hint)
+  );
+});
+
+test("module-perf renders its terminal timeline through top-level stdout", async () => {
+  const state = runtimeState({
+    instances: [instance({
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer"
+    })]
+  });
+  const reads = [browserRead(state), {
+    schemaVersion: 1,
+    installedAt: 1,
+    page: {
+      timeOrigin: 0,
+      url: "https://app.test/",
+      fp: 142,
+      fcp: 231,
+      lcp: 480,
+      lcpStatus: "provisional"
+    },
+    resources: [],
+    exposes: []
+  }];
+  let stdout = "";
+  const result = await runMfCommand({
+    args: {
+      command: ["mf", "module-perf"],
+      options: new Map([
+        ["report", ["true"]],
+        ["view", ["timeline"]]
+      ])
+    },
+    stdout: {
+      columns: 72,
+      write(chunk) { stdout += chunk; }
+    },
+    fetcher: async () => new Response(),
+    divebell: {
+      browser: {
+        async eval() { return reads.shift(); }
+      }
+    }
+  });
+
+  assert.equal(result.command, "mf module-perf --report");
+  assert.equal(reads.length, 0);
+  assert.match(stdout, /│ Event\s+│ Timeline/);
+  assert.match(stdout, /● FP[\s\S]*● FCP[\s\S]*◇ LCP/);
+  for (const timestamp of ["0.142s", "0.231s", "0.48s"]) {
+    assert.match(stdout, new RegExp(timestamp.replace(".", "\\.")));
+  }
+  assert.doesNotMatch(stdout, /^\s*\{/);
+});
+
+test("module-perf timeline takes precedence over the legacy JSON output adapter", async () => {
+  const state = runtimeState({
+    instances: [instance({
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer"
+    })]
+  });
+  const reads = [browserRead(state), {
+    schemaVersion: 1,
+    installedAt: 1,
+    page: {
+      timeOrigin: 0,
+      url: "https://app.test/",
+      fp: 142,
+      fcp: 231,
+      lcp: 480,
+      lcpStatus: "provisional"
+    },
+    resources: [],
+    exposes: []
+  }];
+  let stdout = "";
+  let outputValue;
+  const result = await runMfCommand({
+    args: {
+      command: ["mf", "module-perf"],
+      options: new Map([
+        ["report", ["true"]],
+        ["view", ["timeline"]]
+      ])
+    },
+    stdout: {
+      columns: 72,
+      write(chunk) { stdout += chunk; }
+    },
+    output: {
+      ok(value) { outputValue = value; },
+      needsInput() {},
+      error() {}
+    },
+    fetcher: async () => new Response(),
+    divebell: {
+      browser: {
+        async eval() { return reads.shift(); }
+      }
+    }
+  });
+
+  assert.equal(result, 0);
+  assert.equal(outputValue, undefined);
+  assert.equal(reads.length, 0);
+  assert.match(stdout, /│ Event\s+│ Timeline/);
+  assert.match(stdout, /● FP[\s\S]*● FCP[\s\S]*◇ LCP/);
+  for (const timestamp of ["0.142s", "0.231s", "0.48s"]) {
+    assert.match(stdout, new RegExp(timestamp.replace(".", "\\.")));
+  }
+  assert.doesNotMatch(stdout, /^\s*\{/);
+});
+
 test("candidate commands use the invoked mf or vmok command name", async () => {
   const duplicateState = runtimeState({
     instances: [

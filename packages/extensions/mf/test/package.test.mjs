@@ -48,7 +48,10 @@ test("extension manifest is valid and implementation stays lazy", async () => {
   assert.match(entrySource, /import\("\.\/index\.js"\)/);
   assert.match(entrySource, /import\("\.\/open\.js"\)/);
   assert.match(entrySource, /import\("\.\/detect-stack\.js"\)/);
+  assert.doesNotMatch(entrySource, /module-performance\/format/);
   assert.doesNotMatch(entrySource, /getRuntimeState|readFile/);
+  const commandSource = readFileSync(resolve(packageRoot, "dist/index.js"), "utf8");
+  assert.match(commandSource, /import\("\.\/module-performance\/format\.js"\)/);
   const commandReferences = validated.commands[0].commandReferences;
   assert.deepEqual(
     commandReferences,
@@ -132,11 +135,12 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /always the first report field[\s\S]*swimlane or timing diagram/
+    /two-column `Event` \/[\s\S]*marker and its label together[\s\S]*do not[\s\S]*extend it as a vertical line[\s\S]*seconds-based axis/i
   );
+  assert.match(performance, /always the first report field/);
   assert.match(
     performance,
-    /firstObservedModuleLoad[\s\S]*mf-resource[\s\S]*Shared JavaScript resources/
+    /firstObservedModuleLoad[\s\S]*mf-shared[\s\S]*loadShare[\s\S]*mf-resource[\s\S]*Shared JavaScript resources/
   );
   assert.match(
     performance,
@@ -144,11 +148,11 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /Timeline presentation example[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/
+    /Terminal timeline example[\s\S]*Event[\s\S]*Timeline[\s\S]*FP · FCP[\s\S]*◇ LCP[\s\S]*260ms · 45 KB[\s\S]*◆ reuse/
   );
   assert.match(
     performance,
-    /Label[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omit the[\s\S]*entire lane[\s\S]*Preserve observed overlap/
+    /Event column contains only[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omits `page-script` events[\s\S]*Provider[\s\S]*`Preload` group[\s\S]*Preserve observed overlap/
   );
   assert.match(
     performance,

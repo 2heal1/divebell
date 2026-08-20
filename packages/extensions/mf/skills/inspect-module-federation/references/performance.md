@@ -254,9 +254,20 @@ corresponding status, match, outcome, or unobserved entry.
 ## `--report` return
 
 Use `module-perf --report` when the user explicitly asks for a fixed,
-consolidated performance report. It is a presentation contract over the normal
+consolidated performance report. It is a stable view over the normal
 `module-perf` result, not another measurement: it does not load a Remote,
 render a module, or create a second sample.
+
+Use `module-perf --report --view timeline` when the user explicitly wants the
+same report rendered directly in a terminal. The terminal view replaces the
+structured JSON envelope for that invocation only. Omit `--view timeline` for
+Agent or pipeline consumption. The view does not change the measurement,
+timeline boundaries, or report diagnosis. It uses a two-column `Event` /
+`Timeline` table, abbreviates long event names, and omits the generic
+`page-script` lane. The Event column contains identity and hierarchy only. The
+Timeline column contains every displayed marker, bar, timestamp, duration, and
+transfer size. Encoded/decoded size, cache, provider/source details, and other
+exact fields remain in the structured JSON report.
 
 The stable return is timeline-first:
 
@@ -282,6 +293,14 @@ report
       preloadJs[]
       bottleneck
       findings[]
+  sharedOperations[]
+    requester
+    packageName
+    action
+    timing
+    provider
+    selectedVersion
+    assets[]
   recommendations[]
   page
   selection
@@ -304,6 +323,12 @@ start relative to that origin. Its lane kinds are:
   boundary;
 - `mf-provider`: Manifest, remoteEntry, provider container initialization,
   expose get/synchronous chunks, factory execution, and the final MF result;
+- `mf-shared`: observed `loadShare` operations. A provider's initial operation
+  is shown as a `load` lifecycle. When its declared Shared asset matches Browser
+  Resource Timing, a separate Shared JS loading span uses that request's actual
+  start and end. A later consumer operation is labeled `reuse` when the selected
+  provider differs from that Remote. Reuse timing is the observed `loadShare`
+  lifecycle, not a fabricated JavaScript request;
 - `mf-resource`: matched remoteEntry, expose, and Shared JavaScript resources,
   including request duration, transfer/body sizes, and cache evidence when the
   browser exposes them; and
@@ -311,43 +336,80 @@ start relative to that origin. Its lane kinds are:
   there is no such evidence.
 
 `markers` places FP, FCP, and the latest observed LCP on the same clock. LCP
-keeps its provisional/final status. Render these markers across the lanes and
-render spans in chronological proportion. Prefer a swimlane or timing diagram
-over a simple arrow chain because page scripts, MF resources, and preload
-resources can overlap. Do not draw a causal arrow between browser resources
-and MF events unless the report contains explicit evidence for that relation.
+keeps its provisional/final status. The terminal view merges FP and FCP when
+they have the same timestamp, uses `●` for completed milestones, and uses `◇`
+for provisional LCP. Render each marker and its label together on the Paint
+row, with its timestamp directly below. Do not extend it as a vertical line
+through unrelated MF events. Render spans in chronological proportion on one
+seconds-based axis. Do not draw a causal arrow between browser resources and
+MF events unless the report contains explicit evidence for that relation.
 
-### Timeline presentation example
+The terminal view follows these value rules:
 
-Render a result in a compact form similar to this. The labels contain the
-authoritative times; horizontal spacing illustrates chronological order and
-overlap.
+- the Event column contains only section, event, dependency, expose, and file
+  names;
+- a normal Shared or JavaScript resource bar is followed in the Timeline
+  column by `{duration}` and, when observed, ` · {transferSize}`. Omit the size
+  segment when transfer size was not observed. Do not repeat absolute start/end
+  timestamps for these costs;
+- `loadRemote` is the exception: its line ends in `●` on success and the next
+  line names the requested module and shows the exact start at the left
+  boundary and exact completion at the right boundary. Keep total duration in
+  structured details;
+- Shared reuse is rendered as `◆ reuse` at the observed loadShare completion
+  and the following Timeline line shows its timestamp. Keep `provider`,
+  selected version, and the fact that no additional JavaScript was matched in
+  structured details; and
+- short MF lifecycle transitions can use `◆`; ordinary observed intervals use
+  `━`; completed milestones use `●`.
+
+The current report has a provider container-init boundary but no consumer
+initialization boundary. Do not invent a Consumer `Initialize` marker or rename
+`loadRemote` to initialization.
+
+### Terminal timeline example
+
+Render a result in a compact form similar to this. The horizontal positions use
+one clock; values stay in the Timeline column directly below their graph.
 
 ```text
-navigationStart = 0 ms
-
-time (ms)       0          100          200          300          400          500
-Paint                                 │ FP 142 ms    │ FCP 231 ms               │ LCP 480 ms
-Page            ● Visit URL
-                [ Main HTML response 0–84 ms ]
-Page scripts               [ main.js 91–219 ms              ]
-MF preload                   [ Button.js 110–176 ms ]
-MF consumer                                      [ loadRemote 190–338 ms           ]
-MF provider                                      [ Manifest 192–205 ms ]
-                                                    [ remoteEntry 205–267 ms ]
-                                                                  [ container init 267–272 ms ]
-                                                                   [ get/chunks 272–329 ms     ]
-                                                                                 [ factory 329–337 ms ] ● module loaded 338 ms
-MF resources                                       [ remoteEntry.js 205–267 ms ]
-                                                                   [ Button.js 272–329 ms       ]
+┌──────────────────────────────┬──────────────────────────────────────────────────────────────────────────┐
+│ Event                        │ Timeline                                                                 │
+│                              │ 0s              1s              2s              3s              4s      │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Page                         │                                                                          │
+│   Paint                      │                     ● FP · FCP                                 ◇ LCP    │
+│                              │                     1.116s                                      4.008s  │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Consumer · host              │                                                                          │
+│   loadRemote                 │                                         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●   │
+│     catalog/Button           │                                         2.05s                       3.96s │
+│                              │                                                                          │
+│   Shared                     │                                                                          │
+│     react@19.1.1             │                             ━━━━━                                        │
+│                              │                             260ms · 45 KB                                │
+├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
+│ Provider · catalog           │                                                                          │
+│   Resources                  │                                                                          │
+│     remoteEntry.js           │                                                     ━━━━━━━━━━━          │
+│                              │                                                     555ms · 18 KB        │
+│                              │                                                                          │
+│     Button.js                │                                                     ━━━━━━━━━━━━━━━━━━━━ │
+│                              │                                                     1.20s · 246 KB       │
+│                              │                                                                          │
+│   Shared                     │                                                                          │
+│     react@19.1.1             │                                                                  ◆ reuse │
+│                              │                                                                  3.293s  │
+└──────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘
 ```
 
 Read every boundary from `timeline`; never estimate a missing value. Paint
 markers show temporal relationships, not proof that MF caused a paint. Label
-the consumer interval `loadRemote`, not consumer initialization. Include the
-`MF preload` lane only when an `mf-preload` lane exists; otherwise omit the
-entire lane. Preserve observed overlap instead of converting it into a serial
-arrow chain.
+the consumer interval `loadRemote`, not consumer initialization. The terminal
+view omits `page-script` events; use the structured report when ordinary
+external page scripts are part of the investigation. Include a Provider
+`Preload` group only when an `mf-preload` lane exists; otherwise omit it.
+Preserve observed overlap instead of converting it into a serial arrow chain.
 
 `report.page`, `report.selection`, and `report.summary` preserve the normal
 page anchors and selected scope. Every `report.modules` entry keeps one

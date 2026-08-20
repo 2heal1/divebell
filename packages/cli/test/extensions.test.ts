@@ -33,6 +33,65 @@ function createCommandExtension(
   };
 }
 
+test("lets a top-level Extension command own stdout without changing nested results", async () => {
+  const extension = createCommandExtension({
+    name: "timeline-demo",
+    run: async ({ args, stdout }) => {
+      if (
+        stdout !== undefined
+        && args.options.get("view")?.at(-1) === "timeline"
+      ) {
+        assert.equal(stdout.columns, 72);
+        stdout.write("Page       ├────────┤ HTML 0–84 ms\n");
+      }
+      return { observed: true };
+    }
+  });
+  const cli = createDivebellCli({ extensions: [extension] });
+
+  const structured = createOutput();
+  assert.equal(await cli.run(["timeline-demo"], {
+    stdout: structured.stdout,
+    stderr: structured.stderr
+  }), 0);
+  assert.deepEqual(commandData(structured.text()), { observed: true });
+
+  let text = "";
+  assert.equal(await cli.run(["timeline-demo", "--view", "timeline"], {
+    stdout: {
+      columns: 72,
+      write(chunk) { text += chunk; }
+    },
+    stderr: { write() {} }
+  }), 0);
+  assert.equal(text, "Page       ├────────┤ HTML 0–84 ms\n");
+
+  const caller: DivebellExtensionDefinition = {
+    schemaVersion: 1,
+    name: "timeline-caller",
+    requires: ["timeline-demo"],
+    commands: [{
+      name: "timeline-caller",
+      run: async ({ runExtension }) => ({
+        nested: await runExtension("timeline-demo", {
+          command: "timeline-demo",
+          options: { view: "timeline" }
+        })
+      })
+    }]
+  };
+  const nestedOutput = createOutput();
+  assert.equal(await createDivebellCli({
+    extensions: [extension, caller]
+  }).run(["timeline-caller"], {
+    stdout: nestedOutput.stdout,
+    stderr: nestedOutput.stderr
+  }), 0);
+  assert.deepEqual(commandData(nestedOutput.text()), {
+    nested: { observed: true }
+  });
+});
+
 test("runs open, detectStack, and close hooks only at their matching lifecycle points", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-hooks-"));
   const calls: string[] = [];
@@ -934,7 +993,7 @@ test("registers a command and merges its help entries", async () => {
       command: ["demo", "ping"],
       hasWithLoadingOption: true,
       hasOutputOption: false,
-      hasStdoutOption: false,
+      hasStdoutOption: true,
       hasStderrOption: false,
       hasBridgeUrlOption: false,
       hasRuntimeSelectorOption: false,

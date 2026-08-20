@@ -40,6 +40,8 @@ conclusions.
 - Use `module-perf [remote/expose] --report` when the user explicitly asks for
   a fixed, consolidated performance report. It reorganizes the same evidence;
   it does not rerun a module load.
+- Add `--view timeline` to that report command only when the user explicitly
+  wants a terminal-rendered swimlane instead of structured JSON.
 - Use `remote status <remote>` for a compact current Remote result.
 - Use `remote trace [remote/expose]` for a Remote load or preload timeline.
 - Use `shared status [package]` for the current Shared registry.

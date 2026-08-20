@@ -87,7 +87,7 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
     }
 
     const loading = createLoadingController(stderr);
-    const rawOutput = shouldUseRawOutput(args);
+    const rawOutput = shouldUseRawOutput(args, config);
     const commandStdout = createLoadingAwareWriter(rawOutput ? stdout : bufferedStdout, loading);
     const commandStderr = createLoadingAwareWriter(rawOutput ? stderr : bufferedStderr, loading);
     const exitCode = await loading.withLoading(async () => {
@@ -363,10 +363,15 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
   }
 }
 
-function shouldUseRawOutput(args: ReturnType<typeof parseCliArgs>): boolean {
+function shouldUseRawOutput(
+  args: ReturnType<typeof parseCliArgs>,
+  config: DivebellCliConfig
+): boolean {
+  const commandName = args.command[0];
   return args.command[0] === "__bridge-server"
     || args.command[0] === "skill"
-    || hasOption(args, "skill");
+    || hasOption(args, "skill")
+    || (commandName !== undefined && config.commandRegistry.has(commandName));
 }
 
 function writeCommandOutput(
@@ -470,10 +475,11 @@ function createBufferedWriter(): { write(chunk: string): void; value(): string }
 }
 
 function createLoadingAwareWriter(
-  writer: { write(chunk: string): void },
+  writer: { columns?: number; write(chunk: string): void },
   loading: LoadingController
-): { write(chunk: string): void } {
+): { columns?: number; write(chunk: string): void } {
   return {
+    ...(writer.columns === undefined ? {} : { columns: writer.columns }),
     write(chunk) {
       loading.clear();
       writer.write(chunk);

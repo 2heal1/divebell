@@ -48,6 +48,7 @@ export interface SharedTraceOperation {
   operationId?: string;
   traceIds: string[];
   requestIds: string[];
+  useIn: string[];
   startedAt: number;
   updatedAt: number;
   trigger?: string;

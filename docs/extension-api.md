@@ -66,6 +66,7 @@ interface CliExtensionRunOptions {
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
+  stdout?: { columns?: number; write(chunk: string): void };
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
   withLoading: CliExtensionLoadingFunction;
@@ -77,6 +78,7 @@ interface CliExtensionRunOptions {
 | `options.args` | `ParsedCliArgs` | Parsed arguments for the current command. `command` contains the command name and positional arguments; `options` is a `Map<string, string[]>`, so the same option may appear more than once. |
 | `options.page` | `CliExtensionPageContext \| undefined` | Page context saved after the latest successful `divebell open`. Commands that do not need a page should not require it; commands that do must handle `undefined` first. |
 | `options.headers` | `Readonly<Record<string, string>> \| undefined` | The exact effective headers from the latest successful `divebell open --headers`. It is `undefined` when the page was opened without headers. |
+| `options.stdout` | `CommandOutputWriter \| undefined` | Output for a directly invoked top-level Extension Command. When the Command writes to it, that output becomes the complete successful stdout and the standard JSON envelope is suppressed. It is `undefined` for nested `options.runExtension` calls, which always receive the structured return value. Write only after command work has succeeded to avoid partial output before an error. |
 | `options.divebell` | `DivebellExtensionApi` | Main entry point for reading Runtime information, operating the current page, collecting browser evidence, and waiting for results. |
 | `options.fetcher` | `Fetcher` | Low-level request function used internally by Divebell. Normally avoid calling it directly; use `options.divebell` for Bridge and Runtime access. |
 | `options.runExtension` | `CliExtensionRunFunction` | Calls a Command from this Extension or a declared Extension dependency and returns its raw result. |
@@ -208,7 +210,11 @@ interface CliExtensionPageContext {
 
 ### Command results and errors
 
-Return the result directly when a Command succeeds. The CLI places it in the `data` field of the standard successful output. If the Command has no explicit return value, `data` is `null`.
+Return the result directly when a Command succeeds. The CLI places it in the
+`data` field of the standard successful output. If the Command has no explicit
+return value, `data` is `null`. A top-level Command may instead write an
+explicit human-readable view to `options.stdout`; nested Commands do not
+receive this writer and continue to receive the structured result object.
 
 ```ts
 return { count: 3 };

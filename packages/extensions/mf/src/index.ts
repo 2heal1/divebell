@@ -22,6 +22,19 @@ export async function runMfCommand(
       mfCommandRegistry,
       commandName
     );
+    if (
+      options.stdout !== undefined
+      && usesModulePerformanceTimelineView(options.args)
+    ) {
+      const rendered = (await import("./module-performance/format.js"))
+        .formatModulePerformanceReportTimeline(result, {
+          ...(options.stdout.columns === undefined
+            ? {}
+            : { columns: options.stdout.columns })
+        });
+      options.stdout.write(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
+      return options.output === undefined ? result : 0;
+    }
     if (options.output !== undefined) {
       options.output.ok(result);
       return 0;
@@ -36,4 +49,14 @@ export async function runMfCommand(
     }
     throw error;
   }
+}
+
+function usesModulePerformanceTimelineView(
+  args: CliExtensionRunOptions["args"]
+): boolean {
+  const segments = args.command.slice(1);
+  const modulePerformance = segments[0] === "module-perf" || (
+    segments[0] === "module" && segments[1] === "perf"
+  );
+  return modulePerformance && args.options.get("view")?.at(-1) === "timeline";
 }

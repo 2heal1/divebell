@@ -7,7 +7,7 @@ Read safe Module Federation multi-instance state, captured loading evidence, and
 ```text
 divebell mf status [name] [--role <consumer|producer>] [--instance <ref>] [--verbose]
 divebell mf module-info [remote] [--mf <name>] [--instance <ref>]
-divebell mf module-perf [remote/expose] [--report] [--mf <name>] [--instance <ref>]
+divebell mf module-perf [remote/expose] [--report] [--view timeline] [--mf <name>] [--instance <ref>]
 divebell mf remote status <remote> [--mf <name>] [--instance <ref>]
 divebell mf remote trace [remote/expose] [--preload] [--mf <name>] [--instance <ref>] [--trace-id <id>]
 divebell mf shared status [package] [--scope <scope>] [--version <version>] [--verbose]
@@ -29,6 +29,27 @@ and producer Shared assets. When Navigation Timing is unavailable, the clock
 explicitly falls back to the first observed module load. Its optional MF
 preload lane is limited to JavaScript attributed to the selected Remote/expose;
 unrelated page preloads are omitted.
+
+Add `--view timeline` to an explicit report request to render that same
+timeline as a terminal-width two-column `Event` / `Timeline` table instead of
+the normal structured JSON envelope:
+
+```sh
+divebell mf module-perf --report --view timeline
+```
+
+The left column contains only the Page, Consumer, Provider, module, Shared, and
+resource hierarchy. The right column owns the proportional clock and every
+displayed value. FP/FCP/LCP labels stay beside their point markers;
+`loadRemote` places its bar on the parent row and its start/completion values on
+the module row; Shared and resource bars show duration plus transfer size when
+available; and Shared reuse uses an instant marker. A provisional LCP uses `◇`.
+The view omits generic page scripts and provider lifecycle details, while
+provider/source details, decoded size, cache evidence, and exact underlying
+fields remain in structured JSON. It does not extend Paint guides through
+unrelated events. The default remains structured JSON for Agents and pipelines.
+`--view timeline` requires `--report`; it never creates another performance
+sample.
 
 The package also includes an Agent Skill that explains how to choose a command,
 resolve ambiguous results, and interpret every returned field. Print its path
@@ -187,8 +208,9 @@ their npm provenance points to one Module Federation source revision, and
 installs those exact published versions before generating the assets. The
 default tag is `latest`. Generation fails when the selected Observability
 Plugin does not expose the reader interface required by this extension.
-The currently checked-in assets use `next` because the current `latest`
-Observability Plugin does not yet expose that interface.
+The exact package versions and shared source revision used by the checked-in
+assets are recorded in `assets/observability-build.json` and
+`assets/runtime-debug-build.json`.
 
 For unreleased local changes, build the three packages and pass their package
 roots instead:

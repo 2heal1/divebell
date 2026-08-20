@@ -58,6 +58,7 @@ export interface CliCommandNeedsInputResult<T = unknown> {
 }
 
 export interface CommandOutputWriter {
+  columns?: number;
   write(chunk: string): void;
 }
 

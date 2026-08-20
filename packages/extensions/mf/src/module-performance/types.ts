@@ -153,6 +153,20 @@ export interface ModulePerformanceSharedDependency {
   assets: ModulePerformanceAssetTiming[];
 }
 
+export interface ModulePerformanceSharedOperation {
+  instanceRef: string;
+  requester: string;
+  packageName: string;
+  action: "load" | "reuse";
+  timing: ModulePerformanceInterval;
+  status: "pending" | "success" | "error";
+  provider?: string;
+  selectedVersion?: string;
+  remote?: string;
+  expose?: string;
+  assets: ModulePerformanceAssetTiming[];
+}
+
 export interface ModulePerformancePageDelta {
   startDelta: number;
   endDelta?: number;
@@ -254,6 +268,7 @@ export interface ModulePerformanceResult {
     unobservedRemoteCount: number;
   };
   modules: ModulePerformanceModule[];
+  sharedOperations: ModulePerformanceSharedOperation[];
   unobservedRemotes: ModulePerformanceUnobservedRemote[];
 }
 
@@ -327,6 +342,7 @@ export interface ModulePerformanceTimelineLane {
     | "page-script"
     | "mf-consumer"
     | "mf-provider"
+    | "mf-shared"
     | "mf-resource"
     | "mf-preload";
   label: string;
@@ -381,6 +397,7 @@ export interface ModulePerformanceReport {
     timeline: ModulePerformanceTimeline;
     summary: ModulePerformanceResult["summary"];
     modules: ModulePerformanceReportModule[];
+    sharedOperations: ModulePerformanceSharedOperation[];
     recommendations: ModulePerformanceReportRecommendation[];
     page: ModulePerformanceResult["page"];
     selection: ModulePerformanceResult["selection"];

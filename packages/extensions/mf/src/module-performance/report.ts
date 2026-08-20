@@ -22,6 +22,7 @@ export function createModulePerformanceReport(
       timeline,
       summary: result.summary,
       modules: result.modules.map(createReportModule),
+      sharedOperations: result.sharedOperations,
       recommendations: createRecommendations(result),
       page: result.page,
       selection: result.selection,
@@ -62,6 +63,7 @@ function createTimeline(
   const lanes: ModulePerformanceTimelineLane[] = [createPageLane(result)];
   const pageScripts = createPageScriptLane(result);
   if (pageScripts !== undefined) lanes.push(pageScripts);
+  lanes.push(...createSharedLanes(result));
   for (const [moduleIndex, module] of result.modules.entries()) {
     for (const [operationIndex, operation] of module.operations.entries()) {
       const prefix = `module-${moduleIndex + 1}-operation-${operationIndex + 1}`;
@@ -97,6 +99,83 @@ function createTimeline(
     markers: createMarkers(result),
     lanes
   };
+}
+
+function createSharedLanes(
+  result: ModulePerformanceResult
+): ModulePerformanceTimelineLane[] {
+  const groups = new Map<string, ModulePerformanceResult["sharedOperations"]>();
+  for (const operation of result.sharedOperations) {
+    const current = groups.get(operation.requester) ?? [];
+    groups.set(operation.requester, [...current, operation]);
+  }
+  return Array.from(groups.entries()).map(([requester, operations], index) => ({
+    id: `shared-${index + 1}`,
+    kind: "mf-shared" as const,
+    label: `${requester} · loadShare`,
+    items: operations.flatMap((operation, operationIndex) => [
+      {
+        id: `shared-${index + 1}-operation-${operationIndex + 1}`,
+        type: "span" as const,
+        label: formatSharedOperationLabel(operation),
+        ...intervalFields(operation.timing),
+        source: "module-federation" as const,
+        ...(operation.status === "success"
+          ? {}
+          : { status: operation.status })
+      },
+      ...operation.assets.flatMap((asset, assetIndex) =>
+        asset.url === undefined || asset.start === undefined
+          ? []
+          : [{
+              id: `shared-${index + 1}-operation-${operationIndex + 1}-asset-${
+                assetIndex + 1
+              }`,
+              type: "span" as const,
+              label: `${resourceLabel(asset.url)} · ${operation.packageName} Shared JS · loading`,
+              start: asset.start,
+              ...(asset.end === undefined ? {} : { end: asset.end }),
+              ...(asset.duration === undefined
+                ? {}
+                : { duration: asset.duration }),
+              source: "browser" as const,
+              resource: {
+                roles: [asset.kind === "sync"
+                  ? "shared-sync" as const
+                  : "shared-async" as const],
+                url: asset.url,
+                packageNames: [operation.packageName],
+                ...(asset.transferSize === undefined
+                  ? {}
+                  : { transferSize: asset.transferSize }),
+                ...(asset.encodedBodySize === undefined
+                  ? {}
+                  : { encodedBodySize: asset.encodedBodySize }),
+                ...(asset.decodedBodySize === undefined
+                  ? {}
+                  : { decodedBodySize: asset.decodedBodySize }),
+                ...(asset.cache === undefined ? {} : { cache: asset.cache })
+              }
+            }]
+      )
+    ])
+  }));
+}
+
+function formatSharedOperationLabel(
+  operation: ModulePerformanceResult["sharedOperations"][number]
+): string {
+  const dependency = `${operation.packageName}${
+    operation.selectedVersion === undefined
+      ? ""
+      : `@${operation.selectedVersion}`
+  }`;
+  if (operation.action === "reuse") {
+    return `reuse ${dependency} Shared${
+      operation.provider === undefined ? "" : ` (from ${operation.provider})`
+    }`;
+  }
+  return `load ${dependency} Shared`;
 }
 
 function createPageLane(
@@ -135,15 +214,20 @@ function createPageLane(
 function createPageScriptLane(
   result: ModulePerformanceResult
 ): ModulePerformanceTimelineLane | undefined {
-  const mfAssets = result.modules.flatMap((module) =>
-    module.operations.flatMap((operation) => [
-      operation.manifest.remoteEntryResource?.url ?? operation.manifest.remoteEntry,
-      ...operation.manifest.assets.map((asset) => asset.url ?? asset.asset),
-      ...operation.sharedDependencies.flatMap((dependency) =>
-        dependency.assets.map((asset) => asset.url ?? asset.asset)
-      )
-    ])
-  ).filter((value): value is string => value !== undefined);
+  const mfAssets = [
+    ...result.modules.flatMap((module) =>
+      module.operations.flatMap((operation) => [
+        operation.manifest.remoteEntryResource?.url ?? operation.manifest.remoteEntry,
+        ...operation.manifest.assets.map((asset) => asset.url ?? asset.asset),
+        ...operation.sharedDependencies.flatMap((dependency) =>
+          dependency.assets.map((asset) => asset.url ?? asset.asset)
+        )
+      ])
+    ),
+    ...result.sharedOperations.flatMap((shared) =>
+      shared.assets.map((asset) => asset.url ?? asset.asset)
+    )
+  ].filter((value): value is string => value !== undefined);
   const scripts = (result.page.scripts ?? []).filter((script) =>
     !mfAssets.some((asset) => sameResource(script.url, asset))
   );

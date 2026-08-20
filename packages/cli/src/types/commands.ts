@@ -4,6 +4,7 @@ import type { DivebellExtensionApi } from "../features/extension/types.js";
 import type { Fetcher } from "../features/runtime/types.js";
 import type {
   CliOperationLogStore,
+  CommandOutputWriter,
   ParsedCliArgs
 } from "./shared.js";
 
@@ -41,6 +42,7 @@ export interface CliExtensionRunOptions {
   fetcher: Fetcher;
   page?: CliExtensionPageContext;
   headers?: Readonly<Record<string, string>>;
+  stdout?: CommandOutputWriter;
   divebell: DivebellExtensionApi;
   runExtension: CliExtensionRunFunction;
   withLoading: CliExtensionLoadingFunction;
@@ -127,7 +129,7 @@ export interface DivebellExtensionDefinition {
 
 export interface ExtensionCliCommandOptions {
   args: ParsedCliArgs;
-  stdout: { write(chunk: string): void };
+  stdout: CommandOutputWriter;
   withLoading: CliExtensionLoadingFunction;
   fetcher: Fetcher;
   browserRunner: BrowserRunner;

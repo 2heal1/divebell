@@ -34,6 +34,7 @@ export type {
 
 export interface CliRunOptions {
   stdout?: {
+    columns?: number;
     write(chunk: string): void;
   };
   stderr?: {

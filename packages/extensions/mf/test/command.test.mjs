@@ -313,7 +313,9 @@ test("module-perf renders its terminal timeline through top-level stdout", async
   assert.equal(result.command, "mf module-perf --report");
   assert.equal(reads.length, 0);
   assert.match(stdout, /navigationStart = 0 ms/);
-  assert.match(stdout, /FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/);
+  assert.match(stdout, /│ Event\s+│ Timeline/);
+  assert.match(stdout, /FP\s+FCP\s+LCP/);
+  assert.match(stdout, /0\.142s\s+0\.231s\s+0\.48s/);
   assert.doesNotMatch(stdout, /^\s*\{/);
 });
 
@@ -370,7 +372,9 @@ test("module-perf timeline takes precedence over the legacy JSON output adapter"
   assert.equal(outputValue, undefined);
   assert.equal(reads.length, 0);
   assert.match(stdout, /navigationStart = 0 ms/);
-  assert.match(stdout, /FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/);
+  assert.match(stdout, /│ Event\s+│ Timeline/);
+  assert.match(stdout, /FP\s+FCP\s+LCP/);
+  assert.match(stdout, /0\.142s\s+0\.231s\s+0\.48s/);
   assert.doesNotMatch(stdout, /^\s*\{/);
 });
 

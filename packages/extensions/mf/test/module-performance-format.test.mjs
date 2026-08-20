@@ -12,7 +12,7 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
     clock: { origin: "navigationStart", unit: "ms" },
     markers: [
       { id: "fp", label: "FP", at: 142 },
-      { id: "fcp", label: "FCP", at: 231 },
+      { id: "fcp", label: "FCP", at: 142 },
       { id: "lcp", label: "LCP", at: 480, status: "provisional" }
     ],
     lanes: [
@@ -40,7 +40,7 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
         ]
       },
       {
-        id: "consumer",
+        id: "module-1-operation-1-consumer",
         kind: "mf-consumer",
         label: "host · loadRemote",
         items: [{
@@ -101,7 +101,36 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
         }]
       },
       {
-        id: "resource",
+        id: "module-1-operation-1-provider",
+        kind: "mf-provider",
+        label: "catalog@1.0.0",
+        items: [{
+          id: "manifest",
+          type: "span",
+          label: "Manifest",
+          start: 192,
+          end: 205,
+          duration: 13,
+          source: "module-federation"
+        }, {
+          id: "container-init",
+          type: "span",
+          label: "Provider container init",
+          start: 267,
+          end: 268,
+          duration: 1,
+          source: "module-federation"
+        }, {
+          id: "module-loaded",
+          type: "point",
+          label: "Provider module loaded",
+          at: 338,
+          source: "module-federation",
+          status: "success"
+        }]
+      },
+      {
+        id: "module-1-operation-1-resources",
         kind: "mf-resource",
         label: "catalog · resources",
         items: [{
@@ -124,28 +153,38 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
     ]
   }, { columns: 96 });
 
-  assert.match(output, /^navigationStart = 0 ms/m);
-  assert.match(output, /Paint[\s\S]*FP 142 ms · FCP 231 ms[\s\S]*LCP 480 ms \[provisional\]/);
-  assert.match(output, /├[─┬]+┤/);
-  assert.match(output, /Main HTML response 0–84 ms/);
-  assert.match(output, /MF consumer.*host · loadRemote/);
-  assert.match(output, /catalog\/Button 190–338 ms/);
-  assert.match(output, /MF shared[\s\S]*host · loadShare/);
-  assert.match(output, /react@18\.3\.1 Shared JS · loading/);
-  assert.match(output, /catalog · loadShare[\s\S]*reuse react@18\.3\.1 Shared/);
-  assert.match(output, /from host/);
-  assert.match(output, /Button\.js 272–329 ms/);
+  assert.match(output, /│ Event\s+│ Timeline · navigationStart = 0 ms/);
+  assert.match(output, /│\s+│ 0s\s+0\.2s\s+0\.4s/);
+  assert.match(output, /│ Page\s+│/);
+  assert.match(output, /│ {3}Paint\s+│[\s●]+◇/);
+  assert.match(output, /FP · FCP[\s\S]*LCP/);
+  assert.match(output, /0\.142s[\s\S]*0\.48s/);
+  assert.match(output, /Consumer · host/);
+  assert.match(output, /loadRemote/);
+  assert.match(output, /catalog\/Button\s+│\s+━+●/);
+  assert.match(output, /0\.19s\s+0\.338s/);
+  assert.match(output, /react@18\.3\.1\s+│\s+━+/);
+  assert.match(output, /80ms · — KB/);
+  assert.match(output, /Producer · catalog/);
+  assert.match(output, /Lifecycle/);
+  assert.match(output, /Container init\s+│\s+◆/);
+  assert.match(output, /Module loaded\s+│\s+●/);
+  assert.match(output, /Button\.js\s+│\s+━+/);
+  assert.match(output, /57ms · 12 KB/);
+  assert.match(output, /◆ reuse/);
+  assert.match(output, /0\.268s/);
   assert.doesNotMatch(output, /Page scripts|irrelevant\.js|1000/);
-  assert.doesNotMatch(output, /transfer|decoded|cache:/);
-  const paintLine = output.split("\n").find((line) => line.startsWith("Paint"));
-  assert.equal((paintLine.match(/●/g) ?? []).length, 3);
-  const paintSection = output.split("\n").slice(
-    output.split("\n").findIndex((line) => line.startsWith("Paint")),
-    output.split("\n").findIndex((line) => line.startsWith("Page "))
-  ).join("\n");
-  assert.equal((paintSection.match(/●/g) ?? []).length, 3);
-  assert.doesNotMatch(output, /[│┼]/);
-  assert.match(output, /[├─┤●]/);
+  assert.doesNotMatch(output, /Main HTML response|Visit URL|from host/);
+  assert.doesNotMatch(output, /transfer|decoded|cache:|190–338|272–329/);
+  const sharedEventLine = output.split("\n").find((line) =>
+    line.includes("react@18.3.1") && line.includes("━")
+  );
+  assert.doesNotMatch(sharedEventLine, /80ms|KB/);
+  const sharedMetricLine = output.split("\n").find((line) =>
+    line.includes("80ms · — KB")
+  );
+  assert.ok(sharedMetricLine.indexOf("80ms") > sharedMetricLine.indexOf("│", 1));
+  assert.match(output, /[┌┬┐├┼┤└┴┘━◆●◇]/);
   assert.ok(output.split("\n").every((line) => line.length <= 96));
 });
 
@@ -155,6 +194,18 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
     clock: { origin: "firstObservedModuleLoad", unit: "ms" },
     markers: [],
     lanes: [{
+      id: "consumer",
+      kind: "mf-consumer",
+      label: "host · loadRemote",
+      items: [{
+        id: "pending-load",
+        type: "span",
+        label: "catalog/Button",
+        start: -10,
+        source: "module-federation",
+        status: "pending"
+      }]
+    }, {
       id: "preload",
       kind: "mf-preload",
       label: "catalog · preload",
@@ -169,10 +220,16 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
     }]
   }, { columns: 72 });
 
-  assert.match(output, /^firstObservedModuleLoad = 0 ms/m);
-  assert.match(output, /Paint[\s\S]*not observed/);
-  assert.match(output, /Button\.js -25–… ms \[pending\]/);
-  assert.match(output, /├…/);
+  assert.match(output, /Timeline · firstObservedModuleLoad = 0 ms/);
+  assert.match(output, /-0\.04s\s+-0\.02s\s+0s/);
+  assert.match(output, /Paint\s+│ not observed/);
+  assert.match(output, /Consumer · host/);
+  assert.match(output, /catalog\/Button\s+│\s+━…/);
+  assert.doesNotMatch(output, /pending · pending/);
+  assert.match(output, /Producer · catalog/);
+  assert.match(output, /Button\.js\s+│\s+━…/);
+  assert.match(output, /… · — KB · pending/);
+  assert.doesNotMatch(output, /-25–/);
   assert.ok(output.split("\n").every((line) => line.length <= 72));
 });
 

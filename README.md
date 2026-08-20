@@ -48,32 +48,38 @@ divebell mf module-perf --report --view timeline
 Example output (the observed timings vary between navigations):
 
 ```text
-navigationStart = 0 ms
-
-time (ms)    0              1420              2840            4260
-             ├───────────────┬───────────────────────────────────┤
-Paint                        ●                                   ● FP 1296 ms · FCP 1296 ms · LCP 4260 ms [provisional]
-Page         ●                                                     Visit URL @ 0 ms
-             ├──────────┤                                          Main HTML response 0.6–935 ms
-MF shared                                                          mf_doc · loadShare
-                          ├───┤                                    load react@19.1.1 Shared 1050–1420 ms
-MF consumer                                                        mf_doc · loadRemote
-                                            ├───────────────────┤  mf_playground/. 2568.8–4196.8 ms
-MF shared                                                          mf_playground · loadShare
-                                                          ◆        reuse react@19.1.1 Shared (from mf_doc)
-                                                                   ↳ time: 3662.8–3663.8 ms
-MF provider                                                        mf_playground@https://unpkg.com/@module-federation/p
-                                                                   layground@latest/dist/mf/mf-manifest.json
-                                            ├──────┤               Manifest 2570.8–3111.8 ms
-                                                   ├──────┤        remoteEntry 3113.8–3662.8 ms
-                                                          ◆        Provider container init 3662.8–3663.8 ms
-                                                          ├─────┤  Expose get / sync chunks 3663.8–4175.8 ms
-                                                                ◆  Module factory 4175.8–4196.8 ms
-                                                                ●  Provider module loaded @ 4196.8 ms
-MF resources                                                       mf_playground · JavaScript resources
-                                                   ├────────────┤  395.js · expose sync 3116.2–4162.2 ms
-                                                   ├────┤          __federation_expose_default_export… 3116.4–3516.1 ms
-                                                   ├──────┤        remoteEntry.js · remoteEntry 3116.9–3651 ms
+┌──────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────────┐
+│ Event                                │ Timeline · navigationStart = 0 ms                                             │
+│                                      │ 0s                                   5s                                   10s │
+├──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Page                                 │                                                                               │
+│   Paint                              │                         ●                                      ◇              │
+│                                      │                     FP · FCP                                  LCP             │
+│                                      │                      3.208s                                 8.264s            │
+├──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Consumer · mf_doc                    │                                                                               │
+│   loadRemote                         │                                                                               │
+│     mf_playground/.                  │                                   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━●               │
+│                                      │                                   4.446s                 8.216s               │
+│   Shared                             │                                                                               │
+│     react@19.1.1                     │                              ━━━━                                             │
+│                                      │                              334ms · — KB                                     │
+├──────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────────┤
+│ Producer · mf_playground             │                                                                               │
+│   Lifecycle                          │                                                                               │
+│     Container init                   │                                                    ◆                          │
+│                                      │                                                 6.694s                        │
+│     Module loaded                    │                                                               ●               │
+│                                      │                                                            8.216s             │
+│   Resources                          │                                                                               │
+│     395.js                           │                                                 ━━━━━━━━━━━━━━━               │
+│                                      │                                                 1.80s · — KB                  │
+│     remoteEntry.js                   │                                                 ━━━━                          │
+│                                      │                                                 311.6ms · — KB                │
+│   Shared                             │                                                                               │
+│     react@19.1.1                     │                                                    ◆ reuse                    │
+│                                      │                                                 6.699s                        │
+└──────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────────┘
 ```
 
 `divebell setup` checks the environment and repairs browser startup only when

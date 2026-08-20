@@ -135,7 +135,7 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /always the first report field[\s\S]*do not extend it as a vertical line[\s\S]*swimlane or timing diagram/
+    /two-column `Event` \/[\s\S]*always the first report field[\s\S]*do not[\s\S]*extend it as a vertical line[\s\S]*seconds-based axis/
   );
   assert.match(
     performance,
@@ -147,11 +147,11 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /Terminal timeline example[\s\S]*FP 142 ms[\s\S]*FCP 231 ms[\s\S]*LCP 480 ms/
+    /Terminal timeline example[\s\S]*Event[\s\S]*Timeline[\s\S]*◇[\s\S]*FP · FCP[\s\S]*260ms · 45 KB[\s\S]*◆ reuse/
   );
   assert.match(
     performance,
-    /Label[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omit the[\s\S]*entire lane[\s\S]*Preserve observed overlap/
+    /Event column contains only[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omits `page-script` events[\s\S]*Producer[\s\S]*`Preload` group[\s\S]*Preserve observed overlap/
   );
   assert.match(
     performance,

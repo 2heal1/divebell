@@ -3,22 +3,55 @@ import type {
   ModulePerformanceTimeline,
   ModulePerformanceTimelineItem,
   ModulePerformanceTimelineLane,
-  ModulePerformanceTimelineMarker
+  ModulePerformanceTimelineMarker,
+  ModulePerformanceTimelineSpan
 } from "./types.js";
 
 export interface ModulePerformanceTimelineFormatOptions {
   columns?: number;
 }
 
-interface TimelineDomain {
+interface TimelineScale {
   min: number;
   max: number;
+  ticks: number[];
 }
 
 interface TimelineLayout {
-  laneWidth: number;
+  eventCellWidth: number;
+  timelineCellWidth: number;
   chartWidth: number;
-  detailWidth: number;
+}
+
+type PresentationVisual =
+  | "load-remote"
+  | "cost"
+  | "lifecycle-span"
+  | "lifecycle-point"
+  | "milestone"
+  | "reuse";
+
+interface PresentationEvent {
+  label: string;
+  item: ModulePerformanceTimelineItem;
+  visual: PresentationVisual;
+  at?: number;
+}
+
+interface PresentationGroup {
+  title: string;
+  events: PresentationEvent[];
+}
+
+interface PresentationSection {
+  title: string;
+  groups: PresentationGroup[];
+}
+
+interface PositionedAnnotation {
+  position: number;
+  text: string;
+  align?: "start" | "center" | "end";
 }
 
 export function formatModulePerformanceReportTimeline(
@@ -36,344 +69,693 @@ export function formatModulePerformanceTimeline(
   options: ModulePerformanceTimelineFormatOptions = {}
 ): string {
   const lanes = timeline.lanes.filter((lane) => lane.kind !== "page-script");
-  const layout = createLayout(lanes, options.columns);
-  const domain = readTimelineDomain(timeline, lanes);
-  const emptyGraph = " ".repeat(layout.chartWidth);
+  const sections = createPresentationSections(lanes);
+  const layout = createLayout(sections, options.columns);
+  const scale = createTimelineScale(timeline, lanes, layout.chartWidth);
   const lines = [
-    `${timeline.clock.origin} = 0 ${timeline.clock.unit}`,
-    "",
-    renderLine("time (ms)", renderAxis(domain, layout.chartWidth), "", layout),
-    renderLine(
-      "",
-      renderAxisRuler(timeline.markers, domain, layout.chartWidth),
-      "",
+    renderTopBorder(layout),
+    renderTableRow(
+      "Event",
+      `Timeline · ${timeline.clock.origin} = 0 ${timeline.clock.unit}`,
       layout
-    )
+    ),
+    renderTableRow("", renderAxis(scale, layout.chartWidth), layout),
+    renderSeparator(layout),
+    renderTableRow("Page", "", layout),
+    ...renderPaintRows(timeline.markers, scale, layout)
   ];
 
-  lines.push(...renderMarkers(timeline.markers, domain, layout));
-  for (const lane of lanes) {
-    const laneName = formatLaneKind(lane.kind);
-    const hasContext = lane.label !== laneName;
-    if (hasContext) {
-      lines.push(...renderWrappedLine(
-        laneName,
-        emptyGraph,
-        lane.label,
-        layout
-      ));
-    }
-    if (lane.items.length === 0) {
-      lines.push(renderLine(
-        hasContext ? "" : laneName,
-        emptyGraph,
-        "not observed",
-        layout
-      ));
-      continue;
-    }
-    lane.items.forEach((item, index) => {
-      const timing = formatItemTiming(item);
-      const timingFits = timing.length + 2 <= layout.detailWidth;
-      const preserveSharedLabel = lane.kind === "mf-shared" &&
-        item.label.length + timing.length + 1 > layout.detailWidth;
-      if (preserveSharedLabel) {
-        const labelLines = wrapText(item.label, layout.detailWidth);
-        lines.push(renderLine(
-          !hasContext && index === 0 ? laneName : "",
-          renderItemGraph(item, domain, layout.chartWidth),
-          labelLines[0] as string,
+  for (const section of sections) {
+    lines.push(renderSeparator(layout));
+    lines.push(renderTableRow(section.title, "", layout));
+    for (const group of section.groups) {
+      lines.push(renderTableRow(`  ${group.title}`, "", layout));
+      for (const event of group.events) {
+        const timelineLines = renderPresentationEvent(
+          event,
+          scale,
+          layout.chartWidth
+        );
+        timelineLines.forEach((line, index) => lines.push(renderTableRow(
+          index === 0 ? `    ${event.label}` : "",
+          line,
           layout
-        ));
-        for (const labelLine of labelLines.slice(1)) {
-          lines.push(...renderContinuation(labelLine, emptyGraph, layout));
-        }
-        lines.push(...renderContinuation(`time: ${timing}`, emptyGraph, layout));
-        return;
+        )));
       }
-      lines.push(renderLine(
-        !hasContext && index === 0 ? laneName : "",
-        renderItemGraph(item, domain, layout.chartWidth),
-        timingFits
-          ? fitItemDescription(item.label, timing, layout.detailWidth)
-          : fitText(item.label, layout.detailWidth),
-        layout
-      ));
-      if (!timingFits) {
-        lines.push(...renderContinuation(
-          `time: ${timing}`,
-          emptyGraph,
-          layout
-        ));
-      }
-    });
+    }
   }
+
+  lines.push(renderBottomBorder(layout));
   return lines.join("\n");
 }
 
-function createLayout(
-  lanes: ModulePerformanceTimelineLane[],
-  requestedColumns: number | undefined
-): TimelineLayout {
-  const columns = clamp(Math.floor(requestedColumns ?? 120), 64, 180);
-  const longestLane = Math.max(
-    "time (ms)".length,
-    "Paint".length,
-    ...lanes.map((lane) => formatLaneKind(lane.kind).length)
-  );
-  const laneWidth = clamp(longestLane, 10, 14);
-  const available = columns - laneWidth - 3;
-  const detailWidth = clamp(Math.floor(available * 0.5), 24, 52);
-  const chartWidth = available - detailWidth;
-  return { laneWidth, chartWidth, detailWidth };
+function createPresentationSections(
+  lanes: ModulePerformanceTimelineLane[]
+): PresentationSection[] {
+  const consumers = new Map<string, PresentationSection>();
+  const producers = new Map<string, PresentationSection>();
+  const fallbacks = new Map<string, PresentationSection>();
+  const producerByPrefix = new Map<string, string>();
+
+  for (const lane of lanes) {
+    if (lane.kind === "mf-consumer") {
+      ensureSection(consumers, laneContextName(lane.label));
+      continue;
+    }
+    if (lane.kind === "mf-resource") {
+      const producer = laneContextName(lane.label);
+      ensureSection(producers, producer);
+      producerByPrefix.set(lanePrefix(lane.id), producer);
+      continue;
+    }
+    if (lane.kind === "mf-provider") {
+      const prefix = lanePrefix(lane.id);
+      const producer = producerByPrefix.get(prefix) ?? providerName(lane.label);
+      ensureSection(producers, producer);
+      producerByPrefix.set(prefix, producer);
+      continue;
+    }
+    if (lane.kind === "mf-preload") {
+      const producer = laneContextName(lane.label);
+      ensureSection(producers, producer);
+      producerByPrefix.set(lanePrefix(lane.id), producer);
+    }
+  }
+
+  for (const lane of lanes) {
+    if (lane.kind === "mf-consumer") {
+      const section = ensureSection(consumers, laneContextName(lane.label));
+      addGroupEvents(section, "loadRemote", lane.items.map((item) => ({
+        label: item.label,
+        item,
+        visual: "load-remote"
+      })));
+      continue;
+    }
+    if (lane.kind === "mf-provider") {
+      const producer = producerByPrefix.get(lanePrefix(lane.id)) ??
+        providerName(lane.label);
+      const section = ensureSection(producers, producer);
+      addGroupEvents(section, "Lifecycle", lane.items.map((item) => ({
+        label: providerEventLabel(item.label),
+        item,
+        visual: providerEventVisual(item),
+        ...(item.type === "span" && item.label === "Provider container init"
+          ? { at: item.end ?? item.start }
+          : {})
+      })));
+      continue;
+    }
+    if (lane.kind === "mf-resource") {
+      const producer = producerByPrefix.get(lanePrefix(lane.id)) ??
+        laneContextName(lane.label);
+      const section = ensureSection(producers, producer);
+      addGroupEvents(section, "Resources", lane.items.map((item) => ({
+        label: resourceEventLabel(item),
+        item,
+        visual: "cost"
+      })));
+      continue;
+    }
+    if (lane.kind === "mf-preload") {
+      const producer = producerByPrefix.get(lanePrefix(lane.id)) ??
+        laneContextName(lane.label);
+      const section = ensureSection(producers, producer);
+      addGroupEvents(section, "Preload", lane.items.map((item) => ({
+        label: resourceEventLabel(item),
+        item,
+        visual: "cost"
+      })));
+    }
+  }
+
+  for (const lane of lanes.filter((entry) => entry.kind === "mf-shared")) {
+    const requester = laneContextName(lane.label);
+    const events = createSharedPresentationEvents(lane);
+    const reuse = events.some((event) => event.visual === "reuse");
+    const producer = producers.get(requester);
+    const consumer = consumers.get(requester);
+    const section = (reuse ? producer : consumer) ?? producer ?? consumer ??
+      ensureSection(fallbacks, requester);
+    addGroupEvents(section, "Shared", events);
+  }
+
+  return [
+    ...Array.from(consumers.entries()).map(([name, section]) => ({
+      ...section,
+      title: `Consumer · ${name}`
+    })),
+    ...Array.from(producers.entries()).map(([name, section]) => ({
+      ...section,
+      title: `Producer · ${name}`
+    })),
+    ...Array.from(fallbacks.entries()).map(([name, section]) => ({
+      ...section,
+      title: `Shared · ${name}`
+    }))
+  ].filter((section) => section.groups.some((group) => group.events.length > 0));
 }
 
-function readTimelineDomain(
+function createSharedPresentationEvents(
+  lane: ModulePerformanceTimelineLane
+): PresentationEvent[] {
+  const grouped = new Map<string, ModulePerformanceTimelineItem[]>();
+  for (const item of lane.items) {
+    const key = item.id.replace(/-asset-\d+$/, "");
+    grouped.set(key, [...(grouped.get(key) ?? []), item]);
+  }
+
+  return Array.from(grouped.values()).flatMap((items): PresentationEvent[] => {
+    const lifecycle = items.find((item) => !/-asset-\d+$/.test(item.id)) ??
+      items[0] as ModulePerformanceTimelineItem;
+    const dependency = sharedDependencyLabel(lifecycle.label);
+    if (/^reuse\s/.test(lifecycle.label)) {
+      return [{
+        label: dependency,
+        item: lifecycle,
+        visual: "reuse" as const,
+        at: lifecycle.type === "point"
+          ? lifecycle.at
+          : lifecycle.end ?? lifecycle.start
+      }];
+    }
+    const assets = items.filter((item): item is ModulePerformanceTimelineSpan =>
+      item.type === "span" && item.resource !== undefined
+    );
+    if (assets.length === 0) {
+      return [{
+        label: dependency,
+        item: lifecycle,
+        visual: "cost" as const
+      }];
+    }
+    return assets.map((asset) => ({
+      label: assets.length === 1
+        ? dependency
+        : `${dependency} · ${resourceEventLabel(asset)}`,
+      item: asset,
+      visual: "cost" as const
+    }));
+  });
+}
+
+function ensureSection(
+  sections: Map<string, PresentationSection>,
+  name: string
+): PresentationSection {
+  const current = sections.get(name);
+  if (current !== undefined) return current;
+  const section = { title: name, groups: [] };
+  sections.set(name, section);
+  return section;
+}
+
+function addGroupEvents(
+  section: PresentationSection,
+  title: string,
+  events: PresentationEvent[]
+): void {
+  if (events.length === 0) return;
+  const current = section.groups.find((group) => group.title === title);
+  if (current === undefined) {
+    section.groups.push({ title, events: [...events] });
+    return;
+  }
+  current.events.push(...events);
+}
+
+function createLayout(
+  sections: PresentationSection[],
+  requestedColumns: number | undefined
+): TimelineLayout {
+  const columns = clamp(Math.floor(requestedColumns ?? 120), 72, 180);
+  const eventLabels = [
+    "Event",
+    "Page",
+    "  Paint",
+    ...sections.flatMap((section) => [
+      section.title,
+      ...section.groups.flatMap((group) => [
+        `  ${group.title}`,
+        ...group.events.map((event) => `    ${event.label}`)
+      ])
+    ])
+  ];
+  const longestEvent = Math.max(...eventLabels.map((label) => label.length));
+  const eventCellWidth = clamp(
+    longestEvent + 2,
+    24,
+    Math.min(38, columns - 45)
+  );
+  const timelineCellWidth = columns - eventCellWidth - 3;
+  return {
+    eventCellWidth,
+    timelineCellWidth,
+    chartWidth: timelineCellWidth - 2
+  };
+}
+
+function createTimelineScale(
   timeline: ModulePerformanceTimeline,
-  lanes: ModulePerformanceTimelineLane[]
-): TimelineDomain {
+  lanes: ModulePerformanceTimelineLane[],
+  width: number
+): TimelineScale {
   const values = [
     0,
     ...timeline.markers.map((marker) => marker.at),
-    ...lanes.flatMap((lane) => lane.items.flatMap((item) =>
-      item.type === "point"
+    ...lanes.filter((lane) => lane.kind !== "page").flatMap((lane) =>
+      lane.items.flatMap((item) => item.type === "point"
         ? [item.at]
         : [item.start, ...(item.end === undefined ? [] : [item.end])]
-    ))
+      )
+    )
   ].filter(Number.isFinite);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  return max === min ? { min, max: min + 1 } : { min, max };
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const span = Math.max(1, rawMax - rawMin);
+  const desiredTickCount = clamp(Math.floor(width / 14), 3, 7);
+  const step = niceStep(span / Math.max(1, desiredTickCount - 1));
+  const min = rawMin >= 0 ? 0 : Math.floor(rawMin / step) * step;
+  let max = Math.ceil(rawMax / step) * step;
+  if (max <= min) max = min + step;
+  const ticks: number[] = [];
+  for (let value = min; value <= max + (step / 2); value += step) {
+    ticks.push(normalizeZero(value));
+  }
+  return { min, max, ticks };
 }
 
-function renderAxis(domain: TimelineDomain, width: number): string {
+function niceStep(value: number): number {
+  const power = 10 ** Math.floor(Math.log10(Math.max(value, Number.EPSILON)));
+  const normalized = value / power;
+  const multiplier = normalized <= 1
+    ? 1
+    : normalized <= 2
+      ? 2
+      : normalized <= 5
+        ? 5
+        : 10;
+  return multiplier * power;
+}
+
+function renderAxis(scale: TimelineScale, width: number): string {
   const axis = Array.from({ length: width }, () => " ");
   const occupied = Array.from({ length: width }, () => false);
-  const tickCount = clamp(Math.floor(width / 15) + 1, 3, 7);
-  for (let index = 0; index < tickCount; index += 1) {
-    const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
-    const value = domain.min + ((domain.max - domain.min) * ratio);
-    const label = fitText(formatAxisTime(value), width);
-    const anchor = Math.round(ratio * (width - 1));
+  for (const tick of scale.ticks) {
+    const label = formatTimestamp(tick);
+    const position = toPosition(tick, scale, width);
     const start = clamp(
-      Math.round(anchor - (label.length / 2)),
+      Math.round(position - (label.length / 2)),
       0,
       Math.max(0, width - label.length)
     );
     if (occupied.slice(start, start + label.length).some(Boolean)) continue;
-    for (let offset = 0; offset < label.length; offset += 1) {
-      axis[start + offset] = label[offset] ?? " ";
-      occupied[start + offset] = true;
+    writeText(axis, start, label);
+    for (let index = start; index < start + label.length; index += 1) {
+      occupied[index] = true;
     }
   }
   return axis.join("");
 }
 
-function renderAxisRuler(
+function renderPaintRows(
   markers: ModulePerformanceTimelineMarker[],
-  domain: TimelineDomain,
-  width: number
-): string {
-  if (width <= 1) return "│";
-  const ruler = Array.from({ length: width }, () => "─");
-  ruler[0] = "├";
-  ruler[width - 1] = "┤";
-  for (const marker of markers) {
-    const position = toPosition(marker.at, domain, width);
-    if (position > 0 && position < width - 1) ruler[position] = "┬";
-  }
-  return ruler.join("");
-}
-
-function renderMarkers(
-  markers: ModulePerformanceTimelineMarker[],
-  domain: TimelineDomain,
+  scale: TimelineScale,
   layout: TimelineLayout
 ): string[] {
-  const graph = renderMarkerPoints(markers, domain, layout.chartWidth);
   if (markers.length === 0) {
-    return [renderLine("Paint", graph, "not observed", layout)];
+    return [renderTableRow("  Paint", "not observed", layout)];
   }
-  return packSegments(
-    markers.map(formatMarker),
-    layout.detailWidth
-  ).map((line, index) => renderLine(
-    index === 0 ? "Paint" : "",
-    index === 0 ? graph : " ".repeat(layout.chartWidth),
-    line,
-    layout
-  ));
-}
-
-function renderMarkerPoints(
-  markers: ModulePerformanceTimelineMarker[],
-  domain: TimelineDomain,
-  width: number
-): string {
-  const graph = Array.from({ length: width }, () => " ");
+  const grouped = new Map<number, ModulePerformanceTimelineMarker[]>();
   for (const marker of markers) {
-    graph[toPosition(marker.at, domain, width)] = "●";
+    grouped.set(marker.at, [...(grouped.get(marker.at) ?? []), marker]);
   }
-  return graph.join("");
+  const groups = Array.from(grouped.entries()).map(([at, entries]) => ({
+    at,
+    entries,
+    position: toPosition(at, scale, layout.chartWidth),
+    label: entries.map((entry) => entry.label).join(" · "),
+    marker: entries.every((entry) => entry.status === "provisional")
+      ? "◇"
+      : "●"
+  }));
+  const graph = Array.from({ length: layout.chartWidth }, () => " ");
+  for (const group of groups) graph[group.position] = group.marker;
+  const labelLines = renderAnnotations(groups.map((group) => ({
+    position: group.position,
+    text: group.label,
+    align: "center" as const
+  })), layout.chartWidth);
+  const timingLines = renderAnnotations(groups.map((group) => ({
+    position: group.position,
+    text: formatTimestamp(group.at),
+    align: "center" as const
+  })), layout.chartWidth);
+  return [
+    renderTableRow("  Paint", graph.join(""), layout),
+    ...labelLines.map((line) => renderTableRow("", line, layout)),
+    ...timingLines.map((line) => renderTableRow("", line, layout))
+  ];
 }
 
-function renderItemGraph(
-  item: ModulePerformanceTimelineItem,
-  domain: TimelineDomain,
+function renderPresentationEvent(
+  event: PresentationEvent,
+  scale: TimelineScale,
   width: number
+): string[] {
+  switch (event.visual) {
+    case "load-remote":
+      return renderLoadRemote(event.item, scale, width);
+    case "cost":
+      return renderCostSpan(event.item, scale, width);
+    case "lifecycle-span":
+      return renderLifecycleSpan(event.item, scale, width);
+    case "reuse":
+      return renderPoint(event, "◆", "reuse", scale, width);
+    case "lifecycle-point":
+      return renderPoint(event, "◆", "", scale, width);
+    case "milestone":
+      return renderPoint(event, "●", "", scale, width);
+  }
+}
+
+function renderLoadRemote(
+  item: ModulePerformanceTimelineItem,
+  scale: TimelineScale,
+  width: number
+): string[] {
+  if (item.type === "point") {
+    return renderPoint({ label: item.label, item, visual: "milestone" }, "●", "", scale, width);
+  }
+  const start = toPosition(item.start, scale, width);
+  const graph = renderSpanGraph(item, scale, width, "load-remote");
+  const annotations: PositionedAnnotation[] = [{
+    position: start,
+    text: formatTimestamp(item.start),
+    align: "start"
+  }];
+  if (item.end !== undefined) {
+    annotations.push({
+      position: toPosition(item.end, scale, width),
+      text: `${formatTimestamp(item.end)}${formatStatus(item.status)}`,
+      align: "end"
+    });
+  } else {
+    annotations.push({
+      position: Math.min(width - 1, start + 2),
+      text: item.status ?? "pending",
+      align: "start"
+    });
+  }
+  return [graph, ...renderAnnotations(annotations, width)];
+}
+
+function renderCostSpan(
+  item: ModulePerformanceTimelineItem,
+  scale: TimelineScale,
+  width: number
+): string[] {
+  if (item.type === "point") {
+    return renderPoint({ label: item.label, item, visual: "lifecycle-point" }, "◆", "", scale, width);
+  }
+  const start = toPosition(item.start, scale, width);
+  const duration = item.duration ?? (
+    item.end === undefined ? undefined : item.end - item.start
+  );
+  const metric = `${formatDuration(duration)} · ${formatTransferSize(
+    item.resource?.transferSize
+  )}${formatStatus(item.status)}`;
+  return [
+    renderSpanGraph(item, scale, width, "cost"),
+    ...renderAnnotations([{
+      position: start,
+      text: metric,
+      align: "start"
+    }], width)
+  ];
+}
+
+function renderLifecycleSpan(
+  item: ModulePerformanceTimelineItem,
+  scale: TimelineScale,
+  width: number
+): string[] {
+  if (item.type === "point") {
+    return renderPoint({ label: item.label, item, visual: "lifecycle-point" }, "◆", "", scale, width);
+  }
+  const start = toPosition(item.start, scale, width);
+  const duration = item.duration ?? (
+    item.end === undefined ? undefined : item.end - item.start
+  );
+  return [
+    renderSpanGraph(item, scale, width, "lifecycle-span"),
+    ...renderAnnotations([{
+      position: start,
+      text: `${formatDuration(duration)}${formatStatus(item.status)}`,
+      align: "start"
+    }], width)
+  ];
+}
+
+function renderPoint(
+  event: PresentationEvent,
+  marker: string,
+  inlineLabel: string,
+  scale: TimelineScale,
+  width: number
+): string[] {
+  const at = event.at ?? (event.item.type === "point"
+    ? event.item.at
+    : event.item.end ?? event.item.start);
+  const position = toPosition(at, scale, width);
+  const graph = Array.from({ length: width }, () => " ");
+  graph[position] = marker;
+  if (inlineLabel.length > 0) placeInlineLabel(graph, position, inlineLabel);
+  return [
+    graph.join(""),
+    ...renderAnnotations([{
+      position,
+      text: `${formatTimestamp(at)}${formatStatus(event.item.status)}`,
+      align: "center"
+    }], width)
+  ];
+}
+
+function renderSpanGraph(
+  item: ModulePerformanceTimelineSpan,
+  scale: TimelineScale,
+  width: number,
+  visual: "load-remote" | "cost" | "lifecycle-span"
 ): string {
   const graph = Array.from({ length: width }, () => " ");
-  if (item.type === "point") {
-    putGraphCharacter(graph, toPosition(item.at, domain, width), "●");
-    return graph.join("");
-  }
-  const start = toPosition(item.start, domain, width);
+  const start = toPosition(item.start, scale, width);
   if (item.end === undefined) {
-    putGraphCharacter(graph, start, "├");
-    if (start + 1 < width) putGraphCharacter(graph, start + 1, "…");
+    graph[start] = "━";
+    if (start + 1 < width) graph[start + 1] = "…";
     return graph.join("");
   }
-  const end = Math.max(start, toPosition(item.end, domain, width));
-  if (end === start) {
-    putGraphCharacter(graph, start, "◆");
-    return graph.join("");
+  const end = Math.max(start, toPosition(item.end, scale, width));
+  for (let position = start; position <= end; position += 1) {
+    graph[position] = "━";
   }
-  putGraphCharacter(graph, start, "├");
-  for (let position = start + 1; position < end; position += 1) {
-    putGraphCharacter(graph, position, "─");
+  if (visual === "load-remote") {
+    graph[end] = item.status === undefined || item.status === "success"
+      ? "●"
+      : "◆";
   }
-  putGraphCharacter(graph, end, "┤");
   return graph.join("");
 }
 
-function putGraphCharacter(graph: string[], position: number, value: string): void {
-  graph[position] = value;
+function renderAnnotations(
+  annotations: PositionedAnnotation[],
+  width: number
+): string[] {
+  const lines: Array<{ graph: string[]; occupied: boolean[] }> = [];
+  for (const annotation of annotations) {
+    const text = fitText(annotation.text, width);
+    const start = annotationStart(
+      annotation.position,
+      text.length,
+      width,
+      annotation.align ?? "start"
+    );
+    let target = lines.find((line) =>
+      !line.occupied.slice(start, start + text.length).some(Boolean)
+    );
+    if (target === undefined) {
+      target = {
+        graph: Array.from({ length: width }, () => " "),
+        occupied: Array.from({ length: width }, () => false)
+      };
+      lines.push(target);
+    }
+    writeText(target.graph, start, text);
+    for (let index = start; index < start + text.length; index += 1) {
+      target.occupied[index] = true;
+    }
+  }
+  return lines.map((line) => line.graph.join(""));
 }
 
-function toPosition(value: number, domain: TimelineDomain, width: number): number {
-  const ratio = (value - domain.min) / (domain.max - domain.min);
+function annotationStart(
+  position: number,
+  length: number,
+  width: number,
+  align: "start" | "center" | "end"
+): number {
+  const requested = align === "start"
+    ? position
+    : align === "end"
+      ? position - length + 1
+      : position - Math.floor(length / 2);
+  return clamp(requested, 0, Math.max(0, width - length));
+}
+
+function placeInlineLabel(
+  graph: string[],
+  position: number,
+  label: string
+): void {
+  const fitted = fitText(label, Math.max(1, graph.length - 2));
+  const after = position + 2;
+  const start = after + fitted.length <= graph.length
+    ? after
+    : Math.max(0, position - fitted.length - 1);
+  writeText(graph, start, fitted);
+}
+
+function writeText(target: string[], start: number, value: string): void {
+  for (let index = 0; index < value.length; index += 1) {
+    const position = start + index;
+    if (position >= 0 && position < target.length) {
+      target[position] = value[index] as string;
+    }
+  }
+}
+
+function renderTopBorder(layout: TimelineLayout): string {
+  return `┌${"─".repeat(layout.eventCellWidth)}┬${
+    "─".repeat(layout.timelineCellWidth)
+  }┐`;
+}
+
+function renderSeparator(layout: TimelineLayout): string {
+  return `├${"─".repeat(layout.eventCellWidth)}┼${
+    "─".repeat(layout.timelineCellWidth)
+  }┤`;
+}
+
+function renderBottomBorder(layout: TimelineLayout): string {
+  return `└${"─".repeat(layout.eventCellWidth)}┴${
+    "─".repeat(layout.timelineCellWidth)
+  }┘`;
+}
+
+function renderTableRow(
+  event: string,
+  timeline: string,
+  layout: TimelineLayout
+): string {
+  const eventContent = fitText(event, layout.eventCellWidth - 2)
+    .padEnd(layout.eventCellWidth - 2);
+  const timelineContent = fitText(timeline, layout.timelineCellWidth - 2)
+    .padEnd(layout.timelineCellWidth - 2);
+  return `│ ${eventContent} │ ${timelineContent} │`;
+}
+
+function toPosition(value: number, scale: TimelineScale, width: number): number {
+  const ratio = (value - scale.min) / (scale.max - scale.min);
   return clamp(Math.round(ratio * (width - 1)), 0, width - 1);
 }
 
-function formatItemTiming(item: ModulePerformanceTimelineItem): string {
-  const status = item.status === undefined || item.status === "success"
-    ? ""
-    : ` [${item.status}]`;
-  if (item.type === "point") {
-    return `@ ${formatObservedTime(item.at)} ms${status}`;
+function lanePrefix(id: string): string {
+  return id.replace(/-(?:consumer|provider|resources|preload)$/, "");
+}
+
+function laneContextName(label: string): string {
+  const separator = label.indexOf(" · ");
+  return separator === -1 ? label : label.slice(0, separator);
+}
+
+function providerName(label: string): string {
+  const separator = label.indexOf("@", label.startsWith("@") ? 1 : 0);
+  return separator === -1 ? label : label.slice(0, separator);
+}
+
+function providerEventLabel(label: string): string {
+  if (label === "Provider container init") return "Container init";
+  if (label === "Provider module loaded") return "Module loaded";
+  if (label === "remoteEntry") return "remoteEntry lifecycle";
+  return label;
+}
+
+function providerEventVisual(
+  item: ModulePerformanceTimelineItem
+): PresentationVisual {
+  if (item.type === "point") return "milestone";
+  if (item.label === "Provider container init") return "lifecycle-point";
+  return "lifecycle-span";
+}
+
+function resourceEventLabel(item: ModulePerformanceTimelineItem): string {
+  if (item.type === "span" && item.resource !== undefined) {
+    return fileName(item.resource.url);
   }
-  const end = item.end === undefined ? "…" : formatObservedTime(item.end);
-  return `${formatObservedTime(item.start)}–${end} ms${status}`;
+  const separator = item.label.indexOf(" · ");
+  return separator === -1 ? item.label : item.label.slice(0, separator);
 }
 
-function renderContinuation(
-  value: string,
-  markerGraph: string,
-  layout: TimelineLayout
-): string[] {
-  return wrapText(`↳ ${value}`, layout.detailWidth).map((line) => renderLine(
-    "",
-    markerGraph,
-    line,
-    layout
-  ));
+function sharedDependencyLabel(label: string): string {
+  const withoutAction = label.replace(/^(?:load|reuse)\s+/, "");
+  const shared = withoutAction.indexOf(" Shared");
+  return shared === -1 ? withoutAction : withoutAction.slice(0, shared);
 }
 
-function renderWrappedLine(
-  lane: string,
-  graph: string,
-  detail: string,
-  layout: TimelineLayout
-): string[] {
-  return wrapText(detail, layout.detailWidth).map((line, index) => renderLine(
-    index === 0 ? lane : "",
-    graph,
-    line,
-    layout
-  ));
+function fileName(value: string): string {
+  try {
+    const pathname = new URL(value, "https://divebell.invalid").pathname;
+    return pathname.split("/").filter(Boolean).at(-1) ?? value;
+  } catch {
+    return value.split("/").filter(Boolean).at(-1) ?? value;
+  }
 }
 
-function renderLine(
-  lane: string,
-  graph: string,
-  detail: string,
-  layout: TimelineLayout
+function formatDuration(value: number | undefined): string {
+  if (value === undefined) return "…";
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(2)}s`;
+  return `${formatDecimal(value)}ms`;
+}
+
+function formatTimestamp(value: number): string {
+  const seconds = value / 1000;
+  const formatted = seconds.toFixed(3).replace(/\.?0+$/, "");
+  return `${formatted === "-0" ? "0" : formatted}s`;
+}
+
+function formatTransferSize(value: number | undefined): string {
+  if (value === undefined) return "— KB";
+  const kibibytes = value / 1024;
+  return `${kibibytes < 10 ? formatDecimal(kibibytes) : Math.round(kibibytes)} KB`;
+}
+
+function formatDecimal(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Math.round(value * 10) / 10);
+}
+
+function formatStatus(
+  status: ModulePerformanceTimelineItem["status"]
 ): string {
-  return `${fitText(lane, layout.laneWidth).padEnd(layout.laneWidth)} ${graph} ${detail.padEnd(layout.detailWidth)}`
-    .trimEnd();
+  return status === undefined || status === "success" ? "" : ` · ${status}`;
 }
 
-function fitItemDescription(label: string, timing: string, width: number): string {
-  const availableLabelWidth = Math.max(1, width - timing.length - 1);
-  return `${fitText(label, availableLabelWidth)} ${timing}`;
-}
-
-function formatMarker(marker: ModulePerformanceTimelineMarker): string {
-  const status = marker.status === undefined ? "" : ` [${marker.status}]`;
-  return `${marker.label} ${formatObservedTime(marker.at)} ms${status}`;
-}
-
-function formatLaneKind(kind: ModulePerformanceTimelineLane["kind"]): string {
-  switch (kind) {
-    case "page":
-      return "Page";
-    case "page-script":
-      return "Page scripts";
-    case "mf-consumer":
-      return "MF consumer";
-    case "mf-provider":
-      return "MF provider";
-    case "mf-shared":
-      return "MF shared";
-    case "mf-resource":
-      return "MF resources";
-    case "mf-preload":
-      return "MF preload";
-  }
-}
-
-function formatObservedTime(value: number): string {
-  return String(value);
-}
-
-function formatAxisTime(value: number): string {
-  const magnitude = Math.abs(value);
-  if (magnitude >= 100) return String(Math.round(value));
-  return String(Math.round(value * 10) / 10);
+function normalizeZero(value: number): number {
+  return Object.is(value, -0) ? 0 : value;
 }
 
 function fitText(value: string, width: number): string {
   if (value.length <= width) return value;
   if (width <= 1) return "…";
   return `${value.slice(0, width - 1)}…`;
-}
-
-function wrapText(value: string, width: number): string[] {
-  const lines: string[] = [];
-  let remaining = value;
-  while (remaining.length > width) {
-    let split = remaining.lastIndexOf(" ", width);
-    if (split < Math.floor(width / 2)) split = width;
-    lines.push(remaining.slice(0, split));
-    remaining = remaining.slice(split).trimStart();
-  }
-  lines.push(remaining);
-  return lines;
-}
-
-function packSegments(values: string[], width: number): string[] {
-  const lines: string[] = [];
-  for (const value of values) {
-    const previous = lines.at(-1);
-    const candidate = previous === undefined ? value : `${previous} · ${value}`;
-    if (candidate.length <= width) {
-      if (previous === undefined) lines.push(value);
-      else lines[lines.length - 1] = candidate;
-      continue;
-    }
-    lines.push(...wrapText(value, width));
-  }
-  return lines;
 }
 
 function clamp(value: number, min: number, max: number): number {

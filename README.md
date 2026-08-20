@@ -47,36 +47,7 @@ divebell mf module-perf --report --view timeline
 
 Example output (the observed timings vary between navigations):
 
-```text
-┌──────────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────┐
-│ Event                        │ Timeline                                                                              │
-│                              │ 0s              2s               4s              6s               8s              10s │
-├──────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-│ Page                         │                                                                                       │
-│   Paint                      │                            ● FP · FCP                                ◇ LCP            │
-│                              │                         3.208s                                    8.264s              │
-├──────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-│ Consumer · mf_doc            │                                                                                       │
-│   loadRemote                 │                                      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━●                │
-│     mf_playground/.          │                                      4.446s                     8.216s                │
-│                              │                                                                                       │
-│   Shared                     │                                                                                       │
-│     react@19.1.1             │                         ━━━━                                                          │
-│                              │                         334ms                                                         │
-├──────────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
-│ Producer · mf_playground     │                                                                                       │
-│   Resources                  │                                                                                       │
-│     remoteEntry.js           │                                                       ━━━                             │
-│                              │                                                       311.6ms                         │
-│                              │                                                                                       │
-│     395.js                   │                                                       ━━━━━━━━━━━━━━━━                │
-│                              │                                                       1.80s                           │
-│                              │                                                                                       │
-│   Shared                     │                                                                                       │
-│     react@19.1.1             │                                                         ◆ reuse                       │
-│                              │                                                      6.699s                           │
-└──────────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────┘
-```
+![Module Federation performance timeline](./assets/mf-module-perf-timeline.png)
 
 `divebell setup` checks the environment and repairs browser startup only when
 needed. Its browser probe runs in a temporary session and cleans that session up

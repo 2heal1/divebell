@@ -190,7 +190,8 @@ test("renders a proportional terminal swimlane with exact observed boundaries", 
   assert.match(output, /0\.19s\s+0\.338s/);
   assert.match(output, /react@18\.3\.1\s+│\s+━+/);
   assert.match(output, /80ms/);
-  assert.match(output, /Producer · catalog/);
+  assert.match(output, /Provider · catalog/);
+  assert.doesNotMatch(output, /Producer · catalog/);
   assert.doesNotMatch(output, /Lifecycle|Container init|Module loaded/);
   assert.match(output, /Button\.js\s+│\s+━+/);
   assert.match(output, /57ms · 12 KB/);
@@ -251,7 +252,7 @@ test("keeps fallback origins, negative preloads, pending spans, and missing pain
   assert.match(output, /loadRemote\s+│\s+━…/);
   assert.match(output, /catalog\/Button\s+│\s+-0\.01s/);
   assert.doesNotMatch(output, /pending · pending/);
-  assert.match(output, /Producer · catalog/);
+  assert.match(output, /Provider · catalog/);
   assert.match(output, /Button\.js\s+│\s+━…/);
   assert.match(output, /… · pending/);
   assert.doesNotMatch(output, /-25–/);

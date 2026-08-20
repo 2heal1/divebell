@@ -389,7 +389,7 @@ one clock; values stay in the Timeline column directly below their graph.
 │     react@19.1.1             │                             ━━━━━                                        │
 │                              │                             260ms · 45 KB                                │
 ├──────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│ Producer · catalog           │                                                                          │
+│ Provider · catalog           │                                                                          │
 │   Resources                  │                                                                          │
 │     remoteEntry.js           │                                                     ━━━━━━━━━━━          │
 │                              │                                                     555ms · 18 KB        │
@@ -407,7 +407,7 @@ Read every boundary from `timeline`; never estimate a missing value. Paint
 markers show temporal relationships, not proof that MF caused a paint. Label
 the consumer interval `loadRemote`, not consumer initialization. The terminal
 view omits `page-script` events; use the structured report when ordinary
-external page scripts are part of the investigation. Include a Producer
+external page scripts are part of the investigation. Include a Provider
 `Preload` group only when an `mf-preload` lane exists; otherwise omit it.
 Preserve observed overlap instead of converting it into a serial arrow chain.
 

@@ -212,7 +212,7 @@ function createPresentationSections(
     })),
     ...Array.from(producers.entries()).map(([name, section]) => ({
       ...section,
-      title: `Producer · ${name}`
+      title: `Provider · ${name}`
     })),
     ...Array.from(fallbacks.entries()).map(([name, section]) => ({
       ...section,

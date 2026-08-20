@@ -38,7 +38,7 @@ the normal structured JSON envelope:
 divebell mf module-perf --report --view timeline
 ```
 
-The left column contains only the Page, Consumer, Producer, module, Shared, and
+The left column contains only the Page, Consumer, Provider, module, Shared, and
 resource hierarchy. The right column owns the proportional clock and every
 displayed value. FP/FCP/LCP labels stay beside their point markers;
 `loadRemote` places its bar on the parent row and its start/completion values on

@@ -152,7 +152,7 @@ test("command skill keeps MF performance answers inside attributed evidence", ()
   );
   assert.match(
     performance,
-    /Event column contains only[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omits `page-script` events[\s\S]*Producer[\s\S]*`Preload` group[\s\S]*Preserve observed overlap/
+    /Event column contains only[\s\S]*consumer interval `loadRemote`, not consumer initialization[\s\S]*omits `page-script` events[\s\S]*Provider[\s\S]*`Preload` group[\s\S]*Preserve observed overlap/
   );
   assert.match(
     performance,

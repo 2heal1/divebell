@@ -16,7 +16,8 @@ const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "runtime",
   "session",
   "state",
-  "ui"
+  "ui",
+  "webmcp"
 ]);
 
 const FIRST_TARGET_COMMANDS = new Set([

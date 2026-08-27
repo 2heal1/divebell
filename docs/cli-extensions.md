@@ -322,6 +322,7 @@ A Command accesses Divebell capabilities through `options.divebell`:
 | --- | --- |
 | Read and operate the current page | `divebell.browser` |
 | Collect screenshot, Network, Console, memory, and code-execution evidence | The matching capability under `divebell.browser` |
+| Discover or call tools registered by a WebMCP-enabled page | `divebell.browser.webmcp` |
 | Read internal state declared by the application | `targets`, `snapshot`, `events`, `actions` |
 | Execute a page-declared action and wait for its result | `runAction`, `waitFor` |
 

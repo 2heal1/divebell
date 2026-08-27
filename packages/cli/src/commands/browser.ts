@@ -90,6 +90,7 @@ export async function runBrowserCliCommand(
       });
     }
     validateTempProfileOpenArgs(args);
+    validateWebMcpOpenArgs(args);
     const tempProfile = hasOption(args, "temp-profile")
       ? await createBrowserTempProfile(env)
       : undefined;
@@ -104,6 +105,7 @@ export async function runBrowserCliCommand(
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
     const browserUi = hasOption(args, "ui");
+    const browserArguments = createWebMcpBrowserArguments(args);
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     let bridgeUrl: string | null = null;
@@ -148,6 +150,7 @@ export async function runBrowserCliCommand(
       const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
         ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+        ...(browserArguments === undefined ? {} : { browserArguments }),
         ...tempProfileRunOptions
       });
       const result = await openBrowserPage(
@@ -161,6 +164,7 @@ export async function runBrowserCliCommand(
           ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+          ...(browserArguments === undefined ? {} : { browserArguments }),
           ...tempProfileRunOptions
         }
       );
@@ -211,6 +215,7 @@ export async function runBrowserCliCommand(
         browserReuseInitialBlankPage,
         browserRestoreDisabled,
         browserDefaultProfileDisabled,
+        ...(browserArguments === undefined ? {} : { browserArguments }),
         ...(browserArgs.options.has("init-script")
           ? { browserInitScripts: [...(browserArgs.options.get("init-script") ?? [])] }
           : {}),
@@ -391,6 +396,44 @@ function validateTempProfileOpenArgs(args: ParsedCliArgs): void {
     retryable: false,
     hint: "Remove the other browser context options so Divebell can start a clean local Chrome Profile."
   });
+}
+
+function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
+  if (!hasOption(args, "webmcp")) return;
+  if (getOptionValue(args, "webmcp") !== "true") {
+    throw createError({
+      code: "WEBMCP_OPTION_INVALID",
+      kind: "validation",
+      message: "--webmcp is a flag and does not accept a value.",
+      retryable: false,
+      hint: "Use `divebell open <url> --webmcp`."
+    });
+  }
+  const conflicts = ["cdp", "auto-connect", "provider"].filter((name) =>
+    hasOption(args, name)
+  );
+  const engine = getOptionValue(args, "engine")?.trim().toLowerCase();
+  if (engine !== undefined && engine !== "" && engine !== "chrome") {
+    conflicts.push("engine");
+  }
+  if (conflicts.length === 0) return;
+  throw createError({
+    code: "WEBMCP_EXTERNAL_BROWSER_CONFLICT",
+    kind: "validation",
+    message: `--webmcp cannot enable launch-time Chrome features when combined with: ${conflicts.map((name) => `--${name}`).join(", ")}.`,
+    retryable: false,
+    hint: "Let Divebell launch local Chrome, or enable WebMCP on the external browser before connecting and omit --webmcp."
+  });
+}
+
+function createWebMcpBrowserArguments(args: ParsedCliArgs): string | undefined {
+  if (!hasOption(args, "webmcp")) return undefined;
+  return [
+    ...(args.options.get("args") ?? []).filter((value) => value !== "true"),
+    "--enable-features=WebMCP",
+    "--enable-features=WebMCPTesting",
+    "--enable-features=DevToolsWebMCPSupport"
+  ].join("\n");
 }
 
 function withBrowserProfile(args: ParsedCliArgs, path: string): ParsedCliArgs {
@@ -730,6 +773,7 @@ function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string
     "config",
     "debug"
   ]) {
+    if (name === "args" && hasOption(args, "webmcp")) continue;
     appendBrowserOptions(launchArgs, args, name);
   }
   return [...launchArgs, ...command];

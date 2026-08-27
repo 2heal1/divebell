@@ -300,6 +300,26 @@ test("adds a reusable blank startup page without dropping custom browser argumen
   assert.equal(customStartupPage.AGENT_BROWSER_ARGS, "--start-maximized\nhttps://start.example.com");
 });
 
+test("persists WebMCP browser arguments alongside the reusable blank page", () => {
+  const browserArguments = [
+    "--enable-features=WebMCP",
+    "--enable-features=WebMCPTesting",
+    "--enable-features=DevToolsWebMCPSupport"
+  ].join("\n");
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--start-maximized"
+  }, undefined, undefined, {
+    browserArguments,
+    reuseInitialBlankPage: true
+  });
+
+  assert.equal(env.AGENT_BROWSER_ARGS, [
+    "--start-maximized",
+    browserArguments,
+    "about:blank"
+  ].join("\n"));
+});
+
 test("does not add a local startup page to restricted or external browsers", () => {
   for (const source of [
     { AGENT_BROWSER_ALLOWED_DOMAINS: "example.com" },

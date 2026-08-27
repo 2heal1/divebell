@@ -2068,6 +2068,92 @@ test("exposes coverage commands to CLI extensions", async () => {
   }
 });
 
+test("exposes typed WebMCP list and call APIs to CLI extensions", async () => {
+  const tool = {
+    name: "getProductCount",
+    description: "Return the number of products.",
+    inputSchema: { type: "object", properties: {} },
+    annotations: { readOnly: true },
+    frameId: "frame-main",
+    source: "imperative" as const
+  };
+  const listResult = {
+    apiVersion: 1,
+    tools: [tool],
+    count: 1,
+    page: {
+      tabId: "0",
+      targetId: "target-main",
+      url: "https://app.test/"
+    }
+  };
+  const callResult = {
+    apiVersion: 1,
+    invocationId: "invocation-1",
+    status: "completed" as const,
+    tool,
+    trust: "untrusted" as const,
+    page: listResult.page,
+    output: { count: 3 }
+  };
+  const extension = createCommandExtension({
+    name: "webmcp-demo",
+    run: async ({ divebell }) => ({
+      listed: await divebell.browser.webmcp.list(),
+      called: await divebell.browser.webmcp.call<{ count: number }>(
+        "getProductCount",
+        {},
+        { frameId: "frame-main", timeout: 5000 }
+      )
+    })
+  });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "webmcp-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify(args[1] === "list" ? listResult : callResult),
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["webmcp", "list", "--json"],
+      [
+        "webmcp",
+        "call",
+        "getProductCount",
+        "--input",
+        "{}",
+        "--frame-id",
+        "frame-main",
+        "--timeout",
+        "5000",
+        "--json"
+      ]
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("webmcp-demo", {
+      listed: listResult,
+      called: callResult
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("shows and resolves command skills without running commands", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "divebell-extension-skill-"));
   const skillPath = join(tempDir, "SKILL.md");

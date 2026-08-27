@@ -280,6 +280,11 @@ export function createAgentBrowserEnvironment(
   if (options.unencryptedStateOutput === true) {
     delete env[AGENT_BROWSER_ENCRYPTION_KEY_ENV];
   }
+  if (options.browserArguments !== undefined && options.browserArguments.trim().length > 0) {
+    env[AGENT_BROWSER_ARGS_ENV] = env[AGENT_BROWSER_ARGS_ENV]?.trim()
+      ? `${env[AGENT_BROWSER_ARGS_ENV]}\n${options.browserArguments}`
+      : options.browserArguments;
+  }
   // Headed Chrome creates chrome://newtab by default. agent-browser ignores that
   // internal target and otherwise has to create a second, controllable tab.
   if (options.reuseInitialBlankPage === true && supportsReusableInitialBlankPage(env)) {

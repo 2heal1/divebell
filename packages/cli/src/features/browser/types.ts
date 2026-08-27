@@ -20,6 +20,7 @@ export interface BrowserRunOptions {
   defaultTimeoutMs?: number;
   unencryptedStateOutput?: boolean;
   reuseInitialBlankPage?: boolean;
+  browserArguments?: string;
 }
 
 export interface BrowserRunner {

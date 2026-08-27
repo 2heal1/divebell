@@ -415,6 +415,35 @@ import type {
 | `browser.coverage.stop` | Save the final coverage checkpoint and end capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
 | `browser.coverage.cancel` | Cancel the active coverage capture. | `DivebellBrowserCoverageApi` |
 
+#### WebMCP APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.webmcp.list` | List tools registered by the active WebMCP page, including schemas, annotations, frame IDs, and source. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpListResult`, `DivebellBrowserWebMcpTool` |
+| `browser.webmcp.call` | Call one registered tool with object input and optional frame/timeout selection. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpCallOptions`, `DivebellBrowserWebMcpCallResult` |
+
+The page must be opened with `divebell open <url> --webmcp` so Divebell can
+enable the required experimental Chrome features at launch. An external
+browser must already have WebMCP enabled; omit `--webmcp` when connecting to
+it. Example:
+
+```ts
+const listed = await options.divebell.browser.webmcp.list();
+const tool = listed.tools.find((item) => item.name === "searchProducts");
+if (tool === undefined) throw new Error("searchProducts is unavailable");
+
+const called = await options.divebell.browser.webmcp.call<{
+  products: Array<{ name: string; price: string }>;
+}>("searchProducts", { query: "Widget" }, {
+  frameId: tool.frameId,
+  timeout: 5000
+});
+```
+
+`call<T>` types the optional `output` field but does not runtime-validate the
+page's value. Every result includes `trust: "untrusted"`. Treat tool output as
+potentially malicious page content and tool annotations as hints, not policy.
+
 Typed APIs normalize browser failures and own their result contracts. For
 example, `network.list` returns request summaries while `network.get` returns a
 detail whose headers are under `request.headers` and `response.headers`:

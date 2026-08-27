@@ -404,6 +404,8 @@ the package root or inspect the installed
 | `browser.coverage.take` | Save an intermediate coverage checkpoint. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
 | `browser.coverage.stop` | Save the final checkpoint and stop coverage. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
 | `browser.coverage.cancel` | Cancel the active coverage capture. | `DivebellBrowserCoverageApi` |
+| `browser.webmcp.list` | List WebMCP tools registered by the active page. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpListResult`, `DivebellBrowserWebMcpTool` |
+| `browser.webmcp.call` | Call a registered WebMCP tool with typed input and result output. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpCallOptions`, `DivebellBrowserWebMcpCallResult` |
 | `browser.raw` | Run an installed agent-browser command without asserting a command-specific payload type. | `DivebellBrowserApi`, `DivebellBrowserRawOptions`, `DivebellBrowserRawResult` |
 
 Page operations and diagnostics under `browser` remain available when the page does not use Runtime SDK. Require a connected Runtime only when a Command truly needs application-internal state.
@@ -425,6 +427,42 @@ const contentType = detail.response?.headers["content-type"];
 `browser.network` also provides `clear`, `route`, `unroute`, and `har`.
 `browser.console` provides `list` and `clear`. Memory and Coverage expose
 concrete result types rather than caller-selected generic types.
+
+WebMCP must be enabled when Divebell launches Chrome:
+
+```bash
+divebell open https://app.example --webmcp
+```
+
+An Extension can then discover and call page-registered tools without using
+`browser.raw`:
+
+```ts
+const listed = await divebell.browser.webmcp.list();
+const tool = listed.tools.find((candidate) => candidate.name === "searchProducts");
+if (tool === undefined) {
+  throw new Error("searchProducts is not registered on the active page");
+}
+
+const called = await divebell.browser.webmcp.call<{
+  products: Array<{ name: string; price: string }>;
+}>("searchProducts", { query: "Widget" }, {
+  frameId: tool.frameId,
+  timeout: 5000
+});
+
+if (called.status !== "completed") {
+  throw new Error(called.error?.message ?? `WebMCP call ${called.status}`);
+}
+```
+
+`list` returns the normalized JSON input schema, CDP frame ID, annotations,
+and `imperative` or `declarative` source for each tool. `call<T>` types the
+optional `output` as `T`, but does not validate page output at runtime. Every
+call result has `trust: "untrusted"`; page tool output can contain prompt
+injection. Treat `readOnly`, `untrustedContent`, `consequential`, and
+`autosubmit` annotations as hints rather than enforcement. See
+[WebMCP](webmcp.md) for CLI usage, Chrome compatibility, and trust boundaries.
 
 When no typed API exposes the required capability, `browser.raw` accepts
 agent-browser arguments directly:

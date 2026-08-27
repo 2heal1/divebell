@@ -28,7 +28,10 @@ export function applyOpenContextBrowserMode(
   return bindBrowserRunOptions(browserRunner, {
     ...(openContext === undefined ? {} : {
       ui: openContext.browserUi,
-      reuseInitialBlankPage: openContext.browserReuseInitialBlankPage
+      reuseInitialBlankPage: openContext.browserReuseInitialBlankPage,
+      ...(openContext.browserArguments === undefined
+        ? {}
+        : { browserArguments: openContext.browserArguments })
     }),
     ...(openContext?.browserRestoreDisabled === true ? { disableRestore: true } : {}),
     ...(openContext?.browserDefaultProfileDisabled === true

@@ -67,7 +67,8 @@ export const BROWSER_COMMAND_NAMES: readonly BrowserCommandName[] = [
   "confirm",
   "deny",
   "debug",
-  "coverage"
+  "coverage",
+  "webmcp"
 ];
 
 export const RUNTIME_RESOURCE_COMMAND_NAMES: readonly RuntimeResourceCommandName[] = [

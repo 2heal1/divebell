@@ -123,6 +123,7 @@ export function createOpenContextFixture(overrides: Partial<{
   browserReuseInitialBlankPage: boolean;
   browserRestoreDisabled: boolean;
   browserDefaultProfileDisabled: boolean;
+  browserArguments: string;
   browserDefaultProfile: string;
   browserRestoreOptions: Record<string, string[]>;
 }> = {}): { operationLogDirectory: string; cleanup(): void } {
@@ -145,6 +146,9 @@ export function createOpenContextFixture(overrides: Partial<{
     browserReuseInitialBlankPage: overrides.browserReuseInitialBlankPage ?? false,
     browserRestoreDisabled: overrides.browserRestoreDisabled ?? false,
     browserDefaultProfileDisabled: overrides.browserDefaultProfileDisabled ?? false,
+    ...(overrides.browserArguments === undefined
+      ? {}
+      : { browserArguments: overrides.browserArguments }),
     ...(overrides.browserDefaultProfile === undefined
       ? {}
       : { browserDefaultProfile: overrides.browserDefaultProfile }),

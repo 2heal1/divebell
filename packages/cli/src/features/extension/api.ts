@@ -47,6 +47,9 @@ import type {
   DivebellBrowserNetworkRequestSummary,
   DivebellBrowserTab,
   DivebellBrowserWaitEvalResult,
+  DivebellBrowserWebMcpCallOptions,
+  DivebellBrowserWebMcpCallResult,
+  DivebellBrowserWebMcpListResult,
   DivebellExtensionApi,
   DivebellResourceQuery,
   DivebellWaitOptions
@@ -199,6 +202,74 @@ function createDivebellBrowserApi(options: {
   const runJson = async <T>(args: string[]): Promise<T> => {
     const output = await runText(args);
     return parseBrowserJsonOutput(output) as T;
+  };
+  const callWebMcp = async <T = unknown>(
+    toolName: string,
+    input: Readonly<Record<string, unknown>> = {},
+    webMcpOptions: DivebellBrowserWebMcpCallOptions = {}
+  ): Promise<DivebellBrowserWebMcpCallResult<T>> => {
+    const normalizedToolName = toolName.trim();
+    if (normalizedToolName.length === 0) {
+      throw createError({
+        code: "INVALID_WEBMCP_TOOL_NAME",
+        kind: "validation",
+        message: "WebMCP tool name must be a non-empty string.",
+        retryable: false
+      });
+    }
+    if (!isRecord(input)) {
+      throw createError({
+        code: "INVALID_WEBMCP_INPUT",
+        kind: "validation",
+        message: "WebMCP tool input must be a JSON object.",
+        retryable: false
+      });
+    }
+    let serializedInput: string | undefined;
+    try {
+      serializedInput = JSON.stringify(input);
+    } catch (error) {
+      throw createError({
+        code: "INVALID_WEBMCP_INPUT",
+        kind: "validation",
+        message: `WebMCP tool input must be JSON-serializable: ${error instanceof Error ? error.message : String(error)}`,
+        retryable: false
+      });
+    }
+    if (serializedInput === undefined) {
+      throw createError({
+        code: "INVALID_WEBMCP_INPUT",
+        kind: "validation",
+        message: "WebMCP tool input must serialize to a JSON object.",
+        retryable: false
+      });
+    }
+    const args = ["webmcp", "call", normalizedToolName, "--input", serializedInput];
+    if (webMcpOptions.frameId !== undefined) {
+      const frameId = webMcpOptions.frameId.trim();
+      if (frameId.length === 0) {
+        throw createError({
+          code: "INVALID_WEBMCP_FRAME_ID",
+          kind: "validation",
+          message: "WebMCP frameId must be a non-empty string when provided.",
+          retryable: false
+        });
+      }
+      args.push("--frame-id", frameId);
+    }
+    if (webMcpOptions.timeout !== undefined) {
+      if (!Number.isSafeInteger(webMcpOptions.timeout) || webMcpOptions.timeout <= 0) {
+        throw createError({
+          code: "INVALID_WEBMCP_TIMEOUT",
+          kind: "validation",
+          message: "WebMCP timeout must be a positive integer in milliseconds.",
+          retryable: false
+        });
+      }
+      args.push("--timeout", String(webMcpOptions.timeout));
+    }
+    args.push("--json");
+    return await runJson<DivebellBrowserWebMcpCallResult<T>>(args);
   };
   return {
     raw: async (args, runOptions = {}) => {
@@ -375,6 +446,14 @@ function createDivebellBrowserApi(options: {
       stop: async (coverageOptions = {}) =>
         await runJson(createCoverageCheckpointArgs("stop", coverageOptions)),
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
+    },
+    webmcp: {
+      list: async () => await runJson<DivebellBrowserWebMcpListResult>([
+        "webmcp",
+        "list",
+        "--json"
+      ]),
+      call: callWebMcp
     },
     debug: {
       status: async (debugOptions = {}) => {

@@ -28,11 +28,11 @@ with its exact version:
 pnpm run update:agent-browser -- 0.35.0-divebell.1
 ```
 
-This updates the `@divebell/cli` dependency and lockfile, regenerates the
-version-matched `browser.raw` Extension Skill reference from the installed
-package, and runs the synchronization, contract, CLI, and lint checks. Review
-and commit all generated reference changes with the dependency update. Do not
-edit the generated section of
+This updates the `@divebell/cli` dependency and lockfile, synchronizes the
+recording Skill runtime archive, regenerates the version-matched `browser.raw`
+Extension Skill reference from the installed package, and runs the
+synchronization, contract, CLI, and lint checks. Review and commit all generated
+reference changes with the dependency update. Do not edit the generated section of
 `skills/divebell-extension/references/browser-raw.md` manually.
 
 ## Why it is temporary

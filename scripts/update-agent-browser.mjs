@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 const scriptPath = fileURLToPath(import.meta.url);
 const repoRoot = resolve(dirname(scriptPath), "..");
 const cliPackagePath = join(repoRoot, "packages/cli/package.json");
+const recordingRuntimeManifestPath = join(
+  repoRoot,
+  "skills/record-divebell-workflow/references/divebell-cli-runtime.json"
+);
 const cliRequire = createRequire(cliPackagePath);
 
 export function parseUpdateAgentBrowserArguments(args) {
@@ -113,6 +117,44 @@ function assertInstalledAgentBrowserVersion(expectedVersion) {
   }
 }
 
+export function updateRecordingRuntimeAgentBrowser(manifest, version) {
+  if (manifest === null || typeof manifest !== "object" || !Array.isArray(manifest.packages)) {
+    throw new Error("Invalid recording runtime manifest.");
+  }
+
+  const matches = manifest.packages.filter(
+    (item) => item?.name === "@divebell/agent-browser"
+  );
+  if (matches.length !== 1 || matches[0].source !== "registry") {
+    throw new Error(
+      "Recording runtime manifest must contain one registry @divebell/agent-browser package."
+    );
+  }
+
+  return {
+    ...manifest,
+    packages: manifest.packages.map((item) =>
+      item.name === "@divebell/agent-browser"
+        ? {
+            ...item,
+            specifier: `@divebell/agent-browser@${version}`,
+            file: `divebell-agent-browser-${version}.tgz`
+          }
+        : item
+    )
+  };
+}
+
+function synchronizeRecordingRuntimeAgentBrowser(version) {
+  const manifest = JSON.parse(readFileSync(recordingRuntimeManifestPath, "utf8"));
+  const updated = updateRecordingRuntimeAgentBrowser(manifest, version);
+  writeFileSync(
+    recordingRuntimeManifestPath,
+    `${JSON.stringify(updated, null, 2)}\n`,
+    "utf8"
+  );
+}
+
 function runStep(step) {
   console.log(`\n[agent-browser:update] ${step.label}`);
   const result = spawnSync(step.command, step.args, {
@@ -146,6 +188,7 @@ if (isEntryPoint) {
       const steps = createUpdateAgentBrowserSteps(options.version, options);
       runStep(steps[0]);
       assertInstalledAgentBrowserVersion(options.version);
+      synchronizeRecordingRuntimeAgentBrowser(options.version);
       for (const step of steps.slice(1)) runStep(step);
       console.log(
         `\n[agent-browser:update] @divebell/agent-browser@${options.version} and its Skill references are synchronized.`

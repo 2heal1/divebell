@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   createUpdateAgentBrowserSteps,
-  parseUpdateAgentBrowserArguments
+  parseUpdateAgentBrowserArguments,
+  updateRecordingRuntimeAgentBrowser
 } from "./update-agent-browser.mjs";
 
 test("requires an exact agent-browser version", () => {
@@ -69,5 +70,45 @@ test("can skip slow verification without skipping Skill synchronization", () => 
       "--filter @divebell/cli add --save-exact @divebell/agent-browser@1.2.3",
       "run docs:raw"
     ]
+  );
+});
+
+test("synchronizes the recording runtime agent-browser archive", () => {
+  const manifest = {
+    schemaVersion: 1,
+    packages: [
+      {
+        name: "@divebell/agent-browser",
+        source: "registry",
+        specifier: "@divebell/agent-browser@0.34.0-divebell.2",
+        file: "divebell-agent-browser-0.34.0-divebell.2.tgz"
+      },
+      {
+        name: "@divebell/cli",
+        source: "workspace",
+        directory: "packages/cli",
+        file: "divebell-cli-0.0.25.tgz"
+      }
+    ]
+  };
+
+  assert.deepEqual(
+    updateRecordingRuntimeAgentBrowser(manifest, "0.34.0-divebell.4"),
+    {
+      ...manifest,
+      packages: [
+        {
+          name: "@divebell/agent-browser",
+          source: "registry",
+          specifier: "@divebell/agent-browser@0.34.0-divebell.4",
+          file: "divebell-agent-browser-0.34.0-divebell.4.tgz"
+        },
+        manifest.packages[1]
+      ]
+    }
+  );
+  assert.throws(
+    () => updateRecordingRuntimeAgentBrowser({ packages: [] }, "0.34.0-divebell.4"),
+    /must contain one registry/
   );
 });

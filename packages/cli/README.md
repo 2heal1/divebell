@@ -56,6 +56,10 @@ divebell network --url /api/orders
 divebell page-snapshot
 ```
 
+Try the default Profile first. If it cannot access the target or has the wrong
+account, run `divebell profiles` and let the user select the explicit Profile;
+do not choose an account for them.
+
 After the coding agent changes source code, reuse the same login state and session to rerun the real user journey and verify the matching outcome. Browser commands work without application integration.
 
 When no usable Chrome Profile exists, Divebell falls back to Automatic Restore State, a portable snapshot of cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Pass `--no-default-profile` for one `open`, or set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` persistently, to request this fallback explicitly. Divebell saves Restore State once after the opened page is quiet for about two seconds, does not save periodically by default, and saves again before close, `divebell stop`, daemon shutdown, or relaunch. Use `--restore-initial-save false` to keep only close-time saving, or `--restore-periodic-save` to opt back into the roughly 30-second periodic saves. `--restore-save never` disables every save stage. See [Browser Authentication and State](../../docs/browser-auth.md) for config, environment, priority, and headed-window behavior.
@@ -63,21 +67,20 @@ When no usable Chrome Profile exists, Divebell falls back to Automatic Restore S
 For a state file, always try and verify a normal
 `divebell open <url> --state <path>` first. If it redirects to login, returns
 401/403, or shows an authentication or permission failure, do not guess related
-origins or broaden the state. On a trusted local machine, establish a complete
-Profile through an authorized interactive login:
+origins or broaden the state. The consumer must authenticate again, either by
+signing in manually in a headed browser or by explicitly providing login
+information for the auth vault:
 
 ```sh
-divebell stop
-divebell open <url> --ui --temp-profile
-# Complete login and verify the protected target, then:
-divebell profile export
-divebell open <url> --profile <returned-path> --ui
+divebell open <url> --state <path> --ui
+# Let the user complete login and verify the protected target.
+# Or save user-provided credentials with `auth save --password-stdin`,
+# then run `divebell auth login <name>`.
 ```
 
-`profile export` closes the temporary browser, flushes its storage, and returns
-the reusable local Profile directory in `data.path`. Running `stop` before the
-export discards it. Treat a plain 404 without authentication evidence as an
-application or routing problem.
+Profiles stay on their local machine. Use a URL-scoped `state save` when
+another machine needs sign-in state. Treat a plain 404 without authentication
+evidence as an application or routing problem.
 
 When a page already provides Runtime SDK information, the same session can add internal evidence:
 

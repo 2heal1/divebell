@@ -16,62 +16,38 @@ task-specific success condition:
 - If an explicit Profile or state succeeds, keep using it.
 - If an explicit state redirects to login, returns 401 or 403, or shows a
   signed-out or permission page, treat the state as insufficient. Do not infer
-  missing sources, guess related origins, or broaden it. Follow **Create a
-  clean local Profile** when the user authorizes an interactive login.
+  missing sources, guess related origins, or broaden it. Follow **Handle a
+  state failure on its consumer**.
 - If the provider has a verified Profile and another machine specifically
   needs a portable file, follow **Save a portable state**.
-- If an explicit or default Profile fails, ask the user to identify an
-  authorized Profile or approve a clean interactive login. Never enumerate
-  Profiles and choose an account for the user.
+- If the default Profile fails or has the wrong account, follow **Let the user
+  select a local Profile**.
 
 A plain 404 without authentication evidence is an application, environment, or
 routing problem. Do not treat it as proof of missing browser state.
 
-## Create a clean local Profile
+## Let the user select a local Profile
 
-Use this workflow after verified authentication failure, or when no existing
-Profile is suitable and the user authorizes an interactive login:
+Use the most recently used Chrome Profile by default. Only after its access or
+account verification fails should the agent list the selectable local Profiles:
 
-1. Stop a current Divebell browser only when this task owns its lifecycle:
+```bash
+divebell profiles
+```
 
-   ```bash
-   divebell stop
-   ```
+Show the selectable metadata and ask the user to choose. Never infer the
+intended identity or choose a Profile on the user's behalf. After the user
+selects one, stop the current browser only when this task owns its lifecycle,
+then reopen the exact target:
 
-2. Open the exact protected target without inheriting a Chrome Profile, state
-   file, or project Restore State:
+```bash
+divebell stop
+divebell open <target-url> --profile <user-selected-profile> --ui
+```
 
-   ```bash
-   divebell open <target-url> --ui --temp-profile
-   ```
-
-3. Let the user complete sign-in. Verify the exact final URL, account, and page
-   success condition before exporting.
-4. Export before stopping:
-
-   ```bash
-   divebell profile export [new-profile-directory]
-   ```
-
-   Omit the directory to let Divebell allocate one. Read the absolute result
-   from `data.path`. The command closes the browser first so Chrome flushes
-   cookies, web storage, IndexedDB, service workers, cache, preferences, and
-   other Profile-owned data.
-5. Reopen the same target with the returned directory and repeat the same
-   verification:
-
-   ```bash
-   divebell open <target-url> --profile <returned-path> --ui
-   ```
-
-`--temp-profile` cannot be combined with another browser context such as
-`--profile`, `--state`, `--restore`, `--cdp`, or `--allowed-domains`. A new
-`open` is rejected while the temporary Profile is active. Export it first, or
-run `divebell stop` to discard it.
-
-An exported Profile is a sensitive local browser directory, not a portable
-state file. Keep it on trusted storage and do not assume it will work across
-operating systems or Chrome installations.
+Verify the exact final URL, account, and page success condition. Profiles are
+local browser data; do not copy them between machines as an authentication
+handoff.
 
 ## Save a portable state
 
@@ -79,13 +55,13 @@ Use `state save` only when a provider can already open the exact protected
 target with an authorized Profile and another machine needs a smaller,
 reviewable state file:
 
-1. Ask the provider to identify the authorized Profile explicitly. Never
-   enumerate Profiles and choose an account for the user.
-2. Open the exact target with that Profile and verify the final URL, navigation
-   or HTTP result, current account, and page success condition:
+1. Open the exact target normally and verify the final URL, navigation or HTTP
+   result, current account, and page success condition. If the default Profile
+   is wrong or cannot authenticate, follow the user-selection workflow above.
+2. If the user selected a Profile, reopen with that exact Profile:
 
    ```bash
-   divebell open <target-url> --profile <working-profile-name-or-path>
+   divebell open <target-url> --profile <user-selected-profile>
    ```
 
 3. Save a new URL-scoped state from that verified browser session:
@@ -108,8 +84,37 @@ reviewable state file:
 State contains cookies plus localStorage and sessionStorage for exported
 origins. It intentionally excludes IndexedDB, service workers, cache,
 extensions, browser preferences, and other Profile-owned data. If a state-backed
-consumer still fails the authentication check, return to **Create a clean local
-Profile**. Do not broaden or guess state scope.
+consumer still fails the authentication check, follow the consumer failure
+workflow below. Do not broaden or guess state scope.
+
+## Handle a state failure on its consumer
+
+When a transferred state redirects to login, returns 401 or 403, or shows a
+signed-out or permission page, the consumer must authenticate again. Do not ask
+for a Profile copied from the provider machine.
+
+For manual sign-in, retry once in a visible browser unless the failed attempt
+already used `--ui`:
+
+```bash
+divebell open <target-url> --state <consumer-state-path> --ui
+```
+
+Let the user complete the login, then verify the exact target, account, and
+success condition. If the user explicitly provides login information instead,
+save the password through standard input and use the auth vault:
+
+```bash
+printf '%s\n' "$APP_PASSWORD" | \
+  divebell auth save <name> \
+    --url <login-url> \
+    --username <username> \
+    --password-stdin
+divebell auth login <name>
+```
+
+Never print the password or place it directly in command arguments. Do not
+automate credentials the user did not provide for this purpose.
 
 ## Interpret failures safely
 

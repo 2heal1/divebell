@@ -65,11 +65,6 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell profile export [path]",
-    description: "Close the current temporary browser cleanly, export its complete Profile to a new local directory, and return the absolute path."
-  },
-  {
-    category: "Bridge and Browser",
     usage: "divebell raw <agent-browser-args...>",
     description: "Run the bundled agent-browser directly; use `divebell raw <command> --help` to inspect raw subcommands."
   },
@@ -105,8 +100,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path> | --temp-profile] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
-    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --temp-profile starts a clean exportable Profile with no restore, while --no-default-profile skips automatic Profile selection. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
+    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
   },
   ...browserCommandReferences,
   {
@@ -241,7 +236,6 @@ const TOP_LEVEL_DESCRIPTIONS: Readonly<Record<string, string>> = {
   console: "Read browser console logs.",
   eval: "Run a script in the current page.",
   extensions: "Install, list, update, or remove Divebell extensions.",
-  profile: "Export the current temporary browser Profile.",
   "wait-for": "Wait for a target to reach a status.",
   ps: "List running divebell daemon processes.",
   kill: "Stop a divebell daemon by ps index, PID, or port.",

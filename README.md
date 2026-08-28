@@ -96,8 +96,6 @@ For protected pages, Divebell uses a read-only copy of the current OS user's mos
 
 When no local Chrome Profile is available, Divebell falls back to project-scoped automatic Restore State. Restore State contains cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Divebell saves it once after a newly opened page is quiet for about two seconds and again before close, while periodic saving is disabled by default. Pass `--no-default-profile` for one `open`, or set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` persistently, to use Restore State instead of automatic Profile selection.
 
-For a fresh authorized login that needs full browser-owned storage, `open --ui --temp-profile` starts an empty isolated Profile without default Profile or Restore State input. After login, `profile export [path]` closes it cleanly and returns a reusable local Profile directory; `stop` discards it when it is not exported.
-
 [Browser Authentication and State](./docs/browser-auth.md)
 
 When a script must manage the complete browser flow, see [Automating with Divebell CLI](./docs/cli-automation-scripts.md).

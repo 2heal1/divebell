@@ -88,7 +88,7 @@ test("prints compact top-level help", async () => {
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
   assert.match(output.text(), /divebell open - Open a directory-scoped page/);
   assert.match(output.text(), /divebell profiles - List Chrome profiles/);
-  assert.match(output.text(), /divebell profile - Export the current temporary browser Profile/);
+  assert.doesNotMatch(output.text(), /divebell profile /);
   assert.match(output.text(), /divebell raw - Run the bundled agent-browser directly/);
   assert.match(output.text(), /divebell state - Inspect and manage/);
   assert.match(output.text(), /divebell auth - Inspect or delete/);
@@ -222,18 +222,20 @@ test("prints progressively scoped command help", async () => {
 
 });
 
-test("rejects the removed close command", async () => {
-  const output = createOutput();
-  const exitCode = await runCli(["close"], {
-    stdout: output.stdout,
-    stderr: output.stderr
-  });
+test("rejects removed commands", async () => {
+  for (const command of ["close", "profile"]) {
+    const output = createOutput();
+    const exitCode = await runCli([command], {
+      stdout: output.stdout,
+      stderr: output.stderr
+    });
 
-  assert.equal(exitCode, 1);
-  assert.equal(output.errorText(), "");
-  const error = JSON.parse(output.text());
-  assert.equal(error.error.code, "CLI_UNKNOWN_COMMAND");
-  assert.match(error.message, /Unknown command "close"/);
+    assert.equal(exitCode, 1);
+    assert.equal(output.errorText(), "");
+    const error = JSON.parse(output.text());
+    assert.equal(error.error.code, "CLI_UNKNOWN_COMMAND");
+    assert.match(error.message, new RegExp(`Unknown command "${command}"`));
+  }
 });
 
 test("prints help for command help without executing the command", async () => {
@@ -410,7 +412,8 @@ test("generates CLI reference markdown from the help table", () => {
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--timeout <ms>\] \[--headers <json>\]/);
   assert.match(markdown, /divebell profiles/);
-  assert.match(markdown, /divebell profile export \[path\]/);
+  assert.doesNotMatch(markdown, /divebell profile /);
+  assert.doesNotMatch(markdown, /--temp-profile/);
   assert.match(markdown, /divebell state save <path> \[--url <url>\] \[--include-url <url>\.\.\.\]/);
   assert.match(markdown, /divebell state load <path>/);
   assert.match(markdown, /divebell auth save <name>/);

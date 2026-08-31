@@ -105,8 +105,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path> | --temp-profile] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
-    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --temp-profile starts a clean exportable Profile with no restore, while --no-default-profile skips automatic Profile selection. --webmcp enables Chrome's experimental WebMCP producer and CDP surfaces for the launched browser. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
+    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path> | --temp-profile] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --temp-profile starts a clean exportable Profile with no restore, while --no-default-profile skips automatic Profile selection. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
   },
   ...browserCommandReferences,
   {

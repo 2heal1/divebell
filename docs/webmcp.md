@@ -2,14 +2,14 @@
 
 Divebell can discover and call tools that the active page registers through Chrome's experimental WebMCP implementation. This capability is available from the CLI and from the typed Extension Browser API. It uses Chrome DevTools Protocol directly; Divebell Bridge and Runtime SDK are not required.
 
-WebMCP remains experimental. Chrome 149 exposes the producer API through `navigator.modelContext` when the `WebMCPTesting` feature is enabled. Current Chrome work is moving the producer API to `document.modelContext` and the launch feature to `WebMCP`. Divebell's `--webmcp` launch preset enables `WebMCP`, `WebMCPTesting`, and `DevToolsWebMCPSupport` together so the same workflow works across that transition.
+WebMCP remains experimental. Chrome 149 exposes the producer API through `navigator.modelContext` when the `WebMCPTesting` feature is enabled. Current Chrome work is moving the producer API to `document.modelContext` and the launch feature to `WebMCP`. When Divebell launches local Chrome, it enables `WebMCP`, `WebMCPTesting`, and `DevToolsWebMCPSupport` by default so the same workflow works across that transition. Pass `--no-webmcp` to opt out.
 
 ## CLI
 
-Let Divebell launch local Chrome with WebMCP enabled:
+Let Divebell launch local Chrome, then inspect the active page:
 
 ```bash
-divebell open https://app.example --webmcp
+divebell open https://app.example
 divebell webmcp list --json
 divebell webmcp call getProductCount --input '{}' --json
 divebell webmcp call searchProducts \
@@ -30,7 +30,14 @@ Stable browser error codes are:
 - `webmcp_call_timeout`
 - `webmcp_command_failed`
 
-`--webmcp` cannot enable launch-time features on a browser selected through `--cdp`, `--auto-connect`, a provider, or a non-Chrome engine. Start that external browser with WebMCP enabled first, connect normally, and omit `--webmcp`.
+The typed Extension API exposes the same failures as `CommandError` codes in
+uppercase, for example `WEBMCP_UNSUPPORTED`. This error is raised only when an
+Extension calls `browser.webmcp.list()` or `browser.webmcp.call()`; opening and
+using an otherwise unsupported browser remains successful.
+
+`open` remains successful when Divebell connects through `--cdp`, `--auto-connect`, a provider, or a non-Chrome engine. Divebell leaves an external browser's launch configuration unchanged. If that browser does not expose the WebMCP CDP domain, the first `webmcp list` or `webmcp call` reports `webmcp_unsupported` with compatibility guidance; ordinary page operations are unaffected.
+
+Use `divebell open <url> --no-webmcp` when a local Chrome launch must not enable the experimental features. A later WebMCP CLI or typed API call then reports `webmcp_unsupported` unless the selected browser exposes WebMCP independently.
 
 ## Typed Extension API
 

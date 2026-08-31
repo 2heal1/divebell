@@ -2154,6 +2154,52 @@ test("exposes typed WebMCP list and call APIs to CLI extensions", async () => {
   }
 });
 
+test("reports WebMCP incompatibility only when a typed WebMCP API is used", async () => {
+  const extension = createCommandExtension({
+    name: "webmcp-unsupported",
+    run: async ({ divebell }) => await divebell.browser.webmcp.list()
+  });
+  const context = createOpenContextFixture();
+  const message = "Chrome does not expose the WebMCP CDP domain.";
+  const browserOutput = JSON.stringify({
+    errorCode: "webmcp_unsupported",
+    error: message
+  });
+
+  try {
+    const output = createOutput();
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "webmcp-unsupported"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => ({
+        exitCode: 1,
+        stdout: browserOutput,
+        stderr: message
+      }))
+    });
+
+    assert.equal(exitCode, 1);
+    assert.deepEqual(JSON.parse(output.text()), errorOutput("webmcp-unsupported", {
+      code: "WEBMCP_UNSUPPORTED",
+      kind: "browser",
+      message,
+      retryable: false,
+      hint: "Use a Divebell-launched local Chrome without --no-webmcp, or enable WebMCP before connecting to an external browser.",
+      details: {
+        command: ["webmcp", "list", "--json"],
+        browserErrorCode: "webmcp_unsupported",
+        stdout: browserOutput,
+        stderr: message
+      }
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("shows and resolves command skills without running commands", async () => {
   const tempDir = mkdtempSync(join(tmpdir(), "divebell-extension-skill-"));
   const skillPath = join(tempDir, "SKILL.md");

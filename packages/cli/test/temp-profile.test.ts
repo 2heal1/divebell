@@ -65,6 +65,11 @@ test("opens a clean temporary Profile and exports it after a clean browser close
       reuseInitialBlankPage: true,
       disableRestore: true,
       disableDefaultProfile: true,
+      browserArguments: [
+        "--enable-features=WebMCP",
+        "--enable-features=WebMCPTesting",
+        "--enable-features=DevToolsWebMCPSupport"
+      ].join("\n"),
       session: context.browserTempProfile.session,
       ignoreConfiguredProfile: true,
       ignoreConfiguredState: true
@@ -93,6 +98,11 @@ test("opens a clean temporary Profile and exports it after a clean browser close
         reuseInitialBlankPage: true,
         disableRestore: true,
         disableDefaultProfile: true,
+        browserArguments: [
+          "--enable-features=WebMCP",
+          "--enable-features=WebMCPTesting",
+          "--enable-features=DevToolsWebMCPSupport"
+        ].join("\n"),
         session: context.browserTempProfile.session,
         ignoreConfiguredProfile: true,
         ignoreConfiguredState: true

@@ -203,6 +203,38 @@ function createDivebellBrowserApi(options: {
     const output = await runText(args);
     return parseBrowserJsonOutput(output) as T;
   };
+  const runWebMcpJson = async <T>(args: string[]): Promise<T> => {
+    requireOpenContext();
+    const result = await options.browserRunner.run(args);
+    if (result.exitCode !== 0) {
+      const failure = parseWebMcpBrowserFailure(result.stdout);
+      throw createError({
+        code: failure?.errorCode === undefined
+          ? "WEBMCP_COMMAND_FAILED"
+          : failure.errorCode.toUpperCase(),
+        kind: "browser",
+        message: failure?.error
+          || result.stderr.trim()
+          || result.stdout.trim()
+          || `Browser command "${args[0] ?? "webmcp"}" failed.`,
+        retryable: false,
+        ...(failure?.errorCode === "webmcp_unsupported"
+          ? {
+              hint: "Use a Divebell-launched local Chrome without --no-webmcp, or enable WebMCP before connecting to an external browser."
+            }
+          : {}),
+        details: {
+          command: args,
+          ...(failure?.errorCode === undefined
+            ? {}
+            : { browserErrorCode: failure.errorCode }),
+          ...(result.stdout.trim().length === 0 ? {} : { stdout: result.stdout.trim() }),
+          ...(result.stderr.trim().length === 0 ? {} : { stderr: result.stderr.trim() })
+        }
+      });
+    }
+    return parseBrowserJsonOutput(result.stdout.trim()) as T;
+  };
   const callWebMcp = async <T = unknown>(
     toolName: string,
     input: Readonly<Record<string, unknown>> = {},
@@ -269,7 +301,7 @@ function createDivebellBrowserApi(options: {
       args.push("--timeout", String(webMcpOptions.timeout));
     }
     args.push("--json");
-    return await runJson<DivebellBrowserWebMcpCallResult<T>>(args);
+    return await runWebMcpJson<DivebellBrowserWebMcpCallResult<T>>(args);
   };
   return {
     raw: async (args, runOptions = {}) => {
@@ -448,7 +480,7 @@ function createDivebellBrowserApi(options: {
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
     },
     webmcp: {
-      list: async () => await runJson<DivebellBrowserWebMcpListResult>([
+      list: async () => await runWebMcpJson<DivebellBrowserWebMcpListResult>([
         "webmcp",
         "list",
         "--json"
@@ -530,6 +562,24 @@ function createDivebellBrowserApi(options: {
       }
     }
   };
+}
+
+function parseWebMcpBrowserFailure(
+  output: string
+): { errorCode?: string; error?: string } | undefined {
+  try {
+    const parsed = JSON.parse(output) as unknown;
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return undefined;
+    }
+    const value = parsed as Record<string, unknown>;
+    return {
+      ...(typeof value.errorCode === "string" ? { errorCode: value.errorCode } : {}),
+      ...(typeof value.error === "string" ? { error: value.error } : {})
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 function createCoverageCheckpointArgs(

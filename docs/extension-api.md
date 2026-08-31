@@ -428,14 +428,17 @@ const contentType = detail.response?.headers["content-type"];
 `browser.console` provides `list` and `clear`. Memory and Coverage expose
 concrete result types rather than caller-selected generic types.
 
-WebMCP must be enabled when Divebell launches Chrome:
+Divebell enables WebMCP by default when it launches local Chrome:
 
 ```bash
-divebell open https://app.example --webmcp
+divebell open https://app.example
 ```
 
 An Extension can then discover and call page-registered tools without using
-`browser.raw`:
+`browser.raw`. External browsers keep their existing launch configuration; an
+unsupported browser reports `webmcp_unsupported` only when the Extension uses
+`browser.webmcp`; the typed API surfaces it as a `WEBMCP_UNSUPPORTED`
+`CommandError`:
 
 ```ts
 const listed = await divebell.browser.webmcp.list();

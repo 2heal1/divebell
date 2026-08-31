@@ -88,7 +88,7 @@ Teams can use Extensions to bring existing capabilities into the current page sc
 
 Divebell makes a real web page the agent's point of entry, providing page context, page operations, browser diagnostics, and same-scenario verification after a code change.
 
-These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, diagnostic evidence from Console, Network, Screenshot, and Coverage, and page-declared WebMCP tools when Chrome's experimental WebMCP support is enabled. Agents can call them directly through the Divebell CLI without Runtime SDK.
+These capabilities include the current page and user journey, page operations such as `click`, `fill`, and `eval`, diagnostic evidence from Console, Network, Screenshot, and Coverage, and page-declared WebMCP tools. Divebell enables Chrome's experimental WebMCP support for local Chrome launches by default, and Agents can call the tools directly through the Divebell CLI without Runtime SDK.
 
 [CLI Reference](./docs/cli-reference.md) · [WebMCP](./docs/webmcp.md)
 

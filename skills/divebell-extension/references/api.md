@@ -422,10 +422,11 @@ import type {
 | `browser.webmcp.list` | List tools registered by the active WebMCP page, including schemas, annotations, frame IDs, and source. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpListResult`, `DivebellBrowserWebMcpTool` |
 | `browser.webmcp.call` | Call one registered tool with object input and optional frame/timeout selection. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpCallOptions`, `DivebellBrowserWebMcpCallResult` |
 
-The page must be opened with `divebell open <url> --webmcp` so Divebell can
-enable the required experimental Chrome features at launch. An external
-browser must already have WebMCP enabled; omit `--webmcp` when connecting to
-it. Example:
+Divebell enables the required experimental Chrome features by default when it
+launches local Chrome. An external browser keeps its existing launch
+configuration. If the selected browser does not expose WebMCP, `list` and
+`call` throw a `WEBMCP_UNSUPPORTED` `CommandError` when used without affecting
+ordinary page operations. Example:
 
 ```ts
 const listed = await options.divebell.browser.webmcp.list();

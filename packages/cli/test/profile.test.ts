@@ -561,7 +561,12 @@ test("forwards Chrome profile and state launch options when opening a page", asy
     ui: false,
     disableRestore: true,
     disableDefaultProfile: true,
-    reuseInitialBlankPage: true
+    reuseInitialBlankPage: true,
+    browserArguments: [
+      "--enable-features=WebMCP",
+      "--enable-features=WebMCPTesting",
+      "--enable-features=DevToolsWebMCPSupport"
+    ].join("\n")
   });
 });
 

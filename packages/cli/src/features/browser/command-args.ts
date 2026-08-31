@@ -11,13 +11,13 @@ const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "full-page",
   "no-bridge",
   "no-default-profile",
+  "no-webmcp",
   "port",
   "profile",
   "runtime",
   "session",
   "state",
-  "ui",
-  "webmcp"
+  "ui"
 ]);
 
 const FIRST_TARGET_COMMANDS = new Set([

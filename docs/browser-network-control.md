@@ -4,6 +4,8 @@ Divebell can replace ordinary HTTP(S) resources through Chrome DevTools Protocol
 
 Both capabilities are scoped to one Divebell-launched Chromium **browser daemon/session**. They are not per-page or per-tab settings. Set them on the first `divebell open` for that browser session. To change or remove `--proxy`, `--proxy-provider`, or `--network-rules`, run `divebell stop` and then open again. Divebell returns `BROWSER_PROXY_RESTART_REQUIRED` instead of quietly claiming a running browser changed configuration.
 
+For concurrent browser daemons, use separate working directories, browser profiles, and agent-browser namespaces. Divebell stores each directory's latest-page context by cwd, so separate cwd values prevent one process from reusing another process's network-control record. A shared `DIVEBELL_HOME` is supported: each control process uses its own generated configuration file and loopback control URL.
+
 ## Conditional proxy through an Extension
 
 Keep using the existing fixed endpoint when it is sufficient:
@@ -93,12 +95,12 @@ Each rule needs a lowercase `id`, exactly one source matcher (`url` or `urlPrefi
 
 | Action | CDP behavior | What the page can observe |
 | --- | --- | --- |
-| `rewrite` | Continues the intercepted request to `targetPrefix` plus the source suffix. | The initiated resource URL and DOM reference remain the source URL; Chrome response metadata can still expose implementation-dependent final URL details. |
-| `fulfill` | Divebell's local control process fetches `url`, buffers the response, and fulfills the original request. | The browser receives a synthetic response for the source URL. Browser cookies and authorization headers are deliberately not forwarded to the control-plane fetch. |
+| `rewrite` | Chromium continues the intercepted request to `targetPrefix` plus the source suffix. The replacement target is requested by Chromium; Divebell does not make an extra control-plane fetch. | The initiated resource URL and DOM reference remain the source URL; Chrome response metadata can still expose implementation-dependent final URL details. The target receives a browser-side request, so do not use this action to bypass browser credential or CORS boundaries. |
+| `fulfill` | Divebell's local control process makes a separate HTTP fetch to `url`, buffers the response, and fulfills the original request. | The browser receives a synthetic response for the source URL; it does not make a second request to the target. Browser `Cookie` and `Authorization` headers are deliberately not forwarded to the control-plane fetch. |
 
 `fulfill` follows redirects for its own fetch, strips hop-by-hop/encoding headers after decoding, has a default 15-second timeout (maximum configurable value 60 seconds), and limits buffered bodies to 10 MiB. A failed or timed-out control fetch fails the intercepted request rather than leaving it paused.
 
-Divebell v1 does not expose a request `redirect` action. Real browser navigation after a synthetic 3xx response was not reliable in Chromium verification. Use `rewrite` for `https://a.com` to `https://b.com` or `http://localhost:<port>/path` resource replacement; use `fulfill` only when Divebell should fetch and buffer a replacement response.
+Divebell v1 does not expose a request `redirect` action. Real browser navigation after a synthetic 3xx response was not reliable in Chromium verification. Use `rewrite` for `https://a.com` to `https://b.com` resource replacement. For an HTTPS source replaced by `http://localhost:<port>/path`, prefer `fulfill` in v1 unless the exact browser path has separately been verified; this avoids claiming mixed-scheme browser continuation support.
 
 ## Supported boundary
 

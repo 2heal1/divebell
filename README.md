@@ -35,6 +35,21 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
+The npm global CLI uses a 12-hour version-cache window and checks after an
+ordinary command finishes when that cache is stale. The check and any upgrade
+run in a detached background process, so the completed command does not wait.
+Failed or pending upgrades are throttled before retrying. Check explicitly or
+update immediately with:
+
+```bash
+divebell update --check
+divebell update
+```
+
+Source checkouts, temporary `npx` executions, and project-local installations
+are not changed automatically. Set `DIVEBELL_NO_AUTO_UPDATE=1` to disable the
+background behavior.
+
 Install the Module Federation Extension, open the public playground with MF
 diagnostics enabled, and render its observed module loading directly in the
 terminal:

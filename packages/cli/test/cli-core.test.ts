@@ -83,6 +83,7 @@ test("prints compact top-level help", async () => {
   assert.equal(output.errorText(), "");
   assert.match(output.text(), /^Usage: divebell <command> \[options\]/);
   assert.match(output.text(), /\nCLI:\n/);
+  assert.match(output.text(), /divebell update - Check or update the managed CLI installation/);
   assert.match(output.text(), /\nBrowser:\n/);
   assert.doesNotMatch(output.text(), /Bridge and Browser:/);
   assert.match(output.text(), /divebell snapshot - Read the current snapshot state/);
@@ -189,6 +190,13 @@ test("prints the installed package version with long and short flags", async () 
 });
 
 test("prints progressively scoped command help", async () => {
+  const updateOutput = createOutput();
+  assert.equal(await runCli(["update", "--help"], {
+    stdout: updateOutput.stdout,
+    stderr: updateOutput.stderr
+  }), 0);
+  assert.match(updateOutput.text(), /divebell update \[--check\]/);
+
   const extensionsOutput = createOutput();
   assert.equal(await runCli(["extensions", "--help"], {
     stdout: extensionsOutput.stdout,
@@ -408,6 +416,7 @@ test("generates CLI reference markdown from the help table", () => {
 
   assert.match(markdown, /### Browser/);
   assert.match(markdown, /divebell --version.*divebell -v.*installed CLI version/);
+  assert.match(markdown, /divebell update \[--check\]/);
   assert.doesNotMatch(markdown, /### Bridge and Browser/);
   assert.match(markdown, /divebell open <url>/);
   assert.match(markdown, /divebell open <url> \[--timeout <ms>\] \[--headers <json>\]/);

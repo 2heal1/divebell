@@ -9,6 +9,11 @@ export const cliCommandReferences: CliCommandReference[] = [
     description: "Print the path to the Divebell CLI Skill bundled with this package."
   },
   {
+    category: "CLI",
+    usage: "divebell update [--check]",
+    description: "Check or update the managed CLI installation; entry points may also check periodically in the background."
+  },
+  {
     category: "Bridge and Browser",
     usage: "divebell setup",
     description: "Prepare Divebell on this machine by checking the environment and repairing browser startup only when needed."

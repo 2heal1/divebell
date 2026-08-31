@@ -4,10 +4,15 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { resolveDivebellHomeDirectory } from "../../utils/home.js";
 import {
-  browserConfigurationSelectsContext,
   defaultChromeProfileIsEnabled,
   resolveLatestChromeProfile
 } from "./profile.js";
+import {
+  createBrowserCommandOptionsFromArgv,
+  environmentSupportsReusableInitialBlankPage,
+  resolveBrowserLaunchConfiguration,
+  type BrowserLaunchConfiguration
+} from "./launch-configuration.js";
 const require = createRequire(import.meta.url);
 
 import type { BrowserRunResult, BrowserRunOptions, BrowserRunner, AgentBrowserJsonResponse, AgentBrowserRunnerOptions, DefaultBrowserRunnerOptions } from "./types.js";
@@ -29,11 +34,8 @@ const AGENT_BROWSER_PROFILE_ENV = "AGENT_BROWSER_PROFILE";
 const AGENT_BROWSER_STATE_ENV = "AGENT_BROWSER_STATE";
 const AGENT_BROWSER_DEFAULT_TIMEOUT_ENV = "AGENT_BROWSER_DEFAULT_TIMEOUT";
 const AGENT_BROWSER_ARGS_ENV = "AGENT_BROWSER_ARGS";
-const AGENT_BROWSER_ALLOWED_DOMAINS_ENV = "AGENT_BROWSER_ALLOWED_DOMAINS";
 const AGENT_BROWSER_CDP_ENV = "AGENT_BROWSER_CDP";
 const AGENT_BROWSER_AUTO_CONNECT_ENV = "AGENT_BROWSER_AUTO_CONNECT";
-const AGENT_BROWSER_PROVIDER_ENV = "AGENT_BROWSER_PROVIDER";
-const AGENT_BROWSER_ENGINE_ENV = "AGENT_BROWSER_ENGINE";
 const AGENT_BROWSER_IDLE_TIMEOUT_ENV = "AGENT_BROWSER_IDLE_TIMEOUT_MS";
 const INITIAL_BLANK_PAGE_URL = "about:blank";
 
@@ -87,19 +89,41 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
           baseEnv,
           profileDirectory,
           runOptions.session ?? restoreName,
-          runOptions,
+          runOptions.reuseInitialBlankPage === true
+            ? { ...runOptions, reuseInitialBlankPage: false }
+            : runOptions,
           options.cwd
         );
+        const agentBrowserHome = environment[AGENT_BROWSER_HOME_ENV];
+        const needsLaunchConfiguration = runOptions.defaultProfile === undefined
+          || runOptions.reuseInitialBlankPage === true;
+        const launchConfiguration = agentBrowserHome === undefined
+          || !needsLaunchConfiguration
+          ? undefined
+          : await resolveBrowserLaunchConfiguration({
+              command: createBrowserCommandOptionsFromArgv(args),
+              env: baseEnv,
+              agentBrowserHome,
+              cwd: options.cwd ?? process.cwd()
+            });
+        if (
+          runOptions.reuseInitialBlankPage === true
+          && runOptions.autoConnect !== true
+          && launchConfiguration?.supportsReusableInitialBlankPage === true
+        ) {
+          environment[AGENT_BROWSER_ARGS_ENV] = appendAgentBrowserArgument(
+            environment[AGENT_BROWSER_ARGS_ENV],
+            INITIAL_BLANK_PAGE_URL
+          );
+        }
         if (runOptions.defaultProfile !== undefined) {
           defaultProfile = runOptions.defaultProfile;
           environment[AGENT_BROWSER_PROFILE_ENV] = defaultProfile;
           delete environment[AGENT_BROWSER_RESTORE_ENV];
-        } else if (await shouldUseLatestChromeProfile({
-          args,
+        } else if (shouldUseLatestChromeProfile({
           runOptions,
           baseEnv,
-          environment,
-          cwd: options.cwd ?? process.cwd()
+          launchConfiguration
         })) {
           defaultProfile = await (options.latestChromeProfileResolver?.()
             ?? resolveLatestChromeProfile({ env: baseEnv }));
@@ -140,13 +164,11 @@ function withDefaultProfile(
   return defaultProfile === undefined ? result : { ...result, defaultProfile };
 }
 
-async function shouldUseLatestChromeProfile(options: {
-  args: readonly string[];
+function shouldUseLatestChromeProfile(options: {
   runOptions: BrowserRunOptions;
   baseEnv: NodeJS.ProcessEnv;
-  environment: NodeJS.ProcessEnv;
-  cwd: string;
-}): Promise<boolean> {
+  launchConfiguration: BrowserLaunchConfiguration | undefined;
+}): boolean {
   if (
     options.runOptions.disableDefaultProfile === true
     || options.runOptions.disableRestore === true
@@ -156,14 +178,7 @@ async function shouldUseLatestChromeProfile(options: {
   ) {
     return false;
   }
-  const agentBrowserHome = options.environment[AGENT_BROWSER_HOME_ENV];
-  if (agentBrowserHome === undefined) return false;
-  return !(await browserConfigurationSelectsContext({
-    args: options.args,
-    env: options.baseEnv,
-    agentBrowserHome,
-    cwd: options.cwd
-  }));
+  return options.launchConfiguration?.selectsBrowserContext === false;
 }
 
 export function resolveBundledAgentBrowserEntryPath(): string | undefined {
@@ -281,13 +296,17 @@ export function createAgentBrowserEnvironment(
     delete env[AGENT_BROWSER_ENCRYPTION_KEY_ENV];
   }
   if (options.browserArguments !== undefined && options.browserArguments.trim().length > 0) {
-    env[AGENT_BROWSER_ARGS_ENV] = env[AGENT_BROWSER_ARGS_ENV]?.trim()
-      ? `${env[AGENT_BROWSER_ARGS_ENV]}\n${options.browserArguments}`
-      : options.browserArguments;
+    env[AGENT_BROWSER_ARGS_ENV] = appendAgentBrowserArguments(
+      env[AGENT_BROWSER_ARGS_ENV],
+      options.browserArguments
+    );
   }
   // Headed Chrome creates chrome://newtab by default. agent-browser ignores that
   // internal target and otherwise has to create a second, controllable tab.
-  if (options.reuseInitialBlankPage === true && supportsReusableInitialBlankPage(env)) {
+  if (
+    options.reuseInitialBlankPage === true
+    && environmentSupportsReusableInitialBlankPage(env)
+  ) {
     env[AGENT_BROWSER_ARGS_ENV] = appendAgentBrowserArgument(
       env[AGENT_BROWSER_ARGS_ENV],
       INITIAL_BLANK_PAGE_URL
@@ -296,33 +315,33 @@ export function createAgentBrowserEnvironment(
   return env;
 }
 
+function appendAgentBrowserArguments(current: string | undefined, additions: string): string {
+  const existing = splitAgentBrowserArguments(current);
+  const seen = new Set(existing);
+  const missing = splitAgentBrowserArguments(additions).filter((argument) => {
+    if (seen.has(argument)) return false;
+    seen.add(argument);
+    return true;
+  });
+  if (missing.length === 0) return current ?? additions;
+  return current === undefined || current.trim().length === 0
+    ? missing.join("\n")
+    : `${current}\n${missing.join("\n")}`;
+}
+
 function appendAgentBrowserArgument(current: string | undefined, argument: string): string {
-  const existing = current
-    ?.split(/[,\n]/)
-    .map((value) => value.trim())
-    .filter(Boolean) ?? [];
-  if (existing.includes(argument)) {
-    return current ?? argument;
-  }
+  const existing = splitAgentBrowserArguments(current);
   if (existing.some((value) => !value.startsWith("-"))) {
     return current ?? argument;
   }
-  return current === undefined || current.trim().length === 0
-    ? argument
-    : `${current}\n${argument}`;
+  return appendAgentBrowserArguments(current, argument);
 }
 
-function supportsReusableInitialBlankPage(env: NodeJS.ProcessEnv): boolean {
-  const engine = env[AGENT_BROWSER_ENGINE_ENV]?.trim().toLowerCase();
-  return env[AGENT_BROWSER_ALLOWED_DOMAINS_ENV] === undefined
-    && env[AGENT_BROWSER_CDP_ENV] === undefined
-    && !isTruthyEnvironmentValue(env[AGENT_BROWSER_AUTO_CONNECT_ENV])
-    && !env[AGENT_BROWSER_PROVIDER_ENV]?.trim()
-    && (engine === undefined || engine === "" || engine === "chrome");
-}
-
-function isTruthyEnvironmentValue(value: string | undefined): boolean {
-  return value === "1" || value?.toLowerCase() === "true";
+function splitAgentBrowserArguments(value: string | undefined): string[] {
+  return value
+    ?.split(/[,\n]/)
+    .map((argument) => argument.trim())
+    .filter(Boolean) ?? [];
 }
 
 function executeAgentBrowser(

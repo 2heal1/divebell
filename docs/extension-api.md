@@ -427,45 +427,9 @@ const contentType = detail.response?.headers["content-type"];
 `browser.network` also provides `clear`, `route`, `unroute`, and `har`.
 `browser.console` provides `list` and `clear`. Memory and Coverage expose
 concrete result types rather than caller-selected generic types.
-
-Divebell enables WebMCP by default when it launches local Chrome:
-
-```bash
-divebell open https://app.example
-```
-
-An Extension can then discover and call page-registered tools without using
-`browser.raw`. External browsers keep their existing launch configuration; an
-unsupported browser reports `webmcp_unsupported` only when the Extension uses
-`browser.webmcp`; the typed API surfaces it as a `WEBMCP_UNSUPPORTED`
-`CommandError`:
-
-```ts
-const listed = await divebell.browser.webmcp.list();
-const tool = listed.tools.find((candidate) => candidate.name === "searchProducts");
-if (tool === undefined) {
-  throw new Error("searchProducts is not registered on the active page");
-}
-
-const called = await divebell.browser.webmcp.call<{
-  products: Array<{ name: string; price: string }>;
-}>("searchProducts", { query: "Widget" }, {
-  frameId: tool.frameId,
-  timeout: 5000
-});
-
-if (called.status !== "completed") {
-  throw new Error(called.error?.message ?? `WebMCP call ${called.status}`);
-}
-```
-
-`list` returns the normalized JSON input schema, CDP frame ID, annotations,
-and `imperative` or `declarative` source for each tool. `call<T>` types the
-optional `output` as `T`, but does not validate page output at runtime. Every
-call result has `trust: "untrusted"`; page tool output can contain prompt
-injection. Treat `readOnly`, `untrustedContent`, `consequential`, and
-`autosubmit` annotations as hints rather than enforcement. See
-[WebMCP](webmcp.md) for CLI usage, Chrome compatibility, and trust boundaries.
+`browser.webmcp` provides typed tool discovery and invocation without
+`browser.raw`; see [WebMCP](webmcp.md) for usage, Chrome compatibility, result
+typing, and trust boundaries.
 
 When no typed API exposes the required capability, `browser.raw` accepts
 agent-browser arguments directly:

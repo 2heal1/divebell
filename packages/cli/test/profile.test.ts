@@ -19,6 +19,10 @@ import {
   resolveChromeUserDataDirectory,
   resolveLatestChromeProfile
 } from "../dist/features/browser/profile.js";
+import {
+  createBrowserCommandOptionsFromArgv,
+  resolveBrowserLaunchConfiguration
+} from "../dist/features/browser/launch-configuration.js";
 import { commandData, createBrowserRunner, createOutput, errorOutput } from "./helpers.js";
 
 test("uses agent-browser automatic restore while preserving native profile and state settings", () => {
@@ -149,6 +153,44 @@ test("treats an agent-browser profile config as an explicit browser context", as
       agentBrowserHome,
       cwd: directory
     }), false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("distinguishes a selected local Chrome context from an external browser", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "divebell-browser-launch-"));
+  const agentBrowserHome = join(directory, "agent-browser-home");
+  mkdirSync(agentBrowserHome);
+  try {
+    writeFileSync(join(directory, "agent-browser.json"), JSON.stringify({
+      profile: "Configured Profile",
+      allowedDomains: ["app.example.com"]
+    }));
+    const local = await resolveBrowserLaunchConfiguration({
+      command: createBrowserCommandOptionsFromArgv(["open", "about:blank"]),
+      env: {},
+      agentBrowserHome,
+      cwd: directory
+    });
+    assert.equal(local.selectsBrowserContext, true);
+    assert.equal(local.usesDivebellLaunchedChrome, true);
+    assert.equal(local.supportsReusableInitialBlankPage, false);
+
+    const external = await resolveBrowserLaunchConfiguration({
+      command: createBrowserCommandOptionsFromArgv([
+        "--cdp",
+        "9222",
+        "open",
+        "about:blank"
+      ]),
+      env: {},
+      agentBrowserHome,
+      cwd: directory
+    });
+    assert.equal(external.selectsBrowserContext, true);
+    assert.equal(external.usesDivebellLaunchedChrome, false);
+    assert.equal(external.supportsReusableInitialBlankPage, false);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -307,7 +349,7 @@ test("persists WebMCP browser arguments alongside the reusable blank page", () =
     "--enable-features=DevToolsWebMCPSupport"
   ].join("\n");
   const env = createAgentBrowserEnvironment({
-    AGENT_BROWSER_ARGS: "--start-maximized"
+    AGENT_BROWSER_ARGS: "--start-maximized\n--enable-features=WebMCP"
   }, undefined, undefined, {
     browserArguments,
     reuseInitialBlankPage: true
@@ -315,7 +357,9 @@ test("persists WebMCP browser arguments alongside the reusable blank page", () =
 
   assert.equal(env.AGENT_BROWSER_ARGS, [
     "--start-maximized",
-    browserArguments,
+    "--enable-features=WebMCP",
+    "--enable-features=WebMCPTesting",
+    "--enable-features=DevToolsWebMCPSupport",
     "about:blank"
   ].join("\n"));
 });
@@ -332,6 +376,36 @@ test("does not add a local startup page to restricted or external browsers", () 
       reuseInitialBlankPage: true
     });
     assert.equal(env.AGENT_BROWSER_ARGS, undefined);
+  }
+});
+
+test("does not add a reusable startup page when browser config restricts domains", async () => {
+  const divebellHome = mkdtempSync(join(tmpdir(), "divebell-configured-startup-page-"));
+  const agentBrowserHome = join(divebellHome, "agent-browser");
+  mkdirSync(agentBrowserHome);
+  writeFileSync(join(agentBrowserHome, "config.json"), JSON.stringify({
+    allowedDomains: ["app.example.com"]
+  }));
+  try {
+    const runner = createAgentBrowserRunner({
+      env: { DIVEBELL_HOME: divebellHome },
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify(process.env.AGENT_BROWSER_ARGS ?? null))",
+        "--"
+      ],
+      cwd: divebellHome
+    });
+
+    const result = await runner.run(["open", "about:blank"], {
+      disableDefaultProfile: true,
+      reuseInitialBlankPage: true
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(JSON.parse(result.stdout), null);
+  } finally {
+    rmSync(divebellHome, { recursive: true, force: true });
   }
 });
 

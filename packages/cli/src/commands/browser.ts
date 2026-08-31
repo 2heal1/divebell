@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { createBridgeStateStore, createBridgeUrl } from "../features/bridge/config.js";
 import { createBridgeInitScript } from "../features/bridge/inject.js";
@@ -33,6 +33,11 @@ import { runBrowserAndPipe } from "../features/browser/io.js";
 import { runConsoleCommand } from "../features/browser/console.js";
 import { runNetworkCommand } from "../features/browser/network.js";
 import { waitForBrowserEval } from "../features/browser/execution.js";
+import {
+  commandDisablesDefaultChromeProfile,
+  createBrowserCommandOptionsFromMap,
+  resolveBrowserLaunchConfiguration
+} from "../features/browser/launch-configuration.js";
 import { createDivebellExtensionApi } from "../features/extension/api.js";
 import {
   runCloseHooks,
@@ -321,22 +326,10 @@ export async function runBrowserCliCommand(
 }
 
 function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
-  if ([
-    "no-default-profile",
-    "profile",
-    "state",
-    "restore",
-    "allowed-domains",
-    "cdp",
-    "auto-connect",
-    "provider",
-    "executable-path",
-    "args"
-  ].some((name) => hasOption(args, name))) {
-    return true;
-  }
-  const engine = getOptionValue(args, "engine")?.trim().toLowerCase();
-  return engine !== undefined && engine !== "" && engine !== "chrome";
+  return hasOption(args, "no-default-profile")
+    || commandDisablesDefaultChromeProfile(
+      createBrowserCommandOptionsFromMap(args.options)
+    );
 }
 
 function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
@@ -359,17 +352,23 @@ async function createWebMcpBrowserLaunch(
   if (hasOption(args, "no-webmcp")) {
     return {};
   }
-  const config = await readAgentBrowserLaunchConfig(args, env);
-  if (!usesDivebellLaunchedChrome(args, env, config)) {
+  const launch = await resolveBrowserLaunchConfiguration({
+    command: createBrowserCommandOptionsFromMap(args.options),
+    env,
+    agentBrowserHome: env.AGENT_BROWSER_HOME?.trim()
+      || join(resolveDivebellHomeDirectory(env), "agent-browser"),
+    cwd: process.cwd()
+  });
+  if (!launch.usesDivebellLaunchedChrome) {
     return { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
   }
   const cliArguments = (args.options.get("args") ?? [])
     .filter((value) => value !== "true");
   const configuredArguments = cliArguments.length === 0
     && env.AGENT_BROWSER_ARGS === undefined
-    && typeof config.args === "string"
-    && config.args.trim().length > 0
-      ? [config.args]
+    && typeof launch.config.args === "string"
+    && launch.config.args.trim().length > 0
+      ? [launch.config.args]
       : [];
   return {
     browserArguments: [
@@ -378,89 +377,6 @@ async function createWebMcpBrowserLaunch(
       ...WEBMCP_BROWSER_ARGUMENTS
     ].join("\n")
   };
-}
-
-function usesDivebellLaunchedChrome(
-  args: ParsedCliArgs,
-  env: NodeJS.ProcessEnv,
-  config: Readonly<Record<string, unknown>>
-): boolean {
-  if (["cdp", "auto-connect", "provider"].some((name) => hasOption(args, name))) {
-    return false;
-  }
-  if (
-    nonEmptyEnvironmentValue(env.AGENT_BROWSER_CDP) !== undefined
-    || isTruthyEnvironmentValue(env.AGENT_BROWSER_AUTO_CONNECT)
-    || nonEmptyEnvironmentValue(env.AGENT_BROWSER_PROVIDER) !== undefined
-    || hasConfiguredValue(config.cdp)
-    || hasConfiguredValue(config.cdpUrl)
-    || hasConfiguredValue(config.autoConnect)
-    || hasConfiguredValue(config.provider)
-  ) {
-    return false;
-  }
-  const engine = (
-    getOptionValue(args, "engine")
-    ?? nonEmptyEnvironmentValue(env.AGENT_BROWSER_ENGINE)
-    ?? (typeof config.engine === "string" ? config.engine : undefined)
-    ?? "chrome"
-  ).trim().toLowerCase();
-  return engine === "" || engine === "chrome";
-}
-
-async function readAgentBrowserLaunchConfig(
-  args: ParsedCliArgs,
-  env: NodeJS.ProcessEnv
-): Promise<Readonly<Record<string, unknown>>> {
-  const explicitConfig = getOptionValue(args, "config")
-    ?? nonEmptyEnvironmentValue(env.AGENT_BROWSER_CONFIG);
-  if (explicitConfig !== undefined) {
-    return await readJsonRecord(resolve(process.cwd(), explicitConfig));
-  }
-  const agentBrowserHome = nonEmptyEnvironmentValue(env.AGENT_BROWSER_HOME)
-    ?? join(resolveDivebellHomeDirectory(env), "agent-browser");
-  return mergeAgentBrowserConfig(
-    await readJsonRecord(join(agentBrowserHome, "config.json")),
-    await readJsonRecord(join(process.cwd(), "agent-browser.json"))
-  );
-}
-
-async function readJsonRecord(path: string): Promise<Readonly<Record<string, unknown>>> {
-  try {
-    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
-    return value !== null && typeof value === "object" && !Array.isArray(value)
-      ? value as Record<string, unknown>
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function mergeAgentBrowserConfig(
-  base: Readonly<Record<string, unknown>>,
-  overrides: Readonly<Record<string, unknown>>
-): Readonly<Record<string, unknown>> {
-  return {
-    ...base,
-    ...Object.fromEntries(
-      Object.entries(overrides).filter(([, value]) => value !== undefined && value !== null)
-    )
-  };
-}
-
-function hasConfiguredValue(value: unknown): boolean {
-  if (typeof value === "string") return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  return value !== undefined && value !== null && value !== false;
-}
-
-function nonEmptyEnvironmentValue(value: string | undefined): string | undefined {
-  const normalized = value?.trim();
-  return normalized ? normalized : undefined;
-}
-
-function isTruthyEnvironmentValue(value: string | undefined): boolean {
-  return value === "1" || value?.trim().toLowerCase() === "true";
 }
 
 async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {

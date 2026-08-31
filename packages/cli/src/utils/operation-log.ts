@@ -93,6 +93,8 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     (entry.browserDefaultProfile === undefined
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
     isBrowserRestoreOptions(entry.browserRestoreOptions) &&
+    (entry.browserNetworkFingerprint === undefined || typeof entry.browserNetworkFingerprint === "string") &&
+    isNetworkControl(entry.networkControl) &&
     isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
   )) {
@@ -104,6 +106,18 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     bridgeUrl,
     bridgePort
   } as CliOperationLogEntry;
+}
+
+function isNetworkControl(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const control = value as Record<string, unknown>;
+  return typeof control.fingerprint === "string" &&
+    typeof control.pid === "number" && Number.isInteger(control.pid) && control.pid > 0 &&
+    typeof control.controlUrl === "string" &&
+    (control.pacUrl === undefined || typeof control.pacUrl === "string") &&
+    typeof control.token === "string" &&
+    typeof control.configPath === "string";
 }
 
 function isStringArray(value: unknown): boolean {

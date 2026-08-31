@@ -37,7 +37,8 @@
     "build": "tsc -b --pretty false",
     "prepublish": "node ./scripts/copy-cli-skill.mjs",
     "test": "pnpm run build && pnpm run prepublish && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run",
-    "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
+    "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs",
+    "test:network-control-e2e": "pnpm run build && node test/network-control.e2e.mjs"
   },
   "dependencies": {
     "@divebell/agent-browser": "0.34.0-divebell.4",

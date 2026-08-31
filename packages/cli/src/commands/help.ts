@@ -105,8 +105,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
-    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
+    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url> | --proxy-provider <extension>] [--network-rules <path>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Conditional proxy and network rules are browser-daemon scoped and require a fresh Divebell-launched Chromium session. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
   },
   ...browserCommandReferences,
   {

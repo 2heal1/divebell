@@ -2,6 +2,7 @@ import { validateCommandSkill } from "./skill.js";
 import type {
   DivebellExtensionCommand,
   DivebellExtensionDefinition,
+  DivebellBrowserProxyProvider,
   DivebellExtensionHooks,
   ValidateExtensionOptions
 } from "../types/commands.js";
@@ -16,6 +17,7 @@ export type {
   DivebellCloseHook,
   DivebellDetectStackHook,
   DivebellExtensionDefinition,
+  DivebellBrowserProxyProvider,
   DivebellExtensionHooks,
   DivebellOpenHook,
   DivebellOrderedHook,
@@ -46,6 +48,7 @@ export function validateExtension(
     `Extension "${name}" requires`
   );
   const commands = validateCommands(value.commands, name);
+  const browserProxyProvider = validateBrowserProxyProvider(value.browserProxyProvider, name);
   const hooks = validateHooks(value.hooks, name);
   if (hooks?.open === undefined) {
     const command = commands.find((candidate) => candidate.requiresOpenHook === true);
@@ -55,8 +58,8 @@ export function validateExtension(
       );
     }
   }
-  if (commands.length === 0 && hooks === undefined) {
-    throw new Error(`Extension "${name}" must provide at least one command or hook.`);
+  if (commands.length === 0 && hooks === undefined && browserProxyProvider === undefined) {
+    throw new Error(`Extension "${name}" must provide at least one command or hook, or browserProxyProvider.`);
   }
 
   return {
@@ -65,8 +68,23 @@ export function validateExtension(
     ...(requires.length === 0 ? {} : { requires }),
     ...(typeof value.displayName === "string" ? { displayName: value.displayName } : {}),
     ...(typeof value.description === "string" ? { description: value.description } : {}),
+    ...(browserProxyProvider === undefined ? {} : { browserProxyProvider }),
     ...(commands.length === 0 ? {} : { commands }),
     ...(hooks === undefined ? {} : { hooks })
+  };
+}
+
+function validateBrowserProxyProvider(
+  value: unknown,
+  extensionName: string
+): DivebellBrowserProxyProvider | undefined {
+  if (value === undefined) return undefined;
+  const resolve = isRecord(value) ? value.resolve : undefined;
+  if (!isRecord(value) || typeof resolve !== "function" || Object.keys(value).some((key) => key !== "resolve")) {
+    throw new Error(`Extension "${extensionName}" browserProxyProvider must provide only a resolve(options) function.`);
+  }
+  return {
+    resolve: async (options) => await resolve(options)
   };
 }
 

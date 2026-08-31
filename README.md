@@ -92,6 +92,8 @@ These capabilities include the current page and user journey, page operations su
 
 [CLI Reference](./docs/cli-reference.md) · [WebMCP](./docs/webmcp.md)
 
+[Browser network control and conditional proxy](./docs/browser-network-control.md)
+
 For protected pages, Divebell uses a read-only copy of the current OS user's most recently used Chrome Profile by default. An explicitly supplied Profile, browser state, restore context, restricted-domain mode, or external browser takes precedence. Divebell always works within the selected account's existing permissions.
 
 When no local Chrome Profile is available, Divebell falls back to project-scoped automatic Restore State. Restore State contains cookies, localStorage, and sessionStorage rather than a complete Chrome Profile. Divebell saves it once after a newly opened page is quiet for about two seconds and again before close, while periodic saving is disabled by default. Pass `--no-default-profile` for one `open`, or set `DIVEBELL_DEFAULT_CHROME_PROFILE=off` persistently, to use Restore State instead of automatic Profile selection.

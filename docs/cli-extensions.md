@@ -29,6 +29,14 @@ Extensions are appropriate for work that can be completed outside the page and d
 
 A page Command operates on the page most recently opened by `divebell open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
+An Extension may also declare a `browserProxyProvider` when a trusted team proxy
+tool needs to supply structured HTTP/SOCKS endpoints and PAC matching data. The
+caller selects it with `divebell open --proxy-provider <extension-name>`;
+Divebell validates and serves the PAC and never accepts a project-configured
+shell command for proxy setup. The configuration is browser-daemon scoped and
+requires a fresh Divebell-launched Chromium session. See [Browser network
+control and conditional proxy](browser-network-control.md).
+
 ## Create an Extension
 
 ### Create the directory

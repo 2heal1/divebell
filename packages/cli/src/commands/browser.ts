@@ -43,11 +43,6 @@ import {
 } from "../features/extension/hooks.js";
 import type { ExtensionHookPlan } from "../features/extension/plan.js";
 import type { DivebellExtensionDefinition } from "../types/commands.js";
-import {
-  createBrowserTempProfile,
-  removeBrowserTempProfile,
-  type BrowserTempProfile
-} from "../features/browser/temp-profile.js";
 
 export interface OpenPageResult {
   url: string;
@@ -58,9 +53,6 @@ export interface OpenPageResult {
   sessionId: string | null;
   openedAt: number;
   injectedScriptPath?: string;
-  tempProfile?: {
-    exportCommand: "divebell profile export";
-  };
 }
 
 const WEBMCP_BROWSER_ARGUMENTS = [
@@ -68,6 +60,9 @@ const WEBMCP_BROWSER_ARGUMENTS = [
   "--enable-features=WebMCPTesting",
   "--enable-features=DevToolsWebMCPSupport"
 ] as const;
+
+const WEBMCP_EXTERNAL_BROWSER_WARNING =
+  "Divebell could not enable WebMCP launch features for this externally managed or non-Chrome browser; opening it anyway. If WebMCP is unavailable, CLI calls will report webmcp_unsupported and Extension API calls will report WEBMCP_UNSUPPORTED.\n";
 
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
@@ -87,32 +82,22 @@ export async function runBrowserCliCommand(
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
     const previousOpenContext = await operationLogStore.read();
-    if (previousOpenContext?.browserTempProfile !== undefined) {
-      throw createError({
-        code: "TEMP_PROFILE_ACTIVE",
-        kind: "validation",
-        message: "A temporary Profile is already open in this directory.",
-        retryable: false,
-        hint: "Run `divebell profile export [path]` to keep it, or `divebell stop` to discard it, before opening another page."
-      });
-    }
-    validateTempProfileOpenArgs(args);
     validateWebMcpOpenArgs(args);
-    const tempProfile = hasOption(args, "temp-profile")
-      ? await createBrowserTempProfile(env)
-      : undefined;
     const browserArgs = inheritOpenInitScripts(
-      tempProfile === undefined ? args : withBrowserProfile(args, tempProfile.path),
+      args,
       previousOpenContext
     );
     const sessionId = getOpenCommandSessionId(args);
-    const browserRestoreDisabled = tempProfile !== undefined
-      || hasOption(args, "profile")
+    const browserRestoreDisabled = hasOption(args, "profile")
       || hasOption(args, "state")
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
     const browserUi = hasOption(args, "ui");
-    const browserArguments = await createWebMcpBrowserArguments(args, env);
+    const webMcpLaunch = await createWebMcpBrowserLaunch(args, env);
+    const browserArguments = webMcpLaunch.browserArguments;
+    if (webMcpLaunch.warning !== undefined) {
+      stderr.write(webMcpLaunch.warning);
+    }
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     let bridgeUrl: string | null = null;
@@ -153,12 +138,10 @@ export async function runBrowserCliCommand(
       writeHookFailures(stderr, hookResult.failures);
       const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
       const browserReuseInitialBlankPage = hookResult.openedUrl === undefined;
-      const tempProfileRunOptions = createTempProfileRunOptions(tempProfile);
       const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
         ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
-        ...(browserArguments === undefined ? {} : { browserArguments }),
-        ...tempProfileRunOptions
+        ...(browserArguments === undefined ? {} : { browserArguments })
       });
       const result = await openBrowserPage(
         openBrowserRunner,
@@ -171,8 +154,7 @@ export async function runBrowserCliCommand(
           ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
-          ...(browserArguments === undefined ? {} : { browserArguments }),
-          ...tempProfileRunOptions
+          ...(browserArguments === undefined ? {} : { browserArguments })
         }
       );
       if (result.exitCode !== 0) {
@@ -198,8 +180,7 @@ export async function runBrowserCliCommand(
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
           ...(result.defaultProfile === undefined
             ? {}
-            : { defaultProfile: result.defaultProfile }),
-          ...tempProfileRunOptions
+            : { defaultProfile: result.defaultProfile })
         }),
         hookResult.companionPages
       );
@@ -226,10 +207,9 @@ export async function runBrowserCliCommand(
         ...(browserArgs.options.has("init-script")
           ? { browserInitScripts: [...(browserArgs.options.get("init-script") ?? [])] }
           : {}),
-        ...(result.defaultProfile === undefined || tempProfile !== undefined
+        ...(result.defaultProfile === undefined
           ? {}
           : { browserDefaultProfile: result.defaultProfile }),
-        ...(tempProfile === undefined ? {} : { browserTempProfile: tempProfile }),
         browserRestoreOptions: collectBrowserRestoreContextOptions(args),
         ...(headers === undefined ? {} : { headers })
       });
@@ -244,10 +224,7 @@ export async function runBrowserCliCommand(
         openedAt,
         ...(result.injectedScriptPath === undefined
           ? {}
-          : { injectedScriptPath: result.injectedScriptPath }),
-        ...(tempProfile === undefined
-          ? {}
-          : { tempProfile: { exportCommand: "divebell profile export" } })
+          : { injectedScriptPath: result.injectedScriptPath })
       };
       createCommandOutput(stdout, args.command.join(" ")).ok(output, "Page opened.");
       if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
@@ -256,12 +233,6 @@ export async function runBrowserCliCommand(
       return 0;
     } catch (error) {
       if (!committed) {
-        if (tempProfile !== undefined) {
-          await bindBrowserRunOptions(browserRunner, createTempProfileRunOptions(tempProfile))
-            .run(["close"])
-            .catch(() => undefined);
-        }
-        await removeBrowserTempProfile(tempProfile?.path, env);
         if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
           await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
         }
@@ -352,7 +323,6 @@ export async function runBrowserCliCommand(
 function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
   if ([
     "no-default-profile",
-    "temp-profile",
     "profile",
     "state",
     "restore",
@@ -369,42 +339,6 @@ function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
   return engine !== undefined && engine !== "" && engine !== "chrome";
 }
 
-function validateTempProfileOpenArgs(args: ParsedCliArgs): void {
-  if (!hasOption(args, "temp-profile")) return;
-  if (getOptionValue(args, "temp-profile") !== "true") {
-    throw createError({
-      code: "TEMP_PROFILE_OPTION_INVALID",
-      kind: "validation",
-      message: "--temp-profile is a flag and does not accept a value.",
-      retryable: false,
-      hint: "Use `divebell open <url> --ui --temp-profile`."
-    });
-  }
-  const conflicts = [
-    "profile",
-    "state",
-    "restore",
-    "allowed-domains",
-    "cdp",
-    "auto-connect",
-    "provider",
-    "args",
-    "cookies"
-  ].filter((name) => hasOption(args, name));
-  const engine = getOptionValue(args, "engine")?.trim().toLowerCase();
-  if (engine !== undefined && engine !== "" && engine !== "chrome") {
-    conflicts.push("engine");
-  }
-  if (conflicts.length === 0) return;
-  throw createError({
-    code: "TEMP_PROFILE_CONTEXT_CONFLICT",
-    kind: "validation",
-    message: `--temp-profile cannot be combined with: ${conflicts.map((name) => `--${name}`).join(", ")}.`,
-    retryable: false,
-    hint: "Remove the other browser context options so Divebell can start a clean local Chrome Profile."
-  });
-}
-
 function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
   if (!hasOption(args, "no-webmcp") || getOptionValue(args, "no-webmcp") === "true") {
     return;
@@ -418,15 +352,17 @@ function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
   });
 }
 
-async function createWebMcpBrowserArguments(
+async function createWebMcpBrowserLaunch(
   args: ParsedCliArgs,
   env: NodeJS.ProcessEnv
-): Promise<string | undefined> {
+): Promise<{ browserArguments?: string; warning?: string }> {
   if (hasOption(args, "no-webmcp")) {
-    return undefined;
+    return {};
   }
   const config = await readAgentBrowserLaunchConfig(args, env);
-  if (!usesDivebellLaunchedChrome(args, env, config)) return undefined;
+  if (!usesDivebellLaunchedChrome(args, env, config)) {
+    return { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
+  }
   const cliArguments = (args.options.get("args") ?? [])
     .filter((value) => value !== "true");
   const configuredArguments = cliArguments.length === 0
@@ -435,11 +371,13 @@ async function createWebMcpBrowserArguments(
     && config.args.trim().length > 0
       ? [config.args]
       : [];
-  return [
-    ...configuredArguments,
-    ...cliArguments,
-    ...WEBMCP_BROWSER_ARGUMENTS
-  ].join("\n");
+  return {
+    browserArguments: [
+      ...configuredArguments,
+      ...cliArguments,
+      ...WEBMCP_BROWSER_ARGUMENTS
+    ].join("\n")
+  };
 }
 
 function usesDivebellLaunchedChrome(
@@ -523,26 +461,6 @@ function nonEmptyEnvironmentValue(value: string | undefined): string | undefined
 
 function isTruthyEnvironmentValue(value: string | undefined): boolean {
   return value === "1" || value?.trim().toLowerCase() === "true";
-}
-
-function withBrowserProfile(args: ParsedCliArgs, path: string): ParsedCliArgs {
-  const options = new Map(
-    [...args.options].map(([name, values]) => [name, [...values]])
-  );
-  options.set("profile", [path]);
-  return { command: args.command, options };
-}
-
-function createTempProfileRunOptions(
-  profile: BrowserTempProfile | undefined
-): BrowserRunOptions {
-  return profile === undefined
-    ? {}
-    : {
-        session: profile.session,
-        ignoreConfiguredProfile: true,
-        ignoreConfiguredState: true
-      };
 }
 
 async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {

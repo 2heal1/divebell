@@ -43,25 +43,15 @@ divebell open https://example.com/orders --profile "Test Account" --ui
 divebell open https://example.com/orders --state /path/to/test-account.json --ui
 ```
 
+Always try the default most-recently-used Profile first. If it cannot access
+the target or has the wrong account, run `divebell profiles`, show the
+selectable metadata, and let the user choose the explicit Profile. Do not
+choose an account for them.
+
 If no usable Chrome Profile exists, later `divebell open` calls automatically restore browser state for the same project. Use `state save` when a portable file or a URL-scoped export is needed; confirm the actual account and permissions in the target page.
 
 Pass `--no-default-profile` when one `open` should skip the latest Chrome
 Profile and use project Restore State.
-
-If an existing state file is present but cannot represent everything a
-protected application needs, the user can establish a new full local Profile
-without inheriting another browser context:
-
-```sh
-divebell open https://example.com/orders --ui --temp-profile
-# Complete the authorized login and verify the target, then:
-divebell profile export
-```
-
-The export closes the temporary browser cleanly and returns a reusable Profile
-directory in `data.path`. Run it before `stop`; stopping without an export
-discards the temporary Profile. See the authentication guide for the security
-and portability boundary.
 
 When a team needs dynamic account selection, environment switching, temporary credentials, or internal preparation, it can package those steps as an Extension. The Extension must stay inside the authorized account and environment boundary and must not expose sensitive values.
 
@@ -98,23 +88,22 @@ Later page commands and Extensions reuse the **current working directory's** mos
 
 When an explicitly supplied state fails authentication or permission
 verification, first verify the final URL, HTTP/navigation result, and task
-expectation. Do not guess related origins or broaden the state. On a trusted
-local machine, let the user establish a complete Profile through an authorized
-interactive login:
+expectation. Do not guess related origins or broaden the state. Retry once with
+`--ui` and let the user sign in manually:
 
 ```sh
-divebell stop
-divebell open https://example.com/orders --ui --temp-profile
-# Complete login and verify the exact protected target, then:
-divebell profile export
-divebell open https://example.com/orders --profile /path/from/data.path --ui
+divebell open https://example.com/orders \
+  --state /path/to/test-account.json --ui
+# Let the user complete login in the browser window.
 ```
 
-`profile export` closes the browser so Chrome flushes its storage, then returns
-the reusable local Profile directory in `data.path`. Verify the same target,
-account, and success condition after reopening it. Treat a plain 404 without
-authentication evidence as an application or routing problem. See [Browser
-Authentication and State](browser-auth.md#create-a-clean-profile-by-signing-in-once).
+If the user explicitly provides login information instead, save the password
+through `divebell auth save --password-stdin` and run `divebell auth login`.
+After either flow, verify the same target, account, and success condition. Use
+reviewed, URL-scoped state for cross-machine sharing; never copy a Profile
+directory as the handoff. Treat a plain 404 without authentication evidence as
+an application or routing problem. See [Browser Authentication and
+State](browser-auth.md#when-a-state-file-cannot-authenticate).
 
 Divebell can debug a regular page without Runtime SDK. If the page has no connected runtime, continue with browser-side capabilities instead of modifying the application before investigation can begin.
 

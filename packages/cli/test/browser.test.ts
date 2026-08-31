@@ -321,6 +321,9 @@ test("leaves external browser launch flags unchanged without failing open", asyn
       `https://app.test/?divebellSessionId=${createOperationSessionId()}`
     ]]);
     assert.equal(browserOptions[0]?.browserArguments, undefined);
+    assert.match(output.errorText(), /opening it anyway/);
+    assert.match(output.errorText(), /webmcp_unsupported/);
+    assert.match(output.errorText(), /WEBMCP_UNSUPPORTED/);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }
@@ -354,6 +357,7 @@ test("allows local Chrome WebMCP launch features to be disabled", async () => {
       `https://app.test/?divebellSessionId=${createOperationSessionId()}`
     ]]);
     assert.equal(browserOptions[0]?.browserArguments, undefined);
+    assert.equal(output.errorText(), "");
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });
   }

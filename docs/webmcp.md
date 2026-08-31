@@ -35,7 +35,7 @@ uppercase, for example `WEBMCP_UNSUPPORTED`. This error is raised only when an
 Extension calls `browser.webmcp.list()` or `browser.webmcp.call()`; opening and
 using an otherwise unsupported browser remains successful.
 
-`open` remains successful when Divebell connects through `--cdp`, `--auto-connect`, a provider, or a non-Chrome engine. Divebell leaves an external browser's launch configuration unchanged. If that browser does not expose the WebMCP CDP domain, the first `webmcp list` or `webmcp call` reports `webmcp_unsupported` with compatibility guidance; ordinary page operations are unaffected.
+`open` remains successful when Divebell connects through `--cdp`, `--auto-connect`, a provider, or a non-Chrome engine. Divebell leaves an external browser's launch configuration unchanged and prints a non-fatal warning that it could not enable the launch features itself. If that browser does not expose the WebMCP CDP domain, the first `webmcp list` or `webmcp call` reports `webmcp_unsupported` with compatibility guidance; ordinary page operations are unaffected.
 
 Use `divebell open <url> --no-webmcp` when a local Chrome launch must not enable the experimental features. A later WebMCP CLI or typed API call then reports `webmcp_unsupported` unless the selected browser exposes WebMCP independently.
 

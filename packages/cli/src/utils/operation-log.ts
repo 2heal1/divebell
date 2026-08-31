@@ -92,7 +92,6 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     isStringArray(entry.browserInitScripts) &&
     (entry.browserDefaultProfile === undefined
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
-    isBrowserTempProfile(entry.browserTempProfile) &&
     isBrowserRestoreOptions(entry.browserRestoreOptions) &&
     isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
@@ -111,17 +110,6 @@ function isStringArray(value: unknown): boolean {
   return value === undefined || (
     Array.isArray(value) && value.every((item) => typeof item === "string")
   );
-}
-
-function isBrowserTempProfile(value: unknown): boolean {
-  if (value === undefined) return true;
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const profile = value as Record<string, unknown>;
-  return typeof profile.path === "string"
-    && profile.path.length > 0
-    && resolve(profile.path) === profile.path
-    && typeof profile.session === "string"
-    && /^divebell-temp-[a-zA-Z0-9-]+$/.test(profile.session);
 }
 
 function isSafeDefaultProfile(value: unknown): value is string {

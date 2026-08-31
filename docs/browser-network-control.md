@@ -56,6 +56,9 @@ Endpoints must use `http`, `https`, `socks`, `socks4`, or `socks5`, include a po
 
 The provider supplies only an HTTP/SOCKS endpoint and rules. TLS certificate installation, HTTPS decryption, TLS interception policy, and upstream proxy behavior remain the proxy tool's responsibility.
 
+For a runnable local example with separate Bifrost rule ports, see
+[`packages/cli/examples/browser-network-control`](../packages/cli/examples/browser-network-control/README.md).
+
 ## Request rules
 
 Pass a JSON file with `--network-rules`:

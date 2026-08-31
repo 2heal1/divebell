@@ -28,6 +28,7 @@
     "dist/**/*.d.ts.map",
     "dist/**/*.js",
     "dist/**/*.js.map",
+    "examples/**/*",
     "skills/**/*"
   ],
   "publishConfig": {
@@ -43,7 +44,9 @@
     "test:network-control-multi-daemon-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs multi-daemon",
     "test:network-control-pac-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs pac",
     "test:network-control-fixed-proxy-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs fixed-proxy",
-    "test:network-control-https-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs https"
+    "test:network-control-https-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs https",
+    "demo:network-control:bifrost-multi-daemon": "pnpm run build && node examples/browser-network-control/bifrost-demo.mjs multi-daemon",
+    "demo:network-control:bifrost-pac": "pnpm run build && node examples/browser-network-control/bifrost-demo.mjs pac"
   },
   "dependencies": {
     "@divebell/agent-browser": "0.34.0-divebell.4",

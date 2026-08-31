@@ -32,6 +32,12 @@ interface CdpMessage {
   error?: { message?: string };
 }
 
+export interface NetworkCdpControllerClient {
+  onEvent(listener: (message: CdpMessage) => void): void;
+  send(method: string, params?: Record<string, unknown>, sessionId?: string): Promise<unknown>;
+  close(): void;
+}
+
 interface FetchPausedParams {
   requestId: string;
   resourceType?: string;
@@ -85,7 +91,7 @@ export async function runNetworkControlServer(configPath: string): Promise<void>
       return;
     }
     if (request.method === "GET" && url.pathname === "/status") {
-      response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(controller?.status() ?? { attachedTargets: 0, enabledTargets: 0, pausedRequests: 0, matchedRequests: 0, failedRequests: 0 }));
+      response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(controller?.status() ?? { attachedTargets: 0, enabledTargets: 0, pausedRequests: 0, matchedRequests: 0, failedRequests: 0, eventErrors: 0 }));
       return;
     }
     if (request.method === "POST" && url.pathname === "/stop") {
@@ -134,18 +140,30 @@ export async function readNetworkControlServerConfig(path: string): Promise<Netw
 }
 
 export class NetworkCdpController {
-  readonly #client: CdpClient;
+  readonly #client: NetworkCdpControllerClient;
   readonly #rules: BrowserNetworkRules | undefined;
   readonly #sessionEnables = new Map<string, Promise<void>>();
   #attachedTargets = 0;
   #pausedRequests = 0;
   #matchedRequests = 0;
   #failedRequests = 0;
+  #eventErrors = 0;
 
-  private constructor(client: CdpClient, rules: BrowserNetworkRules | undefined) {
+  private constructor(client: NetworkCdpControllerClient, rules: BrowserNetworkRules | undefined) {
     this.#client = client;
     this.#rules = rules;
-    client.onEvent((message) => void this.handleEvent(message));
+    client.onEvent((message) => {
+      void this.handleEvent(message).catch(() => {
+        // CDP target attachment and Fetch setup can race target destruction.
+        // Keep the daemon alive and expose the failure through status instead.
+        this.#eventErrors += 1;
+      });
+    });
+  }
+
+  /** @internal Test seam for CDP event-failure containment. */
+  static createForTesting(client: NetworkCdpControllerClient, rules: BrowserNetworkRules | undefined): NetworkCdpController {
+    return new NetworkCdpController(client, rules);
   }
 
   static async connect(cdpUrl: string, rules: BrowserNetworkRules | undefined): Promise<NetworkCdpController> {
@@ -178,13 +196,14 @@ export class NetworkCdpController {
     this.#client.close();
   }
 
-  status(): { attachedTargets: number; enabledTargets: number; pausedRequests: number; matchedRequests: number; failedRequests: number } {
+  status(): { attachedTargets: number; enabledTargets: number; pausedRequests: number; matchedRequests: number; failedRequests: number; eventErrors: number } {
     return {
       attachedTargets: this.#attachedTargets,
       enabledTargets: this.#sessionEnables.size,
       pausedRequests: this.#pausedRequests,
       matchedRequests: this.#matchedRequests,
-      failedRequests: this.#failedRequests
+      failedRequests: this.#failedRequests,
+      eventErrors: this.#eventErrors
     };
   }
 
@@ -242,17 +261,6 @@ export class NetworkCdpController {
           requestId,
           url: rewriteBrowserRequestUrl(rule, url)
         }, sessionId);
-      } else if (rule.action.type === "redirect") {
-        await this.#client.send("Fetch.fulfillRequest", {
-          requestId,
-          responseCode: rule.action.status ?? 302,
-          responsePhrase: "Divebell redirect",
-          responseHeaders: [
-            { name: "Location", value: rule.action.url },
-            { name: "Content-Length", value: "0" }
-          ],
-          body: ""
-        }, sessionId);
       } else {
         await fulfillRequest(this.#client, sessionId, requestId, params, rule);
       }
@@ -268,7 +276,7 @@ export class NetworkCdpController {
 }
 
 async function fulfillRequest(
-  client: CdpClient,
+  client: NetworkCdpControllerClient,
   sessionId: string,
   requestId: string,
   paused: FetchPausedParams,

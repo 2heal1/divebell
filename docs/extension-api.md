@@ -44,11 +44,14 @@ interface DivebellBrowserProxyProvider {
 
 The provider runs only when the caller selects its Extension name through
 `divebell open --proxy-provider <extension-name>`. It returns endpoint and PAC
-matching data, never a shell command. Divebell validates that endpoints are
-credential-free HTTP(S) or SOCKS URLs with explicit ports, generates and hosts
-the PAC itself, and applies it only to a Divebell-launched Chromium browser at
-launch time. See [Browser network control and conditional proxy](browser-network-control.md)
-for the exact descriptor shape, error codes, and scope.
+matching data, never a shell command. `resolve` must return already-running,
+ready endpoints and should remain a pure description operation: this API has no
+lifecycle or cleanup callback, so Divebell neither starts nor releases provider
+resources. Divebell validates that endpoints are credential-free HTTP(S) or
+SOCKS URLs with explicit ports, generates and hosts the PAC itself, and applies
+it only to a Divebell-launched Chromium browser at launch time. See [Browser
+network control and conditional proxy](browser-network-control.md) for the
+exact descriptor shape, error codes, and scope.
 
 ## Commands
 

@@ -5,8 +5,7 @@ export const BROWSER_PROXY_DESCRIPTOR_SCHEMA_VERSION = 1;
 
 export type BrowserNetworkAction =
   | { type: "rewrite"; targetPrefix: string }
-  | { type: "fulfill"; url: string; timeoutMs?: number }
-  | { type: "redirect"; url: string; status?: 301 | 302 | 303 | 307 | 308 };
+  | { type: "fulfill"; url: string; timeoutMs?: number };
 
 export interface BrowserNetworkRule {
   id: string;
@@ -130,8 +129,7 @@ export function matchBrowserNetworkRule(
     if (rule.match.url !== undefined && request.url !== rule.match.url) return false;
     if (rule.match.urlPrefix !== undefined && !request.url.startsWith(rule.match.urlPrefix)) return false;
     return rule.match.resourceTypes === undefined
-      || request.resourceType === undefined
-      || rule.match.resourceTypes.includes(request.resourceType);
+      || (request.resourceType !== undefined && rule.match.resourceTypes.includes(request.resourceType));
   });
 }
 
@@ -203,14 +201,7 @@ function validateNetworkAction(value: unknown, id: string): BrowserNetworkAction
     }
     return { type: "fulfill", url: validateHttpUrl(action.url, `Network rule "${id}" action.url`), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
   }
-  if (action.type === "redirect") {
-    const status = action.status === undefined ? 302 : action.status;
-    if (![301, 302, 303, 307, 308].includes(status as number)) {
-      throw new Error(`Network rule "${id}" action.status must be 301, 302, 303, 307, or 308.`);
-    }
-    return { type: "redirect", url: validateHttpUrl(action.url, `Network rule "${id}" action.url`), status: status as 301 | 302 | 303 | 307 | 308 };
-  }
-  throw new Error(`Network rule "${id}" action.type must be rewrite, fulfill, or redirect.`);
+  throw new Error(`Network rule "${id}" action.type must be rewrite or fulfill.`);
 }
 
 function validateProxyMatch(value: unknown, index: number): NonNullable<BrowserProxyRule["match"]> {
@@ -246,6 +237,7 @@ function proxyDirective(endpoint: string): string {
   if (url.protocol === "socks4:") return `SOCKS4 ${address}`;
   if (url.protocol === "socks5:") return `SOCKS5 ${address}`;
   if (url.protocol === "socks:") return `SOCKS ${address}`;
+  if (url.protocol === "https:") return `HTTPS ${address}`;
   return `PROXY ${address}`;
 }
 

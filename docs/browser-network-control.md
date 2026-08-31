@@ -50,6 +50,8 @@ export default extension;
 
 Endpoints must use `http`, `https`, `socks`, `socks4`, or `socks5`, include a port, and must not contain credentials, paths, queries, or fragments. PAC matching is first-match-wins; unmatched traffic is always `DIRECT`. Divebell validates descriptor shape and endpoint safety before launch (`BROWSER_PROXY_DESCRIPTOR_INVALID`). Project configuration has no field that executes a shell command.
 
+`resolve` must return endpoints that are already running and ready to accept traffic. It is a pure description boundary: v1 neither starts proxy resources nor calls a provider cleanup hook, so a provider must not rely on Divebell to release temporary tunnels, processes, or credentials.
+
 The provider supplies only an HTTP/SOCKS endpoint and rules. TLS certificate installation, HTTPS decryption, TLS interception policy, and upstream proxy behavior remain the proxy tool's responsibility.
 
 ## Request rules
@@ -76,11 +78,6 @@ Pass a JSON file with `--network-rules`:
         "url": "https://b.com/fixtures/catalog.json",
         "timeoutMs": 5000
       }
-    },
-    {
-      "id": "moved-document",
-      "match": { "url": "https://a.com/old" },
-      "action": { "type": "redirect", "url": "https://b.com/new", "status": 302 }
     }
   ]
 }
@@ -98,9 +95,10 @@ Each rule needs a lowercase `id`, exactly one source matcher (`url` or `urlPrefi
 | --- | --- | --- |
 | `rewrite` | Continues the intercepted request to `targetPrefix` plus the source suffix. | The initiated resource URL and DOM reference remain the source URL; Chrome response metadata can still expose implementation-dependent final URL details. |
 | `fulfill` | Divebell's local control process fetches `url`, buffers the response, and fulfills the original request. | The browser receives a synthetic response for the source URL. Browser cookies and authorization headers are deliberately not forwarded to the control-plane fetch. |
-| `redirect` | Fulfills a 301/302/303/307/308 response with `Location`. | This is a distinct synthetic redirect response, not a rewrite. Chromium's CDP Fetch handling did not reliably continue a main-document navigation in Divebell's real-browser verification, so do not use it as a guaranteed navigation mechanism in this release. |
 
 `fulfill` follows redirects for its own fetch, strips hop-by-hop/encoding headers after decoding, has a default 15-second timeout (maximum configurable value 60 seconds), and limits buffered bodies to 10 MiB. A failed or timed-out control fetch fails the intercepted request rather than leaving it paused.
+
+Divebell v1 does not expose a request `redirect` action. Real browser navigation after a synthetic 3xx response was not reliable in Chromium verification. Use `rewrite` for `https://a.com` to `https://b.com` or `http://localhost:<port>/path` resource replacement; use `fulfill` only when Divebell should fetch and buffer a replacement response.
 
 ## Supported boundary
 
@@ -110,7 +108,7 @@ This is intentionally an HTTP(S) resource replacement facility, not a general ne
 - EventSource/SSE is not supported for `fulfill`: it requires a truly streaming response and Divebell buffers fulfilled bodies.
 - HMR is not guaranteed. WebSocket-based HMR is unsupported; HTTP polling HMR may work only as an ordinary HTTP request.
 - Service Worker fetch handling and cached responses are outside the supported rule surface. Divebell does not attach its interception controller to service-worker targets.
-- Synthetic `redirect` responses are observable as a 3xx response at the interception boundary, but reliable browser follow-up navigation is not currently supported or promised. Use `rewrite` when resource replacement is required.
+- True request redirection is not supported in v1. A synthetic 3xx response is not exposed because reliable browser follow-up navigation was not verified; use `rewrite` when resource replacement is required.
 - Responses that depend on browser cookies, browser-integrated authentication, client TLS certificates, or response streaming should not use `fulfill`; use `rewrite` or configure the proxy tool instead.
 - CDP interception can conflict with another tool that independently owns the same browser's Fetch domain. Divebell creates its own target sessions and cleans them up with `divebell stop`, but concurrent external CDP mutation is not a supported setup.
 

@@ -12,21 +12,32 @@ import {
   validateBrowserNetworkRules,
   validateBrowserProxyDescriptor
 } from "../dist/features/browser/network-control.js";
-import { fetchNetworkFulfillResponse } from "../dist/features/browser/network-control-server.js";
+import { fetchNetworkFulfillResponse, NetworkCdpController, type NetworkCdpControllerClient } from "../dist/features/browser/network-control-server.js";
 import { stopNetworkControl } from "../dist/features/browser/network-control-process.js";
 import { validateExtension } from "../dist/commands/definition.js";
 
-test("generates escaped PAC rules with a DIRECT fallback", () => {
+test("generates escaped PAC rules with the correct HTTP, HTTPS, SOCKS4, and SOCKS5 directives", () => {
   const descriptor = validateBrowserProxyDescriptor({
     schemaVersion: 1,
-    endpoints: [{ id: "local", url: "socks5://127.0.0.1:1080" }],
+    endpoints: [
+      { id: "http", url: "http://127.0.0.1:8080" },
+      { id: "https", url: "https://127.0.0.1:8443" },
+      { id: "socks4", url: "socks4://127.0.0.1:1080" },
+      { id: "socks5", url: "socks5://127.0.0.1:1081" }
+    ],
     rules: [
-      { endpoint: "local", match: { hostSuffixes: ["example.test"], urlGlobs: ["https://example.test/a'\\n*"] } }
+      { endpoint: "http", match: { hostSuffixes: ["example.test"], urlGlobs: ["https://example.test/a'\\n*"] } },
+      { endpoint: "https", match: { hosts: ["secure.example.test"] } },
+      { endpoint: "socks4", match: { hosts: ["legacy.example.test"] } },
+      { endpoint: "socks5", match: { hosts: ["socks.example.test"] } }
     ],
     fallback: "DIRECT"
   });
   const pac = createPacScript(descriptor);
-  assert.match(pac, /SOCKS5 127\.0\.0\.1:1080/);
+  assert.match(pac, /PROXY 127\.0\.0\.1:8080/);
+  assert.match(pac, /HTTPS 127\.0\.0\.1:8443/);
+  assert.match(pac, /SOCKS4 127\.0\.0\.1:1080/);
+  assert.match(pac, /SOCKS5 127\.0\.0\.1:1081/);
   assert.match(pac, /return 'DIRECT';/);
   assert.doesNotMatch(pac, /a'\n/);
   assert.ok(pac.includes(JSON.stringify("https://example.test/a'\\n*")));
@@ -64,6 +75,44 @@ test("matches and rewrites HTTP(S) resource URLs while retaining the unmatched s
   assert.equal(rule?.id, "local-assets");
   assert.equal(rewriteBrowserRequestUrl(rule as NonNullable<typeof rule>, "https://a.com/assets/app.js?build=1"), "http://localhost:3100/static/app.js?build=1");
   assert.equal(matchBrowserNetworkRule(rules, { url: "ws://a.com/assets/socket", resourceType: "WebSocket" }), undefined);
+  assert.equal(matchBrowserNetworkRule(rules, { url: "https://a.com/assets/app.js" }), undefined);
+  assert.throws(() => validateBrowserNetworkRules({
+    schemaVersion: 1,
+    rules: [{
+      id: "unsupported-redirect",
+      match: { url: "https://a.com/old" },
+      action: { type: "redirect", url: "https://b.com/new" }
+    }]
+  }), /rewrite or fulfill/);
+});
+
+test("contains asynchronous CDP event errors instead of creating an unhandled rejection", async () => {
+  let listener: Parameters<NetworkCdpControllerClient["onEvent"]>[0] | undefined;
+  const client: NetworkCdpControllerClient = {
+    onEvent(nextListener) { listener = nextListener; },
+    async send(method: string) {
+      if (method === "Fetch.enable") throw new Error("target closed during Fetch.enable");
+      return {};
+    },
+    close() {}
+  };
+  const controller = NetworkCdpController.createForTesting(client, undefined);
+  const unhandled: unknown[] = [];
+  const onUnhandled = (reason: unknown) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  try {
+    listener?.({
+      method: "Target.attachedToTarget",
+      params: { sessionId: "session-1", targetInfo: { type: "page" } }
+    });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    assert.equal(controller.status().eventErrors, 1);
+    assert.equal(controller.status().enabledTargets, 0);
+    assert.deepEqual(unhandled, []);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+    controller.close();
+  }
 });
 
 test("fetches and normalizes a fulfilled response without forwarding browser credentials", async () => {

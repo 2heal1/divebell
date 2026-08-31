@@ -37,6 +37,11 @@ shell command for proxy setup. The configuration is browser-daemon scoped and
 requires a fresh Divebell-launched Chromium session. See [Browser network
 control and conditional proxy](browser-network-control.md).
 
+The provider's `resolve` function must return endpoints that are already ready.
+It is a descriptor-only API: Divebell does not start proxy resources or clean up
+temporary provider resources, so an Extension must manage any such lifecycle
+outside this API.
+
 ## Create an Extension
 
 ### Create the directory

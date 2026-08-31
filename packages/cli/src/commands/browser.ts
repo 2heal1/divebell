@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
 import { createBridgeStateStore, createBridgeUrl } from "../features/bridge/config.js";
 import { createBridgeInitScript } from "../features/bridge/inject.js";
@@ -26,6 +26,7 @@ import {
   writeJson
 } from "../utils/command.js";
 import { withDivebellSession } from "../utils/url.js";
+import { resolveDivebellHomeDirectory } from "../utils/home.js";
 import { applyBrowserRestoreContextDefaults, applyOpenContextBrowserMode, applyOpenContextDefaultsOrThrow, collectBrowserRestoreContextOptions, createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
@@ -54,6 +55,15 @@ export interface OpenPageResult {
   injectedScriptPath?: string;
 }
 
+const WEBMCP_BROWSER_ARGUMENTS = [
+  "--enable-features=WebMCP",
+  "--enable-features=WebMCPTesting",
+  "--enable-features=DevToolsWebMCPSupport"
+] as const;
+
+const WEBMCP_EXTERNAL_BROWSER_WARNING =
+  "Divebell could not enable WebMCP launch features for this externally managed or non-Chrome browser; opening it anyway. If WebMCP is unavailable, CLI calls will report webmcp_unsupported and Extension API calls will report WEBMCP_UNSUPPORTED.\n";
+
 export async function runBrowserCliCommand(
   args: ParsedCliArgs,
   stdout: { write(chunk: string): void },
@@ -65,12 +75,14 @@ export async function runBrowserCliCommand(
   operationLogStore: CliOperationLogStore,
   extensions: readonly DivebellExtensionDefinition[],
   openHookPlan: ExtensionHookPlan,
-  stdin: AsyncIterable<string | Uint8Array>
+  stdin: AsyncIterable<string | Uint8Array>,
+  env: NodeJS.ProcessEnv = process.env
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
     const url = requireCommandArgument(args, 1, "URL");
     const previousOpenContext = await operationLogStore.read();
+    validateWebMcpOpenArgs(args);
     const browserArgs = inheritOpenInitScripts(
       args,
       previousOpenContext
@@ -81,6 +93,11 @@ export async function runBrowserCliCommand(
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
     const browserUi = hasOption(args, "ui");
+    const webMcpLaunch = await createWebMcpBrowserLaunch(args, env);
+    const browserArguments = webMcpLaunch.browserArguments;
+    if (webMcpLaunch.warning !== undefined) {
+      stderr.write(webMcpLaunch.warning);
+    }
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
     let bridgeUrl: string | null = null;
@@ -123,7 +140,8 @@ export async function runBrowserCliCommand(
       const browserReuseInitialBlankPage = hookResult.openedUrl === undefined;
       const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
-        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
+        ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+        ...(browserArguments === undefined ? {} : { browserArguments })
       });
       const result = await openBrowserPage(
         openBrowserRunner,
@@ -135,7 +153,8 @@ export async function runBrowserCliCommand(
           ui: browserUi,
           ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
-          ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {})
+          ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+          ...(browserArguments === undefined ? {} : { browserArguments })
         }
       );
       if (result.exitCode !== 0) {
@@ -184,6 +203,7 @@ export async function runBrowserCliCommand(
         browserReuseInitialBlankPage,
         browserRestoreDisabled,
         browserDefaultProfileDisabled,
+        ...(browserArguments === undefined ? {} : { browserArguments }),
         ...(browserArgs.options.has("init-script")
           ? { browserInitScripts: [...(browserArgs.options.get("init-script") ?? [])] }
           : {}),
@@ -317,6 +337,130 @@ function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
   }
   const engine = getOptionValue(args, "engine")?.trim().toLowerCase();
   return engine !== undefined && engine !== "" && engine !== "chrome";
+}
+
+function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
+  if (!hasOption(args, "no-webmcp") || getOptionValue(args, "no-webmcp") === "true") {
+    return;
+  }
+  throw createError({
+    code: "WEBMCP_OPTION_INVALID",
+    kind: "validation",
+    message: "--no-webmcp is a flag and does not accept a value.",
+    retryable: false,
+    hint: "Use `divebell open <url> --no-webmcp`."
+  });
+}
+
+async function createWebMcpBrowserLaunch(
+  args: ParsedCliArgs,
+  env: NodeJS.ProcessEnv
+): Promise<{ browserArguments?: string; warning?: string }> {
+  if (hasOption(args, "no-webmcp")) {
+    return {};
+  }
+  const config = await readAgentBrowserLaunchConfig(args, env);
+  if (!usesDivebellLaunchedChrome(args, env, config)) {
+    return { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
+  }
+  const cliArguments = (args.options.get("args") ?? [])
+    .filter((value) => value !== "true");
+  const configuredArguments = cliArguments.length === 0
+    && env.AGENT_BROWSER_ARGS === undefined
+    && typeof config.args === "string"
+    && config.args.trim().length > 0
+      ? [config.args]
+      : [];
+  return {
+    browserArguments: [
+      ...configuredArguments,
+      ...cliArguments,
+      ...WEBMCP_BROWSER_ARGUMENTS
+    ].join("\n")
+  };
+}
+
+function usesDivebellLaunchedChrome(
+  args: ParsedCliArgs,
+  env: NodeJS.ProcessEnv,
+  config: Readonly<Record<string, unknown>>
+): boolean {
+  if (["cdp", "auto-connect", "provider"].some((name) => hasOption(args, name))) {
+    return false;
+  }
+  if (
+    nonEmptyEnvironmentValue(env.AGENT_BROWSER_CDP) !== undefined
+    || isTruthyEnvironmentValue(env.AGENT_BROWSER_AUTO_CONNECT)
+    || nonEmptyEnvironmentValue(env.AGENT_BROWSER_PROVIDER) !== undefined
+    || hasConfiguredValue(config.cdp)
+    || hasConfiguredValue(config.cdpUrl)
+    || hasConfiguredValue(config.autoConnect)
+    || hasConfiguredValue(config.provider)
+  ) {
+    return false;
+  }
+  const engine = (
+    getOptionValue(args, "engine")
+    ?? nonEmptyEnvironmentValue(env.AGENT_BROWSER_ENGINE)
+    ?? (typeof config.engine === "string" ? config.engine : undefined)
+    ?? "chrome"
+  ).trim().toLowerCase();
+  return engine === "" || engine === "chrome";
+}
+
+async function readAgentBrowserLaunchConfig(
+  args: ParsedCliArgs,
+  env: NodeJS.ProcessEnv
+): Promise<Readonly<Record<string, unknown>>> {
+  const explicitConfig = getOptionValue(args, "config")
+    ?? nonEmptyEnvironmentValue(env.AGENT_BROWSER_CONFIG);
+  if (explicitConfig !== undefined) {
+    return await readJsonRecord(resolve(process.cwd(), explicitConfig));
+  }
+  const agentBrowserHome = nonEmptyEnvironmentValue(env.AGENT_BROWSER_HOME)
+    ?? join(resolveDivebellHomeDirectory(env), "agent-browser");
+  return mergeAgentBrowserConfig(
+    await readJsonRecord(join(agentBrowserHome, "config.json")),
+    await readJsonRecord(join(process.cwd(), "agent-browser.json"))
+  );
+}
+
+async function readJsonRecord(path: string): Promise<Readonly<Record<string, unknown>>> {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeAgentBrowserConfig(
+  base: Readonly<Record<string, unknown>>,
+  overrides: Readonly<Record<string, unknown>>
+): Readonly<Record<string, unknown>> {
+  return {
+    ...base,
+    ...Object.fromEntries(
+      Object.entries(overrides).filter(([, value]) => value !== undefined && value !== null)
+    )
+  };
+}
+
+function hasConfiguredValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== undefined && value !== null && value !== false;
+}
+
+function nonEmptyEnvironmentValue(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
+function isTruthyEnvironmentValue(value: string | undefined): boolean {
+  return value === "1" || value?.trim().toLowerCase() === "true";
 }
 
 async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {
@@ -548,7 +692,11 @@ export async function openBrowserPage(
   const cookies = getOptionValue(args, "cookies");
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
     return await browserRunner.run(
-      createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl)),
+      createBrowserLaunchArgs(
+        args,
+        createBrowserNavigationArgs(args, "open", openedUrl),
+        options.browserArguments !== undefined
+      ),
       options
     );
   }
@@ -558,14 +706,25 @@ export async function openBrowserPage(
     if (cookies === undefined) {
       return withInjectedScriptPath(
         await browserRunner.run(
-          createBrowserLaunchArgs(args, createBrowserNavigationArgs(args, "open", openedUrl, ["--init-script", scriptPath])),
+          createBrowserLaunchArgs(
+            args,
+            createBrowserNavigationArgs(args, "open", openedUrl, ["--init-script", scriptPath]),
+            options.browserArguments !== undefined
+          ),
           options
         ),
         scriptPath
       );
     }
 
-    const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open", "--init-script", scriptPath]), options);
+    const launch = await browserRunner.run(
+      createBrowserLaunchArgs(
+        args,
+        ["open", "--init-script", scriptPath],
+        options.browserArguments !== undefined
+      ),
+      options
+    );
     if (launch.exitCode !== 0) return withInjectedScriptPath(launch, scriptPath);
     const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
     if (applyCookies.exitCode !== 0) {
@@ -580,14 +739,21 @@ export async function openBrowserPage(
   if (cookies === undefined) {
     return await browserRunner.run(["open", openedUrl], options);
   }
-  const launch = await browserRunner.run(createBrowserLaunchArgs(args, ["open"]), options);
+  const launch = await browserRunner.run(
+    createBrowserLaunchArgs(args, ["open"], options.browserArguments !== undefined),
+    options
+  );
   if (launch.exitCode !== 0) return launch;
   const applyCookies = await browserRunner.run(["cookies", "set", "--curl", cookies]);
   if (applyCookies.exitCode !== 0) return applyCookies;
   return await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl));
 }
 
-function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string[] {
+function createBrowserLaunchArgs(
+  args: ParsedCliArgs,
+  command: string[],
+  browserArgumentsInjected: boolean
+): string[] {
   const launchArgs: string[] = [];
   for (const name of [
     "profile",
@@ -636,6 +802,7 @@ function createBrowserLaunchArgs(args: ParsedCliArgs, command: string[]): string
     "config",
     "debug"
   ]) {
+    if (name === "args" && browserArgumentsInjected) continue;
     appendBrowserOptions(launchArgs, args, name);
   }
   return [...launchArgs, ...command];

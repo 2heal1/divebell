@@ -516,6 +516,66 @@ export interface DivebellBrowserRawResult {
   stderr: string;
 }
 
+export interface DivebellBrowserWebMcpAnnotations {
+  readOnly?: boolean;
+  untrustedContent?: boolean;
+  consequential?: boolean;
+  autosubmit?: boolean;
+}
+
+export interface DivebellBrowserWebMcpPage {
+  tabId: string;
+  targetId: string;
+  url: string;
+}
+
+export interface DivebellBrowserWebMcpTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  frameId: string;
+  source: "imperative" | "declarative";
+  annotations?: DivebellBrowserWebMcpAnnotations;
+  backendNodeId?: number;
+}
+
+export interface DivebellBrowserWebMcpListResult {
+  apiVersion: number;
+  tools: readonly DivebellBrowserWebMcpTool[];
+  count: number;
+  page: DivebellBrowserWebMcpPage;
+}
+
+export interface DivebellBrowserWebMcpCallOptions {
+  frameId?: string;
+  timeout?: number;
+}
+
+export interface DivebellBrowserWebMcpCallError {
+  message: string;
+  exception?: unknown;
+}
+
+export interface DivebellBrowserWebMcpCallResult<T = unknown> {
+  apiVersion: number;
+  invocationId: string;
+  status: "completed" | "canceled" | "error";
+  tool: DivebellBrowserWebMcpTool;
+  trust: "untrusted";
+  page: DivebellBrowserWebMcpPage;
+  output?: T;
+  error?: DivebellBrowserWebMcpCallError;
+}
+
+export interface DivebellBrowserWebMcpApi {
+  list(): Promise<DivebellBrowserWebMcpListResult>;
+  call<T = unknown>(
+    toolName: string,
+    input?: Readonly<Record<string, unknown>>,
+    options?: DivebellBrowserWebMcpCallOptions
+  ): Promise<DivebellBrowserWebMcpCallResult<T>>;
+}
+
 export interface DivebellBrowserApi {
   raw(args: readonly string[], options?: DivebellBrowserRawOptions): Promise<DivebellBrowserRawResult>;
   profileDirectory(): string;
@@ -537,6 +597,7 @@ export interface DivebellBrowserApi {
   console: DivebellBrowserConsoleApi;
   memory: DivebellBrowserMemoryApi;
   coverage: DivebellBrowserCoverageApi;
+  webmcp: DivebellBrowserWebMcpApi;
   debug: DivebellBrowserDebugApi;
 }
 

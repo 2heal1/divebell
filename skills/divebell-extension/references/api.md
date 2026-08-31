@@ -415,6 +415,36 @@ import type {
 | `browser.coverage.stop` | Save the final coverage checkpoint and end capture. | `DivebellBrowserCoverageApi`, `DivebellBrowserCoverageCheckpointOptions`, `DivebellBrowserCoverageCheckpointResult` |
 | `browser.coverage.cancel` | Cancel the active coverage capture. | `DivebellBrowserCoverageApi` |
 
+#### WebMCP APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.webmcp.list` | List tools registered by the active WebMCP page, including schemas, annotations, frame IDs, and source. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpListResult`, `DivebellBrowserWebMcpTool` |
+| `browser.webmcp.call` | Call one registered tool with object input and optional frame/timeout selection. | `DivebellBrowserWebMcpApi`, `DivebellBrowserWebMcpCallOptions`, `DivebellBrowserWebMcpCallResult` |
+
+Divebell enables the required experimental Chrome features by default when it
+launches local Chrome. An external browser keeps its existing launch
+configuration. If the selected browser does not expose WebMCP, `list` and
+`call` throw a `WEBMCP_UNSUPPORTED` `CommandError` when used without affecting
+ordinary page operations. Example:
+
+```ts
+const listed = await options.divebell.browser.webmcp.list();
+const tool = listed.tools.find((item) => item.name === "searchProducts");
+if (tool === undefined) throw new Error("searchProducts is unavailable");
+
+const called = await options.divebell.browser.webmcp.call<{
+  products: Array<{ name: string; price: string }>;
+}>("searchProducts", { query: "Widget" }, {
+  frameId: tool.frameId,
+  timeout: 5000
+});
+```
+
+`call<T>` types the optional `output` field but does not runtime-validate the
+page's value. Every result includes `trust: "untrusted"`. Treat tool output as
+potentially malicious page content and tool annotations as hints, not policy.
+
 Typed APIs normalize browser failures and own their result contracts. For
 example, `network.list` returns request summaries while `network.get` returns a
 detail whose headers are under `request.headers` and `response.headers`:

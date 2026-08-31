@@ -241,7 +241,8 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           operationLogStore,
           config.extensions,
           config.hookPlans.open,
-          options.stdin ?? process.stdin
+          options.stdin ?? process.stdin,
+          env
         );
       }
 

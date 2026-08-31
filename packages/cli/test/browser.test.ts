@@ -12,6 +12,12 @@ import { createOperationSessionId } from "../dist/utils/operation-log.js";
 
 import { assertOpenOutput, commandData, createBrowserRunner, createOpenContextFixture, createOutput, errorOutput, jsonResponse } from "./helpers.js";
 
+const WEBMCP_BROWSER_ARGUMENTS = [
+  "--enable-features=WebMCP",
+  "--enable-features=WebMCPTesting",
+  "--enable-features=DevToolsWebMCPSupport"
+].join("\n");
+
 test("opens a browser page and auto-starts the bridge when needed", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];
@@ -229,6 +235,192 @@ test("forwards supported agent-browser launch options through Divebell open", as
   ]]);
   assert.equal(browserOptions[0]?.disableRestore, true);
   rmSync(operationLogDirectory, { recursive: true, force: true });
+});
+
+test("enables WebMCP launch and CDP features for local Chrome by default", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    browserCalls.push(args);
+    browserOptions.push(options);
+    return {
+      exitCode: 0,
+      stdout: args[0] === "webmcp"
+        ? JSON.stringify({ apiVersion: 1, tools: [], count: 0 })
+        : "opened\n",
+      stderr: ""
+    };
+  });
+
+  const exitCode = await runCli([
+    "open",
+    "https://app.test/",
+    "--no-default-profile",
+    "--args=--start-maximized",
+    "--no-bridge"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    operationLogDirectory,
+    browserRunner
+  });
+
+  assert.equal(exitCode, 0);
+  assert.deepEqual(browserCalls, [[
+    "open",
+    `https://app.test/?divebellSessionId=${createOperationSessionId()}`
+  ]]);
+  assert.equal(
+    browserOptions[0]?.browserArguments,
+    `--start-maximized\n${WEBMCP_BROWSER_ARGUMENTS}`
+  );
+
+  const listOutput = createOutput();
+  assert.equal(await runCli(["webmcp", "list", "--json"], {
+    stdout: listOutput.stdout,
+    stderr: listOutput.stderr,
+    operationLogDirectory,
+    browserRunner
+  }), 0);
+  assert.deepEqual(browserCalls[1], ["webmcp", "list", "--json"]);
+  assert.equal(browserOptions[1]?.browserArguments, browserOptions[0]?.browserArguments);
+  rmSync(operationLogDirectory, { recursive: true, force: true });
+});
+
+test("leaves external browser launch flags unchanged without failing open", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+
+  try {
+    const exitCode = await runCli([
+      "open",
+      "https://app.test/",
+      "--cdp",
+      "9222",
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args, options) => {
+        browserCalls.push(args);
+        browserOptions.push(options);
+        return { exitCode: 0, stdout: "opened\n", stderr: "" };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.deepEqual(browserCalls, [[
+      "--cdp",
+      "9222",
+      "open",
+      `https://app.test/?divebellSessionId=${createOperationSessionId()}`
+    ]]);
+    assert.equal(browserOptions[0]?.browserArguments, undefined);
+    assert.match(output.errorText(), /opening it anyway/);
+    assert.match(output.errorText(), /webmcp_unsupported/);
+    assert.match(output.errorText(), /WEBMCP_UNSUPPORTED/);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("allows local Chrome WebMCP launch features to be disabled", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+
+  try {
+    assert.equal(await runCli([
+      "open",
+      "https://app.test/",
+      "--no-webmcp",
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args, options) => {
+        browserCalls.push(args);
+        browserOptions.push(options);
+        return { exitCode: 0, stdout: "opened\n", stderr: "" };
+      })
+    }), 0);
+
+    assert.deepEqual(browserCalls, [[
+      "open",
+      `https://app.test/?divebellSessionId=${createOperationSessionId()}`
+    ]]);
+    assert.equal(browserOptions[0]?.browserArguments, undefined);
+    assert.equal(output.errorText(), "");
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("does not inject Chrome WebMCP features into a non-Chrome engine", async () => {
+  const output = createOutput();
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+
+  try {
+    assert.equal(await runCli([
+      "open",
+      "https://app.test/",
+      "--engine",
+      "lightpanda",
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (_args, options) => {
+        browserOptions.push(options);
+        return { exitCode: 0, stdout: "opened\n", stderr: "" };
+      })
+    }), 0);
+
+    assert.equal(browserOptions[0]?.browserArguments, undefined);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
+test("does not inject Chrome WebMCP features into a non-Chrome configured engine", async () => {
+  const output = createOutput();
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const tempDirectory = mkdtempSync(join(tmpdir(), "divebell-webmcp-config-"));
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const configPath = join(tempDirectory, "agent-browser.json");
+  writeFileSync(configPath, `${JSON.stringify({ engine: "lightpanda" })}\n`, "utf8");
+
+  try {
+    assert.equal(await runCli([
+      "open",
+      "https://app.test/",
+      "--config",
+      configPath,
+      "--no-bridge"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (_args, options) => {
+        browserOptions.push(options);
+        return { exitCode: 0, stdout: "opened\n", stderr: "" };
+      })
+    }), 0);
+
+    assert.equal(browserOptions[0]?.browserArguments, undefined);
+  } finally {
+    rmSync(tempDirectory, { recursive: true, force: true });
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("inherits repeatable user init scripts across open commands", async () => {
@@ -701,7 +893,11 @@ test("opens a browser page without touching the bridge when no-bridge is set", a
     false
   );
   assert.deepEqual(browserCalls, [["open", `http://app.test/?divebellSessionId=${sessionId}`]]);
-  assert.deepEqual(browserOptions, [{ ui: false, reuseInitialBlankPage: true }]);
+  assert.deepEqual(browserOptions, [{
+    ui: false,
+    reuseInitialBlankPage: true,
+    browserArguments: WEBMCP_BROWSER_ARGUMENTS
+  }]);
 });
 
 test("forwards a page navigation timeout when opening", async () => {
@@ -919,7 +1115,11 @@ test("opens a visible browser page when ui is set and keeps the session query", 
     sessionId: "session-orders"
   });
   assert.deepEqual(browserCalls, [["open", "http://app.test/orders?divebellSessionId=session-orders"]]);
-  assert.deepEqual(browserOptions, [{ ui: true, reuseInitialBlankPage: true }]);
+  assert.deepEqual(browserOptions, [{
+    ui: true,
+    reuseInitialBlankPage: true,
+    browserArguments: WEBMCP_BROWSER_ARGUMENTS
+  }]);
 });
 
 test("records the latest open operation by working directory and removes it on stop", async () => {
@@ -1710,6 +1910,63 @@ test("forwards supported coverage commands as JSON requests", async () => {
       assert.deepEqual(commandData(output.text()), { command });
     }
     assert.deepEqual(calls, commands.map((command) => [...command, "--json"]));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("forwards WebMCP list and call commands to agent-browser", async () => {
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    for (const command of [
+      ["webmcp", "list", "--json"],
+      [
+        "webmcp",
+        "call",
+        "getProductCount",
+        "--input",
+        "{}",
+        "--frame-id",
+        "frame-a",
+        "--timeout",
+        "5000",
+        "--json"
+      ]
+    ]) {
+      const output = createOutput();
+      const exitCode = await runCli(command, {
+        stdout: output.stdout,
+        stderr: output.stderr,
+        operationLogDirectory: context.operationLogDirectory,
+        browserRunner: createBrowserRunner(async (args) => {
+          calls.push(args);
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ apiVersion: 1, command: args }),
+            stderr: ""
+          };
+        })
+      });
+      assert.equal(exitCode, 0);
+      assert.deepEqual(commandData(output.text()), { apiVersion: 1, command });
+    }
+    assert.deepEqual(calls, [
+      ["webmcp", "list", "--json"],
+      [
+        "webmcp",
+        "call",
+        "getProductCount",
+        "--input",
+        "{}",
+        "--frame-id",
+        "frame-a",
+        "--timeout",
+        "5000",
+        "--json"
+      ]
+    ]);
   } finally {
     context.cleanup();
   }

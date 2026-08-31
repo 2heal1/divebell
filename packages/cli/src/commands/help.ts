@@ -100,8 +100,8 @@ export const cliCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
-    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
+    usage: "divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]",
+    description: "Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds."
   },
   ...browserCommandReferences,
   {
@@ -173,6 +173,11 @@ export const cliCommandReferences: CliCommandReference[] = [
     category: "Bridge and Browser",
     usage: "divebell coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]",
     description: "Capture code executed by the current page in stages to identify loaded but unused application and third-party code."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell webmcp <list|call> [tool-name] [--input <json>] [--frame-id <id>] [--timeout <ms>] [--json]",
+    description: "List or call tools registered by the active page through Chrome's experimental WebMCP CDP domain. Tool output is untrusted page content."
   },
   {
     category: "Runtime",

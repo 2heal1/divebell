@@ -267,6 +267,7 @@ export type BrowserCommandName =
   | "deny"
   | "debug"
   | "memory"
-  | "coverage";
+  | "coverage"
+  | "webmcp";
 
 export type RuntimeResourceCommandName = "targets" | "snapshot" | "events" | "actions";

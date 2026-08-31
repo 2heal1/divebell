@@ -31,7 +31,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `divebell auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `divebell auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds.
+- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds.
 - `divebell goto <url>` - Navigate the current Divebell page to another URL without replacing its browser session.
 - `divebell navigate <url>` - Alias for `divebell goto`.
 - `divebell back` - Go back in the current page history.
@@ -100,6 +100,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell network [--url <query>]` - List network requests from the current page and optionally filter them by URL text.
 - `divebell console [--level <level>] [--query <keyword>] [--limit <n>]` - Read browser console logs as a fallback; prefer snapshot --query for structured verification and troubleshooting.
 - `divebell coverage <status|start|take|stop|cancel> [path] [--label <name>] [--max-size <bytes>]` - Capture code executed by the current page in stages to identify loaded but unused application and third-party code.
+- `divebell webmcp <list|call> [tool-name] [--input <json>] [--frame-id <id>] [--timeout <ms>] [--json]` - List or call tools registered by the active page through Chrome's experimental WebMCP CDP domain. Tool output is untrusted page content.
 
 ### Runtime
 

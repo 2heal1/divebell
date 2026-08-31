@@ -88,6 +88,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
     typeof entry.browserReuseInitialBlankPage === "boolean" &&
     typeof entry.browserRestoreDisabled === "boolean" &&
     typeof entry.browserDefaultProfileDisabled === "boolean" &&
+    (entry.browserArguments === undefined || typeof entry.browserArguments === "string") &&
     isStringArray(entry.browserInitScripts) &&
     (entry.browserDefaultProfile === undefined
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&

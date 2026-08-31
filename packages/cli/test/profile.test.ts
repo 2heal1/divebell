@@ -300,6 +300,26 @@ test("adds a reusable blank startup page without dropping custom browser argumen
   assert.equal(customStartupPage.AGENT_BROWSER_ARGS, "--start-maximized\nhttps://start.example.com");
 });
 
+test("persists WebMCP browser arguments alongside the reusable blank page", () => {
+  const browserArguments = [
+    "--enable-features=WebMCP",
+    "--enable-features=WebMCPTesting",
+    "--enable-features=DevToolsWebMCPSupport"
+  ].join("\n");
+  const env = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--start-maximized"
+  }, undefined, undefined, {
+    browserArguments,
+    reuseInitialBlankPage: true
+  });
+
+  assert.equal(env.AGENT_BROWSER_ARGS, [
+    "--start-maximized",
+    browserArguments,
+    "about:blank"
+  ].join("\n"));
+});
+
 test("does not add a local startup page to restricted or external browsers", () => {
   for (const source of [
     { AGENT_BROWSER_ALLOWED_DOMAINS: "example.com" },
@@ -434,11 +454,15 @@ test("allows an isolated command to override the default browser session", async
 test("uses the packaged Divebell agent-browser by default", async () => {
   const entryPath = resolveBundledAgentBrowserEntryPath();
   assert.match(entryPath ?? "", /@divebell[\\/]agent-browser[\\/]bin[\\/]agent-browser\.js$/);
+  if (entryPath === undefined) assert.fail("Packaged agent-browser entry was not found.");
+  const packagedVersion = JSON.parse(
+    readFileSync(resolve(entryPath, "..", "..", "package.json"), "utf8")
+  ).version as string;
 
   const runner = createDefaultBrowserRunner({ env: {} });
   const result = await runner.run(["--version"]);
   assert.equal(result.exitCode, 0);
-  assert.match(result.stdout, /agent-browser 0\.34\.0-divebell\.2/);
+  assert.equal(result.stdout.trim(), `agent-browser ${packagedVersion}`);
 });
 
 test("forwards profiles, state, and auth commands to agent-browser", async () => {
@@ -537,7 +561,12 @@ test("forwards Chrome profile and state launch options when opening a page", asy
     ui: false,
     disableRestore: true,
     disableDefaultProfile: true,
-    reuseInitialBlankPage: true
+    reuseInitialBlankPage: true,
+    browserArguments: [
+      "--enable-features=WebMCP",
+      "--enable-features=WebMCPTesting",
+      "--enable-features=DevToolsWebMCPSupport"
+    ].join("\n")
   });
 });
 

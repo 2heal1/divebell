@@ -158,6 +158,7 @@ therefore still includes commands that Extension `browser.raw` rejects.
 | `profiler` | Record Chrome DevTools performance profile | `divebell raw profiler --help` |
 | `memory` | Capture page memory evidence | `divebell raw memory --help` |
 | `coverage` | Record JavaScript code execution | `divebell raw coverage --help` |
+| `webmcp` | Discover and call page-exposed WebMCP tools | `divebell raw webmcp --help` |
 | `debug` | Debug compiled JavaScript in Chrome | `divebell raw debug --help` |
 | `record` | Record browser session to video | `divebell raw record --help` |
 | `console` | View console logs | `divebell raw console --help` |

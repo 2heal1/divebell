@@ -2,7 +2,7 @@ import { once } from "node:events";
 import { createBridgeServer, type BridgeServer } from "@divebell/bridge";
 import { DIVEBELL_BRIDGE_DEFAULT_PORT } from "@divebell/core";
 import { getNumberOption, type ParsedCliArgs } from "../utils/args.js";
-import type { BrowserRunResult, BrowserRunner } from "../features/browser/runner.js";
+import type { BrowserRunner } from "../features/browser/runner.js";
 import {
   createFileBridgeStateStore,
   ensureBridge,
@@ -13,7 +13,7 @@ import {
   type StopBridgeResult
 } from "../features/bridge/process.js";
 import type { Fetcher } from "../features/runtime/client.js";
-import type { CliOperationLogEntry, CliOperationLogStore } from "../utils/operation-log.js";
+import type { CliOperationLogStore } from "../utils/operation-log.js";
 import {
   createOptionalNumberProperty,
   createOptionalObjectProperty,
@@ -38,10 +38,6 @@ export interface StopResult {
 
 export interface StopCommandLifecycle {
   beforeBrowserClose?: () => Promise<void>;
-  afterBrowserClose?: (result: {
-    openContext: CliOperationLogEntry | undefined;
-    browserResult: BrowserRunResult;
-  }) => Promise<void>;
 }
 
 export async function runStartCommand(
@@ -77,7 +73,6 @@ export async function runStopCommand(
   const browserStopResult = await applyOpenContextBrowserMode(browserRunner, openContext).run(
     createBrowserCloseArgs(commandArgs)
   );
-  await lifecycle.afterBrowserClose?.({ openContext, browserResult: browserStopResult });
   await operationLogStore.remove();
   const bridgeUrl = openContext?.bridgeUrl === null &&
       !commandArgs.options.has("bridge") &&

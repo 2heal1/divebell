@@ -6,11 +6,13 @@ Divebell composes agent-browser profiles, state, and auth to provide reusable br
 
 | Capability | Contents | Best use |
 | --- | --- | --- |
-| Profile | A complete Chrome user configuration, including cookies, web storage, IndexedDB, service workers, and cache | Reuse an account already signed in to local Chrome, or maintain a long-lived isolated browser configuration |
+| Profile | A complete Chrome user configuration, including cookies, web storage, IndexedDB, service workers, and cache | Reuse an account already signed in to local Chrome |
 | state | Cookies plus localStorage and sessionStorage for origins visited by the current session | Create a small, explicit login-state file that can be saved and loaded |
 | auth | Encrypted username, password, and login-page metadata | Let agent-browser open, fill, and submit a login form |
 
-`profiles` lists selectable local Chrome profiles. `profile export` exports only a Profile created by `open --temp-profile`; it does not copy an arbitrary installed Chrome Profile. `auth` stores credentials, not post-login cookies. To copy an existing signed-in session into a portable file, start from a Profile and then save state.
+`profiles` lists selectable local Chrome profiles. `auth` stores credentials,
+not post-login cookies. To copy an existing signed-in session into a portable
+file, start from a Profile and then save state.
 
 ## Default browser context
 
@@ -20,9 +22,18 @@ recently used Chrome Profile. Explicit browser contexts take precedence. Pass
 Restore State; the same fallback is used when no local Chrome Profile is
 available.
 
-## Reuse a local Chrome Profile
+## Select a local Chrome Profile after the default fails
 
-List available profiles:
+Open the exact target normally first. Divebell uses the current user's most
+recently used Chrome Profile automatically:
+
+```bash
+divebell open https://app.example.com/dashboard --ui
+```
+
+Verify the final URL, account, and required access. If that Profile cannot
+authenticate, lacks permission, or has the wrong account, list the selectable
+local Profiles and let the user choose one. Do not choose an account for them:
 
 ```bash
 divebell profiles
@@ -35,57 +46,10 @@ divebell stop
 divebell open https://app.example.com/dashboard --profile "Work" --ui
 ```
 
-When given a Chrome profile name, agent-browser uses a read-only copy and does not modify the original Chrome configuration. A directory path creates a long-lived custom profile:
-
-```bash
-divebell open https://app.example.com --profile ~/.divebell-profiles/app
-```
-
-A Profile is a directory, not a single export file. Save state when a portable file is needed.
-
-## Create a clean Profile by signing in once
-
-When scoped state is present but still redirects to sign-in, create an empty,
-isolated local Profile and complete the authorized login in its browser window:
-
-```bash
-divebell open https://app.example.com/dashboard --ui --temp-profile
-```
-
-`--temp-profile` creates a new private Profile directory and a dedicated
-browser session. It does not select the latest Chrome Profile, load configured
-state, or use project Restore State. It cannot be combined with another
-browser context such as `--profile`, `--state`, `--restore`, `--cdp`, or
-`--allowed-domains`.
-
-After login and target-page verification, export the complete Profile before
-running `stop`:
-
-```bash
-divebell profile export
-# Or choose a new directory that does not already exist:
-divebell profile export ./app-profile
-```
-
-The export command first closes the browser cleanly so Chrome flushes cookies,
-IndexedDB, service workers, preferences, and other Profile-owned data. It then
-moves the temporary Profile into the requested directory. When no directory is
-given, Divebell creates one under `~/.divebell/profiles/`. The absolute export
-path is returned in `data.path` of the standard command envelope.
-
-Reuse that directory on the same local environment:
-
-```bash
-divebell open https://app.example.com/dashboard \
-  --profile /absolute/path/from/data.path \
-  --ui
-```
-
-Running `divebell stop` instead discards an unexported temporary Profile. A new
-`open` is rejected while one is active, so export or stop it first. Exported
-Profiles are sensitive local browser directories and can contain more data
-than state JSON. Keep them on trusted storage and do not assume they are
-portable across operating systems or Chrome installations.
+When given a Chrome profile name, agent-browser uses a read-only copy and does
+not modify the original Chrome configuration. A Profile is local browser data,
+not a portable authentication export. Do not copy it between machines; save
+state when another machine needs the same sign-in identity.
 
 ## Export scoped application and sign-in state
 
@@ -138,30 +102,38 @@ divebell open https://app.example.net/account --state ./app-state.json
 
 If access succeeds, keep using that state. If it redirects to sign-in, returns
 401 or 403, or shows a signed-out or permission page, the state is insufficient
-for that application. Do not guess related origins or broaden it. On a trusted
-local machine, use the [clean Profile workflow](#create-a-clean-profile-by-signing-in-once):
+for that application. Do not guess related origins, broaden it, or ask for a
+Profile copied from the provider machine. The consumer must establish a fresh
+session either through manual sign-in:
 
 ```bash
-divebell stop
-divebell open https://app.example.net/account --ui --temp-profile
-# Complete the authorized login and verify the target, then:
-divebell profile export
 divebell open https://app.example.net/account \
-  --profile /absolute/path/from/data.path \
+  --state ./app-state.json \
   --ui
+# Let the user complete sign-in in the browser window.
 ```
 
-The exported Profile is the reliable local result because it retains
-Profile-owned data that state JSON intentionally omits, including IndexedDB,
-service workers, cache, and browser preferences. Verify the same target,
-account, and success condition after reopening it.
+Or, when the user explicitly provides login information, store the password
+through standard input and use the auth vault:
+
+```bash
+printf '%s\n' "$APP_PASSWORD" | \
+  divebell auth save app \
+    --url https://app.example.net/login \
+    --username tester@example.com \
+    --password-stdin
+divebell auth login app
+```
+
+Never print or place the password directly in the command line. After either
+flow, verify the same target, account, and success condition.
 
 If another machine specifically requires a portable file, a provider may use
 `state save` from that verified Profile with the exact application URL and only
 the known sign-in URLs reviewed for export. The resulting file remains a
-partial browser snapshot and can still be insufficient. If its consumer fails
-the same authentication check, return to the complete Profile workflow rather
-than broadening or guessing state scope.
+partial browser snapshot and can still be insufficient. Its consumer must then
+sign in manually or use user-provided login information rather than broadening
+or guessing state scope.
 
 A plain 404 without authentication evidence is an application, environment, or
 routing problem rather than proof of missing browser state.

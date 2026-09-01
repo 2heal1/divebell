@@ -105,16 +105,16 @@ async function testIsolatedNetworkDaemons() {
     });
     const [openedA, openedB] = await Promise.all([
       runCli(projects[0], envA, [
-        "open", `${sourceOrigin}/?run=initial`, "--network-rules", rulesPaths[0], "--namespace", "network-e2e-a",
+        "open", `${sourceOrigin}/?run=initial`, "--request-rules", rulesPaths[0], "--namespace", "network-e2e-a",
         "--no-default-profile", "--no-bridge", "--timeout", "10000"
       ]),
       runCli(projects[1], envB, [
-        "open", `${sourceOrigin}/?run=initial`, "--network-rules", rulesPaths[1], "--namespace", "network-e2e-b",
+        "open", `${sourceOrigin}/?run=initial`, "--request-rules", rulesPaths[1], "--namespace", "network-e2e-b",
         "--no-default-profile", "--no-bridge", "--timeout", "10000"
       ])
     ]);
-    assert.notEqual(openedA.networkControl?.pid, openedB.networkControl?.pid);
-    assert.notEqual(openedA.networkControl?.controlUrl, openedB.networkControl?.controlUrl);
+    assert.notEqual(openedA.requestControl?.pid, openedB.requestControl?.pid);
+    assert.notEqual(openedA.requestControl?.controlUrl, openedB.requestControl?.controlUrl);
     await Promise.all([
       waitFor(projects[0], envA, "globalThis.__DAEMON_RESOURCE__ === 'B'"),
       waitFor(projects[1], envB, "globalThis.__DAEMON_RESOURCE__ === 'C'")
@@ -252,7 +252,7 @@ async function testHttpsRewriteAndHttpFulfill() {
     throw error;
   }
   const project = join(directory, "project");
-  const rulesPath = join(directory, "network-rules.json");
+  const rulesPath = join(directory, "request-rules.json");
   const socketDirectory = await mkdtemp("/tmp/divebell-https-sockets-");
   const rewrittenRequests = [];
   const fulfillRequests = [];
@@ -320,7 +320,7 @@ async function testHttpsRewriteAndHttpFulfill() {
       DIVEBELL_DISABLE_EXTENSIONS: "1"
     });
     await runCli(project, env, [
-      "open", `${sourceOrigin}/`, "--network-rules", rulesPath, "--ignore-https-errors",
+      "open", `${sourceOrigin}/`, "--request-rules", rulesPath, "--ignore-https-errors",
       "--no-default-profile", "--no-bridge", "--timeout", "10000"
     ]);
     await waitUntil(() => pageReports.includes("replacement-https:http-fulfill"), () => JSON.stringify(pageReports));

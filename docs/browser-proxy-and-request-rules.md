@@ -1,10 +1,10 @@
-# Browser network control and conditional proxy
+# Browser proxy and request rules
 
 Divebell can replace ordinary HTTP(S) resources through Chrome DevTools Protocol (CDP), use one fixed HTTP/SOCKS proxy, or pass an existing PAC URL to a Chromium instance it launches. It does not install, bundle, or require ModHeader, SwitchyOmega, ZeroOmega, or another Chrome extension.
 
-These capabilities are scoped to one Divebell-launched Chromium **browser daemon/session**. They are not per-page or per-tab settings. Set them on the first `divebell open` for that browser session. To change or remove `--proxy`, `--proxy-pac-url`, or `--network-rules`, run `divebell stop` and then open again. Divebell returns `BROWSER_PROXY_RESTART_REQUIRED` instead of quietly claiming a running browser changed configuration.
+These capabilities are scoped to one Divebell-launched Chromium **browser daemon/session**. They are not per-page or per-tab settings. Set them on the first `divebell open` for that browser session. To change or remove `--proxy`, `--proxy-pac-url`, or `--request-rules`, run `divebell stop` and then open again. Divebell returns `BROWSER_PROXY_RESTART_REQUIRED` instead of quietly claiming a running browser changed configuration.
 
-For concurrent browser daemons, use separate working directories, browser profiles, and agent-browser namespaces. Divebell stores each directory's latest-page context by cwd, so separate cwd values prevent one process from reusing another process's network-control record. A shared `DIVEBELL_HOME` is supported: each control process uses its own generated configuration file and loopback control URL.
+For concurrent browser daemons, use separate working directories, browser profiles, and agent-browser namespaces. Divebell stores each directory's latest-page context by cwd, so separate cwd values prevent one process from reusing another process's request-control record. A shared `DIVEBELL_HOME` is supported: each control process uses its own generated configuration file and loopback control URL.
 
 ## Browser proxy
 
@@ -26,7 +26,7 @@ Divebell does not start the proxy service or manage its lifecycle. The endpoint 
 
 ## Request rules
 
-Pass a JSON file with `--network-rules`:
+Pass a JSON file with `--request-rules`:
 
 ```json
 {
@@ -56,7 +56,7 @@ Pass a JSON file with `--network-rules`:
 Use it on the first open:
 
 ```sh
-divebell open https://a.com --network-rules ./network-rules.json
+divebell open https://a.com --request-rules ./request-rules.json
 ```
 
 Each rule needs a lowercase `id`, exactly one source matcher (`url` or `urlPrefix`), and one action. URLs are HTTP(S) only. `resourceTypes` can limit a rule to CDP resource-type strings such as `Document`, `Script`, `XHR`, or `Fetch`.
@@ -86,9 +86,11 @@ This is intentionally an HTTP(S) resource replacement facility, not a general ne
 
 | Code | Meaning |
 | --- | --- |
-| `BROWSER_NETWORK_RULES_READ_FAILED` | The rules file could not be read or parsed as JSON. |
-| `BROWSER_NETWORK_RULES_INVALID` | The JSON fails the documented rules schema or URL safety checks. |
+| `BROWSER_OPEN_OPTION_INVALID` | A proxy or request-rule option is missing a value, repeated, or unsupported. |
+| `BROWSER_REQUEST_RULES_READ_FAILED` | The rules file could not be read or parsed as JSON. |
+| `BROWSER_REQUEST_RULES_INVALID` | The JSON fails the documented rules schema or URL safety checks. |
 | `BROWSER_PROXY_CONFIGURATION_CONFLICT` | `--proxy` and `--proxy-pac-url` were both requested. |
 | `BROWSER_PROXY_PAC_URL_INVALID` | The PAC URL is not an allowed HTTP(S) URL. |
 | `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED` | A PAC URL requires Divebell-launched Chromium. |
 | `BROWSER_PROXY_RESTART_REQUIRED` | A change was requested after the browser daemon/session was already configured. Stop and reopen. |
+| `BROWSER_REQUEST_CONTROL_REATTACH_FAILED` | Divebell could not reattach request interception before a later navigation. Stop and reopen. |

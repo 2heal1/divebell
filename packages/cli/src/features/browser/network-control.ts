@@ -1,24 +1,24 @@
 import { createHash } from "node:crypto";
 
-export const BROWSER_NETWORK_RULES_SCHEMA_VERSION = 1;
+export const BROWSER_REQUEST_RULES_SCHEMA_VERSION = 1;
 
-export type BrowserNetworkAction =
+export type BrowserRequestAction =
   | { type: "rewrite"; targetPrefix: string }
   | { type: "fulfill"; url: string; timeoutMs?: number };
 
-export interface BrowserNetworkRule {
+export interface BrowserRequestRule {
   id: string;
   match: {
     url?: string;
     urlPrefix?: string;
     resourceTypes?: readonly string[];
   };
-  action: BrowserNetworkAction;
+  action: BrowserRequestAction;
 }
 
-export interface BrowserNetworkRules {
+export interface BrowserRequestRules {
   schemaVersion: 1;
-  rules: readonly BrowserNetworkRule[];
+  rules: readonly BrowserRequestRule[];
 }
 
 export interface NetworkRequest {
@@ -26,20 +26,20 @@ export interface NetworkRequest {
   resourceType?: string;
 }
 
-export function validateBrowserNetworkRules(value: unknown): BrowserNetworkRules {
-  const record = requireRecord(value, "Network rules must be a JSON object.");
-  if (record.schemaVersion !== BROWSER_NETWORK_RULES_SCHEMA_VERSION) {
-    throw new Error(`Network rules schemaVersion must be ${BROWSER_NETWORK_RULES_SCHEMA_VERSION}.`);
+export function validateBrowserRequestRules(value: unknown): BrowserRequestRules {
+  const record = requireRecord(value, "Request rules must be a JSON object.");
+  if (record.schemaVersion !== BROWSER_REQUEST_RULES_SCHEMA_VERSION) {
+    throw new Error(`Request rules schemaVersion must be ${BROWSER_REQUEST_RULES_SCHEMA_VERSION}.`);
   }
   if (!Array.isArray(record.rules) || record.rules.length === 0) {
-    throw new Error("Network rules must declare a non-empty rules array.");
+    throw new Error("Request rules must declare a non-empty rules array.");
   }
-  if (record.rules.length > 100) throw new Error("Network rules may declare at most 100 rules.");
+  if (record.rules.length > 100) throw new Error("Request rules may declare at most 100 rules.");
   const ids = new Set<string>();
   const rules = record.rules.map((candidate, index) => {
-    const rule = requireRecord(candidate, `Network rule ${index + 1} must be an object.`);
-    const id = requireIdentifier(rule.id, `Network rule ${index + 1} id`);
-    if (ids.has(id)) throw new Error(`Network rule id "${id}" is declared more than once.`);
+    const rule = requireRecord(candidate, `Request rule ${index + 1} must be an object.`);
+    const id = requireIdentifier(rule.id, `Request rule ${index + 1} id`);
+    if (ids.has(id)) throw new Error(`Request rule id "${id}" is declared more than once.`);
     ids.add(id);
     return {
       id,
@@ -50,10 +50,10 @@ export function validateBrowserNetworkRules(value: unknown): BrowserNetworkRules
   return { schemaVersion: 1, rules };
 }
 
-export function matchBrowserNetworkRule(
-  rules: BrowserNetworkRules,
+export function matchBrowserRequestRule(
+  rules: BrowserRequestRules,
   request: NetworkRequest
-): BrowserNetworkRule | undefined {
+): BrowserRequestRule | undefined {
   if (!isHttpUrl(request.url)) return undefined;
   return rules.rules.find((rule) => {
     if (rule.match.url !== undefined && request.url !== rule.match.url) return false;
@@ -63,17 +63,17 @@ export function matchBrowserNetworkRule(
   });
 }
 
-export function rewriteBrowserRequestUrl(rule: BrowserNetworkRule, sourceUrl: string): string {
-  if (rule.action.type !== "rewrite") throw new Error(`Network rule "${rule.id}" is not a rewrite rule.`);
+export function rewriteBrowserRequestUrl(rule: BrowserRequestRule, sourceUrl: string): string {
+  if (rule.action.type !== "rewrite") throw new Error(`Request rule "${rule.id}" is not a rewrite rule.`);
   const sourcePrefix = rule.match.urlPrefix;
   if (sourcePrefix === undefined || !sourceUrl.startsWith(sourcePrefix)) {
-    throw new Error(`Network rule "${rule.id}" cannot rewrite URL outside its urlPrefix.`);
+    throw new Error(`Request rule "${rule.id}" cannot rewrite URL outside its urlPrefix.`);
   }
   return `${rule.action.targetPrefix}${sourceUrl.slice(sourcePrefix.length)}`;
 }
 
 export function createBrowserNetworkFingerprint(value: {
-  rules?: BrowserNetworkRules;
+  rules?: BrowserRequestRules;
   fixedProxy?: string;
   proxyPacUrl?: string;
 }): string | undefined {
@@ -97,32 +97,32 @@ export function validateBrowserProxyPacUrl(value: unknown): string {
   return url.toString();
 }
 
-function validateNetworkMatch(value: unknown, id: string): BrowserNetworkRule["match"] {
-  const match = requireRecord(value, `Network rule "${id}" match must be an object.`);
-  const url = match.url === undefined ? undefined : validateHttpUrl(match.url, `Network rule "${id}" match.url`);
-  const urlPrefix = match.urlPrefix === undefined ? undefined : validateHttpUrlPrefix(match.urlPrefix, `Network rule "${id}" match.urlPrefix`);
+function validateNetworkMatch(value: unknown, id: string): BrowserRequestRule["match"] {
+  const match = requireRecord(value, `Request rule "${id}" match must be an object.`);
+  const url = match.url === undefined ? undefined : validateHttpUrl(match.url, `Request rule "${id}" match.url`);
+  const urlPrefix = match.urlPrefix === undefined ? undefined : validateHttpUrlPrefix(match.urlPrefix, `Request rule "${id}" match.urlPrefix`);
   if ((url === undefined) === (urlPrefix === undefined)) {
-    throw new Error(`Network rule "${id}" match must declare exactly one of url or urlPrefix.`);
+    throw new Error(`Request rule "${id}" match must declare exactly one of url or urlPrefix.`);
   }
   const resourceTypes = match.resourceTypes === undefined
     ? undefined
-    : validateStringArray(match.resourceTypes, `Network rule "${id}" match.resourceTypes`, 32);
+    : validateStringArray(match.resourceTypes, `Request rule "${id}" match.resourceTypes`, 32);
   return { ...(url === undefined ? {} : { url }), ...(urlPrefix === undefined ? {} : { urlPrefix }), ...(resourceTypes === undefined ? {} : { resourceTypes }) };
 }
 
-function validateNetworkAction(value: unknown, id: string): BrowserNetworkAction {
-  const action = requireRecord(value, `Network rule "${id}" action must be an object.`);
+function validateNetworkAction(value: unknown, id: string): BrowserRequestAction {
+  const action = requireRecord(value, `Request rule "${id}" action must be an object.`);
   if (action.type === "rewrite") {
-    return { type: "rewrite", targetPrefix: validateHttpUrlPrefix(action.targetPrefix, `Network rule "${id}" action.targetPrefix`) };
+    return { type: "rewrite", targetPrefix: validateHttpUrlPrefix(action.targetPrefix, `Request rule "${id}" action.targetPrefix`) };
   }
   if (action.type === "fulfill") {
     const timeoutMs = action.timeoutMs;
     if (timeoutMs !== undefined && (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000)) {
-      throw new Error(`Network rule "${id}" action.timeoutMs must be an integer from 1 to 60000.`);
+      throw new Error(`Request rule "${id}" action.timeoutMs must be an integer from 1 to 60000.`);
     }
-    return { type: "fulfill", url: validateHttpUrl(action.url, `Network rule "${id}" action.url`), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
+    return { type: "fulfill", url: validateHttpUrl(action.url, `Request rule "${id}" action.url`), ...(timeoutMs === undefined ? {} : { timeoutMs }) };
   }
-  throw new Error(`Network rule "${id}" action.type must be rewrite or fulfill.`);
+  throw new Error(`Request rule "${id}" action.type must be rewrite or fulfill.`);
 }
 
 function validateHttpUrl(value: unknown, label: string): string {

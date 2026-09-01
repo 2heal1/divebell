@@ -200,7 +200,7 @@ async function runCliCommandWithConfig(
                 extensions: config.extensions,
                 openHookPlan: config.hookPlans.open
               });
-              await stopNetworkControl(openContext?.networkControl);
+              await stopNetworkControl(openContext?.requestControl);
             }
           }
         );

@@ -15,7 +15,7 @@ const socketDirectory = await mkdtemp("/tmp/divebell-network-control-sockets-");
 const projectDirectory = join(temporaryDirectory, "project");
 const profileDirectory = join(temporaryDirectory, "browser-profile");
 const divebellHomeDirectory = join(temporaryDirectory, "divebell-home");
-const rulesPath = join(temporaryDirectory, "network-rules.json");
+const rulesPath = join(temporaryDirectory, "request-rules.json");
 
 const replacementPaths = [];
 const replacement = createServer((request, response) => {
@@ -41,7 +41,7 @@ const source = createServer((request, response) => {
     return;
   }
   response.writeHead(200, { "content-type": "text/html" }).end(`<!doctype html>
-    <title>Network control</title>
+    <title>Proxy and request rules</title>
     <script src="${sourceOrigin}/assets/app.js"></script>
     <script>fetch('${sourceOrigin}/api/catalog').then((response) => response.json()).then((value) => { globalThis.__DIVEBELL_FULFILL__ = value.source; });</script>`);
 });
@@ -85,15 +85,15 @@ try {
     DIVEBELL_DISABLE_EXTENSIONS: "1"
   };
   const opened = await runCli([
-    "open", `${sourceOrigin}/`, "--network-rules", rulesPath,
+    "open", `${sourceOrigin}/`, "--request-rules", rulesPath,
     "--no-default-profile", "--no-bridge", "--timeout", "10000"
   ], env);
-  assert.equal(typeof opened.networkControl?.pid, "number");
+  assert.equal(typeof opened.requestControl?.pid, "number");
   const [configName] = await readdir(join(divebellHomeDirectory, "network-controls"));
   const controlConfig = JSON.parse(await readFile(join(divebellHomeDirectory, "network-controls", configName), "utf8"));
-  const controlStatus = await fetch(`${opened.networkControl.controlUrl}/status?token=${controlConfig.token}`).then(async (response) => await response.json());
+  const controlStatus = await fetch(`${opened.requestControl.controlUrl}/status?token=${controlConfig.token}`).then(async (response) => await response.json());
   assert.ok(controlStatus.enabledTargets > 0, JSON.stringify(controlStatus));
-  const afterRewriteStatus = await fetch(`${opened.networkControl.controlUrl}/status?token=${controlConfig.token}`).then(async (response) => await response.json());
+  const afterRewriteStatus = await fetch(`${opened.requestControl.controlUrl}/status?token=${controlConfig.token}`).then(async (response) => await response.json());
   assert.ok(afterRewriteStatus.matchedRequests >= 2, JSON.stringify(afterRewriteStatus));
   assert.ok(replacementPaths.includes("/assets/app.js"), JSON.stringify({ afterRewriteStatus, replacementPaths }));
   await runCli(["wait-eval", "globalThis.__DIVEBELL_FULFILL__ === 'fulfill'", "--timeout", "5000"], env);

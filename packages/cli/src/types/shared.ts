@@ -103,7 +103,7 @@ export interface CliOperationLogEntry {
   browserDefaultProfile?: string;
   browserRestoreOptions?: Record<string, string[]>;
   browserNetworkFingerprint?: string;
-  networkControl?: {
+  requestControl?: {
     fingerprint: string;
     pid: number;
     controlUrl: string;

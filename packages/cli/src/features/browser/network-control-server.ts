@@ -2,11 +2,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import {
-  matchBrowserNetworkRule,
+  matchBrowserRequestRule,
   rewriteBrowserRequestUrl,
-  validateBrowserNetworkRules,
-  type BrowserNetworkRule,
-  type BrowserNetworkRules
+  validateBrowserRequestRules,
+  type BrowserRequestRule,
+  type BrowserRequestRules
 } from "./network-control.js";
 
 const CONTROL_REQUEST_TIMEOUT_MS = 5_000;
@@ -16,7 +16,7 @@ const MAX_FULFILL_BODY_BYTES = 10 * 1024 * 1024;
 export interface NetworkControlServerConfig {
   schemaVersion: 1;
   token: string;
-  rules?: BrowserNetworkRules;
+  rules?: BrowserRequestRules;
 }
 
 interface CdpMessage {
@@ -121,13 +121,13 @@ export async function readNetworkControlServerConfig(path: string): Promise<Netw
   return {
     schemaVersion: 1,
     token: parsed.token,
-    ...(parsed.rules === undefined ? {} : { rules: validateBrowserNetworkRules(parsed.rules) })
+    ...(parsed.rules === undefined ? {} : { rules: validateBrowserRequestRules(parsed.rules) })
   };
 }
 
 export class NetworkCdpController {
   readonly #client: NetworkCdpControllerClient;
-  readonly #rules: BrowserNetworkRules | undefined;
+  readonly #rules: BrowserRequestRules | undefined;
   readonly #sessionEnables = new Map<string, Promise<void>>();
   #attachedTargets = 0;
   #pausedRequests = 0;
@@ -135,7 +135,7 @@ export class NetworkCdpController {
   #failedRequests = 0;
   #eventErrors = 0;
 
-  private constructor(client: NetworkCdpControllerClient, rules: BrowserNetworkRules | undefined) {
+  private constructor(client: NetworkCdpControllerClient, rules: BrowserRequestRules | undefined) {
     this.#client = client;
     this.#rules = rules;
     client.onEvent((message) => {
@@ -148,11 +148,11 @@ export class NetworkCdpController {
   }
 
   /** @internal Test seam for CDP event-failure containment. */
-  static createForTesting(client: NetworkCdpControllerClient, rules: BrowserNetworkRules | undefined): NetworkCdpController {
+  static createForTesting(client: NetworkCdpControllerClient, rules: BrowserRequestRules | undefined): NetworkCdpController {
     return new NetworkCdpController(client, rules);
   }
 
-  static async connect(cdpUrl: string, rules: BrowserNetworkRules | undefined): Promise<NetworkCdpController> {
+  static async connect(cdpUrl: string, rules: BrowserRequestRules | undefined): Promise<NetworkCdpController> {
     const client = await CdpClient.connect(cdpUrl);
     const controller = new NetworkCdpController(client, rules);
     try {
@@ -234,7 +234,7 @@ export class NetworkCdpController {
     if (typeof requestId !== "string" || typeof url !== "string") return;
     const rule = this.#rules === undefined
       ? undefined
-      : matchBrowserNetworkRule(this.#rules, {
+      : matchBrowserRequestRule(this.#rules, {
           url,
           ...(params.resourceType === undefined ? {} : { resourceType: params.resourceType })
         });
@@ -266,7 +266,7 @@ async function fulfillRequest(
   sessionId: string,
   requestId: string,
   paused: FetchPausedParams,
-  rule: BrowserNetworkRule
+  rule: BrowserRequestRule
 ): Promise<void> {
   if (rule.action.type !== "fulfill") return;
   const fulfilled = await fetchNetworkFulfillResponse(rule.action.url, paused.request, rule.action.timeoutMs);

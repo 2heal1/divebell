@@ -29,9 +29,9 @@ import { withDivebellSession } from "../utils/url.js";
 import { resolveDivebellHomeDirectory } from "../utils/home.js";
 import {
   createBrowserNetworkFingerprint,
-  validateBrowserNetworkRules,
+  validateBrowserRequestRules,
   validateBrowserProxyPacUrl,
-  type BrowserNetworkRules
+  type BrowserRequestRules
 } from "../features/browser/network-control.js";
 import {
   attachNetworkControl,
@@ -71,7 +71,7 @@ export interface OpenPageResult {
   sessionId: string | null;
   openedAt: number;
   injectedScriptPath?: string;
-  networkControl?: {
+  requestControl?: {
     pid: number;
     controlUrl: string;
   };
@@ -99,7 +99,7 @@ export async function runBrowserCliCommand(
   openHookPlan: ExtensionHookPlan,
   stdin: AsyncIterable<string | Uint8Array>,
   env: NodeJS.ProcessEnv = process.env,
-  networkControlStarter: NetworkControlStarter = createDetachedNetworkControlStarter(
+  requestControlStarter: NetworkControlStarter = createDetachedNetworkControlStarter(
     new URL("../bin.js", import.meta.url).href,
     resolveDivebellHomeDirectory(env)
   )
@@ -131,7 +131,7 @@ export async function runBrowserCliCommand(
       env
     });
     let bridgeUrl: string | null = null;
-    let startedNetworkControl: ManagedNetworkControl | undefined;
+    let startedRequestControl: ManagedNetworkControl | undefined;
     let committed = false;
     try {
       const bridge = await prepareOpenBridge(
@@ -143,13 +143,13 @@ export async function runBrowserCliCommand(
       );
       bridgeUrl = bridge?.bridgeUrl ?? null;
       const bridgePort = bridge?.port ?? null;
-      let networkControl = previousOpenContext?.networkControl;
-      if (networkConfiguration.needsControl && networkControl === undefined) {
-        startedNetworkControl = await networkControlStarter.start({
+      let requestControl = previousOpenContext?.requestControl;
+      if (networkConfiguration.needsControl && requestControl === undefined) {
+        startedRequestControl = await requestControlStarter.start({
           fingerprint: networkConfiguration.fingerprint as string,
           ...(networkConfiguration.rules === undefined ? {} : { rules: networkConfiguration.rules })
         });
-        networkControl = startedNetworkControl;
+        requestControl = startedRequestControl;
       }
       const browserArguments = appendBrowserArguments(
         webMcpLaunch.browserArguments,
@@ -201,10 +201,10 @@ export async function runBrowserCliCommand(
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
           ...(browserArguments === undefined ? {} : { browserArguments })
         },
-        networkControl === undefined
+        requestControl === undefined
           ? undefined
           : (() => {
-              const control = networkControl;
+              const control = requestControl;
               return async () => {
                 await attachNetworkControl(
                   control,
@@ -270,7 +270,7 @@ export async function runBrowserCliCommand(
         ...(networkConfiguration.fingerprint === undefined
           ? {}
           : { browserNetworkFingerprint: networkConfiguration.fingerprint }),
-        ...(networkControl === undefined ? {} : { networkControl }),
+        ...(requestControl === undefined ? {} : { requestControl }),
         ...(headers === undefined ? {} : { headers })
       });
       committed = true;
@@ -285,12 +285,12 @@ export async function runBrowserCliCommand(
         ...(result.injectedScriptPath === undefined
           ? {}
           : { injectedScriptPath: result.injectedScriptPath }),
-        ...(networkControl === undefined
+        ...(requestControl === undefined
           ? {}
           : {
-              networkControl: {
-                pid: networkControl.pid,
-                controlUrl: networkControl.controlUrl
+              requestControl: {
+                pid: requestControl.pid,
+                controlUrl: requestControl.controlUrl
               }
             })
       };
@@ -301,7 +301,7 @@ export async function runBrowserCliCommand(
       return 0;
     } catch (error) {
       if (!committed) {
-        await stopNetworkControl(startedNetworkControl);
+        await stopNetworkControl(startedRequestControl);
         if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
           await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
         }
@@ -321,19 +321,19 @@ export async function runBrowserCliCommand(
     : args;
   const pageBrowserRunner = applyOpenContextBrowserMode(browserRunner, openContext);
 
-  if (openContext?.networkControl !== undefined && isNetworkNavigationCommand(command)) {
+  if (openContext?.requestControl !== undefined && isNetworkNavigationCommand(command)) {
     try {
       await attachNetworkControl(
-        openContext.networkControl,
+        openContext.requestControl,
         await readBrowserCdpUrl(pageBrowserRunner)
       );
     } catch (error) {
       throw createError({
-        code: "BROWSER_NETWORK_CONTROL_REATTACH_FAILED",
+        code: "BROWSER_REQUEST_CONTROL_REATTACH_FAILED",
         kind: "browser",
-        message: `Could not reattach Divebell network control before navigation: ${errorMessage(error)}`,
+        message: `Could not reattach Divebell request interception before navigation: ${errorMessage(error)}`,
         retryable: true,
-        hint: "Run `divebell stop` and reopen the page with the same network configuration."
+        hint: "Run `divebell stop` and reopen the page with the same proxy and request-rule configuration."
       });
     }
   }
@@ -473,7 +473,7 @@ async function resolveDivebellBrowserLaunchConfiguration(
 }
 
 interface ResolvedNetworkConfiguration {
-  rules?: BrowserNetworkRules;
+  rules?: BrowserRequestRules;
   proxyPacUrl?: string;
   fingerprint?: string;
   needsControl: boolean;
@@ -484,17 +484,26 @@ async function resolveNetworkConfiguration(options: {
   previousOpenContext: CliOperationLogEntry | undefined;
   env: NodeJS.ProcessEnv;
 }): Promise<ResolvedNetworkConfiguration> {
-  const hasNetworkConfigurationOption = hasOption(options.args, "network-rules") ||
+  if (hasOption(options.args, "network-rules")) {
+    throw createError({
+      code: "BROWSER_OPEN_OPTION_INVALID",
+      kind: "validation",
+      message: "--network-rules is not a Divebell option.",
+      retryable: false,
+      hint: "Use --request-rules <path>."
+    });
+  }
+  const hasNetworkConfigurationOption = hasOption(options.args, "request-rules") ||
     hasOption(options.args, "proxy-pac-url") || hasOption(options.args, "proxy");
   if (!hasNetworkConfigurationOption && options.previousOpenContext !== undefined) {
     return {
       ...(options.previousOpenContext.browserNetworkFingerprint === undefined
         ? {}
         : { fingerprint: options.previousOpenContext.browserNetworkFingerprint }),
-      needsControl: options.previousOpenContext.networkControl !== undefined
+      needsControl: options.previousOpenContext.requestControl !== undefined
     };
   }
-  const rulesPath = getSingleValueOption(options.args, "network-rules");
+  const rulesPath = getSingleValueOption(options.args, "request-rules");
   const fixedProxy = getSingleValueOption(options.args, "proxy");
   const proxyPacUrlValue = getSingleValueOption(options.args, "proxy-pac-url");
   if (fixedProxy !== undefined && proxyPacUrlValue !== undefined) {
@@ -508,7 +517,7 @@ async function resolveNetworkConfiguration(options: {
   }
   const rules = rulesPath === undefined
     ? undefined
-    : await readNetworkRulesFile(rulesPath);
+    : await readRequestRulesFile(rulesPath);
   let proxyPacUrl: string | undefined;
   if (proxyPacUrlValue !== undefined) {
     try {
@@ -541,9 +550,9 @@ async function resolveNetworkConfiguration(options: {
     throw createError({
       code: "BROWSER_PROXY_RESTART_REQUIRED",
       kind: "validation",
-      message: "Browser proxy and network interception configuration is scoped to the current browser daemon session and can only change at browser launch.",
+      message: "Browser proxy and request-rule configuration is scoped to the current browser daemon session and can only change at browser launch.",
       retryable: false,
-      hint: "Run `divebell stop`, then run `divebell open` with the new --proxy, --proxy-pac-url, or --network-rules configuration."
+      hint: "Run `divebell stop`, then run `divebell open` with the new --proxy, --proxy-pac-url, or --request-rules configuration."
     });
   }
   return {
@@ -554,23 +563,23 @@ async function resolveNetworkConfiguration(options: {
   };
 }
 
-async function readNetworkRulesFile(path: string): Promise<BrowserNetworkRules> {
+async function readRequestRulesFile(path: string): Promise<BrowserRequestRules> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(resolve(path), "utf8")) as unknown;
   } catch (error) {
     throw createError({
-      code: "BROWSER_NETWORK_RULES_READ_FAILED",
+      code: "BROWSER_REQUEST_RULES_READ_FAILED",
       kind: "validation",
-      message: `Could not read --network-rules file: ${errorMessage(error)}`,
+      message: `Could not read --request-rules file: ${errorMessage(error)}`,
       retryable: false
     });
   }
   try {
-    return validateBrowserNetworkRules(parsed);
+    return validateBrowserRequestRules(parsed);
   } catch (error) {
     throw createError({
-      code: "BROWSER_NETWORK_RULES_INVALID",
+      code: "BROWSER_REQUEST_RULES_INVALID",
       kind: "validation",
       message: errorMessage(error),
       retryable: false
@@ -583,7 +592,7 @@ function getSingleValueOption(args: ParsedCliArgs, name: string): string | undef
   if (values.length === 0) return undefined;
   if (values.length !== 1 || values[0] === "true" || values[0]?.trim().length === 0) {
     throw createError({
-      code: "BROWSER_NETWORK_OPTION_INVALID",
+      code: "BROWSER_OPEN_OPTION_INVALID",
       kind: "validation",
       message: `--${name} must be supplied once with a non-empty value.`,
       retryable: false

@@ -6,9 +6,9 @@ import { join } from "node:path";
 import { test } from "@rstest/core";
 
 import {
-  matchBrowserNetworkRule,
+  matchBrowserRequestRule,
   rewriteBrowserRequestUrl,
-  validateBrowserNetworkRules,
+  validateBrowserRequestRules,
   validateBrowserProxyPacUrl
 } from "../dist/features/browser/network-control.js";
 import { fetchNetworkFulfillResponse, NetworkCdpController, type NetworkCdpControllerClient } from "../dist/features/browser/network-control-server.js";
@@ -29,7 +29,7 @@ test("validates PAC HTTP(S) URLs without requiring a .pac suffix", () => {
 });
 
 test("matches and rewrites HTTP(S) resource URLs while retaining the unmatched suffix", () => {
-  const rules = validateBrowserNetworkRules({
+  const rules = validateBrowserRequestRules({
     schemaVersion: 1,
     rules: [{
       id: "local-assets",
@@ -37,15 +37,15 @@ test("matches and rewrites HTTP(S) resource URLs while retaining the unmatched s
       action: { type: "rewrite", targetPrefix: "http://localhost:3100/static/" }
     }]
   });
-  const rule = matchBrowserNetworkRule(rules, {
+  const rule = matchBrowserRequestRule(rules, {
     url: "https://a.com/assets/app.js?build=1",
     resourceType: "Script"
   });
   assert.equal(rule?.id, "local-assets");
   assert.equal(rewriteBrowserRequestUrl(rule as NonNullable<typeof rule>, "https://a.com/assets/app.js?build=1"), "http://localhost:3100/static/app.js?build=1");
-  assert.equal(matchBrowserNetworkRule(rules, { url: "ws://a.com/assets/socket", resourceType: "WebSocket" }), undefined);
-  assert.equal(matchBrowserNetworkRule(rules, { url: "https://a.com/assets/app.js" }), undefined);
-  assert.throws(() => validateBrowserNetworkRules({
+  assert.equal(matchBrowserRequestRule(rules, { url: "ws://a.com/assets/socket", resourceType: "WebSocket" }), undefined);
+  assert.equal(matchBrowserRequestRule(rules, { url: "https://a.com/assets/app.js" }), undefined);
+  assert.throws(() => validateBrowserRequestRules({
     schemaVersion: 1,
     rules: [{
       id: "unsupported-redirect",

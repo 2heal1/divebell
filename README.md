@@ -92,7 +92,7 @@ These capabilities include the current page and user journey, page operations su
 
 [CLI Reference](./docs/cli-reference.md) · [WebMCP](./docs/webmcp.md)
 
-[Browser network control and conditional proxy](./docs/browser-network-control.md)
+[Browser proxy and request rules](./docs/browser-proxy-and-request-rules.md)
 
 For protected pages, Divebell uses a read-only copy of the current OS user's most recently used Chrome Profile by default. An explicitly supplied Profile, browser state, restore context, restricted-domain mode, or external browser takes precedence. Divebell always works within the selected account's existing permissions.
 

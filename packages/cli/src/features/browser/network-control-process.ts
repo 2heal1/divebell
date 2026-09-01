@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveDivebellHomeDirectory } from "../../utils/home.js";
-import type { BrowserNetworkRules } from "./network-control.js";
+import type { BrowserRequestRules } from "./network-control.js";
 
 export interface ManagedNetworkControl {
   fingerprint: string;
@@ -17,7 +17,7 @@ export interface ManagedNetworkControl {
 export interface NetworkControlStarter {
   start(config: {
     fingerprint: string;
-    rules?: BrowserNetworkRules;
+    rules?: BrowserRequestRules;
   }): Promise<ManagedNetworkControl>;
 }
 
@@ -68,7 +68,7 @@ export async function stopNetworkControl(
 async function startDetachedNetworkControl(
   entryModuleUrl: string,
   homeDirectory: string,
-  config: { fingerprint: string; rules?: BrowserNetworkRules }
+  config: { fingerprint: string; rules?: BrowserRequestRules }
 ): Promise<ManagedNetworkControl> {
   const directory = join(homeDirectory, "network-controls");
   await mkdir(directory, { recursive: true });

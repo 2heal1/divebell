@@ -298,6 +298,24 @@ test("rejects invalid or conflicting PAC proxy options before opening the browse
   }
 });
 
+test("rejects the unpublished network-rules option name", async () => {
+  const output = createOutput();
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--network-rules",
+    "./rules.json"
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    browserRunner: createBrowserRunner(async () => assert.fail("an obsolete request-rules option must not open a browser"))
+  });
+  assert.equal(exitCode, 1);
+  const parsed = JSON.parse(output.text());
+  assert.equal(parsed.error.code, "BROWSER_OPEN_OPTION_INVALID");
+  assert.equal(parsed.error.hint, "Use --request-rules <path>.");
+});
+
 test("enables WebMCP launch and CDP features for local Chrome by default", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

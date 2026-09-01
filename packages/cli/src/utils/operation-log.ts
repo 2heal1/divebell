@@ -94,7 +94,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
       || isSafeDefaultProfile(entry.browserDefaultProfile)) &&
     isBrowserRestoreOptions(entry.browserRestoreOptions) &&
     (entry.browserNetworkFingerprint === undefined || typeof entry.browserNetworkFingerprint === "string") &&
-    isNetworkControl(entry.networkControl) &&
+    isRequestControl(entry.requestControl) &&
     isHeaders(entry.headers) &&
     isStackDetectionCache(entry.stackDetection)
   )) {
@@ -108,7 +108,7 @@ function normalizeCliOperationLogEntry(value: unknown): CliOperationLogEntry | u
   } as CliOperationLogEntry;
 }
 
-function isNetworkControl(value: unknown): boolean {
+function isRequestControl(value: unknown): boolean {
   if (value === undefined) return true;
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const control = value as Record<string, unknown>;

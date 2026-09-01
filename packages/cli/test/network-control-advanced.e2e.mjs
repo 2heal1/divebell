@@ -11,7 +11,6 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliEntry = resolve(packageDirectory, "dist/bin.js");
-const fixturesDirectory = join(packageDirectory, "test", "fixtures");
 
 const scenarios = [
   ["multi-daemon", "multi-daemon isolation", testIsolatedNetworkDaemons],
@@ -244,18 +243,21 @@ async function testFixedHttpProxy() {
 }
 
 async function testHttpsRewriteAndHttpFulfill() {
-  const [key, cert] = await Promise.all([
-    readFile(join(fixturesDirectory, "network-control-key.pem")),
-    readFile(join(fixturesDirectory, "network-control-cert.pem"))
-  ]);
   const directory = await mkdtemp(join(tmpdir(), "divebell-https-network-e2e-"));
+  let credentials;
+  try {
+    credentials = await createTemporaryHttpsCredentials(directory);
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
   const project = join(directory, "project");
   const rulesPath = join(directory, "network-rules.json");
   const socketDirectory = await mkdtemp("/tmp/divebell-https-sockets-");
   const rewrittenRequests = [];
   const fulfillRequests = [];
   const pageReports = [];
-  const replacementHttps = createHttpsServer({ key, cert }, (request, response) => {
+  const replacementHttps = createHttpsServer(credentials, (request, response) => {
     rewrittenRequests.push(request.url ?? "");
     response.writeHead(200, { "content-type": "application/javascript" }).end("globalThis.__HTTPS_REWRITE__ = 'replacement-https';");
   });
@@ -264,7 +266,7 @@ async function testHttpsRewriteAndHttpFulfill() {
     response.writeHead(200, { "content-type": "application/json" }).end('{"source":"http-fulfill"}');
   });
   let sourceOrigin = "";
-  const sourceHttps = createHttpsServer({ key, cert }, (request, response) => {
+  const sourceHttps = createHttpsServer(credentials, (request, response) => {
     if (request.url?.startsWith("/report")) {
       pageReports.push(new URL(request.url, "https://source.test").searchParams.get("result"));
       response.writeHead(204, { "access-control-allow-origin": "*" }).end();
@@ -332,6 +334,40 @@ async function testHttpsRewriteAndHttpFulfill() {
       rm(socketDirectory, { recursive: true, force: true })
     ]);
   }
+}
+
+async function createTemporaryHttpsCredentials(directory) {
+  const keyPath = join(directory, "localhost-key.pem");
+  const certPath = join(directory, "localhost-cert.pem");
+  const configPath = join(directory, "openssl.cnf");
+  await writeFile(configPath, `[req]
+distinguished_name = subject
+x509_extensions = extensions
+prompt = no
+
+[subject]
+CN = localhost
+
+[extensions]
+subjectAltName = @alt_names
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+`);
+  try {
+    await execFileAsync("openssl", [
+      "req", "-x509", "-newkey", "rsa:2048", "-sha256", "-nodes",
+      "-keyout", keyPath, "-out", certPath, "-days", "1", "-config", configPath
+    ]);
+  } catch (error) {
+    throw new Error("HTTPS network-control E2E requires openssl to generate a temporary localhost certificate.", { cause: error });
+  }
+  const [key, cert] = await Promise.all([readFile(keyPath), readFile(certPath)]);
+  return { key, cert };
 }
 
 function markerServer(marker, requests, reportOrigin) {

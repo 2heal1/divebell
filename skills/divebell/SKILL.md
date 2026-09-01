@@ -1,6 +1,6 @@
 ---
 name: divebell
-description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; configure browser proxies, PAC, and request rewrite or fulfill rules; reuse local browser Profiles or save and load browser state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser context, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
+description: Use the Divebell CLI to operate, inspect, debug, and verify real web applications; reuse local browser Profiles or save and load browser state; and collect page, Console, Network, compiled JavaScript Debugger, and optional Runtime evidence. Use when the user explicitly requests Divebell, asks to import or export browser context, or needs a Web issue reproduced, diagnosed, or verified through Divebell. Once triggered, perform every browser operation through Divebell.
 ---
 
 # Divebell
@@ -95,10 +95,6 @@ After `open`, check whether the target is accessible. If access is denied, for
 example because the page redirected to a login page, read
 `references/authentication.md` and follow its decision flow. Otherwise,
 continue the task.
-
-For a fixed browser proxy, conditional PAC, request rewrite or fulfill rules,
-HTTPS-to-local replacement, or concurrent daemons with different proxy rules,
-read `references/proxy-and-request-rules.md` before opening the page.
 
 Continue every browser operation through Divebell.
 

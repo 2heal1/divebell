@@ -30,9 +30,8 @@ import { resolveDivebellHomeDirectory } from "../utils/home.js";
 import {
   createBrowserNetworkFingerprint,
   validateBrowserNetworkRules,
-  validateBrowserProxyDescriptor,
-  type BrowserNetworkRules,
-  type BrowserProxyDescriptor
+  validateBrowserProxyPacUrl,
+  type BrowserNetworkRules
 } from "../features/browser/network-control.js";
 import {
   attachNetworkControl,
@@ -75,7 +74,6 @@ export interface OpenPageResult {
   networkControl?: {
     pid: number;
     controlUrl: string;
-    pacUrl?: string;
   };
 }
 
@@ -129,10 +127,6 @@ export async function runBrowserCliCommand(
     const headers = parseHeadersOption(args);
     const networkConfiguration = await resolveNetworkConfiguration({
       args,
-      url,
-      openedUrl,
-      headers,
-      extensions,
       previousOpenContext,
       env
     });
@@ -153,14 +147,15 @@ export async function runBrowserCliCommand(
       if (networkConfiguration.needsControl && networkControl === undefined) {
         startedNetworkControl = await networkControlStarter.start({
           fingerprint: networkConfiguration.fingerprint as string,
-          ...(networkConfiguration.rules === undefined ? {} : { rules: networkConfiguration.rules }),
-          ...(networkConfiguration.proxy === undefined ? {} : { proxy: networkConfiguration.proxy })
+          ...(networkConfiguration.rules === undefined ? {} : { rules: networkConfiguration.rules })
         });
         networkControl = startedNetworkControl;
       }
       const browserArguments = appendBrowserArguments(
         webMcpLaunch.browserArguments,
-        startedNetworkControl?.pacUrl === undefined ? undefined : `--proxy-pac-url=${startedNetworkControl.pacUrl}`
+        networkConfiguration.proxyPacUrl === undefined
+          ? undefined
+          : `--proxy-pac-url=${networkConfiguration.proxyPacUrl}`
       );
       if (previousOpenContext !== undefined) {
         await runExtensionCloseHooks({
@@ -295,8 +290,7 @@ export async function runBrowserCliCommand(
           : {
               networkControl: {
                 pid: networkControl.pid,
-                controlUrl: networkControl.controlUrl,
-                ...(networkControl.pacUrl === undefined ? {} : { pacUrl: networkControl.pacUrl })
+                controlUrl: networkControl.controlUrl
               }
             })
       };
@@ -480,22 +474,18 @@ async function resolveDivebellBrowserLaunchConfiguration(
 
 interface ResolvedNetworkConfiguration {
   rules?: BrowserNetworkRules;
-  proxy?: BrowserProxyDescriptor;
+  proxyPacUrl?: string;
   fingerprint?: string;
   needsControl: boolean;
 }
 
 async function resolveNetworkConfiguration(options: {
   args: ParsedCliArgs;
-  url: string;
-  openedUrl: string;
-  headers: Readonly<Record<string, string>> | undefined;
-  extensions: readonly DivebellExtensionDefinition[];
   previousOpenContext: CliOperationLogEntry | undefined;
   env: NodeJS.ProcessEnv;
 }): Promise<ResolvedNetworkConfiguration> {
   const hasNetworkConfigurationOption = hasOption(options.args, "network-rules") ||
-    hasOption(options.args, "proxy-provider") || hasOption(options.args, "proxy");
+    hasOption(options.args, "proxy-pac-url") || hasOption(options.args, "proxy");
   if (!hasNetworkConfigurationOption && options.previousOpenContext !== undefined) {
     return {
       ...(options.previousOpenContext.browserNetworkFingerprint === undefined
@@ -505,63 +495,29 @@ async function resolveNetworkConfiguration(options: {
     };
   }
   const rulesPath = getSingleValueOption(options.args, "network-rules");
-  const proxyProviderName = getSingleValueOption(options.args, "proxy-provider");
   const fixedProxy = getSingleValueOption(options.args, "proxy");
-  if (fixedProxy !== undefined && proxyProviderName !== undefined) {
+  const proxyPacUrlValue = getSingleValueOption(options.args, "proxy-pac-url");
+  if (fixedProxy !== undefined && proxyPacUrlValue !== undefined) {
     throw createError({
       code: "BROWSER_PROXY_CONFIGURATION_CONFLICT",
       kind: "validation",
-      message: "--proxy and --proxy-provider cannot be used together.",
+      message: "--proxy and --proxy-pac-url cannot be used together.",
       retryable: false,
-      hint: "Use --proxy for one fixed endpoint, or select one Extension provider for PAC rules."
+      hint: "Use --proxy for one fixed endpoint, or --proxy-pac-url for conditional PAC rules."
     });
   }
   const rules = rulesPath === undefined
     ? undefined
     : await readNetworkRulesFile(rulesPath);
-  let proxy: BrowserProxyDescriptor | undefined;
-  if (proxyProviderName !== undefined) {
-    const extension = options.extensions.find((candidate) => candidate.name === proxyProviderName);
-    if (extension === undefined) {
-      throw createError({
-        code: "BROWSER_PROXY_PROVIDER_NOT_FOUND",
-        kind: "validation",
-        message: `No loaded Extension named "${proxyProviderName}" is available as a browser proxy provider.`,
-        retryable: false,
-        hint: "Install or load the Extension, then pass its Extension name to --proxy-provider."
-      });
-    }
-    if (extension.browserProxyProvider === undefined) {
-      throw createError({
-        code: "BROWSER_PROXY_PROVIDER_UNSUPPORTED",
-        kind: "validation",
-        message: `Extension "${proxyProviderName}" does not declare browserProxyProvider.`,
-        retryable: false
-      });
-    }
-    let descriptor: BrowserProxyDescriptor | void;
+  let proxyPacUrl: string | undefined;
+  if (proxyPacUrlValue !== undefined) {
     try {
-      descriptor = await extension.browserProxyProvider.resolve({
-        args: options.args,
-        url: options.url,
-        openedUrl: options.openedUrl,
-        bridgeUrl: null,
-        ...(options.headers === undefined ? {} : { headers: options.headers })
-      });
-      proxy = descriptor === undefined ? undefined : validateBrowserProxyDescriptor(descriptor);
+      proxyPacUrl = validateBrowserProxyPacUrl(proxyPacUrlValue);
     } catch (error) {
       throw createError({
-        code: "BROWSER_PROXY_DESCRIPTOR_INVALID",
+        code: "BROWSER_PROXY_PAC_URL_INVALID",
         kind: "validation",
-        message: `Extension "${proxyProviderName}" returned an invalid browser proxy descriptor: ${errorMessage(error)}`,
-        retryable: false
-      });
-    }
-    if (proxy === undefined) {
-      throw createError({
-        code: "BROWSER_PROXY_DESCRIPTOR_MISSING",
-        kind: "validation",
-        message: `Extension "${proxyProviderName}" did not return a browser proxy descriptor.`,
+        message: errorMessage(error),
         retryable: false
       });
     }
@@ -570,7 +526,7 @@ async function resolveNetworkConfiguration(options: {
       throw createError({
         code: "BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED",
         kind: "validation",
-        message: "Conditional proxy configuration requires a Chromium instance launched by Divebell.",
+        message: "A PAC URL requires a Chromium instance launched by Divebell.",
         retryable: false,
         hint: "Remove --cdp, --auto-connect, or --provider and launch Chrome through divebell open."
       });
@@ -578,8 +534,8 @@ async function resolveNetworkConfiguration(options: {
   }
   const fingerprint = createBrowserNetworkFingerprint({
     ...(rules === undefined ? {} : { rules }),
-    ...(proxy === undefined ? {} : { proxy }),
-    ...(fixedProxy === undefined ? {} : { fixedProxy })
+    ...(fixedProxy === undefined ? {} : { fixedProxy }),
+    ...(proxyPacUrl === undefined ? {} : { proxyPacUrl })
   });
   if (options.previousOpenContext !== undefined && options.previousOpenContext.browserNetworkFingerprint !== fingerprint) {
     throw createError({
@@ -587,14 +543,14 @@ async function resolveNetworkConfiguration(options: {
       kind: "validation",
       message: "Browser proxy and network interception configuration is scoped to the current browser daemon session and can only change at browser launch.",
       retryable: false,
-      hint: "Run `divebell stop`, then run `divebell open` with the new --proxy, --proxy-provider, or --network-rules configuration."
+      hint: "Run `divebell stop`, then run `divebell open` with the new --proxy, --proxy-pac-url, or --network-rules configuration."
     });
   }
   return {
     ...(rules === undefined ? {} : { rules }),
-    ...(proxy === undefined ? {} : { proxy }),
+    ...(proxyPacUrl === undefined ? {} : { proxyPacUrl }),
     ...(fingerprint === undefined ? {} : { fingerprint }),
-    needsControl: rules !== undefined || proxy !== undefined
+    needsControl: rules !== undefined
   };
 }
 

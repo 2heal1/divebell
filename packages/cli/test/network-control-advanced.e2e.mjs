@@ -15,7 +15,7 @@ const fixturesDirectory = join(packageDirectory, "test", "fixtures");
 
 const scenarios = [
   ["multi-daemon", "multi-daemon isolation", testIsolatedNetworkDaemons],
-  ["pac", "PAC proxy provider", testPacProxyProvider],
+  ["pac", "PAC URL", testPacUrl],
   ["fixed-proxy", "fixed HTTP proxy", testFixedHttpProxy],
   ["https", "HTTPS rewrite and HTTPS-to-HTTP fulfill", testHttpsRewriteAndHttpFulfill]
 ];
@@ -31,7 +31,7 @@ for (const [, name, run] of selected) await runE2e(name, run);
 process.stdout.write(`${JSON.stringify({
   status: "ok",
   multiDaemon: selected.some(([id]) => id === "multi-daemon"),
-  pacProxy: selected.some(([id]) => id === "pac"),
+  pacUrl: selected.some(([id]) => id === "pac"),
   fixedProxy: selected.some(([id]) => id === "fixed-proxy"),
   httpsRewrite: selected.some(([id]) => id === "https"),
   httpsToHttpFulfill: selected.some(([id]) => id === "https")
@@ -144,14 +144,24 @@ async function testIsolatedNetworkDaemons() {
   }
 }
 
-async function testPacProxyProvider() {
+async function testPacUrl() {
   const directory = await mkdtemp(join(tmpdir(), "divebell-pac-proxy-e2e-"));
   const project = join(directory, "project");
   const proxyRequests = [];
+  const pacRequests = [];
   const sourceRequests = [];
   const proxy = createServer((request, response) => {
     proxyRequests.push(request.url ?? "");
     response.writeHead(200, { "access-control-allow-origin": "*", "content-type": "text/plain" }).end("through-pac-proxy");
+  });
+  const pac = createServer((request, response) => {
+    pacRequests.push(request.url ?? "");
+    response.writeHead(200, {
+      "cache-control": "no-store",
+      "content-type": "application/x-ns-proxy-autoconfig; charset=utf-8"
+    }).end(`function FindProxyForURL(url, host) {
+      return host === 'proxy.test' ? 'PROXY 127.0.0.1:${addressPort(proxy)}' : 'DIRECT';
+    }`);
   });
   const socketDirectory = await mkdtemp("/tmp/divebell-pac-sockets-");
   let sourceOrigin = "";
@@ -170,34 +180,27 @@ async function testPacProxyProvider() {
   });
   let env;
   try {
-    await Promise.all([mkdir(project, { recursive: true }), listen(proxy), listen(source, "localhost")]);
+    await Promise.all([mkdir(project, { recursive: true }), listen(proxy), listen(pac), listen(source, "localhost")]);
     sourceOrigin = originOf(source, "localhost");
-    const extensionPath = join(directory, "proxy-provider.mjs");
-    const descriptor = {
-      schemaVersion: 1,
-      endpoints: [{ id: "local", url: `http://127.0.0.1:${addressPort(proxy)}` }],
-      rules: [{ endpoint: "local", match: { hosts: ["proxy.test"] } }],
-      fallback: "DIRECT"
-    };
-    await writeFile(extensionPath, `export default { schemaVersion: 1, name: "e2e-proxy-provider", browserProxyProvider: { resolve: async () => (${JSON.stringify(descriptor)}) } };\n`);
     env = createE2eEnv({
       DIVEBELL_HOME: join(directory, "divebell-home"),
       AGENT_BROWSER_SOCKET_DIR: socketDirectory,
       DIVEBELL_BROWSER_PROFILE_DIR: join(directory, "profile"),
-      DIVEBELL_EXTENSIONS_DIR: extensionPath,
-      DIVEBELL_DISABLE_EXTENSIONS: "0"
+      DIVEBELL_DISABLE_EXTENSIONS: "1"
     });
+    const pacUrl = `${originOf(pac, "127.0.0.1")}/config?token=e2e`;
     await runCli(project, env, [
-      "open", `${sourceOrigin}/`, "--proxy-provider", "e2e-proxy-provider",
+      "open", `${sourceOrigin}/`, "--proxy-pac-url", pacUrl,
       "--no-default-profile", "--no-bridge", "--timeout", "10000"
     ]);
     await waitFor(project, env, "globalThis.__PAC_RESULT__ === 'through-pac-proxy:direct'");
+    assert.ok(pacRequests.includes("/config?token=e2e"), JSON.stringify(pacRequests));
     assert.ok(proxyRequests.includes(`http://proxy.test:${addressPort(source)}/via-proxy`), JSON.stringify(proxyRequests));
     assert.ok(sourceRequests.includes("/direct"), JSON.stringify(sourceRequests));
     assert.equal(sourceRequests.includes("/via-proxy"), false, JSON.stringify(sourceRequests));
   } finally {
     await Promise.allSettled([env === undefined ? Promise.resolve() : runCli(project, env, ["stop"])]);
-    await Promise.all([close(source), close(proxy)]);
+    await Promise.all([close(source), close(proxy), close(pac)]);
     await Promise.all([
       rm(directory, { recursive: true, force: true }),
       rm(socketDirectory, { recursive: true, force: true })

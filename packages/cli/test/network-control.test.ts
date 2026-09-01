@@ -6,57 +6,26 @@ import { join } from "node:path";
 import { test } from "@rstest/core";
 
 import {
-  createPacScript,
   matchBrowserNetworkRule,
   rewriteBrowserRequestUrl,
   validateBrowserNetworkRules,
-  validateBrowserProxyDescriptor
+  validateBrowserProxyPacUrl
 } from "../dist/features/browser/network-control.js";
 import { fetchNetworkFulfillResponse, NetworkCdpController, type NetworkCdpControllerClient } from "../dist/features/browser/network-control-server.js";
 import { stopNetworkControl } from "../dist/features/browser/network-control-process.js";
-import { validateExtension } from "../dist/commands/definition.js";
 
-test("generates escaped PAC rules with the correct HTTP, HTTPS, SOCKS4, and SOCKS5 directives", () => {
-  const descriptor = validateBrowserProxyDescriptor({
-    schemaVersion: 1,
-    endpoints: [
-      { id: "http", url: "http://127.0.0.1:8080" },
-      { id: "https", url: "https://127.0.0.1:8443" },
-      { id: "socks4", url: "socks4://127.0.0.1:1080" },
-      { id: "socks5", url: "socks5://127.0.0.1:1081" }
-    ],
-    rules: [
-      { endpoint: "http", match: { hostSuffixes: ["example.test"], urlGlobs: ["https://example.test/a'\\n*"] } },
-      { endpoint: "https", match: { hosts: ["secure.example.test"] } },
-      { endpoint: "socks4", match: { hosts: ["legacy.example.test"] } },
-      { endpoint: "socks5", match: { hosts: ["socks.example.test"] } }
-    ],
-    fallback: "DIRECT"
-  });
-  const pac = createPacScript(descriptor);
-  assert.match(pac, /PROXY 127\.0\.0\.1:8080/);
-  assert.match(pac, /HTTPS 127\.0\.0\.1:8443/);
-  assert.match(pac, /SOCKS4 127\.0\.0\.1:1080/);
-  assert.match(pac, /SOCKS5 127\.0\.0\.1:1081/);
-  assert.match(pac, /return 'DIRECT';/);
-  assert.doesNotMatch(pac, /a'\n/);
-  assert.ok(pac.includes(JSON.stringify("https://example.test/a'\\n*")));
-});
-
-test("validates HTTP and SOCKS proxy endpoints without accepting credentials or paths", () => {
-  assert.doesNotThrow(() => validateBrowserProxyDescriptor({
-    schemaVersion: 1,
-    endpoints: [
-      { id: "http", url: "http://127.0.0.1:8080" },
-      { id: "socks", url: "socks5://127.0.0.1:1080" }
-    ],
-    rules: [{ endpoint: "http" }, { endpoint: "socks", match: { hosts: ["api.example.test"] } }]
-  }));
-  assert.throws(() => validateBrowserProxyDescriptor({
-    schemaVersion: 1,
-    endpoints: [{ id: "bad", url: "http://user:secret@127.0.0.1:8080/path" }],
-    rules: [{ endpoint: "bad" }]
-  }), /credentials, a path/);
+test("validates PAC HTTP(S) URLs without requiring a .pac suffix", () => {
+  assert.equal(
+    validateBrowserProxyPacUrl("http://127.0.0.1:8080/config?token=test"),
+    "http://127.0.0.1:8080/config?token=test"
+  );
+  assert.equal(
+    validateBrowserProxyPacUrl("https://proxy.example.test/proxy.pac"),
+    "https://proxy.example.test/proxy.pac"
+  );
+  assert.throws(() => validateBrowserProxyPacUrl("file:///tmp/proxy.pac"), /HTTP\(S\)/);
+  assert.throws(() => validateBrowserProxyPacUrl("http://user:secret@127.0.0.1:8080/config"), /credentials/);
+  assert.throws(() => validateBrowserProxyPacUrl("http://127.0.0.1:8080/config#fragment"), /fragment/);
 });
 
 test("matches and rewrites HTTP(S) resource URLs while retaining the unmatched suffix", () => {
@@ -155,20 +124,7 @@ test("times out a control-plane fulfill fetch", async () => {
   );
 });
 
-test("validates an Extension browserProxyProvider and cleans up a managed control", async () => {
-  const extension = validateExtension({
-    schemaVersion: 1,
-    name: "proxy-tools",
-    browserProxyProvider: {
-      resolve: async () => ({
-        schemaVersion: 1,
-        endpoints: [{ id: "tool", url: "http://127.0.0.1:8080" }],
-        rules: [{ endpoint: "tool" }]
-      })
-    }
-  });
-  assert.equal(typeof extension.browserProxyProvider?.resolve, "function");
-
+test("cleans up a managed network-control process", async () => {
   let stopped = false;
   const server = createServer((request, response) => {
     if (request.method === "POST" && request.url?.startsWith("/stop?token=test-token")) stopped = true;

@@ -2,14 +2,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import {
-  createPacScript,
   matchBrowserNetworkRule,
   rewriteBrowserRequestUrl,
   validateBrowserNetworkRules,
-  validateBrowserProxyDescriptor,
   type BrowserNetworkRule,
-  type BrowserNetworkRules,
-  type BrowserProxyDescriptor
+  type BrowserNetworkRules
 } from "./network-control.js";
 
 const CONTROL_REQUEST_TIMEOUT_MS = 5_000;
@@ -20,7 +17,6 @@ export interface NetworkControlServerConfig {
   schemaVersion: 1;
   token: string;
   rules?: BrowserNetworkRules;
-  proxy?: BrowserProxyDescriptor;
 }
 
 interface CdpMessage {
@@ -64,19 +60,11 @@ export interface NetworkFulfillResponse {
 
 export async function runNetworkControlServer(configPath: string): Promise<void> {
   const config = await readNetworkControlServerConfig(configPath);
-  const pac = config.proxy === undefined ? undefined : createPacScript(config.proxy);
   let controller: NetworkCdpController | undefined;
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     if (url.searchParams.get("token") !== config.token) {
       response.writeHead(404).end();
-      return;
-    }
-    if (request.method === "GET" && url.pathname === "/proxy.pac" && pac !== undefined) {
-      response.writeHead(200, {
-        "cache-control": "no-store",
-        "content-type": "application/x-ns-proxy-autoconfig; charset=utf-8"
-      }).end(pac);
       return;
     }
     if (request.method === "POST" && url.pathname === "/attach") {
@@ -114,8 +102,7 @@ export async function runNetworkControlServer(configPath: string): Promise<void>
   const controlUrl = `http://127.0.0.1:${address.port}`;
   process.send?.({
     type: "divebell.network-control.ready",
-    controlUrl,
-    ...(pac === undefined ? {} : { pacUrl: `${controlUrl}/proxy.pac?token=${encodeURIComponent(config.token)}` })
+    controlUrl
   });
   await new Promise<void>((resolve) => server.once("close", resolve));
   controller?.close();
@@ -134,8 +121,7 @@ export async function readNetworkControlServerConfig(path: string): Promise<Netw
   return {
     schemaVersion: 1,
     token: parsed.token,
-    ...(parsed.rules === undefined ? {} : { rules: validateBrowserNetworkRules(parsed.rules) }),
-    ...(parsed.proxy === undefined ? {} : { proxy: validateBrowserProxyDescriptor(parsed.proxy) })
+    ...(parsed.rules === undefined ? {} : { rules: validateBrowserNetworkRules(parsed.rules) })
   };
 }
 

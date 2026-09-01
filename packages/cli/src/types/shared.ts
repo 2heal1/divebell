@@ -107,7 +107,6 @@ export interface CliOperationLogEntry {
     fingerprint: string;
     pid: number;
     controlUrl: string;
-    pacUrl?: string;
     token: string;
     configPath: string;
   };

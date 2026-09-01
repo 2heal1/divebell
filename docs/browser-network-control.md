@@ -1,12 +1,12 @@
 # Browser network control and conditional proxy
 
-Divebell can replace ordinary HTTP(S) resources through Chrome DevTools Protocol (CDP) and can apply conditional proxy selection through a PAC file served by a local Divebell-managed process. It does not install, bundle, or require ModHeader, SwitchyOmega, ZeroOmega, or another Chrome extension.
+Divebell can replace ordinary HTTP(S) resources through Chrome DevTools Protocol (CDP), use one fixed HTTP/SOCKS proxy, or pass an existing PAC URL to a Chromium instance it launches. It does not install, bundle, or require ModHeader, SwitchyOmega, ZeroOmega, or another Chrome extension.
 
-Both capabilities are scoped to one Divebell-launched Chromium **browser daemon/session**. They are not per-page or per-tab settings. Set them on the first `divebell open` for that browser session. To change or remove `--proxy`, `--proxy-provider`, or `--network-rules`, run `divebell stop` and then open again. Divebell returns `BROWSER_PROXY_RESTART_REQUIRED` instead of quietly claiming a running browser changed configuration.
+These capabilities are scoped to one Divebell-launched Chromium **browser daemon/session**. They are not per-page or per-tab settings. Set them on the first `divebell open` for that browser session. To change or remove `--proxy`, `--proxy-pac-url`, or `--network-rules`, run `divebell stop` and then open again. Divebell returns `BROWSER_PROXY_RESTART_REQUIRED` instead of quietly claiming a running browser changed configuration.
 
 For concurrent browser daemons, use separate working directories, browser profiles, and agent-browser namespaces. Divebell stores each directory's latest-page context by cwd, so separate cwd values prevent one process from reusing another process's network-control record. A shared `DIVEBELL_HOME` is supported: each control process uses its own generated configuration file and loopback control URL.
 
-## Conditional proxy through an Extension
+## Browser proxy
 
 Keep using the existing fixed endpoint when it is sufficient:
 
@@ -14,47 +14,15 @@ Keep using the existing fixed endpoint when it is sufficient:
 divebell open https://app.example --proxy http://127.0.0.1:8080
 ```
 
-For conditional selection, install or load a trusted Extension that declares a `browserProxyProvider`, then select it by Extension name:
+When a proxy tool already serves a PAC file, pass its HTTP(S) URL directly:
 
 ```sh
-divebell open https://app.example --proxy-provider proxy-tools
+divebell open https://app.example --proxy-pac-url 'http://127.0.0.1:8080/config?token=example'
 ```
 
-`--proxy` and `--proxy-provider` are mutually exclusive. Conditional proxy is supported only for Chromium launched by Divebell; CDP-connected, auto-connected, provider-managed, and non-Chrome browsers fail with `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED`.
+`--proxy` and `--proxy-pac-url` are mutually exclusive. A PAC URL may use any path or query string; it does not need to end in `.pac`. Divebell accepts credential-free HTTP(S) URLs without fragments and passes the normalized URL to Chromium without fetching or rewriting the PAC. PAC configuration is supported only for Chromium launched by Divebell; CDP-connected, auto-connected, provider-managed, and non-Chrome browsers fail with `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED`.
 
-An Extension provider is code loaded through Divebell's normal trusted-Extension boundary. It returns data, not a command to execute:
-
-```ts
-import type { DivebellExtensionDefinition } from "@divebell/cli";
-
-const extension: DivebellExtensionDefinition = {
-  schemaVersion: 1,
-  name: "proxy-tools",
-  browserProxyProvider: {
-    resolve: async () => ({
-      schemaVersion: 1,
-      endpoints: [
-        { id: "inspection", url: "http://127.0.0.1:8080" },
-        { id: "tunnel", url: "socks5://127.0.0.1:1080" }
-      ],
-      rules: [
-        { endpoint: "inspection", match: { hostSuffixes: ["example.test"] } },
-        { endpoint: "tunnel", match: { urlGlobs: ["https://public.example/*"] } },
-        { direct: true, match: { hosts: ["localhost"] } }
-      ],
-      fallback: "DIRECT"
-    })
-  }
-};
-
-export default extension;
-```
-
-Endpoints must use `http`, `https`, `socks`, `socks4`, or `socks5`, include a port, and must not contain credentials, paths, queries, or fragments. PAC matching is first-match-wins; unmatched traffic is always `DIRECT`. Divebell validates descriptor shape and endpoint safety before launch (`BROWSER_PROXY_DESCRIPTOR_INVALID`). Project configuration has no field that executes a shell command.
-
-`resolve` must return endpoints that are already running and ready to accept traffic. It is a pure description boundary: v1 neither starts proxy resources nor calls a provider cleanup hook, so a provider must not rely on Divebell to release temporary tunnels, processes, or credentials.
-
-The provider supplies only an HTTP/SOCKS endpoint and rules. TLS certificate installation, HTTPS decryption, TLS interception policy, and upstream proxy behavior remain the proxy tool's responsibility.
+Divebell does not start the proxy service or manage its lifecycle. The endpoint or PAC server must already be running. TLS certificate installation, HTTPS decryption, TLS interception policy, PAC contents, and upstream proxy behavior remain the proxy tool's responsibility.
 
 ## Request rules
 
@@ -120,10 +88,7 @@ This is intentionally an HTTP(S) resource replacement facility, not a general ne
 | --- | --- |
 | `BROWSER_NETWORK_RULES_READ_FAILED` | The rules file could not be read or parsed as JSON. |
 | `BROWSER_NETWORK_RULES_INVALID` | The JSON fails the documented rules schema or URL safety checks. |
-| `BROWSER_PROXY_CONFIGURATION_CONFLICT` | Fixed `--proxy` and conditional `--proxy-provider` were both requested. |
-| `BROWSER_PROXY_PROVIDER_NOT_FOUND` | The selected Extension is not loaded. |
-| `BROWSER_PROXY_PROVIDER_UNSUPPORTED` | The selected Extension has no `browserProxyProvider`. |
-| `BROWSER_PROXY_DESCRIPTOR_MISSING` | The provider returned no descriptor. |
-| `BROWSER_PROXY_DESCRIPTOR_INVALID` | The descriptor or a provider result failed validation. |
-| `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED` | Conditional PAC requires Divebell-launched Chromium. |
+| `BROWSER_PROXY_CONFIGURATION_CONFLICT` | `--proxy` and `--proxy-pac-url` were both requested. |
+| `BROWSER_PROXY_PAC_URL_INVALID` | The PAC URL is not an allowed HTTP(S) URL. |
+| `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED` | A PAC URL requires Divebell-launched Chromium. |
 | `BROWSER_PROXY_RESTART_REQUIRED` | A change was requested after the browser daemon/session was already configured. Stop and reopen. |

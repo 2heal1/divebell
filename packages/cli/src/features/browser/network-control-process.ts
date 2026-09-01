@@ -4,13 +4,12 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveDivebellHomeDirectory } from "../../utils/home.js";
-import type { BrowserNetworkRules, BrowserProxyDescriptor } from "./network-control.js";
+import type { BrowserNetworkRules } from "./network-control.js";
 
 export interface ManagedNetworkControl {
   fingerprint: string;
   pid: number;
   controlUrl: string;
-  pacUrl?: string;
   token: string;
   configPath: string;
 }
@@ -19,7 +18,6 @@ export interface NetworkControlStarter {
   start(config: {
     fingerprint: string;
     rules?: BrowserNetworkRules;
-    proxy?: BrowserProxyDescriptor;
   }): Promise<ManagedNetworkControl>;
 }
 
@@ -70,7 +68,7 @@ export async function stopNetworkControl(
 async function startDetachedNetworkControl(
   entryModuleUrl: string,
   homeDirectory: string,
-  config: { fingerprint: string; rules?: BrowserNetworkRules; proxy?: BrowserProxyDescriptor }
+  config: { fingerprint: string; rules?: BrowserNetworkRules }
 ): Promise<ManagedNetworkControl> {
   const directory = join(homeDirectory, "network-controls");
   await mkdir(directory, { recursive: true });
@@ -136,7 +134,6 @@ async function startDetachedNetworkControl(
         fingerprint: config.fingerprint,
         pid: child.pid,
         controlUrl: message.controlUrl,
-        ...(message.pacUrl === undefined ? {} : { pacUrl: message.pacUrl }),
         token,
         configPath
       });
@@ -147,11 +144,10 @@ async function startDetachedNetworkControl(
   });
 }
 
-function isReadyMessage(value: unknown): value is { type: "divebell.network-control.ready"; controlUrl: string; pacUrl?: string } {
+function isReadyMessage(value: unknown): value is { type: "divebell.network-control.ready"; controlUrl: string } {
   return value !== null && typeof value === "object" &&
     (value as { type?: unknown }).type === "divebell.network-control.ready" &&
-    typeof (value as { controlUrl?: unknown }).controlUrl === "string" &&
-    ((value as { pacUrl?: unknown }).pacUrl === undefined || typeof (value as { pacUrl?: unknown }).pacUrl === "string");
+    typeof (value as { controlUrl?: unknown }).controlUrl === "string";
 }
 
 function stopStartingControl(pid: number | undefined): void {

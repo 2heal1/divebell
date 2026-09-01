@@ -237,6 +237,67 @@ test("forwards supported agent-browser launch options through Divebell open", as
   rmSync(operationLogDirectory, { recursive: true, force: true });
 });
 
+test("passes a PAC URL as a Chromium launch argument without forwarding it as an agent-browser option", async () => {
+  const output = createOutput();
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const pacUrl = "http://127.0.0.1:8080/config?token=e2e";
+
+  const exitCode = await runCli([
+    "open",
+    "http://app.test/",
+    "--no-bridge",
+    "--proxy-pac-url",
+    pacUrl
+  ], {
+    stdout: output.stdout,
+    stderr: output.stderr,
+    operationLogDirectory,
+    browserRunner: createBrowserRunner(async (args, options) => {
+      browserCalls.push(args);
+      browserOptions.push(options);
+      return {
+        exitCode: 0,
+        stdout: "opened\n",
+        stderr: ""
+      };
+    })
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(browserCalls[0]?.includes("--proxy-pac-url"), false);
+  assert.ok(browserOptions[0]?.browserArguments?.split("\n").includes(`--proxy-pac-url=${pacUrl}`));
+  rmSync(operationLogDirectory, { recursive: true, force: true });
+});
+
+test("rejects invalid or conflicting PAC proxy options before opening the browser", async () => {
+  for (const args of [
+    ["open", "http://app.test/", "--proxy-pac-url", "file:///tmp/proxy.pac"],
+    [
+      "open",
+      "http://app.test/",
+      "--proxy",
+      "http://127.0.0.1:8080",
+      "--proxy-pac-url",
+      "http://127.0.0.1:8081/config"
+    ]
+  ]) {
+    const output = createOutput();
+    const exitCode = await runCli(args, {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      browserRunner: createBrowserRunner(async () => assert.fail("invalid proxy options must not open a browser"))
+    });
+    assert.equal(exitCode, 1);
+    const parsed = JSON.parse(output.text());
+    assert.ok([
+      "BROWSER_PROXY_PAC_URL_INVALID",
+      "BROWSER_PROXY_CONFIGURATION_CONFLICT"
+    ].includes(parsed.error.code));
+  }
+});
+
 test("enables WebMCP launch and CDP features for local Chrome by default", async () => {
   const output = createOutput();
   const browserCalls: string[][] = [];

@@ -1,5 +1,4 @@
 import type { BrowserRunner } from "../features/browser/types.js";
-import type { BrowserProxyDescriptor } from "../features/browser/network-control.js";
 import type { BridgeStarter } from "../features/bridge/types.js";
 import type { DivebellExtensionApi } from "../features/extension/types.js";
 import type { Fetcher } from "../features/runtime/types.js";
@@ -124,13 +123,8 @@ export interface DivebellExtensionDefinition {
   requires?: readonly string[];
   displayName?: string;
   description?: string;
-  browserProxyProvider?: DivebellBrowserProxyProvider;
   commands?: readonly DivebellExtensionCommand[];
   hooks?: DivebellExtensionHooks;
-}
-
-export interface DivebellBrowserProxyProvider {
-  resolve(options: DivebellOpenHookOptions): Promise<BrowserProxyDescriptor | void>;
 }
 
 export interface ExtensionCliCommandOptions {

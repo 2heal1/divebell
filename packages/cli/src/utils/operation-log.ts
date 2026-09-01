@@ -115,7 +115,6 @@ function isNetworkControl(value: unknown): boolean {
   return typeof control.fingerprint === "string" &&
     typeof control.pid === "number" && Number.isInteger(control.pid) && control.pid > 0 &&
     typeof control.controlUrl === "string" &&
-    (control.pacUrl === undefined || typeof control.pacUrl === "string") &&
     typeof control.token === "string" &&
     typeof control.configPath === "string";
 }

@@ -15,6 +15,9 @@ import {
 import { parseCliArgs } from "./utils/args.js";
 import { runCliWithConfig } from "./runner.js";
 import { createExtensionHookPlans } from "./features/extension/plan.js";
+import { defaultDivebellCliUpdater } from "./features/update/default.js";
+import { validateCliUpdater } from "./features/update/manager.js";
+import type { DivebellCliUpdater } from "./features/update/types.js";
 import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import type {
   CliRunOptions,
@@ -32,12 +35,15 @@ export function getCliCommandName(): "divebell" {
 }
 
 export function createDivebellCli(options: CreateDivebellCliOptions = {}): DivebellCli {
+  const updater = resolveCliUpdater(options);
   const extensions = (options.extensions ?? []).map((extension) => validateExtension(extension));
   const extensionRegistry = createExtensionRegistry(extensions);
   const commandRegistry = createCommandRegistry(extensions);
   const hookPlans = createExtensionHookPlans(extensions);
   const commandReferences = [
-    ...cliCommandReferences,
+    ...cliCommandReferences.filter((reference) =>
+      updater !== undefined || !reference.usage.startsWith("divebell update")
+    ),
     ...extensions.flatMap((extension) =>
       (extension.commands ?? []).flatMap((command) => command.commandReferences ?? [])
     )
@@ -52,7 +58,8 @@ export function createDivebellCli(options: CreateDivebellCliOptions = {}): Diveb
     hookPlans,
     extensionRegistry,
     commandRegistry,
-    extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions)
+    extensionLoadRecords: options.extensionLoadRecords ?? createInternalExtensionRecords(extensions),
+    ...(updater === undefined ? {} : { updater })
   };
   const packageInfo = options.packageInfo ?? cliPackageInfo;
 
@@ -67,6 +74,14 @@ export function createDivebellCli(options: CreateDivebellCliOptions = {}): Diveb
     }),
     getCommandReferences: () => [...commandReferences]
   };
+}
+
+function resolveCliUpdater(options: CreateDivebellCliOptions): DivebellCliUpdater | undefined {
+  if (options.updater === false) return undefined;
+  if (options.updater !== undefined) return validateCliUpdater(options.updater);
+  return options.packageInfo === undefined
+    ? defaultDivebellCliUpdater
+    : undefined;
 }
 
 function createExtensionRegistry(

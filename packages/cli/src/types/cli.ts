@@ -19,6 +19,7 @@ import type {
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
 import type { ExtensionPackageDownloader } from "../commands/installed.js";
 import type { ExtensionHookPlans } from "../features/extension/plan.js";
+import type { DivebellCliUpdater } from "../features/update/types.js";
 
 export type {
   CliExtensionPageContext,
@@ -54,6 +55,7 @@ export interface CliRunOptions {
   waitUntilClosed?: (server: BridgeServer) => Promise<void>;
   extensionsDirectory?: string;
   extensionPackageDownloader?: ExtensionPackageDownloader;
+  enableAutomaticUpdates?: boolean;
 }
 
 export interface RuntimeCliCommandOptions {
@@ -71,6 +73,7 @@ export interface CreateDivebellCliOptions {
   packageInfo?: DivebellPackageInfo;
   extensions?: readonly DivebellExtensionDefinition[];
   extensionLoadRecords?: readonly ExtensionLoadRecord[];
+  updater?: DivebellCliUpdater | false;
 }
 
 export interface DivebellCli {
@@ -97,4 +100,5 @@ export interface DivebellCliConfig {
     command: DivebellExtensionCommand;
   }>;
   extensionLoadRecords: readonly ExtensionLoadRecord[];
+  updater?: DivebellCliUpdater;
 }

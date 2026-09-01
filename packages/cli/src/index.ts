@@ -92,6 +92,17 @@ export type {
 export type { OpenPageResult } from "./commands/browser.js";
 export type { StopResult } from "./commands/bridge.js";
 export type { RuntimesResult } from "./commands/runtime.js";
+export { createNpmGlobalCliUpdater } from "./features/update/npm.js";
+export type {
+  CliUpdateCommandRunner,
+  CreateNpmGlobalCliUpdaterOptions
+} from "./features/update/npm.js";
+export type {
+  CliUpdateAction,
+  CliUpdateNotice,
+  CliUpdateResult,
+  DivebellCliUpdater
+} from "./features/update/types.js";
 export {
   createCommandOutput,
   createError,
@@ -104,7 +115,7 @@ export {
 export type * from "./utils/output.js";
 
 if (isEntryPoint(process.argv[1], import.meta.url)) {
-  runCliEntry().then((exitCode) => {
+  runCliEntry(process.argv.slice(2), { enableAutomaticUpdates: true }).then((exitCode) => {
     process.exitCode = exitCode;
   });
 }

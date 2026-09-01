@@ -22,15 +22,54 @@ import { runStackCommand } from "./commands/stack.js";
 import { hasOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
 import { runSetupCommand } from "./commands/setup.js";
+import { runUpdateCommand } from "./commands/update.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
 import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import { createLoadingController, type LoadingController } from "./features/loading.js";
+import {
+  consumeCliUpdateNotice,
+  formatCliUpdateNotice,
+  isCliUpdateBackgroundProcess,
+  runCliUpdateBackgroundWorker,
+  scheduleCliAutoUpdate
+} from "./features/update/manager.js";
 import type {
   CliRunOptions,
   DivebellCliConfig
 } from "./types/cli.js";
 
 export async function runCliWithConfig(config: DivebellCliConfig, argv: string[], options: CliRunOptions): Promise<number> {
+  const updater = config.updater;
+  const automaticUpdatesEnabled = options.enableAutomaticUpdates === true
+    && updater !== undefined;
+  const env = options.env ?? process.env;
+  if (
+    automaticUpdatesEnabled
+    && updater !== undefined
+    && isCliUpdateBackgroundProcess(updater, env)
+  ) {
+    return await runCliUpdateBackgroundWorker(updater, env);
+  }
+
+  if (automaticUpdatesEnabled && updater !== undefined) {
+    const notice = consumeCliUpdateNotice(updater, env);
+    if (notice !== null) {
+      (options.stderr ?? process.stderr).write(`${formatCliUpdateNotice(updater, notice)}\n`);
+    }
+  }
+
+  const exitCode = await runCliCommandWithConfig(config, argv, options);
+  if (automaticUpdatesEnabled && updater !== undefined) {
+    scheduleCliAutoUpdate(updater, argv, env);
+  }
+  return exitCode;
+}
+
+async function runCliCommandWithConfig(
+  config: DivebellCliConfig,
+  argv: string[],
+  options: CliRunOptions
+): Promise<number> {
   const stdout = options.stdout ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const fetcher = options.fetcher ?? fetch;
@@ -108,6 +147,23 @@ export async function runCliWithConfig(config: DivebellCliConfig, argv: string[]
           ...(options.setupWaiter === undefined
             ? {}
             : { wait: options.setupWaiter }),
+          env
+        });
+      }
+
+      if (args.command[0] === "update") {
+        if (config.updater === undefined) {
+          throw createError({
+            code: "CLI_UPDATE_UNAVAILABLE",
+            kind: "validation",
+            message: "This CLI did not configure an updater.",
+            retryable: false
+          });
+        }
+        return await runUpdateCommand({
+          args,
+          stdout: commandStdout,
+          updater: config.updater,
           env
         });
       }

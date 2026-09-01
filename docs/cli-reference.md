@@ -14,6 +14,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 ### CLI
 
 - `divebell skill` - Print the path to the Divebell CLI Skill bundled with this package.
+- `divebell update [--check]` - Check or update the managed CLI installation.
 
 ### Browser
 

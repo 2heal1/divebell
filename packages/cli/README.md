@@ -13,22 +13,6 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
-The npm global installation uses a 12-hour version-cache window and checks
-after an ordinary command finishes when that cache is stale. Version checks
-and upgrades run in a detached background process and never delay that
-completed command. Failed or pending upgrades are throttled to at most one
-attempt per minute. Use the top-level command to check or update explicitly:
-
-```sh
-divebell update --check
-divebell update
-```
-
-Source checkouts, temporary `npx` executions, and project-local installations
-are not changed automatically. Set `DIVEBELL_NO_AUTO_UPDATE=1` to disable
-background checks. A successful background upgrade is reported once by the
-next CLI invocation.
-
 The package provides the `divebell` binary. Set
 `DIVEBELL_AGENT_BROWSER_EXECUTABLE` only for a custom or locally built browser
 executable.
@@ -54,38 +38,6 @@ This is distinct from Skills supplied by installed Extensions. First use
 `divebell --help` to identify an Extension command, inspect that command with
 `divebell <command> --help`, then run `divebell <command> --skill` only when
 the command reports that it provides a Skill.
-
-The bundled Skill is part of the CLI package and is upgraded with it. Existing
-agent sessions do not reload changed Skill files automatically, so start a new
-session or read `divebell skill` again after an upgrade when current
-instructions matter.
-
-## Branded CLI Updaters
-
-CLI wrappers built on `createDivebellCli` can opt into the same built-in
-`update` command and background lifecycle without representing package
-management as an Extension. Pass a `DivebellCliUpdater`, or create the npm
-global adapter with `createNpmGlobalCliUpdater`:
-
-```ts
-const updater = createNpmGlobalCliUpdater({
-  packageName: "@scope/branded-cli",
-  currentVersion,
-  packageRoot,
-  registry: "https://registry.example.test",
-  displayName: "Branded CLI",
-  disableAutomaticUpdateEnvironmentVariable: "BRANDED_CLI_NO_AUTO_UPDATE"
-});
-
-const cli = createDivebellCli({ packageInfo, updater });
-await cli.run(process.argv.slice(2), { enableAutomaticUpdates: true });
-```
-
-`packageRoot` must identify the wrapper's installed package root, not the
-embedded `@divebell/cli` code. A custom `packageInfo` does not inherit
-Divebell's default updater; the wrapper must provide its updater explicitly.
-Programmatic `cli.run` calls do not schedule background work unless
-`enableAutomaticUpdates` is set.
 
 ## Real Development Debugging Flow
 

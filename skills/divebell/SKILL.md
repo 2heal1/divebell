@@ -22,21 +22,6 @@ If `divebell` is unavailable, install it globally:
 npm install --global @divebell/cli
 ```
 
-The npm global CLI checks for updates periodically in a detached background
-process after ordinary commands. It does not automatically change source,
-temporary `npx`, or project-local installations. When the user asks to inspect
-or change the installed CLI version, use the built-in command rather than an
-Extension:
-
-```bash
-divebell update --check
-divebell update
-```
-
-The bundled Skill is upgraded with the CLI. An existing Agent session does not
-reload changed Skill files automatically; read `divebell skill` again or start
-a new session after an upgrade.
-
 ## Browser operation rule
 
 When the user explicitly requests Divebell, use Divebell for every browser

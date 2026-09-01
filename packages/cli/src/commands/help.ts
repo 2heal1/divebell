@@ -11,7 +11,7 @@ export const cliCommandReferences: CliCommandReference[] = [
   {
     category: "CLI",
     usage: "divebell update [--check]",
-    description: "Check or update the managed CLI installation; entry points may also check periodically in the background."
+    description: "Check or update the managed CLI installation."
   },
   {
     category: "Bridge and Browser",

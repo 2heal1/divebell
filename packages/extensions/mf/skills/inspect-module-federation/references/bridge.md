@@ -55,10 +55,6 @@ that data loaded, navigation completed, the page is interactive, or the user
 workflow is ready. Route-sync evidence describes a sanitized route action only;
 it does not prove navigation completion.
 
-Some MF runtimes do not expose `afterBridgeCommit`. Divebell normalizes a
-missing raw `commitObserved` state field to `false`; interpret it only as "no
-commit signal observed", not as evidence that the framework failed to commit.
-
 ## Current states
 
 `currentStates` is current Bridge state, separate from historical operations.

@@ -23,7 +23,6 @@ before interpreting a detailed lifecycle.
 - `producerObserved`: producer-side evidence exists.
 - `called`: a before-operation signal exists.
 - `returned`: an after-operation or public result exists.
-- `commitObserved`: framework commit signal exists for this operation.
 - `routeSyncObserved`: route-sync lifecycle evidence exists.
 - `applicationReadiness`: always `not-observed`; Bridge evidence does not prove
   business readiness.
@@ -47,17 +46,16 @@ Lifecycle signal meanings:
 - `called`: the operation hook was entered.
 - `render-invoked`: a producer render invocation was observed.
 - `returned`: the operation returned.
-- `commit`: a framework commit was observed.
 - `observed`: another Bridge lifecycle fact was captured.
 
-A successful render return is not a framework commit. A commit is not proof
-that data loaded, navigation completed, the page is interactive, or the user
-workflow is ready. Route-sync evidence describes a sanitized route action only;
-it does not prove navigation completion.
+A successful render return does not prove that data loaded, navigation
+completed, the page is interactive, or the user workflow is ready. Route-sync
+evidence describes a sanitized route action only; it does not prove navigation
+completion.
 
 ## Current states
 
 `currentStates` is current Bridge state, separate from historical operations.
 `summaryOnly` means the reader has only aggregate state. Other fields can
-include the last operation, current status, and whether any commit or route-sync
-signal was observed. Do not reconstruct missing history from current state.
+include the last operation, current status, and whether any route-sync signal
+was observed. Do not reconstruct missing history from current state.

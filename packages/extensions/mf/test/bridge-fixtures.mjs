@@ -63,15 +63,6 @@ export function bridgeReport(options = {}) {
       message: `bridge:${context.operation}-${result.outcome}`
     }));
   }
-  if (options.commit === true) {
-    events.push(bridgeEvent(result, {
-      lifecycle: "afterBridgeCommit",
-      phase: "bridge-commit",
-      status: "success",
-      timestamp: endedAt + 1,
-      message: "bridge:render-committed"
-    }));
-  }
   return report({
     traceId: options.traceId ?? `trace-${context.operationId}-${context.side}`,
     instanceRef: options.instanceRef ?? "mf-1",
@@ -79,7 +70,7 @@ export function bridgeReport(options = {}) {
     remote: context.remote === undefined ? undefined : { name: context.remote },
     expose: context.expose,
     startedAt: context.startedAt,
-    updatedAt: options.commit === true ? endedAt + 1 : endedAt,
+    updatedAt: endedAt,
     duration: endedAt - context.startedAt,
     bridge: result,
     events
@@ -111,7 +102,6 @@ export function bridgeInstance(options = {}) {
           ...(states[0]?.lastOperationAt === undefined
             ? {}
             : { lastOperationAt: states[0].lastOperationAt }),
-          commitObserved: states.some((state) => state.commitObserved),
           routeSyncObserved: states.some((state) => state.routeSyncObserved),
           states
         }
@@ -130,7 +120,6 @@ export function bridgeState(overrides = {}) {
     lastOperation: "render",
     lastOperationId: "bridge-op-1",
     lastOperationAt: 110,
-    commitObserved: false,
     routeSyncObserved: false,
     ...overrides
   };

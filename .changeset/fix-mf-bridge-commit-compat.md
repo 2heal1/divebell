@@ -2,7 +2,6 @@
 "@divebell/extension-mf": patch
 ---
 
-Accept Bridge runtime state from MF versions that do not expose an
-`afterBridgeCommit` hook. A missing `commitObserved` field now means that no
-commit signal was observed and no longer blocks unrelated MF commands such as
-`module-perf`.
+Remove unsupported Bridge commit observation from state parsing and trace
+output. Current MF observability does not expose that lifecycle signal, so its
+absence no longer blocks unrelated commands such as `module-perf`.

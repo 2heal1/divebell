@@ -189,7 +189,6 @@ export interface RuntimeBridgeState {
   lastOperation?: RuntimeBridgeInfo["operation"];
   lastOperationId?: string;
   lastOperationAt?: number;
-  commitObserved: boolean;
   routeSyncObserved: boolean;
 }
 
@@ -226,7 +225,6 @@ export interface RuntimeInstance {
     expose?: string;
     status?: BridgeStatus;
     lastOperationAt?: number;
-    commitObserved?: boolean;
     routeSyncObserved?: boolean;
     states?: RuntimeBridgeState[];
   };

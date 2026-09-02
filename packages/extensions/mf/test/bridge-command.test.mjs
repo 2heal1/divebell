@@ -13,7 +13,7 @@ import {
 test("bridge trace JSON is stable and preserves explicit lifecycle semantics", async () => {
   const browserValue = bridgeSnapshot({
     instances: [bridgeInstance()],
-    reports: [bridgeReport({ invoked: true, commit: false })]
+    reports: [bridgeReport({ invoked: true })]
   });
   const options = new Map([
     ["instance", ["mf-1"]],
@@ -40,7 +40,7 @@ test("bridge trace JSON is stable and preserves explicit lifecycle semantics", a
   assert.equal(result.selection.kind, "operation");
   assert.equal(result.operations[0].called, true);
   assert.equal(result.operations[0].returned, true);
-  assert.equal(result.operations[0].commitObserved, false);
+  assert.equal("commitObserved" in result.operations[0], false);
   assert.equal(result.operations[0].applicationReadiness, "not-observed");
 });
 
@@ -48,7 +48,7 @@ test("default bridge output preserves instance, sides, timing, outcome, and cons
   const browserValue = bridgeSnapshot({
     instances: [bridgeInstance()],
     reports: [
-      bridgeReport({ invoked: true, commit: true }),
+      bridgeReport({ invoked: true }),
       bridgeReport({ traceId: "producer", bridge: { side: "producer" } })
     ]
   });
@@ -75,7 +75,6 @@ test("default bridge output preserves instance, sides, timing, outcome, and cons
   );
   assert.equal(result.operations[0].duration, 10);
   assert.equal(result.operations[0].outcome, "success");
-  assert.equal(result.operations[0].commitObserved, true);
   assert.equal(result.operations[0].applicationReadiness, "not-observed");
 });
 

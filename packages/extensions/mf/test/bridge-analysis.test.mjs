@@ -50,13 +50,12 @@ test("React and Vue render operations remain distinct and preserve their framewo
 
 test("consumer and producer evidence joins by operationId while retaining each side", () => {
   const snapshot = parsedSnapshot({
-    instances: [bridgeInstance({ states: [bridgeState({ commitObserved: true })] })],
+    instances: [bridgeInstance({ states: [bridgeState()] })],
     reports: [
-      bridgeReport({ invoked: true, commit: true }),
+      bridgeReport({ invoked: true }),
       bridgeReport({
         traceId: "producer-trace",
         invoked: true,
-        commit: true,
         bridge: { side: "producer" }
       })
     ]
@@ -68,21 +67,20 @@ test("consumer and producer evidence joins by operationId while retaining each s
   assert.equal(operations[0].producerObserved, true);
   assert.equal(operations[0].called, true);
   assert.equal(operations[0].returned, true);
-  assert.equal(operations[0].commitObserved, true);
+  assert.equal("commitObserved" in operations[0], false);
   assert.equal(operations[0].applicationReadiness, "not-observed");
 });
 
-test("a successful render return without commit does not claim commit or readiness", () => {
+test("a successful render return does not claim application readiness", () => {
   const snapshot = parsedSnapshot({
     instances: [bridgeInstance()],
-    reports: [bridgeReport({ invoked: true, commit: false })]
+    reports: [bridgeReport({ invoked: true })]
   });
   const operation = createBridgeTraceResult(snapshot, { operationId: "bridge-op-1" })
     .operations[0];
   assert.equal(operation.outcome, "success");
   assert.equal(operation.called, true);
   assert.equal(operation.returned, true);
-  assert.equal(operation.commitObserved, false);
   assert.equal(operation.applicationReadiness, "not-observed");
 });
 
@@ -206,7 +204,7 @@ test("partial Bridge history returns available operations and an explicit warnin
   const snapshot = parsedSnapshot({
     instances: [bridgeInstance()],
     reports: [bridgeReport()],
-    bridgeCapability: capability(true, "partial", "no framework commit signal was observed"),
+    bridgeCapability: capability(true, "partial", "some lifecycle records were unavailable"),
     stateOverrides: {
       completeness: {
         currentState: "complete",
@@ -237,7 +235,6 @@ test("a public report result preserves return evidence when its result event is 
   assert.equal(operation.called, true);
   assert.equal(operation.returned, true);
   assert.equal(operation.outcome, "success");
-  assert.equal(operation.commitObserved, false);
 });
 
 test("unavailable trace is structured and still exposes current Bridge state", () => {

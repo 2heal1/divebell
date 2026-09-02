@@ -222,7 +222,6 @@ function combinedSnapshot(options = {}) {
       lifecycleCount: 4,
       remote: catalogRemote.name,
       states: [bridgeCurrent],
-      commitObserved: false,
       routeSyncObserved: false
     }
   });

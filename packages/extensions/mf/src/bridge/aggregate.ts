@@ -96,7 +96,6 @@ export function listBridgeCurrentStates(
         ...(state.lastOperationAt === undefined
           ? {}
           : { lastOperationAt: state.lastOperationAt }),
-        commitObserved: state.commitObserved,
         routeSyncObserved: state.routeSyncObserved
       }));
     }
@@ -111,7 +110,6 @@ export function listBridgeCurrentStates(
       ...(bridge.lastOperationAt === undefined
         ? {}
         : { lastOperationAt: bridge.lastOperationAt }),
-      commitObserved: bridge.commitObserved === true,
       routeSyncObserved: bridge.routeSyncObserved === true
     }];
   });
@@ -163,9 +161,6 @@ function lifecycleSignal(
     return "called";
   }
   if (event.lifecycle === "bridgeRenderInvoked") return "render-invoked";
-  if (event.lifecycle === "afterBridgeCommit" || event.phase === "bridge-commit") {
-    return "commit";
-  }
   if (
     event.lifecycle === "afterBridgeOperation" ||
     bridge.endedAt !== undefined ||
@@ -273,7 +268,6 @@ function createOperationTrace(group: BridgeEvidenceGroup): BridgeOperationTrace 
     producerObserved: sides.some((side) => side.side === "producer"),
     called: sides.some((side) => side.called),
     returned: sides.some((side) => side.returned),
-    commitObserved: sides.some((side) => side.commitObserved),
     routeSyncObserved: sides.some((side) => side.routeSyncObserved),
     applicationReadiness: "not-observed",
     sides
@@ -313,7 +307,6 @@ function createSideTrace(evidence: BridgeLifecycleEvidence[]): BridgeOperationSi
       item.bridge.endedAt !== undefined ||
       item.bridge.outcome !== undefined
     ),
-    commitObserved: evidence.some((item) => item.signal === "commit"),
     routeSyncObserved: first.operation === "route-sync",
     evidence
   };
@@ -358,7 +351,7 @@ function evidenceFingerprint(evidence: BridgeLifecycleEvidence): string {
 }
 
 function signalOrder(signal: BridgeLifecycleSignal): number {
-  return ["called", "render-invoked", "returned", "commit", "observed"].indexOf(signal);
+  return ["called", "render-invoked", "returned", "observed"].indexOf(signal);
 }
 
 function sideOrder(side: RuntimeBridgeInfo["side"]): number {

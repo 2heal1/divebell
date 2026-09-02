@@ -41,6 +41,8 @@ The output keeps these facts separate:
 
 A successful render return is not a commit. A commit is not proof that business data has loaded, the page is ready for a user, or the application is interactive. The command deliberately reports application readiness as not observed.
 
+Some MF runtimes do not expose `afterBridgeCommit` and therefore omit the raw `commitObserved` state field. Divebell normalizes that case to `false` for compatibility. It means only that no framework commit signal was observed; it does not mean the framework failed to commit.
+
 Route output is limited to the Observability Plugin's sanitized action, path, basename, and mechanism summary. The command does not reread query strings, hashes, tokens, props, or router objects. A route-sync signal alone does not prove that navigation completed.
 
 ## Capability and incomplete history

@@ -1066,7 +1066,13 @@ function parseBridgeState(value: unknown): RuntimeBridgeState {
     ),
     lastOperationId: optionalString(record.lastOperationId, "bridge state lastOperationId"),
     lastOperationAt: optionalNumber(record.lastOperationAt, "bridge state lastOperationAt"),
-    commitObserved: requiredBoolean(record.commitObserved, "bridge state commitObserved"),
+    // MF runtimes without an afterBridgeCommit hook omit this field. Keep the
+    // public state shape stable: false means no commit signal was observed, not
+    // that the framework failed to commit.
+    commitObserved: optionalBoolean(
+      record.commitObserved,
+      "bridge state commitObserved"
+    ) ?? false,
     routeSyncObserved: requiredBoolean(
       record.routeSyncObserved,
       "bridge state routeSyncObserved"

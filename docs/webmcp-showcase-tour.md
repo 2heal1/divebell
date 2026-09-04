@@ -133,25 +133,3 @@ const result = await options.divebell.browser.webmcp.call(
 An Extension can add a review policy, validate known output shapes, capture
 screenshots before and after a call, and produce a repeatable compatibility
 report without changing the target application.
-
-## Launch Copy
-
-### English X thread
-
-**1/2**
-
-WebMCP apps are here. Can your coding agent actually use them?
-
-Divebell explored OpenAI's Margin Editor from the terminal: discovered 10 page
-tools, inspected their schemas and safety annotations, and created a document
-in the live browser session. No MCP server. No manual Chrome flags.
-
-**2/2**
-
-WebMCP makes a product agent-native. Divebell lets the coding agent discover,
-use, debug, and verify it with the same page, session, Console, Network, and
-screenshots.
-
-https://github.com/2heal1/divebell
-
-#WebMCP #OpenAI #CodingAgents #OpenSource

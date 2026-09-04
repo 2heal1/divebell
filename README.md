@@ -35,6 +35,29 @@ npm install --global @divebell/cli
 divebell setup
 ```
 
+### Explore WebMCP from any coding agent
+
+Divebell lets a coding agent discover and call the WebMCP tools exposed by the
+current page. It launches local Chrome with the experimental WebMCP features
+enabled, so there are no browser flags or protocol wiring to configure first.
+
+Try it with OpenAI's Verdant Market showcase:
+
+```bash
+divebell open https://verdant-market-grocery.openai.chatgpt.site/
+divebell webmcp list --json
+divebell webmcp call search_products \
+  --input '{"query":"flour","section":"Pantry & Baking","organic":true}' \
+  --json
+```
+
+The same discovery and invocation capabilities are available to Extensions
+through `divebell.browser.webmcp`, where teams can add policy, validation,
+diagnostics, and acceptance checks.
+
+[WebMCP guide](./docs/webmcp.md) ·
+[Exploring the WebMCP showcase with Divebell](./docs/webmcp-showcase-tour.md)
+
 Install the Module Federation Extension, open the public playground with MF
 diagnostics enabled, and render its observed module loading directly in the
 terminal:

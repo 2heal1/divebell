@@ -18,6 +18,9 @@ divebell webmcp call searchProducts \
   --json
 ```
 
+To try the workflow against public WebMCP applications, follow
+[Exploring the WebMCP showcase with Divebell](webmcp-showcase-tour.md).
+
 `list` returns `apiVersion`, `tools`, `count`, and the active page identity. Each normalized tool includes its name, description, JSON input schema, CDP frame ID, optional annotations, and `source: "imperative" | "declarative"`. Declarative tools may also include `backendNodeId`.
 
 `call` resolves the tool on the active page, invokes it through `WebMCP.invokeTool`, waits for the matching response event, and cancels the invocation if the timeout expires. Duplicate names in different frames require `--frame-id`.

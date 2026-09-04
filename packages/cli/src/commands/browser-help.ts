@@ -143,6 +143,16 @@ export const browserCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
+    usage: "divebell set cpu-throttling <rate|reset>",
+    description: "Apply a Chromium CPU slowdown factor (finite number >= 1), or reset it to normal speed. This does not set host CPU cores."
+  },
+  {
+    category: "Bridge and Browser",
+    usage: "divebell set network-throttling [--latency-ms <ms>] [--download-kbps <kbps>] [--upload-kbps <kbps>] | reset",
+    description: "Apply Chromium network latency and throughput limits, or restore online, zero-latency, unlimited network conditions."
+  },
+  {
+    category: "Bridge and Browser",
     usage: "divebell device list",
     description: "List available mobile browser devices."
   },

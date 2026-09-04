@@ -60,7 +60,9 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell is <visible|enabled|checked> <ref|selector>` - Check an element state.
 - `divebell find <role|text|label|placeholder|alt|title|testid|first|last|nth> <value> <action> [text]` - Find an element semantically and act on it.
 - `divebell mouse <move|down|up|wheel> [args]` - Control the browser mouse.
-- `divebell set <viewport|device|geo|offline|headers|credentials|media> [value...]` - Change browser page settings.
+- `divebell set <viewport|device|geo|offline|headers|credentials|media|cpu-throttling|network-throttling> [value...]` - Change browser page settings.
+- `divebell set cpu-throttling <rate|reset>` - Apply a Chromium CPU slowdown factor (finite number >= 1), or reset it to normal speed. This does not set host CPU cores.
+- `divebell set network-throttling [--latency-ms <ms>] [--download-kbps <kbps>] [--upload-kbps <kbps>] | reset` - Apply Chromium network latency and throughput limits, or restore online, zero-latency, unlimited network conditions.
 - `divebell device list` - List available mobile browser devices.
 - `divebell cookies [get|set|clear] [args]` - Inspect or change cookies in the current browser session.
 - `divebell storage <local|session> [get|set|clear] [args]` - Inspect or change browser storage.

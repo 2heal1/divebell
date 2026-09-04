@@ -29,15 +29,17 @@ actually uses WebMCP or for debugging a tool implementation.
 Any coding agent that can run a CLI can use the same short workflow:
 
 ```bash
-divebell open <webmcp-app-url>
+divebell open <webmcp-app-url> --ui --no-default-profile
 divebell webmcp list --json
 divebell webmcp call <tool-name> --input '<json-object>' --json
 ```
 
 `divebell open` enables the current and transitional Chrome WebMCP features for
-a local Chrome launch. `list` exposes the exact tool name, description, input
-schema, annotations, frame ID, and imperative or declarative source. `call`
-invokes the selected page tool in the current browser session.
+a local Chrome launch. The isolated profile avoids unrelated extensions and
+existing Chrome state while exploring public demos. `list` exposes the exact
+tool name, description, input schema, annotations, frame ID, and imperative or
+declarative source. `call` invokes the selected page tool in the current browser
+session.
 
 The coding agent can then use the rest of Divebell against the same page:
 
@@ -68,7 +70,9 @@ Divebell discovered the full contract, including the allowed department values
 and numeric limits:
 
 ```bash
-divebell open https://verdant-market-grocery.openai.chatgpt.site/
+divebell open https://verdant-market-grocery.openai.chatgpt.site/ \
+  --ui \
+  --no-default-profile
 divebell webmcp list --json
 ```
 
@@ -112,7 +116,9 @@ imperative tools: three read operations and seven write operations for local
 documents and comment threads.
 
 ```bash
-divebell open https://margin-local-docs.openai.chatgpt.site/
+divebell open https://margin-local-docs.openai.chatgpt.site/ \
+  --ui \
+  --no-default-profile
 divebell webmcp list --json
 divebell webmcp call list_documents --input '{"limit":5}' --json
 ```

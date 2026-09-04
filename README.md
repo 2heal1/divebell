@@ -44,7 +44,9 @@ enabled, so there are no browser flags or protocol wiring to configure first.
 Try it with OpenAI's Verdant Market showcase:
 
 ```bash
-divebell open https://verdant-market-grocery.openai.chatgpt.site/
+divebell open https://verdant-market-grocery.openai.chatgpt.site/ \
+  --ui \
+  --no-default-profile
 divebell webmcp list --json
 divebell webmcp call search_products \
   --input '{"query":"flour","section":"Pantry & Baking","organic":true}' \

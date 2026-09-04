@@ -58,6 +58,8 @@ diagnostics, and acceptance checks.
 [WebMCP guide](./docs/webmcp.md) ·
 [Exploring the WebMCP showcase with Divebell](./docs/webmcp-showcase-tour.md)
 
+### Visualize Module Federation Resource Timing
+
 Install the Module Federation Extension, open the public playground with MF
 diagnostics enabled, and render its observed module loading directly in the
 terminal:

@@ -74,7 +74,6 @@ function appendCurrentStates(lines: string[], states: BridgeCurrentState[]): voi
       `    status: ${state.status ?? "unknown"}`,
       `    last operation: ${state.lastOperation ?? "unknown"} (${state.lastOperationId ?? "unknown"})`,
       `    last observed at: ${formatTime(state.lastOperationAt)}`,
-      `    commit observed in current Bridge state: ${yesNo(state.commitObserved)}`,
       `    route sync observed in current Bridge state: ${yesNo(state.routeSyncObserved)}`
     );
   }
@@ -99,7 +98,6 @@ function appendOperations(lines: string[], operations: BridgeOperationTrace[]): 
       `    producer execution observed: ${yesNo(operation.producerObserved)}`,
       `    call observed: ${yesNo(operation.called)}`,
       `    return observed: ${yesNo(operation.returned)}`,
-      `    commit observed for this operation: ${yesNo(operation.commitObserved)}`,
       `    route sync observed for this operation: ${yesNo(operation.routeSyncObserved)}`,
       "    application readiness: not observed by Bridge lifecycle evidence"
     );
@@ -115,7 +113,6 @@ function appendSide(lines: string[], side: BridgeOperationSideTrace): void {
     `      called: ${yesNo(side.called)}`,
     `      render invoked: ${yesNo(side.renderInvoked)}`,
     `      returned: ${yesNo(side.returned)}`,
-    `      commit observed: ${yesNo(side.commitObserved)}`,
     `      route sync observed: ${yesNo(side.routeSyncObserved)}`,
     `      started: ${formatTime(side.startedAt)}`,
     `      ended: ${formatTime(side.endedAt)}`,

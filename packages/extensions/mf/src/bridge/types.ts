@@ -17,7 +17,6 @@ export type BridgeLifecycleSignal =
   | "called"
   | "render-invoked"
   | "returned"
-  | "commit"
   | "observed";
 
 export interface BridgeLifecycleEvidence {
@@ -49,7 +48,6 @@ export interface BridgeOperationSideTrace {
   called: boolean;
   renderInvoked: boolean;
   returned: boolean;
-  commitObserved: boolean;
   routeSyncObserved: boolean;
   evidence: BridgeLifecycleEvidence[];
 }
@@ -75,7 +73,6 @@ export interface BridgeOperationTrace {
   producerObserved: boolean;
   called: boolean;
   returned: boolean;
-  commitObserved: boolean;
   routeSyncObserved: boolean;
   applicationReadiness: "not-observed";
   sides: BridgeOperationSideTrace[];
@@ -97,7 +94,6 @@ export interface BridgeCurrentState {
   lastOperation?: RuntimeBridgeState["lastOperation"];
   lastOperationId?: string;
   lastOperationAt?: number;
-  commitObserved: boolean;
   routeSyncObserved: boolean;
 }
 

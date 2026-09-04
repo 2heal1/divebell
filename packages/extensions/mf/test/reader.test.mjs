@@ -17,6 +17,41 @@ test("injected mode accepts the MF-Obs-00 runtime-state schema", () => {
   assert.equal(result.snapshot.observabilityVersion, "2.5.4");
 });
 
+test("reader does not expose the obsolete Bridge commit observation field", () => {
+  const result = parseBrowserReadResult(browserRead(runtimeState({
+    instances: [instance({
+      instanceRef: "mf-1",
+      name: "host",
+      role: "consumer",
+      bridge: {
+        available: true,
+        commitObserved: true,
+        states: [{
+          bridgeId: "catalog-bridge",
+          side: "consumer",
+          framework: "react",
+          status: "rendered",
+          lastOperation: "render",
+          lastOperationId: "bridge-op-1",
+          lastOperationAt: 20,
+          commitObserved: true,
+          routeSyncObserved: false
+        }]
+      }
+    })]
+  })));
+
+  assert.equal(result.ok, true);
+  assert.equal(
+    "commitObserved" in result.snapshot.state.instances[0].bridge,
+    false
+  );
+  assert.equal(
+    "commitObserved" in result.snapshot.state.instances[0].bridge.states[0],
+    false
+  );
+});
+
 test("reader keeps only a bounded and sanitized MF proxy marker", () => {
   const result = parseBrowserReadResult(browserRead(runtimeState(), [], {
     proxyMarker: {
@@ -568,7 +603,6 @@ test("reader preserves public Bridge lifecycle and current-state fields", () => 
         expose: "./App",
         status: "rendered",
         lastOperationAt: 315,
-        commitObserved: true,
         routeSyncObserved: true,
         states: [{
           bridgeId: "catalog-bridge",
@@ -581,7 +615,6 @@ test("reader preserves public Bridge lifecycle and current-state fields", () => 
           lastOperation: "route-sync",
           lastOperationId: "bridge-op-1",
           lastOperationAt: 315,
-          commitObserved: true,
           routeSyncObserved: true,
           props: { token: "must-not-leak" },
           router: { private: true }

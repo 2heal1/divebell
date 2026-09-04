@@ -47,7 +47,7 @@ conclusions.
 - Use `shared status [package]` for the current Shared registry.
 - Use `shared trace [package]` for registration, version selection, and loading
   history.
-- Use `bridge trace [remote]` for render, update, destroy, route-sync, and commit
+- Use `bridge trace [remote]` for render, update, destroy, and route-sync
   evidence.
 
 Start broad only when the target is unknown. Once the output supplies a

@@ -591,7 +591,6 @@ function parseInstance(value: unknown): RuntimeInstance {
           "bridge status"
         ),
         lastOperationAt: optionalNumber(bridgeRecord.lastOperationAt, "bridge lastOperationAt"),
-        commitObserved: optionalBoolean(bridgeRecord.commitObserved, "bridge commitObserved"),
         routeSyncObserved: optionalBoolean(
           bridgeRecord.routeSyncObserved,
           "bridge routeSyncObserved"
@@ -1066,7 +1065,6 @@ function parseBridgeState(value: unknown): RuntimeBridgeState {
     ),
     lastOperationId: optionalString(record.lastOperationId, "bridge state lastOperationId"),
     lastOperationAt: optionalNumber(record.lastOperationAt, "bridge state lastOperationAt"),
-    commitObserved: requiredBoolean(record.commitObserved, "bridge state commitObserved"),
     routeSyncObserved: requiredBoolean(
       record.routeSyncObserved,
       "bridge state routeSyncObserved"

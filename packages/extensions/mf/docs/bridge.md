@@ -36,10 +36,9 @@ The output keeps these facts separate:
 | Producer execution observed | A producer-side Bridge lifecycle record |
 | Render invocation observed | `bridgeRenderInvoked` |
 | Operation returned | `afterBridgeOperation` or a public result with an outcome |
-| Framework commit observed | `afterBridgeCommit` for that operation |
 | Route sync observed | A route-sync lifecycle record |
 
-A successful render return is not a commit. A commit is not proof that business data has loaded, the page is ready for a user, or the application is interactive. The command deliberately reports application readiness as not observed.
+A successful render return is not proof that business data has loaded, the page is ready for a user, or the application is interactive. The command deliberately reports application readiness as not observed.
 
 Route output is limited to the Observability Plugin's sanitized action, path, basename, and mechanism summary. The command does not reread query strings, hashes, tokens, props, or router objects. A route-sync signal alone does not prove that navigation completed.
 

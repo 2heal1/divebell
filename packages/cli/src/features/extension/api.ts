@@ -39,12 +39,15 @@ import type {
   DivebellBrowserConsoleOptions,
   DivebellBrowserConsoleResult,
   DivebellBrowserCoverageCheckpointOptions,
+  DivebellBrowserCpuThrottlingResult,
   DivebellBrowserDebugLogpointSetOptions,
   DivebellBrowserDebugScript,
   DivebellBrowserDebugStatusOptions,
   DivebellBrowserDebugTargetOptions,
   DivebellBrowserNetworkRequestDetail,
   DivebellBrowserNetworkRequestSummary,
+  DivebellBrowserNetworkThrottlingOptions,
+  DivebellBrowserNetworkThrottlingResult,
   DivebellBrowserTab,
   DivebellBrowserWaitEvalResult,
   DivebellBrowserWebMcpCallOptions,
@@ -276,7 +279,7 @@ function createDivebellBrowserApi(options: {
         retryable: false
       });
     }
-    const args = ["webmcp", "call", normalizedToolName, "--input", serializedInput];
+    const args = ["webmcp", "invoke", normalizedToolName, "--params", serializedInput];
     if (webMcpOptions.frameId !== undefined) {
       const frameId = webMcpOptions.frameId.trim();
       if (frameId.length === 0) {
@@ -287,7 +290,7 @@ function createDivebellBrowserApi(options: {
           retryable: false
         });
       }
-      args.push("--frame-id", frameId);
+      args.push("--frame", frameId);
     }
     if (webMcpOptions.timeout !== undefined) {
       if (!Number.isSafeInteger(webMcpOptions.timeout) || webMcpOptions.timeout <= 0) {
@@ -479,6 +482,39 @@ function createDivebellBrowserApi(options: {
         await runJson(createCoverageCheckpointArgs("stop", coverageOptions)),
       cancel: async () => await runJson(["coverage", "cancel", "--json"])
     },
+    throttling: {
+      cpu: {
+        set: async (rate) => {
+          assertBrowserThrottlingNumber("CPU throttling rate", rate, 1);
+          return await runJson<DivebellBrowserCpuThrottlingResult>([
+            "set",
+            "cpu-throttling",
+            String(rate),
+            "--json"
+          ]);
+        },
+        reset: async () =>
+          await runJson<DivebellBrowserCpuThrottlingResult>([
+            "set",
+            "cpu-throttling",
+            "reset",
+            "--json"
+          ])
+      },
+      network: {
+        set: async (throttlingOptions) => {
+          const args = createNetworkThrottlingArgs(throttlingOptions);
+          return await runJson<DivebellBrowserNetworkThrottlingResult>([...args, "--json"]);
+        },
+        reset: async () =>
+          await runJson<DivebellBrowserNetworkThrottlingResult>([
+            "set",
+            "network-throttling",
+            "reset",
+            "--json"
+          ])
+      }
+    },
     webmcp: {
       list: async () => await runWebMcpJson<DivebellBrowserWebMcpListResult>([
         "webmcp",
@@ -592,6 +628,43 @@ function createCoverageCheckpointArgs(
   appendNumberOption(args, "max-size", options.maxSize);
   args.push("--json");
   return args;
+}
+
+function createNetworkThrottlingArgs(
+  options: DivebellBrowserNetworkThrottlingOptions
+): string[] {
+  const args = ["set", "network-throttling"];
+  let hasValue = false;
+  for (const [optionName, value] of [
+    ["latency-ms", options.latencyMs],
+    ["download-kbps", options.downloadKbps],
+    ["upload-kbps", options.uploadKbps]
+  ] as const) {
+    if (value === undefined) continue;
+    assertBrowserThrottlingNumber(optionName, value, 0);
+    args.push(`--${optionName}`, String(value));
+    hasValue = true;
+  }
+  if (!hasValue) {
+    throw createError({
+      code: "INVALID_BROWSER_NETWORK_THROTTLING",
+      kind: "validation",
+      message: "Network throttling requires at least one condition.",
+      retryable: false
+    });
+  }
+  return args;
+}
+
+function assertBrowserThrottlingNumber(name: string, value: number, minimum: number): void {
+  if (!Number.isFinite(value) || value < minimum) {
+    throw createError({
+      code: "INVALID_BROWSER_THROTTLING",
+      kind: "validation",
+      message: `${name} must be a finite number greater than or equal to ${minimum}.`,
+      retryable: false
+    });
+  }
 }
 
 function appendNumberOption(args: string[], name: string, value: number | undefined): void {

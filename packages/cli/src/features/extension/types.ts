@@ -505,6 +505,36 @@ export interface DivebellBrowserCoverageApi {
   cancel(): Promise<unknown>;
 }
 
+export interface DivebellBrowserCpuThrottlingResult {
+  rate: number;
+}
+
+export interface DivebellBrowserNetworkThrottlingOptions {
+  latencyMs?: number;
+  downloadKbps?: number;
+  uploadKbps?: number;
+}
+
+export interface DivebellBrowserNetworkThrottlingResult {
+  offline: boolean;
+  latencyMs: number;
+  downloadKbps: number | null;
+  uploadKbps: number | null;
+}
+
+export interface DivebellBrowserThrottlingApi {
+  cpu: {
+    set(rate: number): Promise<DivebellBrowserCpuThrottlingResult>;
+    reset(): Promise<DivebellBrowserCpuThrottlingResult>;
+  };
+  network: {
+    set(
+      options: DivebellBrowserNetworkThrottlingOptions
+    ): Promise<DivebellBrowserNetworkThrottlingResult>;
+    reset(): Promise<DivebellBrowserNetworkThrottlingResult>;
+  };
+}
+
 export interface DivebellBrowserRawOptions {
   ui?: boolean;
   input?: string;
@@ -597,6 +627,7 @@ export interface DivebellBrowserApi {
   console: DivebellBrowserConsoleApi;
   memory: DivebellBrowserMemoryApi;
   coverage: DivebellBrowserCoverageApi;
+  throttling: DivebellBrowserThrottlingApi;
   webmcp: DivebellBrowserWebMcpApi;
   debug: DivebellBrowserDebugApi;
 }

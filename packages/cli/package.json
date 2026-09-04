@@ -46,7 +46,7 @@
     "test:network-control-https-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs https"
   },
   "dependencies": {
-    "@divebell/agent-browser": "0.34.0-divebell.4",
+    "@divebell/agent-browser": "0.36.0-divebell.1",
     "@divebell/bridge": "workspace:^",
     "@divebell/core": "workspace:^"
   },

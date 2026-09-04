@@ -14,7 +14,9 @@ import type {
   CliCommandSkillReference,
   ExtensionLoadRecord,
   DivebellExtensionCommand,
-  DivebellExtensionDefinition
+  DivebellExtensionDefinition,
+  DivebellOpenHookNetworkThrottling,
+  DivebellOpenHookThrottling
 } from "./commands.js";
 import type { CliOperationLogStore, ParsedCliArgs } from "./shared.js";
 import type { ExtensionPackageDownloader } from "../commands/installed.js";
@@ -30,7 +32,9 @@ export type {
   CliExtensionRunRequest,
   CliExtensionRunOptions,
   DivebellExtensionCommand,
-  DivebellExtensionDefinition
+  DivebellExtensionDefinition,
+  DivebellOpenHookNetworkThrottling,
+  DivebellOpenHookThrottling
 } from "./commands.js";
 
 export interface CliRunOptions {

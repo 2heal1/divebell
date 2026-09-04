@@ -15,6 +15,10 @@ Before creating or modifying an Extension, read
 Read the relevant section of `references/api.md` when exact types, fields,
 arguments, or return values are needed.
 
+For first-load behavior on low-end devices or constrained networks, read
+`references/low-end-device-debugging.md`. It explains the pre-navigation
+`open` Hook throttling configuration.
+
 Before using `options.divebell.browser.raw`, read
 `references/browser-raw.md` in full. It contains the available raw subcommands,
 their installed help flow, and the raw transport/result contract.

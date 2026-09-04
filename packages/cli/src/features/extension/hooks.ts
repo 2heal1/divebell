@@ -1,5 +1,6 @@
 import type {
   DivebellExtensionDefinition,
+  DivebellOpenHookNetworkThrottling,
   DivebellOpenHookOptions,
   DivebellPageHookOptions,
   DivebellStackDetection
@@ -43,6 +44,10 @@ export async function runOpenHooks(
   openedUrl?: string;
   scripts: ExtensionOpenHookScript[];
   companionPages: ExtensionOpenHookCompanionPage[];
+  throttling?: {
+    cpuRate?: number;
+    network?: DivebellOpenHookNetworkThrottling;
+  };
   failures: ExtensionHookFailure[];
 }> {
   const registry = new Map(extensions.map((extension) => [extension.name, extension]));
@@ -51,6 +56,10 @@ export async function runOpenHooks(
   let openedUrlExtension: string | undefined;
   const scripts: ExtensionOpenHookScript[] = [];
   const companionPages: ExtensionOpenHookCompanionPage[] = [];
+  const throttling: {
+    cpuRate?: number;
+    network?: DivebellOpenHookNetworkThrottling;
+  } = {};
   const failures: ExtensionHookFailure[] = [...plan.failures];
 
   for (const batch of plan.batches) {
@@ -145,6 +154,12 @@ export async function runOpenHooks(
               })
         });
       }
+      mergeOpenHookThrottling(
+        throttling,
+        result.value.result?.throttling,
+        extensionName,
+        failures
+      );
     }
   }
 
@@ -153,8 +168,102 @@ export async function runOpenHooks(
     ...(openedUrl === undefined ? {} : { openedUrl }),
     scripts,
     companionPages,
+    ...(Object.keys(throttling).length === 0 ? {} : { throttling }),
     failures
   };
+}
+
+function mergeOpenHookThrottling(
+  target: {
+    cpuRate?: number;
+    network?: DivebellOpenHookNetworkThrottling;
+  },
+  value: unknown,
+  extensionName: string,
+  failures: ExtensionHookFailure[]
+): void {
+  if (value === undefined) return;
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    failures.push(failure(extensionName, "open", "Open hook throttling must be an object."));
+    return;
+  }
+  const throttling = value as {
+    cpuRate?: unknown;
+    network?: unknown;
+  };
+  const next: {
+    cpuRate?: number;
+    network?: DivebellOpenHookNetworkThrottling;
+  } = {};
+  if (throttling.cpuRate !== undefined) {
+    if (!isFiniteNumberAtLeast(throttling.cpuRate, 1)) {
+      failures.push(failure(extensionName, "open", "Open hook cpuRate must be a finite number greater than or equal to 1."));
+      return;
+    }
+    next.cpuRate = throttling.cpuRate;
+  }
+  if (throttling.network !== undefined) {
+    const network = validateOpenHookNetworkThrottling(throttling.network, extensionName, failures);
+    if (network === undefined) return;
+    next.network = network;
+  }
+  if (next.cpuRate === undefined && next.network === undefined) {
+    failures.push(failure(extensionName, "open", "Open hook throttling requires cpuRate or network conditions."));
+    return;
+  }
+  if (
+    next.cpuRate !== undefined
+    && target.cpuRate !== undefined
+    && target.cpuRate !== next.cpuRate
+  ) {
+    failures.push(failure(extensionName, "open", "Open hook cpuRate conflicts with another Extension."));
+    return;
+  }
+  const mergedNetwork = { ...target.network };
+  if (next.network !== undefined) {
+    for (const field of ["latencyMs", "downloadKbps", "uploadKbps"] as const) {
+      const nextValue = next.network[field];
+      if (nextValue === undefined) continue;
+      if (mergedNetwork[field] !== undefined && mergedNetwork[field] !== nextValue) {
+        failures.push(failure(extensionName, "open", `Open hook network ${field} conflicts with another Extension.`));
+        return;
+      }
+      mergedNetwork[field] = nextValue;
+    }
+  }
+  if (next.cpuRate !== undefined) target.cpuRate = next.cpuRate;
+  if (next.network !== undefined) target.network = mergedNetwork;
+}
+
+function validateOpenHookNetworkThrottling(
+  value: unknown,
+  extensionName: string,
+  failures: ExtensionHookFailure[]
+): DivebellOpenHookNetworkThrottling | undefined {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    failures.push(failure(extensionName, "open", "Open hook network throttling must be an object."));
+    return undefined;
+  }
+  const network = value as Record<string, unknown>;
+  const result: DivebellOpenHookNetworkThrottling = {};
+  for (const field of ["latencyMs", "downloadKbps", "uploadKbps"] as const) {
+    const fieldValue = network[field];
+    if (fieldValue === undefined) continue;
+    if (!isFiniteNumberAtLeast(fieldValue, 0)) {
+      failures.push(failure(extensionName, "open", `Open hook network ${field} must be a non-negative finite number.`));
+      return undefined;
+    }
+    result[field] = fieldValue;
+  }
+  if (Object.keys(result).length === 0) {
+    failures.push(failure(extensionName, "open", "Open hook network throttling requires at least one condition."));
+    return undefined;
+  }
+  return result;
+}
+
+function isFiniteNumberAtLeast(value: unknown, minimum: number): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= minimum;
 }
 
 export async function runDetectStackHooks(

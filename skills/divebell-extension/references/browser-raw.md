@@ -2,7 +2,9 @@
 
 Read this reference before using `options.divebell.browser.raw`. Prefer a typed
 browser API when it already exposes the required capability. `raw` is for a
-bundled agent-browser command that has no typed Extension API.
+bundled agent-browser command that has no typed Extension API. In particular,
+use `browser.throttling.cpu` and `browser.throttling.network` rather than raw
+`set cpu-throttling` or `set network-throttling` commands.
 
 ## Call and transport result
 
@@ -253,6 +255,7 @@ Pass the chosen form without `agent-browser`, for example `options.divebell.brow
 ### Documented upstream but unavailable
 
 - `addinitscript` appears in the bundled agent-browser documentation, but its parser does not declare it or provide command help. Do not use it through `browser.raw`.
+- `goto` appears in the bundled agent-browser documentation, but its parser does not declare it or provide command help. Do not use it through `browser.raw`.
 - `navigate` appears in the bundled agent-browser documentation, but its parser does not declare it or provide command help. Do not use it through `browser.raw`.
 
 

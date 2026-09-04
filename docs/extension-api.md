@@ -372,6 +372,10 @@ the package root or inspect the installed
 | `browser.screenshot` | Capture the page and return the artifact path. | `DivebellBrowserApi`, `DivebellBrowserScreenshotOptions` |
 | `browser.tabs.list` | List open tabs and identify the active tab. | `DivebellBrowserTabsApi`, `DivebellBrowserTab` |
 | `browser.tabs.activate` | Make a tab the active page using its stable tab ID. | `DivebellBrowserTabsApi` |
+| `browser.throttling.cpu.set` | Apply a Chromium CPU slowdown factor to the active browser session. | `DivebellBrowserThrottlingApi`, `DivebellBrowserCpuThrottlingResult` |
+| `browser.throttling.cpu.reset` | Restore the CPU slowdown factor to `1`. | `DivebellBrowserThrottlingApi`, `DivebellBrowserCpuThrottlingResult` |
+| `browser.throttling.network.set` | Apply one or more network conditions to the active browser session. | `DivebellBrowserThrottlingApi`, `DivebellBrowserNetworkThrottlingOptions`, `DivebellBrowserNetworkThrottlingResult` |
+| `browser.throttling.network.reset` | Restore online, zero-latency, unlimited network conditions. | `DivebellBrowserThrottlingApi`, `DivebellBrowserNetworkThrottlingResult` |
 | `browser.network.list` | List optionally filtered request summaries. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkOptions`, `DivebellBrowserNetworkRequestSummary` |
 | `browser.network.get` | Read one request's headers, bodies, status, and MIME type. | `DivebellBrowserNetworkApi`, `DivebellBrowserNetworkRequestDetail` |
 | `browser.network.clear` | Clear retained request history. | `DivebellBrowserNetworkApi` |
@@ -427,6 +431,8 @@ const contentType = detail.response?.headers["content-type"];
 `browser.network` also provides `clear`, `route`, `unroute`, and `har`.
 `browser.console` provides `list` and `clear`. Memory and Coverage expose
 concrete result types rather than caller-selected generic types.
+`browser.throttling` applies Chromium CPU slowdown and network conditions to
+the active session. CPU `rate` is a slowdown factor, not a host CPU-core count.
 `browser.webmcp` provides typed tool discovery and invocation without
 `browser.raw`; see [WebMCP](webmcp.md) for usage, Chrome compatibility, result
 typing, and trust boundaries.

@@ -16,13 +16,18 @@ const extension = {
     commandReferences: [
       {
         category: "Extensions",
+        usage: "divebell open <url> --code-usage-experience [--code-usage-ready-mark <name> | --code-usage-ready-measure <name> | --code-usage-ready-selector <css>]",
+        description: "Install a page-side ready observer before navigation; without an explicit target, use page-stable@2."
+      },
+      {
+        category: "Extensions",
         usage: "divebell code-usage analyze --chunk-map <path> --coverage <path> [--coverage <path>...] [--experience <path>...] [--assets <dir>] [--output <report.json>]",
         description: "Analyze actual chunk, source file, and dependency usage from a Chunk Map, build assets, and page coverage."
       },
       {
         category: "Extensions",
-        usage: "divebell code-usage experience --output <path> --label <name> [--ready-target <name>] [--settle-ms <ms>]",
-        description: "Save page readiness and JavaScript memory measurements from a page opened with --code-usage-experience."
+        usage: "divebell code-usage experience --output <path> --label <name> [--ready-target <description-only>] [--settle-ms <ms>]",
+        description: "Save automatically observed page readiness and JavaScript memory from a recorder-enabled page."
       },
       {
         category: "Extensions",

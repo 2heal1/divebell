@@ -8,6 +8,7 @@ import type {
   DivebellCodeUsageChunkResult,
   DivebellCodeUsageCodeFileResult,
   DivebellCodeUsageInput,
+  DivebellCodeUsageOpportunity,
   DivebellCodeUsagePackageResult,
   DivebellCodeUsagePhaseResult,
   DivebellCodeUsageReport,
@@ -148,6 +149,10 @@ function analyzePhase(
   const sources = [...sourceTotals.values()]
     .map(withSourceRatio)
     .sort((left, right) => right.totalBytes - left.totalBytes || left.sourcePath.localeCompare(right.sourcePath));
+  const chunks = [...chunkTotals.values()]
+    .map(withChunkRatio)
+    .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId));
+  const packages = createPackageUsage(sources);
   return {
     label,
     scriptsCaptured: scripts.length,
@@ -157,11 +162,10 @@ function analyzePhase(
     unmatchedScriptUrls: [...new Set(unmatchedScriptUrls)].sort(),
     unmatchedScripts: unmatchedScripts.sort((left, right) =>
       left.url.localeCompare(right.url) || left.scriptId.localeCompare(right.scriptId)),
-    chunks: [...chunkTotals.values()]
-      .map(withChunkRatio)
-      .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId)),
+    chunks,
     sources,
-    packages: createPackageUsage(sources),
+    packages,
+    opportunities: createOptimizationOpportunities(chunks, sources, packages),
     codeFiles: [...codeFileTotals.values()]
       .sort((left, right) => right.totalBytes - left.totalBytes || left.file.localeCompare(right.file))
   };
@@ -302,7 +306,7 @@ function addSourceUsage(
     if (existing === undefined) {
       existing = {
         sourcePath: range.sourcePath,
-        owner: module?.owner ?? unknownOwner(),
+        owner: module?.owner ?? inferOwnerFromSourcePath(range.sourcePath),
         chunkIds: [],
         fileRanges: [],
         totalBytes: 0,
@@ -389,7 +393,21 @@ function findModule(
       if (module.sourcePath === null) return false;
       const modulePath = normalizePath(module.sourcePath);
       return normalizedSource.endsWith(modulePath) || modulePath.endsWith(normalizedSource);
+    })
+    ?? modules.find((module) => {
+      if (module.sourcePath === null) return false;
+      const moduleSuffix = comparablePathSuffix(module.sourcePath);
+      const sourceSuffix = comparablePathSuffix(sourcePath);
+      return moduleSuffix !== null && moduleSuffix === sourceSuffix;
     });
+}
+
+function comparablePathSuffix(value: string): string | null {
+  const normalized = normalizePath(value);
+  const nodeModulesIndex = normalized.lastIndexOf("/node_modules/");
+  if (nodeModulesIndex >= 0) return normalized.slice(nodeModulesIndex + 1);
+  const sourceIndex = normalized.lastIndexOf("/src/");
+  return sourceIndex >= 0 ? normalized.slice(sourceIndex + 1) : null;
 }
 
 function resolveSourcePath(asset: DivebellCodeUsageAsset, source: string): string {
@@ -575,6 +593,121 @@ function ratio(usedBytes: number, totalBytes: number): number | null {
 
 function fallbackPackageName(source: DivebellCodeUsageSourceResult): string {
   return source.owner.kind === "application" ? "(application)" : "(unmatched)";
+}
+
+function inferOwnerFromSourcePath(sourcePath: string): DivebellChunkMapModuleOwner {
+  const normalized = normalizePath(sourcePath);
+  const marker = "/node_modules/";
+  const index = normalized.lastIndexOf(marker);
+  if (index < 0) return unknownOwner();
+  const tail = normalized.slice(index + marker.length);
+  const parts = tail.split("/").filter(Boolean);
+  const packageName = parts[0]?.startsWith("@")
+    ? parts.slice(0, 2).join("/")
+    : parts[0];
+  if (packageName === undefined || packageName.length === 0) return unknownOwner();
+  const packagePartCount = packageName.startsWith("@") ? 2 : 1;
+  const pnpmMatch = normalized.match(/\/\.pnpm\/([^/]+)\/node_modules\//);
+  const pnpmEntry = pnpmMatch?.[1] ?? "";
+  const versionSeparator = pnpmEntry.lastIndexOf("@");
+  const packageVersion = versionSeparator > 0
+    ? pnpmEntry.slice(versionSeparator + 1).split("_")[0] || null
+    : null;
+  return {
+    kind: "third-party",
+    packageName,
+    packageVersion,
+    packageSubpath: parts.slice(packagePartCount).join("/") || null
+  };
+}
+
+function createOptimizationOpportunities(
+  chunks: DivebellCodeUsageChunkResult[],
+  sources: DivebellCodeUsageSourceResult[],
+  packages: DivebellCodeUsagePackageResult[]
+): DivebellCodeUsageOpportunity[] {
+  const opportunities: DivebellCodeUsageOpportunity[] = [];
+  for (const chunk of chunks) {
+    const usedRatio = chunk.usedRatio;
+    const unusedBytes = Math.max(0, chunk.totalBytes - chunk.usedBytes);
+    if (usedRatio === null || chunk.totalBytes < 32 * 1024 || unusedBytes < 16 * 1024 || usedRatio > 0.75) continue;
+    const mappedRatio = chunk.totalBytes === 0 ? 0 : (chunk.mappedBytes ?? 0) / chunk.totalBytes;
+    const confidence = mappedRatio >= 0.8 ? "high" : mappedRatio >= 0.4 ? "medium" : "low";
+    opportunities.push({
+      id: `chunk:${chunk.chunkId}`,
+      kind: "large-low-use-chunk",
+      subject: `Chunk ${chunk.chunkId}`,
+      totalBytes: chunk.totalBytes,
+      usedBytes: chunk.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: chunk.usedBytes,
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: [chunk.chunkId],
+      evidence: [
+        chunk.initial ? "loaded by an initial chunk" : "loaded by an async chunk in this phase",
+        `${unusedBytes} raw bytes could leave this recorded phase at most`,
+        `${Math.round((1 - usedRatio) * 1000) / 10}% was not executed`,
+        `${Math.round(mappedRatio * 1000) / 10}% has source-map attribution`
+      ]
+    });
+  }
+  for (const source of sources) {
+    const usedRatio = source.usedRatio;
+    const unusedBytes = Math.max(0, source.totalBytes - source.usedBytes);
+    if (usedRatio === null || source.totalBytes < 16 * 1024 || unusedBytes < 12 * 1024 || usedRatio > 0.6) continue;
+    const confidence = source.owner.kind === "unknown" ? "low" : "high";
+    opportunities.push({
+      id: `source:${source.sourcePath}`,
+      kind: "large-low-use-source",
+      subject: source.sourcePath,
+      totalBytes: source.totalBytes,
+      usedBytes: source.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: source.usedBytes,
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: source.chunkIds,
+      evidence: [
+        `${unusedBytes} source-mapped raw bytes could leave this recorded phase at most`,
+        `${Math.round((1 - usedRatio) * 1000) / 10}% of source-mapped bytes were not executed`,
+        source.owner.kind === "unknown" ? "source ownership could not be proven" : `${source.owner.kind} source`
+      ]
+    });
+  }
+  for (const item of packages) {
+    const usedRatio = item.usedRatio;
+    const unusedBytes = Math.max(0, item.totalBytes - item.usedBytes);
+    if (usedRatio === null || item.totalBytes < 32 * 1024 || unusedBytes < 24 * 1024 || usedRatio > 0.6) continue;
+    const confidence = item.kind === "unknown" ? "low" : "medium";
+    opportunities.push({
+      id: `package:${item.kind}:${item.packageName}@${item.packageVersion ?? ""}`,
+      kind: "large-low-use-package",
+      subject: item.packageVersion ? `${item.packageName}@${item.packageVersion}` : item.packageName,
+      totalBytes: item.totalBytes,
+      usedBytes: item.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: item.usedBytes,
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: item.chunkIds,
+      evidence: [
+        `${unusedBytes} source-mapped raw bytes could leave this recorded phase at most`,
+        `${Math.round((1 - usedRatio) * 1000) / 10}% of source-mapped bytes were not executed`,
+        `${item.sourceCount} mapped sources across ${item.chunkIds.length} chunks`
+      ]
+    });
+  }
+  return opportunities.sort((left, right) =>
+    right.potentialSavingsBytes - left.potentialSavingsBytes
+      || right.unusedBytes - left.unusedBytes
+      || left.id.localeCompare(right.id));
 }
 
 function unknownOwner(): DivebellChunkMapModuleOwner {

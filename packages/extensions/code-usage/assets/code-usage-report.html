@@ -131,6 +131,12 @@
       margin-bottom: 16px;
     }
     .coverage-scope { margin-bottom: 16px; padding: 15px 18px; }
+    .opportunities { margin-bottom: 16px; padding: 18px; }
+    .opportunity-list { display: grid; gap: 9px; margin-top: 12px; }
+    .opportunity-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted); }
+    .opportunity-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .opportunity-impact { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .opportunity-evidence { grid-column: 1 / -1; color: var(--muted-foreground); font-size: 12px; }
     .coverage-scope-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
     .coverage-scope-summary { margin-top: 5px; color: var(--muted-foreground); font-size: 13px; }
     .unmatched-scripts { margin-top: 11px; border-top: 1px solid var(--border); padding-top: 10px; }
@@ -966,6 +972,16 @@
       </label>
     </section>
 
+    <section id="opportunities" class="card opportunities" aria-label="Ranked optimization opportunities" hidden>
+      <div class="panel-head">
+        <div>
+          <h2>Ranked optimization opportunities</h2>
+          <p class="hint">Ranked by the largest raw JavaScript amount that could leave this recorded phase. Coverage is an upper bound: rebuild to verify gzip, requests, and final asset size.</p>
+        </div>
+      </div>
+      <div id="opportunity-list" class="opportunity-list"></div>
+    </section>
+
     <section class="card coverage-scope" aria-label="Coverage scope">
       <div class="coverage-scope-head">
         <h2>Coverage scope</h2>
@@ -1143,8 +1159,14 @@
           document.getElementById("ready-memory").textContent = formatBytes(numberOrNull(memory.atReadyBytes));
           document.getElementById("peak-memory").textContent = formatBytes(numberOrNull(memory.peakBytes));
           document.getElementById("ready-duration-note").textContent = phaseExperience
-            ? formatText("End condition: {target}=ready{median}", {
-                target: phaseExperience.readyTarget || formatText("readiness target"),
+            ? formatText("End condition: {target}=ready{confidence}{median}", {
+                target: phaseExperience.ready && phaseExperience.ready.specId || phaseExperience.readyTarget || formatText("readiness target"),
+                confidence: phaseExperience.ready
+                  ? formatText(" · {confidence} confidence · {source}", {
+                      confidence: phaseExperience.ready.confidence,
+                      source: phaseExperience.ready.selectedBy === "user" ? "user supplied" : "tool default"
+                    })
+                  : "",
                 median: phaseExperience.runCount > 1
                   ? formatText(" · median of {count} runs", { count: phaseExperience.runCount })
                   : ""
@@ -1416,6 +1438,38 @@
           }
         };
 
+        const renderOpportunities = (phase) => {
+          const panel = document.getElementById("opportunities");
+          const list = document.getElementById("opportunity-list");
+          const opportunities = Array.isArray(phase.opportunities) ? phase.opportunities.slice(0, 8) : [];
+          panel.hidden = opportunities.length === 0;
+          list.replaceChildren();
+          for (const opportunity of opportunities) {
+            const item = document.createElement("article");
+            item.className = "opportunity-item";
+            const name = document.createElement("div");
+            name.className = "opportunity-name";
+            name.textContent = opportunity.subject || opportunity.id || "Opportunity";
+            const impact = document.createElement("div");
+            impact.className = "opportunity-impact";
+            impact.textContent = formatText("Current {current} → coverage floor {floor} · up to {savings} raw can leave phase", {
+              current: formatBytes(opportunity.totalBytes),
+              floor: formatBytes(opportunity.coverageFloorBytes ?? opportunity.usedBytes),
+              savings: formatBytes(opportunity.potentialSavingsBytes ?? opportunity.unusedBytes)
+            });
+            const evidence = document.createElement("div");
+            evidence.className = "opportunity-evidence";
+            evidence.textContent = [
+              opportunity.kind,
+              formatText("{confidence} confidence", { confidence: opportunity.confidence || "unknown" }),
+              formatText("{ratio} used", { ratio: formatPercent(numberOrNull(opportunity.usedRatio)) }),
+              ...(Array.isArray(opportunity.evidence) ? opportunity.evidence : [])
+            ].join(" · ");
+            item.append(name, impact, evidence);
+            list.append(item);
+          }
+        };
+
         let renderVersion = 0;
         const render = () => {
           const version = ++renderVersion;
@@ -1436,6 +1490,7 @@
             );
           }
           renderCoverageScope(phase);
+          renderOpportunities(phase);
 
           document.getElementById("total-size-label").textContent = state.view === "chunks"
             ? formatText("Built file size")

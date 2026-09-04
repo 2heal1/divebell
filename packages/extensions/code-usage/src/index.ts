@@ -36,9 +36,11 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
 export { analyzeCodeUsageFiles } from "./code-usage.js";
 export {
   captureCodeUsageExperience,
+  createPageExperienceInitScript,
   isCodeUsageExperienceEnabled,
   openCodeUsageExperience,
-  PAGE_EXPERIENCE_INIT_SCRIPT
+  PAGE_EXPERIENCE_INIT_SCRIPT,
+  readySpecFromOpenArgs
 } from "./experience.js";
 export {
   createCodeUsageReportHtml,
@@ -88,7 +90,9 @@ async function runAnalyze(
       experience: result.experience,
       assets: result.assets,
       output: result.output,
-      phaseCount: result.phaseCount
+      phaseCount: result.phaseCount,
+      opportunityCount: ("usage" in result.report ? result.report.usage : result.report)
+        .phases.reduce((sum, phase) => sum + (phase.opportunities?.length ?? 0), 0)
     };
   } catch (error) {
     throw commandError({
@@ -113,14 +117,13 @@ async function runExperience(
   const outputPath = getOptionValue(options.args, "output")
     ?? "divebell-page-experience.json";
   const label = getOptionValue(options.args, "label") ?? "first-screen";
-  const readyTarget = getOptionValue(options.args, "ready-target")
-    ?? "explicit page-ready condition";
+  const readyTarget = getOptionValue(options.args, "ready-target");
   const settleMs = parseSettleMs(getOptionValue(options.args, "settle-ms"));
   try {
     const result = await captureCodeUsageExperience(options.divebell.browser, {
       outputPath,
       label,
-      readyTarget,
+      ...(readyTarget === undefined ? {} : { readyTarget }),
       settleMs
     });
     return {
@@ -128,6 +131,9 @@ async function runExperience(
       label: result.phase.label,
       url: result.phase.url,
       readyDurationMs: result.phase.readyDurationMs,
+      readySpecId: result.phase.ready?.specId ?? result.phase.readyTarget,
+      readySelectedBy: result.phase.ready?.selectedBy ?? "legacy",
+      readyConfidence: result.phase.ready?.confidence ?? "unknown",
       memoryAtReadyBytes: result.phase.memory.atReadyBytes,
       peakMemoryBytes: result.phase.memory.peakBytes,
       stableMemoryBytes: result.phase.memory.stableBytes
@@ -140,7 +146,7 @@ async function runExperience(
       message,
       ...(message.includes("recorder is missing")
         ? {
-            hint: "Reopen the page with `divebell open <url> --code-usage-experience`, wait for the explicit ready condition, then retry."
+            hint: "Reopen the page with `divebell open <url> --code-usage-experience`; optionally add a mark, measure, or selector ready target. Otherwise page-stable@2 is used."
           }
         : {})
     });

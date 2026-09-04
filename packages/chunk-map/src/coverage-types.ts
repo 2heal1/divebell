@@ -132,6 +132,40 @@ export interface DivebellCodeUsageChunkResult {
   unmappedUsedBytes?: number;
 }
 
+export type DivebellCodeUsageOpportunityKind =
+  | "large-low-use-chunk"
+  | "large-low-use-source"
+  | "large-low-use-package";
+
+export interface DivebellCodeUsageOpportunity {
+  id: string;
+  kind: DivebellCodeUsageOpportunityKind;
+  subject: string;
+  totalBytes: number;
+  usedBytes: number;
+  unusedBytes: number;
+  /**
+   * The largest raw-JavaScript byte count that could leave the recorded phase
+   * if every unexecuted byte in this opportunity can be deferred or removed.
+   * This is a coverage upper bound, not a post-build size prediction.
+   */
+  potentialSavingsBytes: number;
+  /**
+   * The raw-JavaScript coverage floor for this opportunity. Splitting and
+   * minification may make the real post-build size larger or smaller.
+   */
+  coverageFloorBytes: number;
+  usedRatio: number;
+  /**
+   * Kept for machine consumers that already sort by score. It is exactly the
+   * potential phase savings; confidence and implementation cost never reduce it.
+   */
+  score: number;
+  confidence: "high" | "medium" | "low";
+  chunkIds: string[];
+  evidence: string[];
+}
+
 export interface DivebellCodeUsagePhaseResult {
   label: string;
   scriptsCaptured?: number;
@@ -143,6 +177,7 @@ export interface DivebellCodeUsagePhaseResult {
   chunks: DivebellCodeUsageChunkResult[];
   sources: DivebellCodeUsageSourceResult[];
   packages: DivebellCodeUsagePackageResult[];
+  opportunities?: DivebellCodeUsageOpportunity[];
   codeFiles?: DivebellCodeUsageCodeFileResult[];
 }
 

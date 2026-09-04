@@ -219,7 +219,7 @@ function validateExperiencePhase(
 ): CodeUsageExperiencePhase {
   if (
     !isRecord(value)
-    || value.schemaVersion !== 1
+    || (value.schemaVersion !== 1 && value.schemaVersion !== 2)
     || typeof value.label !== "string"
     || value.label.length === 0
     || typeof value.url !== "string"

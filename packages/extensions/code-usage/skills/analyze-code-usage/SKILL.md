@@ -1,205 +1,27 @@
 ---
 name: analyze-code-usage
-description: Use the Divebell Code Usage Extension to analyze the current web project and page, map browser-executed JavaScript to initial and async chunks, application source, workspace packages, and third-party dependencies, and generate a code-usage size report. Use when the user asks to inspect initial-page code cost, executed or unused code size, chunk usage, dependency usage, lazy-loading opportunities, or a code-usage report for the current project or page with the globally installed divebell command.
+description: Measure, explain, and optimize browser JavaScript usage for a real page with the Divebell Code Usage Extension. Use for code-usage reports, executed or unused code size, chunk/dependency attribution, lazy-loading, first-screen optimization, or chunking decisions.
 ---
 
-# Analyze page code usage
+# Code Usage
 
-Use `divebell coverage` to record real page workflows, then use
-`divebell code-usage` to match execution ranges to the Chunk Map, JavaScript,
-and source maps from the same production build.
+Use the browser CLI that returned this Skill to connect real execution to
+chunks, source files, workspace packages, and dependencies from the same build.
+For example, use `divebell` after `divebell code-usage --skill`, and use
+`bytedbrowser` after `bytedbrowser code-usage --skill`. Do not mix their
+browser sessions or substitute a different browser tool.
 
-This skill ships with `@divebell/extension-code-usage` and is discoverable
-through `divebell code-usage --skill`.
+Choose one mode before acting:
 
-## Working principles
+- **Analyze:** the user wants a report, diagnosis, or opportunity list without
+  changing source or chunking. Read [analysis](references/analyze.md) in full.
+- **Optimize:** the user asks to change source, lazy loading, routes, imports,
+  or chunking. If no trustworthy baseline report exists, read and complete
+  [analysis](references/analyze.md) first. Then read
+  [first-screen optimization](references/optimize-first-screen.md) in full
+  before selecting a code change.
 
-- Use the globally installed `divebell`; do not add `@divebell/cli` or the
-  Extension to the application project.
-- The page, Chunk Map, JavaScript, and source maps must come from the same
-  production build. Stop attribution when that cannot be proven; never guess
-  from a filename.
-- Reproduce the account, environment, page, and user path that matter to the
-  request. Reuse existing login state and never bypass authorization boundaries.
-- Code coverage changes JavaScript-engine behavior. Do not use loading-speed or
-  memory measurements collected with coverage enabled as performance evidence.
-- "Unused" means only that the explicitly recorded workflows did not execute
-  that code. It does not prove that the code can be removed.
-- After changing lazy loading or chunking, rebuild and record the same pages,
-  phases, and actions again.
-
-## 1. Confirm the command
-
-Run:
-
-```bash
-divebell code-usage --help
-```
-
-If `divebell` is unavailable, ask the user to install `@divebell/cli` globally
-and run `divebell setup`. If the `code-usage` command is missing, ask the user
-to run:
-
-```bash
-divebell extensions add @divebell/extension-code-usage
-```
-
-Do not install the CLI or Extension in the application project.
-
-## 2. Prepare an exact production build
-
-1. Read the project documentation, package files, build configuration, and
-   startup scripts to identify the build tool, production build command, output
-   directory, and page URL.
-2. Check whether the build already emits `divebell-chunks.json` and JavaScript
-   source maps.
-3. For Modern.js, use `@divebell/modern-plugin/chunk-map`. Use only this
-   build-time entry; do not add the WIP runtime plugin.
-4. For Rspack or Rsbuild, use `@divebell/rspack-plugin`.
-5. If another build tool has no available Chunk Map integration, report the
-   unsupported setup. Do not simulate build relationships.
-
-Minimal Modern.js integration:
-
-```ts
-import { appTools, defineConfig } from "@modern-js/app-tools";
-import { divebellChunkMapPlugin } from "@divebell/modern-plugin/chunk-map";
-
-export default defineConfig({
-  plugins: [appTools(), divebellChunkMapPlugin()]
-});
-```
-
-Minimal Rspack integration:
-
-```ts
-import { DivebellChunkMapRspackPlugin } from "@divebell/rspack-plugin";
-
-export default {
-  plugins: [new DivebellChunkMapRspackPlugin()]
-};
-```
-
-Use the project's existing package manager to add the matching build plugin,
-enable JavaScript source maps, and run a production build. Confirm that the
-JavaScript and `.js.map` files referenced by the Chunk Map exist, then serve
-the page from that exact output.
-
-Change build configuration only when the user requested a report and the
-required integration is missing. Do not redesign unrelated build settings.
-
-## 3. Measure page readiness and loading memory before coverage
-
-A standard code-usage report includes page-ready time and JavaScript memory.
-Measure them in a separate page load with code coverage disabled before
-recording coverage. Skip this step only when the user explicitly requests a
-code-only report or the target browser cannot provide the measurement; state
-that omission in the final result.
-
-For the first-screen phase, open the page with the measurement recorder enabled:
-
-```bash
-divebell open <page-url> --code-usage-experience
-# Wait for the same explicit page-ready condition used for verification.
-divebell code-usage experience \
-  --output /tmp/first-screen.experience.json \
-  --label first-screen \
-  --ready-target "<ready-condition>"
-```
-
-The `experience` command captures the end time chosen by the Agent, the heap at
-that point, the loading peak, resource timing, and memory after a short settling
-period. Do not start code coverage before this command finishes.
-
-Collect one experience file for every coverage phase that will appear in the
-combined report, using exactly the same labels. The recorder finishes after one
-capture, so reopen the page with `--code-usage-experience` for each additional
-phase, reproduce the journey up to that phase with coverage still disabled,
-then capture it. For example, reopen the page, wait for the first screen, perform
-the representative interaction, wait for its explicit ready condition, and
-capture `/tmp/interaction.experience.json` with `--label interaction`.
-
-## 4. Record the current page and representative workflows
-
-Use project documentation, routes, and existing end-to-end tests to identify
-the page URL and an explicit ready condition. Open the page in the intended
-account and environment, start coverage, then reload so initial execution
-happens after recording begins:
-
-```bash
-divebell open <page-url>
-divebell coverage start
-divebell reload
-# Wait for an explicit page-ready condition.
-```
-
-For a multi-phase report, save the first screen, perform one representative
-user action, and stop:
-
-```bash
-divebell coverage take /tmp/first-screen.coverage.json --label first-screen
-# Use divebell click, fill, goto, run-action, or another page command.
-divebell coverage stop /tmp/interaction.coverage.json --label interaction
-```
-
-If the user requested only the first screen, use `coverage stop` for the
-first-screen file and omit the second phase. Every `coverage take` resets
-execution counts. Give each phase a name that describes the real action.
-
-If recording fails, run `divebell coverage cancel`, fix the page, login, or
-wait condition, and retry.
-
-## 5. Generate and open the report
-
-Use the build output that exactly matches the page:
-
-```bash
-divebell code-usage analyze \
-  --chunk-map <production-output>/divebell-chunks.json \
-  --coverage /tmp/first-screen.coverage.json \
-  --coverage /tmp/interaction.coverage.json \
-  --experience /tmp/first-screen.experience.json \
-  --experience /tmp/interaction.experience.json \
-  --output /tmp/code-usage-report.json
-
-divebell code-usage report /tmp/code-usage-report.json
-```
-
-Pass `--assets <production-output>` only when the JavaScript and source maps
-are not beside the Chunk Map. Trusted HTTP or HTTPS build URLs are also
-supported, but every artifact must still match the page's exact build.
-Omit `--experience` only when step 3 was intentionally skipped for a code-only
-report. When it is present, its labels must exactly match all coverage labels.
-
-## 6. Inspect the result
-
-1. Check the coverage-scope summary first. Report how many scripts had an
-   address, how many matched the analyzed build, how many were outside the
-   build, and how many had no address. Explain network, generated, and inline
-   scripts separately. If an application script is unmatched, fix the build
-   mapping before making source-ownership claims.
-2. Inspect large, low-use application files, workspace packages, and
-   third-party dependencies on the first screen.
-3. Identify their initial or async chunks and the recorded split rule.
-4. Compare critical interaction phases so "not needed initially" is not
-   confused with "not needed by the product."
-5. Change code or chunking only when the user asked for optimization. Rebuild
-   and rerun the exact same workflow afterward.
-
-## 7. Report
-
-Clearly state:
-
-1. The page and interaction phases that were recorded.
-2. The build output and report path.
-3. Every generated report path: HTML, data file, and code directory when one
-   exists. Keep them together.
-4. The matched and outside-build script counts, and whether any application
-   scripts were unmatched.
-5. Whether readiness and memory were measured separately. When they were,
-   report the ready time, heap at ready, and loading peak.
-6. The largest low-use sources in the requested phase.
-7. Lazy-loading or chunking candidates and the evidence for each.
-8. Which workflows the "unused" result covers and which remain unrecorded.
-9. If an optimization was made, the before-and-after result from the same
-   build and page workflow.
+An optimization request uses the same Skill and starts from analysis; it does
+not create a second Skill or a separate CLI command. The optimization reference
+owns the default 70% first-screen target, state artifact, candidate workflow,
+and A/B acceptance rules.

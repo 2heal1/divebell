@@ -37,7 +37,13 @@
     "build": "tsc -b --pretty false",
     "prepublish": "node ./scripts/copy-cli-skill.mjs",
     "test": "pnpm run build && pnpm run prepublish && node ../../scripts/validate-command-output.mjs --self-test && tsc -p tsconfig.test.json --pretty false && rstest run",
-    "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs"
+    "test:browser-e2e": "pnpm run build && node test/browser-commands.e2e.mjs",
+    "test:network-control-e2e": "pnpm run build && node test/network-control.e2e.mjs",
+    "test:network-control-advanced-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs",
+    "test:network-control-multi-daemon-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs multi-daemon",
+    "test:network-control-pac-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs pac",
+    "test:network-control-fixed-proxy-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs fixed-proxy",
+    "test:network-control-https-e2e": "pnpm run build && node test/network-control-advanced.e2e.mjs https"
   },
   "dependencies": {
     "@divebell/agent-browser": "0.34.0-divebell.4",

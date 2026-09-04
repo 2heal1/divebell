@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { getNumberOption, getOptionValue, type ParsedCliArgs } from "../utils/args.js";
+import { join, resolve } from "node:path";
+import { getNumberOption, getOptionValue, getOptionValues, type ParsedCliArgs } from "../utils/args.js";
 import { createBridgeStateStore, createBridgeUrl } from "../features/bridge/config.js";
 import { createBridgeInitScript } from "../features/bridge/inject.js";
 import {
@@ -27,6 +27,19 @@ import {
 } from "../utils/command.js";
 import { withDivebellSession } from "../utils/url.js";
 import { resolveDivebellHomeDirectory } from "../utils/home.js";
+import {
+  createBrowserNetworkFingerprint,
+  validateBrowserRequestRules,
+  validateBrowserProxyPacUrl,
+  type BrowserRequestRules
+} from "../features/browser/network-control.js";
+import {
+  attachNetworkControl,
+  createDetachedNetworkControlStarter,
+  stopNetworkControl,
+  type ManagedNetworkControl,
+  type NetworkControlStarter
+} from "../features/browser/network-control-process.js";
 import { applyBrowserRestoreContextDefaults, applyOpenContextBrowserMode, applyOpenContextDefaultsOrThrow, collectBrowserRestoreContextOptions, createExtensionPageContext } from "../open-context.js";
 import { createBrowserCommandArgs, getOpenCommandSessionId, shouldPreferInteractiveTextClick } from "../features/browser/command-args.js";
 import { runBrowserAndPipe } from "../features/browser/io.js";
@@ -58,6 +71,10 @@ export interface OpenPageResult {
   sessionId: string | null;
   openedAt: number;
   injectedScriptPath?: string;
+  requestControl?: {
+    pid: number;
+    controlUrl: string;
+  };
 }
 
 const WEBMCP_BROWSER_ARGUMENTS = [
@@ -81,7 +98,11 @@ export async function runBrowserCliCommand(
   extensions: readonly DivebellExtensionDefinition[],
   openHookPlan: ExtensionHookPlan,
   stdin: AsyncIterable<string | Uint8Array>,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
+  requestControlStarter: NetworkControlStarter = createDetachedNetworkControlStarter(
+    new URL("../bin.js", import.meta.url).href,
+    resolveDivebellHomeDirectory(env)
+  )
 ): Promise<number> {
   const command = args.command[0];
   if (command === "open") {
@@ -99,13 +120,18 @@ export async function runBrowserCliCommand(
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
     const browserUi = hasOption(args, "ui");
     const webMcpLaunch = await createWebMcpBrowserLaunch(args, env);
-    const browserArguments = webMcpLaunch.browserArguments;
     if (webMcpLaunch.warning !== undefined) {
       stderr.write(webMcpLaunch.warning);
     }
     const openedUrl = withDivebellSession(url, sessionId);
     const headers = parseHeadersOption(args);
+    const networkConfiguration = await resolveNetworkConfiguration({
+      args,
+      previousOpenContext,
+      env
+    });
     let bridgeUrl: string | null = null;
+    let startedRequestControl: ManagedNetworkControl | undefined;
     let committed = false;
     try {
       const bridge = await prepareOpenBridge(
@@ -117,6 +143,20 @@ export async function runBrowserCliCommand(
       );
       bridgeUrl = bridge?.bridgeUrl ?? null;
       const bridgePort = bridge?.port ?? null;
+      let requestControl = previousOpenContext?.requestControl;
+      if (networkConfiguration.needsControl && requestControl === undefined) {
+        startedRequestControl = await requestControlStarter.start({
+          fingerprint: networkConfiguration.fingerprint as string,
+          ...(networkConfiguration.rules === undefined ? {} : { rules: networkConfiguration.rules })
+        });
+        requestControl = startedRequestControl;
+      }
+      const browserArguments = appendBrowserArguments(
+        webMcpLaunch.browserArguments,
+        networkConfiguration.proxyPacUrl === undefined
+          ? undefined
+          : `--proxy-pac-url=${networkConfiguration.proxyPacUrl}`
+      );
       if (previousOpenContext !== undefined) {
         await runExtensionCloseHooks({
           args: {
@@ -160,7 +200,18 @@ export async function runBrowserCliCommand(
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
           ...(browserArguments === undefined ? {} : { browserArguments })
-        }
+        },
+        requestControl === undefined
+          ? undefined
+          : (() => {
+              const control = requestControl;
+              return async () => {
+                await attachNetworkControl(
+                  control,
+                  await readBrowserCdpUrl(openBrowserRunner)
+                );
+              };
+            })()
       );
       if (result.exitCode !== 0) {
         throw createError({
@@ -216,6 +267,10 @@ export async function runBrowserCliCommand(
           ? {}
           : { browserDefaultProfile: result.defaultProfile }),
         browserRestoreOptions: collectBrowserRestoreContextOptions(args),
+        ...(networkConfiguration.fingerprint === undefined
+          ? {}
+          : { browserNetworkFingerprint: networkConfiguration.fingerprint }),
+        ...(requestControl === undefined ? {} : { requestControl }),
         ...(headers === undefined ? {} : { headers })
       });
       committed = true;
@@ -229,7 +284,15 @@ export async function runBrowserCliCommand(
         openedAt,
         ...(result.injectedScriptPath === undefined
           ? {}
-          : { injectedScriptPath: result.injectedScriptPath })
+          : { injectedScriptPath: result.injectedScriptPath }),
+        ...(requestControl === undefined
+          ? {}
+          : {
+              requestControl: {
+                pid: requestControl.pid,
+                controlUrl: requestControl.controlUrl
+              }
+            })
       };
       createCommandOutput(stdout, args.command.join(" ")).ok(output, "Page opened.");
       if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
@@ -238,6 +301,7 @@ export async function runBrowserCliCommand(
       return 0;
     } catch (error) {
       if (!committed) {
+        await stopNetworkControl(startedRequestControl);
         if (previousOpenContext?.bridgeUrl !== bridgeUrl) {
           await stopOpenContextBridge(bridgeUrl, bridgeStateDirectory);
         }
@@ -256,6 +320,23 @@ export async function runBrowserCliCommand(
     ? applyBrowserRestoreContextDefaults(args, openContext)
     : args;
   const pageBrowserRunner = applyOpenContextBrowserMode(browserRunner, openContext);
+
+  if (openContext?.requestControl !== undefined && isNetworkNavigationCommand(command)) {
+    try {
+      await attachNetworkControl(
+        openContext.requestControl,
+        await readBrowserCdpUrl(pageBrowserRunner)
+      );
+    } catch (error) {
+      throw createError({
+        code: "BROWSER_REQUEST_CONTROL_REATTACH_FAILED",
+        kind: "browser",
+        message: `Could not reattach Divebell request interception before navigation: ${errorMessage(error)}`,
+        retryable: true,
+        hint: "Run `divebell stop` and reopen the page with the same proxy and request-rule configuration."
+      });
+    }
+  }
 
   if (command === "get-window") {
     const path = requireCommandArgument(commandArgs, 1, "window path");
@@ -332,6 +413,11 @@ function disablesDefaultChromeProfile(args: ParsedCliArgs): boolean {
     );
 }
 
+function isNetworkNavigationCommand(command: string | undefined): boolean {
+  return command === "goto" || command === "navigate" || command === "back" ||
+    command === "forward" || command === "reload" || command === "pushstate";
+}
+
 function validateWebMcpOpenArgs(args: ParsedCliArgs): void {
   if (!hasOption(args, "no-webmcp") || getOptionValue(args, "no-webmcp") === "true") {
     return;
@@ -352,13 +438,7 @@ async function createWebMcpBrowserLaunch(
   if (hasOption(args, "no-webmcp")) {
     return {};
   }
-  const launch = await resolveBrowserLaunchConfiguration({
-    command: createBrowserCommandOptionsFromMap(args.options),
-    env,
-    agentBrowserHome: env.AGENT_BROWSER_HOME?.trim()
-      || join(resolveDivebellHomeDirectory(env), "agent-browser"),
-    cwd: process.cwd()
-  });
+  const launch = await resolveDivebellBrowserLaunchConfiguration(args, env);
   if (!launch.usesDivebellLaunchedChrome) {
     return { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
   }
@@ -377,6 +457,171 @@ async function createWebMcpBrowserLaunch(
       ...WEBMCP_BROWSER_ARGUMENTS
     ].join("\n")
   };
+}
+
+async function resolveDivebellBrowserLaunchConfiguration(
+  args: ParsedCliArgs,
+  env: NodeJS.ProcessEnv
+): ReturnType<typeof resolveBrowserLaunchConfiguration> {
+  return resolveBrowserLaunchConfiguration({
+    command: createBrowserCommandOptionsFromMap(args.options),
+    env,
+    agentBrowserHome: env.AGENT_BROWSER_HOME?.trim()
+      || join(resolveDivebellHomeDirectory(env), "agent-browser"),
+    cwd: process.cwd()
+  });
+}
+
+interface ResolvedNetworkConfiguration {
+  rules?: BrowserRequestRules;
+  proxyPacUrl?: string;
+  fingerprint?: string;
+  needsControl: boolean;
+}
+
+async function resolveNetworkConfiguration(options: {
+  args: ParsedCliArgs;
+  previousOpenContext: CliOperationLogEntry | undefined;
+  env: NodeJS.ProcessEnv;
+}): Promise<ResolvedNetworkConfiguration> {
+  if (hasOption(options.args, "network-rules")) {
+    throw createError({
+      code: "BROWSER_OPEN_OPTION_INVALID",
+      kind: "validation",
+      message: "--network-rules is not a Divebell option.",
+      retryable: false,
+      hint: "Use --request-rules <path>."
+    });
+  }
+  const hasNetworkConfigurationOption = hasOption(options.args, "request-rules") ||
+    hasOption(options.args, "proxy-pac-url") || hasOption(options.args, "proxy");
+  if (!hasNetworkConfigurationOption && options.previousOpenContext !== undefined) {
+    return {
+      ...(options.previousOpenContext.browserNetworkFingerprint === undefined
+        ? {}
+        : { fingerprint: options.previousOpenContext.browserNetworkFingerprint }),
+      needsControl: options.previousOpenContext.requestControl !== undefined
+    };
+  }
+  const rulesPath = getSingleValueOption(options.args, "request-rules");
+  const fixedProxy = getSingleValueOption(options.args, "proxy");
+  const proxyPacUrlValue = getSingleValueOption(options.args, "proxy-pac-url");
+  if (fixedProxy !== undefined && proxyPacUrlValue !== undefined) {
+    throw createError({
+      code: "BROWSER_PROXY_CONFIGURATION_CONFLICT",
+      kind: "validation",
+      message: "--proxy and --proxy-pac-url cannot be used together.",
+      retryable: false,
+      hint: "Use --proxy for one fixed endpoint, or --proxy-pac-url for conditional PAC rules."
+    });
+  }
+  const rules = rulesPath === undefined
+    ? undefined
+    : await readRequestRulesFile(rulesPath);
+  let proxyPacUrl: string | undefined;
+  if (proxyPacUrlValue !== undefined) {
+    try {
+      proxyPacUrl = validateBrowserProxyPacUrl(proxyPacUrlValue);
+    } catch (error) {
+      throw createError({
+        code: "BROWSER_PROXY_PAC_URL_INVALID",
+        kind: "validation",
+        message: errorMessage(error),
+        retryable: false
+      });
+    }
+    const launch = await resolveDivebellBrowserLaunchConfiguration(options.args, options.env);
+    if (!launch.usesDivebellLaunchedChrome) {
+      throw createError({
+        code: "BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED",
+        kind: "validation",
+        message: "A PAC URL requires a Chromium instance launched by Divebell.",
+        retryable: false,
+        hint: "Remove --cdp, --auto-connect, or --provider and launch Chrome through divebell open."
+      });
+    }
+  }
+  const fingerprint = createBrowserNetworkFingerprint({
+    ...(rules === undefined ? {} : { rules }),
+    ...(fixedProxy === undefined ? {} : { fixedProxy }),
+    ...(proxyPacUrl === undefined ? {} : { proxyPacUrl })
+  });
+  if (options.previousOpenContext !== undefined && options.previousOpenContext.browserNetworkFingerprint !== fingerprint) {
+    throw createError({
+      code: "BROWSER_PROXY_RESTART_REQUIRED",
+      kind: "validation",
+      message: "Browser proxy and request-rule configuration is scoped to the current browser daemon session and can only change at browser launch.",
+      retryable: false,
+      hint: "Run `divebell stop`, then run `divebell open` with the new --proxy, --proxy-pac-url, or --request-rules configuration."
+    });
+  }
+  return {
+    ...(rules === undefined ? {} : { rules }),
+    ...(proxyPacUrl === undefined ? {} : { proxyPacUrl }),
+    ...(fingerprint === undefined ? {} : { fingerprint }),
+    needsControl: rules !== undefined
+  };
+}
+
+async function readRequestRulesFile(path: string): Promise<BrowserRequestRules> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(resolve(path), "utf8")) as unknown;
+  } catch (error) {
+    throw createError({
+      code: "BROWSER_REQUEST_RULES_READ_FAILED",
+      kind: "validation",
+      message: `Could not read --request-rules file: ${errorMessage(error)}`,
+      retryable: false
+    });
+  }
+  try {
+    return validateBrowserRequestRules(parsed);
+  } catch (error) {
+    throw createError({
+      code: "BROWSER_REQUEST_RULES_INVALID",
+      kind: "validation",
+      message: errorMessage(error),
+      retryable: false
+    });
+  }
+}
+
+function getSingleValueOption(args: ParsedCliArgs, name: string): string | undefined {
+  const values = getOptionValues(args, name);
+  if (values.length === 0) return undefined;
+  if (values.length !== 1 || values[0] === "true" || values[0]?.trim().length === 0) {
+    throw createError({
+      code: "BROWSER_OPEN_OPTION_INVALID",
+      kind: "validation",
+      message: `--${name} must be supplied once with a non-empty value.`,
+      retryable: false
+    });
+  }
+  return values[0];
+}
+
+async function readBrowserCdpUrl(browserRunner: BrowserRunner): Promise<string> {
+  const result = await browserRunner.run(["get", "cdp-url", "--json"]);
+  if (result.exitCode !== 0) throw new Error(result.stderr.trim() || result.stdout.trim() || "Could not read browser CDP URL.");
+  let parsed: unknown;
+  try { parsed = parseBrowserJsonOutput(result.stdout); } catch { throw new Error("Browser returned invalid CDP URL JSON."); }
+  const cdpUrl = parsed !== null && typeof parsed === "object"
+    ? (parsed as { cdpUrl?: unknown }).cdpUrl
+    : undefined;
+  if (typeof cdpUrl !== "string" || !/^wss?:\/\//i.test(cdpUrl)) {
+    throw new Error("Browser did not return a ws(s) CDP URL.");
+  }
+  return cdpUrl;
+}
+
+function appendBrowserArguments(current: string | undefined, argument: string | undefined): string | undefined {
+  if (argument === undefined) return current;
+  return current === undefined || current.length === 0 ? argument : `${current}\n${argument}`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function readInput(stdin: AsyncIterable<string | Uint8Array>): Promise<string> {
@@ -603,9 +848,36 @@ export async function openBrowserPage(
   openedUrl: string,
   bridgeUrl: string | null,
   hookScripts: readonly ExtensionOpenHookScript[],
-  options: BrowserRunOptions
+  options: BrowserRunOptions,
+  beforeNavigate?: () => Promise<void>
 ): Promise<BrowserRunResult & { injectedScriptPath?: string }> {
   const cookies = getOptionValue(args, "cookies");
+  if (beforeNavigate !== undefined) {
+    const scriptPath = bridgeUrl === null && hookScripts.length === 0
+      ? undefined
+      : await ensureBrowserInitScript(bridgeUrl, hookScripts);
+    const launch = await browserRunner.run(
+      createBrowserLaunchArgs(
+        args,
+        scriptPath === undefined ? ["open"] : ["open", "--init-script", scriptPath],
+        options.browserArguments !== undefined
+      ),
+      options
+    );
+    if (launch.exitCode !== 0) return scriptPath === undefined ? launch : withInjectedScriptPath(launch, scriptPath);
+    if (cookies !== undefined) {
+      const applied = await browserRunner.run(["cookies", "set", "--curl", cookies]);
+      if (applied.exitCode !== 0) return scriptPath === undefined ? applied : withInjectedScriptPath(applied, scriptPath);
+    }
+    try {
+      await beforeNavigate();
+    } catch (error) {
+      const failed = { exitCode: 1, stdout: "", stderr: errorMessage(error) };
+      return scriptPath === undefined ? failed : withInjectedScriptPath(failed, scriptPath);
+    }
+    const navigated = await browserRunner.run(createBrowserNavigationArgs(args, "goto", openedUrl));
+    return scriptPath === undefined ? navigated : withInjectedScriptPath(navigated, scriptPath);
+  }
   if (cookies === undefined && bridgeUrl === null && hookScripts.length === 0) {
     return await browserRunner.run(
       createBrowserLaunchArgs(

@@ -19,11 +19,13 @@ import { runKillAllCommand, runKillCommand, runPsCommand } from "./commands/daem
 import { runRuntimeCliCommand } from "./commands/runtime.js";
 import { getCliSkillPath } from "./commands/skill.js";
 import { runStackCommand } from "./commands/stack.js";
-import { hasOption } from "./utils/command.js";
+import { hasOption, requireOption } from "./utils/command.js";
 import { runExtensionsCommand } from "./commands/installed.js";
 import { runSetupCommand } from "./commands/setup.js";
 import { runUpdateCommand } from "./commands/update.js";
 import { createRemoteDebuggingPageOpener } from "./features/browser/remote-debugging.js";
+import { stopNetworkControl } from "./features/browser/network-control-process.js";
+import { runNetworkControlServer } from "./features/browser/network-control-server.js";
 import { CLI_VERSION, isCliVersionRequest } from "./version.js";
 import { createLoadingController, type LoadingController } from "./features/loading.js";
 import {
@@ -84,6 +86,10 @@ async function runCliCommandWithConfig(
   const bufferedStderr = createBufferedWriter();
 
   try {
+    if (args.command[0] === "__network-control-server") {
+      await runNetworkControlServer(requireOption(args, "config"));
+      return 0;
+    }
     if (argv[0] === "raw") {
       return await runBrowserRawCommand(
         argv.slice(1),
@@ -181,17 +187,21 @@ async function runCliCommandWithConfig(
           operationLogStore,
           options.bridgeProcessController,
           {
-            beforeBrowserClose: async () => await runExtensionCloseHooks({
-              args,
-              stderr: commandStderr,
-              fetcher,
-              browserRunner,
-              bridgeStarter,
-              bridgeStateDirectory: options.bridgeStateDirectory,
-              operationLogStore,
-              extensions: config.extensions,
-              openHookPlan: config.hookPlans.open
-            })
+            beforeBrowserClose: async () => {
+              const openContext = await operationLogStore.read();
+              await runExtensionCloseHooks({
+                args,
+                stderr: commandStderr,
+                fetcher,
+                browserRunner,
+                bridgeStarter,
+                bridgeStateDirectory: options.bridgeStateDirectory,
+                operationLogStore,
+                extensions: config.extensions,
+                openHookPlan: config.hookPlans.open
+              });
+              await stopNetworkControl(openContext?.requestControl);
+            }
           }
         );
       }

@@ -169,6 +169,9 @@ relevant Extensions.
 
 ## References
 
+- Read `references/proxy-and-request-rules.md` for browser proxy selection,
+  request rewrite and fulfill rules, certificate boundaries, and daemon
+  isolation.
 - Read `references/extensions.md` for Extension detection, installation,
   management, and command Skills.
 

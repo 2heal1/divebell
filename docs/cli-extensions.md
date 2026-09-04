@@ -29,6 +29,10 @@ Extensions are appropriate for work that can be completed outside the page and d
 
 A page Command operates on the page most recently opened by `divebell open <url>` in the current working directory. If a workflow must manage the complete lifecycle for opening, waiting on, operating, and closing a page, write an [automation script](cli-automation-scripts.md).
 
+Browser proxy and request-rule configuration is supplied directly to
+`divebell open`; it is not part of the Extension definition. See [Browser
+proxy and request rules](browser-proxy-and-request-rules.md).
+
 ## Create an Extension
 
 ### Create the directory

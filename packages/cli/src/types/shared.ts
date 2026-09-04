@@ -102,6 +102,14 @@ export interface CliOperationLogEntry {
   browserInitScripts?: string[];
   browserDefaultProfile?: string;
   browserRestoreOptions?: Record<string, string[]>;
+  browserNetworkFingerprint?: string;
+  requestControl?: {
+    fingerprint: string;
+    pid: number;
+    controlUrl: string;
+    token: string;
+    configPath: string;
+  };
   headers?: Record<string, string>;
   stackDetection?: {
     url: string;

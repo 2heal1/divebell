@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
+import { analyzeDivebellCodeUsage } from "../../../chunk-map/dist/index.js";
 import extension from "../dist/extension.js";
 import {
   captureCodeUsageExperience,
@@ -162,6 +163,25 @@ test("injects page-experience sampling only when explicitly enabled", () => {
   assert.equal(enabled?.scripts.length, 1);
   assert.match(enabled?.scripts[0] ?? "", /__DIVEBELL_PAGE_EXPERIENCE__/);
   assert.match(enabled?.scripts[0] ?? "", /setInterval\(readMemory, 25\)/);
+  assert.match(enabled?.scripts[0] ?? "", /"version":2/);
+  assert.match(enabled?.scripts[0] ?? "", /"maxInflightRequests":2/);
+  assert.match(enabled?.scripts[0] ?? "", /"initialNetworkDrainTimeoutMs":10000/);
+  assert.match(enabled?.scripts[0] ?? "", /quietWindowMs/);
+  assert.match(enabled?.scripts[0] ?? "", /criticalRequestsInFlight <= maxInflightRequests/);
+  assert.match(enabled?.scripts[0] ?? "", /renderRequestsInFlight === 0/);
+  assert.match(enabled?.scripts[0] ?? "", /isRenderResourceUrl\(entry\.name\)/);
+  assert.match(enabled?.scripts[0] ?? "", /ready\.endTimeMs/);
+  assert.doesNotMatch(enabled?.scripts[0] ?? "", /ready\.endTime\b/);
+
+  const selector = openCodeUsageExperience(parseCliArgs([
+    "open",
+    "https://app.test/",
+    "--code-usage-experience",
+    "--code-usage-ready-selector",
+    "#application-ready"
+  ]));
+  assert.match(selector?.scripts[0] ?? "", /selector:visible/);
+  assert.match(selector?.scripts[0] ?? "", /#application-ready/);
 });
 
 test("captures readiness and loading memory without code coverage", async () => {
@@ -175,6 +195,17 @@ test("captures readiness and loading memory without code coverage", async () => 
     eval: async () => ({
       url: "https://app.test/",
       pathname: "/",
+      ready: {
+        spec: { kind: "heuristic", algorithm: "page-stable", version: 2, quietWindowMs: 500, maxInflightRequests: 2, initialNetworkDrainTimeoutMs: 10_000, timeoutMs: 30_000 },
+        specId: "page-stable@2:quiet=500:max-inflight=2:initial-drain=10000:timeout=30000",
+        selectedBy: "tool-default",
+        confidence: "inferred",
+        status: "ready",
+        startTimeMs: 0,
+        endTimeMs: 640,
+        durationMs: 640,
+        reason: "FCP, DOMContentLoaded, root, and quiet window observed"
+      },
       readyDurationMs: 640,
       navigation: {
         responseStartMs: 30,
@@ -206,9 +237,6 @@ test("captures readiness and loading memory without code coverage", async () => 
         decodedBodySize: 200
       }]
     }),
-    wait: async milliseconds => {
-      assert.equal(milliseconds, 250);
-    },
     memory: {
       metrics: async () => {
         metricReads += 1;
@@ -232,11 +260,12 @@ test("captures readiness and loading memory without code coverage", async () => 
     const result = await captureCodeUsageExperience(browser, {
       outputPath,
       label: "first-screen",
-      readyTarget: "sandbox preview ready",
       settleMs: 250
     });
     assert.equal(result.outputPath, outputPath);
     assert.equal(result.phase.readyDurationMs, 640);
+    assert.equal(result.phase.readyTarget, "page-stable@2:quiet=500:max-inflight=2:initial-drain=10000:timeout=30000");
+    assert.equal(result.phase.ready?.selectedBy, "tool-default");
     assert.equal(result.phase.memory.atReadyBytes, 8_000_000);
     assert.equal(result.phase.memory.peakBytes, 9_000_000);
     assert.equal(result.phase.memory.stableBytes, 7_500_000);
@@ -244,6 +273,153 @@ test("captures readiness and loading memory without code coverage", async () => 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("ranks the largest low-use chunk ahead of source and package opportunities", () => {
+  const totalBytes = 1_750_000;
+  const usedBytes = 550_000;
+  const analysis = analyzeDivebellCodeUsage({
+    chunkMap: {
+      schemaVersion: 3,
+      generator: "test",
+      buildId: "large-build",
+      publicPath: "/",
+      chunks: [{
+        id: "2364",
+        names: [],
+        assets: [{ file: "static/js/2364.js", size: totalBytes, sourceMap: "static/js/2364.js.map" }],
+        initial: false,
+        entry: false,
+        entrypoints: [],
+        groups: ["material"],
+        parents: [],
+        children: [],
+        splitRule: { kind: "dynamic-import", name: "material", configPath: null, inferred: true },
+        modules: [],
+        moduleSize: totalBytes
+      }],
+      packages: []
+    },
+    checkpoints: [{
+      schemaVersion: 1,
+      label: "first-screen",
+      scripts: [{
+        scriptId: "2364",
+        url: "https://app.test/static/js/2364.js",
+        functions: [{ functionName: "", ranges: [
+          { startOffset: 0, endOffset: totalBytes, count: 1 },
+          { startOffset: usedBytes, endOffset: totalBytes, count: 0 }
+        ] }]
+      }]
+    }],
+    assets: [{
+      file: "static/js/2364.js",
+      code: "a".repeat(totalBytes),
+      sourceMapPath: "/repo/dist/static/js/2364.js.map",
+      sourceMap: { version: 3, sources: ["../../../node_modules/.pnpm/demo@1.2.3/node_modules/demo/index.js"], mappings: "AAAA" }
+    }]
+  });
+  const opportunities = analysis.phases[0].opportunities;
+  assert.equal(opportunities[0].id, "chunk:2364");
+  assert.equal(opportunities[0].unusedBytes, totalBytes - usedBytes);
+  assert.equal(opportunities[0].potentialSavingsBytes, totalBytes - usedBytes);
+  assert.equal(opportunities[0].coverageFloorBytes, usedBytes);
+  assert.equal(opportunities[0].score, totalBytes - usedBytes);
+  assert.equal(opportunities[0].kind, "large-low-use-chunk");
+  assert.equal(analysis.phases[0].sources[0].owner.kind, "third-party");
+  assert.equal(analysis.phases[0].sources[0].owner.packageName, "demo");
+  assert.equal(analysis.phases[0].sources[0].owner.packageVersion, "1.2.3");
+});
+
+test("ranks potential phase savings ahead of attribution confidence", () => {
+  const largerTotalBytes = 120_000;
+  const largerUsedBytes = 20_000;
+  const smallerTotalBytes = 110_000;
+  const smallerUsedBytes = 20_000;
+  const analysis = analyzeDivebellCodeUsage({
+    chunkMap: {
+      schemaVersion: 3,
+      generator: "test",
+      buildId: "confidence-build",
+      publicPath: "/",
+      chunks: [
+        {
+          id: "low-confidence",
+          names: [],
+          assets: [{ file: "static/js/low-confidence.js", size: largerTotalBytes, sourceMap: "static/js/low-confidence.js.map" }],
+          initial: false,
+          entry: false,
+          entrypoints: [],
+          groups: [],
+          parents: [],
+          children: [],
+          splitRule: { kind: "unknown", name: "Unknown", configPath: null, inferred: true },
+          modules: [],
+          moduleSize: largerTotalBytes
+        },
+        {
+          id: "high-confidence",
+          names: [],
+          assets: [{ file: "static/js/high-confidence.js", size: smallerTotalBytes, sourceMap: "static/js/high-confidence.js.map" }],
+          initial: false,
+          entry: false,
+          entrypoints: [],
+          groups: [],
+          parents: [],
+          children: [],
+          splitRule: { kind: "unknown", name: "Unknown", configPath: null, inferred: true },
+          modules: [],
+          moduleSize: smallerTotalBytes
+        }
+      ],
+      packages: []
+    },
+    checkpoints: [{
+      schemaVersion: 1,
+      label: "first-screen",
+      scripts: [
+        {
+          scriptId: "low-confidence",
+          url: "https://app.test/static/js/low-confidence.js",
+          functions: [{ functionName: "", ranges: [
+            { startOffset: 0, endOffset: largerTotalBytes, count: 1 },
+            { startOffset: largerUsedBytes, endOffset: largerTotalBytes, count: 0 }
+          ] }]
+        },
+        {
+          scriptId: "high-confidence",
+          url: "https://app.test/static/js/high-confidence.js",
+          functions: [{ functionName: "", ranges: [
+            { startOffset: 0, endOffset: smallerTotalBytes, count: 1 },
+            { startOffset: smallerUsedBytes, endOffset: smallerTotalBytes, count: 0 }
+          ] }]
+        }
+      ]
+    }],
+    assets: [
+      {
+        file: "static/js/low-confidence.js",
+        code: "a".repeat(largerTotalBytes),
+        sourceMapPath: "/repo/dist/static/js/low-confidence.js.map",
+        sourceMap: { version: 3, sources: [], mappings: "" }
+      },
+      {
+        file: "static/js/high-confidence.js",
+        code: "a".repeat(smallerTotalBytes),
+        sourceMapPath: "/repo/dist/static/js/high-confidence.js.map",
+        sourceMap: { version: 3, sources: ["src/high-confidence.ts"], mappings: "AAAA" }
+      }
+    ]
+  });
+
+  const opportunities = analysis.phases[0].opportunities;
+  assert.equal(opportunities[0].id, "chunk:low-confidence");
+  assert.equal(opportunities[0].confidence, "low");
+  assert.equal(opportunities[0].potentialSavingsBytes, largerTotalBytes - largerUsedBytes);
+  assert.equal(
+    opportunities.find((opportunity) => opportunity.id === "chunk:high-confidence")?.confidence,
+    "high"
+  );
 });
 
 test("creates a self-contained and safely escaped report", async () => {

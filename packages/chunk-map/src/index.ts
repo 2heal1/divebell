@@ -10,6 +10,8 @@ export type {
   DivebellCodeUsageChunkResult,
   DivebellCodeUsageExecutedRange,
   DivebellCodeUsageInput,
+  DivebellCodeUsageOpportunity,
+  DivebellCodeUsageOpportunityKind,
   DivebellCodeUsagePackageResult,
   DivebellCodeUsagePhaseResult,
   DivebellCodeUsageReport,

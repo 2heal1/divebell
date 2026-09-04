@@ -224,19 +224,33 @@ Hooks run while Divebell opens a page, detects its stack, and closes it. A Hook 
 
 #### `open`
 
-`open` runs before the browser opens the URL and may return a page initialization script:
+`open` runs before the browser opens the URL and may return page initialization
+scripts or pre-navigation browser conditions:
 
 ```ts
 import type { DivebellExtensionHooks } from "@divebell/cli";
 
 export const open: NonNullable<DivebellExtensionHooks["open"]> = async () => {
   return {
-    scripts: ["globalThis.__TEAM_MARKER__ = true;"]
+    scripts: ["globalThis.__TEAM_MARKER__ = true;"],
+    throttling: {
+      cpuRate: 4,
+      network: {
+        latencyMs: 150,
+        downloadKbps: 800
+      }
+    }
   };
 };
 ```
 
 The Hook receives the parsed `open --headers` object as `options.headers`, or `undefined` when no headers were provided. Later Extension Commands receive the same object. Scripts from multiple Extensions are combined with Divebell's own script. One failed Extension does not block the page or other Extensions.
+
+When `throttling` is declared, Divebell starts Chromium, applies the CDP
+conditions, then performs the first page navigation. Use it for low-end-device
+or constrained-network first-load verification. `cpuRate` is a slowdown factor,
+not a requested CPU-core count. Use `browser.throttling` from an Extension
+Command for an already-open page.
 
 #### `detectStack`
 

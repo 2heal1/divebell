@@ -534,6 +534,51 @@ test("provides the effective request headers to open hooks", async () => {
   }
 });
 
+test("applies open hook throttling before the first navigation", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-open-throttling-"));
+  const browserCalls: string[][] = [];
+  const cli = createDivebellCli({
+    extensions: [{
+      schemaVersion: 1,
+      name: "low-end-device",
+      hooks: {
+        open: async () => ({
+          throttling: {
+            cpuRate: 4,
+            network: {
+              latencyMs: 150,
+              downloadKbps: 800
+            }
+          }
+        })
+      }
+    }]
+  });
+
+  try {
+    const output = createOutput();
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        browserCalls.push(args);
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+
+    assert.deepEqual(browserCalls.slice(0, 3), [
+      ["open"],
+      ["set", "cpu-throttling", "4"],
+      ["set", "network-throttling", "--latency-ms", "150", "--download-kbps", "800"]
+    ]);
+    assert.equal(browserCalls[3]?.[0], "goto");
+    assert.match(browserCalls[3]?.[1] ?? "", /^http:\/\/app\.test\/\?divebellSessionId=open-/);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
+});
+
 test("runs the previous page close hook before opening its replacement", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-extension-reopen-hooks-"));
   const calls: string[] = [];
@@ -2068,6 +2113,154 @@ test("exposes coverage commands to CLI extensions", async () => {
   }
 });
 
+test("exposes typed browser throttling APIs to CLI extensions", async () => {
+  const extension = createCommandExtension({
+    name: "throttling-demo",
+    run: async ({ divebell }) => ({
+      cpu: await divebell.browser.throttling.cpu.set(4),
+      cpuReset: await divebell.browser.throttling.cpu.reset(),
+      network: await divebell.browser.throttling.network.set({
+        latencyMs: 150,
+        downloadKbps: 800,
+        uploadKbps: 400
+      }),
+      networkReset: await divebell.browser.throttling.network.reset()
+    })
+  });
+  const context = createOpenContextFixture();
+  const calls: string[][] = [];
+
+  try {
+    const output = createOutput();
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "throttling-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async (args) => {
+        calls.push(args);
+        if (args[1] === "cpu-throttling") {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ rate: args[2] === "reset" ? 1 : Number(args[2]) }),
+            stderr: ""
+          };
+        }
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify(
+            args[2] === "reset"
+              ? {
+                  offline: false,
+                  latencyMs: 0,
+                  downloadKbps: null,
+                  uploadKbps: null
+                }
+              : {
+                  offline: false,
+                  latencyMs: 150,
+                  downloadKbps: 800,
+                  uploadKbps: 400
+                }
+          ),
+          stderr: ""
+        };
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(output.errorText(), "");
+    assert.deepEqual(calls, [
+      ["set", "cpu-throttling", "4", "--json"],
+      ["set", "cpu-throttling", "reset", "--json"],
+      [
+        "set",
+        "network-throttling",
+        "--latency-ms",
+        "150",
+        "--download-kbps",
+        "800",
+        "--upload-kbps",
+        "400",
+        "--json"
+      ],
+      ["set", "network-throttling", "reset", "--json"]
+    ]);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("throttling-demo", {
+      cpu: { rate: 4 },
+      cpuReset: { rate: 1 },
+      network: {
+        offline: false,
+        latencyMs: 150,
+        downloadKbps: 800,
+        uploadKbps: 400
+      },
+      networkReset: {
+        offline: false,
+        latencyMs: 0,
+        downloadKbps: null,
+        uploadKbps: null
+      }
+    }));
+  } finally {
+    context.cleanup();
+  }
+});
+
+test("validates typed browser throttling inputs before running browser commands", async () => {
+  const extension = createCommandExtension({
+    name: "throttling-validation-demo",
+    run: async ({ divebell }) => {
+      const attempts = [
+        () => divebell.browser.throttling.cpu.set(0),
+        () => divebell.browser.throttling.cpu.set(Number.NaN),
+        () => divebell.browser.throttling.network.set({}),
+        () => divebell.browser.throttling.network.set({ latencyMs: -1 }),
+        () => divebell.browser.throttling.network.set({ downloadKbps: Infinity })
+      ];
+      const codes: string[] = [];
+      for (const attempt of attempts) {
+        try {
+          await attempt();
+        } catch (error) {
+          codes.push((error as { code?: string }).code ?? "UNKNOWN");
+        }
+      }
+      return codes;
+    }
+  });
+  const context = createOpenContextFixture();
+  let browserRunnerCalled = false;
+
+  try {
+    const output = createOutput();
+    const exitCode = await createDivebellCli({ extensions: [extension] }).run([
+      "throttling-validation-demo"
+    ], {
+      stdout: output.stdout,
+      stderr: output.stderr,
+      operationLogDirectory: context.operationLogDirectory,
+      browserRunner: createBrowserRunner(async () => {
+        browserRunnerCalled = true;
+        throw new Error("Browser runner must not be called.");
+      })
+    });
+
+    assert.equal(exitCode, 0);
+    assert.equal(browserRunnerCalled, false);
+    assert.deepEqual(JSON.parse(output.text()), commandOutput("throttling-validation-demo", [
+      "INVALID_BROWSER_THROTTLING",
+      "INVALID_BROWSER_THROTTLING",
+      "INVALID_BROWSER_NETWORK_THROTTLING",
+      "INVALID_BROWSER_THROTTLING",
+      "INVALID_BROWSER_THROTTLING"
+    ]));
+  } finally {
+    context.cleanup();
+  }
+});
+
 test("exposes typed WebMCP list and call APIs to CLI extensions", async () => {
   const tool = {
     name: "getProductCount",
@@ -2134,11 +2327,11 @@ test("exposes typed WebMCP list and call APIs to CLI extensions", async () => {
       ["webmcp", "list", "--json"],
       [
         "webmcp",
-        "call",
+        "invoke",
         "getProductCount",
-        "--input",
+        "--params",
         "{}",
-        "--frame-id",
+        "--frame",
         "frame-main",
         "--timeout",
         "5000",

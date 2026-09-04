@@ -138,7 +138,7 @@ export const browserCommandReferences: CliCommandReference[] = [
   },
   {
     category: "Bridge and Browser",
-    usage: "divebell set <viewport|device|geo|offline|headers|credentials|media> [value...]",
+    usage: "divebell set <viewport|device|geo|offline|headers|credentials|media|cpu-throttling|network-throttling> [value...]",
     description: "Change browser page settings."
   },
   {

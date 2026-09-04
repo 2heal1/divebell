@@ -263,7 +263,17 @@ interface DivebellOpenHookOptions {
 }
 
 interface DivebellOpenHookResult {
+  openedUrl?: string;
   scripts?: readonly string[];
+  companionPages?: readonly DivebellOpenHookCompanionPage[];
+  throttling?: {
+    cpuRate?: number;
+    network?: {
+      latencyMs?: number;
+      downloadKbps?: number;
+      uploadKbps?: number;
+    };
+  };
 }
 ```
 
@@ -272,6 +282,14 @@ credentials or tokens, so protect the local Divebell state directory.
 Initialization scripts from multiple Extensions are combined in Hook order and
 isolated so one script failure does not block later scripts or Divebell's own
 page setup. One failed Hook does not block the page or unrelated Extensions.
+
+Use `throttling` for low-end device or constrained-network verification that
+must affect the initial page load. Divebell starts Chromium, applies the
+declared CDP conditions, and only then navigates to `openedUrl`. `cpuRate` is a
+slowdown factor, not a host CPU-core count. Network values use milliseconds and
+decimal kilobits per second. The hook must declare `cpuRate >= 1` and/or at
+least one non-negative network value. For an already-open page, use
+`browser.throttling` instead.
 
 ### `detectStack` and `close`
 
@@ -357,6 +375,37 @@ import type {
 | --- | --- | --- |
 | `browser.tabs.list` | List open tabs and identify the active tab. | `DivebellBrowserTabsApi`, `DivebellBrowserTab` |
 | `browser.tabs.activate` | Make a tab the active page using its stable tab ID. | `DivebellBrowserTabsApi` |
+
+#### Throttling APIs
+
+| API | Purpose | Read these types |
+| --- | --- | --- |
+| `browser.throttling.cpu.set` | Apply a Chromium CPU slowdown factor to the active browser session. | `DivebellBrowserThrottlingApi`, `DivebellBrowserCpuThrottlingResult` |
+| `browser.throttling.cpu.reset` | Restore the CPU slowdown factor to `1`. | `DivebellBrowserThrottlingApi`, `DivebellBrowserCpuThrottlingResult` |
+| `browser.throttling.network.set` | Apply one or more network conditions to the active browser session. | `DivebellBrowserThrottlingApi`, `DivebellBrowserNetworkThrottlingOptions`, `DivebellBrowserNetworkThrottlingResult` |
+| `browser.throttling.network.reset` | Restore online, zero-latency, unlimited network conditions. | `DivebellBrowserThrottlingApi`, `DivebellBrowserNetworkThrottlingResult` |
+
+CPU `rate` is a Chromium slowdown factor: `4` simulates approximately four
+times slower CPU execution. It is not a count of host CPU cores, so the
+Extension API intentionally does not expose a `cores` or `cpuCount` field.
+
+Network values use milliseconds for `latencyMs` and decimal kilobits per second
+for `downloadKbps` and `uploadKbps`. `network.set` accepts partial updates;
+provide at least one field. Its omitted fields preserve the existing browser
+condition. Both CPU and network throttling are Chromium/CDP capabilities.
+
+```ts
+await options.divebell.browser.throttling.cpu.set(4);
+await options.divebell.browser.throttling.network.set({
+  latencyMs: 150,
+  downloadKbps: 800,
+  uploadKbps: 400
+});
+
+// Restore normal conditions after the measurement.
+await options.divebell.browser.throttling.network.reset();
+await options.divebell.browser.throttling.cpu.reset();
+```
 
 #### Network APIs
 

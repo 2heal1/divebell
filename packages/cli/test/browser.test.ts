@@ -2029,17 +2029,26 @@ test("forwards WebMCP list and call commands to agent-browser", async () => {
         })
       });
       assert.equal(exitCode, 0);
-      assert.deepEqual(commandData(output.text()), { apiVersion: 1, command });
+      const backendCommand = command[1] === "call"
+        ? [
+          "webmcp",
+          "invoke",
+          ...command.slice(2).map((part) =>
+            part === "--input" ? "--params" : part === "--frame-id" ? "--frame" : part
+          )
+        ]
+        : command;
+      assert.deepEqual(commandData(output.text()), { apiVersion: 1, command: backendCommand });
     }
     assert.deepEqual(calls, [
       ["webmcp", "list", "--json"],
       [
         "webmcp",
-        "call",
+        "invoke",
         "getProductCount",
-        "--input",
+        "--params",
         "{}",
-        "--frame-id",
+        "--frame",
         "frame-a",
         "--timeout",
         "5000",

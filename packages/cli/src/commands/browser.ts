@@ -60,7 +60,10 @@ import {
   type ExtensionOpenHookScript
 } from "../features/extension/hooks.js";
 import type { ExtensionHookPlan } from "../features/extension/plan.js";
-import type { DivebellExtensionDefinition } from "../types/commands.js";
+import type {
+  DivebellExtensionDefinition,
+  DivebellOpenHookThrottling
+} from "../types/commands.js";
 
 export interface OpenPageResult {
   url: string;
@@ -188,6 +191,19 @@ export async function runBrowserCliCommand(
         ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
         ...(browserArguments === undefined ? {} : { browserArguments })
       });
+      const beforeNavigate = hookResult.throttling === undefined && requestControl === undefined
+        ? undefined
+        : async () => {
+            if (hookResult.throttling !== undefined) {
+              await applyOpenHookThrottling(openBrowserRunner, hookResult.throttling);
+            }
+            if (requestControl !== undefined) {
+              await attachNetworkControl(
+                requestControl,
+                await readBrowserCdpUrl(openBrowserRunner)
+              );
+            }
+          };
       const result = await openBrowserPage(
         openBrowserRunner,
         browserArgs,
@@ -201,17 +217,7 @@ export async function runBrowserCliCommand(
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
           ...(browserArguments === undefined ? {} : { browserArguments })
         },
-        requestControl === undefined
-          ? undefined
-          : (() => {
-              const control = requestControl;
-              return async () => {
-                await attachNetworkControl(
-                  control,
-                  await readBrowserCdpUrl(openBrowserRunner)
-                );
-              };
-            })()
+        beforeNavigate
       );
       if (result.exitCode !== 0) {
         throw createError({
@@ -812,6 +818,44 @@ function getExplicitBridgePort(bridgeUrl: string): number | null {
     return url.protocol === "https:" ? 443 : url.protocol === "http:" ? 80 : null;
   } catch {
     return getBridgePort(bridgeUrl) ?? null;
+  }
+}
+
+async function applyOpenHookThrottling(
+  browserRunner: BrowserRunner,
+  throttling: DivebellOpenHookThrottling
+): Promise<void> {
+  if (throttling.cpuRate !== undefined) {
+    await requireSuccessfulBrowserResult(
+      browserRunner.run(["set", "cpu-throttling", String(throttling.cpuRate)]),
+      "Could not apply CPU throttling before navigation."
+    );
+  }
+  if (throttling.network !== undefined) {
+    const args = ["set", "network-throttling"];
+    if (throttling.network.latencyMs !== undefined) {
+      args.push("--latency-ms", String(throttling.network.latencyMs));
+    }
+    if (throttling.network.downloadKbps !== undefined) {
+      args.push("--download-kbps", String(throttling.network.downloadKbps));
+    }
+    if (throttling.network.uploadKbps !== undefined) {
+      args.push("--upload-kbps", String(throttling.network.uploadKbps));
+    }
+    await requireSuccessfulBrowserResult(
+      browserRunner.run(args),
+      "Could not apply network throttling before navigation."
+    );
+  }
+}
+
+async function requireSuccessfulBrowserResult(
+  result: Promise<BrowserRunResult>,
+  fallbackMessage: string
+): Promise<void> {
+  const completed = await result;
+  if (completed.exitCode !== 0) {
+    throw new Error(completed.stderr.trim() || completed.stdout.trim() || fallbackMessage);
   }
 }
 

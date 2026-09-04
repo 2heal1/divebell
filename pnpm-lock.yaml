@@ -225,8 +225,8 @@ importers:
   packages/cli:
     dependencies:
       '@divebell/agent-browser':
-        specifier: 0.34.0-divebell.4
-        version: 0.34.0-divebell.4
+        specifier: 0.36.0-divebell.1
+        version: 0.36.0-divebell.1
       '@divebell/bridge':
         specifier: workspace:^
         version: link:../bridge
@@ -562,8 +562,8 @@ packages:
     peerDependencies:
       postcss: ^8.4
 
-  '@divebell/agent-browser@0.34.0-divebell.4':
-    resolution: {integrity: sha512-HgkfMRJ7WmATn8asoWCL5G4juk+7ioHoEMPixo5xY3E5JEt9hznk7EedsoYFQwXs+kuFja+BLsBsUl+GRWZ3yQ==}
+  '@divebell/agent-browser@0.36.0-divebell.1':
+    resolution: {integrity: sha512-SDABfuwVRIGmvFqG+cmzBEDzSHuJZBcJ7IgCk0bNNko4vb8v7C7ijlVi7Q+3J536hYWlr+zPp6UoDdH/2uryBg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -4622,7 +4622,7 @@ snapshots:
     dependencies:
       postcss: 8.5.26
 
-  '@divebell/agent-browser@0.34.0-divebell.4': {}
+  '@divebell/agent-browser@0.36.0-divebell.1': {}
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -4983,7 +4983,7 @@ snapshots:
       '@modern-js/server-utils': 3.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@modern-js/types': 3.7.0
       '@modern-js/utils': 3.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
       '@swc/core': 1.15.41(@swc/helpers@0.5.23)
       '@swc/helpers': 0.5.23
       es-module-lexer: 1.7.0
@@ -5020,7 +5020,7 @@ snapshots:
   '@modern-js/builder@3.7.0(@module-federation/runtime-tools@2.5.0)(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(esbuild@0.28.1)(react-dom@19.2.7(react@19.2.7))(react-server-dom-rspack@0.0.2(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)(typescript@5.9.3)(webpack@5.104.1(esbuild@0.28.1))':
     dependencies:
       '@modern-js/utils': 3.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
       '@rsbuild/plugin-assets-retry': 2.0.1(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))
       '@rsbuild/plugin-check-syntax': 2.0.0(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))
       '@rsbuild/plugin-css-minimizer': 2.0.1(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))(esbuild@0.28.1)(webpack@5.104.1(esbuild@0.28.1))
@@ -5091,7 +5091,7 @@ snapshots:
       '@modern-js/runtime-utils': 3.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@modern-js/types': 3.7.0
       '@modern-js/utils': 3.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
       '@swc/helpers': 0.5.23
       jiti: 2.7.0
     transitivePeerDependencies:
@@ -5368,7 +5368,7 @@ snapshots:
       '@module-federation/node': 2.7.43(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(@swc/helpers@0.5.23))(typescript@5.9.3)(webpack@5.104.1(esbuild@0.28.1))
       '@module-federation/sdk': 2.5.0(node-fetch@2.7.0(encoding@0.1.13))
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@rspack/core'
       - bufferutil
@@ -5544,7 +5544,7 @@ snapshots:
     transitivePeerDependencies:
       - '@module-federation/runtime-tools'
 
-  '@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)':
+  '@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)':
     dependencies:
       '@rspack/core': 2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23)
       '@swc/helpers': 0.5.23
@@ -5555,7 +5555,7 @@ snapshots:
 
   '@rsbuild/plugin-assets-retry@2.0.1(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))':
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rsbuild/plugin-check-syntax@2.0.0(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))':
     dependencies:
@@ -5565,14 +5565,14 @@ snapshots:
       picocolors: 1.1.1
       source-map: 0.7.6
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rsbuild/plugin-css-minimizer@2.0.1(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))(esbuild@0.28.1)(webpack@5.104.1(esbuild@0.28.1))':
     dependencies:
       css-minimizer-webpack-plugin: 8.0.0(esbuild@0.28.1)(webpack@5.104.1(esbuild@0.28.1))
       reduce-configs: 1.1.2
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@parcel/css'
       - '@swc/css'
@@ -5589,7 +5589,7 @@ snapshots:
       less-loader: 12.3.3(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(less@4.8.1)(webpack@5.104.1(esbuild@0.28.1))
       reduce-configs: 1.1.2
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@rspack/core'
       - supports-color
@@ -5609,7 +5609,7 @@ snapshots:
       '@rspack/plugin-react-refresh': 2.0.2(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(react-refresh@0.18.0)
       react-refresh: 0.18.0
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@rspack/core'
 
@@ -5618,7 +5618,7 @@ snapshots:
       deepmerge: 4.3.1
       terser: 5.49.2
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rsbuild/plugin-sass@1.5.3(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))':
     dependencies:
@@ -5628,7 +5628,7 @@ snapshots:
       reduce-configs: 1.1.2
       sass-embedded: 1.100.0
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rsbuild/plugin-source-build@1.0.6(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))':
     dependencies:
@@ -5636,7 +5636,7 @@ snapshots:
       json5: 2.2.3
       yaml: 2.9.0
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rsbuild/plugin-svgr@2.0.3(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(typescript@5.9.3)':
     dependencies:
@@ -5647,7 +5647,7 @@ snapshots:
       deepmerge: 4.3.1
       loader-utils: 3.3.1
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@rspack/core'
       - supports-color
@@ -5660,14 +5660,14 @@ snapshots:
       reduce-configs: 1.1.2
       ts-checker-rspack-plugin: 1.6.0(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(typescript@5.9.3)
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
     transitivePeerDependencies:
       - '@rspack/core'
       - typescript
 
   '@rsbuild/plugin-typed-css-modules@1.2.3(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))':
     optionalDependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
 
   '@rslib/core@0.21.5(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)(typescript@5.9.3)':
     dependencies:
@@ -5856,7 +5856,7 @@ snapshots:
 
   '@rstest/core@0.10.3(core-js@3.49.0)':
     dependencies:
-      '@rsbuild/core': 2.0.11(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.0.11(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
       '@types/chai': 5.2.3
     transitivePeerDependencies:
       - '@module-federation/runtime-tools'
@@ -8039,7 +8039,7 @@ snapshots:
 
   rsbuild-plugin-rsc@0.1.1(@rsbuild/core@2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0))(react-server-dom-rspack@0.0.2(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)):
     dependencies:
-      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0(node-fetch@2.7.0(encoding@0.1.13)))(core-js@3.49.0)
+      '@rsbuild/core': 2.1.0(@module-federation/runtime-tools@2.5.0)(core-js@3.49.0)
       react-server-dom-rspack: 0.0.2(@rspack/core@2.1.8(@module-federation/runtime-tools@2.5.0)(@swc/helpers@0.5.23))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
 
   rslog@1.3.2: {}

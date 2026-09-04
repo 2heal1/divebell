@@ -55,61 +55,10 @@ This makes the workflow useful for more than a successful demo. The agent can
 compare a tool result with the visible UI, inspect browser evidence when they
 disagree, change the application code, and repeat the same verification.
 
-## Field Notes
+## Margin Editor
 
 These examples were exercised with Divebell 0.0.26 on September 4, 2026.
 Showcase applications can change after that date.
-
-### Verdant Market
-
-[Verdant Market](https://verdant-market-grocery.openai.chatgpt.site/) exposes
-nine imperative tools for catalog discovery, product inspection, cart
-management, and checkout review.
-
-Divebell discovered the full contract, including the allowed department values
-and numeric limits:
-
-```bash
-divebell open https://verdant-market-grocery.openai.chatgpt.site/ \
-  --ui \
-  --no-default-profile
-divebell webmcp list --json
-```
-
-A coding agent can search the catalog without interpreting the product grid:
-
-```bash
-divebell webmcp call search_products \
-  --input '{
-    "query":"flour",
-    "section":"Pantry & Baking",
-    "organic":true,
-    "limit":5
-  }' \
-  --json
-```
-
-The live result returned one exact match:
-
-```json
-{
-  "id": 38,
-  "name": "Organic Unbleached All-Purpose Flour",
-  "organic": true,
-  "price": 6.83,
-  "section": "Pantry & Baking",
-  "size": "1 pack"
-}
-```
-
-The same session also exposed a useful debugging signal. Calling
-`add_to_cart` for two units updated the visible cart badge to `2`, while a
-subsequent `get_cart` call still returned `item_count: 0`, an empty item list,
-and a zero subtotal. A screenshot or DOM-only automation can see the badge; a
-WebMCP-only client can see the stale result. Divebell can inspect both sides in
-one browser session, making contract-to-UI inconsistencies reproducible.
-
-### Margin Editor
 
 [Margin Editor](https://margin-local-docs.openai.chatgpt.site/) exposes ten
 imperative tools: three read operations and seven write operations for local
@@ -120,13 +69,18 @@ divebell open https://margin-local-docs.openai.chatgpt.site/ \
   --ui \
   --no-default-profile
 divebell webmcp list --json
-divebell webmcp call list_documents --input '{"limit":5}' --json
+divebell webmcp call create_document \
+  --input '{
+    "title":"Divebell WebMCP demo",
+    "content":"Created through WebMCP."
+  }' \
+  --json
 ```
 
-The discovered metadata distinguishes read-only operations from writes and
-marks returned page content as untrusted. The read call returned the current
-device-local workspace and its stable document IDs without requiring the agent
-to scrape the document rail.
+`create_document` opens the new document in Margin, so the document rail and
+editor visibly change. It is a write operation and should be used only in this
+public, device-local demo workspace. `list_documents` remains useful for
+read-only discovery, but it deliberately does not change the UI.
 
 This is where schema-first discovery matters. An agent can inspect
 `readOnly`, `untrustedContent`, required fields, limits, and enums before it
@@ -150,21 +104,6 @@ that interface:
 
 WebMCP removes guesswork from using a web application. Divebell removes the
 setup and integration work from using WebMCP inside a coding-agent workflow.
-
-## 75-Second Demo
-
-1. **0-8s:** Open Verdant Market and say: "This is a WebMCP app. What can a
-   coding agent actually do with it?"
-2. **8-20s:** Run `divebell open`, then `divebell webmcp list --json`. Highlight
-   the nine discovered tools and the `search_products` schema.
-3. **20-38s:** Call `search_products` for organic flour. Show the exact product,
-   ID, price, and department returned without DOM scraping.
-4. **38-52s:** Call `add_to_cart` for two units. Show the visible cart badge
-   update to `2`.
-5. **52-65s:** Call `get_cart`. Show that it returns `0`, then place it beside
-   the UI state to demonstrate how Divebell catches contract-to-UI drift.
-6. **65-75s:** Close with: "WebMCP makes the product agent-native. Divebell lets
-   the coding agent discover, use, debug, and verify it."
 
 ## Extension Path
 
@@ -199,23 +138,15 @@ report without changing the target application.
 
 ### English X thread
 
-**1/3**
+**1/2**
 
 WebMCP apps are here. Can your coding agent actually use them?
 
-We used Divebell to explore OpenAI's showcase from the terminal: discover every
-page tool, inspect its schema, and call it in the live browser session. No MCP
-server. No manual Chrome flags.
+Divebell explored OpenAI's Margin Editor from the terminal: discovered 10 page
+tools, inspected their schemas and safety annotations, and created a document
+in the live browser session. No MCP server. No manual Chrome flags.
 
-**2/3**
-
-On Verdant Market, Divebell discovered 9 tools, searched for organic flour, and
-added 2 units to the visible cart.
-
-It also caught contract/UI drift: the cart badge showed 2 while the `get_cart`
-WebMCP tool still returned 0. That is the kind of bug an agent should surface.
-
-**3/3**
+**2/2**
 
 WebMCP makes a product agent-native. Divebell lets the coding agent discover,
 use, debug, and verify it with the same page, session, Console, Network, and
@@ -224,22 +155,3 @@ screenshots.
 https://github.com/2heal1/divebell
 
 #WebMCP #OpenAI #CodingAgents #OpenSource
-
-### 中文 X 串
-
-**1/2**
-
-WebMCP 应用已经来了，但你的 Coding Agent 能直接用吗？
-
-我们用 Divebell 从命令行体验 OpenAI WebMCP Showcase：自动发现页面工具、读取
-完整 schema，并在真实浏览器会话中结构化调用。不需要单独部署 MCP Server，也
-不需要手动配置 Chrome flags。
-
-**2/2**
-
-在 Verdant Market 中，Divebell 发现了 9 个工具，完成商品搜索和加购，还发现
-一个 contract/UI 状态差异：页面购物车显示 2 件商品，`get_cart` 却仍返回 0。
-
-WebMCP 让产品 Agent-native，Divebell 让 Coding Agent 能发现、使用、调试并验证它。
-
-https://github.com/2heal1/divebell

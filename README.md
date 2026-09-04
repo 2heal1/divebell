@@ -41,15 +41,15 @@ Divebell lets a coding agent discover and call the WebMCP tools exposed by the
 current page. It launches local Chrome with the experimental WebMCP features
 enabled, so there are no browser flags or protocol wiring to configure first.
 
-Try it with OpenAI's Verdant Market showcase:
+Try it with OpenAI's Margin Editor showcase:
 
 ```bash
-divebell open https://verdant-market-grocery.openai.chatgpt.site/ \
+divebell open https://margin-local-docs.openai.chatgpt.site/ \
   --ui \
   --no-default-profile
 divebell webmcp list --json
-divebell webmcp call search_products \
-  --input '{"query":"flour","section":"Pantry & Baking","organic":true}' \
+divebell webmcp call create_document \
+  --input '{"title":"Divebell WebMCP demo","content":"Created through WebMCP."}' \
   --json
 ```
 

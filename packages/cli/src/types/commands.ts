@@ -73,10 +73,22 @@ export interface DivebellOpenHookCompanionPage {
   };
 }
 
+export interface DivebellOpenHookNetworkThrottling {
+  latencyMs?: number;
+  downloadKbps?: number;
+  uploadKbps?: number;
+}
+
+export interface DivebellOpenHookThrottling {
+  cpuRate?: number;
+  network?: DivebellOpenHookNetworkThrottling;
+}
+
 export interface DivebellOpenHookResult {
   openedUrl?: string;
   scripts?: readonly string[];
   companionPages?: readonly DivebellOpenHookCompanionPage[];
+  throttling?: DivebellOpenHookThrottling;
 }
 
 export interface DivebellPageHookOptions {

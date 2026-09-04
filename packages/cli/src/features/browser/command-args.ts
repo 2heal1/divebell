@@ -143,6 +143,19 @@ export function createBrowserCommandArgs(
     appendForwardedBrowserOptions(browserArgs, args);
     return browserArgs;
   }
+  if (command === "webmcp") {
+    const operation = args.command[1] === "call" ? "invoke" : args.command[1];
+    const browserArgs = [
+      "webmcp",
+      ...(operation === undefined ? [] : [operation]),
+      ...args.command.slice(2)
+    ];
+    appendForwardedBrowserOptions(browserArgs, args, {
+      "frame-id": "frame",
+      input: "params"
+    });
+    return browserArgs;
+  }
   if (command !== undefined) {
     const agentBrowserCommand = command === "video"
       ? "record"
@@ -181,11 +194,15 @@ function normalizePassthroughTargets(command: string, positionals: string[]): vo
   }
 }
 
-function appendForwardedBrowserOptions(browserArgs: string[], args: ParsedCliArgs): void {
+function appendForwardedBrowserOptions(
+  browserArgs: string[],
+  args: ParsedCliArgs,
+  optionNames: Readonly<Record<string, string>> = {}
+): void {
   for (const [name, values] of args.options) {
     if (DIVEBELL_ONLY_BROWSER_OPTIONS.has(name)) continue;
     for (const value of values) {
-      browserArgs.push(`--${name}`);
+      browserArgs.push(`--${optionNames[name] ?? name}`);
       if (value !== "true") browserArgs.push(value);
     }
   }

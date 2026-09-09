@@ -13,6 +13,7 @@ const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "request-rules",
   "no-bridge",
   "no-default-profile",
+  "no-default-state",
   "no-webmcp",
   "port",
   "profile",

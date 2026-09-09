@@ -15,6 +15,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 
 - `divebell skill` - Print the path to the Divebell CLI Skill bundled with this package.
 - `divebell update [--check]` - Check or update the managed CLI installation.
+- `divebell config state [<path>|clear]` - Show, set, or clear the global default browser state.
 
 ### Browser
 
@@ -32,7 +33,7 @@ This document is generated from the current CLI command table in `packages/cli/s
 - `divebell auth save <name> --url <url> --username <user> --password-stdin` - Save encrypted login credentials in the agent-browser auth vault.
 - `divebell auth login <name>` - Open the saved login page and let agent-browser fill and submit the matching login form.
 - `divebell auth <list|show|delete> [name]` - Inspect or delete agent-browser auth vault entries; passwords are never shown.
-- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url> | --proxy-pac-url <url>] [--request-rules <path>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Use Chrome's most recently used Profile by default; --no-default-profile skips automatic Profile selection. PAC URLs and request rules are browser-daemon scoped and require a fresh Divebell-launched Chromium session. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds.
+- `divebell open <url> [--timeout <ms>] [--headers <json>] [--profile <name|path> | --state <path>] [--no-default-profile] [--no-default-state] [--restore-save <auto|always|never>] [--restore-initial-save <bool>] [--restore-periodic-save [bool]] [--restore-close-save <bool>] [--restore-periodic-save-interval-ms <ms>] [--bridge <url>] [--port <port>] [--session <id>] [--no-bridge] [--ui] [--no-webmcp] [--enable <feature>] [--init-script <path>] [--proxy <url> | --proxy-pac-url <url>] [--request-rules <path>] [--allowed-domains <list>] [--engine <name>]` - Open a directory-scoped page. Use Chrome's most recently used Profile and the configured default state by default; --no-default-profile skips automatic Profile selection, while --no-default-state skips the configured state. PAC URLs and request rules are browser-daemon scoped and require a fresh Divebell-launched Chromium session. Local Chrome launches enable experimental WebMCP producer and CDP surfaces by default; --no-webmcp disables them. External browsers keep their existing launch configuration. Navigation waits up to 60000ms by default; --timeout overrides it in milliseconds.
 - `divebell goto <url>` - Navigate the current Divebell page to another URL without replacing its browser session.
 - `divebell navigate <url>` - Alias for `divebell goto`.
 - `divebell back` - Go back in the current page history.

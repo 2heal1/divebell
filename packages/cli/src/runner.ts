@@ -5,6 +5,7 @@ import { createCommandHelpText, createHelpText } from "./commands/help.js";
 import { createFileOperationLogStore } from "./utils/operation-log.js";
 import { createError, writeErrorOutput, writeOkOutput } from "./utils/output.js";
 import { runAgentBrowserAuthCommand, runAgentBrowserProfilesCommand, runAgentBrowserStateCommand } from "./commands/browser-auth.js";
+import { runConfigCommand } from "./commands/config.js";
 import {
   runBridgeServerCommand,
   runStartCommand,
@@ -252,6 +253,10 @@ async function runCliCommandWithConfig(
 
       if (args.command[0] === "state") {
         return await runAgentBrowserStateCommand(args, commandStdout, commandStderr, browserRunner);
+      }
+
+      if (args.command[0] === "config") {
+        return await runConfigCommand({ args, stdout: commandStdout, env });
       }
 
       if (args.command[0] === "auth") {

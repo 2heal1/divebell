@@ -89,6 +89,7 @@ export function createBuiltInCommandNameSet(): Set<string> {
     "profiles",
     "raw",
     "state",
+    "config",
     "extensions",
     "stack",
     "runtimes",

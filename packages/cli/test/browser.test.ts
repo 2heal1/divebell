@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -71,6 +71,53 @@ test("opens a browser page and auto-starts the bridge when needed", async () => 
   assert.equal(output.errorText(), "");
   assertBridgeOpenCalls(browserCalls, `http://app.test/?divebellSessionId=${sessionId}`, "http://localhost:18080");
   rmSync(operationLogDirectory, { recursive: true, force: true });
+});
+
+test("loads the global default browser state unless disabled", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "divebell-default-state-open-"));
+  const home = join(directory, "home");
+  const statePath = join(home, "states", "default-state.json");
+  mkdirSync(join(home, "states"), { recursive: true });
+  writeFileSync(statePath, JSON.stringify({ cookies: [], origins: [] }));
+  const calls: Array<{ args: string[]; options: BrowserRunOptions | undefined }> = [];
+
+  try {
+    const applied = createOutput();
+    assert.equal(await runCli(["open", "http://app.test/", "--no-bridge"], {
+      stdout: applied.stdout,
+      stderr: applied.stderr,
+      env: { DIVEBELL_HOME: home },
+      browserRunner: createBrowserRunner(async (args, options) => {
+        calls.push({ args, options });
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+    assert.equal(calls[0]?.options?.defaultStatePath, statePath);
+    assert.deepEqual(
+      commandData<{ defaultState?: { path: string } }>(applied.text()).defaultState,
+      { path: statePath }
+    );
+
+    const disabled = createOutput();
+    assert.equal(await runCli([
+      "open", "http://app.test/", "--no-bridge", "--no-default-state"
+    ], {
+      stdout: disabled.stdout,
+      stderr: disabled.stderr,
+      env: { DIVEBELL_HOME: home },
+      browserRunner: createBrowserRunner(async (args, options) => {
+        calls.push({ args, options });
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+    assert.equal(calls[1]?.options?.defaultStatePath, undefined);
+    assert.equal(
+      commandData<{ defaultState?: { path: string } }>(disabled.text()).defaultState,
+      undefined
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("opens a browser page with a stable Divebell session", async () => {

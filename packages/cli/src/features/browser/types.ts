@@ -21,6 +21,7 @@ export interface BrowserRunOptions {
   unencryptedStateOutput?: boolean;
   reuseInitialBlankPage?: boolean;
   browserArguments?: string;
+  defaultStatePath?: string;
 }
 
 export interface BrowserRunner {

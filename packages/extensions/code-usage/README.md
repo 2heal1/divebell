@@ -23,25 +23,33 @@ code coverage:
 
 ```bash
 divebell open https://example.com/ --code-usage-experience
-# Wait for the application's explicit ready condition.
 divebell code-usage experience \
   --output /tmp/first-screen.experience.json \
-  --label first-screen \
-  --ready-target "application ready"
+  --label first-screen
 ```
 
 This separate load prevents code coverage from changing the performance
-measurement.
+measurement. If the application exposes a real ready signal, append exactly one
+of `--code-usage-ready-measure <name>`, `--code-usage-ready-mark <name>`, or
+`--code-usage-ready-selector <css>` to `divebell open`. Otherwise the recorder
+uses the inferred `page-stable@3` signal. The page observer records the
+timestamp, so a later CLI call does not inflate ready time. The optional
+`ready.initialNetworkDrain` records whether the bounded network-drain fallback
+was used. Run `divebell code-usage --skill` for measurement and acceptance
+guidance.
 
-Record one or more representative phases with the base CLI:
+Record one or more representative phases with verified runtime-source capture:
 
 ```bash
-divebell open https://example.com/
+divebell tab new about:blank
 divebell coverage start
-divebell reload
-divebell coverage take /tmp/first-screen.coverage.json --label first-screen
+divebell goto https://example.com/
+# Wait for the recorded first-screen boundary and verify the actual page.
+divebell code-usage capture --chunk-map /path/to/dist/divebell-chunks.json \
+  --output /tmp/first-screen.coverage.json --label first-screen
 # Perform the next page journey.
-divebell coverage stop /tmp/orders.coverage.json --label orders
+divebell code-usage capture --chunk-map /path/to/dist/divebell-chunks.json \
+  --output /tmp/orders.coverage.json --label orders --stop
 ```
 
 Combine the recordings with build metadata:
@@ -83,5 +91,16 @@ The standalone report is an artifact set. Keep the generated HTML, its reported
 sharing it. The command result prints all generated paths.
 
 “Unused” means that code did not execute during the recorded journeys. It does not prove that the code can be removed.
+
+Every phase also contains ranked optimization opportunities. They are ordered
+by `potentialSavingsBytes`: the maximum raw JavaScript that could leave the
+recorded phase if its unexecuted bytes are deferred or removed. The report also
+shows `coverageFloorBytes`, the executed-byte coverage floor. Neither value is
+a predicted output size: source/package opportunities can overlap their chunks,
+and only a candidate build proves raw/gzip/brotli bytes and request count.
+Implementation cost does not affect the order; confidence determines whether a
+candidate can be acted on safely. Compare both the chosen target and all
+JavaScript requested in the phase; a large percentage change in a small chunk
+may have little page-level impact.
 
 See the complete [code usage guide](../../docs/code-usage-analysis.md).

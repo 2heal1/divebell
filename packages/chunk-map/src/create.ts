@@ -1,4 +1,5 @@
 // Chunk Map creation is shared by every supported build integration.
+import { inferPnpmVersion } from "./package-path.js";
 import {
   DIVEBELL_CHUNK_MAP_SCHEMA_VERSION,
   type DivebellChunkMap,
@@ -408,21 +409,6 @@ function inferPackageSubpath(sourcePath: string | null): string | null {
   const offset = parts[0]?.startsWith("@") ? 2 : 1;
   const subpath = parts.slice(offset).join("/");
   return subpath.length === 0 ? null : subpath;
-}
-
-function inferPnpmVersion(sourcePath: string | null, packageName: string | null): string | null {
-  if (sourcePath === null || packageName === null) return null;
-  const normalized = normalizePath(sourcePath);
-  const pnpmMarker = "/.pnpm/";
-  const markerIndex = normalized.lastIndexOf(pnpmMarker);
-  if (markerIndex === -1) return null;
-  const storeSegment = normalized.slice(markerIndex + pnpmMarker.length).split("/", 1)[0];
-  if (storeSegment === undefined) return null;
-  const encodedName = packageName.replace("/", "+");
-  const prefix = `${encodedName}@`;
-  if (!storeSegment.startsWith(prefix)) return null;
-  const version = storeSegment.slice(prefix.length).split("_", 1)[0] ?? "";
-  return version.length === 0 ? null : version;
 }
 
 function nodeModulesPackageParts(sourcePath: string | null): string[] {

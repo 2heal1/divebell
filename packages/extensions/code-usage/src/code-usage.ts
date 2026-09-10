@@ -210,6 +210,11 @@ function validateCoverageCheckpoint(
   if (!isRecord(value) || !Array.isArray(value.scripts)) {
     throw new Error(`Coverage checkpoint ${location} must contain a scripts array.`);
   }
+  for (const script of value.scripts) {
+    if (!isRecord(script) || ("runtimeSource" in script && typeof script.runtimeSource !== "string")) {
+      throw new Error(`Coverage checkpoint ${location} has an invalid script or non-string runtimeSource.`);
+    }
+  }
   return value as unknown as DivebellCoverageCheckpoint;
 }
 
@@ -219,7 +224,7 @@ function validateExperiencePhase(
 ): CodeUsageExperiencePhase {
   if (
     !isRecord(value)
-    || value.schemaVersion !== 1
+    || (value.schemaVersion !== 1 && value.schemaVersion !== 2)
     || typeof value.label !== "string"
     || value.label.length === 0
     || typeof value.url !== "string"

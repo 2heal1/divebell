@@ -96,12 +96,40 @@ the page with the measurement recorder:
 
 ```bash
 divebell open https://example.com/ --code-usage-experience
-# Wait for an explicit application-ready condition.
 divebell code-usage experience \
   --output /tmp/first-screen.experience.json \
-  --label first-screen \
-  --ready-target "application ready"
+  --label first-screen
 ```
+
+Ask the page owner for a business-ready signal before measurement. When one is
+available, append exactly one ready option to `divebell open`:
+
+```bash
+--code-usage-ready-measure <performance-measure-name>
+--code-usage-ready-mark <performance-mark-name>
+--code-usage-ready-selector <css-selector>
+```
+
+When none is supplied, Divebell uses `page-stable@3`: DOMContentLoaded and the
+document root must exist, first contentful paint must occur when paint timing is
+supported, no more than two ordinary fetch/XHR requests may remain in flight,
+tracked initial requests (including those started before DOMContentLoaded)
+should drain, JS/CSS/WASM fetches must
+finish, and relevant DOM mutations, long tasks, and script loads must remain
+quiet for 500 ms. If the initial request burst cannot drain within 10 seconds,
+the heuristic falls back to network-idle-2. Ordinary fetch/XHR completion resets
+the quiet window when all tracked requests have drained; non-render completion
+while other requests remain does not. The maximum wait is 30 seconds.
+This is reported as a tool-selected, inferred ready signal rather than business
+truth.
+`ready.initialNetworkDrain` contains `fallbackUsed`, `elapsedMs` since
+DOMContentLoaded, and `inflightRequests` at readiness. A fallback is explicitly
+reported and does not claim observed network settling. These fields are absent
+on older recordings and explicit business signals. Version 3 fixes a
+pre-DOMContentLoaded request-drain error in version 2, so comparison runs must
+use the same version; recollect both sides when upgrading.
+The observer stores the timestamp when the condition happens; command execution
+latency is not included.
 
 Repeat this measurement from a fresh recorder-enabled page load for every
 report phase and keep the labels identical to the coverage labels. Skip this
@@ -110,29 +138,35 @@ page-readiness and memory sections rather than displaying empty values.
 
 ### 3. Record representative page journeys
 
-Open the page and start precise code coverage:
+Start precise code coverage in a fresh blank page target, then navigate:
 
 ```bash
-divebell open https://example.com/
+divebell tab new about:blank
 divebell coverage start
-divebell reload
+divebell goto https://example.com/
 ```
 
-After the reloaded page becomes ready, save the first phase:
+After verifying the actual page and reaching the recorded ready boundary, save
+the first phase:
 
 ```bash
-divebell coverage take /tmp/first-screen.coverage.json \
+divebell code-usage capture --chunk-map /path/to/production-dist/divebell-chunks.json \
+  --output /tmp/first-screen.coverage.json \
   --label first-screen
 ```
 
 Continue with `click`, `fill`, `goto`, or a page-declared action, then save the next phase and stop:
 
 ```bash
-divebell coverage stop /tmp/orders.coverage.json \
-  --label orders
+divebell code-usage capture --chunk-map /path/to/production-dist/divebell-chunks.json \
+  --output /tmp/orders.coverage.json \
+  --label orders --stop
 ```
 
-Each `take` resets execution counts, so every phase describes only the work performed since the previous capture.
+Each capture freezes and resets execution counts, so every phase describes only
+the work performed since the previous capture. The command attaches the actual
+runtime source of matching scripts for build-identity and wrapper-offset checks;
+measurement and identity acceptance rules are in the `analyze-code-usage` Skill.
 
 ### 4. Analyze the recording
 
@@ -198,12 +232,27 @@ the HTML is the entry point, not the complete artifact by itself.
 
 The report presents each phase by application source, dependency, complete file list, and chunk. A useful review order is:
 
-1. inspect large application files with low use on the first screen;
-2. inspect large third-party and workspace packages;
-3. confirm which chunks contain those files;
+1. inspect the phase's ranked opportunities and start from the largest
+   `potentialSavingsBytes` value;
+2. explain its current raw size, `coverageFloorBytes`,
+   `potentialSavingsBytes`, loading role, source-map coverage, confidence, and
+   contributing sources or packages;
+3. confirm why the chunk was requested and which split rule produced it;
 4. record other important user journeys before deciding that code is unused;
 5. change lazy loading or chunking; and
-6. rebuild and repeat the same measurements.
+6. rebuild and repeat the same measurements with the exact same ready spec.
+
+The ranking uses observed unexecuted bytes, not ease of implementation or
+percentage alone. For compatibility, `potentialSavingsBytes` remains an alias
+for `unusedBytes = totalBytes - usedBytes`, and `coverageFloorBytes` remains an
+alias for `usedBytes`. Neither name promises a savings upper bound or a remaining
+size floor: deferring a hidden feature can also remove its executed initialization.
+Source/package rows overlap chunks and cannot be added to the exclusive ledger.
+Trace the complete dependency boundary, then rebuild and recapture to measure net
+changes in both total and executed bytes, including new dependencies, duplication,
+wrappers and chunk rebalancing. Compression and request count also require
+measurement. Always compare both the target chunk and all JavaScript requested
+in the phase.
 
 “Unused” means that code did not execute in the explicitly recorded journeys. It does not prove that the code can be deleted. Chunk sizes describe complete built JavaScript files; source and dependency sizes describe source-mapped bytes. Neither is compressed download size or original source-file size.
 

@@ -5,6 +5,7 @@ import type {
 } from "@divebell/cli";
 
 import { analyzeCodeUsageFiles } from "./code-usage.js";
+import { captureCodeUsage } from "./capture.js";
 import { captureCodeUsageExperience } from "./experience.js";
 import { openHtmlReport, writeCodeUsageReportHtml } from "./report.js";
 import {
@@ -14,6 +15,7 @@ import {
 
 export async function runCodeUsageCommand(options: CliExtensionRunOptions): Promise<unknown> {
   const action = options.args.command[1];
+  if (action === "capture") return await runCapture(options);
   if (action === "analyze") {
     return await runAnalyze(options.args);
   }
@@ -29,11 +31,12 @@ export async function runCodeUsageCommand(options: CliExtensionRunOptions): Prom
   throw commandError({
     code: "CODE_USAGE_ACTION_INVALID",
     kind: "validation",
-    message: "code-usage requires experience, analyze, report, or serve.",
-    hint: "Run `divebell code-usage experience ...`, `divebell code-usage analyze ...`, `divebell code-usage report ...`, or `divebell code-usage serve ...`."
+    message: "code-usage requires capture, experience, analyze, report, or serve.",
+    hint: "Run `divebell code-usage --help` for available actions."
   });
 }
 export { analyzeCodeUsageFiles } from "./code-usage.js";
+export { captureCodeUsage } from "./capture.js";
 export {
   captureCodeUsageExperience,
   createPageExperienceInitScript,
@@ -52,6 +55,41 @@ export {
   waitForCodeUsageReportServer
 } from "./server.js";
 export type * from "./types.js";
+
+async function runCapture(options: CliExtensionRunOptions): Promise<unknown> {
+  // The host injects open-context and common browser options into this map.
+  // Validate only options owned by this extension, as other subcommands do.
+  if (options.args.command.length !== 2) {
+    throw commandError({ code: "CODE_USAGE_CAPTURE_USAGE_INVALID", kind: "validation",
+      message: "Use code-usage capture --chunk-map <file> --output <file> --label <name> [--stop]." });
+  }
+  const readRequired = (name: string): string => {
+    const values = options.args.options.get(name);
+    if (values?.length !== 1 || !values[0]?.trim() || ["true", "false"].includes(values[0])) {
+      throw commandError({ code: "CODE_USAGE_CAPTURE_OPTION_INVALID", kind: "validation",
+        message: `--${name} requires exactly one non-empty value.` });
+    }
+    return values[0];
+  };
+  const chunkMap = readRequired("chunk-map");
+  const outputPath = readRequired("output");
+  const label = readRequired("label");
+  const stopValues = options.args.options.get("stop");
+  if (stopValues && (stopValues.length !== 1 || !["true", "false"].includes(stopValues[0] ?? ""))) {
+    throw commandError({ code: "CODE_USAGE_CAPTURE_OPTION_INVALID", kind: "validation", message: "--stop is a boolean flag." });
+  }
+  if (!options.page) {
+    throw commandError({ code: "CODE_USAGE_CAPTURE_PAGE_REQUIRED", kind: "validation",
+      message: "Open the intended page and start coverage before capturing code usage." });
+  }
+  try {
+    return await options.withLoading(() => captureCodeUsage(options.divebell.browser, {
+      chunkMap, outputPath, label, stop: stopValues?.[0] === "true"
+    }));
+  } catch (error) {
+    throw commandError({ code: "CODE_USAGE_CAPTURE_FAILED", kind: "validation", message: errorMessage(error) });
+  }
+}
 
 async function runAnalyze(
   args: ParsedCliArgs
@@ -146,7 +184,7 @@ async function runExperience(
       message,
       ...(message.includes("recorder is missing")
         ? {
-            hint: "Reopen the page with `divebell open <url> --code-usage-experience`; optionally add a mark, measure, or selector ready target. Otherwise page-stable@2 is used."
+            hint: "Reopen the page with `divebell open <url> --code-usage-experience`; optionally add a mark, measure, or selector ready target. Otherwise page-stable@3 is used."
           }
         : {})
     });

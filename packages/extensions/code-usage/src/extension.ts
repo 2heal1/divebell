@@ -16,8 +16,13 @@ const extension = {
     commandReferences: [
       {
         category: "Extensions",
+        usage: "divebell code-usage capture --chunk-map <file> --output <file> --label <name> [--stop]",
+        description: "Save coverage with matching app runtime sources from the same browser target; --stop ends recording after the checkpoint."
+      },
+      {
+        category: "Extensions",
         usage: "divebell open <url> --code-usage-experience [--code-usage-ready-mark <name> | --code-usage-ready-measure <name> | --code-usage-ready-selector <css>]",
-        description: "Install a page-side ready observer before navigation; without an explicit target, use page-stable@2."
+        description: "Install a page-side ready observer before navigation; without an explicit target, use page-stable@3."
       },
       {
         category: "Extensions",

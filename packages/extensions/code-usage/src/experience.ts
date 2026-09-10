@@ -17,7 +17,7 @@ import type {
 const DEFAULT_READY_SPEC: CodeUsageReadySpec = {
   kind: "heuristic",
   algorithm: "page-stable",
-  version: 2,
+  version: 3,
   quietWindowMs: 500,
   maxInflightRequests: 2,
   initialNetworkDrainTimeoutMs: 10_000,
@@ -50,7 +50,7 @@ export function createPageExperienceInitScript(
     if (spec.kind === "selector") return "selector:visible:" + spec.selector;
     return spec.kind + ":" + spec.name;
   })();
-  const finishReady = (status, endTimeMs, reason) => {
+  const finishReady = (status, endTimeMs, reason, initialNetworkDrain) => {
     if (ready) return;
     ready = {
       spec: config.spec,
@@ -61,7 +61,8 @@ export function createPageExperienceInitScript(
       startTimeMs: config.spec.kind === "measure" ? Math.max(0, endTimeMs - (performance.getEntriesByName(config.spec.name, "measure").at(-1)?.duration || 0)) : 0,
       endTimeMs,
       durationMs: config.spec.kind === "measure" ? (performance.getEntriesByName(config.spec.name, "measure").at(-1)?.duration || endTimeMs) : endTimeMs,
-      reason
+      reason,
+      ...(initialNetworkDrain ? { initialNetworkDrain } : {})
     };
     for (const restore of restoreNetworkHooks.splice(0)) restore();
     resolveReady(ready);
@@ -134,14 +135,12 @@ export function createPageExperienceInitScript(
     let criticalRequestsInFlight = 0;
     let renderRequestsInFlight = 0;
     let networkDrainedAfterDomContentLoaded = false;
-    let requestsStartedAfterDomContentLoaded = 0;
     const noteActivity = (time = performance.now()) => { lastActivityTime = Math.max(lastActivityTime, time); };
     const isRenderResourceUrl = (value) => typeof value === "string"
       && /\.(?:m?js|css|wasm)(?:[?#]|$)/i.test(value);
     const beginCriticalRequest = (renderBlocking = false) => {
       criticalRequestsInFlight += 1;
       if (domContentLoadedTime !== null) {
-        requestsStartedAfterDomContentLoaded += 1;
         networkDrainedAfterDomContentLoaded = false;
       }
       if (renderBlocking) {
@@ -154,7 +153,6 @@ export function createPageExperienceInitScript(
         completed = true;
         criticalRequestsInFlight = Math.max(0, criticalRequestsInFlight - 1);
         if (domContentLoadedTime !== null
-          && requestsStartedAfterDomContentLoaded > 0
           && criticalRequestsInFlight === 0) {
           networkDrainedAfterDomContentLoaded = true;
           noteActivity();
@@ -224,7 +222,6 @@ export function createPageExperienceInitScript(
     if (domContentLoadedTime === null) {
       document.addEventListener("DOMContentLoaded", () => {
         domContentLoadedTime = performance.now();
-        requestsStartedAfterDomContentLoaded = 0;
         networkDrainedAfterDomContentLoaded = criticalRequestsInFlight === 0;
         noteActivity();
       }, { once: true });
@@ -276,7 +273,15 @@ export function createPageExperienceInitScript(
         && renderRequestsInFlight === 0
         && (!paintSupported || firstContentfulPaintTime !== null);
       if (prerequisitesReady && now - lastActivityTime >= config.spec.quietWindowMs) {
-        finishReady("ready", now, paintSupported ? "FCP, DOMContentLoaded, root, initial network settled, render resources drained, network-idle-2, and render quiet window observed" : "DOMContentLoaded, root, initial network settled, render resources drained, network-idle-2, and render quiet window observed; paint timing unavailable");
+        const fallbackUsed = !networkDrainedAfterDomContentLoaded;
+        const networkReason = fallbackUsed
+          ? "initial network drain timeout fallback used (not observed settled)"
+          : "initial network drain observed";
+        finishReady("ready", now,
+          (paintSupported ? "FCP, " : "") + "DOMContentLoaded, root, " + networkReason
+            + ", render resources drained, network-idle-2, and render quiet window observed"
+            + (paintSupported ? "" : "; paint timing unavailable"),
+          { fallbackUsed, elapsedMs: now - domContentLoadedTime, inflightRequests: criticalRequestsInFlight });
       }
     }, 50);
     timeoutTimer = setTimeout(() => finishReady("timeout", performance.now(), "page-stable timeout"), config.spec.timeoutMs);
@@ -498,7 +503,7 @@ function normalizeExperiencePhase(
     label: options.label,
     url: stringValue(value.url),
     pathname: stringValue(value.pathname),
-    readyTarget: options.readyTarget ?? ready?.specId ?? "page-stable@2",
+    readyTarget: options.readyTarget ?? ready?.specId ?? "page-stable@3",
     readyDurationMs,
     ...(ready === undefined ? {} : { ready }),
     navigation: {
@@ -581,8 +586,19 @@ function normalizeReadyResult(value: unknown): CodeUsageReadyResult | undefined 
     startTimeMs,
     endTimeMs,
     durationMs,
-    reason: stringValue(value.reason)
+    reason: stringValue(value.reason),
+    ...normalizeInitialNetworkDrain(value.initialNetworkDrain)
   };
+}
+
+function normalizeInitialNetworkDrain(
+  value: unknown
+): Pick<CodeUsageReadyResult, "initialNetworkDrain"> | Record<string, never> {
+  if (!isRecord(value) || typeof value.fallbackUsed !== "boolean") return {};
+  const elapsedMs = finiteNumber(value.elapsedMs);
+  const inflightRequests = finiteNumber(value.inflightRequests);
+  if (elapsedMs === null || inflightRequests === null) return {};
+  return { initialNetworkDrain: { fallbackUsed: value.fallbackUsed, elapsedMs, inflightRequests } };
 }
 
 function normalizeMemorySamples(

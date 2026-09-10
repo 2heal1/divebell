@@ -1,5 +1,25 @@
 import type { DivebellCodeUsageReport } from "@divebell/chunk-map";
 
+export interface CodeUsageCaptureOptions {
+  chunkMap: string;
+  outputPath: string;
+  label: string;
+  stop?: boolean;
+}
+
+export interface CodeUsageCaptureResult {
+  outputPath: string;
+  captureId: string;
+  checkpoint: number;
+  label: string;
+  targetId: string;
+  url: string;
+  scriptCount: number;
+  runtimeSourceCount: number;
+  stopped: boolean;
+  cleanupWarning?: string;
+}
+
 export interface AnalyzeCodeUsageFilesOptions {
   chunkMap: string;
   coverage: string[];
@@ -41,7 +61,7 @@ export type CodeUsageReadySpec =
   | {
       kind: "heuristic";
       algorithm: "page-stable";
-      version: 2;
+      version: 2 | 3;
       quietWindowMs: number;
       maxInflightRequests: number;
       initialNetworkDrainTimeoutMs: number;
@@ -58,6 +78,12 @@ export interface CodeUsageReadyResult {
   endTimeMs: number;
   durationMs: number;
   reason: string;
+  /** Absent on historical recordings and explicit business-ready signals. */
+  initialNetworkDrain?: {
+    fallbackUsed: boolean;
+    elapsedMs: number;
+    inflightRequests: number;
+  };
 }
 
 export interface CodeUsageExperiencePhase {

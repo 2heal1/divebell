@@ -976,7 +976,7 @@
       <div class="panel-head">
         <div>
           <h2>Ranked optimization opportunities</h2>
-          <p class="hint">Ranked by the largest raw JavaScript amount that could leave this recorded phase. Coverage is an upper bound: rebuild to verify gzip, requests, and final asset size.</p>
+          <p class="hint">Ranked by observed unexecuted raw JavaScript bytes, not predicted savings. Deferral can also remove executed initialization; dependencies and build changes can add bytes. Rebuild to measure net size, compression, and requests.</p>
         </div>
       </div>
       <div id="opportunity-list" class="opportunity-list"></div>
@@ -1159,7 +1159,7 @@
           document.getElementById("ready-memory").textContent = formatBytes(numberOrNull(memory.atReadyBytes));
           document.getElementById("peak-memory").textContent = formatBytes(numberOrNull(memory.peakBytes));
           document.getElementById("ready-duration-note").textContent = phaseExperience
-            ? formatText("End condition: {target}=ready{confidence}{median}", {
+            ? formatText("End condition: {target}=ready{confidence}{median}{fallback}", {
                 target: phaseExperience.ready && phaseExperience.ready.specId || phaseExperience.readyTarget || formatText("readiness target"),
                 confidence: phaseExperience.ready
                   ? formatText(" · {confidence} confidence · {source}", {
@@ -1169,6 +1169,10 @@
                   : "",
                 median: phaseExperience.runCount > 1
                   ? formatText(" · median of {count} runs", { count: phaseExperience.runCount })
+                  : "",
+                fallback: phaseExperience.ready && phaseExperience.ready.initialNetworkDrain
+                    && phaseExperience.ready.initialNetworkDrain.fallbackUsed
+                  ? " · Initial network drain fallback used; readiness is not evidence of network settling"
                   : ""
               })
             : formatText("Page ready time unavailable");
@@ -1407,7 +1411,7 @@
             : Math.max(0, observed - unmatchedScripts.length);
           const withoutUrl = Number.isFinite(phase.scriptsWithoutUrl) ? phase.scriptsWithoutUrl : 0;
           document.getElementById("coverage-scope-summary").textContent = formatText(
-            "{observed} scripts with an address · {matched} matched to this build · {outside} outside this build · {anonymous} without an address",
+            "{observed} scripts with an address · {matched} matched asset paths · {outside} unmatched · {anonymous} without an address",
             {
               observed,
               matched,
@@ -1415,6 +1419,13 @@
               anonymous: withoutUrl
             }
           );
+          const identity = phase.contentIdentity;
+          document.getElementById("coverage-scope-summary").textContent += identity?.verified
+            ? formatText(" · Runtime content verified: {exact} exact, {embedded} embedded (coverage offsets aligned)", identity)
+            : formatText(" · Runtime content NOT fully verified: {unverified} unverified, {mismatch} mismatched; not valid for trusted A/B", {
+              unverified: identity?.unverified ?? matched,
+              mismatch: identity?.mismatch ?? 0
+            });
 
           const details = document.getElementById("unmatched-script-details");
           const list = document.getElementById("unmatched-script-list");
@@ -1441,7 +1452,14 @@
         const renderOpportunities = (phase) => {
           const panel = document.getElementById("opportunities");
           const list = document.getElementById("opportunity-list");
-          const opportunities = Array.isArray(phase.opportunities) ? phase.opportunities.slice(0, 8) : [];
+          // Source/package attribution overlaps chunks; never let those duplicate
+          // rows displace the exclusive first-screen unexecuted-byte backlog.
+          const opportunities = Array.isArray(phase.opportunities)
+            ? phase.opportunities.filter((item) => item.savingsAccounting === "exclusive-chunk"
+              || (item.savingsAccounting === undefined && item.kind === "large-low-use-chunk"))
+              .sort((left, right) => (right.potentialSavingsBytes ?? right.unusedBytes ?? 0)
+                - (left.potentialSavingsBytes ?? left.unusedBytes ?? 0))
+            : [];
           panel.hidden = opportunities.length === 0;
           list.replaceChildren();
           for (const opportunity of opportunities) {
@@ -1452,10 +1470,10 @@
             name.textContent = opportunity.subject || opportunity.id || "Opportunity";
             const impact = document.createElement("div");
             impact.className = "opportunity-impact";
-            impact.textContent = formatText("Current {current} → coverage floor {floor} · up to {savings} raw can leave phase", {
+            impact.textContent = formatText("Observed raw: {current} total · {used} executed · {unused} unexecuted (ranking)", {
               current: formatBytes(opportunity.totalBytes),
-              floor: formatBytes(opportunity.coverageFloorBytes ?? opportunity.usedBytes),
-              savings: formatBytes(opportunity.potentialSavingsBytes ?? opportunity.unusedBytes)
+              used: formatBytes(opportunity.usedBytes ?? opportunity.coverageFloorBytes),
+              unused: formatBytes(opportunity.unusedBytes ?? opportunity.potentialSavingsBytes)
             });
             const evidence = document.createElement("div");
             evidence.className = "opportunity-evidence";

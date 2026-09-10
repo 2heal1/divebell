@@ -27,7 +27,9 @@ test("packs one code usage skill with analysis and optimization references", () 
     join(packageDirectory, "skills/analyze-code-usage/references/analyze.md"),
     "utf8"
   );
-  assert.match(analysisReference, /page-stable@2/);
+  assert.match(analysisReference, /page-stable@3/);
+  assert.match(analysisReference, /phase\.contentIdentity\.verified === true/);
+  assert.match(analysisReference, /code-usage capture/);
   assert.match(analysisReference, /potentialSavingsBytes/);
   assert.match(analysisReference, /Coverage changes JavaScript-engine behavior/);
   assert.match(analysisReference, /BROWSER_CLI/);
@@ -50,7 +52,8 @@ test("packs one code usage skill with analysis and optimization references", () 
   assert.match(optimizationReference, /Usage lane/);
   assert.match(optimizationReference, /Topology lane/);
   assert.match(optimizationReference, /`splitChunks`\s+only changes topology/);
-  assert.match(optimizationReference, /original CDN hostname/);
+  assert.match(optimizationReference, /phase\.contentIdentity\.verified === true/);
+  assert.match(optimizationReference, /analyze\.md#4-record-coverage/);
 
   const outputDirectory = mkdtempSync(join(tmpdir(), "divebell-code-usage-package-"));
   try {

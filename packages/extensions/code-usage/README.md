@@ -32,24 +32,24 @@ This separate load prevents code coverage from changing the performance
 measurement. If the application exposes a real ready signal, append exactly one
 of `--code-usage-ready-measure <name>`, `--code-usage-ready-mark <name>`, or
 `--code-usage-ready-selector <css>` to `divebell open`. Otherwise the recorder
-uses `page-stable@2` (DOMContentLoaded/root/FCP, at most two in-flight requests,
-an initial network drain with a 10-second fallback, no pending JS/CSS/WASM
-fetches, and a 500 ms render quiet window) and labels the result as inferred.
-After the fallback, fetch/XHR activity contributes to the in-flight limit but
-background completion alone does not reset render stability, so long polling,
-telemetry, and HTML prefetching do not block readiness forever. The page
-observer records the timestamp, so a later CLI call does not inflate ready
-time.
+uses the inferred `page-stable@3` signal. The page observer records the
+timestamp, so a later CLI call does not inflate ready time. The optional
+`ready.initialNetworkDrain` records whether the bounded network-drain fallback
+was used. Run `divebell code-usage --skill` for measurement and acceptance
+guidance.
 
-Record one or more representative phases with the base CLI:
+Record one or more representative phases with verified runtime-source capture:
 
 ```bash
-divebell open https://example.com/
+divebell tab new about:blank
 divebell coverage start
-divebell reload
-divebell coverage take /tmp/first-screen.coverage.json --label first-screen
+divebell goto https://example.com/
+# Wait for the recorded first-screen boundary and verify the actual page.
+divebell code-usage capture --chunk-map /path/to/dist/divebell-chunks.json \
+  --output /tmp/first-screen.coverage.json --label first-screen
 # Perform the next page journey.
-divebell coverage stop /tmp/orders.coverage.json --label orders
+divebell code-usage capture --chunk-map /path/to/dist/divebell-chunks.json \
+  --output /tmp/orders.coverage.json --label orders --stop
 ```
 
 Combine the recordings with build metadata:

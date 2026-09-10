@@ -163,7 +163,7 @@ test("injects page-experience sampling only when explicitly enabled", () => {
   assert.equal(enabled?.scripts.length, 1);
   assert.match(enabled?.scripts[0] ?? "", /__DIVEBELL_PAGE_EXPERIENCE__/);
   assert.match(enabled?.scripts[0] ?? "", /setInterval\(readMemory, 25\)/);
-  assert.match(enabled?.scripts[0] ?? "", /"version":2/);
+  assert.match(enabled?.scripts[0] ?? "", /"version":3/);
   assert.match(enabled?.scripts[0] ?? "", /"maxInflightRequests":2/);
   assert.match(enabled?.scripts[0] ?? "", /"initialNetworkDrainTimeoutMs":10000/);
   assert.match(enabled?.scripts[0] ?? "", /quietWindowMs/);
@@ -689,6 +689,26 @@ test("code-usage report rejects unrelated JSON instead of creating an empty page
   }
 });
 
+test("code-usage analyze rejects malformed runtime source instead of treating it as legacy coverage", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "divebell-code-usage-invalid-source-"));
+  const chunkMapPath = join(directory, "map.json");
+  const coveragePath = join(directory, "coverage.json");
+  writeFileSync(chunkMapPath, JSON.stringify({ buildId: "build", chunks: [] }));
+  try {
+    for (const runtimeSource of [null, 42, {}]) {
+      writeFileSync(coveragePath, JSON.stringify({ scripts: [{ scriptId: "1", url: "https://example.test/app.js", functions: [], runtimeSource }] }));
+      const output = createOutput();
+      const exitCode = await runCli(["code-usage", "analyze", "--chunk-map", chunkMapPath, "--coverage", coveragePath], {
+        stdout: output.stdout, stderr: output.stderr
+      });
+      assert.equal(exitCode, 1);
+      assert.match(JSON.parse(output.text()).message, /non-string runtimeSource/);
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("code-usage analyze accepts an explicit Chunk Map path and multiple local checkpoints", async () => {
   const directory = mkdtempSync(join(tmpdir(), "divebell-code-usage-analyze-"));
   const assetDirectory = join(directory, "dist");
@@ -851,11 +871,13 @@ test("code-usage analyze accepts an explicit Chunk Map path and multiple local c
       mappedRanges: [{ startOffset: 5, endOffset: 10 }],
       executedRanges: [{ startOffset: 5, endOffset: 10 }]
     }]);
-    assert.deepEqual(usage.codeFiles, [{
+    assert.deepEqual(usage.codeFiles.map(({ contentIdentity, ...file }) => file), [{
       file: "static/js/main.js",
       code: "aaaa\nbbbb\n",
       totalBytes: 10
     }]);
+    assert.equal(usage.codeFiles[0].contentIdentity.status, "unverified");
+    assert.equal(usage.phases[0].contentIdentity.verified, false);
     assert.deepEqual(usage.phases[0].codeFiles[0].executedRanges, [
       { startOffset: 0, endOffset: 5 }
     ]);

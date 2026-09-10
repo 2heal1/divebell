@@ -5,9 +5,8 @@ configuration, or chunking.
 
 ## Invariants
 
-- Use the globally installed browser CLI that returned this Skill. Set
-  `BROWSER_CLI` to that command (`divebell` or `bytedbrowser`); do not add the
-  CLI or Extension to the app or switch browser tools mid-workflow.
+- Use the globally installed `divebell`; do not add the CLI or Extension to the
+  app or switch browser tools mid-workflow.
 - The browser page, Chunk Map, JavaScript, and source maps must be one build.
   Prove the match rather than inferring it from a filename.
 - Reuse the intended authenticated profile and record the actual user workflow.
@@ -29,8 +28,7 @@ configuration, or chunking.
 Run:
 
 ```bash
-BROWSER_CLI=<the CLI that returned this Skill>
-"$BROWSER_CLI" code-usage --help
+divebell code-usage --help
 ```
 
 If unavailable, ask the user to install the global CLI and Code Usage
@@ -39,7 +37,7 @@ Extension. Do not install either in the application project.
 Then establish the browser context before collecting any page evidence:
 
 ```bash
-"$BROWSER_CLI" setup
+divebell setup
 ```
 
 If setup reports a Unix-socket path-length failure, retry it once with a short,
@@ -47,7 +45,7 @@ writable socket directory, for example:
 
 ```bash
 export AGENT_BROWSER_SOCKET_DIR="$(mktemp -d /tmp/code-usage-browser.XXXXXX)"
-"$BROWSER_CLI" setup
+divebell setup
 ```
 
 A browser-connection error from a sandbox is not proof that the user denied
@@ -112,12 +110,12 @@ If neither a supplied nor a verified existing signal is available, use the
 default. Open a measurement-enabled page and save one experience file per phase:
 
 ```bash
-"$BROWSER_CLI" open <page-url> --code-usage-experience
+divebell open <page-url> --code-usage-experience
 # Add one for a supplied or verified discovered signal:
 # --code-usage-ready-measure <name>
 # --code-usage-ready-mark <name>
 # --code-usage-ready-selector <css>
-"$BROWSER_CLI" code-usage experience \
+divebell code-usage experience \
   --output /tmp/first-screen.experience.json \
   --label first-screen
 ```
@@ -148,12 +146,12 @@ same authenticated browser profile, but create a blank tab, start coverage
 there, then navigate it to the target page:
 
 ```bash
-"$BROWSER_CLI" tab new about:blank
+divebell tab new about:blank
 # Verify that the fresh target has the intended recorder/spec when used.
-"$BROWSER_CLI" coverage start
-"$BROWSER_CLI" goto <page-url>
+divebell coverage start
+divebell goto <page-url>
 # Verify the actual URL/spec and reach the fixed ready boundary before capture.
-"$BROWSER_CLI" code-usage capture \
+divebell code-usage capture \
   --chunk-map <build-output>/divebell-chunks.json \
   --output /tmp/first-screen.coverage.json --label first-screen
 ```
@@ -195,13 +193,13 @@ The raw checkpoint `url` is the coverage-start URL (often `about:blank`); use
 ## 5. Analyze and inspect
 
 ```bash
-"$BROWSER_CLI" code-usage analyze \
+divebell code-usage analyze \
   --chunk-map <build-output>/divebell-chunks.json \
   --coverage /tmp/first-screen.coverage.json \
   --experience /tmp/first-screen.experience.json \
   --output /tmp/code-usage-report.json
 
-"$BROWSER_CLI" code-usage report /tmp/code-usage-report.json
+divebell code-usage report /tmp/code-usage-report.json
 ```
 
 Pass every coverage and experience phase together; their labels must match.

@@ -5,11 +5,10 @@ description: Measure, explain, and optimize browser JavaScript usage for a real 
 
 # Code Usage
 
-Use the browser CLI that returned this Skill to connect real execution to
-chunks, source files, workspace packages, and dependencies from the same build.
-For example, use `divebell` after `divebell code-usage --skill`, and use
-`bytedbrowser` after `bytedbrowser code-usage --skill`. Do not mix their
-browser sessions or substitute a different browser tool.
+Use the globally installed `divebell` CLI to connect real execution to chunks,
+source files, workspace packages, and dependencies from the same build. Keep
+the same Divebell browser session throughout the workflow and do not substitute
+a different browser tool.
 
 Choose one mode before acting:
 

@@ -32,8 +32,8 @@ test("packs one code usage skill with analysis and optimization references", () 
   assert.match(analysisReference, /code-usage capture/);
   assert.match(analysisReference, /potentialSavingsBytes/);
   assert.match(analysisReference, /Coverage changes JavaScript-engine behavior/);
-  assert.match(analysisReference, /BROWSER_CLI/);
-  assert.match(analysisReference, /bytedbrowser/);
+  assert.match(analysisReference, /divebell code-usage --help/);
+  assert.doesNotMatch(`${skill}\n${analysisReference}`, /bytedbrowser|byted-browser/i);
   assert.match(analysisReference, /AGENT_BROWSER_SOCKET_DIR/);
   assert.match(analysisReference, /DIVEBELL_SETUP_REMOTE_DEBUGGING_REQUIRED/);
   assert.match(analysisReference, /write-to-disk/);

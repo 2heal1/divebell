@@ -280,7 +280,19 @@ test("attributes executed bytes to application and third-party sources", () => {
   assert.deepEqual(report.codeFiles, [{
     file: "static/js/main.js",
     code: "aaaa\nbbbb\n",
-    totalBytes: 10
+    totalBytes: 10,
+    contentIdentity: {
+      status: "unverified",
+      assetLength: 10,
+      reason: "runtime-source-unavailable",
+      instances: [{
+        status: "unverified",
+        assetLength: 10,
+        reason: "runtime-source-unavailable",
+        scriptId: "1",
+        url: "https://app.test/static/js/main.js"
+      }]
+    }
   }]);
   assert.deepEqual(phase.codeFiles, [{
     file: "static/js/main.js",
@@ -288,6 +300,18 @@ test("attributes executed bytes to application and third-party sources", () => {
     totalBytes: 10,
     usedBytes: 5,
     usedRatio: 0.5,
+    contentIdentity: {
+      status: "unverified",
+      assetLength: 10,
+      reason: "runtime-source-unavailable",
+      instances: [{
+        status: "unverified",
+        assetLength: 10,
+        reason: "runtime-source-unavailable",
+        scriptId: "1",
+        url: "https://app.test/static/js/main.js"
+      }]
+    },
     executedRanges: [{ startOffset: 0, endOffset: 5 }]
   }]);
 });

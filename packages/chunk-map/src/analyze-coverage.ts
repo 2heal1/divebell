@@ -3,11 +3,17 @@ import { dirname, resolve } from "node:path";
 // Framework-independent analysis; build plugins only produce its inputs.
 
 import { matchDivebellChunk } from "./match.js";
+import { inferPnpmVersion } from "./package-path.js";
 import type {
   DivebellCodeUsageAsset,
   DivebellCodeUsageChunkResult,
   DivebellCodeUsageCodeFileResult,
+  DivebellCodeUsageCodeFileIdentity,
+  DivebellCodeUsageContentIdentity,
+  DivebellCodeUsageContentIdentityInstance,
+  DivebellCodeUsageContentIdentitySummary,
   DivebellCodeUsageInput,
+  DivebellCodeUsageOpportunity,
   DivebellCodeUsagePackageResult,
   DivebellCodeUsagePhaseResult,
   DivebellCodeUsageReport,
@@ -55,7 +61,9 @@ export function analyzeDivebellCodeUsage(
       .map((asset) => ({
         file: asset.file,
         code: asset.code,
-        totalBytes: Buffer.byteLength(asset.code, "utf8")
+        totalBytes: Buffer.byteLength(asset.code, "utf8"),
+        contentIdentity: aggregateContentIdentity(phases.flatMap((phase) =>
+          phase.codeFiles?.find((file) => file.file === asset.file)?.contentIdentity?.instances ?? []))
       }))
       .sort((left, right) => left.file.localeCompare(right.file))
   };
@@ -72,19 +80,23 @@ function analyzePhase(
   const codeFileTotals = new Map<string, DivebellCodeUsageCodeFileResult>();
   const unmatchedScriptUrls: string[] = [];
   const unmatchedScripts: DivebellCodeUsageUnmatchedScript[] = [];
+  const contentIdentity: DivebellCodeUsageContentIdentitySummary = {
+    exact: 0, embedded: 0, unverified: 0, mismatch: 0, verified: false
+  };
+  let missingAssets = false;
   const matchedScriptGroups = new Map<string, {
     chunk: DivebellChunkMapChunk;
     asset: DivebellCodeUsageAsset;
     file: string;
-    scripts: DivebellCoverageScript[];
+    scripts: Array<{ script: DivebellCoverageScript; identity: DivebellCodeUsageContentIdentityInstance }>;
   }>();
   let scriptsMatched = 0;
 
   for (const script of scripts) {
     if (script.url.length === 0) continue;
-    const match = matchDivebellChunk(input.chunkMap, script.url, {
-      expectedBuildId: input.chunkMap.buildId
-    });
+    // URL matching only locates a candidate asset; comparing the map's buildId
+    // to itself cannot prove that the browser executed this build's content.
+    const match = matchDivebellChunk(input.chunkMap, script.url);
     if (match.status !== "matched") {
       unmatchedScriptUrls.push(script.url);
       unmatchedScripts.push({
@@ -97,6 +109,7 @@ function analyzePhase(
     }
     const asset = assets.get(match.asset.file);
     if (asset === undefined) {
+      missingAssets = true;
       unmatchedScriptUrls.push(script.url);
       unmatchedScripts.push({
         scriptId: script.scriptId,
@@ -106,6 +119,21 @@ function analyzePhase(
       });
       continue;
     }
+    const identity = identifyRuntimeSource(script, asset.code);
+    contentIdentity[identity.status] += 1;
+    if (identity.status === "mismatch") {
+      unmatchedScriptUrls.push(script.url);
+      unmatchedScripts.push({
+        scriptId: script.scriptId,
+        url: script.url,
+        category: classifyUnmatchedScript(script.url),
+        reason: identity.reason === "runtime-source-ambiguous"
+          ? "runtime-source-ambiguous" : "runtime-source-mismatch",
+        contentIdentity: identity
+      });
+      continue;
+    }
+    const instance = { script, identity: { ...identity, scriptId: script.scriptId, url: script.url } };
     scriptsMatched += 1;
     const key = `${match.chunk.id}\u0000${match.asset.file}`;
     const existing = matchedScriptGroups.get(key);
@@ -114,15 +142,16 @@ function analyzePhase(
         chunk: match.chunk,
         asset,
         file: match.asset.file,
-        scripts: [script]
+        scripts: [instance]
       });
     } else {
-      existing.scripts.push(script);
+      existing.scripts.push(instance);
     }
   }
 
   for (const entry of matchedScriptGroups.values()) {
-    const executedRanges = mergeRanges(entry.scripts.flatMap(createExecutedRanges));
+    const executedRanges = mergeRanges(entry.scripts.flatMap(({ script, identity }) =>
+      normalizeExecutedRanges(script, identity, entry.asset.code.length)));
     const mappedRanges = createMappedRanges(entry.asset);
     const byteOffsets = createByteOffsets(entry.asset.code);
     addChunkUsage(
@@ -141,27 +170,34 @@ function analyzePhase(
       entry.file,
       entry.asset.code.length,
       executedRanges,
-      byteOffsets
+      byteOffsets,
+      entry.scripts.map(({ identity }) => identity)
     );
   }
 
   const sources = [...sourceTotals.values()]
     .map(withSourceRatio)
     .sort((left, right) => right.totalBytes - left.totalBytes || left.sourcePath.localeCompare(right.sourcePath));
+  const chunks = [...chunkTotals.values()]
+    .map(withChunkRatio)
+    .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId));
+  const packages = createPackageUsage(sources);
+  contentIdentity.verified = !missingAssets && contentIdentity.exact + contentIdentity.embedded > 0
+    && contentIdentity.unverified === 0 && contentIdentity.mismatch === 0;
   return {
     label,
     scriptsCaptured: scripts.length,
     scriptsObserved: scripts.filter((script) => script.url.length > 0).length,
     scriptsMatched,
     scriptsWithoutUrl: scripts.filter((script) => script.url.length === 0).length,
+    contentIdentity,
     unmatchedScriptUrls: [...new Set(unmatchedScriptUrls)].sort(),
     unmatchedScripts: unmatchedScripts.sort((left, right) =>
       left.url.localeCompare(right.url) || left.scriptId.localeCompare(right.scriptId)),
-    chunks: [...chunkTotals.values()]
-      .map(withChunkRatio)
-      .sort((left, right) => right.totalBytes - left.totalBytes || left.chunkId.localeCompare(right.chunkId)),
+    chunks,
     sources,
-    packages: createPackageUsage(sources),
+    packages,
+    opportunities: createOptimizationOpportunities(chunks, sources, packages),
     codeFiles: [...codeFileTotals.values()]
       .sort((left, right) => right.totalBytes - left.totalBytes || left.file.localeCompare(right.file))
   };
@@ -173,7 +209,8 @@ function addCodeFileUsage(
   file: string,
   codeLength: number,
   executedRanges: OffsetRange[],
-  byteOffsets: number[]
+  byteOffsets: number[],
+  identities: DivebellCodeUsageContentIdentityInstance[]
 ): void {
   const existing = totals.get(file);
   const mergedRanges = mergeRanges([
@@ -195,10 +232,63 @@ function addCodeFileUsage(
     totalBytes,
     usedBytes,
     usedRatio: ratio(usedBytes, totalBytes),
+    contentIdentity: aggregateContentIdentity([
+      ...(existing?.contentIdentity?.instances ?? []), ...identities
+    ]),
     executedRanges: mergedRanges.map((range) => ({
       startOffset: range.start,
       endOffset: range.end
     }))
+  });
+}
+
+function identifyRuntimeSource(script: DivebellCoverageScript, code: string): DivebellCodeUsageContentIdentity {
+  const source = script.runtimeSource;
+  if (source === undefined) {
+    return { status: "unverified", assetLength: code.length, reason: "runtime-source-unavailable" };
+  }
+  const lengths = { runtimeLength: source.length, assetLength: code.length };
+  if (source === code) return { status: "exact", runtimeOffset: 0, ...lengths };
+  const offset = source.indexOf(code);
+  if (offset < 0) return { status: "mismatch", ...lengths, reason: "runtime-source-mismatch" };
+  // Search from +1, not +code.length: overlapping occurrences are ambiguous too.
+  if (code.length === 0 || source.indexOf(code, offset + 1) !== -1) {
+    return { status: "mismatch", ...lengths, reason: "runtime-source-ambiguous" };
+  }
+  return { status: "embedded", runtimeOffset: offset, ...lengths };
+}
+
+function aggregateContentIdentity(
+  instances: DivebellCodeUsageContentIdentityInstance[]
+): DivebellCodeUsageCodeFileIdentity {
+  const status = instances.some((instance) => instance.status === "mismatch") ? "mismatch"
+    : instances.some((instance) => instance.status === "unverified") ? "unverified"
+      : instances.some((instance) => instance.status === "embedded") ? "embedded" : "exact";
+  const first = instances[0];
+  const sameOffset = instances.every((instance) => instance.runtimeOffset === first?.runtimeOffset);
+  const sameLength = instances.every((instance) => instance.runtimeLength === first?.runtimeLength);
+  return {
+    status,
+    assetLength: first?.assetLength ?? 0,
+    ...(sameOffset && first?.runtimeOffset !== undefined ? { runtimeOffset: first.runtimeOffset } : {}),
+    ...(sameLength && first?.runtimeLength !== undefined ? { runtimeLength: first.runtimeLength } : {}),
+    ...(status === "unverified" ? { reason: "runtime-source-unavailable" } : {}),
+    instances
+  };
+}
+
+function normalizeExecutedRanges(
+  script: DivebellCoverageScript,
+  identity: DivebellCodeUsageContentIdentity,
+  codeLength: number
+): OffsetRange[] {
+  const offset = identity.runtimeOffset ?? 0;
+  // Resolve nested positive/zero counts in the original runtime coordinate
+  // space first. Clipping before resolution can collapse distinct nesting.
+  return createExecutedRanges(script).flatMap((range) => {
+    const start = Math.max(0, range.start - offset);
+    const end = Math.min(codeLength, range.end - offset);
+    return end > start ? [{ start, end }] : [];
   });
 }
 
@@ -302,7 +392,7 @@ function addSourceUsage(
     if (existing === undefined) {
       existing = {
         sourcePath: range.sourcePath,
-        owner: module?.owner ?? unknownOwner(),
+        owner: module?.owner ?? inferOwnerFromSourcePath(range.sourcePath),
         chunkIds: [],
         fileRanges: [],
         totalBytes: 0,
@@ -384,12 +474,33 @@ function findModule(
   sourcePath: string
 ): DivebellChunkMapModule | undefined {
   const normalizedSource = normalizePath(sourcePath);
-  return modules.find((module) => module.sourcePath !== null && normalizePath(module.sourcePath) === normalizedSource)
-    ?? modules.find((module) => {
-      if (module.sourcePath === null) return false;
-      const modulePath = normalizePath(module.sourcePath);
-      return normalizedSource.endsWith(modulePath) || modulePath.endsWith(normalizedSource);
-    });
+  const exact = modules.find((module) => module.sourcePath !== null
+    && normalizePath(module.sourcePath) === normalizedSource);
+  if (exact !== undefined) return exact;
+  const suffixMatches = modules.filter((module) => {
+    if (module.sourcePath === null) return false;
+    const modulePath = normalizePath(module.sourcePath);
+    return normalizedSource.endsWith(modulePath) || modulePath.endsWith(normalizedSource);
+  });
+  if (suffixMatches.length > 0) return suffixMatches.length === 1 ? suffixMatches[0] : undefined;
+  const sourceSuffix = comparablePathSuffix(sourcePath);
+  const comparableMatches = modules.filter((module) => {
+    if (module.sourcePath === null) return false;
+    const moduleSuffix = comparablePathSuffix(module.sourcePath);
+    return moduleSuffix !== null && moduleSuffix === sourceSuffix;
+  });
+  return comparableMatches.length === 1 ? comparableMatches[0] : undefined;
+}
+
+function comparablePathSuffix(value: string): string | null {
+  const normalized = normalizePath(value);
+  // Keep package version and peer context when comparing different build roots.
+  const pnpmIndex = normalized.lastIndexOf("/.pnpm/");
+  if (pnpmIndex >= 0) return normalized.slice(pnpmIndex + 1);
+  const nodeModulesIndex = normalized.lastIndexOf("/node_modules/");
+  if (nodeModulesIndex >= 0) return normalized.slice(nodeModulesIndex + 1);
+  const sourceIndex = normalized.lastIndexOf("/src/");
+  return sourceIndex >= 0 ? normalized.slice(sourceIndex + 1) : null;
 }
 
 function resolveSourcePath(asset: DivebellCodeUsageAsset, source: string): string {
@@ -575,6 +686,121 @@ function ratio(usedBytes: number, totalBytes: number): number | null {
 
 function fallbackPackageName(source: DivebellCodeUsageSourceResult): string {
   return source.owner.kind === "application" ? "(application)" : "(unmatched)";
+}
+
+function inferOwnerFromSourcePath(sourcePath: string): DivebellChunkMapModuleOwner {
+  const normalized = normalizePath(sourcePath);
+  const marker = "/node_modules/";
+  const index = normalized.lastIndexOf(marker);
+  if (index < 0) return unknownOwner();
+  const tail = normalized.slice(index + marker.length);
+  const parts = tail.split("/").filter(Boolean);
+  const packageName = parts[0]?.startsWith("@")
+    ? parts.slice(0, 2).join("/")
+    : parts[0];
+  if (packageName === undefined || packageName.length === 0) return unknownOwner();
+  const packagePartCount = packageName.startsWith("@") ? 2 : 1;
+  const packageVersion = inferPnpmVersion(normalized, packageName);
+  return {
+    kind: "third-party",
+    packageName,
+    packageVersion,
+    packageSubpath: parts.slice(packagePartCount).join("/") || null
+  };
+}
+
+function createOptimizationOpportunities(
+  chunks: DivebellCodeUsageChunkResult[],
+  sources: DivebellCodeUsageSourceResult[],
+  packages: DivebellCodeUsagePackageResult[]
+): DivebellCodeUsageOpportunity[] {
+  const opportunities: DivebellCodeUsageOpportunity[] = [];
+  for (const chunk of chunks) {
+    const usedRatio = chunk.usedRatio;
+    const unusedBytes = Math.max(0, chunk.totalBytes - chunk.usedBytes);
+    if (usedRatio === null || chunk.totalBytes < 32 * 1024 || unusedBytes < 16 * 1024) continue;
+    const mappedRatio = chunk.totalBytes === 0 ? 0 : (chunk.mappedBytes ?? 0) / chunk.totalBytes;
+    const confidence = mappedRatio >= 0.8 ? "high" : mappedRatio >= 0.4 ? "medium" : "low";
+    opportunities.push({
+      id: `chunk:${chunk.chunkId}`,
+      kind: "large-low-use-chunk",
+      subject: `Chunk ${chunk.chunkId}`,
+      totalBytes: chunk.totalBytes,
+      usedBytes: chunk.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: chunk.usedBytes,
+      savingsAccounting: "exclusive-chunk",
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: [chunk.chunkId],
+      evidence: [
+        chunk.initial ? "loaded by an initial chunk" : "loaded by an async chunk in this phase",
+        `${unusedBytes} raw bytes were unexecuted in this recorded phase; net savings require a candidate build`,
+        `${Math.round((1 - usedRatio) * 1000) / 10}% was not executed`,
+        `${Math.round(mappedRatio * 1000) / 10}% has source-map attribution`
+      ]
+    });
+  }
+  for (const source of sources) {
+    const usedRatio = source.usedRatio;
+    const unusedBytes = Math.max(0, source.totalBytes - source.usedBytes);
+    if (usedRatio === null || source.totalBytes < 16 * 1024 || unusedBytes < 12 * 1024) continue;
+    const confidence = source.owner.kind === "unknown" ? "low" : "high";
+    opportunities.push({
+      id: `source:${source.sourcePath}`,
+      kind: "large-low-use-source",
+      subject: source.sourcePath,
+      totalBytes: source.totalBytes,
+      usedBytes: source.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: source.usedBytes,
+      savingsAccounting: "overlapping-attribution",
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: source.chunkIds,
+      evidence: [
+        `${unusedBytes} source-mapped raw bytes were unexecuted in this recorded phase; net savings require a candidate build`,
+        "source attribution overlaps its containing chunks; do not add it to the chunk ledger",
+        `${Math.round((1 - usedRatio) * 1000) / 10}% of source-mapped bytes were not executed`,
+        source.owner.kind === "unknown" ? "source ownership could not be proven" : `${source.owner.kind} source`
+      ]
+    });
+  }
+  for (const item of packages) {
+    const usedRatio = item.usedRatio;
+    const unusedBytes = Math.max(0, item.totalBytes - item.usedBytes);
+    if (usedRatio === null || item.totalBytes < 32 * 1024 || unusedBytes < 24 * 1024) continue;
+    const confidence = item.kind === "unknown" ? "low" : "medium";
+    opportunities.push({
+      id: `package:${item.kind}:${item.packageName}@${item.packageVersion ?? ""}`,
+      kind: "large-low-use-package",
+      subject: item.packageVersion ? `${item.packageName}@${item.packageVersion}` : item.packageName,
+      totalBytes: item.totalBytes,
+      usedBytes: item.usedBytes,
+      unusedBytes,
+      potentialSavingsBytes: unusedBytes,
+      coverageFloorBytes: item.usedBytes,
+      savingsAccounting: "overlapping-attribution",
+      usedRatio,
+      score: unusedBytes,
+      confidence,
+      chunkIds: item.chunkIds,
+      evidence: [
+        `${unusedBytes} source-mapped raw bytes were unexecuted in this recorded phase; net savings require a candidate build`,
+        "package attribution overlaps its sources and containing chunks; do not add it to the chunk ledger",
+        `${Math.round((1 - usedRatio) * 1000) / 10}% of source-mapped bytes were not executed`,
+        `${item.sourceCount} mapped sources across ${item.chunkIds.length} chunks`
+      ]
+    });
+  }
+  return opportunities.sort((left, right) =>
+    right.potentialSavingsBytes - left.potentialSavingsBytes
+      || right.unusedBytes - left.unusedBytes
+      || left.id.localeCompare(right.id));
 }
 
 function unknownOwner(): DivebellChunkMapModuleOwner {

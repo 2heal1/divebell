@@ -131,6 +131,12 @@
       margin-bottom: 16px;
     }
     .coverage-scope { margin-bottom: 16px; padding: 15px 18px; }
+    .opportunities { margin-bottom: 16px; padding: 18px; }
+    .opportunity-list { display: grid; gap: 9px; margin-top: 12px; }
+    .opportunity-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted); }
+    .opportunity-name { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .opportunity-impact { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .opportunity-evidence { grid-column: 1 / -1; color: var(--muted-foreground); font-size: 12px; }
     .coverage-scope-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
     .coverage-scope-summary { margin-top: 5px; color: var(--muted-foreground); font-size: 13px; }
     .unmatched-scripts { margin-top: 11px; border-top: 1px solid var(--border); padding-top: 10px; }
@@ -966,6 +972,16 @@
       </label>
     </section>
 
+    <section id="opportunities" class="card opportunities" aria-label="Ranked optimization opportunities" hidden>
+      <div class="panel-head">
+        <div>
+          <h2>Ranked optimization opportunities</h2>
+          <p class="hint">Ranked by observed unexecuted raw JavaScript bytes, not predicted savings. Deferral can also remove executed initialization; dependencies and build changes can add bytes. Rebuild to measure net size, compression, and requests.</p>
+        </div>
+      </div>
+      <div id="opportunity-list" class="opportunity-list"></div>
+    </section>
+
     <section class="card coverage-scope" aria-label="Coverage scope">
       <div class="coverage-scope-head">
         <h2>Coverage scope</h2>
@@ -1143,10 +1159,20 @@
           document.getElementById("ready-memory").textContent = formatBytes(numberOrNull(memory.atReadyBytes));
           document.getElementById("peak-memory").textContent = formatBytes(numberOrNull(memory.peakBytes));
           document.getElementById("ready-duration-note").textContent = phaseExperience
-            ? formatText("End condition: {target}=ready{median}", {
-                target: phaseExperience.readyTarget || formatText("readiness target"),
+            ? formatText("End condition: {target}=ready{confidence}{median}{fallback}", {
+                target: phaseExperience.ready && phaseExperience.ready.specId || phaseExperience.readyTarget || formatText("readiness target"),
+                confidence: phaseExperience.ready
+                  ? formatText(" · {confidence} confidence · {source}", {
+                      confidence: phaseExperience.ready.confidence,
+                      source: phaseExperience.ready.selectedBy === "user" ? "user supplied" : "tool default"
+                    })
+                  : "",
                 median: phaseExperience.runCount > 1
                   ? formatText(" · median of {count} runs", { count: phaseExperience.runCount })
+                  : "",
+                fallback: phaseExperience.ready && phaseExperience.ready.initialNetworkDrain
+                    && phaseExperience.ready.initialNetworkDrain.fallbackUsed
+                  ? " · Initial network drain fallback used; readiness is not evidence of network settling"
                   : ""
               })
             : formatText("Page ready time unavailable");
@@ -1385,7 +1411,7 @@
             : Math.max(0, observed - unmatchedScripts.length);
           const withoutUrl = Number.isFinite(phase.scriptsWithoutUrl) ? phase.scriptsWithoutUrl : 0;
           document.getElementById("coverage-scope-summary").textContent = formatText(
-            "{observed} scripts with an address · {matched} matched to this build · {outside} outside this build · {anonymous} without an address",
+            "{observed} scripts with an address · {matched} matched asset paths · {outside} unmatched · {anonymous} without an address",
             {
               observed,
               matched,
@@ -1393,6 +1419,13 @@
               anonymous: withoutUrl
             }
           );
+          const identity = phase.contentIdentity;
+          document.getElementById("coverage-scope-summary").textContent += identity?.verified
+            ? formatText(" · Runtime content verified: {exact} exact, {embedded} embedded (coverage offsets aligned)", identity)
+            : formatText(" · Runtime content NOT fully verified: {unverified} unverified, {mismatch} mismatched; not valid for trusted A/B", {
+              unverified: identity?.unverified ?? matched,
+              mismatch: identity?.mismatch ?? 0
+            });
 
           const details = document.getElementById("unmatched-script-details");
           const list = document.getElementById("unmatched-script-list");
@@ -1412,6 +1445,45 @@
               reason: scriptReasonLabel(script.reason)
             });
             item.append(note);
+            list.append(item);
+          }
+        };
+
+        const renderOpportunities = (phase) => {
+          const panel = document.getElementById("opportunities");
+          const list = document.getElementById("opportunity-list");
+          // Source/package attribution overlaps chunks; never let those duplicate
+          // rows displace the exclusive first-screen unexecuted-byte backlog.
+          const opportunities = Array.isArray(phase.opportunities)
+            ? phase.opportunities.filter((item) => item.savingsAccounting === "exclusive-chunk"
+              || (item.savingsAccounting === undefined && item.kind === "large-low-use-chunk"))
+              .sort((left, right) => (right.potentialSavingsBytes ?? right.unusedBytes ?? 0)
+                - (left.potentialSavingsBytes ?? left.unusedBytes ?? 0))
+            : [];
+          panel.hidden = opportunities.length === 0;
+          list.replaceChildren();
+          for (const opportunity of opportunities) {
+            const item = document.createElement("article");
+            item.className = "opportunity-item";
+            const name = document.createElement("div");
+            name.className = "opportunity-name";
+            name.textContent = opportunity.subject || opportunity.id || "Opportunity";
+            const impact = document.createElement("div");
+            impact.className = "opportunity-impact";
+            impact.textContent = formatText("Observed raw: {current} total · {used} executed · {unused} unexecuted (ranking)", {
+              current: formatBytes(opportunity.totalBytes),
+              used: formatBytes(opportunity.usedBytes ?? opportunity.coverageFloorBytes),
+              unused: formatBytes(opportunity.unusedBytes ?? opportunity.potentialSavingsBytes)
+            });
+            const evidence = document.createElement("div");
+            evidence.className = "opportunity-evidence";
+            evidence.textContent = [
+              opportunity.kind,
+              formatText("{confidence} confidence", { confidence: opportunity.confidence || "unknown" }),
+              formatText("{ratio} used", { ratio: formatPercent(numberOrNull(opportunity.usedRatio)) }),
+              ...(Array.isArray(opportunity.evidence) ? opportunity.evidence : [])
+            ].join(" · ");
+            item.append(name, impact, evidence);
             list.append(item);
           }
         };
@@ -1436,6 +1508,7 @@
             );
           }
           renderCoverageScope(phase);
+          renderOpportunities(phase);
 
           document.getElementById("total-size-label").textContent = state.view === "chunks"
             ? formatText("Built file size")

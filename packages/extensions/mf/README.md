@@ -379,9 +379,9 @@ divebell open https://app.example --mf --mf-react-version 18.3.1
 ```
 
 `--mf-react-version` also enables development React. Supply an exact version.
-React 17/18 use versioned official development UMD files from unpkg. React 19
-currently supports **19.2.4 only**, using the verified `umd-react@19.2.4`
-development files. `react-umd` production files do not provide Fast Refresh.
+React 17/18 use versioned official development UMD files from unpkg. All React
+19.x versions, whether detected from the host or explicitly specified, map to
+**19.2.4**, using the verified `umd-react@19.2.4` development files. `react-umd` production files do not provide Fast Refresh.
 The loaded React and ReactDOM export versions must match the selected version;
 a mismatched or unavailable build fails explicitly instead of silently falling
 back to another version.

@@ -43,9 +43,10 @@ async function run(args) { return exec(process.execPath,[cli,...args],{cwd:dir,e
 try {
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin=`http://127.0.0.1:${server.address().port}`;
-  for (const version of ['18.3.1','19.2.4']) {
+  for (const version of ['18.3.1','19.1.1']) {
+    const resolvedVersion = version.startsWith('19.') ? '19.2.4' : version;
     for (const pkg of ['react','react-dom']) {
-      const url=version.startsWith('19') ? `https://unpkg.com/umd-react@${version}/dist/${pkg}.development.js` : `https://unpkg.com/${pkg}@${version}/umd/${pkg}.development.js`;
+      const url=version.startsWith('19') ? `https://unpkg.com/umd-react@${resolvedVersion}/dist/${pkg}.development.js` : `https://unpkg.com/${pkg}@${version}/umd/${pkg}.development.js`;
       const response=await fetch(url); assert.ok(response.ok,url); sources[url]=await response.text();
     }
     for (const eager of [false,true]) {
@@ -61,7 +62,7 @@ try {
       const deadline=Date.now()+15000;
       while(reports.length===count&&Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,50));
       assert.equal(reports.length,count+1,'page should report a render result');
-      assert.deepEqual(reports.at(-1),{version,dom:version,text:'development renderer',refresh:true,status:'ready'});
+      assert.deepEqual(reports.at(-1),{version:resolvedVersion,dom:resolvedVersion,text:'development renderer',refresh:true,status:'ready'});
       await run(['stop']);
       console.log(`verified React ${version}, eager=${eager}`);
     }

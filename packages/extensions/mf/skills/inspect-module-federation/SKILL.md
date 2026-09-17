@@ -37,7 +37,8 @@ open with `--mf-react-dev`. The first React-family shared registration supplies
 the version; use `--mf-react-version <exact-version>` when startup order or
 version needs an override. No local producer or preliminary navigation is
 required. Official React 17/18 development UMDs and the verified third-party
-`umd-react@19.2.4` are supported; other React 19 versions fail explicitly.
+`umd-react@19.2.4` are supported. All detected or explicitly specified React
+19.x versions map to development 19.2.4.
 Do not use production `react-umd` builds for this purpose.
 
 If response-header CSP blocks development resources, the user can opt in with

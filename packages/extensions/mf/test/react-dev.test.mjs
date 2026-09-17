@@ -7,7 +7,7 @@ function setup(options = []) {
   const requests = [];
   const source = (url) => {
     const version = url.match(/@(\d+\.\d+\.\d+)/)[1];
-    return url.includes('/react-dom@')
+    return url.includes('/react-dom@') || url.endsWith('/react-dom.development.js')
       ? `module.exports={version:'${version}',react:require('react')}`
       : `module.exports={version:'${version}',createElement:()=>Object.freeze({})}`;
   };
@@ -67,13 +67,35 @@ test('real MF runtime consumes the replacement factory before any remote is regi
   assert.equal(context.__DIVEBELL_MF_REACT_DEV__.host,'host');
 });
 
-test('unsupported provider versions fail visibly before replacing a share', () => {
-  const {register,page} = setup([['mf-react-version',['19.3.0']]]);
-  const original=()=>()=>({original:true});
-  const args=share('react','19.3.0');args.shared.get=original;
-  assert.throws(()=>register(args), /19.2.4/);
-  assert.equal(args.shared.get,original);
-  assert.equal(page.__DIVEBELL_MF_REACT_DEV__.status,'failed');
+for (const version of ['19.0.0', '19.1.1', '19.2.4', '19.3.0']) {
+  for (const explicit of [false, true]) {
+    test(`React ${version} resolves to development 19.2.4 (explicit=${explicit})`, async () => {
+      const {register, page, requests} = setup(explicit ? [['mf-react-version', [version]]] : []);
+      const react = share('react', explicit ? '18.3.1' : version);
+      const dom = share('react-dom/client', version, true);
+      register(react); register(dom);
+      const library = (await react.shared.get())();
+      assert.equal(react.shared.version, '19.2.4');
+      assert.equal(dom.shared.version, '19.2.4');
+      assert.equal(library.version, '19.2.4');
+      assert.equal(dom.shared.lib().react, library);
+      assert.equal(page.__DIVEBELL_MF_REACT_DEV__.version, '19.2.4');
+      assert.deepEqual(requests, [
+        'https://unpkg.com/umd-react@19.2.4/dist/react.development.js',
+        'https://unpkg.com/umd-react@19.2.4/dist/react-dom.development.js'
+      ]);
+    });
+  }
+}
+
+test('unsupported host major fails before replacing a share', () => {
+  const {register, page} = setup();
+  const args = share('react', '20.0.0');
+  const original = () => () => ({original:true});
+  args.shared.get = original;
+  assert.throws(() => register(args), /supported/);
+  assert.equal(args.shared.get, original);
+  assert.equal(page.__DIVEBELL_MF_REACT_DEV__.status, 'failed');
 });
 
 

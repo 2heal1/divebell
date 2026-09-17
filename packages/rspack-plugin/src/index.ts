@@ -44,8 +44,8 @@ interface CompilationLike {
   fullHash?: string;
   chunks?: Iterable<CompilationChunkLike>;
   chunkGraph?: {
-    getChunkModulesIterable(chunk: CompilationChunkLike): Iterable<CompilationModuleLike>;
-    getModuleId(module: CompilationModuleLike): string | number | null;
+    getChunkModulesIterable?(chunk: CompilationChunkLike): Iterable<CompilationModuleLike>;
+    getModuleId?(module: CompilationModuleLike): string | number | null;
   };
   hooks: {
     processAssets: {
@@ -233,7 +233,11 @@ function addCompilationDetails(
     }));
   }
 
-  if (compilation.chunks === undefined || compilation.chunkGraph === undefined) return;
+  if (
+    compilation.chunks === undefined
+    || compilation.chunkGraph === undefined
+    || typeof compilation.chunkGraph.getChunkModulesIterable !== "function"
+  ) return;
   const statsChunks = Array.isArray(stats.chunks) ? stats.chunks : [];
   const statsChunksById = new Map<string, Record<string, unknown>>();
   for (const chunk of statsChunks) {
@@ -262,7 +266,7 @@ function compilationModuleToStats(
     ? module.modules.map((child) => compilationModuleToStats(child, chunkGraph))
     : [];
   return {
-    id: chunkGraph.getModuleId(module),
+    id: typeof chunkGraph.getModuleId === "function" ? chunkGraph.getModuleId(module) : null,
     identifier: module.identifier(),
     name: module.readableIdentifier?.() ?? module.identifier(),
     nameForCondition: module.nameForCondition?.(),

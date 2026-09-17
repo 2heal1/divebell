@@ -273,6 +273,34 @@ test("can disable the latest Chrome profile default", async () => {
   }
 });
 
+test("loads a default state alongside an automatically selected Chrome profile", async () => {
+  const divebellHome = mkdtempSync(join(tmpdir(), "divebell-default-state-profile-"));
+  try {
+    const runner = createAgentBrowserRunner({
+      env: { DIVEBELL_HOME: divebellHome },
+      executablePath: process.execPath,
+      prefixArgs: [
+        "-e",
+        "process.stdout.write(JSON.stringify({ profile: process.env.AGENT_BROWSER_PROFILE ?? null, state: process.env.AGENT_BROWSER_STATE ?? null, restore: process.env.AGENT_BROWSER_RESTORE ?? null }))",
+        "--"
+      ],
+      cwd: divebellHome,
+      latestChromeProfileResolver: async () => "Profile 2"
+    });
+
+    const result = await runner.run(["open", "about:blank"], {
+      defaultStatePath: "/tmp/default-state.json"
+    });
+    assert.deepEqual(JSON.parse(result.stdout), {
+      profile: "Profile 2",
+      state: "/tmp/default-state.json",
+      restore: null
+    });
+  } finally {
+    rmSync(divebellHome, { recursive: true, force: true });
+  }
+});
+
 test("isolates the bundled agent-browser daemon from other installed clients", () => {
   const env = createAgentBrowserEnvironment({
     DIVEBELL_HOME: "/tmp/divebell-home"

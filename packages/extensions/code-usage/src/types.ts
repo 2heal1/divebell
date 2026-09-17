@@ -1,5 +1,25 @@
 import type { DivebellCodeUsageReport } from "@divebell/chunk-map";
 
+export interface CodeUsageCaptureOptions {
+  chunkMap: string;
+  outputPath: string;
+  label: string;
+  stop?: boolean;
+}
+
+export interface CodeUsageCaptureResult {
+  outputPath: string;
+  captureId: string;
+  checkpoint: number;
+  label: string;
+  targetId: string;
+  url: string;
+  scriptCount: number;
+  runtimeSourceCount: number;
+  stopped: boolean;
+  cleanupWarning?: string;
+}
+
 export interface AnalyzeCodeUsageFilesOptions {
   chunkMap: string;
   coverage: string[];
@@ -21,20 +41,74 @@ export interface CodeUsageExperienceNavigation {
 export interface CodeUsageExperienceMemory {
   atReadyBytes: number | null;
   totalAtReadyBytes: number | null;
+  atReadySource?: "page-sample" | "command-fallback" | "unavailable";
   peakBytes: number | null;
   peakTimeMs: number | null;
   stableBytes: number | null;
 }
 
+export type CodeUsageReadySpec =
+  | { kind: "mark"; name: string }
+  | { kind: "measure"; name: string }
+  | { kind: "selector"; selector: string; condition: "visible" }
+  | {
+      kind: "heuristic";
+      algorithm: "page-stable";
+      version: 1;
+      quietWindowMs: number;
+      timeoutMs: number;
+    }
+  | {
+      kind: "heuristic";
+      algorithm: "page-stable";
+      version: 2 | 3;
+      quietWindowMs: number;
+      maxInflightRequests: number;
+      initialNetworkDrainTimeoutMs: number;
+      timeoutMs: number;
+    };
+
+export interface CodeUsageReadyResult {
+  spec: CodeUsageReadySpec;
+  specId: string;
+  selectedBy: "user" | "tool-default";
+  confidence: "high" | "medium" | "inferred";
+  status: "ready" | "timeout";
+  startTimeMs: number;
+  endTimeMs: number;
+  durationMs: number;
+  reason: string;
+  /** Absent on historical recordings and explicit business-ready signals. */
+  initialNetworkDrain?: {
+    fallbackUsed: boolean;
+    elapsedMs: number;
+    inflightRequests: number;
+  };
+}
+
 export interface CodeUsageExperiencePhase {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   label: string;
   url: string;
   pathname: string;
   readyTarget: string;
   readyDurationMs: number | null;
+  ready?: CodeUsageReadyResult;
   navigation: CodeUsageExperienceNavigation;
   memory: CodeUsageExperienceMemory;
+  memorySampling?: {
+    api: "performance.memory";
+    attempts: number;
+    accepted: number;
+    firstTimeMs: number | null;
+    lastTimeMs: number | null;
+    reason: string;
+  };
+  resourceSampling?: {
+    observed: number;
+    firstStartTimeMs: number | null;
+    lastResponseEndMs: number | null;
+  };
   memorySamples: Array<{ timeMs: number; usedBytes: number; totalBytes: number | null }>;
   resources: Array<{
     url: string;
@@ -73,7 +147,7 @@ export interface AnalyzeCodeUsageFilesResult {
 export interface CodeUsageExperienceCaptureOptions {
   outputPath: string;
   label: string;
-  readyTarget: string;
+  readyTarget?: string;
   settleMs: number;
 }
 

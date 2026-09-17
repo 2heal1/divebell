@@ -116,6 +116,9 @@ export function createAgentBrowserRunner(options: AgentBrowserRunnerOptions = {}
             INITIAL_BLANK_PAGE_URL
           );
         }
+        if (runOptions.defaultStatePath !== undefined) {
+          environment[AGENT_BROWSER_STATE_ENV] = runOptions.defaultStatePath;
+        }
         if (runOptions.defaultProfile !== undefined) {
           defaultProfile = runOptions.defaultProfile;
           environment[AGENT_BROWSER_PROFILE_ENV] = defaultProfile;

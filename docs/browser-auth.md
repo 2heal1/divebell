@@ -22,6 +22,27 @@ recently used Chrome Profile. Explicit browser contexts take precedence. Pass
 Restore State; the same fallback is used when no local Chrome Profile is
 available.
 
+## Global default state
+
+Configure one portable state file for all ordinary opens:
+
+```bash
+divebell config state ./app-state.json
+```
+
+Divebell copies the file to its private global state directory and loads it
+when opening a page. The `open` result includes `data.defaultState.path` when
+the default state was applied. Pass `--no-default-state` to skip it once.
+
+```bash
+divebell config state
+divebell config state clear
+```
+
+The global file is read-only during normal browser use. It never updates the
+original Chrome Profile; automatic Restore State remains the newer layer when
+Restore mode is active.
+
 ## Select a local Chrome Profile after the default fails
 
 Open the exact target normally first. Divebell uses the current user's most

@@ -27,6 +27,7 @@ import {
 } from "../utils/command.js";
 import { withDivebellSession } from "../utils/url.js";
 import { resolveDivebellHomeDirectory } from "../utils/home.js";
+import { readDefaultBrowserState } from "../features/browser/default-state.js";
 import {
   createBrowserNetworkFingerprint,
   validateBrowserRequestRules,
@@ -78,6 +79,9 @@ export interface OpenPageResult {
     pid: number;
     controlUrl: string;
   };
+  defaultState?: {
+    path: string;
+  };
 }
 
 const WEBMCP_BROWSER_ARGUMENTS = [
@@ -121,6 +125,9 @@ export async function runBrowserCliCommand(
       || hasOption(args, "state")
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
+    const defaultState = hasOption(args, "no-default-state") || hasOption(args, "state")
+      ? undefined
+      : await readDefaultBrowserState(env);
     const browserUi = hasOption(args, "ui");
     const webMcpLaunch = await createWebMcpBrowserLaunch(args, env);
     if (webMcpLaunch.warning !== undefined) {
@@ -189,6 +196,7 @@ export async function runBrowserCliCommand(
       const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
         ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+        ...(defaultState === undefined ? {} : { defaultStatePath: defaultState.path }),
         ...(browserArguments === undefined ? {} : { browserArguments })
       });
       const beforeNavigate = hookResult.throttling === undefined && requestControl === undefined
@@ -215,6 +223,7 @@ export async function runBrowserCliCommand(
           ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
           ...(browserRestoreDisabled ? { disableRestore: true } : {}),
           ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+          ...(defaultState === undefined ? {} : { defaultStatePath: defaultState.path }),
           ...(browserArguments === undefined ? {} : { browserArguments })
         },
         beforeNavigate
@@ -298,7 +307,8 @@ export async function runBrowserCliCommand(
                 pid: requestControl.pid,
                 controlUrl: requestControl.controlUrl
               }
-            })
+            }),
+        ...(defaultState === undefined ? {} : { defaultState: { path: defaultState.path } })
       };
       createCommandOutput(stdout, args.command.join(" ")).ok(output, "Page opened.");
       if (previousOpenContext?.bridgeUrl !== bridgeUrl) {

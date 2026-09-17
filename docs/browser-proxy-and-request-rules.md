@@ -94,3 +94,34 @@ This is intentionally an HTTP(S) resource replacement facility, not a general ne
 | `BROWSER_PROXY_EXTERNAL_BROWSER_UNSUPPORTED` | A PAC URL requires Divebell-launched Chromium. |
 | `BROWSER_PROXY_RESTART_REQUIRED` | A change was requested after the browser daemon/session was already configured. Stop and reopen. |
 | `BROWSER_REQUEST_CONTROL_REATTACH_FAILED` | Divebell could not reattach request interception before a later navigation. Stop and reopen. |
+
+## Remove response headers
+
+Opt in when a response header prevents the intended debugging flow:
+
+```sh
+divebell open https://app.example --remove-response-header content-security-policy
+```
+
+Repeat `--remove-response-header <name>` to remove more headers. Names are
+case-insensitive. No URL matcher is required: removal applies to HTTP(S)
+responses throughout the current browser daemon/session, including replacement
+responses. Set it at launch; stop and reopen to change or disable it.
+
+The equivalent `--request-rules` JSON property can be used by itself or alongside
+request rewrite/fulfill rules:
+
+```json
+{
+  "schemaVersion": 1,
+  "responseHeaders": { "remove": ["content-security-policy"] }
+}
+```
+
+This filters the response headers before browser processing and retains the
+original status and body content. For body-bearing responses, CDP supplies the
+decoded body, so compression and transfer-length headers are normalized when
+fulfilling it. Modified response bodies are buffered with a 10 MiB limit.
+If Chrome rejects the modification or the body exceeds that limit,
+Divebell resumes the original response and increments the control process's
+`failedRequests` count. HTML `<meta>` CSP policies are unaffected.

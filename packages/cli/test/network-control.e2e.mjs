@@ -40,7 +40,7 @@ const source = createServer((request, response) => {
     response.writeHead(200, { "content-type": "application/json" }).end('{"source":"source"}');
     return;
   }
-  response.writeHead(200, { "content-type": "text/html" }).end(`<!doctype html>
+  response.writeHead(200, { "content-type": "text/html", "Content-Security-Policy": "script-src 'none'" }).end(`<!doctype html>
     <title>Proxy and request rules</title>
     <script src="${sourceOrigin}/assets/app.js"></script>
     <script>fetch('${sourceOrigin}/api/catalog').then((response) => response.json()).then((value) => { globalThis.__DIVEBELL_FULFILL__ = value.source; });</script>`);
@@ -85,9 +85,10 @@ try {
     DIVEBELL_DISABLE_EXTENSIONS: "1"
   };
   const opened = await runCli([
-    "open", `${sourceOrigin}/`, "--request-rules", rulesPath,
+    "open", `${sourceOrigin}/`, "--request-rules", rulesPath, "--remove-response-header", "Content-Security-Policy",
     "--no-default-profile", "--no-bridge", "--timeout", "10000"
   ], env);
+
   assert.equal(typeof opened.requestControl?.pid, "number");
   const [configName] = await readdir(join(divebellHomeDirectory, "network-controls"));
   const controlConfig = JSON.parse(await readFile(join(divebellHomeDirectory, "network-controls", configName), "utf8"));
@@ -95,10 +96,16 @@ try {
   assert.ok(controlStatus.enabledTargets > 0, JSON.stringify(controlStatus));
   const afterRewriteStatus = await fetch(`${opened.requestControl.controlUrl}/status?token=${controlConfig.token}`).then(async (response) => await response.json());
   assert.ok(afterRewriteStatus.matchedRequests >= 2, JSON.stringify(afterRewriteStatus));
+  await runCli(["wait-eval", "globalThis.__DIVEBELL_FULFILL__ === 'fulfill'", "--timeout", "5000"], env);
+  const deadline = Date.now() + 5000;
+  while ((!replacementPaths.includes("/assets/app.js") || !replacementPaths.includes("/fixture")) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.ok(replacementPaths.includes("/fixture"), "CSP removal must allow the inline fetch script to execute");
   assert.ok(replacementPaths.includes("/assets/app.js"), JSON.stringify({ afterRewriteStatus, replacementPaths }));
   await runCli(["wait-eval", "globalThis.__DIVEBELL_FULFILL__ === 'fulfill'", "--timeout", "5000"], env);
   await runCli(["stop"], env);
-  process.stdout.write(`${JSON.stringify({ status: "ok", rewrite: true, fulfill: true }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ status: "ok", rewrite: true, fulfill: true, cspRemoval: true }, null, 2)}\n`);
 } finally {
   await runCli(["stop"], {
     ...process.env,

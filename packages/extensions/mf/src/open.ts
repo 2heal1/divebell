@@ -1,3 +1,4 @@
+import { createReactDevInitScript } from "./react-dev.js";
 import { readFile } from "node:fs/promises";
 import type { ParsedCliArgs } from "@divebell/cli";
 import {
@@ -33,8 +34,9 @@ export async function openMfObservability(
     ? await readFile(proxySdkSource, "utf8")
     : undefined;
   const proxyInit = createMfProxyInitScript(proxySdk, overrides);
+  const reactInit = createReactDevInitScript(args);
   if (!isMfInjectionEnabled(args)) {
-    return { scripts: [proxyInit] };
+    return { scripts: [proxyInit + reactInit] };
   }
 
   const [runtimeInstaller, observability, installer] = await Promise.all([
@@ -44,7 +46,7 @@ export async function openMfObservability(
   ]);
   return {
     scripts: [
-      `${proxyInit}\n;${createModulePerformanceInitScript()}\n;${runtimeInstaller}\n;${observability}\n;${installer}`
+      `${proxyInit}\n;${reactInit}\n;${createModulePerformanceInitScript()}\n;${runtimeInstaller}\n;${observability}\n;${installer}`
     ]
   };
 }

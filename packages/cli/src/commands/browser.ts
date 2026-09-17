@@ -509,7 +509,7 @@ async function resolveNetworkConfiguration(options: {
       hint: "Use --request-rules <path>."
     });
   }
-  const hasNetworkConfigurationOption = hasOption(options.args, "request-rules") ||
+  const hasNetworkConfigurationOption = hasOption(options.args, "request-rules") || hasOption(options.args, "remove-response-header") ||
     hasOption(options.args, "proxy-pac-url") || hasOption(options.args, "proxy");
   if (!hasNetworkConfigurationOption && options.previousOpenContext !== undefined) {
     return {
@@ -531,9 +531,17 @@ async function resolveNetworkConfiguration(options: {
       hint: "Use --proxy for one fixed endpoint, or --proxy-pac-url for conditional PAC rules."
     });
   }
-  const rules = rulesPath === undefined
+  let rules = rulesPath === undefined
     ? undefined
     : await readRequestRulesFile(rulesPath);
+  const removeHeaders = options.args.options.get("remove-response-header");
+  if (removeHeaders !== undefined) {
+    rules = validateBrowserRequestRules({
+      schemaVersion: 1,
+      rules: rules?.rules ?? [],
+      responseHeaders: { remove: [...(rules?.responseHeaders?.remove ?? []), ...removeHeaders] }
+    });
+  }
   let proxyPacUrl: string | undefined;
   if (proxyPacUrlValue !== undefined) {
     try {

@@ -19,6 +19,7 @@ export interface BrowserRequestRule {
 export interface BrowserRequestRules {
   schemaVersion: 1;
   rules: readonly BrowserRequestRule[];
+  responseHeaders?: { remove: readonly string[] };
 }
 
 export interface NetworkRequest {
@@ -31,12 +32,14 @@ export function validateBrowserRequestRules(value: unknown): BrowserRequestRules
   if (record.schemaVersion !== BROWSER_REQUEST_RULES_SCHEMA_VERSION) {
     throw new Error(`Request rules schemaVersion must be ${BROWSER_REQUEST_RULES_SCHEMA_VERSION}.`);
   }
-  if (!Array.isArray(record.rules) || record.rules.length === 0) {
+  const responseHeaders = record.responseHeaders === undefined ? undefined : validateResponseHeaders(record.responseHeaders);
+  const rawRules = record.rules ?? [];
+  if (!Array.isArray(rawRules) || (rawRules.length === 0 && responseHeaders === undefined)) {
     throw new Error("Request rules must declare a non-empty rules array.");
   }
-  if (record.rules.length > 100) throw new Error("Request rules may declare at most 100 rules.");
+  if (rawRules.length > 100) throw new Error("Request rules may declare at most 100 rules.");
   const ids = new Set<string>();
-  const rules = record.rules.map((candidate, index) => {
+  const rules = rawRules.map((candidate, index) => {
     const rule = requireRecord(candidate, `Request rule ${index + 1} must be an object.`);
     const id = requireIdentifier(rule.id, `Request rule ${index + 1} id`);
     if (ids.has(id)) throw new Error(`Request rule id "${id}" is declared more than once.`);
@@ -47,7 +50,7 @@ export function validateBrowserRequestRules(value: unknown): BrowserRequestRules
       action: validateNetworkAction(rule.action, id)
     };
   });
-  return { schemaVersion: 1, rules };
+  return { schemaVersion: 1, rules, ...(responseHeaders === undefined ? {} : { responseHeaders }) };
 }
 
 export function matchBrowserRequestRule(
@@ -167,4 +170,20 @@ function isHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function validateResponseHeaders(value: unknown): { remove: string[] } {
+  const record = requireRecord(value, "responseHeaders must be an object.");
+  const remove = validateStringArray(record.remove, "responseHeaders.remove", 100);
+  if (remove.some((name) => !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name))) {
+    throw new Error("responseHeaders.remove must contain HTTP header names.");
+  }
+  return { remove: [...new Set(remove.map((name) => name.toLowerCase()))] };
+}
+
+export function filterResponseHeaders<T extends { name: string; value: string }>(
+  headers: readonly T[], remove: readonly string[] = []
+): T[] {
+  const names = new Set(remove.map((name) => name.toLowerCase()));
+  return headers.filter((header) => !names.has(header.name.toLowerCase()));
 }

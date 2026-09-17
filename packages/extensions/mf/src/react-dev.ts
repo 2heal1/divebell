@@ -21,12 +21,14 @@ export function createReactDevInitScript(args?: ParsedCliArgs): string {
 function installReactDev(explicitVersion: string | null): void {
   const page = window as any;
   if (page.__DIVEBELL_MF_REACT_DEV__) return;
-  const marker: any = { status: "waiting", version: explicitVersion, source: explicitVersion ? "explicit" : "first-registration" };
+  const developmentVersion = (version: string | null): string | null =>
+    version !== null && /^19\./.test(version) ? "19.2.4" : version;
+  let selectedVersion = developmentVersion(explicitVersion);
+  const marker: any = { status: "waiting", version: selectedVersion, source: explicitVersion ? "explicit" : "first-registration" };
   page.__DIVEBELL_MF_REACT_DEV__ = marker;
   const libraries: Record<string, any> = {};
   const pending: Record<string, Promise<any>> = {};
   const packages = new Set(["react", "react-dom", "react-dom/client"]);
-  let selectedVersion = explicitVersion;
 
   function sourceUrl(pkg: string): string {
     if (selectedVersion === "19.2.4") {
@@ -95,7 +97,7 @@ function installReactDev(explicitVersion: string | null): void {
       // The first React-family registration belongs to the host in the usual
       // startup order. Explicit version wins when that order is different.
       if (selectedVersion === null) {
-        selectedVersion = args.shared.version;
+        selectedVersion = developmentVersion(args.shared.version);
         marker.version = selectedVersion;
         marker.host = args.origin?.options?.name;
       }

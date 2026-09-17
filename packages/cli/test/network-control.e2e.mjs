@@ -104,6 +104,10 @@ try {
   assert.ok(replacementPaths.includes("/fixture"), "CSP removal must allow the inline fetch script to execute");
   assert.ok(replacementPaths.includes("/assets/app.js"), JSON.stringify({ afterRewriteStatus, replacementPaths }));
   await runCli(["wait-eval", "globalThis.__DIVEBELL_FULFILL__ === 'fulfill'", "--timeout", "5000"], env);
+  const page = await runCli(["eval", "({ url: location.href, rewrite: globalThis.__DIVEBELL_REWRITE__, fulfill: globalThis.__DIVEBELL_FULFILL__ })"], env);
+  assert.equal(new URL(page.url).origin, sourceOrigin, "follow-up commands must retain the intercepted page");
+  assert.equal(page.rewrite, "replacement");
+  assert.equal(page.fulfill, "fulfill");
   await runCli(["stop"], env);
   process.stdout.write(`${JSON.stringify({ status: "ok", rewrite: true, fulfill: true, cspRemoval: true }, null, 2)}\n`);
 } finally {

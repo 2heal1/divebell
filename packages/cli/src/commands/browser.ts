@@ -193,12 +193,15 @@ export async function runBrowserCliCommand(
       writeHookFailures(stderr, hookResult.failures);
       const effectiveOpenedUrl = hookResult.openedUrl ?? openedUrl;
       const browserReuseInitialBlankPage = hookResult.openedUrl === undefined;
-      const openBrowserRunner = bindBrowserRunOptions(browserRunner, {
+      const openBrowserOptions: BrowserRunOptions = {
+        ui: browserUi,
+        reuseInitialBlankPage: browserReuseInitialBlankPage,
         ...(browserRestoreDisabled ? { disableRestore: true } : {}),
         ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
         ...(defaultState === undefined ? {} : { defaultStatePath: defaultState.path }),
         ...(browserArguments === undefined ? {} : { browserArguments })
-      });
+      };
+      const openBrowserRunner = bindBrowserRunOptions(browserRunner, openBrowserOptions);
       const beforeNavigate = hookResult.throttling === undefined && requestControl === undefined
         ? undefined
         : async () => {
@@ -218,14 +221,7 @@ export async function runBrowserCliCommand(
         effectiveOpenedUrl,
         bridgeUrl,
         hookResult.scripts,
-        {
-          ui: browserUi,
-          ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
-          ...(browserRestoreDisabled ? { disableRestore: true } : {}),
-          ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
-          ...(defaultState === undefined ? {} : { defaultStatePath: defaultState.path }),
-          ...(browserArguments === undefined ? {} : { browserArguments })
-        },
+        openBrowserOptions,
         beforeNavigate
       );
       if (result.exitCode !== 0) {
@@ -245,10 +241,7 @@ export async function runBrowserCliCommand(
       }
       const companionFailures = await openCompanionPages(
         bindBrowserRunOptions(browserRunner, {
-          ui: browserUi,
-          ...(browserReuseInitialBlankPage ? { reuseInitialBlankPage: true } : {}),
-          ...(browserRestoreDisabled ? { disableRestore: true } : {}),
-          ...(browserDefaultProfileDisabled ? { disableDefaultProfile: true } : {}),
+          ...openBrowserOptions,
           ...(result.defaultProfile === undefined
             ? {}
             : { defaultProfile: result.defaultProfile })

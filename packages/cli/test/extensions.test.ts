@@ -537,6 +537,7 @@ test("provides the effective request headers to open hooks", async () => {
 test("applies open hook throttling before the first navigation", async () => {
   const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-open-throttling-"));
   const browserCalls: string[][] = [];
+  const browserOptions: Array<{ ui?: boolean; reuseInitialBlankPage?: boolean } | undefined> = [];
   const cli = createDivebellCli({
     extensions: [{
       schemaVersion: 1,
@@ -557,12 +558,13 @@ test("applies open hook throttling before the first navigation", async () => {
 
   try {
     const output = createOutput();
-    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge"], {
+    assert.equal(await cli.run(["open", "http://app.test", "--no-bridge", "--ui"], {
       stdout: output.stdout,
       stderr: output.stderr,
       operationLogDirectory,
-      browserRunner: createBrowserRunner(async (args) => {
+      browserRunner: createBrowserRunner(async (args, options) => {
         browserCalls.push(args);
+        browserOptions.push(options);
         return { exitCode: 0, stdout: "", stderr: "" };
       })
     }), 0);
@@ -573,6 +575,12 @@ test("applies open hook throttling before the first navigation", async () => {
       ["set", "network-throttling", "--latency-ms", "150", "--download-kbps", "800"]
     ]);
     assert.equal(browserCalls[3]?.[0], "goto");
+    assert.equal(browserOptions.length, 4);
+    for (const options of browserOptions) {
+      assert.deepEqual(options, browserOptions[0]);
+      assert.equal(options?.ui, true);
+      assert.equal(options?.reuseInitialBlankPage, true);
+    }
     assert.match(browserCalls[3]?.[1] ?? "", /^http:\/\/app\.test\/\?divebellSessionId=open-/);
   } finally {
     rmSync(operationLogDirectory, { recursive: true, force: true });

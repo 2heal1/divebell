@@ -151,3 +151,67 @@ test("cleans up a managed network-control process", async () => {
   assert.equal(existsSync(configPath), false);
   await new Promise<void>((resolve) => server.close(() => resolve()));
 });
+
+test("response header removal needs no URL and validates header names", () => {
+  assert.deepEqual(validateBrowserRequestRules({ schemaVersion: 1, responseHeaders: { remove: ["Content-Security-Policy", "content-security-policy"] } }), {
+    schemaVersion: 1, rules: [], responseHeaders: { remove: ["content-security-policy"] }
+  });
+  assert.throws(() => validateBrowserRequestRules({ schemaVersion: 1, responseHeaders: { remove: ["x-header\r\ninjected"] } }), /header names/);
+});
+
+test("removes duplicate CSP headers while preserving status and other headers; failure resumes original response", async () => {
+  let listener: Parameters<NetworkCdpControllerClient["onEvent"]>[0] | undefined;
+  const calls: Array<{ method: string; params: Record<string, unknown> | undefined }> = [];
+  let unsupported = false;
+  const client: NetworkCdpControllerClient = {
+    onEvent(next) { listener = next; },
+    async send(method, params) {
+      calls.push({ method, params });
+      if (unsupported && method === "Fetch.fulfillRequest") throw new Error("unsupported");
+      return {};
+    }, close() {}
+  };
+  NetworkCdpController.createForTesting(client, validateBrowserRequestRules({ schemaVersion: 1, responseHeaders: { remove: ["content-security-policy"] } }));
+  const event = { method: "Fetch.requestPaused", sessionId: "s", params: {
+    requestId: "r", request: { url: "https://any.test/page" }, responseStatusCode: 302,
+    responseStatusText: "Found", responseHeaders: [
+      { name: "Content-Security-Policy", value: "default-src 'none'" },
+      { name: "content-security-policy", value: "script-src 'none'" },
+      { name: "Set-Cookie", value: "first=1" }, { name: "Set-Cookie", value: "second=2" },
+      { name: "Location", value: "/next" }
+    ]
+  } };
+  listener?.(event);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls[0], { method: "Fetch.fulfillRequest", params: {
+    requestId: "r", body: "", responseCode: 302, responsePhrase: "Found", responseHeaders: event.params.responseHeaders.slice(2)
+  } });
+  unsupported = true;
+  listener?.(event);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(calls.at(-1)?.method, "Fetch.continueRequest");
+  assert.equal(calls.some((call) => call.method === "Fetch.failRequest"), false);
+});
+
+test("preserves decoded response bytes when removing headers and enables only one interceptor per target", async () => {
+  let listener: Parameters<NetworkCdpControllerClient["onEvent"]>[0] | undefined;
+  const calls: Array<{ method: string; params: Record<string, unknown> | undefined }> = [];
+  const client: NetworkCdpControllerClient = {
+    onEvent(next) { listener = next; },
+    async send(method, params) {
+      calls.push({method, params});
+      return method === "Fetch.getResponseBody" ? {body: "AP+A", base64Encoded:true} : {};
+    }, close() {}
+  };
+  NetworkCdpController.createForTesting(client, validateBrowserRequestRules({schemaVersion:1,responseHeaders:{remove:["x-remove"]}}));
+  for (const sessionId of ["first", "second"]) listener?.({method:"Target.attachedToTarget",params:{sessionId,targetInfo:{type:"page",targetId:"one-page"}}});
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(calls.filter((call)=>call.method === "Fetch.enable").length,1);
+  listener?.({method:"Fetch.requestPaused",sessionId:"first",params:{requestId:"bytes",request:{url:"https://test/binary"},responseStatusCode:200,responseHeaders:[
+    {name:"X-Remove",value:"yes"},{name:"Content-Encoding",value:"gzip"},{name:"Content-Type",value:"application/octet-stream"}
+  ]}});
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const response = calls.find((call)=>call.method === "Fetch.fulfillRequest");
+  assert.equal(response?.params?.body,"AP+A");
+  assert.deepEqual(response?.params?.responseHeaders,[{name:"Content-Type",value:"application/octet-stream"}]);
+});

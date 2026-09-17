@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import {
+  filterResponseHeaders,
   matchBrowserRequestRule,
   rewriteBrowserRequestUrl,
   validateBrowserRequestRules,
@@ -37,6 +38,10 @@ export interface NetworkCdpControllerClient {
 interface FetchPausedParams {
   requestId: string;
   resourceType?: string;
+  responseStatusCode?: number;
+  responseStatusText?: string;
+  responseErrorReason?: string;
+  responseHeaders?: Array<{ name: string; value: string }>;
   request?: {
     url?: string;
     method?: string;
@@ -128,6 +133,7 @@ export async function readNetworkControlServerConfig(path: string): Promise<Netw
 export class NetworkCdpController {
   readonly #client: NetworkCdpControllerClient;
   readonly #rules: BrowserRequestRules | undefined;
+  readonly #targetSessions = new Map<string, string>();
   readonly #sessionEnables = new Map<string, Promise<void>>();
   #attachedTargets = 0;
   #pausedRequests = 0;
@@ -166,7 +172,7 @@ export class NetworkCdpController {
         if (!isRecord(target) || typeof target.targetId !== "string" || !isInterceptableTarget(target.type)) continue;
         try {
           const attached = await client.send("Target.attachToTarget", { targetId: target.targetId, flatten: true });
-          if (isRecord(attached) && typeof attached.sessionId === "string") await controller.enableSession(attached.sessionId);
+          if (isRecord(attached) && typeof attached.sessionId === "string") await controller.enableTarget(attached.sessionId, target.targetId);
         } catch {
           // A target can disappear between Target.getTargets and attachment.
         }
@@ -199,12 +205,15 @@ export class NetworkCdpController {
       const targetInfo = isRecord(message.params.targetInfo) ? message.params.targetInfo : undefined;
       if (typeof sessionId === "string" && targetInfo !== undefined && isInterceptableTarget(targetInfo.type)) {
         this.#attachedTargets += 1;
-        await this.enableSession(sessionId);
+        await this.enableTarget(sessionId, targetInfo.targetId);
       }
       return;
     }
     if (message.method === "Target.detachedFromTarget" && isRecord(message.params) && typeof message.params.sessionId === "string") {
       this.#sessionEnables.delete(message.params.sessionId);
+      for (const [targetId, sessionId] of this.#targetSessions) {
+        if (sessionId === message.params.sessionId) this.#targetSessions.delete(targetId);
+      }
       return;
     }
     if (message.method === "Fetch.requestPaused" && message.sessionId !== undefined && isRecord(message.params)) {
@@ -213,11 +222,26 @@ export class NetworkCdpController {
     }
   }
 
+  private async enableTarget(sessionId: string, targetId: unknown): Promise<void> {
+    if (typeof targetId === "string") {
+      const existing = this.#targetSessions.get(targetId);
+      if (existing !== undefined && existing !== sessionId) return;
+      this.#targetSessions.set(targetId, sessionId);
+    }
+    try {
+      await this.enableSession(sessionId);
+    } catch (error) {
+      if (typeof targetId === "string" && this.#targetSessions.get(targetId) === sessionId) this.#targetSessions.delete(targetId);
+      throw error;
+    }
+  }
+
   private async enableSession(sessionId: string): Promise<void> {
     const existing = this.#sessionEnables.get(sessionId);
     if (existing !== undefined) return await existing;
     const enabled = this.#client.send("Fetch.enable", {
-      patterns: [{ urlPattern: "*", requestStage: "Request" }]
+      patterns: [{ urlPattern: "*", requestStage: "Request" },
+        ...(this.#rules?.responseHeaders === undefined ? [] : [{ urlPattern: "*", requestStage: "Response" }])]
     }, sessionId).then(() => undefined);
     this.#sessionEnables.set(sessionId, enabled);
     try {
@@ -232,6 +256,36 @@ export class NetworkCdpController {
     const requestId = params.requestId;
     const url = params.request?.url;
     if (typeof requestId !== "string" || typeof url !== "string") return;
+    if (params.responseStatusCode !== undefined || params.responseErrorReason !== undefined) {
+      const original = params.responseHeaders ?? [];
+      const headers = filterResponseHeaders(original, this.#rules?.responseHeaders?.remove);
+      try {
+        if (params.responseStatusCode !== undefined && headers.length !== original.length) {
+          const hasBody = params.request?.method !== "HEAD" && ![204, 205, 304].includes(params.responseStatusCode)
+            && !(params.responseStatusCode >= 300 && params.responseStatusCode < 400);
+          const bodyResult = hasBody
+            ? await this.#client.send("Fetch.getResponseBody", { requestId }, sessionId) as { body: string; base64Encoded: boolean }
+            : { body: "", base64Encoded: true };
+          const body = bodyResult.base64Encoded ? bodyResult.body : Buffer.from(bodyResult.body).toString("base64");
+          if (Buffer.byteLength(body, "base64") > MAX_FULFILL_BODY_BYTES) throw new Error("Response header override exceeds the 10 MiB body limit.");
+          await this.#client.send("Fetch.fulfillRequest", {
+            requestId,
+            body,
+            responseCode: params.responseStatusCode,
+            ...(params.responseStatusText === undefined ? {} : { responsePhrase: params.responseStatusText }),
+            responseHeaders: filterResponseHeaders(headers, ["content-encoding", "content-length", "transfer-encoding"])
+          }, sessionId);
+          this.#matchedRequests += 1;
+        } else {
+          await this.#client.send("Fetch.continueRequest", { requestId }, sessionId);
+        }
+      } catch {
+        this.#failedRequests += 1;
+        // Preserve the original response if header modification is unsupported.
+        await this.#client.send("Fetch.continueRequest", { requestId }, sessionId);
+      }
+      return;
+    }
     const rule = this.#rules === undefined
       ? undefined
       : matchBrowserRequestRule(this.#rules, {
@@ -248,7 +302,7 @@ export class NetworkCdpController {
           url: rewriteBrowserRequestUrl(rule, url)
         }, sessionId);
       } else {
-        await fulfillRequest(this.#client, sessionId, requestId, params, rule);
+        await fulfillRequest(this.#client, sessionId, requestId, params, rule, this.#rules?.responseHeaders?.remove);
       }
     } catch {
       this.#failedRequests += 1;
@@ -266,7 +320,8 @@ async function fulfillRequest(
   sessionId: string,
   requestId: string,
   paused: FetchPausedParams,
-  rule: BrowserRequestRule
+  rule: BrowserRequestRule,
+  removeHeaders?: readonly string[]
 ): Promise<void> {
   if (rule.action.type !== "fulfill") return;
   const fulfilled = await fetchNetworkFulfillResponse(rule.action.url, paused.request, rule.action.timeoutMs);
@@ -274,7 +329,7 @@ async function fulfillRequest(
     requestId,
     responseCode: fulfilled.status,
     responsePhrase: fulfilled.statusText,
-    responseHeaders: fulfilled.headers,
+    responseHeaders: filterResponseHeaders(fulfilled.headers, removeHeaders),
     body: fulfilled.body
   }, sessionId);
 }

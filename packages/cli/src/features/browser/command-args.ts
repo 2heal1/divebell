@@ -11,6 +11,7 @@ const DIVEBELL_ONLY_BROWSER_OPTIONS = new Set([
   "full-page",
   "network-rules",
   "request-rules",
+  "remove-response-header",
   "no-bridge",
   "no-default-profile",
   "no-webmcp",

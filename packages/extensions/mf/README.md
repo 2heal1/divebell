@@ -357,3 +357,43 @@ export default createMfExtension({
 The configured name is used consistently by top-level and command help, validation guidance, structured command results, and copyable candidate commands. The default package entry continues to register `divebell mf`.
 
 External Extension packages installed through `divebell extensions add` must remain self-contained. A branded distribution should bundle this implementation and its injection assets into its own published archive instead of declaring a runtime dependency.
+
+## Development React for proxied hosts
+
+Opt in before opening a production host that needs React Fast Refresh:
+
+```sh
+divebell open https://app.example --mf --mf-react-dev \
+  --remove-response-header content-security-policy
+```
+
+CSP removal is optional and independent of the MF flag. `--mf-react-dev`
+registers an MF runtime plugin before application startup. It uses the version
+of the first registered React-family shared dependency (normally the host),
+then routes subsequent React and ReactDOM providers to the same development
+instances. It does not wait for a local remote/container or run a preliminary
+version-probing navigation. To override the startup-order assumption:
+
+```sh
+divebell open https://app.example --mf --mf-react-version 18.3.1
+```
+
+`--mf-react-version` also enables development React. Supply an exact version.
+React 17/18 use versioned official development UMD files from unpkg. React 19
+currently supports **19.2.4 only**, using the verified `umd-react@19.2.4`
+development files. `react-umd` production files do not provide Fast Refresh.
+The loaded React and ReactDOM export versions must match the selected version;
+a mismatched or unavailable build fails explicitly instead of silently falling
+back to another version.
+
+Async shares load React before ReactDOM on demand. Eager/shared `lib` consumers
+use synchronous XHR at registration so their factory is ready before consumption;
+this blocks startup while fetching and requires unpkg access. `react-dom/client`
+is routed to the same ReactDOM build. The mode deliberately uses one React
+version across the participating MF shares/scopes; it is unsuitable for pages
+that require isolated, incompatible React versions. React bundled outside MF
+shared is unaffected. JSX-runtime replacement is not included.
+
+The page marker `window.__DIVEBELL_MF_REACT_DEV__` exposes the chosen version,
+selection source, and loading status. This supplies development React; the
+application still needs working HMR transport and React Refresh instrumentation.

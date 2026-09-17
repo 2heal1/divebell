@@ -30,6 +30,23 @@ If a command reports late injection, partial history, or no page context,
 reopen the page with `--mf`, reproduce the operation, and retry before drawing
 conclusions.
 
+## Production host with local HMR
+
+When debugging a production host whose shared React prevents Fast Refresh,
+open with `--mf-react-dev`. The first React-family shared registration supplies
+the version; use `--mf-react-version <exact-version>` when startup order or
+version needs an override. No local producer or preliminary navigation is
+required. Official React 17/18 development UMDs and the verified third-party
+`umd-react@19.2.4` are supported; other React 19 versions fail explicitly.
+Do not use production `react-umd` builds for this purpose.
+
+If response-header CSP blocks development resources, the user can opt in with
+`--remove-response-header content-security-policy`; it applies throughout the
+browser session and is not enabled by the MF flag. Stop and reopen to change
+header rules. Meta CSP is unaffected. Check the page marker
+`window.__DIVEBELL_MF_REACT_DEV__`, then verify an actual HMR update; development
+React alone does not prove the application's HMR transport works.
+
 ## Choose the smallest useful command
 
 - Use `status` to list current MF instances and loaded Shared entries.

@@ -394,6 +394,10 @@ version across the participating MF shares/scopes; it is unsuitable for pages
 that require isolated, incompatible React versions. React bundled outside MF
 shared is unaffected. JSX-runtime replacement is not included.
 
+Before ReactDOM loads, the mode also installs a minimal DevTools hook when no
+hook exists, retaining renderer registrations for a remote's later React
+Refresh runtime. An existing DevTools hook is preserved.
+
 The page marker `window.__DIVEBELL_MF_REACT_DEV__` exposes the chosen version,
 selection source, and loading status. This supplies development React; the
 application still needs working HMR transport and React Refresh instrumentation.

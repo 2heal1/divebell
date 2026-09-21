@@ -21,6 +21,25 @@ export function createReactDevInitScript(args?: ParsedCliArgs): string {
 function installReactDev(explicitVersion: string | null): void {
   const page = window as any;
   if (page.__DIVEBELL_MF_REACT_DEV__) return;
+  // ReactDOM registers once, when it executes. The remote's Refresh runtime
+  // arrives later and discovers existing renderers through this public hook.
+  // Without an early hook it cannot refresh the host's already-loaded renderer.
+  if (page.__REACT_DEVTOOLS_GLOBAL_HOOK__ === undefined) {
+    let nextId = 0;
+    const renderers = new Map<number, any>();
+    page.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+      supportsFiber: true,
+      renderers,
+      inject(renderer: any) {
+        const id = nextId++;
+        renderers.set(id, renderer);
+        return id;
+      },
+      onScheduleFiberRoot() {},
+      onCommitFiberRoot() {},
+      onCommitFiberUnmount() {}
+    };
+  }
   const developmentVersion = (version: string | null): string | null =>
     version !== null && /^19\./.test(version) ? "19.2.4" : version;
   let selectedVersion = developmentVersion(explicitVersion);

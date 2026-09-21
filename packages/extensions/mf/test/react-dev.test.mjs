@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import { createReactDevInitScript } from '../dist/react-dev.js';
 
-function setup(options = []) {
+function setup(options = [], page = {}) {
   const requests = [];
   const source = (url) => {
     const version = url.match(/@(\d+\.\d+\.\d+)/)[1];
@@ -11,7 +11,6 @@ function setup(options = []) {
       ? `module.exports={version:'${version}',react:require('react')}`
       : `module.exports={version:'${version}',createElement:()=>Object.freeze({})}`;
   };
-  const page = {};
   class XHR {
     open(_method, url) { this.url = url; }
     send() { requests.push(this.url); this.status = 200; this.responseText = source(this.url); }
@@ -23,6 +22,31 @@ function setup(options = []) {
   return {page, requests, register:page.__FEDERATION__.__GLOBAL_PLUGIN__[0].beforeRegisterShare};
 }
 const share = (pkgName, version, eager = false) => ({pkgName, origin:{options:{name:'host'}}, shared:{version,shareConfig:{eager}}});
+
+test('retains early host renderers for a later remote Refresh runtime', () => {
+  const {page} = setup();
+  const hook = page.__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  const host = {scheduleRefresh() {}, setRefreshHandler() {}};
+  const remote = {scheduleRefresh() {}, setRefreshHandler() {}};
+  const hostId = hook.inject(host);
+  const remoteId = hook.inject(remote);
+  assert.equal(hook.supportsFiber, true);
+  assert.notEqual(hostId, remoteId);
+  // React Refresh's injectIntoGlobalHook discovers pre-existing renderers here.
+  assert.equal(hook.renderers.get(hostId), host);
+  assert.equal(hook.renderers.get(remoteId), remote);
+  for (const name of ['onScheduleFiberRoot', 'onCommitFiberRoot', 'onCommitFiberUnmount']) {
+    assert.equal(typeof hook[name], 'function');
+  }
+});
+
+test('preserves an existing DevTools hook and its registered renderers', () => {
+  const hook = {renderers: new Map([[42, {}]]), inject() {return 43;}};
+  const {page} = setup([], {__REACT_DEVTOOLS_GLOBAL_HOOK__: hook});
+  assert.equal(page.__REACT_DEVTOOLS_GLOBAL_HOOK__, hook);
+  assert.equal(hook.renderers.size, 1);
+  assert.equal(hook.inject(), 43);
+});
 
 test('disabled by default and rejects invalid explicit versions', () => {
   assert.equal(createReactDevInitScript(), '');

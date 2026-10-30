@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build": "pnpm -r --filter \"./packages/*\" --filter \"./packages/extensions/*\" --workspace-concurrency=1 --if-present run build",
-    "test": "pnpm -r --workspace-concurrency=1 --if-present run test",
+    "test": "pnpm run test:clean && pnpm -r --workspace-concurrency=1 --if-present run test",
+    "test:clean": "node --test ./scripts/clean.test.mjs",
     "test:e2e": "pnpm run build && pnpm run test:e2e:run",
     "test:e2e:run": "pnpm --filter @divebell/test run test:e2e",
     "lint": "rslint --max-warnings 0 rslint.config.mjs packages scripts",

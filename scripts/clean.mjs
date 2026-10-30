@@ -1,7 +1,8 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = new URL("..", import.meta.url);
+const root = fileURLToPath(new URL("..", import.meta.url));
 const packageDirs = [
   "core",
   "bridge",
@@ -17,5 +18,5 @@ const packageDirs = [
 ];
 
 for (const dir of packageDirs) {
-  rmSync(join(root.pathname, "packages", dir, "dist"), { force: true, recursive: true });
+  rmSync(join(root, "packages", dir, "dist"), { force: true, recursive: true });
 }

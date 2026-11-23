@@ -125,7 +125,9 @@ export async function runBrowserCliCommand(
       || hasOption(args, "state")
       || hasOption(args, "allowed-domains");
     const browserDefaultProfileDisabled = disablesDefaultChromeProfile(args);
-    const defaultState = hasOption(args, "no-default-state") || hasOption(args, "state")
+    const defaultState = hasOption(args, "no-default-state")
+      || hasOption(args, "state")
+      || hasOption(args, "profile")
       ? undefined
       : await readDefaultBrowserState(env);
     const browserUi = hasOption(args, "ui");
@@ -444,28 +446,32 @@ async function createWebMcpBrowserLaunch(
   args: ParsedCliArgs,
   env: NodeJS.ProcessEnv
 ): Promise<{ browserArguments?: string; warning?: string }> {
-  if (hasOption(args, "no-webmcp")) {
-    return {};
-  }
+  const cliArguments = (args.options.get("args") ?? [])
+    .filter((value) => value !== "true" && value.trim().length > 0);
+  const envArguments = env.AGENT_BROWSER_ARGS !== undefined
+    && env.AGENT_BROWSER_ARGS.trim().length > 0
+      ? [env.AGENT_BROWSER_ARGS]
+      : [];
+  const noWebMcp = hasOption(args, "no-webmcp");
   const launch = await resolveDivebellBrowserLaunchConfiguration(args, env);
   if (!launch.usesDivebellLaunchedChrome) {
-    return { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
+    return noWebMcp ? {} : { warning: WEBMCP_EXTERNAL_BROWSER_WARNING };
   }
-  const cliArguments = (args.options.get("args") ?? [])
-    .filter((value) => value !== "true");
   const configuredArguments = cliArguments.length === 0
-    && env.AGENT_BROWSER_ARGS === undefined
+    && envArguments.length === 0
     && typeof launch.config.args === "string"
     && launch.config.args.trim().length > 0
       ? [launch.config.args]
       : [];
-  return {
-    browserArguments: [
-      ...configuredArguments,
-      ...cliArguments,
-      ...WEBMCP_BROWSER_ARGUMENTS
-    ].join("\n")
-  };
+  const allArguments = [
+    ...configuredArguments,
+    ...envArguments,
+    ...cliArguments,
+    ...(noWebMcp ? [] : WEBMCP_BROWSER_ARGUMENTS)
+  ];
+  return allArguments.length === 0
+    ? {}
+    : { browserArguments: allArguments.join("\n") };
 }
 
 async function resolveDivebellBrowserLaunchConfiguration(

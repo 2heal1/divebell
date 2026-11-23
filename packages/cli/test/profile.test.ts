@@ -359,6 +359,14 @@ test("adds a reusable blank startup page without dropping custom browser argumen
     "--disable-features=Translate,--start-maximized\nabout:blank"
   );
 
+  const commaValuedFeature = createAgentBrowserEnvironment({
+    AGENT_BROWSER_ARGS: "--disable-features=Translate,KeychainKeyProviderUserDataDirProtection"
+  }, undefined, undefined, { reuseInitialBlankPage: true });
+  assert.equal(
+    commaValuedFeature.AGENT_BROWSER_ARGS,
+    "--disable-features=Translate,KeychainKeyProviderUserDataDirProtection\nabout:blank"
+  );
+
   const existing = createAgentBrowserEnvironment({
     AGENT_BROWSER_ARGS: "--start-maximized\nabout:blank"
   }, undefined, undefined, { reuseInitialBlankPage: true });

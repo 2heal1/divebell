@@ -264,3 +264,21 @@ Lists and details never reveal passwords.
 Profiles, state, and auth only reuse accounts that are already authorized. They do not bypass sign-in or permission checks.
 
 State files usually contain usable session tokens in plaintext. Keep them on trusted storage, add them to `.gitignore`, and never commit or share them with someone who lacks access to the target site. URL scoping narrows the export but does not make the file non-sensitive.
+
+## Long-term direction: Companion Chrome Extension bridge
+
+Chrome has progressively tightened external-process access to the user's default profile:
+
+- **Chrome 127+ (Windows):** `v20` App-Bound Encryption prevents external processes from decrypting profile cookies.
+- **Chrome 136+:** `--remote-debugging-port` is blocked on the default user-data directory.
+- **Chrome 144+:** `chrome://inspect/#remote-debugging` prompts for interactive `"Allow remote debugging?"` consent on each new CDP connection without a persistent "remember" option.
+- **Chrome 158+ (macOS):** `KeychainKeyProviderUserDataDirProtection` isolates cookie encryption keys per `--user-data-dir` (`v11`), dropping copied `v10` cookies in temporary profile clones unless the transitional `--disable-features=KeychainKeyProviderUserDataDirProtection` switch is passed.
+
+Because the transitional flag may be removed in a future Chromium release, copying an encrypted default Chrome profile into a temporary directory is a short-term compatibility path rather than a permanent foundation. Divebell's Bridge, Runtime SDK, and Extension architecture do not require hard coupling to `agent-browser` or external profile cloning.
+
+The planned long-term browser execution path is a lightweight **Companion Chrome Extension** installed in the user's daily Chrome that connects directly to the local Divebell Bridge / daemon:
+
+- **Live, native login state:** Pages run inside the user's real Chrome instance, so Chrome decrypts and refreshes cookies natively (`v10`/`v11`/`v20`, DBSC, Passkey, and SSO renewals) with no re-login and no stale state exports.
+- **No per-connection consent popups:** After one-time extension installation, the extension attaches `chrome.debugger` only to agent-owned tabs and communicates with the local Divebell daemon over a local WebSocket, avoiding Chrome 144+'s repeated `Allow remote debugging?` dialogs across sessions or workspaces.
+- **Non-intrusive tab isolation:** Agent pages live in a dedicated collapsed Tab Group or background window so human browsing stays uninterrupted.
+- **Remote devbox support:** The same local extension relay can bridge controlled tabs or on-demand scoped session state to headless remote Linux devboxes over IDE/SSH port forwarding without manual state file copying.

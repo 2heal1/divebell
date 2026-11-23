@@ -341,10 +341,17 @@ function appendAgentBrowserArgument(current: string | undefined, argument: strin
 }
 
 function splitAgentBrowserArguments(value: string | undefined): string[] {
-  return value
-    ?.split(/[,\n]/)
-    .map((argument) => argument.trim())
-    .filter(Boolean) ?? [];
+  if (value === undefined) return [];
+  const result: string[] = [];
+  for (const line of value.split(/\r?\n/)) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.length === 0) continue;
+    for (const part of trimmedLine.split(/,(?=\s*--)/)) {
+      const trimmed = part.trim();
+      if (trimmed.length > 0) result.push(trimmed);
+    }
+  }
+  return result;
 }
 
 function executeAgentBrowser(

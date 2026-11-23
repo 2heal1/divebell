@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 export interface BrowserCommandOptions {
   has(name: string): boolean;
   get(name: string): string | undefined;
+  getAll?(name: string): readonly string[];
 }
 
 export interface BrowserLaunchConfiguration {
@@ -58,7 +59,8 @@ export function createBrowserCommandOptionsFromArgv(
 ): BrowserCommandOptions {
   return {
     has: (name) => hasArgvOption(args, name),
-    get: (name) => readArgvOption(args, name)
+    get: (name) => readArgvOption(args, name),
+    getAll: (name) => readArgvOptions(args, name)
   };
 }
 
@@ -67,7 +69,8 @@ export function createBrowserCommandOptionsFromMap(
 ): BrowserCommandOptions {
   return {
     has: (name) => options.has(name),
-    get: (name) => options.get(name)?.at(-1)
+    get: (name) => options.get(name)?.at(-1),
+    getAll: (name) => options.get(name) ?? []
   };
 }
 
@@ -78,13 +81,14 @@ export function commandSelectsBrowserContext(
     return true;
   }
   if (!isChromeEngine(command.get("engine"))) return true;
-  return rawArgumentsSelectProfile(command.get("args"));
+  const rawArgs = command.getAll?.("args") ?? (command.get("args") === undefined ? [] : [command.get("args") as string]);
+  return rawArgs.some((value) => rawArgumentsSelectProfile(value));
 }
 
 export function commandDisablesDefaultChromeProfile(
   command: BrowserCommandOptions
 ): boolean {
-  return command.has("args") || commandSelectsBrowserContext(command);
+  return commandSelectsBrowserContext(command);
 }
 
 export function environmentSupportsReusableInitialBlankPage(
@@ -229,14 +233,23 @@ function hasArgvOption(args: readonly string[], name: string): boolean {
 }
 
 function readArgvOption(args: readonly string[], name: string): string | undefined {
+  return readArgvOptions(args, name).at(-1);
+}
+
+function readArgvOptions(args: readonly string[], name: string): string[] {
   const option = `--${name}`;
-  for (let index = args.length - 1; index >= 0; index -= 1) {
+  const values: string[] = [];
+  for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === undefined) continue;
-    if (argument.startsWith(`${option}=`)) return argument.slice(option.length + 1);
-    if (argument === option) return args[index + 1];
+    if (argument.startsWith(`${option}=`)) {
+      values.push(argument.slice(option.length + 1));
+    } else if (argument === option && args[index + 1] !== undefined) {
+      values.push(args[index + 1] as string);
+      index += 1;
+    }
   }
-  return undefined;
+  return values;
 }
 
 function rawArgumentsSelectProfile(value: string | undefined): boolean {

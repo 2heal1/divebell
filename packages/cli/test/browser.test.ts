@@ -115,6 +115,24 @@ test("loads the global default browser state unless disabled", async () => {
       commandData<{ defaultState?: { path: string } }>(disabled.text()).defaultState,
       undefined
     );
+
+    const withProfile = createOutput();
+    assert.equal(await runCli([
+      "open", "http://app.test/", "--no-bridge", "--profile", "Work"
+    ], {
+      stdout: withProfile.stdout,
+      stderr: withProfile.stderr,
+      env: { DIVEBELL_HOME: home },
+      browserRunner: createBrowserRunner(async (args, options) => {
+        calls.push({ args, options });
+        return { exitCode: 0, stdout: "", stderr: "" };
+      })
+    }), 0);
+    assert.equal(calls[2]?.options?.defaultStatePath, undefined);
+    assert.equal(
+      commandData<{ defaultState?: { path: string } }>(withProfile.text()).defaultState,
+      undefined
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -413,6 +431,62 @@ test("enables WebMCP launch and CDP features for local Chrome by default", async
   assert.deepEqual(browserCalls[1], ["webmcp", "list", "--json"]);
   assert.equal(browserOptions[1]?.browserArguments, browserOptions[0]?.browserArguments);
   rmSync(operationLogDirectory, { recursive: true, force: true });
+});
+
+test("forwards space-separated and repeatable --args values and preserves AGENT_BROWSER_ARGS across follow-up commands", async () => {
+  const operationLogDirectory = mkdtempSync(join(tmpdir(), "divebell-cli-operations-"));
+  const browserCalls: string[][] = [];
+  const browserOptions: Array<BrowserRunOptions | undefined> = [];
+  const browserRunner = createBrowserRunner(async (args, options) => {
+    browserCalls.push(args);
+    browserOptions.push(options);
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  });
+
+  try {
+    const openOutput = createOutput();
+    assert.equal(await runCli([
+      "open",
+      "https://app.test/",
+      "--args",
+      "--disable-features=Translate,KeychainKeyProviderUserDataDirProtection",
+      "--args",
+      "--window-size=1440,900",
+      "--no-bridge"
+    ], {
+      stdout: openOutput.stdout,
+      stderr: openOutput.stderr,
+      operationLogDirectory,
+      env: {
+        AGENT_BROWSER_ARGS: "--lang=en-US"
+      },
+      browserRunner
+    }), 0);
+
+    assert.equal(browserOptions[0]?.disableDefaultProfile, undefined);
+    assert.equal(
+      browserOptions[0]?.browserArguments,
+      [
+        "--lang=en-US",
+        "--disable-features=Translate,KeychainKeyProviderUserDataDirProtection",
+        "--window-size=1440,900",
+        WEBMCP_BROWSER_ARGUMENTS
+      ].join("\n")
+    );
+
+    const followUpOutput = createOutput();
+    assert.equal(await runCli(["get", "url"], {
+      stdout: followUpOutput.stdout,
+      stderr: followUpOutput.stderr,
+      operationLogDirectory,
+      env: {},
+      browserRunner
+    }), 0);
+    assert.equal(browserOptions[1]?.browserArguments, browserOptions[0]?.browserArguments);
+    assert.deepEqual(browserCalls[1], ["get", "url"]);
+  } finally {
+    rmSync(operationLogDirectory, { recursive: true, force: true });
+  }
 });
 
 test("leaves external browser launch flags unchanged without failing open", async () => {

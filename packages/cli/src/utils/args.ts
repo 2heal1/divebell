@@ -1,6 +1,8 @@
 import type { ParsedCliArgs } from "../types/shared.js";
 export type { ParsedCliArgs } from "../types/shared.js";
 
+const OPTIONS_ACCEPTING_DASH_PREFIX_VALUE = new Set(["args"]);
+
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
   const command: string[] = [];
   const options = new Map<string, string[]>();
@@ -27,7 +29,10 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     }
 
     const next = argv[index + 1];
-    if (next !== undefined && !next.startsWith("--")) {
+    if (
+      next !== undefined
+      && (!next.startsWith("--") || OPTIONS_ACCEPTING_DASH_PREFIX_VALUE.has(option))
+    ) {
       appendOption(options, option, next);
       index += 1;
       continue;
